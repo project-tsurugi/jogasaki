@@ -32,6 +32,7 @@ namespace jogasaki::recovery {
 
 bool serialize_deserialize_add_primary(
     yugawara::storage::index const& i,
+    yugawara::storage::configurable_provider const &src,
     yugawara::storage::configurable_provider& provider,
     proto::metadata::storage::IndexDefinition& idef
 ) {
@@ -41,14 +42,18 @@ bool serialize_deserialize_add_primary(
         VLOG(log_error) << "serialization error";
         return false;
     }
-    return recovery::deserialize_into_provider(idef, provider);
+    return recovery::deserialize_into_provider(idef, src, provider);
 }
 
-bool create_storage_option(const yugawara::storage::index &i, yugawara::storage::configurable_provider &provider,
-                           std::string &storage) {
+bool create_storage_option(
+    yugawara::storage::index const&i,
+    yugawara::storage::configurable_provider const &src,
+    yugawara::storage::configurable_provider& target,
+
+    std::string &storage) {
     storage.clear();
     proto::metadata::storage::IndexDefinition idef{};
-    if(! serialize_deserialize_add_primary(i, provider, idef)) {
+    if(! serialize_deserialize_add_primary(i, src, target, idef)) {
         return false;
     }
     proto::metadata::storage::Storage stg{};

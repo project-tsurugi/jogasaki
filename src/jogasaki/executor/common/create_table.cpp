@@ -89,7 +89,8 @@ bool create_table::operator()(request_context& context) const {
     }
 
     std::string storage{};
-    if(auto res = recovery::create_storage_option(*i, provider, storage); ! res) {
+    yugawara::storage::configurable_provider target{};
+    if(auto res = recovery::create_storage_option(*i, provider, target, storage); ! res) {
         context.status_code(status::err_already_exists);
         return res;
     }

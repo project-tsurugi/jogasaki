@@ -311,7 +311,7 @@ TEST_F(recovery_test, recover_create_index) {
                 column{ "C1", type::float8 (), nullity{true} },
             }
         );
-        ASSERT_EQ(status::ok, db_->create_table(t)); // recoverying metadata is not yet implemented //TODO
+        ASSERT_EQ(status::err_already_exists, db_->create_table(t));
         auto i = std::make_shared<yugawara::storage::index>(
             t,
             "TEST",
@@ -328,7 +328,7 @@ TEST_F(recovery_test, recover_create_index) {
                 ::yugawara::storage::index_feature::primary,
             }
         );
-        ASSERT_EQ(status::ok, db_->create_index(i)); // recoverying metadata is not yet implemented //TODO
+        ASSERT_EQ(status::err_already_exists, db_->create_index(i));
     }
 }
 

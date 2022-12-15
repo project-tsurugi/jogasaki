@@ -30,11 +30,12 @@ namespace jogasaki::recovery {
 
 bool deserialize_into_provider(
     proto::metadata::storage::IndexDefinition const& idef,
-    yugawara::storage::configurable_provider& provider
+    yugawara::storage::configurable_provider const& src,
+    yugawara::storage::configurable_provider& target
 ) {
     utils::storage_metadata_serializer ser{};
     std::shared_ptr<yugawara::storage::configurable_provider> deserialized{};
-    if(! ser.deserialize(idef, provider, deserialized)) {
+    if(! ser.deserialize(idef, src, deserialized)) {
         VLOG(log_error) << "deserialization error";
         return false;
     }
@@ -57,7 +58,7 @@ bool deserialize_into_provider(
     for(auto&& s : sequences) {
         deserialized->remove_sequence(s->simple_name());
         try {
-            provider.add_sequence(s, false);
+            target.add_sequence(s, false);
         } catch(std::invalid_argument& e) {
             VLOG(log_error) << "sequence " << s->simple_name() << " already exists";
             return false;
@@ -66,7 +67,7 @@ bool deserialize_into_provider(
 
     deserialized->remove_relation(idx->shared_table()->simple_name());
     try {
-        provider.add_table(idx->shared_table(), false);
+        target.add_table(idx->shared_table(), false);
     } catch(std::invalid_argument& e) {
         VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
         return false;
@@ -74,7 +75,7 @@ bool deserialize_into_provider(
 
     deserialized->remove_index(idx->simple_name());
     try {
-        provider.add_index(idx, false);
+        target.add_index(idx, false);
     } catch(std::invalid_argument& e) {
         VLOG(log_error) << "primary index " << idx->simple_name() << " already exists";
         return false;

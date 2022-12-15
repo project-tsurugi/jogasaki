@@ -39,6 +39,7 @@
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/storage_dump.h>
+#include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
@@ -544,14 +545,26 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         VLOG(log_error) << "db not started";
         return status::err_invalid_state;
     }
+
+    std::shared_ptr<yugawara::storage::index> i{};
     try {
-        tables_->add_index(std::move(index));
+        i = tables_->add_index(std::move(index));
     } catch(std::invalid_argument& e) {
         VLOG(log_error) << "index " << name << " already exists";
         return status::err_already_exists;
     }
+
+    std::string storage{};
+    yugawara::storage::configurable_provider target{};
+    if(auto res = recovery::create_storage_option(*i, *tables_, target, storage); ! res) {
+        return status::err_already_exists;
+    }
+
     sharksfin::StorageOptions opt{storage_id};
-    kvs_db_->create_storage(name, opt);
+    opt.payload(std::move(storage));
+    if(auto stg = kvs_db_->create_storage(name, opt);! stg) {
+        VLOG(log_info) << "storage " << name << " already exists ";
+    }
     return status::ok;
 }
 
@@ -711,7 +724,7 @@ status database::recover_index_metadata(
             continue;
         }
         VLOG(log_info) << "Recover table/primary index " << n << " : " << idef.Utf8DebugString();
-        if(! recovery::deserialize_into_provider(idef, *tables_)) {
+        if(! recovery::deserialize_into_provider(idef, *tables_, *tables_)) {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }

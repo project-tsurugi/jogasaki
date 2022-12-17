@@ -34,4 +34,12 @@ bool create_storage_option(
     yugawara::storage::configurable_provider& target,
     std::string& storage);
 
+bool deserialize_storage_option_into_provider(
+    std::string_view payload,
+    yugawara::storage::configurable_provider const &src,
+    yugawara::storage::configurable_provider& target
+);
+
+bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out);
+
 }

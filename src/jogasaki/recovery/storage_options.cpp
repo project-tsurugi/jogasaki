@@ -30,30 +30,18 @@
 
 namespace jogasaki::recovery {
 
-bool serialize_deserialize_add_primary(
-    yugawara::storage::index const& i,
-    yugawara::storage::configurable_provider const &src,
-    yugawara::storage::configurable_provider& provider,
-    proto::metadata::storage::IndexDefinition& idef
-) {
-    idef = {};
-    utils::storage_metadata_serializer ser{};
-    if(! ser.serialize(i, idef)) {
-        VLOG(log_error) << "serialization error";
-        return false;
-    }
-    return recovery::deserialize_into_provider(idef, src, provider);
-}
-
 bool create_storage_option(
     yugawara::storage::index const&i,
     yugawara::storage::configurable_provider const &src,
     yugawara::storage::configurable_provider& target,
     std::string &storage
 ) {
+    (void)src;
+    (void)target;
     storage.clear();
     proto::metadata::storage::IndexDefinition idef{};
-    if(! serialize_deserialize_add_primary(i, src, target, idef)) {
+
+    if(! recovery::serialize_index(i, idef)) {
         return false;
     }
     proto::metadata::storage::Storage stg{};
@@ -66,6 +54,38 @@ bool create_storage_option(
     }
     storage = ss.str();
     stg.release_index();
+    return true;
+}
+
+bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
+    proto::metadata::storage::Storage st{};
+    if (! st.ParseFromArray(payload.data(), payload.size())) {
+        VLOG(log_error) << "Invalid metadata data is detected in the storage.";
+        return false;
+    }
+    if(st.message_version() != metadata_format_version) {
+        VLOG(log_error) << "Incompatible metadata version (" << st.message_version() <<
+            ") is stored in the storage. This version is not supported.";
+        return false;
+    }
+    if(st.has_index()) {
+        out = st.index();
+    }
+    return true;
+}
+
+bool deserialize_storage_option_into_provider(
+    std::string_view payload,
+    yugawara::storage::configurable_provider const &src,
+    yugawara::storage::configurable_provider& target
+) {
+    proto::metadata::storage::IndexDefinition idef{};
+    if(! recovery::validate_extract(payload, idef)) {
+        return false;
+    }
+    if(! recovery::deserialize_into_provider(idef, src, target)) {
+        return false;
+    }
     return true;
 }
 

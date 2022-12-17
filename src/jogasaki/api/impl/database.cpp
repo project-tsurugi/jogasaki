@@ -560,6 +560,10 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         return status::err_already_exists;
     }
 
+    if(auto res = recovery::deserialize_storage_option_into_provider(storage, *tables_, *tables_); ! res) {
+        return status::err_unknown;
+    }
+
     sharksfin::StorageOptions opt{storage_id};
     opt.payload(std::move(storage));
     if(auto stg = kvs_db_->create_storage(name, opt);! stg) {
@@ -666,23 +670,6 @@ status database::initialize_from_providers() {
     return status::ok;
 }
 
-bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
-    proto::metadata::storage::Storage st{};
-    if (! st.ParseFromArray(payload.data(), payload.size())) {
-        LOG(ERROR) << "Invalid metadata data is detected in the storage.";
-        return false;
-    }
-    if(st.message_version() != metadata_format_version) {
-        LOG(ERROR) << "Incompatible metadata version (" << st.message_version() <<
-            ") is stored in the storage. This version is not supported.";
-        return false;
-    }
-    if(st.has_index()) {
-        out = st.index();
-    }
-    return true;
-}
-
 status database::recover_table(proto::metadata::storage::IndexDefinition const& idef) {
     utils::storage_metadata_serializer ser{};
 
@@ -715,7 +702,7 @@ status database::recover_index_metadata(
             continue;
         }
         proto::metadata::storage::IndexDefinition idef{};
-        if(! validate_extract(payload, idef)) {
+        if(! recovery::validate_extract(payload, idef)) {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }

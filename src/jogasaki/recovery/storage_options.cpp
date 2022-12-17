@@ -49,8 +49,8 @@ bool create_storage_option(
     yugawara::storage::index const&i,
     yugawara::storage::configurable_provider const &src,
     yugawara::storage::configurable_provider& target,
-
-    std::string &storage) {
+    std::string &storage
+) {
     storage.clear();
     proto::metadata::storage::IndexDefinition idef{};
     if(! serialize_deserialize_add_primary(i, src, target, idef)) {

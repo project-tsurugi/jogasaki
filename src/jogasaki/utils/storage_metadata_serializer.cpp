@@ -459,7 +459,11 @@ yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn
 }
 
 // deserialize table and add its depending definitions (base table, and sequence) to the provider
-bool deserialize_table_recursive(::jogasaki::proto::metadata::storage::TableDefinition const& tdef, std::shared_ptr<yugawara::storage::table>& out, yugawara::storage::configurable_provider& provider) {
+bool deserialize_table(
+    ::jogasaki::proto::metadata::storage::TableDefinition const& tdef,
+    std::shared_ptr<yugawara::storage::table>& out,
+    yugawara::storage::configurable_provider& provider
+) {
     std::optional<yugawara::storage::table::definition_id_type> definition_id{};
     if(tdef.definition_id_optional_case() != proto::metadata::storage::TableDefinition::DefinitionIdOptionalCase::DEFINITION_ID_OPTIONAL_NOT_SET) {
         definition_id = tdef.definition_id();
@@ -578,7 +582,7 @@ bool storage_metadata_serializer::deserialize(
         // primary index
         auto& tdef = idef.table_definition();
         std::shared_ptr<yugawara::storage::table> tbl{};
-        if(! deserialize_table_recursive(tdef, tbl, *out)) {
+        if(! deserialize_table(tdef, tbl, *out)) {
             return false;
         }
         std::shared_ptr<yugawara::storage::index> idx{};

@@ -60,6 +60,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->enable_index_join(false); // to workaround problem caused by join_scan not implemented yet //TODO
         db_setup(cfg);
     }
 
@@ -94,8 +95,8 @@ TEST_F(validate_user_scenario_test, join_scan) {
                       "primary key (phone_number, start_date)"
                       ")"
     );
-//    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('001', 20220101, 20221231, 'XXX')");
-    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('010', 20220101, 20221231, 'XXX')");
+    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('001', 20220101, 20221231, 'XXX')");
+//    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('010', 20220101, 20221231, 'XXX')");
     std::vector<mock::basic_record> result{};
     execute_query("select "
                   "h.caller_phone_number, h.recipient_phone_number,  h.payment_categorty, h.start_time, h.time_secs, "
@@ -104,6 +105,7 @@ TEST_F(validate_user_scenario_test, join_scan) {
 //                  "from history h, contracts c where c.phone_number = h.caller_phone_number and "
                   "where c.start_date < h.start_time "
                   "and h.start_time < c.end_date + 1 "
+                  "and c.phone_number = '001' "
                   "order by h.start_time"
                   ,
         result);

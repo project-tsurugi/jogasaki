@@ -428,8 +428,10 @@ TEST_F(ddl_test, drop_indices_cascade) {
         auto provider = db_impl()->tables();
         auto s0 = provider->find_index("S0");
         ASSERT_FALSE(s0);
+        ASSERT_FALSE(db_impl()->kvs_db()->get_storage("S0"));
         auto s1 = provider->find_index("S0");
         ASSERT_FALSE(s1);
+        ASSERT_FALSE(db_impl()->kvs_db()->get_storage("S1"));
     }
 }
 

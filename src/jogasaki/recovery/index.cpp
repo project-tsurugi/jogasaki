@@ -58,7 +58,7 @@ bool deserialize_into_provider(
     for(auto&& s : sequences) {
         deserialized->remove_sequence(s->simple_name());
         try {
-            target.add_sequence(s, false);
+            target.add_sequence(s, true);
         } catch(std::invalid_argument& e) {
             VLOG(log_error) << "sequence " << s->simple_name() << " already exists";
             return false;
@@ -67,7 +67,7 @@ bool deserialize_into_provider(
 
     deserialized->remove_relation(idx->shared_table()->simple_name());
     try {
-        target.add_table(idx->shared_table(), false);
+        target.add_table(idx->shared_table(), true);
     } catch(std::invalid_argument& e) {
         VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
         return false;

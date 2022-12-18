@@ -256,6 +256,7 @@ public:
      * @return status::ok if the table is successfully created/registered.
      * @return status::err_already_exists if the table with same name already exists.
      * No update is made to the existing metadata.
+     * @note this function doesn't store table metadata into durable storage (while create_index for primary index does for both table/primary index metadata)
      */
     status create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -285,6 +286,7 @@ public:
      * @returns status::ok when the table is successfully dropped
      * @returns status::not_found when the table is not found
      * @note this doesn't modify the data stored in the table. Clean-up existing data needs to be done separately.
+     * @note this function doesn't cascade to dependant objects, e.g. primary/secondary indices or sequences
      */
     status drop_table(
         std::string_view name,
@@ -294,11 +296,13 @@ public:
     }
 
     /**
-     * @brief register index metadata
-     * @param index the index to register
+     * @brief register index metadata and store it to durable storage
+     * @param index the index to register (whose name must be same as table when creating primary index)
      * @param schema the schema where index belongs.
      * @return status::ok if the index is successfully created/registered.
      * @return status::err_already_exists if the table with same name already exists.
+     * @note when creating primary index, this function stores also table and sequences metadata into primary index's durable storage.
+     * When creating secondary index, this function stores only the secondary index metadata in its durable storage.
      */
     status create_index(
         std::shared_ptr<yugawara::storage::index> index,
@@ -322,12 +326,13 @@ public:
     }
 
     /**
-     * @brief unregister index metadata
+     * @brief unregister index metadata and remove durable storage
      * @param name the index name to drop
      * @param schema the schema where index belongs.
      * @returns status::ok when the index is successfully dropped
      * @returns status::not_found when the index is not found
      * @attention this function is not thread-safe, and should be called from single thread at a time.
+     * @note this function doesn't cascade to dependant objects, e.g. secondary indices
      */
     status drop_index(
         std::string_view name,
@@ -343,6 +348,7 @@ public:
      * @param schema the schema where sequence belongs.
      * @return status::ok if the sequence is successfully created/registered.
      * @return status::err_already_exists if the table with same name already exists.
+     * @note this function doesn't store sequence metadata into durable storage (while create_index for primary index does that for dependent sequences)
      */
     status create_sequence(
         std::shared_ptr<yugawara::storage::sequence> sequence,

@@ -138,6 +138,19 @@ public:
     );
     void resolve(std::string& query, std::string_view place_holder, std::string value);
 
+    void explain_statement(
+        std::string_view query,
+        std::string& out,
+        api::parameter_set const& params,
+        std::unordered_map<std::string, api::field_type_kind> const& variables = {}
+    );
+
+    void explain_statement(
+        std::string_view query,
+        std::string& out,
+        std::unordered_map<std::string, api::field_type_kind> const& variables = {}
+    );
+
     template <class T>
     void set(api::parameter_set& ps, std::string_view place_holder, api::field_type_kind kind, T value) {
         host_variables_.emplace(place_holder, kind);

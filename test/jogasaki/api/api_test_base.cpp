@@ -202,6 +202,33 @@ void api_test_base::execute_statement(std::string_view query, status expected) {
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
+void api_test_base::explain_statement(
+    std::string_view query,
+    std::string& out,
+    std::unordered_map<std::string, api::field_type_kind> const& variables
+) {
+    api::impl::parameter_set params{};
+    return explain_statement(query, out, params, variables);
+}
+
+void api_test_base::explain_statement(
+    std::string_view query,
+    std::string& out,
+    api::parameter_set const& params,
+    std::unordered_map<std::string, api::field_type_kind> const& variables
+) {
+    api::statement_handle prepared{};
+    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
+    std::unique_ptr<api::executable_statement> stmt{};
+    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
+
+    explain(*stmt);
+    std::stringstream ss{};
+    ASSERT_EQ(status::ok, db_->explain(*stmt, ss));
+    out = ss.str();
+    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+}
+
 void api_test_base::execute_statement(
     api::statement_handle prepared,
     std::unordered_map<std::string, api::field_type_kind> const& variables,

@@ -213,7 +213,8 @@ TEST_F(metadata_test, crud1) {
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
     ASSERT_EQ(status::err_already_exists, db_->create_index(i));
-    EXPECT_EQ(i, db_->find_index(i->simple_name()));
+    ASSERT_TRUE(db_->find_index(i->simple_name()));
+    EXPECT_NE(i, db_->find_index(i->simple_name()));  // create_index serialize/deserialize input, so not equals
     EXPECT_FALSE(db_->find_index("dummy"));
 
     ASSERT_EQ(status::ok, db_->drop_index(i->simple_name()));

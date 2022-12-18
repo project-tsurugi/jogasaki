@@ -50,23 +50,26 @@ std::unique_ptr<kvs::storage> create_secondary_index(
     auto t = provider->find_table(base_table);
     auto k = keys(t, std::move(key_indices));
     auto v = values(t, value_indices);
-    provider->add_index(std::make_shared<yugawara::storage::index>(
-        t,
-        std::string{name},
-        std::move(k),
-        std::move(v),
-        yugawara::storage::index_feature_set{
-            ::yugawara::storage::index_feature::find,
-            ::yugawara::storage::index_feature::scan,
-        }
-    ));
+    {
+        auto res = db.create_index(
+            std::make_shared<yugawara::storage::index>(
+                t,
+                std::string{name},
+                std::move(k),
+                std::move(v),
+                yugawara::storage::index_feature_set{
+                    ::yugawara::storage::index_feature::find,
+                    ::yugawara::storage::index_feature::scan,
+                }
+            )
+        );
+        [&]() { ASSERT_EQ(status::ok, res); }();
+    }
     {
         auto s0 = provider->find_index(name);
-        [&]() {
-            ASSERT_TRUE(s0);
-        }();
+        [&]() { ASSERT_TRUE(s0); }();
     }
-    return db.kvs_db()->create_storage(name);
+    return db.kvs_db()->get_storage(name);
 }
 
 }

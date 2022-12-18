@@ -32,12 +32,8 @@ namespace jogasaki::recovery {
 
 bool create_storage_option(
     yugawara::storage::index const&i,
-    yugawara::storage::configurable_provider const &src,
-    yugawara::storage::configurable_provider& target,
     std::string &storage
 ) {
-    (void)src;
-    (void)target;
     storage.clear();
     proto::metadata::storage::IndexDefinition idef{};
 

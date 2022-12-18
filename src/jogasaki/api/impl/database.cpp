@@ -546,17 +546,14 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         return status::err_invalid_state;
     }
 
-    std::shared_ptr<yugawara::storage::index> i{};
-    try {
-        i = tables_->add_index(std::move(index));
-    } catch(std::invalid_argument& e) {
+    if(tables_->find_index(name)) {
         VLOG(log_error) << "index " << name << " already exists";
         return status::err_already_exists;
     }
 
     std::string storage{};
     yugawara::storage::configurable_provider target{};
-    if(auto res = recovery::create_storage_option(*i, *tables_, target, storage); ! res) {
+    if(auto res = recovery::create_storage_option(*index, storage); ! res) {
         return status::err_already_exists;
     }
 
@@ -710,7 +707,7 @@ status database::recover_index_metadata(
             skipped.emplace_back(n);
             continue;
         }
-        VLOG(log_info) << "Recover table/primary index " << n << " : " << idef.Utf8DebugString();
+        VLOG(log_info) << "Recover table/index " << n << " : " << idef.Utf8DebugString();
         if(! recovery::deserialize_into_provider(idef, *tables_, *tables_)) {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;

@@ -62,6 +62,11 @@ bool create_table::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
     auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
+    if(provider.find_table(c->simple_name())) {
+        VLOG(log_info) << "Table " << c->simple_name() << " already exists.";
+        context.status_code(status::err_already_exists);
+        return false;
+    }
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
     auto rh = std::any_cast<plan::storage_processor_result>(ct_->runtime_hint());
     if(rh.primary_key_generated()) {
@@ -90,7 +95,7 @@ bool create_table::operator()(request_context& context) const {
 
     std::string storage{};
     yugawara::storage::configurable_provider target{};
-    if(auto res = recovery::create_storage_option(*i, provider, target, storage); ! res) {
+    if(auto res = recovery::create_storage_option(*i, storage); ! res) {
         context.status_code(status::err_already_exists);
         return res;
     }

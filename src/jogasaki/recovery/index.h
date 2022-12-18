@@ -37,7 +37,8 @@ bool deserialize_into_provider(
 
 bool serialize_index(
     yugawara::storage::index const& i,
-    proto::metadata::storage::IndexDefinition& idef
+    proto::metadata::storage::IndexDefinition& idef,
+    utils::metadata_serializer_option const& option
 );
 
 }

@@ -31,6 +31,13 @@
 namespace jogasaki::utils {
 
 /**
+ * @brief serializer option
+ */
+struct metadata_serializer_option {
+    bool synthesized_{};
+};
+
+/**
  * @brief serializer for storage metadata
  */
 class storage_metadata_serializer {
@@ -59,7 +66,7 @@ public:
      * @return true when successful
      * @return false otherwise
      */
-    bool serialize(yugawara::storage::index const& idx, std::string& out);
+    bool serialize(yugawara::storage::index const& idx, std::string& out, metadata_serializer_option const& option = {});
 
     /**
      * @brief serialize index as jogasaki::proto::metadata::storage::IndexDefinition
@@ -69,14 +76,15 @@ public:
      * @return true when successful
      * @return false otherwise
      */
-    bool serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef);
+    bool serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef, metadata_serializer_option const& option = {});
 
     /**
      * @brief deserialize protobuf msg for index
      * @param src the target string to deserialize as jogasaki::proto::metadata::storage::IndexDefinition
      * @param in configurable provider used to search base table definition (this is referenced when `out` doesn't
      * contain the base table definition.
-     * @param provider [out] to be filled with result objects (index, table, sequence, etc.)
+     * @param out [out] to be filled with result objects (index, table, sequence, etc.)
+     * @param overwrite whether overwrite existing entries in `out`
      * @return true when successful
      * @return false otherwise
      */
@@ -93,6 +101,7 @@ public:
      * @param in configurable provider used to search base table definition (this is referenced when `out` doesn't
      * contain the base table definition.
      * @param out [out] to be filled with result objects (index, table, sequence, etc.)
+     * @param overwrite whether overwrite existing entries in `out`
      * @return true when successful
      * @return false otherwise
      */

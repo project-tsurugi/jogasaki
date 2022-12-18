@@ -553,7 +553,7 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
 
     std::string storage{};
     yugawara::storage::configurable_provider target{};
-    if(auto res = recovery::create_storage_option(*index, storage); ! res) {
+    if(auto res = recovery::create_storage_option(*index, storage, utils::metadata_serializer_option{true}); ! res) {
         return status::err_already_exists;
     }
 

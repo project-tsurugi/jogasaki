@@ -371,4 +371,50 @@ TEST_F(storage_metadata_serializer_test, default_value_sequence) {
     EXPECT_EQ(to_string(*s0), to_string(*seq0));
     EXPECT_EQ(to_string(*s1), to_string(*seq1));
 }
+
+TEST_F(storage_metadata_serializer_test, synthesized_flag) {
+    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+        "TT",
+        {
+            { "C0", type::int8(), nullity{false} },
+            { "C1", type::character(type::varying), nullity{true} },
+        },
+    });
+    auto primary = provider_.add_index({
+        t,
+        t->simple_name(),
+        {
+            t->columns()[0],
+        },
+        {
+            t->columns()[1],
+        },
+        index_features_
+    });
+
+    auto secondary = provider_.add_index({
+        t,
+        "TT_SECONDARY",
+        {
+            t->columns()[1],
+        },
+        {},
+        secondary_index_features_
+    });
+
+    storage_metadata_serializer ser{};
+    {
+        proto::metadata::storage::IndexDefinition idef{};
+        ASSERT_TRUE(ser.serialize(*primary, idef, metadata_serializer_option{true}));
+        ASSERT_TRUE(idef.synthesized());
+    }
+    {
+        proto::metadata::storage::IndexDefinition idef{};
+        ASSERT_TRUE(ser.serialize(*primary, idef, metadata_serializer_option{false}));
+        ASSERT_FALSE(idef.synthesized());
+    }
+}
+
+
+
 }

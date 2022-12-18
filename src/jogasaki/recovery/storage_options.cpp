@@ -32,12 +32,13 @@ namespace jogasaki::recovery {
 
 bool create_storage_option(
     yugawara::storage::index const&i,
-    std::string &storage
+    std::string &storage,
+    utils::metadata_serializer_option const& option
 ) {
     storage.clear();
     proto::metadata::storage::IndexDefinition idef{};
 
-    if(! recovery::serialize_index(i, idef)) {
+    if(! recovery::serialize_index(i, idef, option)) {
         return false;
     }
     proto::metadata::storage::Storage stg{};

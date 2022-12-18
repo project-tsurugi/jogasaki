@@ -43,10 +43,14 @@ bool deserialize_into_provider(
     return true;
 }
 
-bool serialize_index(const yugawara::storage::index &i, proto::metadata::storage::IndexDefinition &idef) {
+bool serialize_index(
+    const yugawara::storage::index &i,
+    proto::metadata::storage::IndexDefinition &idef,
+    utils::metadata_serializer_option const& option
+) {
     idef = {};
     utils::storage_metadata_serializer ser{};
-    if(! ser.serialize(i, idef)) {
+    if(! ser.serialize(i, idef, option)) {
         VLOG(log_error) << "serialization error";
         return false;
     }

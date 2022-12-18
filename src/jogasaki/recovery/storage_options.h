@@ -30,7 +30,9 @@ namespace jogasaki::recovery {
 
 bool create_storage_option(
     yugawara::storage::index const& i,
-    std::string& storage);
+    std::string& storage,
+    utils::metadata_serializer_option const& option
+);
 
 bool deserialize_storage_option_into_provider(
     std::string_view payload,

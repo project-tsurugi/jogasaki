@@ -228,6 +228,10 @@ message IndexDefinition {
         StorageReference table_reference = 31;
     }
 
+    // Whether the index definition is synthesized and primary ownership is managed externally.
+    // This is used to distinguish definitions made by CREATE DDLs from the one given by direct APIs.
+    bool synthesized = 35;
+
     // the index keys.
     repeated IndexColumn keys = 40;
 

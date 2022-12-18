@@ -775,4 +775,89 @@ TEST_F(recovery_test, recover_user_defined_sequence) {
     }
 }
 
+TEST_F(recovery_test, recovery_index_for_missing_table) {
+    // error scenario: after creating index, table is unregistered. Verify error without crashing.
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        auto t = std::make_shared<table>(
+            "TEST",
+            std::initializer_list<column>{
+                column{ "C0", type::int8(), nullity{false} },
+                column{ "C1", type::float8 (), nullity{true} },
+            }
+        );
+        ASSERT_EQ(status::ok, db_->create_table(t));
+        auto i = std::make_shared<yugawara::storage::index>(
+            t,
+            "TEST",
+            std::initializer_list<index::key>{
+                t->columns()[0],
+            },
+            std::initializer_list<index::column_ref>{
+                t->columns()[1],
+            },
+            index_feature_set{
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+                ::yugawara::storage::index_feature::unique,
+                ::yugawara::storage::index_feature::primary,
+            }
+        );
+        ASSERT_EQ(status::ok, db_->create_index(i));
+        auto s = std::make_shared<yugawara::storage::index>(
+            t,
+            "SECONDARY",
+            std::initializer_list<index::key>{
+                t->columns()[1],
+            },
+            std::initializer_list<index::column_ref>{
+                t->columns()[0],
+            },
+            index_feature_set{
+                ::yugawara::storage::index_feature::find,
+                ::yugawara::storage::index_feature::scan,
+            }
+        );
+        ASSERT_EQ(status::ok, db_->create_index(s));
+    }
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        ASSERT_TRUE(db_impl()->tables()->find_index("TEST"));
+        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("TEST"));
+        ASSERT_TRUE(db_impl()->tables()->find_index("SECONDARY"));
+        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("SECONDARY"));
+    }
+    ASSERT_EQ(status::ok, db_->drop_table("TEST"));
+    ASSERT_FALSE(db_impl()->tables()->find_table("TEST"));
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        ASSERT_TRUE(db_impl()->tables()->find_table("TEST")); // even if table is dropped above, it's recovered from the primary index
+        ASSERT_TRUE(db_impl()->tables()->find_index("TEST"));
+        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("TEST"));
+        ASSERT_TRUE(db_impl()->tables()->find_index("SECONDARY"));
+        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("SECONDARY"));
+    }
+    ASSERT_EQ(status::ok, db_->drop_index("TEST"));
+    ASSERT_FALSE(db_impl()->tables()->find_index("TEST"));
+    ASSERT_FALSE(db_impl()->kvs_db()->get_storage("TEST"));
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        ASSERT_TRUE(db_impl()->tables()->find_table("TEST")); // TODO deleted storage accidentally get back
+        ASSERT_TRUE(db_impl()->tables()->find_index("TEST")); // TODO deleted storage accidentally get back
+        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("TEST")); // TODO deleted storage accidentally get back
+        ASSERT_TRUE(db_impl()->tables()->find_index("SECONDARY"));
+        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("SECONDARY"));
+    }
+}
+
 }

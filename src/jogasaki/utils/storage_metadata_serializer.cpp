@@ -211,6 +211,7 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
         }
     }
 }
+
 bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage::TableDefinition& tbl) {
     if(t.definition_id().has_value()) {
         tbl.set_definition_id(*t.definition_id());
@@ -246,12 +247,18 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
     fail();
 }
 
-bool serialize_index(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef) {
+bool serialize_index(
+    yugawara::storage::index const& idx,
+    proto::metadata::storage::IndexDefinition& idef,
+    metadata_serializer_option const& option
+) {
     if(idx.definition_id().has_value()) {
         idef.set_definition_id(*idx.definition_id());
     }
     auto* name = idef.mutable_name();
     name->mutable_element_name()->assign(idx.simple_name());
+
+    idef.set_synthesized(option.synthesized_);
 
     auto* keys = idef.mutable_keys();
     for(auto&& k : idx.keys()) {
@@ -273,7 +280,11 @@ bool serialize_index(yugawara::storage::index const& idx, proto::metadata::stora
 
 } // namespace details
 
-bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef) {
+bool storage_metadata_serializer::serialize(
+    yugawara::storage::index const& idx,
+    proto::metadata::storage::IndexDefinition& idef,
+    metadata_serializer_option const& option
+) {
     bool is_primary = idx.table().simple_name() == idx.simple_name();
     if(is_primary) {
         auto* tdef = idef.mutable_table_definition();
@@ -281,11 +292,11 @@ bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx,
         if(! details::serialize_table(t, *tdef)) {
             return false;
         }
-        if(! details::serialize_index(idx, idef)) {
+        if(! details::serialize_index(idx, idef, option)) {
             return false;
         }
     } else {
-        if(! details::serialize_index(idx, idef)) {
+        if(! details::serialize_index(idx, idef, option)) {
             return false;
         }
         idef.mutable_table_reference()->mutable_name()->mutable_element_name()->assign(idx.table().simple_name());
@@ -293,9 +304,13 @@ bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx,
     return true;
 }
 
-bool storage_metadata_serializer::serialize(yugawara::storage::index const& idx, std::string& out) {
+bool storage_metadata_serializer::serialize(
+    yugawara::storage::index const& idx,
+    std::string& out,
+    metadata_serializer_option const& option
+) {
     proto::metadata::storage::IndexDefinition idef{};
-    if(! serialize(idx, idef)) {
+    if(! serialize(idx, idef, option)) {
         VLOG(log_error) << "serialization failed";
         return false;
     }

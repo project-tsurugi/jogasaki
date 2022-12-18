@@ -109,12 +109,12 @@ TEST_F(storage_metadata_serializer_test, simple) {
     ASSERT_TRUE(ser.serialize(*secondary, sec));
     std::cerr << "sec : " << readable(sec) << std::endl;
 
-    std::shared_ptr<storage::configurable_provider> deserialized{};
-    ASSERT_TRUE(ser.deserialize(out, provider_, deserialized));
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    ASSERT_TRUE(ser.deserialize(out, provider_, *deserialized));
     auto i = deserialized->find_index("TT");
     ASSERT_TRUE(i);
-    std::shared_ptr<storage::configurable_provider> deserialized2{};
-    ASSERT_TRUE(ser.deserialize(sec, provider_, deserialized2));
+    auto deserialized2 = std::make_shared<storage::configurable_provider>();
+    ASSERT_TRUE(ser.deserialize(sec, provider_, *deserialized2));
     auto i2 = deserialized2->find_index("TT_SECONDARY");
     ASSERT_TRUE(i2);
     std::string out2{};
@@ -128,14 +128,14 @@ TEST_F(storage_metadata_serializer_test, simple) {
 void test_index(
     yugawara::storage::index& primary,
     yugawara::storage::configurable_provider const& provider,
-    std::shared_ptr<storage::configurable_provider>& deserialized
+    storage::configurable_provider& deserialized
 ) {
     storage_metadata_serializer ser{};
     std::string out{};
     ASSERT_TRUE(ser.serialize(primary, out));
     std::cerr << "out : " << readable(out) << std::endl;
     ASSERT_TRUE(ser.deserialize(out, provider, deserialized));
-    auto i = deserialized->find_index(primary.simple_name());
+    auto i = deserialized.find_index(primary.simple_name());
     ASSERT_TRUE(i);
     std::string out2{};
     ASSERT_TRUE(ser.serialize(*i, out2));
@@ -200,8 +200,8 @@ TEST_F(storage_metadata_serializer_test, primary_index_with_types) {
         index_features_
     });
 
-    std::shared_ptr<storage::configurable_provider> deserialized{};
-    test_index(*primary, provider_, deserialized);
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    test_index(*primary, provider_, *deserialized);
     auto t2 = deserialized->find_table("TT");
     EXPECT_EQ(to_string(*t2), to_string(*t));
 }
@@ -237,8 +237,8 @@ TEST_F(storage_metadata_serializer_test, secondary_index) {
         secondary_index_features_
     });
 
-    std::shared_ptr<storage::configurable_provider> deserialized{};
-    test_index(*secondary, provider_, deserialized);
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    test_index(*secondary, provider_, *deserialized);
     auto i2 = deserialized->find_index("TT_SECONDARY");
     EXPECT_EQ(to_string(*i2), to_string(*secondary));
 }
@@ -262,8 +262,8 @@ TEST_F(storage_metadata_serializer_test, default_value) {
         },
         index_features_
     });
-    std::shared_ptr<storage::configurable_provider> deserialized{};
-    test_index(*primary, provider_, deserialized);
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    test_index(*primary, provider_, *deserialized);
     auto t2 = deserialized->find_table("TT");
     EXPECT_EQ(to_string(*t2), to_string(*t));
 }
@@ -319,8 +319,8 @@ TEST_F(storage_metadata_serializer_test, default_value_with_types) {
         },
         index_features_
     });
-    std::shared_ptr<storage::configurable_provider> deserialized{};
-    test_index(*primary, provider_, deserialized);
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    test_index(*primary, provider_, *deserialized);
     auto t2 = deserialized->find_table("TT");
     EXPECT_EQ(to_string(*t2), to_string(*t));
 }
@@ -360,8 +360,8 @@ TEST_F(storage_metadata_serializer_test, default_value_sequence) {
         index_features_
     });
 
-    std::shared_ptr<storage::configurable_provider> deserialized{};
-    test_index(*primary, provider_, deserialized);
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    test_index(*primary, provider_, *deserialized);
     auto t2 = deserialized->find_table("TT");
     EXPECT_EQ(to_string(*t2), to_string(*t));
     auto seq0 = deserialized->find_sequence("seq0");

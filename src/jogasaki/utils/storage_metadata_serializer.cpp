@@ -562,7 +562,7 @@ bool deserialize_index(
 bool storage_metadata_serializer::deserialize(
     std::string_view src,
     yugawara::storage::configurable_provider const& in,
-    std::shared_ptr<yugawara::storage::configurable_provider>& out
+    yugawara::storage::configurable_provider& out
 ) {
     proto::metadata::storage::IndexDefinition idef{};
     if (! idef.ParseFromArray(src.data(), src.size())) {
@@ -575,21 +575,20 @@ bool storage_metadata_serializer::deserialize(
 bool storage_metadata_serializer::deserialize(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& in,
-    std::shared_ptr<yugawara::storage::configurable_provider>& out
+    yugawara::storage::configurable_provider& out
 ) {
-    out = std::make_shared<yugawara::storage::configurable_provider>();
     if(idef.has_table_definition()) {
         // primary index
         auto& tdef = idef.table_definition();
         std::shared_ptr<yugawara::storage::table> tbl{};
-        if(! deserialize_table(tdef, tbl, *out)) {
+        if(! deserialize_table(tdef, tbl, out)) {
             return false;
         }
         std::shared_ptr<yugawara::storage::index> idx{};
         if(! deserialize_index(idef, tbl, idx)) {
             return false;
         }
-        out->add_index(idx);
+        out.add_index(idx);
         return true;
     }
     // secondary index
@@ -598,7 +597,7 @@ bool storage_metadata_serializer::deserialize(
     }
     auto& tabname = idef.table_reference().name().element_name();
     std::shared_ptr<yugawara::storage::table const> t{};
-    if(t = out->find_table(tabname); t == nullptr) {
+    if(t = out.find_table(tabname); t == nullptr) {
         if(t = in.find_table(idef.table_reference().name().element_name()); t == nullptr) {
             return false;
         }
@@ -607,7 +606,7 @@ bool storage_metadata_serializer::deserialize(
     if(! deserialize_index(idef, t, idx)) {
         return false;
     }
-    out->add_index(idx);
+    out.add_index(idx);
     return true;
 }
 }

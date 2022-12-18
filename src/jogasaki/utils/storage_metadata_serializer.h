@@ -83,7 +83,7 @@ public:
     bool deserialize(
         std::string_view src,
         yugawara::storage::configurable_provider const& in,
-        std::shared_ptr<yugawara::storage::configurable_provider>& out
+        yugawara::storage::configurable_provider& out
     );
 
     /**
@@ -98,7 +98,7 @@ public:
     bool deserialize(
         proto::metadata::storage::IndexDefinition const& idef,
         yugawara::storage::configurable_provider const& in,
-        std::shared_ptr<yugawara::storage::configurable_provider>& out
+        yugawara::storage::configurable_provider& out
     );
 };
 

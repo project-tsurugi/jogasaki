@@ -670,8 +670,8 @@ status database::initialize_from_providers() {
 status database::recover_table(proto::metadata::storage::IndexDefinition const& idef) {
     utils::storage_metadata_serializer ser{};
 
-    std::shared_ptr<yugawara::storage::configurable_provider> deserialized{};
-    if(! ser.deserialize(idef, *tables_, deserialized)) {
+    auto deserialized = std::make_shared<yugawara::storage::configurable_provider>();
+    if(! ser.deserialize(idef, *tables_, *deserialized)) {
         return status::err_inconsistent_index;
     }
 

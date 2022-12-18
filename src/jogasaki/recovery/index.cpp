@@ -34,8 +34,8 @@ bool deserialize_into_provider(
     yugawara::storage::configurable_provider& target
 ) {
     utils::storage_metadata_serializer ser{};
-    std::shared_ptr<yugawara::storage::configurable_provider> deserialized{};
-    if(! ser.deserialize(idef, src, deserialized)) {
+    auto deserialized = std::make_shared<yugawara::storage::configurable_provider>();
+    if(! ser.deserialize(idef, src, *deserialized)) {
         VLOG(log_error) << "deserialization error";
         return false;
     }

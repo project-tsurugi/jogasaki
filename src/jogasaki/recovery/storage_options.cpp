@@ -73,13 +73,14 @@ bool validate_extract(std::string_view payload, proto::metadata::storage::IndexD
 bool deserialize_storage_option_into_provider(
     std::string_view payload,
     yugawara::storage::configurable_provider const &src,
-    yugawara::storage::configurable_provider& target
+    yugawara::storage::configurable_provider& target,
+    bool overwrite
 ) {
     proto::metadata::storage::IndexDefinition idef{};
     if(! recovery::validate_extract(payload, idef)) {
         return false;
     }
-    if(! recovery::deserialize_into_provider(idef, src, target)) {
+    if(! recovery::deserialize_into_provider(idef, src, target, overwrite)) {
         return false;
     }
     return true;

@@ -439,7 +439,13 @@ yugawara::storage::column_value default_value(
             if(v.definition_id_optional_case() != proto::metadata::storage::SequenceDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) {
                 seq->definition_id(v.definition_id());
             }
-            provider.add_sequence(seq);
+
+            try {
+                provider.add_sequence(seq);
+            } catch (std::invalid_argument& e) {
+                VLOG(log_error) << "default_value: sequence already exists";
+                return {};
+            }
             return column_value{std::move(seq)};
         }
         case proto::metadata::storage::TableColumn::DEFAULT_VALUE_NOT_SET: break;
@@ -462,7 +468,8 @@ yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn
 bool deserialize_table(
     ::jogasaki::proto::metadata::storage::TableDefinition const& tdef,
     std::shared_ptr<yugawara::storage::table>& out,
-    yugawara::storage::configurable_provider& provider
+    yugawara::storage::configurable_provider& provider,
+    bool overwrite
 ) {
     std::optional<yugawara::storage::table::definition_id_type> definition_id{};
     if(tdef.definition_id_optional_case() != proto::metadata::storage::TableDefinition::DefinitionIdOptionalCase::DEFINITION_ID_OPTIONAL_NOT_SET) {
@@ -475,11 +482,16 @@ bool deserialize_table(
     if(! tdef.has_name()) {
         return false;
     }
-    out = provider.add_table(std::make_shared<yugawara::storage::table>(
-        definition_id,
-        tdef.name().element_name(),
-        std::move(columns)
-    ));
+    try {
+        out = provider.add_table(std::make_shared<yugawara::storage::table>(
+            definition_id,
+            tdef.name().element_name(),
+            std::move(columns)
+        ), overwrite);
+    } catch (std::invalid_argument& e) {
+        VLOG(log_error) << "deserialize_table: table already exists";
+        return false;
+    }
     return true;
 }
 
@@ -562,33 +574,40 @@ bool deserialize_index(
 bool storage_metadata_serializer::deserialize(
     std::string_view src,
     yugawara::storage::configurable_provider const& in,
-    yugawara::storage::configurable_provider& out
+    yugawara::storage::configurable_provider& out,
+    bool overwrite
 ) {
     proto::metadata::storage::IndexDefinition idef{};
     if (! idef.ParseFromArray(src.data(), src.size())) {
         VLOG(log_error) << "storage metadata deserialize: parse error";
         return false;
     }
-    return deserialize(idef, in, out);
+    return deserialize(idef, in, out, overwrite);
 }
 
 bool storage_metadata_serializer::deserialize(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& in,
-    yugawara::storage::configurable_provider& out
+    yugawara::storage::configurable_provider& out,
+    bool overwrite
 ) {
     if(idef.has_table_definition()) {
         // primary index
         auto& tdef = idef.table_definition();
         std::shared_ptr<yugawara::storage::table> tbl{};
-        if(! deserialize_table(tdef, tbl, out)) {
+        if(! deserialize_table(tdef, tbl, out, overwrite)) {
             return false;
         }
         std::shared_ptr<yugawara::storage::index> idx{};
         if(! deserialize_index(idef, tbl, idx)) {
             return false;
         }
-        out.add_index(idx);
+        try {
+            out.add_index(idx, overwrite);
+        } catch (std::invalid_argument& e) {
+            VLOG(log_error) << "storage metadata deserialize: index already exists";
+            return false;
+        }
         return true;
     }
     // secondary index
@@ -606,7 +625,12 @@ bool storage_metadata_serializer::deserialize(
     if(! deserialize_index(idef, t, idx)) {
         return false;
     }
-    out.add_index(idx);
+    try {
+        out.add_index(idx, overwrite);
+    } catch (std::invalid_argument& e) {
+        VLOG(log_error) << "storage metadata deserialize: index already exists";
+        return false;
+    }
     return true;
 }
 }

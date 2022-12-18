@@ -557,7 +557,7 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         return status::err_already_exists;
     }
 
-    if(auto res = recovery::deserialize_storage_option_into_provider(storage, *tables_, *tables_); ! res) {
+    if(auto res = recovery::deserialize_storage_option_into_provider(storage, *tables_, *tables_, true); ! res) {
         return status::err_unknown;
     }
 
@@ -708,7 +708,7 @@ status database::recover_index_metadata(
             continue;
         }
         VLOG(log_info) << "Recover table/index " << n << " : " << idef.Utf8DebugString();
-        if(! recovery::deserialize_into_provider(idef, *tables_, *tables_)) {
+        if(! recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }

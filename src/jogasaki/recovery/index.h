@@ -31,7 +31,8 @@ namespace jogasaki::recovery {
 bool deserialize_into_provider(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& src,
-    yugawara::storage::configurable_provider& target
+    yugawara::storage::configurable_provider& target,
+    bool overwrite = false
 );
 
 bool serialize_index(

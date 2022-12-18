@@ -99,7 +99,7 @@ bool create_table::operator()(request_context& context) const {
         context.status_code(status::err_already_exists);
         return res;
     }
-    if(auto res = recovery::deserialize_storage_option_into_provider(storage, provider, provider); ! res) {
+    if(auto res = recovery::deserialize_storage_option_into_provider(storage, provider, provider, true); ! res) {
         context.status_code(status::err_unknown);
         return false;
     }

@@ -31,53 +31,13 @@ namespace jogasaki::recovery {
 bool deserialize_into_provider(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& src,
-    yugawara::storage::configurable_provider& target
+    yugawara::storage::configurable_provider& target,
+    bool overwrite
 ) {
     utils::storage_metadata_serializer ser{};
     auto deserialized = std::make_shared<yugawara::storage::configurable_provider>();
-    if(! ser.deserialize(idef, src, *deserialized)) {
+    if(! ser.deserialize(idef, src, target, overwrite)) {
         VLOG(log_error) << "deserialization error";
-        return false;
-    }
-
-    std::shared_ptr<yugawara::storage::index const> idx{};
-    std::size_t cnt = 0;
-    deserialized->each_index([&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-        idx = entry;
-        ++cnt;
-    });
-    if(cnt != 1) {
-        VLOG(log_error) << "deserialization error: too many indices";
-        return false;
-    }
-
-    std::vector<std::shared_ptr<yugawara::storage::sequence const>> sequences{};
-    deserialized->each_sequence([&](std::string_view, std::shared_ptr<yugawara::storage::sequence const> const& entry) {
-        sequences.emplace_back(entry);
-    });
-    for(auto&& s : sequences) {
-        deserialized->remove_sequence(s->simple_name());
-        try {
-            target.add_sequence(s, true);
-        } catch(std::invalid_argument& e) {
-            VLOG(log_error) << "sequence " << s->simple_name() << " already exists";
-            return false;
-        }
-    }
-
-    deserialized->remove_relation(idx->shared_table()->simple_name());
-    try {
-        target.add_table(idx->shared_table(), true);
-    } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
-        return false;
-    }
-
-    deserialized->remove_index(idx->simple_name());
-    try {
-        target.add_index(idx, false);
-    } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "primary index " << idx->simple_name() << " already exists";
         return false;
     }
     return true;

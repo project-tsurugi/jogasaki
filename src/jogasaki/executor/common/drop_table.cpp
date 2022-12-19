@@ -39,13 +39,43 @@ bool drop_table::operator()(request_context& context) const {
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
     auto t = provider.find_table(c.simple_name());
     if(t == nullptr) {
-        VLOG(log_error) << "table " << c.simple_name() << " not found";
+        VLOG(log_error) << "table '" << c.simple_name() << "' not found";
         context.status_code(status::err_not_found);
         return false;
     }
 
-    // note: table existence is verified.
-    // To fully clean up garbage, try to proceed further even if some entry removal failed or warned.
+    bool success = true;
+    // drop secondary indices
+    std::vector<std::string> indices{};
+    provider.each_table_index(*t, [&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
+        (void) entry;
+        indices.emplace_back(id);
+    });
+
+    for(auto&& n : indices) {
+        if(auto stg = context.database()->get_storage(n)) {
+            if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
+                VLOG(log_error) << "deleting storage '" << n << "' failed: " << res;
+                success = false;
+            }
+        }
+    }
+
+    if(auto stg = context.database()->get_storage(c.simple_name())) {
+        if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
+            VLOG(log_error) << "deleting storage '" << c.simple_name() << "' failed: " << res;
+            success = false;
+        }
+    }
+
+    if (! success) {
+        context.status_code(status::err_unknown);
+        VLOG(log_error) << "Dropping table didn't complete successfully.";
+        return false;
+    }
+
+    // kvs storages are deleted successfully
+    // Going forward, try to clean up metadata as much as possible even if there is some inconsistency/missing parts
 
     // drop auto-generated sequences
     for(auto&& col : t->columns()) {
@@ -55,34 +85,20 @@ bool drop_table::operator()(request_context& context) const {
         }
     }
 
-    // drop secondary indices
-    std::vector<std::string> indices{};
-    provider.each_table_index(*t, [&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
-        (void) entry;
-        indices.emplace_back(id);
-    });
-
     for(auto&& n : indices) {
-        provider.remove_index(n);
-        if(auto stg = context.database()->get_storage(n)) {
-            if(auto res = stg->delete_storage(); res != status::ok) {
-                VLOG(log_error) << "deleting storage '" << n << "' failed: " << res;
-            }
+        if(! provider.remove_index(n)) {
+            VLOG(log_error) << "secondary index '" << n << "' not found";
         }
     }
 
     // drop primary index
-    if(auto res = provider.remove_index(c.simple_name());! res) {
-        VLOG(log_error) << "primary index for table " << c.simple_name() << " not found";
+    if(! provider.remove_index(c.simple_name())) {
+        VLOG(log_error) << "primary index for table '" << c.simple_name() << "' not found";
     }
+
     // drop table
-    if(auto res = provider.remove_relation(c.simple_name());! res) {
-        VLOG(log_error) << "table " << c.simple_name() << " not found";
-    }
-    if(auto stg = context.database()->get_storage(c.simple_name())) {
-        if(auto res = stg->delete_storage(); res != status::ok) {
-            VLOG(log_error) << "deleting storage failed: " << res;
-        }
+    if(! provider.remove_relation(c.simple_name())) {
+        VLOG(log_error) << "table '" << c.simple_name() << "' not found";
     }
     return true;
 }

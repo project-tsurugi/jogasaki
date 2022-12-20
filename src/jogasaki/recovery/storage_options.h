@@ -43,4 +43,10 @@ bool deserialize_storage_option_into_provider(
 
 bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out);
 
+bool merge_deserialized_storage_option(
+    yugawara::storage::configurable_provider& src,
+    yugawara::storage::configurable_provider& target,
+    bool overwrite
+);
+
 }

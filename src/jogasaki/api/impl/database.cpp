@@ -552,20 +552,25 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     }
 
     std::string storage{};
-    yugawara::storage::configurable_provider target{};
     if(auto res = recovery::create_storage_option(*index, storage, utils::metadata_serializer_option{true}); ! res) {
         return status::err_already_exists;
     }
 
-    if(auto res = recovery::deserialize_storage_option_into_provider(storage, *tables_, *tables_, true); ! res) {
+    auto target = std::make_shared<yugawara::storage::configurable_provider>();
+    if(auto res = recovery::deserialize_storage_option_into_provider(storage, *tables_, *target, false); ! res) {
         return status::err_unknown;
     }
 
     sharksfin::StorageOptions opt{storage_id};
     opt.payload(std::move(storage));
     if(auto stg = kvs_db_->create_storage(name, opt);! stg) {
-        VLOG(log_info) << "storage " << name << " already exists ";
+        // something went wrong. Storage already exists. // TODO recreate storage with new storage option
+        VLOG(log_warning) << "storage " << name << " already exists ";
+        return status::err_unknown;
     }
+
+    // only after successful update for kvs, merge metadata
+    recovery::merge_deserialized_storage_option(*target, *tables_, true);
     return status::ok;
 }
 
@@ -582,19 +587,22 @@ std::shared_ptr<yugawara::storage::index const> database::do_find_index(
 
 status database::do_drop_index(std::string_view name, std::string_view schema) {
     (void)schema;
-    if(tables_->remove_index(name)) {
-        // try to delete stroage on kvs.
-        auto stg = kvs_db_->get_storage(name);
-        if (! stg) {
-            VLOG(log_info) << "kvs storage " << name << " not found.";
-            return status::ok;
-        }
-        if(auto res = stg->delete_storage(); res != status::ok) {
-            VLOG(log_error) << res << " error on deleting storage " << name;
-        }
-        return status::ok;
+    if(! tables_->find_index(name)) {
+        return status::not_found;
     }
-    return status::not_found;
+    // try to delete stroage on kvs.
+    auto stg = kvs_db_->get_storage(name);
+    if (stg) {
+        if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
+            VLOG(log_error) << res << " error on deleting storage " << name;
+            return status::err_unknown;
+        }
+    } else {
+        // kvs storage is already removed somehow, let's proceed and remove from metadata.
+        VLOG(log_info) << "kvs storage '" << name << "' not found.";
+    }
+    tables_->remove_index(name);
+    return status::ok;
 }
 
 status database::do_create_sequence(std::shared_ptr<yugawara::storage::sequence> sequence, std::string_view schema) {

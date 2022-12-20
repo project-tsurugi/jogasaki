@@ -44,7 +44,6 @@ bool drop_table::operator()(request_context& context) const {
         return false;
     }
 
-    bool success = true;
     // drop secondary indices
     std::vector<std::string> indices{};
     provider.each_table_index(*t, [&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
@@ -56,7 +55,8 @@ bool drop_table::operator()(request_context& context) const {
         if(auto stg = context.database()->get_storage(n)) {
             if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
                 VLOG(log_error) << "deleting storage '" << n << "' failed: " << res;
-                success = false;
+                context.status_code(status::err_unknown);
+                return false;
             }
         }
     }
@@ -64,18 +64,13 @@ bool drop_table::operator()(request_context& context) const {
     if(auto stg = context.database()->get_storage(c.simple_name())) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
             VLOG(log_error) << "deleting storage '" << c.simple_name() << "' failed: " << res;
-            success = false;
+            context.status_code(status::err_unknown);
+            return false;
         }
     }
 
-    if (! success) {
-        context.status_code(status::err_unknown);
-        VLOG(log_error) << "Dropping table didn't complete successfully.";
-        return false;
-    }
-
     // kvs storages are deleted successfully
-    // Going forward, try to clean up metadata as much as possible even if there is some inconsistency/missing parts
+    // Going forward, try to clean up metadata as much as possible even if there is some inconsistency/missing parts.
 
     // drop auto-generated sequences
     for(auto&& col : t->columns()) {
@@ -87,18 +82,18 @@ bool drop_table::operator()(request_context& context) const {
 
     for(auto&& n : indices) {
         if(! provider.remove_index(n)) {
-            VLOG(log_error) << "secondary index '" << n << "' not found";
+            VLOG(log_warning) << "secondary index '" << n << "' not found";
         }
     }
 
     // drop primary index
     if(! provider.remove_index(c.simple_name())) {
-        VLOG(log_error) << "primary index for table '" << c.simple_name() << "' not found";
+        VLOG(log_warning) << "primary index for table '" << c.simple_name() << "' not found";
     }
 
     // drop table
     if(! provider.remove_relation(c.simple_name())) {
-        VLOG(log_error) << "table '" << c.simple_name() << "' not found";
+        VLOG(log_warning) << "table '" << c.simple_name() << "' not found";
     }
     return true;
 }

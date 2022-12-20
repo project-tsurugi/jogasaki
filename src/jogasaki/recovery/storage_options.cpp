@@ -87,4 +87,52 @@ bool deserialize_storage_option_into_provider(
     return true;
 }
 
+bool merge_deserialized_storage_option(
+    yugawara::storage::configurable_provider& src,
+    yugawara::storage::configurable_provider& target,
+    bool overwrite
+) {
+    std::shared_ptr<yugawara::storage::index const> idx{};
+    std::size_t cnt = 0;
+    src.each_index([&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+        idx = entry;
+        ++cnt;
+    });
+    if(cnt != 1) {
+        VLOG(log_error) << "deserialization error: too many indices";
+        return false;
+    }
+
+    std::vector<std::shared_ptr<yugawara::storage::sequence const>> sequences{};
+    src.each_sequence([&](std::string_view, std::shared_ptr<yugawara::storage::sequence const> const& entry) {
+        sequences.emplace_back(entry);
+    });
+    for(auto&& s : sequences) {
+        src.remove_sequence(s->simple_name());
+        try {
+            target.add_sequence(s, overwrite);
+        } catch(std::invalid_argument& e) {
+            VLOG(log_error) << "sequence " << s->simple_name() << " already exists";
+            return false;
+        }
+    }
+
+    src.remove_relation(idx->shared_table()->simple_name());
+    try {
+        target.add_table(idx->shared_table(), overwrite);
+    } catch(std::invalid_argument& e) {
+        VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
+        return false;
+    }
+
+    src.remove_index(idx->simple_name());
+    try {
+        target.add_index(idx, overwrite);
+    } catch(std::invalid_argument& e) {
+        VLOG(log_error) << "primary index " << idx->simple_name() << " already exists";
+        return false;
+    }
+    return true;
+}
+
 }

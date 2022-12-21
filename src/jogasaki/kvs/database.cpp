@@ -15,6 +15,9 @@
  */
 #include <memory>
 
+#include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
+
 #include <jogasaki/logging.h>
 #include <jogasaki/logship/log_event_listener.h>
 #include "database.h"
@@ -24,11 +27,13 @@
 namespace jogasaki::kvs {
 
 using namespace sharksfin;
+using takatori::util::string_builder;
+using takatori::util::throw_exception;
 
 database::~database() noexcept {
     if (handle_ && ! handle_borrowed_) {
         if(auto res = database_dispose(handle_); res != StatusCode::OK) {
-            fail();
+            LOG(ERROR) << "database_dispose failed";
         }
     }
 }
@@ -78,7 +83,9 @@ std::unique_ptr<storage> database::create_storage(std::string_view name, Storage
         res == sharksfin::StatusCode::ALREADY_EXISTS) {
         return {};
     } else if (res != sharksfin::StatusCode::OK) { //NOLINT
-        fail();
+        throw_exception(std::logic_error{
+            string_builder{} << "storage_create failed with error:" << res << string_builder::to_string
+        });
     }
     return std::make_unique<storage>(stg);
 }
@@ -89,7 +96,9 @@ std::unique_ptr<storage> database::get_storage(std::string_view name) {
         res == sharksfin::StatusCode::NOT_FOUND) {
         return {};
     } else if (res != sharksfin::StatusCode::OK) { //NOLINT
-        fail();
+        throw_exception(std::logic_error{
+            string_builder{} << "storage_get failed with error:" << res << string_builder::to_string
+        });
     }
     return std::make_unique<storage>(stg);
 }
@@ -104,10 +113,12 @@ std::unique_ptr<storage> database::get_or_create_storage(std::string_view name) 
     return {};
 }
 
-sequence_id database::create_sequence() noexcept {
+sequence_id database::create_sequence() {
     sequence_id id{};
     if (auto res = sharksfin::sequence_create(handle_, &id); res != sharksfin::StatusCode::OK) {
-        fail();
+        throw_exception(std::logic_error{
+            string_builder{} << "sequence_create failed with error:" << res << string_builder::to_string
+        });
     }
     return id;
 }
@@ -136,17 +147,21 @@ sequence_versioned_value database::read_sequence(sequence_id id) noexcept {
         if (res == sharksfin::StatusCode::NOT_FOUND) {
             return {version_invalid, 0};
         }
-        fail();
+        throw_exception(std::logic_error{
+            string_builder{} << "sequence_get failed with error:" << res << string_builder::to_string
+        });
     }
     return ret;
 }
 
-bool database::delete_sequence(sequence_id id) noexcept {
+bool database::delete_sequence(sequence_id id) {
     if (auto res = sharksfin::sequence_delete(
             handle_,
             id
         ); res != sharksfin::StatusCode::OK) {
-        fail();
+        throw_exception(std::logic_error{
+            string_builder{} << "sequence_delete failed with error:" << res << string_builder::to_string
+        });
     }
     return true;
 }

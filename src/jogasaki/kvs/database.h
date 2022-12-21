@@ -149,7 +149,7 @@ public:
      * @brief create new sequence
      * @returns the newly assigned sequence id
      */
-    [[nodiscard]] sequence_id create_sequence() noexcept;
+    [[nodiscard]] sequence_id create_sequence();
 
     /**
      * @brief update sequence value and version
@@ -181,7 +181,7 @@ public:
      * @param id the sequence id that will be deleted
      * @return true if successful, or false otherwise
      */
-    [[nodiscard]] bool delete_sequence(sequence_id id) noexcept;
+    [[nodiscard]] bool delete_sequence(sequence_id id);
 
     /**
      * @brief setter for log event listener

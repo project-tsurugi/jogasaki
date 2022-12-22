@@ -316,7 +316,7 @@ private:
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
     bool prepare_phone_bill_tables_ = false;
-    bool stealing_enabled_ = false;
+    bool stealing_enabled_ = true;
     std::string db_location_{};
     bool tasked_write_ = true;
     bool scheduler_rr_workers_ = false;

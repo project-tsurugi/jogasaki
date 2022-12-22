@@ -136,7 +136,7 @@ bool database::update_sequence(transaction& tx, sequence_id id, sequence_version
     return true;
 }
 
-sequence_versioned_value database::read_sequence(sequence_id id) noexcept {
+sequence_versioned_value database::read_sequence(sequence_id id) {
     sequence_versioned_value ret{};
     if (auto res = sharksfin::sequence_get(
             handle_,

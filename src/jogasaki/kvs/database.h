@@ -173,7 +173,7 @@ public:
      * @param id the sequence id whose value/version are to be retrieved
      * @returns versioned value that holds the sequence's latest version number and value
      */
-    [[nodiscard]] sequence_versioned_value read_sequence(sequence_id id) noexcept;
+    [[nodiscard]] sequence_versioned_value read_sequence(sequence_id id);
 
     /**
      * @brief delete the sequence

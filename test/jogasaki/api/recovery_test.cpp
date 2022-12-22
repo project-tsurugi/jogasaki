@@ -236,8 +236,7 @@ TEST_F(recovery_test, recovery_sequence_metadata) {
     dump_content();
 }
 
-// TODO recovery currently recovers deleted records
-TEST_F(recovery_test, DISABLED_delete) {
+TEST_F(recovery_test, delete) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
@@ -417,8 +416,8 @@ TEST_F(recovery_test, recover_drop_primary_index) {
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
-        ASSERT_TRUE(db_impl()->tables()->find_index("TEST")); // TODO deleted record accidentally get back
-        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("TEST")); // TODO deleted record accidentally get back
+        ASSERT_FALSE(db_impl()->tables()->find_index("TEST"));
+        ASSERT_FALSE(db_impl()->kvs_db()->get_storage("TEST"));
     }
     {
         auto i = std::make_shared<yugawara::storage::index>(
@@ -437,7 +436,7 @@ TEST_F(recovery_test, recover_drop_primary_index) {
                 ::yugawara::storage::index_feature::primary,
             }
         );
-        ASSERT_EQ(status::err_already_exists, db_->create_index(i)); // TODO deleted record accidentally get back
+        ASSERT_EQ(status::ok, db_->create_index(i));
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
@@ -511,8 +510,8 @@ TEST_F(recovery_test, recover_drop_secondary_index) {
     {
         ASSERT_TRUE(db_impl()->tables()->find_index("TEST"));
         ASSERT_TRUE(db_impl()->kvs_db()->get_storage("TEST"));
-        ASSERT_TRUE(db_impl()->tables()->find_index("SECONDARY")); // TODO deleted record accidentally get back
-        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("SECONDARY")); // TODO deleted record accidentally get back
+        ASSERT_FALSE(db_impl()->tables()->find_index("SECONDARY"));
+        ASSERT_FALSE(db_impl()->kvs_db()->get_storage("SECONDARY"));
     }
     {
         auto s = std::make_shared<yugawara::storage::index>(
@@ -529,7 +528,7 @@ TEST_F(recovery_test, recover_drop_secondary_index) {
                 ::yugawara::storage::index_feature::scan,
             }
         );
-        ASSERT_EQ(status::err_already_exists, db_->create_index(s)); // TODO deleted record accidentally get back
+        ASSERT_EQ(status::ok, db_->create_index(s));
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
@@ -775,7 +774,8 @@ TEST_F(recovery_test, recover_user_defined_sequence) {
     }
 }
 
-TEST_F(recovery_test, recovery_index_for_missing_table) {
+// TODO manage the case where dependencies are missing
+TEST_F(recovery_test, DISABLED_recovery_index_for_missing_table) {
     // error scenario: after creating index, table is unregistered. Verify error without crashing.
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
@@ -852,9 +852,9 @@ TEST_F(recovery_test, recovery_index_for_missing_table) {
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
-        ASSERT_TRUE(db_impl()->tables()->find_table("TEST")); // TODO deleted storage accidentally get back
-        ASSERT_TRUE(db_impl()->tables()->find_index("TEST")); // TODO deleted storage accidentally get back
-        ASSERT_TRUE(db_impl()->kvs_db()->get_storage("TEST")); // TODO deleted storage accidentally get back
+        ASSERT_FALSE(db_impl()->tables()->find_table("TEST"));
+        ASSERT_FALSE(db_impl()->tables()->find_index("TEST"));
+        ASSERT_FALSE(db_impl()->kvs_db()->get_storage("TEST"));
         ASSERT_TRUE(db_impl()->tables()->find_index("SECONDARY"));
         ASSERT_TRUE(db_impl()->kvs_db()->get_storage("SECONDARY"));
     }

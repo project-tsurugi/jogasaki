@@ -485,10 +485,22 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
     VLOG(log_debug) << "num_rows:" << pmeta.num_rows();
     VLOG(log_debug) << "created_by:" << pmeta.created_by();
     VLOG(log_debug) << "schema name:" << pmeta.schema()->name();
+
+    auto rg = pmeta.RowGroup(0);
     for(std::size_t i=0, n=pmeta.schema()->num_columns(); i<n; ++i) {
         auto&& c = pmeta.schema()->Column(i);
-        VLOG(log_debug) << "  column name:" << c->name() << " physical type:" << c->physical_type() << " logical type:" << c->logical_type()->ToString();
+        auto&& cm = rg->ColumnChunk(i);
+        std::stringstream ss{};
+        ss << "  column name:" << c->name() << " physical type:" << c->physical_type() << " logical type:" << c->logical_type()->ToString();
+        ss << " encodings:[";
+        for(auto&& enc : cm->encodings()) {
+            ss << " ";
+            ss << parquet::EncodingToString(enc);
+        }
+        ss << " ]";
+        VLOG(log_debug) << ss.str();
     }
+
     VLOG(log_debug) << "*** end dump metadata for parquet file ***";
 }
 

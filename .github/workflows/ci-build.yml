@@ -173,7 +173,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build
-          ctest --verbose -j 100
+          ctest --verbose -j 100 --timeout 120
 
       - id: Build_jogasaki_shirakami
         name: Build_jogasaki_shirakami
@@ -191,7 +191,7 @@ jobs:
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build-shirakami
-          ctest --verbose -j 100
+          ctest --verbose -j 100 --timeout 120 
 
       - id: Clang-Tidy
         name: Clang-Tidy

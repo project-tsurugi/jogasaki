@@ -246,7 +246,7 @@ any from_decimal(evaluator_context& ctx,
         case k::float4: break;
         case k::float8: break;
         case k::decimal: {
-            auto& t = static_cast<takatori::type::decimal const&>(tgt);
+            auto& t = static_cast<takatori::type::decimal const&>(tgt);  //NOLINT
             return to_decimal(dec, ctx, t.precision(), t.scale());
         }
         case k::character: break;

@@ -59,6 +59,25 @@ T to(decimal::Decimal const& d) {
     std::abort();
 }
 
+any handle_inexact_conversion(evaluator_context& ctx, decimal::Decimal const& d, decimal::Decimal const& dd, bool& error_return) {
+    error_return = false;
+    if((decimal::context.status() & MPD_Inexact) != 0) {
+        // inexact operation
+        switch(ctx.get_cast_loss_policy()) {
+            case cast_loss_policy::ignore: break;
+            case cast_loss_policy::floor: error_return = true; return {std::in_place_type<error>, error(error_kind::unsupported)};
+            case cast_loss_policy::ceil: error_return = true; return {std::in_place_type<error>, error(error_kind::unsupported)};
+            case cast_loss_policy::unknown: error_return = true; return {};
+            case cast_loss_policy::warn: {
+                ctx.add_error({error_kind::cast_failure, string_builder{} << "cast warning src:" << d << " dest:" << dd << string_builder::to_string});
+                break;
+            }
+            case cast_loss_policy::error: error_return = true; return {std::in_place_type<error>, error(error_kind::cast_failure)};
+        }
+    }
+    return {};
+}
+
 /**
  * @tparam T type used to validate the value range
  * @tparam E type used to store in any
@@ -72,19 +91,9 @@ any to_int(std::string_view s, evaluator_context& ctx) {
     decimal::Decimal d{a.to<triple>()};
     decimal::context.clear_status();
     auto dd = d.rescale(0);
-    if((decimal::context.status() & MPD_Inexact) != 0) {
-        // inexact operation
-        switch(ctx.get_cast_loss_policy()) {
-            case cast_loss_policy::ignore: break;
-            case cast_loss_policy::floor: return {std::in_place_type<error>, error(error_kind::unsupported)};
-            case cast_loss_policy::ceil: return {std::in_place_type<error>, error(error_kind::unsupported)};
-            case cast_loss_policy::unknown: return {};
-            case cast_loss_policy::warn: {
-                ctx.add_error({error_kind::cast_failure, string_builder{} << "cast warning src:" << d << " dest:" << dd << string_builder::to_string});
-                break;
-            }
-            case cast_loss_policy::error: return {std::in_place_type<error>, error(error_kind::cast_failure)};
-        }
+    bool error_return{false};
+    if(auto a = handle_inexact_conversion(ctx, d, dd, error_return); error_return) {
+        return a;
     }
     if(dd < int_min<T> || int_max<T> < dd) {
         return {std::in_place_type<error>, error(error_kind::overflow)};
@@ -138,6 +147,23 @@ any to_decimal(std::string_view s, evaluator_context& ctx) {
     if(tri.tag != MPD_TRIPLE_NORMAL) {
         // out of the range that triple can handle
         return any{std::in_place_type<error>, error(error_kind::overflow)};
+    }
+    return any{std::in_place_type<triple>, value};
+}
+
+any to_decimal(takatori::decimal::triple dec, evaluator_context& ctx, std::optional<std::size_t> precision, std::optional<std::size_t> scale) {
+    (void) ctx;
+    (void) precision;
+    decimal::context = decimal::IEEEContext(128);
+    decimal::Decimal value{dec};
+    if(scale.has_value()) {
+        decimal::context.clear_status();
+        auto y = value.rescale(-static_cast<std::int64_t>(*scale));
+        bool error_return{false};
+        if(auto a = handle_inexact_conversion(ctx, value, y, error_return); error_return) {
+            return a;
+        }
+        return any{std::in_place_type<triple>, y};
     }
     return any{std::in_place_type<triple>, value};
 }
@@ -205,6 +231,41 @@ any from_character(evaluator_context& ctx,
     return return_unsupported();
 }
 
+any from_decimal(evaluator_context& ctx,
+    ::takatori::type::data const& tgt,
+    any const& a
+) {
+    using k = takatori::type::type_kind;
+    auto dec = a.to<runtime_t<meta::field_type_kind::decimal>>();
+    switch(tgt.kind()) {
+        case k::boolean: break;
+        case k::int1: break;
+        case k::int2: break;
+        case k::int4: break;
+        case k::int8: break;
+        case k::float4: break;
+        case k::float8: break;
+        case k::decimal: {
+            auto& t = static_cast<takatori::type::decimal const&>(tgt);
+            return to_decimal(dec, ctx, t.precision(), t.scale());
+        }
+        case k::character: break;
+        case k::octet: break;
+        case k::bit: break;
+        case k::date: break;
+        case k::time_of_day: break;
+        case k::time_point: break;
+        case k::datetime_interval: break;
+        case k::array: break;
+        case k::record: break;
+        case k::unknown: break;
+        case k::row_reference: break;
+        case k::row_id: break;
+        case k::declared: break;
+        case k::extension: break;
+    }
+    return return_unsupported();
+}
 any conduct_cast(
     evaluator_context& ctx,
     ::takatori::type::data const& src,
@@ -220,7 +281,7 @@ any conduct_cast(
         case k::int8: break;
         case k::float4: break;
         case k::float8: break;
-        case k::decimal: break;
+        case k::decimal: return from_decimal(ctx, tgt, a);
         case k::character: return from_character(ctx, tgt, a);
         case k::octet: break;
         case k::bit: break;

@@ -500,6 +500,27 @@ TEST_F(host_variables_test, cast_decimals) {
     }
 }
 
+TEST_F(host_variables_test, cast_inexact_decimals) {
+    execute_statement("create table TT (C0 decimal(4,3))");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+    };
+    auto v10 = decimal_v{1, 0, 10, 0};
+    auto ps = api::create_parameter_set();
+    ps->set_decimal("p0", v10);
+    execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps, status::err_expression_evaluation_failure);
+    execute_statement("INSERT INTO TT (C0) VALUES (:p0/3)", variables, *ps, status::err_expression_evaluation_failure);
+    execute_statement("INSERT INTO TT (C0) VALUES (CAST(:p0/3 AS DECIMAL(4,3)))", variables, *ps);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        auto dec_4_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(4, 3)};
+        auto v3_333 = decimal_v{1, 0, 3333, -3};
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec_4_3}, {v3_333})), result[0]);
+    }
+}
+
 // currently host variable works even without colon
 TEST_F(host_variables_test, missing_colon) {
     std::unordered_map<std::string, api::field_type_kind> variables{

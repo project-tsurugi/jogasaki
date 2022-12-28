@@ -50,12 +50,14 @@ namespace jogasaki::api::impl {
 using takatori::util::unsafe_downcast;
 using takatori::util::string_builder;
 
+constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:transaction ";
+
 status transaction::commit() {
     status ret{};
     auto jobid = commit_async([&](status st, std::string_view m){
         ret = st;
         if(st != status::ok) {
-            VLOG(log_error) << m;
+            VLOG(log_error) << log_location_prefix << m;
         }
     });
     database_->task_scheduler()->wait_for_progress(jobid);
@@ -231,7 +233,7 @@ bool validate_statement(
         // result_store_channel is for testing and error handling is not needed
         // null_record_channel is to discard the results and is correct usage
         auto msg = "statement has no result records, but called with API expecting result records";
-        VLOG(log_error) << msg;
+        VLOG(log_error)  << log_location_prefix << msg;
         on_completion(status::err_illegal_operation, msg);
         return false;
     }

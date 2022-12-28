@@ -43,6 +43,8 @@ using takatori::util::fail;
 using takatori::util::maybe_shared_ptr;
 using namespace tateyama::api::server;
 
+constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:service ";
+
 namespace details {
 
 class query_info {
@@ -123,7 +125,7 @@ void service::command_prepare(
     auto& phs = pp.placeholders();
     auto& sql = pp.sql();
     if(sql.empty()) {
-        VLOG(log_error) << "missing sql";
+        VLOG(log_error) << log_location_prefix << "missing sql";
         details::error<sql::response::Prepare>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
@@ -147,7 +149,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     tateyama::api::server::response& res
 ) {
     if(! msg.has_transaction_handle()) {
-        VLOG(log_error) << "missing transaction_handle";
+        VLOG(log_error) << log_location_prefix << "missing transaction_handle";
         details::error<sql::response::ResultOnly>(res, status::err_invalid_argument, "missing transaction_handle");
         return {};
     }
@@ -171,7 +173,7 @@ void service::command_execute_statement(
     }
     auto& sql = eq.sql();
     if(sql.empty()) {
-        VLOG(log_error) << "missing sql";
+        VLOG(log_error) << log_location_prefix << "missing sql";
         details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
@@ -195,7 +197,7 @@ void service::command_execute_query(
     }
     auto& sql = eq.sql();
     if(sql.empty()) {
-        VLOG(log_error) << "missing sql";
+        VLOG(log_error) << log_location_prefix << "missing sql";
         details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql");
         return;
     }
@@ -208,7 +210,7 @@ jogasaki::api::statement_handle validate_statement_handle(
     tateyama::api::server::response& res
 ) {
     if(! msg.has_prepared_statement_handle()) {
-        VLOG(log_error) << "missing prepared_statement_handle";
+        VLOG(log_error) << log_location_prefix << "missing prepared_statement_handle";
         details::error<Response>(res, status::err_invalid_argument, "missing prepared_statement_handle");
         return {};
     }
@@ -283,13 +285,13 @@ void service::command_commit(
             if(st == jogasaki::status::ok) {
                 details::success<sql::response::ResultOnly>(*res);
             } else {
-                VLOG(log_error) << msg;
+                VLOG(log_error) << log_location_prefix << msg;
                 details::error<sql::response::ResultOnly>(*res, st, msg);
             }
             // currently, commit failure is assumed to abort the transaction anyway.
             // So let's proceed to destroy the transaction.
             if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
-                VLOG(log_error) << "unexpected error destroying transaction: " << rc;
+                VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
             }
         }
     );
@@ -306,7 +308,7 @@ void service::command_rollback(
     if(auto rc = tx.abort(); rc == jogasaki::status::ok) {
         details::success<sql::response::ResultOnly>(*res);
     } else {
-        VLOG(log_error) << "error in transaction_->abort()";
+        VLOG(log_error) << log_location_prefix << "error in transaction_->abort()";
         details::error<sql::response::ResultOnly>(*res, rc, "error in transaction_->abort()");
         // currently, we assume this won't happen or the transaction is aborted anyway.
         // So let's proceed to destroy the transaction.
@@ -330,7 +332,7 @@ void service::command_dispose_prepared_statement(
         st == jogasaki::status::ok) {
         details::success<sql::response::ResultOnly>(*res);
     } else {
-        VLOG(log_error) << "error destroying statement";
+        VLOG(log_error) << log_location_prefix << "error destroying statement";
         details::error<sql::response::ResultOnly>(*res, st, "error destroying statement");
     }
 }
@@ -423,7 +425,7 @@ void service::command_describe_table(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     auto table = db_->find_table(dt.name());
     if(! table) {
-        VLOG(log_error) << "table not found : " << dt.name();
+        VLOG(log_error) << log_location_prefix << "table not found : " << dt.name();
         details::error<sql::response::DescribeTable>(*res, status::err_not_found, "table not found");
         return;
     }
@@ -437,9 +439,9 @@ bool service::operator()(
     try {
         return process(std::move(req), std::move(res));
     } catch (std::exception& e) {
-        LOG(ERROR) << "Unhandled exception caught: " << e.what();
+        LOG(ERROR) << log_location_prefix << "Unhandled exception caught: " << e.what();
         if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
-            LOG(ERROR) << *tr;
+            LOG(ERROR) << log_location_prefix << *tr;
         }
     }
     return true;
@@ -464,14 +466,14 @@ bool service::process(
         trace_scope_name("parse_request");  //NOLINT
         auto s = req->payload();
         if (!proto_req.ParseFromArray(s.data(), s.size())) {
-            VLOG(log_error) << "parse error";
+            VLOG(log_error) << log_location_prefix << "parse error";
             res->code(response_code::io_error);
             std::string msg{"parse error with request body"};
-            VLOG(log_trace) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
+            VLOG(log_trace) << log_location_prefix << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
             res->body(msg);
             return true;
         }
-        VLOG(log_trace) << "request received (len=" << s.size() << "):" << std::endl << proto_req.Utf8DebugString();
+        VLOG(log_trace) << log_location_prefix << "request received (len=" << s.size() << "):" << std::endl << proto_req.Utf8DebugString();
     }
 
     switch (proto_req.request_case()) {
@@ -542,9 +544,9 @@ bool service::process(
         }
         default:
             std::string msg{"invalid request code: "};
-            VLOG(log_error) << msg << proto_req.request_case();
+            VLOG(log_error) << log_location_prefix << msg << proto_req.request_case();
             res->code(response_code::io_error);
-            VLOG(log_trace) << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
+            VLOG(log_trace) << log_location_prefix << "respond with body (len=" << msg.size() << "):" << std::endl << msg;
             res->body(msg);
             break;
     }
@@ -673,7 +675,7 @@ void service::execute_query(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(q.has_sql()) {
         if(auto rc = db_->create_executable(q.sql(), e); rc != jogasaki::status::ok) {
-            VLOG(log_error) << "error in db_->create_executable() : " << rc;
+            VLOG(log_error) << log_location_prefix << "error in db_->create_executable() : " << rc;
             details::error<sql::response::ResultOnly>(*res, rc, "error in db_->create_executable()");
             return;
         }
@@ -688,7 +690,7 @@ void service::execute_query(
     }
     if(! has_result_records) {
         auto msg = "statement has no result records, but called with API expecting result records";
-        VLOG(log_error) << msg;
+        VLOG(log_error) << log_location_prefix << msg;
         details::error<sql::response::ResultOnly>(*res, status::err_illegal_operation, msg);
         return;
     }
@@ -748,13 +750,13 @@ void details::reply(tateyama::api::server::response& res, sql::response::Respons
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
-        VLOG(log_trace) << "respond with body_head (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
+        VLOG(log_trace) << log_location_prefix << "respond with body_head (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
         res.body_head(ss.str());
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
-        VLOG(log_trace) << "respond with body (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
+        VLOG(log_trace) << log_location_prefix << "respond with body (len=" << ss.str().size() << "):" << std::endl << r.Utf8DebugString();
         res.body(ss.str());
     }
 }
@@ -816,7 +818,7 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                 column->set_atom_type(sql::common::AtomType::TIME_POINT);
                 break;
             default:
-                LOG(ERROR) << "unsupported data type at field (" << i << "): " << metadata->at(i).kind();
+                LOG(ERROR) << log_location_prefix << "unsupported data type at field (" << i << "): " << metadata->at(i).kind();
                 break;
         }
     }
@@ -904,7 +906,7 @@ void service::execute_load(
     std::vector<std::string> const& files
 ) {
     for(auto&& f : files) {
-        LOG(INFO) << "load processing file: " << f;
+        LOG(INFO) << log_location_prefix << "load processing file: " << f;
     }
     BOOST_ASSERT(! q.has_sql());  //NOLINT
     jogasaki::api::statement_handle statement{q.sid()};

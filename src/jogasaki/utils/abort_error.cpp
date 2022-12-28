@@ -64,7 +64,9 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator 
             if(meta) {
                 ss << ref << *meta;
             } else {
-                ss << loc->key();
+                auto d = loc->key();
+                utils::binary_printer p{d.data(), d.size()};
+                ss << p;
             }
             ss << " ";
             ss << "storage:" << loc->storage();

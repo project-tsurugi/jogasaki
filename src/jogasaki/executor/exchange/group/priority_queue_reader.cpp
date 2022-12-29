@@ -51,6 +51,7 @@ void priority_queue_reader::read_and_pop(iterator it, iterator end) { //NOLINT
 }
 
 bool priority_queue_reader::next_group() {
+    record_count_per_group_ = 0;
     if (state_ == reader_state::init || state_ == reader_state::after_group) {
         if (queue_.empty()) {
             state_ = reader_state::eof;
@@ -72,13 +73,31 @@ accessor::record_ref priority_queue_reader::get_group() const {
     std::abort();
 }
 
+void priority_queue_reader::discard_remaining_members_in_group() {
+    auto k = info_->extract_key(buf_.ref());
+    while(! queue_.empty()) {
+        auto it = queue_.top().first;
+        if (key_comparator_(k, info_->extract_key(accessor::record_ref(*it, record_size_))) != 0) {
+            break;
+        }
+        queue_.pop();
+    }
+}
+
 bool priority_queue_reader::next_member() {
     if (state_ == reader_state::before_member) {
         state_ = reader_state::on_member;
+        ++record_count_per_group_;
         return true;
     }
     if(state_ == reader_state::on_member) {
         if (queue_.empty()) {
+            state_ = reader_state::after_group;
+            return false;
+        }
+        if (info_->limit().has_value() && info_->limit().value() <= record_count_per_group_) {
+            // just exceeded the limit, let's discard remaining keys
+            discard_remaining_members_in_group();
             state_ = reader_state::after_group;
             return false;
         }
@@ -88,6 +107,7 @@ bool priority_queue_reader::next_member() {
                 info_->extract_key(buf_.ref()),
                 info_->extract_key(accessor::record_ref(*it, record_size_))) == 0) {
             read_and_pop(it, end);
+            ++record_count_per_group_;
             return true;
         }
         state_ = reader_state::after_group;

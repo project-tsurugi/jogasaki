@@ -389,5 +389,87 @@ TEST_F(priority_queue_reader_test, empty_keys) {
     ASSERT_FALSE(r.next_group());
 }
 
+TEST_F(priority_queue_reader_test, record_limit_per_group) {
+    auto info = std::make_shared<group_info>(
+        test_root::test_record_meta1(),
+        std::vector<size_t>{0},
+        std::vector<group_info::field_index_type>{} ,
+        std::vector<jogasaki::executor::ordering>{},
+        std::optional<std::size_t>{2}
+    );
+    std::vector<std::unique_ptr<input_partition>> partitions{};
+    partitions.reserve(10); // avoid relocation when using references into vector
+    auto context = std::make_shared<request_context>();
+    auto& p1 = partitions.emplace_back(std::make_unique<input_partition>(
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        info,
+        context.get()
+    ));
+    auto& p2 = partitions.emplace_back(std::make_unique<input_partition>(
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        std::make_unique<mock_memory_resource>(),
+        info,
+        context.get()
+    ));
+
+    test::record arr[] = {
+        {1, 1.0},
+        {1, 2.0},
+        {4, 4.0},
+        {1, 3.0},
+        {2, 2.0},
+        {2, 3.0},
+        {2, 1.0},
+    };
+    auto sz = sizeof(arr[0]);
+
+    p1->write(arr[2].ref());
+    p1->write(arr[1].ref());
+    p1->write(arr[4].ref());
+    p1->write(arr[6].ref());
+    p1->flush();
+    p2->write(arr[0].ref());
+    p2->write(arr[3].ref());
+    p2->write(arr[5].ref());
+    p2->flush();
+
+    priority_queue_reader r{info, partitions};
+    ASSERT_TRUE(r.next_group());
+
+    EXPECT_EQ(1, get_key(r));
+    ASSERT_TRUE(r.next_member());
+    auto res0 = get_value(r);
+    ASSERT_TRUE(r.next_member());
+    auto res1 = get_value(r);
+    ASSERT_FALSE(r.next_member());
+    auto exp = std::multiset<double>{1.0, 2.0, 3.0};
+    EXPECT_TRUE((exp.find(res0) != exp.end()));
+    EXPECT_TRUE((exp.find(res1) != exp.end()));
+    EXPECT_NE(res0, res1);
+
+    ASSERT_TRUE(r.next_group());
+    EXPECT_EQ(2, get_key(r));
+    ASSERT_TRUE(r.next_member());
+    auto res2 = get_value(r);
+    ASSERT_TRUE(r.next_member());
+    auto res3 = get_value(r);
+    ASSERT_FALSE(r.next_member());
+    EXPECT_TRUE((exp.find(res2) != exp.end()));
+    EXPECT_TRUE((exp.find(res3) != exp.end()));
+    EXPECT_NE(res2, res3);
+
+    ASSERT_TRUE(r.next_group());
+    EXPECT_EQ(4, get_key(r));
+    ASSERT_TRUE(r.next_member());
+    EXPECT_EQ(4.0, get_value(r));
+    ASSERT_FALSE(r.next_member());
+
+    ASSERT_FALSE(r.next_group());
+
+}
+
 }
 

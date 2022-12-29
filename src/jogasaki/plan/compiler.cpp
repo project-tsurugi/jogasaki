@@ -395,7 +395,8 @@ executor::exchange::group::step create(
             ),
             std::move(key_indices),
             std::move(sort_key_indices),
-            std::move(sort_ordering)
+            std::move(sort_ordering),
+            group.limit()
         ),
         std::move(input_order),
         std::move(output_order)

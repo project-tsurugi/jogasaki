@@ -46,6 +46,7 @@ inline void sorted_vector_reader::read_and_pop() { //NOLINT
 
 bool sorted_vector_reader::next_group() {
     init_aggregated_table();
+    record_count_per_group_ = 0;
     if (state_ == reader_state::init || state_ == reader_state::after_group) {
         if (current_ == aggregated_pointer_table_.end()) {
             state_ = reader_state::eof;
@@ -65,10 +66,21 @@ accessor::record_ref sorted_vector_reader::get_group() const {
     std::abort();
 }
 
+void sorted_vector_reader::discard_remaining_members_in_group() {
+    auto k = info_->extract_sort_key(accessor::record_ref(buf_.get(), record_size_));
+    while(current_ != aggregated_pointer_table_.end()) {
+        if (key_comparator_(k, info_->extract_key(accessor::record_ref(*current_, record_size_))) != 0) {
+            break;
+        }
+        ++current_;
+    }
+}
+
 bool sorted_vector_reader::next_member() {
     init_aggregated_table();
     if (state_ == reader_state::before_member) {
         state_ = reader_state::on_member;
+        ++record_count_per_group_;
         return true;
     }
     if(state_ == reader_state::on_member) {
@@ -76,10 +88,17 @@ bool sorted_vector_reader::next_member() {
             state_ = reader_state::after_group;
             return false;
         }
+        if (info_->limit().has_value() && info_->limit().value() <= record_count_per_group_) {
+            // just exceeded the limit, let's discard remaining keys
+            discard_remaining_members_in_group();
+            state_ = reader_state::after_group;
+            return false;
+        }
         if (key_comparator_(
                 info_->extract_sort_key(accessor::record_ref(buf_.get(), record_size_)),
                 info_->extract_sort_key(accessor::record_ref(*current_, record_size_))) == 0) {
             read_and_pop();
+            ++record_count_per_group_;
             return true;
         }
         state_ = reader_state::after_group;

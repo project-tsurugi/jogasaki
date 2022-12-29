@@ -18,6 +18,7 @@
 #include <vector>
 #include <set>
 #include <memory>
+#include <optional>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
@@ -51,12 +52,15 @@ public:
      * @param key_indices the ordered indices to choose the grouping key fields from the record
      * @param key_indices_for_sort the ordered indices to specify additional key fields to sort group members
      * within groups
+     * @param key_ordering_for_sort info to specify key fields' ordering spec to sort group members
+     * @param limit the record limit per group
      */
     group_info(
         maybe_shared_ptr<meta::record_meta> record,
         std::vector<field_index_type> key_indices,
         std::vector<field_index_type> const& key_indices_for_sort = {},
-        std::vector<ordering> const& key_ordering_for_sort = {}
+        std::vector<ordering> const& key_ordering_for_sort = {},
+        std::optional<std::size_t> limit = {}
     );
 
     /**
@@ -114,14 +118,20 @@ public:
      */
     [[nodiscard]] maybe_shared_ptr<meta::group_meta> const& group_meta() const noexcept;
 
+    /**
+     * @brief returns limit of number of records per group
+     */
+    [[nodiscard]] std::optional<std::size_t> const& limit() const noexcept;
 private:
     maybe_shared_ptr<meta::record_meta> record_{};
     std::vector<field_index_type> key_indices_{};
     maybe_shared_ptr<meta::group_meta> group_{};
     maybe_shared_ptr<meta::record_meta> sort_key_{};
     std::vector<ordering> sort_key_ordering_{};
+    std::optional<std::size_t> limit_{};
     class compare_info compare_info_{};
     class compare_info sort_compare_info_{};
+
 
     [[nodiscard]] std::shared_ptr<meta::record_meta> from_keys(
         maybe_shared_ptr<meta::record_meta> const& record,

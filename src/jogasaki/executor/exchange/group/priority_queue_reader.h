@@ -102,7 +102,10 @@ private:
     impl::reader_state state_{impl::reader_state::init};
     comparator key_comparator_{};
 
-    inline void read_and_pop(impl::iterator it, impl::iterator end);
+    std::size_t record_count_per_group_{};
+
+    void read_and_pop(impl::iterator it, impl::iterator end);
+    void discard_remaining_members_in_group();
 };
 
 }

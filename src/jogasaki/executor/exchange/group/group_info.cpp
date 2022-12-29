@@ -33,7 +33,8 @@ group_info::group_info(
     maybe_shared_ptr<meta::record_meta> record,
     std::vector<field_index_type> key_indices,
     std::vector<field_index_type> const& key_indices_for_sort,
-    std::vector<ordering> const& key_ordering_for_sort
+    std::vector<ordering> const& key_ordering_for_sort,
+    std::optional<std::size_t> limit
 ) :
     record_(std::move(record)),
     key_indices_(std::move(key_indices)),
@@ -42,6 +43,7 @@ group_info::group_info(
         create_value_meta(record_, key_indices_))),
     sort_key_(create_sort_key_meta(record_, key_indices_, key_indices_for_sort)),
     sort_key_ordering_(create_sort_key_ordering(key_indices_.size(), key_ordering_for_sort)),
+    limit_(limit),
     compare_info_(group_->key()),
     sort_compare_info_(*sort_key_, sort_key_ordering_)
 {
@@ -156,6 +158,10 @@ class compare_info const& group_info::compare_info() const noexcept {
 
 class compare_info const& group_info::sort_compare_info() const noexcept {
     return sort_compare_info_;
+}
+
+std::optional<std::size_t> const &group_info::limit() const noexcept {
+    return limit_;
 }
 
 }

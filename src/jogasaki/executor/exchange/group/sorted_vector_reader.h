@@ -74,9 +74,11 @@ private:
     std::vector<pointer> aggregated_pointer_table_{};
     bool aggregated_pointer_table_initialized = false;
     std::vector<pointer>::iterator current_{};
+    std::size_t record_count_per_group_{};
 
     inline void read_and_pop();
     void init_aggregated_table();
+    void discard_remaining_members_in_group();
 };
 
 }

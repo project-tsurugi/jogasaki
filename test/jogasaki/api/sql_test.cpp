@@ -495,17 +495,45 @@ TEST_F(sql_test, DISABLED_subquery) {
     }
 }
 
-// select distinct not implemented
-TEST_F(sql_test, DISABLED_select_distinct) {
+TEST_F(sql_test, select_distinct) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
-    execute_statement("create table TT (C0 int primary key, C1 int)");
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,1)");
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (3,1)");
+    execute_statement("create table TT (C0 int primary key, C1 int, C2 int)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (1,1,1)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (2,1,1)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (3,1,2)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (4,1,NULL)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (5,1,NULL)");
+//    {
+//        std::vector<mock::basic_record> result{};
+//        execute_query("select distinct C1 from TT", result);
+//        ASSERT_EQ(1, result.size());
+//    }
     {
         std::vector<mock::basic_record> result{};
-        execute_query("select distinct C1 from TT", result);
-        ASSERT_EQ(1, result.size());
+        execute_query("select distinct C1, C2 from TT", result);
+//        execute_query("select C1, C2 from TT", result);
+        ASSERT_EQ(3, result.size());
+    }
+}
+
+TEST_F(sql_test, select_group_by_for_distinct) {
+    // same as select_distinct using group by
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 int, C2 int)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (1,1,1)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (2,1,1)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (3,1,2)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (4,1,NULL)");
+    execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (5,1,NULL)");
+//    {
+//        std::vector<mock::basic_record> result{};
+//        execute_query("select C1 from TT group by C1", result);
+//        ASSERT_EQ(1, result.size());
+//    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select distinct C1, C2 from TT group by C1, C2", result);
+        ASSERT_EQ(3, result.size());
     }
 }
 

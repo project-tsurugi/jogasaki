@@ -19,7 +19,7 @@
 #include <glog/logging.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/status.h>
 #include <jogasaki/common.h>
@@ -39,8 +39,8 @@
 
 namespace jogasaki::api::impl {
 
-using takatori::util::fail;
 using takatori::util::maybe_shared_ptr;
+using takatori::util::throw_exception;
 using namespace tateyama::api::server;
 
 constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:service ";
@@ -63,17 +63,14 @@ public:
     }
 
     [[nodiscard]] std::string_view sql() const noexcept {
-        if (! has_sql()) fail();
         return *std::get_if<std::string_view>(std::addressof(entity_));
     }
 
     [[nodiscard]] std::size_t sid() const noexcept {
-        if (has_sql()) fail();
         return std::get_if<handle_parameters>(std::addressof(entity_))->first;
     }
 
     [[nodiscard]] maybe_shared_ptr<jogasaki::api::parameter_set const> const& params() const noexcept {
-        if (has_sql()) fail();
         return std::get_if<handle_parameters>(std::addressof(entity_))->second;
     }
 private:
@@ -314,7 +311,7 @@ void service::command_rollback(
         // So let's proceed to destroy the transaction.
     }
     if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
-        fail();
+        throw_exception(std::logic_error{"destroy_transaction failed"});
     }
 }
 
@@ -358,7 +355,7 @@ void service::command_explain(
     if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
         details::success<sql::response::Explain>(*res, ss.str(), e->meta());
     } else {
-        fail();
+        throw_exception(std::logic_error{"explain failed"});
     }
 }
 
@@ -566,7 +563,7 @@ void service::execute_statement(
     auto* cbp = c.get();
     auto cid = c->id_;
     if(! callbacks_.emplace(cid, std::move(c))) {
-        fail();
+        throw_exception(std::logic_error{"callback already exists"});
     }
     if(auto success = tx.execute_async(
             std::move(stmt),
@@ -577,12 +574,12 @@ void service::execute_statement(
                     details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message});
                 }
                 if(! callbacks_.erase(cbp->id_)) {
-                    fail();
+                    throw_exception(std::logic_error{"missing callback"});
                 }
             }
         );! success) {
         // normally this should not happen
-        fail();
+        throw_exception(std::logic_error{"execute_async failed"});
     }
 }
 
@@ -699,7 +696,7 @@ void service::execute_query(
     {
         trace_scope_name("acquire_channel");  //NOLINT
         if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
-            fail();
+            throw_exception(std::logic_error{"acquire_channel failed"});
         }
     }
     info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
@@ -722,12 +719,12 @@ void service::execute_query(
                     details::error<sql::response::ResultOnly>(*cbp->response_, s, message);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
-                    fail();
+                    throw_exception(std::logic_error{"missing callback"});
                 }
             }
         ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
-        fail();
+        throw_exception(std::logic_error{"execute_async failed"});
     }
 }
 
@@ -746,7 +743,7 @@ bool service::shutdown(bool force) {
 void details::reply(tateyama::api::server::response& res, sql::response::Response& r, bool body_head) {
     std::stringstream ss{};
     if (!r.SerializeToOstream(&ss)) {
-        fail();
+        throw_exception(std::logic_error{"SerializeToOstream failed"});
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
@@ -851,7 +848,7 @@ void service::execute_dump(
     {
         trace_scope_name("acquire_channel");  //NOLINT
         if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
-            fail();
+            throw_exception(std::logic_error{"acquire_channel failed"});
         }
     }
     info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(ch);
@@ -888,14 +885,14 @@ void service::execute_dump(
                     details::error<sql::response::ResultOnly>(*cbp->response_, s, message);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
-                    fail();
+                    throw_exception(std::logic_error{"missing callback"});
                 }
             },
             opts.max_records_per_file_ == 0 ? max_records_per_file : opts.max_records_per_file_,
             opts.keep_files_on_error_
     ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
-        fail();
+        throw_exception(std::logic_error{"execute_dump failed"});
     }
 }
 
@@ -915,7 +912,7 @@ void service::execute_load(
     auto* cbp = c.get();
     auto cid = c->id_;
     if(! callbacks_.emplace(cid, std::move(c))) {
-        fail();
+        throw_exception(std::logic_error{"callback already exists"});
     }
     if(auto rc = reinterpret_cast<api::impl::transaction*>(tx.get())->execute_load(  //NOLINT
             statement,
@@ -928,12 +925,12 @@ void service::execute_load(
                     details::error<sql::response::ResultOnly>(*cbp->response_, s, message);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
-                    fail();
+                    throw_exception(std::logic_error{"missing callback"});
                 }
             }
         ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
-        fail();
+        throw_exception(std::logic_error{"execute_load failed"});
     }
 }
 

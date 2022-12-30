@@ -79,6 +79,9 @@ private:
     };
 
     [[nodiscard]] hash_value hash_field(accessor::record_ref const& record, std::size_t field_index) const {
+        if(meta_->nullable(field_index) && record.is_null(meta_->nullity_offset(field_index))) {
+            return static_cast<hash_value>(-1);
+        }
         auto& type = meta_->at(field_index);
         auto offset = meta_->value_offset(field_index);
         switch(type.kind()) {

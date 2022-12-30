@@ -46,6 +46,9 @@ std::size_t partitioner::operator()(accessor::record_ref key) const noexcept {
 }
 
 std::size_t partitioner::field_hash(accessor::record_ref key, std::size_t field_index) const {
+    if(meta_->nullable(field_index) && key.is_null(meta_->nullity_offset(field_index))) {
+        return static_cast<std::size_t>(-1);
+    }
     auto type = meta_->at(field_index);
     auto offset = meta_->value_offset(field_index);
     switch(type.kind()) {

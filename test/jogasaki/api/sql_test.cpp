@@ -503,15 +503,14 @@ TEST_F(sql_test, select_distinct) {
     execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (3,1,2)");
     execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (4,1,NULL)");
     execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (5,1,NULL)");
-//    {
-//        std::vector<mock::basic_record> result{};
-//        execute_query("select distinct C1 from TT", result);
-//        ASSERT_EQ(1, result.size());
-//    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select distinct C1 from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
     {
         std::vector<mock::basic_record> result{};
         execute_query("select distinct C1, C2 from TT", result);
-//        execute_query("select C1, C2 from TT", result);
         ASSERT_EQ(3, result.size());
     }
 }
@@ -525,11 +524,11 @@ TEST_F(sql_test, select_group_by_for_distinct) {
     execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (3,1,2)");
     execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (4,1,NULL)");
     execute_statement("INSERT INTO TT (C0, C1, C2) VALUES (5,1,NULL)");
-//    {
-//        std::vector<mock::basic_record> result{};
-//        execute_query("select C1 from TT group by C1", result);
-//        ASSERT_EQ(1, result.size());
-//    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select C1 from TT group by C1", result);
+        ASSERT_EQ(1, result.size());
+    }
     {
         std::vector<mock::basic_record> result{};
         execute_query("select distinct C1, C2 from TT group by C1, C2", result);

@@ -47,9 +47,10 @@ public:
      * @return hash of the record
      */
     [[nodiscard]] hash_value operator()(accessor::record_ref const& record) const noexcept {
+        static const std::size_t p = 18446744073709551557ULL; // arbitrary prime in uint64_t
         hash_value h{};
         for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {
-            h *= 31;
+            h *= p;
             h += hash_field(record, i);
         }
         return h;
@@ -98,10 +99,21 @@ private:
             case meta::field_type_kind::date: return hash_calculator<kind::date>{}(record, offset);
             case meta::field_type_kind::time_of_day: return hash_calculator<kind::time_of_day>{}(record, offset);
             case meta::field_type_kind::time_point: return hash_calculator<kind::time_point>{}(record, offset);
+            case meta::field_type_kind::unknown: return static_cast<hash_value>(-1);
+            case meta::field_type_kind::undefined: return static_cast<hash_value>(-1);
+
+            case meta::field_type_kind::bit: return static_cast<hash_value>(-1); // not supported yet // TODO
+            case meta::field_type_kind::time_interval: return static_cast<hash_value>(-1); // not supported yet // TODO
+            case meta::field_type_kind::array: return static_cast<hash_value>(-1); // not supported yet // TODO
+            case meta::field_type_kind::record: return static_cast<hash_value>(-1); // not supported yet // TODO
+            case meta::field_type_kind::row_reference: return static_cast<hash_value>(-1); // not supported yet // TODO
+            case meta::field_type_kind::row_id: return static_cast<hash_value>(-1); // not supported yet // TODO
+            case meta::field_type_kind::declared: return static_cast<hash_value>(-1); // not supported yet // TODO
+            case meta::field_type_kind::extension: return static_cast<hash_value>(-1); // not supported yet // TODO
+
+            case meta::field_type_kind::reference_column_position: return static_cast<hash_value>(-1); // internal field should be ignored
+            case meta::field_type_kind::reference_column_name: return static_cast<hash_value>(-1); // internal field should be ignored
             case meta::field_type_kind::pointer: return static_cast<hash_value>(-1); // internal field should be ignored
-            default:
-                // TODO implement other types
-                std::abort();
         }
         std::abort();
     }

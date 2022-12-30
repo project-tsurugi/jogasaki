@@ -22,6 +22,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/executor/hash.h>
 
 namespace jogasaki::executor {
 
@@ -54,6 +55,7 @@ public:
 private:
     std::size_t partitions_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
+    hash hash_{};
 
     using kind = meta::field_type_kind;
 

@@ -40,4 +40,9 @@ struct iterator_pair {
     Iterator second; //NOLINT
 };
 
+template <class Iterator>
+bool empty(iterator_pair<Iterator> const& p) {
+    return p.first == p.second;
+}
+
 }

@@ -55,6 +55,7 @@ public:
 
     using iterator = Iterator;
     using iterator_pair = utils::iterator_pair<iterator>;
+    using iterator_incrementer = utils::iterator_incrementer<iterator>;
 
     // parent is class template, so you should tell compiler the names in ancestors
     using operator_base::index;
@@ -97,6 +98,71 @@ public:
         return (*this)(*p, cgrp, context);
     }
 
+    bool groups_available(cogroup<iterator>& cgrp, bool except_primary) {
+        for(std::size_t i=(except_primary ? 1 : 0), n=cgrp.groups().size();i < n; ++i) {
+            auto&& g = cgrp.groups()[i];
+            if (g.empty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void assign_values(
+        join_context& ctx,
+        cogroup<iterator>& cgrp,
+        iterator_incrementer& incr,
+        bool force_nulls_except_primary
+    ) {
+        auto target = ctx.output_variables().store().ref();
+        auto& cur = incr.current();
+        for(std::size_t i=0, n=cgrp.groups().size(); i < n; ++i) {
+            auto&& g = cgrp.groups()[i];
+            for(auto&& f : g.fields()) {
+
+                if(empty(cur[i]) || (force_nulls_except_primary && i != 0)) {
+                    target.set_null(f.target_nullity_offset_, true);
+                    continue;
+                }
+                auto it = cur[i].first;
+                auto src = f.is_key_ ? g.key() : *it;
+                utils::copy_nullable_field(
+                    f.type_,
+                    target,
+                    f.target_offset_,
+                    f.target_nullity_offset_,
+                    src,
+                    f.source_offset_,
+                    f.source_nullity_offset_,
+                    ctx.varlen_resource()
+                ); // TODO no need to copy between resources
+            }
+        }
+    }
+
+    bool assign_and_evaluate_condition(
+        join_context& ctx,
+        cogroup<iterator>& cgrp,
+        iterator_incrementer& incr
+    ) {
+        assign_values(ctx, cgrp, incr, false);
+        auto resource = ctx.varlen_resource();
+        auto& vars = ctx.input_variables();
+        expression::evaluator_context c{};
+        return !has_condition_ || evaluate_bool(c, evaluator_, vars, resource);
+    }
+
+    bool call_downstream(
+        abstract::task_context* context
+    ) {
+        if (downstream_) {
+            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * @brief process record with context object
      * @param ctx operator context object for the execution
@@ -107,57 +173,90 @@ public:
         cogroup<iterator>& cgrp,
         abstract::task_context* context = nullptr
     ) {
-        (void)kind_;
+        constexpr static std::size_t primary_group_index = 0;
+        constexpr static std::size_t secondary_group_index = 1;
+
         if (ctx.inactive()) {
             return {operation_status_kind::aborted};
         }
+        std::size_t n = cgrp.groups().size();
         std::vector<iterator_pair> iterators{};
-        iterators.reserve(cgrp.groups().size());
+        iterators.reserve(n);
         for(auto&& g : cgrp.groups()) {
             iterators.emplace_back(g.begin(), g.end());
         }
-        auto target = ctx.output_variables().store().ref();
-        bool cont = true;
-        std::size_t n = iterators.size();
-        utils::iterator_incrementer<iterator> incr{std::move(iterators)};
-        while(cont) {
-            auto& cur = incr.current();
-            bool all_groups_available = true;
-            for(std::size_t i=0; i < n; ++i) { // TODO assign only first one when semi/anti-join
-                auto&& g = cgrp.groups()[i];
-                if (g.empty()) {
-                    all_groups_available = false;
+        BOOST_ASSERT(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2); //NOLINT
+        BOOST_ASSERT(! (has_condition_ && kind_ == join_kind::full_outer)); //NOLINT
+        iterator_incrementer incr{std::move(iterators)};
+        switch(kind_) {
+            case join_kind::full_outer: //fall-thru
+            case join_kind::inner: {
+                if(kind_ == join_kind::inner && ! groups_available(cgrp, false)) {
                     break;
                 }
-                auto it = cur[i].first;
-                for(auto&& f : g.fields()) {
-                    auto src = f.is_key_ ? g.key() : *it;
-                    utils::copy_nullable_field(
-                        f.type_,
-                        target,
-                        f.target_offset_,
-                        f.target_nullity_offset_,
-                        src,
-                        f.source_offset_,
-                        f.source_nullity_offset_,
-                        ctx.varlen_resource()
-                    ); // TODO no need to copy between resources
-                }
-            }
-            if (all_groups_available) {
-                auto resource = ctx.varlen_resource();
-                auto& vars = ctx.input_variables();
-                expression::evaluator_context c{};
-                bool res = !has_condition_ || evaluate_bool(c, evaluator_, vars, resource);
-                if (res && downstream_) {
-                    if(auto st = unsafe_downcast<record_operator>(
-                            downstream_.get())->process_record(context); !st) {
-                        ctx.abort();
-                        return {operation_status_kind::aborted};
+                do {
+                    if(assign_and_evaluate_condition(ctx, cgrp, incr)) {
+                        if(! call_downstream(context)) {
+                            ctx.abort();
+                            return {operation_status_kind::aborted};
+                        }
                     }
-                }
+                } while (incr.increment());
+                break;
             }
-            if(! incr.increment()) {
+            case join_kind::left_outer: {
+                if(cgrp.groups()[0].empty()) {
+                    break;
+                }
+                bool secondary_group_available = groups_available(cgrp, true);
+                do {
+                    bool exists_match = false;
+                    if(secondary_group_available) {
+                        do {
+                            if(assign_and_evaluate_condition(ctx, cgrp, incr)) {
+                                exists_match = true;
+                                if (! call_downstream(context)) {
+                                    ctx.abort();
+                                    return {operation_status_kind::aborted};
+                                }
+                            }
+                        } while (incr.increment(secondary_group_index));
+                        incr.reset(secondary_group_index);
+                    }
+                    if(! exists_match) {
+                        // assign nulls for non-primary groups
+                        assign_values(ctx, cgrp, incr, true);
+                        if (! call_downstream(context)) {
+                            ctx.abort();
+                            return {operation_status_kind::aborted};
+                        }
+                    }
+                } while (incr.increment(primary_group_index));
+                break;
+            }
+            case join_kind::anti: //fall-thru
+            case join_kind::semi: {
+                if(cgrp.groups()[0].empty()) {
+                    break;
+                }
+                do {
+                    bool exists_match = false;
+                    if(groups_available(cgrp, true)) {
+                        do {
+                            if(assign_and_evaluate_condition(ctx, cgrp, incr)) {
+                                exists_match = true;
+                                break;
+                            }
+                        } while (incr.increment(secondary_group_index));
+                        incr.reset(secondary_group_index);
+                    }
+                    if((exists_match && kind_ == join_kind::semi) || (!exists_match && kind_ == join_kind::semi)) {
+                        if (! call_downstream(context)) {
+                            ctx.abort();
+                            return {operation_status_kind::aborted};
+                        }
+                    }
+                } while (incr.increment(primary_group_index));
                 break;
             }
         }

@@ -48,21 +48,13 @@ public:
 
     /**
      * @brief increment the iterator at the specified position
-     * @param pos the position to increment. Specify npos to increment the last (least significant) digit.
+     * @param pos the position to increment. When any value other than npos is specified, the increment affects only the digit on the position.
+     * Specify npos to increment the last (least significant) digit and increment more significant digit when overflows.
      * @return true if the incremented iterators are valid
      * @return false otherwise. The result iterators are invalid and should not be used.
      */
     [[nodiscard]] bool increment(std::size_t pos = npos) {
-        pos = (pos != npos) ? pos : (initial_.size()-1);
-        if(current_[pos].first != current_[pos].second &&
-            ++current_[pos].first != current_[pos].second) {
-            return true;
-        }
-        if(pos == 0) {
-            return false;
-        }
-        current_[pos].first = initial_[pos].first;
-        return increment(pos-1);
+        return increment_internal(pos, pos != npos);
     }
 
     /**
@@ -73,9 +65,31 @@ public:
         return current_;
     }
 
+    void reset(std::size_t pos = npos) {
+        if(pos == npos) {
+            current_ = initial_;
+            return;
+        }
+        current_[pos] = initial_[pos];
+    }
 private:
     std::vector<iterator_pair> current_{};
     std::vector<iterator_pair> initial_{};
+
+    [[nodiscard]] bool increment_internal(std::size_t pos, bool single_digit_only) {
+        pos = (pos != npos) ? pos : (initial_.size()-1);
+        if(! empty(current_[pos]) && ++current_[pos].first != current_[pos].second) {
+            return true;
+        }
+        current_[pos].first = initial_[pos].first;
+        if(pos == 0) {
+            return false;
+        }
+        if (single_digit_only) {
+            return false;
+        }
+        return increment_internal(pos-1, false);
+    }
 };
 
 }

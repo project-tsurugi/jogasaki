@@ -96,5 +96,27 @@ TEST_F(iterator_incrementer_test, multiple_empty_elements) {
     ASSERT_FALSE(incr.increment());
 }
 
+TEST_F(iterator_incrementer_test, increment_with_position) {
+    std::string c1("abc"), c2("12");
+    std::vector<iterator_pair> pairs {
+        {c1.begin(), c1.end()},
+        {c2.begin(), c2.end()},
+    };
+    iterator_incrementer incr{pairs};
+
+    EXPECT_EQ("a1", check_result(incr.current()));
+    ASSERT_TRUE(incr.increment(1));
+    EXPECT_EQ("a2", check_result(incr.current()));
+    ASSERT_FALSE(incr.increment(1));
+    EXPECT_EQ("a1", check_result(incr.current()));
+
+    ASSERT_TRUE(incr.increment(0));
+    EXPECT_EQ("b1", check_result(incr.current()));
+    ASSERT_TRUE(incr.increment(0));
+    EXPECT_EQ("c1", check_result(incr.current()));
+    ASSERT_FALSE(incr.increment(0));
+    EXPECT_EQ("a1", check_result(incr.current()));
+}
+
 }
 

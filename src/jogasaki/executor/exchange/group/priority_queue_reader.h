@@ -104,7 +104,7 @@ private:
 
     std::size_t record_count_per_group_{};
 
-    void read_and_pop(impl::iterator it, impl::iterator end);
+    void pop_queue(bool read);
     void discard_remaining_members_in_group();
 };
 

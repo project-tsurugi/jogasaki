@@ -42,9 +42,13 @@ priority_queue_reader::priority_queue_reader(
     VLOG(log_debug) << "reader initialized to merge " << queue_.size() << " pointer tables";
 }
 
-void priority_queue_reader::read_and_pop(iterator it, iterator end) { //NOLINT
+void priority_queue_reader::pop_queue(bool read) { //NOLINT
+    auto it = queue_.top().first;
+    auto end = queue_.top().second;
     queue_.pop();
-    buf_.set(accessor::record_ref(*it, record_size_));
+    if(read) {
+        buf_.set(accessor::record_ref(*it, record_size_));
+    }
     if (++it != end) {
         queue_.emplace(it, end);
     }
@@ -57,9 +61,7 @@ bool priority_queue_reader::next_group() {
             state_ = reader_state::eof;
             return false;
         }
-        auto it = queue_.top().first;
-        auto end = queue_.top().second;
-        read_and_pop(it, end);
+        pop_queue(true);
         state_ = reader_state::before_member;
         return true;
     }
@@ -80,7 +82,7 @@ void priority_queue_reader::discard_remaining_members_in_group() {
         if (key_comparator_(k, info_->extract_key(accessor::record_ref(*it, record_size_))) != 0) {
             break;
         }
-        queue_.pop();
+        pop_queue(false);
     }
 }
 
@@ -102,11 +104,10 @@ bool priority_queue_reader::next_member() {
             return false;
         }
         auto it = queue_.top().first;
-        auto end = queue_.top().second;
         if (key_comparator_(
                 info_->extract_key(buf_.ref()),
                 info_->extract_key(accessor::record_ref(*it, record_size_))) == 0) {
-            read_and_pop(it, end);
+            pop_queue(true);
             ++record_count_per_group_;
             return true;
         }

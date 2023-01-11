@@ -119,8 +119,19 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 
 operation_status write_partial::do_delete(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
-    // find update target and fill ctx.key_store_ and ctx.value_store_
-    if(auto res = primary_.find_record_and_remove(  // TODO extract is not needed if secondaries is empty
+    if(secondaries_.empty()) {
+        if(auto res = primary_.remove_record(
+                context,
+                *ctx.transaction(),
+                ctx.input_variables().store().ref()
+            ); res != status::ok) {
+            return details::error_abort(ctx, res);
+        }
+        return {};
+    }
+
+    // find update target and fill ctx.key_store_ and ctx.value_store_ to delete from secondaries
+    if(auto res = primary_.find_record_and_remove(
             context,
             *ctx.transaction(),
             ctx.input_variables().store().ref(),

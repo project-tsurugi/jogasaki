@@ -154,6 +154,25 @@ public:
     );
 
     /**
+     * @brief encode key, find the record, and fill variables
+     */
+    status find_record(
+        write_primary_context& ctx,
+        transaction_context& tx,
+        accessor::record_ref variables,
+        memory_resource* varlen_resource
+    );
+
+    /**
+     * @brief encode key, and remove the record
+     */
+    status remove_record(
+        write_primary_context& ctx,
+        transaction_context& tx,
+        accessor::record_ref variables
+    );
+
+    /**
      * @brief do update by copying values from source variable(or host variables) to target.
      */
     void update_record(
@@ -207,6 +226,14 @@ private:
     ) const;
 
     status prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const;
+
+    status find_record_internal(
+        write_primary_context& ctx,
+        transaction_context& tx,
+        accessor::record_ref variables,
+        memory_resource* varlen_resource,
+        std::string_view& key
+    );
 };
 
 }

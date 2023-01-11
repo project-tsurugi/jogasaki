@@ -93,14 +93,40 @@ status write_primary_target::find_record_and_remove(
     memory_resource* varlen_resource
 ) {
     std::string_view k{};
-    if(auto res = prepare_encoded_key(ctx, variables, k); res != status::ok) {
+    if(auto res = find_record_internal(ctx, tx, variables, varlen_resource, k); res != status::ok) {
+        return res;
+    }
+    if(auto res = ctx.stg_->remove(tx, k); res != status::ok) {
+        return res;
+    }
+    return status::ok;
+}
+
+status write_primary_target::find_record(
+    write_primary_context& ctx,
+    transaction_context& tx,
+    accessor::record_ref variables,
+    memory_resource* varlen_resource
+) {
+    std::string_view k{};
+    return find_record_internal(ctx, tx, variables, varlen_resource, k);
+}
+
+status write_primary_target::find_record_internal(
+    write_primary_context& ctx,
+    transaction_context& tx,
+    accessor::record_ref variables,
+    memory_resource* varlen_resource,
+    std::string_view& key
+) {
+    if(auto res = prepare_encoded_key(ctx, variables, key); res != status::ok) {
         return res;
     }
     std::string_view v{};
-    if(auto res = ctx.stg_->get( tx, k, v ); res != status::ok) {
+    if(auto res = ctx.stg_->get(tx, key, v); res != status::ok) {
         return res;
     }
-    kvs::readable_stream keys{k.data(), k.size()};
+    kvs::readable_stream keys{key.data(), key.size()};
     kvs::readable_stream values{v.data(), v.size()};
     if(auto res = decode_fields(extracted_keys_, keys, ctx.key_store_.ref(), varlen_resource); res != status::ok) {
         return res;
@@ -108,7 +134,19 @@ status write_primary_target::find_record_and_remove(
     if(auto res = decode_fields(extracted_values_, values, ctx.value_store_.ref(), varlen_resource); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->remove( tx, k ); res != status::ok) {
+    return status::ok;
+}
+
+status write_primary_target::remove_record(
+    write_primary_context& ctx,
+    transaction_context& tx,
+    accessor::record_ref variables
+) {
+    std::string_view k{};
+    if(auto res = prepare_encoded_key(ctx, variables, k); res != status::ok) {
+        return res;
+    }
+    if(auto res = ctx.stg_->remove(tx, k); res != status::ok) {
         return res;
     }
     return status::ok;

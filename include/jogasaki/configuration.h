@@ -287,10 +287,14 @@ public:
             "initial_core:" << cfg.initial_core() << " " <<
             "assign_numa_nodes_uniformly:" << cfg.assign_numa_nodes_uniformly() << " " <<
             "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " " <<
-            "stealing_enabled:" << cfg.stealing_enabled() << " " <<
+            "prepare_test_tables:" << cfg.prepare_test_tables() << " " <<
+            "prepare_qa_tables:" << cfg.prepare_qa_tables() << " " <<
             "prepare_benchmark_tables:" << cfg.prepare_benchmark_tables() << " " <<
             "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
             "prepare_phone_bill_tables:" << cfg.prepare_phone_bill_tables() << " " <<
+            "stealing_enabled:" << cfg.stealing_enabled() << " " <<
+            "db_location:" << cfg.db_location() << " " <<
+            "tasked_write:" << cfg.tasked_write() << " " <<
             "lazy_worker:" << cfg.lazy_worker() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
             "quiescent:" << cfg.quiescent() << " " <<

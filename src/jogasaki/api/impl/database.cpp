@@ -76,6 +76,7 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
 }
 
 status database::start() {
+    LOG(INFO) << "SQL engine configuration " << *cfg_;
     if (cfg_->quiescent()) {
         return status::ok;
     }

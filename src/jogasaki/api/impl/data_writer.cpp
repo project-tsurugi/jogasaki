@@ -37,20 +37,20 @@ data_writer::data_writer(std::shared_ptr<tateyama::api::server::writer> origin) 
 {}
 
 status data_writer::write(char const* data, std::size_t length) {
-    log_entry << "write()" << binstring(data, length);
+    log_entry << binstring(data, length);
     if (auto rc = origin_->write(data, length); rc != tateyama::status::ok) {
         fail();
     }
-    log_exit << "write()";
+    log_exit;
     return status::ok;
 }
 
 status data_writer::commit() {
-    log_entry << "commit()";
+    log_entry;
     if (auto rc = origin_->commit(); rc != tateyama::status::ok) {
         fail();
     }
-    log_exit << "commit()";
+    log_exit;
     return status::ok;
 }
 

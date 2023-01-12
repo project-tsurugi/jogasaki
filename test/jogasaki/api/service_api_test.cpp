@@ -18,6 +18,7 @@
 #include <future>
 #include <thread>
 #include <gtest/gtest.h>
+#include <google/protobuf/text_format.h>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
@@ -852,6 +853,14 @@ TEST_F(service_api_test, protobuf1) {
     sql::common::Session s;
     req.set_allocated_session_handle(&s);
     EXPECT_TRUE(req.has_session_handle());
+
+    ::google::protobuf::TextFormat::Printer printer{};
+    printer.SetSingleLineMode(true);
+    std::string out{};
+    EXPECT_TRUE(printer.PrintToString(req, &out));
+    std::cerr << "out: " << out << std::endl;
+    EXPECT_FALSE(out.empty());
+
     req.release_session_handle();
     EXPECT_FALSE(req.has_session_handle());
 }

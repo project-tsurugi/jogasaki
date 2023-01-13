@@ -453,4 +453,39 @@ TEST_F(ddl_test, long_char_data) {
     }
 }
 
+// TODO search_key failed on larger data
+TEST_F(ddl_test, max_key_len) {
+    std::size_t len = 128;
+//    std::size_t len = 1024; // search_key not found
+//    std::size_t len = 8192;
+//    std::size_t len = 16384;
+//    std::size_t len = 32768; // search_key not found
+//    std::size_t len = 49125; // scan failed
+    std::string strlen = std::to_string(len);
+    std::string c0(len, '0');
+    std::string c1(len, '1');
+    execute_statement("CREATE TABLE T (C0 VARCHAR("+strlen+") NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T (C0) VALUES('"+c0+"')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C0='"+c0+"'", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(
+            std::forward_as_tuple(accessor::text{c0}), {false})), result[0]);
+    }
+    execute_statement("UPDATE T SET C0='"+c1+"' WHERE C0='"+c0+"'");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C0='"+c1+"'", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(
+            std::forward_as_tuple(accessor::text{c1}), {false})), result[0]);
+    }
+    execute_statement("DELETE FROM T WHERE C0='"+c1+"'");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
 }

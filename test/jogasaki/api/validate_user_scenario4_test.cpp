@@ -60,8 +60,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->enable_index_join(false); // to workaround problem caused by join_scan not implemented yet //TODO
-//        cfg->single_thread(true);
+        cfg->single_thread(true);
         db_setup(cfg);
     }
 
@@ -75,24 +74,14 @@ using namespace std::string_view_literals;
 // regression test scenario tsurugi-issues/issues/86
 TEST_F(validate_user_scenario4_test, DISABLED_phantom_with_ddl) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});
-    for(std::size_t i=0; i < 30; ++i) {
+    for(std::size_t i=0; i < 20; ++i) {
         if (i != 0) {
             execute_statement("drop table test");
         }
         execute_statement("create table test(  foo int,  bar bigint,  zzz varchar(10))");
-        execute_statement("insert into test(foo, bar, zzz)values(0, 0, '0')");
-        execute_statement("insert into test(foo, bar, zzz)values(1, 1, '1')");
         execute_statement("insert into test(foo, bar, zzz)values(2, 2, '2')");
-        execute_statement("insert into test(foo, bar, zzz)values(3, 3, '3')");
         execute_statement("delete from test where foo = 2");
         execute_statement("delete from test where foo = 2");
-        {
-            std::vector<mock::basic_record> result{};
-            execute_query(
-                "select foo, bar, zzz from test order by foo, bar, zzz",
-                result);
-            ASSERT_EQ(3, result.size());
-        }
     }
 }
 

@@ -598,4 +598,17 @@ TEST_F(sql_test, DISABLED_double_literal) {
     }
 }
 
+// currently we want to support sql up to 2GB, but failed with oom in syntax verification. Check after compiler is upgraded.
+TEST_F(sql_test, DISABLED_long_sql) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table TT (C0 int primary key, C1 int)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");
+    {
+        std::string blanks(2*1024*1024*1024UL - 20UL, ' ');
+        std::vector<mock::basic_record> result{};
+        execute_query("select * " + blanks + "from TT", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
 }

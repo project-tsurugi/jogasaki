@@ -15,7 +15,7 @@
  */
 #include "metadata_store.h"
 
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/aligned_buffer.h>
@@ -26,7 +26,7 @@
 namespace jogasaki::executor::sequence {
 
 using kind = meta::field_type_kind;
-using takatori::util::fail;
+using takatori::util::throw_exception;
 
 metadata_store::metadata_store() = default;
 metadata_store::~metadata_store() = default;
@@ -58,27 +58,27 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(std::unique_ptr
         if(r == status::not_found) {
             return {{}, {}, false};
         }
-        fail();
+        throw_exception(std::logic_error{""});
     }
     if (auto r = it->value(v); r != status::ok) {
         if(r == status::not_found) {
             return {{}, {}, false};
         }
-        fail();
+        throw_exception(std::logic_error{""});
     }
     kvs::readable_stream key{k.data(), k.size()};
     kvs::readable_stream value{v.data(), v.size()};
     data::any dest{};
     if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
         res != status::ok) {
-        fail();
+        throw_exception(std::logic_error{""});
     }
     sequence_definition_id def_id{};
     sequence_id id{};
     def_id = dest.to<std::int64_t>();
     if(auto res = kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
         res != status::ok) {
-        fail();
+        throw_exception(std::logic_error{""});
     }
     id = dest.to<std::int64_t>();
     return {def_id, id, true};

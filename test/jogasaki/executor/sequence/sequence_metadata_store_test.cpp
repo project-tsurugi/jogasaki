@@ -103,7 +103,7 @@ TEST_F(sequence_metadata_store_test, remove) {
     EXPECT_EQ(2, s.size());
     EXPECT_TRUE(s.remove(2));
     EXPECT_EQ(1, s.size());
-    EXPECT_FALSE(s.remove(3));
+    EXPECT_TRUE(s.remove(3)); // removing non-existing is handled as success
     EXPECT_EQ(1, s.size());
 }
 

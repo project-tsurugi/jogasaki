@@ -59,7 +59,6 @@ manager::manager(
 {}
 
 std::size_t manager::load_id_map(kvs::transaction* tx) {
-    auto stg = db_->get_or_create_storage(system_sequences_name);
     std::unique_ptr<kvs::transaction> created_tx{};
     if (! tx) {
         // for testing purpose
@@ -213,10 +212,6 @@ void manager::save_id_map(kvs::transaction* tx) {
     }
 }
 
-
-
-
-
 manager::sequences_type const& manager::sequences() const noexcept {
     return sequences_;
 }
@@ -231,15 +226,8 @@ void manager::remove_id_map(
         created_tx = db_->create_transaction();
         tx = created_tx.get();
     }
-    auto stg = db_->get_or_create_storage(system_sequences_name);
-    data::aligned_buffer key_buf{10};
-    kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
-    data::any k{std::in_place_type<std::int64_t>, def_id};
-    kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
-    if (auto res = stg->remove(
-            *tx,
-            {key.data(), key.size()}
-        ); res != status::ok && res != status::not_found) {
+    metadata_store s{*tx};
+    if(! s.remove(def_id)) {
         fail();
     }
     if (created_tx) {

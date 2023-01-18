@@ -377,6 +377,39 @@ TEST_F(ddl_test, dml_pkless) {
     }
 }
 
+TEST_F(ddl_test, drop_pkless) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    execute_statement("CREATE TABLE T (C0 INT)");
+    execute_statement("INSERT INTO T (C0) VALUES(0)");
+    execute_statement("INSERT INTO T (C0) VALUES(1)");
+    execute_statement("INSERT INTO T (C0) VALUES(2)");
+    std::vector<std::int64_t> exp{};
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT __generated_rowid___T+0 FROM T ORDER BY C0", result);
+        ASSERT_EQ(3, result.size());
+        for(auto&& r : result) {
+            exp.emplace_back(r.ref().get_value<std::int64_t>(r.record_meta()->value_offset(0)));
+        }
+    }
+    execute_statement("DROP TABLE T");
+    execute_statement("CREATE TABLE T (C0 INT)");
+    execute_statement("INSERT INTO T (C0) VALUES(1)");
+    execute_statement("INSERT INTO T (C0) VALUES(2)");
+    execute_statement("INSERT INTO T (C0) VALUES(3)");
+    {
+        std::vector<std::int64_t> rowids{};
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT __generated_rowid___T+0 FROM T ORDER BY C0", result);
+        ASSERT_EQ(3, result.size());
+        for(auto&& r: result) {
+            rowids.emplace_back(r.ref().get_value<std::int64_t>(r.record_meta()->value_offset(0)));
+        }
+        ASSERT_EQ(exp, rowids);  // generated values are not important, but want to check if same series repeated
+    }
+}
+
 TEST_F(ddl_test, type_name_variants) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
@@ -488,4 +521,5 @@ TEST_F(ddl_test, max_key_len) {
         ASSERT_EQ(0, result.size());
     }
 }
+
 }

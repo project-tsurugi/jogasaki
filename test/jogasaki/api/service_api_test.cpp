@@ -1408,6 +1408,28 @@ TEST_F(service_api_test, describe_table_not_found) {
     LOG(INFO) << "error: " << error.message_;
 }
 
+TEST_F(service_api_test, describe_pkless_table) {
+    // make sure generated pk column is not visible
+    execute_statement("create table T (C0 INT)");
+    auto s = encode_describe_table("T");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::success, res->code_);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ("T", result.table_name_);
+    ASSERT_EQ("", result.schema_name_);
+    ASSERT_EQ("", result.database_name_);
+    ASSERT_EQ(1, result.columns_.size());
+    EXPECT_EQ("C0", result.columns_[0].name_);
+    EXPECT_EQ(sql::common::AtomType::INT4, result.columns_[0].atom_type_);
+}
+
 TEST_F(service_api_test, empty_result_set) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);

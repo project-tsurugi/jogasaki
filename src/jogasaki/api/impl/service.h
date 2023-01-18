@@ -32,6 +32,7 @@
 #include <jogasaki/api/impl/data_channel.h>
 #include <jogasaki/api/impl/data_writer.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/string_manipulation.h>
 
 #include <tateyama/status.h>
 
@@ -278,6 +279,9 @@ inline void success<sql::response::DescribeTable>(tateyama::api::server::respons
     success.set_database_name("");  //FIXME database name resolution
     auto* cols = success.mutable_columns();
     for(auto&& col : tbl->columns()) {
+        if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
+            continue;
+        }
         auto* c = cols->Add();
         c->set_name(std::string{col.simple_name()});
         c->set_atom_type(to_atom_type(col.type()));

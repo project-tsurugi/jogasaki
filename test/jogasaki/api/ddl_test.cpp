@@ -387,7 +387,7 @@ TEST_F(ddl_test, drop_pkless) {
     std::vector<std::int64_t> exp{};
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT __generated_rowid___T+0 FROM T ORDER BY C0", result);
+        execute_query("SELECT __generated_rowid___T as rowid FROM T ORDER BY C0", result);
         ASSERT_EQ(3, result.size());
         for(auto&& r : result) {
             exp.emplace_back(r.ref().get_value<std::int64_t>(r.record_meta()->value_offset(0)));
@@ -401,7 +401,7 @@ TEST_F(ddl_test, drop_pkless) {
     {
         std::vector<std::int64_t> rowids{};
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT __generated_rowid___T+0 FROM T ORDER BY C0", result);
+        execute_query("SELECT __generated_rowid___T as rowid FROM T ORDER BY C0", result);
         ASSERT_EQ(3, result.size());
         for(auto&& r: result) {
             rowids.emplace_back(r.ref().get_value<std::int64_t>(r.record_meta()->value_offset(0)));

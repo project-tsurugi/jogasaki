@@ -91,5 +91,21 @@ TEST_F(sequence_metadata_store_test, find_next_defid) {
     EXPECT_TRUE(s.put(3, 200));
     EXPECT_EQ(5, next_empty_slot(s));
 }
+
+TEST_F(sequence_metadata_store_test, remove) {
+    auto tx = db_->create_transaction();
+    metadata_store s{*tx};
+    EXPECT_TRUE(s.put(0, 0));
+    EXPECT_TRUE(s.put(1, 100));
+    EXPECT_TRUE(s.put(2, 200));
+    EXPECT_EQ(3, s.size());
+    EXPECT_TRUE(s.remove(1));
+    EXPECT_EQ(2, s.size());
+    EXPECT_TRUE(s.remove(2));
+    EXPECT_EQ(1, s.size());
+    EXPECT_FALSE(s.remove(3));
+    EXPECT_EQ(1, s.size());
+}
+
 }
 

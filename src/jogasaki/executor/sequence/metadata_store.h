@@ -77,6 +77,20 @@ public:
      */
     bool find_next_empty_def_id(std::size_t& def_id);
 
+    /**
+     * @brief remove the mappping entry for from definition id
+     * @param def_id definition id of the sequence to be removed
+     * @return true if successful
+     * @return false otherwise
+     */
+    bool remove(std::size_t def_id);
+
+    /**
+     * @brief get the size of the mapping
+     * @return the number of mapping entries
+     */
+    [[nodiscard]] std::size_t size();
+
 private:
     std::unique_ptr<kvs::storage> stg_{};
     kvs::transaction* tx_{};

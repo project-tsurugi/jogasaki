@@ -120,10 +120,30 @@ bool metadata_store::find_next_empty_def_id(std::size_t& def_id) {
     return true;
 }
 
+bool metadata_store::remove(std::size_t def_id) {
+    data::aligned_buffer key_buf{10};
+    kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
+    data::any k{std::in_place_type<std::int64_t>, def_id};
+    kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
+    if (auto res = stg_->remove(*tx_, {key.data(), key.size()}); res != status::ok) {
+        VLOG(log_error) << "remove sequence def_id failed with error: " << res;
+        return false;
+    }
+    return true;
+}
+
 metadata_store::metadata_store(kvs::transaction& tx) :
     tx_(std::addressof(tx))
 {
     stg_ = tx.database()->get_or_create_storage(system_sequences_name);
+}
+
+std::size_t metadata_store::size() {
+    std::size_t ret{};
+    scan([&ret] (std::size_t, std::size_t) {
+        ++ret;
+    });
+    return ret;
 }
 
 

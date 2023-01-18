@@ -22,6 +22,7 @@
 
 #include <jogasaki/logging.h>
 #include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/executor/sequence/metadata_store.h>
 
 namespace jogasaki::executor::common {
 
@@ -69,15 +70,31 @@ bool drop_table::operator()(request_context& context) const {
         }
     }
 
-    // kvs storages are deleted successfully
-    // Going forward, try to clean up metadata as much as possible even if there is some inconsistency/missing parts.
-
+    std::vector<std::string> generated_sequences{};
+    executor::sequence::metadata_store ms{*context.transaction()->object()};
     // drop auto-generated sequences
     for(auto&& col : t->columns()) {
         // normally, sequence referenced in default value should not be dropped. Only the exception is one auto-generated for primary key.
         if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
-            provider.remove_sequence(col.simple_name());
+            generated_sequences.emplace_back(col.simple_name());
+            if(auto s = provider.find_sequence(col.simple_name())) {
+                if(s->definition_id().has_value()) {
+                    if(! ms.remove(s->definition_id().value())) {
+                        context.status_code(status::err_unknown);
+                        return false;
+                    }
+                }
+            }
         }
+    }
+
+    // kvs storages are deleted successfully
+    // Going forward, try to clean up metadata as much as possible even if there is some inconsistency/missing parts.
+
+    // drop auto-generated sequences
+    for(auto&& n : generated_sequences) {
+        // normally, sequence referenced in default value should not be dropped. Only the exception is one auto-generated for primary key.
+        provider.remove_sequence(n);
     }
 
     for(auto&& n : indices) {

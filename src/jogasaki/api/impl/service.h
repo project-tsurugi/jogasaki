@@ -61,13 +61,34 @@ namespace details {
 
 class query_info;
 
+class request_info {
+public:
+    request_info() = default;
+
+    explicit request_info(std::size_t id) :
+        id_(id)
+    {}
+
+    std::size_t id() const noexcept {
+        return id_;
+    }
+
+private:
+    std::size_t id_{};
+};
+
 struct cache_align channel_info {
     jogasaki::api::record_meta const* meta_{};  //NOLINT
     std::string name_;  //NOLINT
     std::shared_ptr<jogasaki::api::impl::data_channel> data_channel_{};  //NOLINT
 };
 
-void reply(tateyama::api::server::response& res, sql::response::Response& r, bool body_head = false);
+void reply(
+    tateyama::api::server::response& res,
+    sql::response::Response& r,
+    request_info const& req_info,
+    bool body_head = false
+);
 
 template <class T>
 void set_metadata(jogasaki::api::record_meta const* metadata, T& meta);
@@ -152,7 +173,12 @@ inline sql::status::Status map_status(jogasaki::status s) {
 }
 
 template<typename T>
-void error(tateyama::api::server::response& res, jogasaki::status s, std::string_view msg) { //NOLINT(performance-unnecessary-value-param)
+void error(
+    tateyama::api::server::response& res,
+    jogasaki::status s,
+    std::string_view msg,
+    request_info const& req_info
+) { 
     sql::response::Error e{};
     T p{};
     sql::response::Response r{};
@@ -162,7 +188,7 @@ void error(tateyama::api::server::response& res, jogasaki::status s, std::string
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
     res.code(response_code::application_error);
-    reply(res, r);
+    reply(res, r, req_info);
     release_object(r, p);
     p.release_error();
 }
@@ -171,7 +197,10 @@ template<typename T, typename... Args>
 void success(tateyama::api::server::response& res, Args...) = delete; //NOLINT(performance-unnecessary-value-param)
 
 template<>
-inline void success<sql::response::ResultOnly>(tateyama::api::server::response& res) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<sql::response::ResultOnly>(
+    tateyama::api::server::response& res,
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
     sql::response::Success s{};
     sql::response::ResultOnly ro{};
     sql::response::Response r{};
@@ -179,13 +208,17 @@ inline void success<sql::response::ResultOnly>(tateyama::api::server::response& 
     ro.set_allocated_success(&s);
     r.set_allocated_result_only(&ro);
     res.code(response_code::success);
-    reply(res, r);
+    reply(res, r, req_info);
     r.release_result_only();
     ro.release_success();
 }
 
 template<>
-inline void success<sql::response::Begin>(tateyama::api::server::response& res, jogasaki::api::transaction_handle tx) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<sql::response::Begin>(
+    tateyama::api::server::response& res,
+    jogasaki::api::transaction_handle tx, //NOLINT(performance-unnecessary-value-param)
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
     sql::common::Transaction t{};
     sql::common::TransactionId tid{};
     sql::response::Begin b{};
@@ -200,7 +233,7 @@ inline void success<sql::response::Begin>(tateyama::api::server::response& res, 
     b.set_allocated_success(&s);
     r.set_allocated_begin(&b);
     res.code(response_code::success);
-    reply(res, r);
+    reply(res, r, req_info);
     r.release_begin();
     b.release_success();
     s.release_transaction_id();
@@ -208,7 +241,11 @@ inline void success<sql::response::Begin>(tateyama::api::server::response& res, 
 }
 
 template<>
-inline void success<sql::response::Prepare>(tateyama::api::server::response& res, jogasaki::api::statement_handle statement) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<sql::response::Prepare>(
+    tateyama::api::server::response& res,
+    jogasaki::api::statement_handle statement, //NOLINT(performance-unnecessary-value-param)
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
     sql::common::PreparedStatement ps{};
     sql::response::Prepare p{};
     sql::response::Response r{};
@@ -218,7 +255,7 @@ inline void success<sql::response::Prepare>(tateyama::api::server::response& res
     p.set_allocated_prepared_statement_handle(&ps);
     r.set_allocated_prepare(&p);
     res.code(response_code::success);
-    reply(res, r);
+    reply(res, r, req_info);
     r.release_prepare();
     p.release_prepared_statement_handle();
 }
@@ -246,7 +283,12 @@ inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::dat
 }
 
 template<>
-inline void success<sql::response::Explain>(tateyama::api::server::response& res, std::string output, api::record_meta const* meta) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<sql::response::Explain>(
+    tateyama::api::server::response& res,
+    std::string output, //NOLINT(performance-unnecessary-value-param)
+    api::record_meta const* meta,
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
     sql::response::Explain explain{};
     sql::response::Response r{};
     sql::response::Explain::Success success{};
@@ -258,7 +300,7 @@ inline void success<sql::response::Explain>(tateyama::api::server::response& res
     r.set_allocated_explain(&explain);
     set_metadata(meta, success);
     res.code(response_code::success);
-    reply(res, r);
+    reply(res, r, req_info);
     success.clear_columns();
     r.release_explain();
     success.release_format_id();
@@ -267,7 +309,11 @@ inline void success<sql::response::Explain>(tateyama::api::server::response& res
 }
 
 template<>
-inline void success<sql::response::DescribeTable>(tateyama::api::server::response& res, yugawara::storage::table const* tbl) {  //NOLINT(performance-unnecessary-value-param)
+inline void success<sql::response::DescribeTable>(
+    tateyama::api::server::response& res,
+    yugawara::storage::table const* tbl,
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
     BOOST_ASSERT(tbl != nullptr); //NOLINT
     sql::response::Response r{};
     sql::response::DescribeTable dt{};
@@ -287,13 +333,17 @@ inline void success<sql::response::DescribeTable>(tateyama::api::server::respons
         c->set_atom_type(to_atom_type(col.type()));
     }
     res.code(response_code::success);
-    reply(res, r);
+    reply(res, r, req_info);
     success.clear_columns();
     dt.release_success();
     r.release_describe_table();
 }
 
-inline void send_body_head(tateyama::api::server::response& res, channel_info const& info) {  //NOLINT(performance-unnecessary-value-param)
+inline void send_body_head(
+    tateyama::api::server::response& res,
+    channel_info const& info,
+    request_info const& req_info
+) {
     sql::response::ResultSetMetadata meta{};
     sql::response::ExecuteQuery e{};
     sql::response::Response r{};
@@ -302,7 +352,7 @@ inline void send_body_head(tateyama::api::server::response& res, channel_info co
     e.set_name(info.name_);
     e.set_allocated_record_meta(&meta);
     r.set_allocated_execute_query(&e);
-    details::reply(res, r, true);
+    details::reply(res, r, req_info, true);
     r.release_execute_query();
     e.release_record_meta();
 }
@@ -343,6 +393,7 @@ private:
     std::shared_ptr<tateyama::api::configuration::whole> cfg_{};
     jogasaki::api::database* db_{};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<callback_control>> callbacks_{};
+    static inline std::atomic_size_t request_id_src_{0};
 
     bool process(
             std::shared_ptr<tateyama::api::server::request const> req,
@@ -351,71 +402,86 @@ private:
 
     void command_begin(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
 
     void command_prepare(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
     void command_execute_statement(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
 
     void command_execute_query(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
     void command_execute_prepared_statement(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
     void command_execute_prepared_query(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
     void command_execute_dump(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
     void command_execute_load(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
 
     void command_commit(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
 
     void command_rollback(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
     void command_dispose_prepared_statement(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
     void command_explain(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
 
     void command_describe_table(
         sql::request::Request const& proto_req,
-        std::shared_ptr<tateyama::api::server::response> const& res
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
     );
 
     void execute_statement(
         std::shared_ptr<tateyama::api::server::response> const& res,
         std::shared_ptr<jogasaki::api::executable_statement> stmt,
-        jogasaki::api::transaction_handle tx
+        jogasaki::api::transaction_handle tx,
+        details::request_info const& req_info
     );
     void execute_query(
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
-        jogasaki::api::transaction_handle tx
+        jogasaki::api::transaction_handle tx,
+        details::request_info const& req_info
     );
 
     struct dump_option {
@@ -428,13 +494,15 @@ private:
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
         std::string_view directory,
-        dump_option const& opts
+        dump_option const& opts,
+        details::request_info const& req_info
     );
     void execute_load(
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
-        std::vector<std::string> const& files
+        std::vector<std::string> const& files,
+        details::request_info const& req_info
     );
     void set_params(::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;

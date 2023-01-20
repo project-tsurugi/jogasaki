@@ -69,7 +69,7 @@ public:
         id_(id)
     {}
 
-    std::size_t id() const noexcept {
+    [[nodiscard]] std::size_t id() const noexcept {
         return id_;
     }
 

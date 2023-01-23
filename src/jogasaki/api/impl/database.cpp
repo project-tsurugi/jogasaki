@@ -47,6 +47,7 @@
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/backoff_timer.h>
 #include <jogasaki/utils/backoff_waiter.h>
+#include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/constants.h>
 
 #include <string_view>
@@ -716,7 +717,7 @@ status database::recover_index_metadata(
             skipped.emplace_back(n);
             continue;
         }
-        VLOG(log_info) << "Recover table/index " << n << " : " << idef.Utf8DebugString();
+        VLOG(log_info) << "Recover table/index " << n << " : " << utils::to_debug_string(idef);
         if(! recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
             LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;

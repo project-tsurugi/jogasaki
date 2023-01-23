@@ -34,6 +34,7 @@
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/utils/decimal.h>
+#include <jogasaki/utils/proto_debug_string.h>
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
@@ -461,18 +462,6 @@ bool service::operator()(
     return true;
 }
 
-// ::google::protobuf::Message::Utf8DebugString output in multiple lines. This function is to output in single line.
-std::string to_debug_string(::google::protobuf::Message const& message) {
-    ::google::protobuf::TextFormat::Printer printer{};
-    printer.SetSingleLineMode(true);
-    printer.SetUseUtf8StringEscaping(true);
-    std::string out{};
-    if(! printer.PrintToString(message, &out)) {
-        return {};
-    }
-    return out;
-}
-
 bool service::process(
     std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
@@ -501,7 +490,7 @@ bool service::process(
             res->body(msg);
             return true;
         }
-        VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size() << "): " << to_debug_string(proto_req);
+        VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size() << "): " << utils::to_debug_string(proto_req);
     }
 
     switch (proto_req.request_case()) {
@@ -785,13 +774,13 @@ void details::reply(
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id() << " len=" << ss.str().size() << "): " << to_debug_string(r);
+        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id() << " len=" << ss.str().size() << "): " << utils::to_debug_string(r);
         res.body_head(ss.str());
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.str().size() << "): " << to_debug_string(r);
+        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.str().size() << "): " << utils::to_debug_string(r);
         res.body(ss.str());
     }
 }

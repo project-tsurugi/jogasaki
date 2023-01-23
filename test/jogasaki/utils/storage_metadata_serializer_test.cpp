@@ -35,6 +35,7 @@
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/utils/proto_debug_string.h>
 
 #include <gtest/gtest.h>
 
@@ -69,7 +70,7 @@ std::string readable(std::string_view serialized) {
             FAIL();
         }();
     }
-    return def.Utf8DebugString();
+    return utils::to_debug_string(def);
 }
 
 TEST_F(storage_metadata_serializer_test, simple) {

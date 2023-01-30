@@ -622,4 +622,22 @@ TEST_F(sql_test, generated_rowid) {
         ASSERT_EQ(1, result.size());
     }
 }
+
+// IS NULL / IS NOT NULL is not yet supported by compiler
+TEST_F(sql_test, DISABLED_is_null) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 int, C1 int)");
+    execute_statement("INSERT INTO T (C0) VALUES (1)");
+    execute_statement("INSERT INTO T (C0,C1) VALUES (2, 20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C1 IS NULL ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C1 IS NOT NULL ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
 }

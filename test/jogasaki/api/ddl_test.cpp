@@ -33,6 +33,7 @@
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
 #include <jogasaki/test_utils/secondary_index.h>
+#include <jogasaki/kvs/id.h>
 
 namespace jogasaki::testing {
 
@@ -486,14 +487,8 @@ TEST_F(ddl_test, long_char_data) {
     }
 }
 
-// TODO search_key failed on larger data
 TEST_F(ddl_test, max_key_len) {
-    std::size_t len = 128;
-//    std::size_t len = 1024; // search_key not found
-//    std::size_t len = 8192;
-//    std::size_t len = 16384;
-//    std::size_t len = 32768; // search_key not found
-//    std::size_t len = 49125; // scan failed
+    std::size_t len = 35*1024 - 4; // 4 for nullity bits
     std::string strlen = std::to_string(len);
     std::string c0(len, '0');
     std::string c1(len, '1');
@@ -522,4 +517,22 @@ TEST_F(ddl_test, max_key_len) {
     }
 }
 
+TEST_F(ddl_test, query_exceeding_max_key_len) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has no limit";
+    }
+    std::size_t len = 35*1024 - 4; // 4 for nullity bits
+    std::string strlen = std::to_string(len);
+    std::string c0(len+1, '0');
+    std::string c1(len+1, '1');
+    std::string dt(len, '0');
+    execute_statement("CREATE TABLE T (C0 VARCHAR("+strlen+") NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T (C0) VALUES('"+dt+"')");
+    std::vector<mock::basic_record> result{};
+    execute_statement("SELECT * FROM T WHERE C0='"+c0+"'", status::err_invalid_argument);
+//    execute_statement("SELECT * FROM T WHERE C0>'"+c0+"' AND C0<'"+c1+"'", status::err_invalid_argument);  // TODO enable when shirakami is fixed
+    execute_statement("UPDATE T SET C0='"+c1+"' WHERE C0='"+c0+"'", status::err_invalid_argument);
+    execute_statement("DELETE FROM T WHERE C0='"+c1+"'", status::err_invalid_argument);
+
+}
 }

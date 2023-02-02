@@ -21,7 +21,8 @@
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
-#include "error.h"
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/logging.h>
 
 namespace jogasaki {
 
@@ -61,11 +62,19 @@ memory::lifo_paged_memory_resource* request_context::request_resource() const no
     return request_resource_.get();
 }
 
-bool request_context::status_code(status val) noexcept {
+bool request_context::status_code(status val, std::string_view msg) noexcept {
     status s;
     do {
         s = status_code_.load();
+        if (s != status::ok) {
+            VLOG_LP(log_error) << "Status code " << val << "(\"" << msg << "\")"
+                    " is reported subsequently following the original error " << s << ".";
+            return false;
+        }
     } while (!status_code_.compare_exchange_strong(s, val));
+    if(val != status::ok) {  // to ensure status::ok has no error msg
+        status_message_.assign(msg);
+    }
     return true;
 }
 
@@ -83,10 +92,6 @@ void request_context::job(maybe_shared_ptr<scheduler::job_context> arg) noexcept
 
 executor::sequence::manager* request_context::sequence_manager() const noexcept {
     return sequence_manager_;
-}
-
-void request_context::status_message(std::string_view val) noexcept {
-    status_message_.assign(val);
 }
 
 std::string_view request_context::status_message() const noexcept {

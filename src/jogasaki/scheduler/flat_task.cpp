@@ -244,8 +244,7 @@ void flat_task::load() {
     }
     if(res == executor::file::loader_result::error) {
         auto [st, msg] = loader_->error_info();
-        req_context_->status_code(st);
-        req_context_->status_message(std::move(msg));
+        req_context_->status_code(st, std::move(msg));
     }
     submit_teardown(*req_context_);
 }

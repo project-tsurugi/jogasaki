@@ -787,14 +787,14 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     auto t = scheduler::create_custom_task(rctx.get(),
         [this, rctx, option, handle, timer=std::move(timer)]() {
             auto res = create_transaction_internal(*handle, option);
-            rctx->status_code(res);
             if(res != status::ok) {
-                rctx->status_message(
+                rctx->status_code(res,
                     string_builder{} << "creating transaction failed with error:" << res << string_builder::to_string
                 );
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;
             }
+            rctx->status_code(res);
             if(! option.is_long() && ! option.readonly()) {
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;

@@ -76,7 +76,7 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator 
     }
 }
 
-void set_abort_message(request_context &rctx, transaction_context &tx,
+std::string create_abort_message(request_context &rctx, transaction_context &tx,
     const yugawara::storage::configurable_provider &tables) {
     auto result = tx.object()->recent_call_result();
     std::string_view desc{};
@@ -90,9 +90,7 @@ void set_abort_message(request_context &rctx, transaction_context &tx,
         idstr = "transaction:" + std::string{txid} + " ";
     }
 
-    rctx.status_message(
-        string_builder{} << "Transaction aborted. " << idstr << desc << " " << ss.str() << string_builder::to_string
-    );
+    return string_builder{} << "Transaction aborted. " << idstr << desc << " " << ss.str() << string_builder::to_string;
 }
 
 std::shared_ptr<yugawara::storage::index const>

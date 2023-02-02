@@ -109,21 +109,13 @@ public:
      * @return false if the error status is already set and nothing is changed
      * @note this function is thread-safe and multiple threads can call this function concurrently
      */
-    bool status_code(status val) noexcept;
+    bool status_code(status val, std::string_view msg = {}) noexcept;
 
     /**
      * @brief accessor for the result status
      * @note this function is not thread-safe and should not be called concurrently with status_code(status val) above.
      */
     [[nodiscard]] status status_code() const noexcept;
-
-    /**
-     * @brief setter for the result message
-     * @details this overwrites the existing status message. Use with setter status_code() and set the message only when
-     * it updated the status correctly.
-     * @note this function is thread-safe and multiple threads can call this function concurrently
-     */
-    void status_message(std::string_view val) noexcept;
 
     /**
      * @brief accessor for the result status message

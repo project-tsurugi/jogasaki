@@ -354,8 +354,9 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
                         return model::task_result::yield;
                     case ::sharksfin::TransactionState::StateKind::ABORTED: {
                         // get result and return error info
-                        rctx->status_code(status::err_aborted_retryable);
-                        utils::set_abort_message(*rctx, *tx_, *database_->tables());
+                        rctx->status_code(
+                            status::err_aborted_retryable,
+                            utils::create_abort_message(*rctx, *tx_, *database_->tables()));
                         break;
                     }
                     case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
@@ -373,10 +374,8 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
             return model::task_result::complete;
         }
 
-        rctx->status_code(res);
-        if(res != status::ok) {
-            utils::set_abort_message(*rctx, *tx_, *database_->tables());
-        }
+        auto msg = res != status::ok ? utils::create_abort_message(*rctx, *tx_, *database_->tables()) : "";
+        rctx->status_code(res, msg);
         scheduler::submit_teardown(*rctx);
         return model::task_result::complete;
     }, true);

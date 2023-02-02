@@ -30,14 +30,17 @@ using namespace takatori::util;
 class request_context_test : public ::testing::Test {};
 
 TEST_F(request_context_test, basic) {
+    // verify original error will not be overwritten
     request_context c{};
     ASSERT_EQ(status::ok, c.status_code());
-    c.status_code(status::not_found);
-    ASSERT_EQ(status::not_found, c.status_code());
-    c.status_code(status::err_not_found);
-    ASSERT_EQ(status::err_not_found, c.status_code());
-    c.status_code(status::err_aborted_retryable);
-    ASSERT_EQ(status::err_aborted_retryable, c.status_code());
+    EXPECT_TRUE(c.status_code(status::ok, "msg"));
+    EXPECT_TRUE(c.status_message().empty()); // status::ok cannot set msg
+    EXPECT_TRUE(c.status_code(status::not_found, "msg"));
+    EXPECT_EQ(status::not_found, c.status_code());
+    EXPECT_EQ("msg", c.status_message());
+    EXPECT_FALSE(c.status_code(status::err_not_found, "new msg"));
+    EXPECT_EQ(status::not_found, c.status_code());
+    EXPECT_EQ("msg", c.status_message());
 }
 
 }

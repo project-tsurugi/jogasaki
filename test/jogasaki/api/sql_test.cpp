@@ -640,4 +640,16 @@ TEST_F(sql_test, DISABLED_is_null) {
         ASSERT_EQ(1, result.size());
     }
 }
+
+// shakujo based compiler doesn't return parse error with invalid toke TODO
+TEST_F(sql_test, DISABLED_literal_with_invalid_char) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 int)");
+    execute_statement("INSERT INTO T (C0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C0=$1", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
 }

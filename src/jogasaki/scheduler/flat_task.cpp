@@ -18,6 +18,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/api/impl/database.h>
@@ -25,27 +26,30 @@
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/file/loader.h>
+#include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::scheduler {
 
 using takatori::util::fail;
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
-    DVLOG(log_trace) << *this << " bootstrap task executed.";
+    log_entry << *this;
     trace_scope_name("bootstrap");  //NOLINT
     job()->preferred_worker_index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_, *req_context_);
     dc.process_internal_events();
+    log_exit << *this;
 }
 
 void flat_task::dag_schedule() {
-    DVLOG(log_trace) << *this << " dag scheduling task executed.";
+    log_entry << *this;
     trace_scope_name("dag_schedule");  //NOLINT
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.process_internal_events();
+    log_exit << *this;
 }
 
 void submit_teardown(request_context& req_context, bool force) {
@@ -64,21 +68,24 @@ void flat_task::resubmit(request_context& req_context) {
 }
 
 bool flat_task::teardown() {
-    DVLOG(log_trace) << *this << " teardown task executed.";
+    log_entry << *this;
     trace_scope_name("teardown");  //NOLINT
+    bool ret = true;
     if (auto cnt = job()->task_count().load(); cnt > 1) {
-        DVLOG(log_debug) << *this << " other " << cnt << " tasks remain and teardown is rescheduled.";
+        DVLOG_LP(log_debug) << *this << " other " << cnt << " tasks remain and teardown is rescheduled.";
         submit_teardown(*req_context_, true);
-        return false;
+        ret = false;
     }
-    return true;
+    log_exit << *this << " ret:" << ret;
+    return ret;
 }
 
 void flat_task::write() {
-    DVLOG(log_trace) << *this << " write task executed.";
+    log_entry << *this;
     trace_scope_name("write");  //NOLINT
     (*write_)(*req_context_);
     submit_teardown(*req_context_);
+    log_exit << *this;
 }
 
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
@@ -177,20 +184,21 @@ job_context* flat_task::job() const {
 }
 
 void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
-    DVLOG(log_trace) << *this << " resolve task executed.";
+    log_entry << *this;
     (void)ctx;
     auto& e = sctx_->executable_statement_;
     if(auto res = sctx_->database_->resolve(sctx_->prepared_,
             maybe_shared_ptr{sctx_->parameters_}, e); res != status::ok) {
         req_context_->status_code(res);
-        return;
+    } else {
+        sctx_->tx_->execute_async_on_context(
+            req_context_.ownership(),
+            maybe_shared_ptr{e.get()},
+            [sctx=sctx_](status st, std::string_view msg){
+                sctx->callback_(st, msg);
+            }, false);
     }
-    sctx_->tx_->execute_async_on_context(
-        req_context_.ownership(),
-        maybe_shared_ptr{e.get()},
-        [sctx=sctx_](status st, std::string_view msg){
-            sctx->callback_(st, msg);
-        }, false);
+    log_exit << *this;
 }
 
 flat_task::flat_task(
@@ -231,7 +239,7 @@ flat_task::flat_task(
 {}
 
 void flat_task::load() {
-    DVLOG(log_trace) << *this << " load task executed.";
+    log_entry << *this;
     auto res = (*loader_)();
     if(res == executor::file::loader_result::running) {
         auto& ts = *req_context_->scheduler();
@@ -240,13 +248,14 @@ void flat_task::load() {
             req_context_.get(),
             loader_
         });
-        return;
+    } else {
+        if(res == executor::file::loader_result::error) {
+            auto [st, msg] = loader_->error_info();
+            req_context_->status_code(st, std::move(msg));
+        }
+        submit_teardown(*req_context_);
     }
-    if(res == executor::file::loader_result::error) {
-        auto [st, msg] = loader_->error_info();
-        req_context_->status_code(st, std::move(msg));
-    }
-    submit_teardown(*req_context_);
+    log_exit << *this;
 }
 
 flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rctx,

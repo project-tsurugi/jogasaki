@@ -52,7 +52,7 @@ public:
         auto nullity_bytes = utils::round_up_to_power_of_two(
             (nullability.count() + bits_per_byte - 1) / bits_per_byte
         );
-        std::size_t record_max_align = std::max(1UL, nullity_bytes);
+        std::size_t record_max_align = 1UL;
         std::size_t cur = nullity_bytes;
         for(std::size_t i = 0; i < field_count; ++i) {
             auto&& field = fields[i];

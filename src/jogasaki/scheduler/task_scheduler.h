@@ -95,6 +95,11 @@ public:
      * @brief declare the end of job and unregister it from the scheduler
      */
     virtual void unregister_job(std::size_t job_id) = 0;
+
+    /**
+     * @brief print diagnostics
+     */
+    virtual void print_diagnostic(std::ostream& os) = 0;
 };
 
 }

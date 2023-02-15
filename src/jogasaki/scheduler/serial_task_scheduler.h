@@ -71,6 +71,10 @@ public:
      */
     void unregister_job(std::size_t job_id) override;
 
+    /**
+     * @brief print diagnostics
+     */
+    void print_diagnostic(std::ostream& os) override;
 private:
     static thread_local entity_type tasks_;
     static thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> job_contexts_;

@@ -304,4 +304,6 @@ private:
 
 };
 
+void print_task_diagnostic(flat_task const& t, std::ostream& os);
+
 }

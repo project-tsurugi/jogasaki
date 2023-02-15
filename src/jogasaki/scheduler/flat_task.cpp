@@ -62,6 +62,14 @@ void submit_teardown(request_context& req_context, bool force) {
     }
 }
 
+void print_task_diagnostic(const flat_task &t, std::ostream &os) {
+    os << "        - id: " << t.id() << std::endl;
+    os << "          kind: " << t.kind() << std::endl;
+    if(t.req_context() && t.req_context()->job()) {
+        os << "          job_id: " << t.req_context()->job()->id() << std::endl;
+    }
+}
+
 void flat_task::resubmit(request_context& req_context) {
     auto& ts = *req_context.scheduler();
     ts.schedule_task(flat_task{*this});

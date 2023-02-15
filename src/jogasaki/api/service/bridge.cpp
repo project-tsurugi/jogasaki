@@ -25,9 +25,12 @@
 #include <tateyama/api/server/response.h>
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/component_ids.h>
+#include <tateyama/diagnostic/resource/diagnostic_resource.h>
 
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/api/resource/bridge.h>
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/logging.h>
 
 namespace jogasaki::api::service {
 
@@ -56,12 +59,19 @@ bool bridge::start(framework::environment& env) {
     if (env.mode() == tateyama::framework::boot_mode::quiescent_server) {
         quiescent_ = true;
     }
+    auto db = core_->database();
+    auto diagnostic_resource = env.resource_repository().find<tateyama::diagnostic::resource::diagnostic_resource>();
+    diagnostic_resource->add_print_callback("jogasaki", [db](std::ostream& os) {
+        db->print_diagnostic(os);
+    });
     return core_->start();
 }
 
-bool bridge::shutdown(framework::environment&) {
+bool bridge::shutdown(framework::environment& env) {
     auto ret = core_->shutdown();
     deactivated_ = ret;
+    auto diagnostic_resource = env.resource_repository().find<tateyama::diagnostic::resource::diagnostic_resource>();
+    diagnostic_resource->remove_print_callback("jogasaki");
     return ret;
 }
 

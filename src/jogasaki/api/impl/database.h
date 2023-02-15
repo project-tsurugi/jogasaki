@@ -154,6 +154,8 @@ public:
         bool primary_only,
         std::vector<std::string>& skipped
     );
+
+    void print_diagnostic(std::ostream& os) override;
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

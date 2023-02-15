@@ -60,6 +60,11 @@ void serial_task_scheduler::register_job(std::shared_ptr<job_context> ctx) {
 void serial_task_scheduler::unregister_job(std::size_t job_id) {
     job_contexts_.erase(job_id);
 }
+
+void serial_task_scheduler::print_diagnostic(std::ostream &os) {
+    (void) os;
+    // no-op
+}
 }
 
 

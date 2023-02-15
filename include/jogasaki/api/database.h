@@ -398,6 +398,12 @@ public:
      */
     virtual std::shared_ptr<diagnostics> fetch_diagnostics() noexcept = 0;
 
+    /**
+     * @brief print the diagnostics information on the current database state
+     * @attention This function is not thread-safe. This is for test/development purpose and should be called from single thread.
+     */
+    virtual void print_diagnostic(std::ostream& os) = 0;
+
 protected:
     virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;
 

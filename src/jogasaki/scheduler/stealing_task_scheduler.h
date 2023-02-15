@@ -94,6 +94,11 @@ public:
      */
     void unregister_job(std::size_t job_id) override;
 
+    /**
+     * @brief print diagnostics
+     */
+    void print_diagnostic(std::ostream& os) override;
+
 private:
     tateyama::api::task_scheduler::task_scheduler_cfg scheduler_cfg_{};
     tateyama::api::task_scheduler::scheduler<flat_task> scheduler_;

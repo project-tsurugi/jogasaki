@@ -819,6 +819,14 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     return jobid;
 }
 
+void database::print_diagnostic(std::ostream &os) {
+    os << "/:jogasaki print diagnostics start" << std::endl;
+    if(task_scheduler_) {
+        task_scheduler_->print_diagnostic(os);
+    }
+    os << "/:jogasaki print diagnostics end" << std::endl;
+}
+
 }
 
 namespace jogasaki::api {

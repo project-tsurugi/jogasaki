@@ -123,6 +123,10 @@ void stealing_task_scheduler::unregister_job(std::size_t job_id) {
         fail();
     }
 }
+
+void stealing_task_scheduler::print_diagnostic(std::ostream &os) {
+    scheduler_.print_diagnostic(os);
+}
 }
 
 

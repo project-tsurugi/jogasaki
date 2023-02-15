@@ -84,7 +84,7 @@ std::string_view read_decimal_coefficient(
 runtime_t<meta::field_type_kind::decimal>
 readable_stream::do_read(order odr, bool discard, std::size_t precision, std::size_t scale) {
     auto sz = utils::bytes_required_for_digits(precision);
-    if(!(pos_ + sz <= capacity_)) throw_exception(std::domain_error{
+    if(!(pos_ + sz <= capacity_)) throw_exception(std::domain_error{  //NOLINT
             string_builder{} << "condition pos_ + sz <= capacity_ failed with pos_:" << pos_ << " sz:" << sz << " capacity_:" << capacity_ << string_builder::to_string
         });
     std::array<std::uint8_t, max_decimal_coefficient_size> buf{0};

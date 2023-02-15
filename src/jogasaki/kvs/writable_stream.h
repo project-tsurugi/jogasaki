@@ -16,7 +16,7 @@
 #pragma once
 
 #include <cmath>
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 #include <boost/endian/conversion.hpp>
 
 #include <jogasaki/logging.h>
@@ -25,7 +25,7 @@
 
 namespace jogasaki::kvs {
 
-using takatori::util::fail;
+using takatori::util::throw_exception;
 
 static constexpr char padding_character = '\x20';
 
@@ -254,7 +254,7 @@ private:
         auto sz = N/bits_per_byte;
         if (pos_ + sz > capacity_) {
             if(! ignore_overflow_) {
-                fail();
+                throw_exception(std::logic_error{""});
             }
         } else {
             std::memcpy(base_+pos_, reinterpret_cast<char*>(&data), sz); //NOLINT

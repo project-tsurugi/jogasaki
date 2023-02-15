@@ -24,6 +24,16 @@
 
 namespace jogasaki::index {
 
+/**
+ * @brief decode fields
+ * @param fields fields to decode
+ * @param stream input stream to decode
+ * @param target target record
+ * @param resource memory resource for decoding
+ * @return status::ok when successful
+ * @return status::err_data_corruption if decoded data is not valid
+ * @return any error otherwise
+ */
 status decode_fields(
     std::vector<index::field_info> const& fields,
     kvs::readable_stream& stream,

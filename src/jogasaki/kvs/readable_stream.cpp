@@ -78,13 +78,15 @@ std::string_view read_decimal_coefficient(
     if(utils::validate_decimal_coefficient({buf.data(), sz})) {
         return buf;
     }
-    fail(); // TODO raise exception?
+    throw_exception(std::domain_error{"invalid decimal data"});
 }
 
 runtime_t<meta::field_type_kind::decimal>
 readable_stream::do_read(order odr, bool discard, std::size_t precision, std::size_t scale) {
     auto sz = utils::bytes_required_for_digits(precision);
-    BOOST_ASSERT(pos_ + sz <= capacity_);  // NOLINT
+    if(!(pos_ + sz <= capacity_)) throw_exception(std::domain_error{
+            string_builder{} << "condition pos_ + sz <= capacity_ failed with pos_:" << pos_ << " sz:" << sz << " capacity_:" << capacity_ << string_builder::to_string
+        });
     std::array<std::uint8_t, max_decimal_coefficient_size> buf{0};
     auto data = read_decimal_coefficient(odr, {base_+pos_, capacity_}, sz, buf); //NOLINT
     pos_ += sz;

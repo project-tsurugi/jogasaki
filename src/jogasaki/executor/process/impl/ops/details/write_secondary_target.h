@@ -21,7 +21,7 @@
 #include <yugawara/binding/factory.h>
 #include <takatori/relation/write.h>
 #include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/index/field_info.h>
@@ -31,7 +31,7 @@
 namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::fail;
+using takatori::util::throw_exception;
 
 /**
  * @brief field info of the update operation
@@ -163,7 +163,7 @@ private:
     ) {
         auto& table = idx.table();
         auto primary = table.owner()->find_primary_index(table);
-        BOOST_ASSERT(primary != nullptr); //NOLINT
+        if(!(primary != nullptr)) throw_exception(std::logic_error{""});
         std::vector<details::secondary_key_field> ret{};
         ret.reserve(table.columns().size());
         for(auto&& k : idx.keys()) {
@@ -198,7 +198,7 @@ private:
                 }
             }
             if(found) continue;
-            fail();
+            throw_exception(std::logic_error{""});
         }
         return ret;
     }

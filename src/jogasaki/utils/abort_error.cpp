@@ -41,6 +41,7 @@ read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, d
     buf.resize(sz);
     accessor::record_ref rec{buf.data(), sz};
     if(! mapper->read(true, stream, rec, resource)) {
+        // key is corrupted or not available
         return {};
     }
     return {std::move(meta), rec};

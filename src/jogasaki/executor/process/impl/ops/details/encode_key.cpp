@@ -46,13 +46,17 @@ status encode_key(
                 return status::err_expression_evaluation_failure;
             }
             if (k.nullable_) {
-                kvs::encode_nullable(a, k.type_, k.spec_, s);
+                if(auto res = kvs::encode_nullable(a, k.type_, k.spec_, s);res != status::ok) {
+                    return res;
+                }
             } else {
                 if(a.empty()) {
                     VLOG(log_error) << "Null assigned for non-nullable field.";
                     return status::err_integrity_constraint_violation;
                 }
-                kvs::encode(a, k.type_, k.spec_, s);
+                if(auto res = kvs::encode(a, k.type_, k.spec_, s);res != status::ok) {
+                    return res;
+                }
             }
             cph.reset();
         }

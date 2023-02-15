@@ -46,7 +46,7 @@ status writable_stream::write(char const* dt, std::size_t sz) {
     }
     if (pos_ + sz > capacity_) {
         if(! ignore_overflow_) {
-            fail();
+            throw_exception(std::logic_error{""});
         }
     } else {
         std::memcpy(base_ + pos_, dt, sz);  // NOLINT
@@ -81,7 +81,7 @@ void writable_stream::do_write(char const* dt, std::size_t sz, order odr) {
     }
     if (pos_ + sz > capacity_) {
         if(! ignore_overflow_) {
-            fail();
+            throw_exception(std::logic_error{""});
         }
     } else {
         if (odr == order::ascending) {
@@ -101,7 +101,7 @@ void writable_stream::do_write(char ch, std::size_t sz, order odr) {
     }
     if (pos_ + sz > capacity_) {
         if(! ignore_overflow_) {
-            fail();
+            throw_exception(std::logic_error{""});
         }
     } else {
         for (std::size_t i = 0; i < sz; ++i) {
@@ -117,7 +117,9 @@ void writable_stream::ignore_overflow(bool arg) noexcept {
 
 void writable_stream::write_decimal(std::int8_t sign, std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr) {
     if (capacity_ < pos_ + sz) {
-        if(! ignore_overflow_) fail();
+        if(! ignore_overflow_) {
+            throw_exception(std::logic_error{""});
+        }
         pos_ += sz;
         return;
     }

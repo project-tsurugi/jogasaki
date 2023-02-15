@@ -18,14 +18,14 @@
 #include <cmath>
 #include <map>
 #include <array>
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/data/any.h>
 
 namespace jogasaki::utils {
 
-using takatori::util::fail;
+using takatori::util::throw_exception;
 
 status encode_any(
     data::aligned_buffer& target,
@@ -41,7 +41,7 @@ status encode_any(
             if (f.empty()) {
                 // value not specified for the field
                 if (! nullable) {
-                    fail();
+                    throw_exception(std::logic_error{""});
                 }
                 if(auto res = kvs::encode_nullable(f, type, spec, s); res != status::ok) {
                     return res;

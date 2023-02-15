@@ -38,14 +38,22 @@ bool metadata_store::put(std::size_t def_id, std::size_t id) {
     kvs::writable_stream value{val_buf.data(), val_buf.capacity()};
     data::any k{std::in_place_type<std::int64_t>, def_id};
     data::any v{std::in_place_type<std::int64_t>, id};
-    kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
-    kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
+    if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
+        res != status::ok) {
+        VLOG(log_error) << "*** encode failed with error: " << res;
+        return false;
+    }
+    if(auto res = kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
+        res != status::ok) {
+        VLOG(log_error) << "*** encode_nullable failed with error: " << res;
+        return false;
+    }
     if (auto res = stg_->put(
             *tx_,
             {key.data(), key.size()},
             {value.data(), value.size()}
         ); res != status::ok) {
-        VLOG(log_error) << "put sequence def_id failed with error: " << res;
+        VLOG(log_error) << "*** put sequence def_id failed with error: " << res;
         return false;
     }
     return true;
@@ -124,9 +132,12 @@ bool metadata_store::remove(std::size_t def_id) {
     data::aligned_buffer key_buf{10};
     kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
     data::any k{std::in_place_type<std::int64_t>, def_id};
-    kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
+    if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key); res != status::ok) {
+        VLOG(log_error) << "*** encode failed with error: " << res;
+        return false;
+    }
     if (auto res = stg_->remove(*tx_, {key.data(), key.size()}); res != status::ok && res != status::not_found) {
-        VLOG(log_error) << "remove sequence def_id failed with error: " << res;
+        VLOG(log_error) << "*** remove sequence def_id failed with error: " << res;
         return false;
     }
     return true;

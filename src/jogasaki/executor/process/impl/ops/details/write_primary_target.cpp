@@ -18,7 +18,7 @@
 #include <vector>
 
 #include <takatori/relation/write.h>
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/logging.h>
@@ -35,7 +35,7 @@
 namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::fail;
+using takatori::util::throw_exception;
 
 status encode_fields(
     std::vector<index::field_info> const& fields,
@@ -326,7 +326,7 @@ std::vector<details::update_field> write_primary_target::create_update_fields(
             auto kc = bindings(k.column());
             auto t = utils::type_for(k.column().type());
             if (key_dest_to_src.count(kc) == 0) {
-                fail(); // TODO update by non-unique keys
+                throw_exception(std::logic_error{""}); // TODO update by non-unique keys
             }
             if (column_dest_to_src.count(kc) != 0) {
                 auto&& src = column_dest_to_src.at(kc);

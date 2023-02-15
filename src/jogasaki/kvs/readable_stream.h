@@ -15,14 +15,16 @@
  */
 #pragma once
 
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
 #include <boost/endian/conversion.hpp>
 
 #include "coder.h"
 
 namespace jogasaki::kvs {
 
-using takatori::util::fail;
+using takatori::util::throw_exception;
+using takatori::util::string_builder;
 
 namespace details {
 
@@ -82,7 +84,9 @@ public:
     template<std::size_t N>
     details::uint_t<N> do_read(bool discard) {
         auto sz = N/bits_per_byte;
-        BOOST_ASSERT(pos_ + sz <= capacity_);  // NOLINT
+        if(!(pos_ + sz <= capacity_)) throw_exception(std::domain_error{
+            string_builder{} << "condition pos_ + sz <= capacity_ failed with pos_:" << pos_ << " sz:" << sz << " capacity_:" << capacity_ << string_builder::to_string
+        });
         auto pos = pos_;
         pos_ += sz;
         details::uint_t<N> ret{};
@@ -129,7 +133,9 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
         auto len = read_text_length(odr);
-        BOOST_ASSERT(pos_ + len <= capacity_);  // NOLINT
+        if(!(pos_ + len <= capacity_)) throw_exception(std::domain_error{
+                string_builder{} << "condition pos_ + len <= capacity_ failed with pos_:" << pos_ << " len:" << len << " capacity_:" << capacity_ << string_builder::to_string
+            });
         auto pos = pos_;
         pos_ += len + details::text_terminator::byte_size;
         if (!discard && len > 0) {
@@ -155,9 +161,13 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::binary>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
         auto l = read<details::binary_encoding_prefix_type>(odr, false);
-        BOOST_ASSERT(l >= 0); //NOLINT
+        if(!(l >= 0)) throw_exception(std::domain_error{
+                string_builder{} << "condition l >= 0 failed with l:" << l << string_builder::to_string
+            });
         auto len = static_cast<std::size_t>(l);
-        BOOST_ASSERT(pos_ + len <= capacity_);  // NOLINT
+        if(!(pos_ + len <= capacity_)) throw_exception(std::domain_error{
+                string_builder{} << "condition pos_ + len <= capacity_ failed with pos_:" << pos_ << " len:" << len << " capacity_:" << capacity_ << string_builder::to_string
+            });
         auto pos = pos_;
         pos_ += len;
         if (!discard && len > 0) {

@@ -15,12 +15,15 @@
  */
 #pragma once
 
+#include <takatori/util/exception.h>
 #include <jogasaki/status.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/any.h>
 
 namespace jogasaki::kvs {
+
+using takatori::util::throw_exception;
 
 class writable_stream;
 class readable_stream;
@@ -147,8 +150,8 @@ public:
         return std::addressof(buf_[0]); //NOLINT
     }
 
-    bool equal(char const* s, std::size_t safe_len) const noexcept {
-        BOOST_ASSERT(byte_size <= safe_len); //NOLINT
+    bool equal(char const* s, std::size_t safe_len) const {
+        if(!(byte_size <= safe_len)) throw_exception(std::logic_error{""});
         (void)safe_len;
         for(std::size_t i=0; i < byte_size; ++i) {
             if(s[i] != buf_[i]) return false; //NOLINT
@@ -210,6 +213,7 @@ static constexpr uint_t<N> SIGN_BIT = static_cast<uint_t<N>>(1) << (N - 1); // N
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
+ * @return status::err_data_corruption if encoded data is not valid
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  *
@@ -229,6 +233,7 @@ status encode(accessor::record_ref src,
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
+ * @return status::err_data_corruption if encoded data is not valid
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */
@@ -248,6 +253,7 @@ status encode_nullable(
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
+ * @return status::err_data_corruption if encoded data is not valid
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */
@@ -263,6 +269,7 @@ status encode(data::any const& src,
  * @param spec the coding spec for the encoded field
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
+ * @return status::err_data_corruption if encoded data is not valid
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */
@@ -281,6 +288,7 @@ status encode_nullable(
  * @param dest the any container for the result value
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  * @return status::ok when successful
+ * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
  * so the read stream state and destination should be reset or discarded.
  */
@@ -302,6 +310,7 @@ status decode(
  * @param nullity_offset bit offset of the field nullity
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  * @return status::ok when successful
+ * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
  * so the read stream state and destination should be reset or discarded.
  */
@@ -324,6 +333,7 @@ status decode(
  * @param nullity_offset bit offset of the field nullity
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  * @return status::ok when successful
+ * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
  * so the read stream state and destination should be reset or discarded.
  */
@@ -345,6 +355,7 @@ status decode_nullable(
  * @param dest the any container for the result value
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  * @return status::ok when successful
+ * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
  * so the read stream state and destination should be reset or discarded.
  */
@@ -362,6 +373,7 @@ status decode_nullable(
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
  * @return status::ok when successful
+ * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
  * so the read stream state should be reset or discarded.
  */
@@ -376,6 +388,7 @@ status consume_stream(
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
  * @return status::ok when successful
+ * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
  * so the read stream state should be reset or discarded.
  */

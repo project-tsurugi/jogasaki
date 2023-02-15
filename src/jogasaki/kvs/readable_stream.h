@@ -84,7 +84,7 @@ public:
     template<std::size_t N>
     details::uint_t<N> do_read(bool discard) {
         auto sz = N/bits_per_byte;
-        if(!(pos_ + sz <= capacity_)) throw_exception(std::domain_error{
+        if(!(pos_ + sz <= capacity_)) throw_exception(std::domain_error{ //NOLINT
             string_builder{} << "condition pos_ + sz <= capacity_ failed with pos_:" << pos_ << " sz:" << sz << " capacity_:" << capacity_ << string_builder::to_string
         });
         auto pos = pos_;
@@ -133,7 +133,7 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::text>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
         auto len = read_text_length(odr);
-        if(!(pos_ + len <= capacity_)) throw_exception(std::domain_error{
+        if(!(pos_ + len <= capacity_)) throw_exception(std::domain_error{ //NOLINT
                 string_builder{} << "condition pos_ + len <= capacity_ failed with pos_:" << pos_ << " len:" << len << " capacity_:" << capacity_ << string_builder::to_string
             });
         auto pos = pos_;
@@ -161,11 +161,11 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::binary>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
         auto l = read<details::binary_encoding_prefix_type>(odr, false);
-        if(!(l >= 0)) throw_exception(std::domain_error{
+        if(!(l >= 0)) throw_exception(std::domain_error{ //NOLINT
                 string_builder{} << "condition l >= 0 failed with l:" << l << string_builder::to_string
             });
         auto len = static_cast<std::size_t>(l);
-        if(!(pos_ + len <= capacity_)) throw_exception(std::domain_error{
+        if(!(pos_ + len <= capacity_)) throw_exception(std::domain_error{ //NOLINT
                 string_builder{} << "condition pos_ + len <= capacity_ failed with pos_:" << pos_ << " len:" << len << " capacity_:" << capacity_ << string_builder::to_string
             });
         auto pos = pos_;

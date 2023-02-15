@@ -77,7 +77,7 @@ public:
 private:
     std::size_t initial_wait_ns_{};
     std::size_t max_wait_ns_{};
-    std::size_t current_wait_ns_{};
+    std::atomic_size_t current_wait_ns_{};
     std::chrono::time_point<Clock> begin_{};
 
 };

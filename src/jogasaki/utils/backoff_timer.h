@@ -30,10 +30,10 @@ public:
     using Clock = std::chrono::high_resolution_clock;
 
     ~backoff_timer() = default;
-    backoff_timer(backoff_timer const& other) = default;
-    backoff_timer& operator=(backoff_timer const& other) = default;
-    backoff_timer(backoff_timer&& other) noexcept = default;
-    backoff_timer& operator=(backoff_timer&& other) noexcept = default;
+    backoff_timer(backoff_timer const& other) = delete;
+    backoff_timer& operator=(backoff_timer const& other) = delete;
+    backoff_timer(backoff_timer&& other) noexcept = delete;
+    backoff_timer& operator=(backoff_timer&& other) noexcept = delete;
 
     /**
      * @brief construct new object

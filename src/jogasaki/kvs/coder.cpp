@@ -25,6 +25,22 @@ namespace jogasaki::kvs {
 
 using takatori::util::throw_exception;
 
+namespace details {
+
+status catch_domain_error(std::function<status(void)> fn) {
+    try {
+        return fn();
+    } catch (std::domain_error& e) {
+        LOG_LP(ERROR) << "Unexpected data error: " << e.what();
+        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
+            LOG_LP(ERROR) << *tr;
+        }
+        return status::err_data_corruption;
+    }
+}
+
+}  // namespace details
+
 status encode(
     accessor::record_ref src,
     std::size_t offset,
@@ -32,7 +48,7 @@ status encode(
     coding_spec spec,
     writable_stream& dest
 ) {
-    try {
+    return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
         auto vi = spec.storage();
@@ -53,13 +69,7 @@ status encode(
             default: break;
         }
         throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
-    } catch (std::domain_error& e) {
-        VLOG_LP(log_error) << "Encode error: " << e.what();
-        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
-            LOG(ERROR) << *tr;
-        }
-        return status::err_data_corruption;
-    }
+    });
 }
 
 status encode_nullable(
@@ -70,16 +80,18 @@ status encode_nullable(
     coding_spec spec,
     writable_stream& dest
 ) {
-    using kind = meta::field_type_kind;
-    auto odr = spec.ordering();
-    bool is_null = src.is_null(nullity_offset);
-    if(auto res = dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr); res != status::ok) {
-        return res;
-    }
-    if (! is_null) {
-        return encode(src, offset, type, spec, dest);
-    }
-    return status::ok;
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        auto odr = spec.ordering();
+        bool is_null = src.is_null(nullity_offset);
+        if(auto res = dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr); res != status::ok) {
+            return res;
+        }
+        if (! is_null) {
+            return encode(src, offset, type, spec, dest);
+        }
+        return status::ok;
+    });
 }
 
 status encode(
@@ -88,7 +100,7 @@ status encode(
     coding_spec spec,
     writable_stream& dest
 ) {
-    try {
+    return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         if(src.empty()) throw_exception(std::domain_error{"unexpected null value"});
         auto odr = spec.ordering();
@@ -110,13 +122,7 @@ status encode(
             default: break;
         }
         throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
-    } catch (std::domain_error& e) {
-        VLOG_LP(log_error) << "Encode error: " << e.what();
-        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
-            LOG(ERROR) << *tr;
-        }
-        return status::err_data_corruption;
-    }
+    });
 }
 
 status encode_nullable(
@@ -125,16 +131,18 @@ status encode_nullable(
     coding_spec spec,
     writable_stream& dest
 ) {
-    using kind = meta::field_type_kind;
-    auto odr = spec.ordering();
-    bool is_null = src.empty();
-    if(auto res = dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr); res != status::ok) {
-        return res;
-    }
-    if(! is_null) {
-        return encode(src, type, spec, dest);
-    }
-    return status::ok;
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        auto odr = spec.ordering();
+        bool is_null = src.empty();
+        if(auto res = dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr); res != status::ok) {
+            return res;
+        }
+        if(! is_null) {
+            return encode(src, type, spec, dest);
+        }
+        return status::ok;
+    });
 }
 
 status decode(
@@ -144,10 +152,10 @@ status decode(
     data::any& dest,
     memory::paged_memory_resource* resource
 ) {
-    using kind = meta::field_type_kind;
-    using any = data::any;
-    auto odr = spec.ordering();
-    try {
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        using any = data::any;
+        auto odr = spec.ordering();
         switch(type.kind()) {
             case kind::boolean: dest = any{std::in_place_type<runtime_t<kind::boolean>>, src.read<runtime_t<kind::boolean>>(odr, false)}; break;
             case kind::int1: dest = any{std::in_place_type<runtime_t<kind::int1>>, src.read<runtime_t<kind::int1>>(odr, false)}; break;
@@ -165,14 +173,8 @@ status decode(
             default:
                 throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
         }
-    } catch (std::domain_error& e) {
-        LOG_LP(ERROR) << "Unexpected data error: " << e.what();
-        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
-            LOG_LP(ERROR) << *tr;
-        }
-        return status::err_data_corruption;
-    }
-    return status::ok;
+        return status::ok;
+    });
 }
 
 status decode(
@@ -183,9 +185,9 @@ status decode(
     std::size_t offset,
     memory::paged_memory_resource* resource
 ) {
-    using kind = meta::field_type_kind;
-    auto odr = spec.ordering();
-    try {
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        auto odr = spec.ordering();
         switch(type.kind()) {
             case kind::boolean: dest.set_value<runtime_t<kind::boolean>>(offset, src.read<runtime_t<kind::boolean>>(odr, false)); break;
             case kind::int1: dest.set_value<runtime_t<kind::int1>>(offset, src.read<runtime_t<kind::int1>>(odr, false)); break;
@@ -203,14 +205,8 @@ status decode(
             default:
                 throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
         }
-    } catch (std::domain_error& e) {
-        LOG_LP(ERROR) << "Unexpected data error: " << e.what();
-        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
-            LOG_LP(ERROR) << *tr;
-        }
-        return status::err_data_corruption;
-    }
-    return status::ok;
+        return status::ok;
+    });
 }
 
 status decode_nullable(
@@ -222,19 +218,21 @@ status decode_nullable(
     std::size_t nullity_offset,
     memory::paged_memory_resource* resource
 ) {
-    using kind = meta::field_type_kind;
-    auto odr = spec.ordering();
-    auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
-    if(! (flag == 0 || flag == 1)) {
-        LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
-        return status::err_data_corruption;
-    }
-    bool is_null = flag == 0;
-    dest.set_null(nullity_offset, is_null);
-    if (! is_null) {
-        return decode(src, type, spec, dest, offset, resource);
-    }
-    return status::ok;
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        auto odr = spec.ordering();
+        auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
+        if(! (flag == 0 || flag == 1)) {
+            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
+            return status::err_data_corruption;
+        }
+        bool is_null = flag == 0;
+        dest.set_null(nullity_offset, is_null);
+        if (! is_null) {
+            return decode(src, type, spec, dest, offset, resource);
+        }
+        return status::ok;
+    });
 }
 
 status decode_nullable(
@@ -244,19 +242,21 @@ status decode_nullable(
     data::any& dest,
     memory::paged_memory_resource* resource
 ) {
-    using kind = meta::field_type_kind;
-    auto odr = spec.ordering();
-    auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
-    if(! (flag == 0 || flag == 1)) {
-        LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
-        return status::err_data_corruption;
-    }
-    bool is_null = flag == 0;
-    if (is_null) {
-        dest = {};
-        return status::ok;
-    }
-    return decode(src, type, spec, dest, resource);
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        auto odr = spec.ordering();
+        auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
+        if(! (flag == 0 || flag == 1)) {
+            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
+            return status::err_data_corruption;
+        }
+        bool is_null = flag == 0;
+        if (is_null) {
+            dest = {};
+            return status::ok;
+        }
+        return decode(src, type, spec, dest, resource);
+    });
 }
 
 status consume_stream(
@@ -264,9 +264,9 @@ status consume_stream(
     meta::field_type const& type,
     coding_spec spec
 ) {
-    using kind = meta::field_type_kind;
-    auto odr = spec.ordering();
-    try {
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        auto odr = spec.ordering();
         switch(type.kind()) {
             case kind::boolean: src.read<runtime_t<kind::boolean>>(odr, true); break;
             case kind::int1: src.read<runtime_t<kind::int1>>(odr, true); break;
@@ -284,14 +284,8 @@ status consume_stream(
             default:
                 throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
         }
-    } catch (std::domain_error& e) {
-        LOG_LP(ERROR) << "Unexpected data error: " << e.what();
-        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
-            LOG_LP(ERROR) << *tr;
-        }
-        return status::err_data_corruption;
-    }
-    return status::ok;
+        return status::ok;
+    });
 }
 
 status consume_stream_nullable(
@@ -299,18 +293,20 @@ status consume_stream_nullable(
     meta::field_type const& type,
     coding_spec spec
 ) {
-    using kind = meta::field_type_kind;
-    auto odr = spec.ordering();
-    auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
-    if(! (flag == 0 || flag == 1)) {
-        LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
-        return status::err_data_corruption;
-    }
-    bool is_null = flag == 0;
-    if (! is_null) {
-        return consume_stream(src, type, spec);
-    }
-    return status::ok;
+    return details::catch_domain_error([&]() {
+        using kind = meta::field_type_kind;
+        auto odr = spec.ordering();
+        auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
+        if(! (flag == 0 || flag == 1)) {
+            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
+            return status::err_data_corruption;
+        }
+        bool is_null = flag == 0;
+        if (! is_null) {
+            return consume_stream(src, type, spec);
+        }
+        return status::ok;
+    });
 }
 
 }

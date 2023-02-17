@@ -38,11 +38,11 @@ workers:
       sticky:
         task_count: 1
         tasks:
-        - id: 18446744073709551615
+        - id: 0000000103f54fb7
           kind: write
           sticky: true
           delayed: false
-          job_id: 67
+          job_id: 00000000000001ca
       delayed:
         task_count: 0
   - worker_index: 1
@@ -54,11 +54,11 @@ workers:
       delayed:
         task_count: 1
         tasks:
-        - id: 20038
+        - id: 0000000103f54ff2
           kind: wrapped
           sticky: true
           delayed: true
-          job_id: 54
+          job_id: 00000000000001cf
 /:jogasaki print diagnostics end
 ```
 

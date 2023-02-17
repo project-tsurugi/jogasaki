@@ -23,6 +23,7 @@
 #include <jogasaki/executor/common/write.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/hex.h>
 #include <jogasaki/common.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/file/loader.h>
@@ -300,7 +301,7 @@ private:
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;
-        return out << "task[id="sv << std::to_string(static_cast<identity_type>(id())) << "]"sv;
+        return out << "task[id="sv << utils::hex(id()) << "]"sv;
     }
 
 };

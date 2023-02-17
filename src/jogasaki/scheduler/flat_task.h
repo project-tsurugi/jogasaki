@@ -231,7 +231,7 @@ public:
     /**
      * @brief returns task id that uniquely identifies the task
      */
-    [[nodiscard]] identity_type id() const;
+    [[nodiscard]] identity_type id() const noexcept;
 
     /**
      * @brief accessor to the job context that the task belongs to.
@@ -255,9 +255,7 @@ public:
     /**
      * @brief returns whether the task is delayed
      */
-    [[nodiscard]] bool delayed() const noexcept {
-        return delayed_;
-    }
+    [[nodiscard]] bool delayed() const noexcept;
 
     /**
      * @brief accessor to the job context that the task belongs to.
@@ -265,6 +263,7 @@ public:
     [[nodiscard]] request_context* req_context() const noexcept;
 
 private:
+    std::size_t id_{id_src_++};
     flat_task_kind kind_{};
     maybe_shared_ptr<request_context> req_context_{};
     std::shared_ptr<model::task> origin_{};
@@ -274,6 +273,8 @@ private:
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
     bool delayed_{false};
+
+    static inline std::atomic_size_t id_src_{1UL << 32U};
 
     /**
      * @return true if job completes together with the task

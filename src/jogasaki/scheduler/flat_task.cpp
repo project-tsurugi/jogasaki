@@ -148,11 +148,8 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
     finish_job();
 }
 
-flat_task::identity_type flat_task::id() const {
-    if (origin_) {
-        return origin_->id();
-    }
-    return undefined_id;
+flat_task::identity_type flat_task::id() const noexcept {
+    return id_;
 }
 
 flat_task::flat_task(
@@ -161,6 +158,7 @@ flat_task::flat_task(
     std::shared_ptr<model::task> origin,
     bool delayed
 ) noexcept:
+    id_(origin->id()),
     kind_(flat_task_kind::wrapped),
     req_context_(rctx),
     origin_(std::move(origin)),
@@ -285,6 +283,10 @@ void flat_task::execute_wrapped() {
         resubmit(*req_context_);
         return;
     }
+}
+
+bool flat_task::delayed() const noexcept {
+    return delayed_;
 }
 
 }

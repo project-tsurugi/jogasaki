@@ -23,7 +23,7 @@ class base_filename_test : public ::testing::Test {};
 
 TEST_F(base_filename_test, simple) {
     std::stringstream ss{};
-    ss << basename("/test1/test2/test3.cpp");
+    ss << basename_("/test1/test2/test3.cpp");
     EXPECT_EQ("test3.cpp:26", ss.str());
 }
 
@@ -35,7 +35,7 @@ TEST_F(base_filename_test, test_file_name) {
 
 TEST_F(base_filename_test, only_file_name) {
     std::stringstream ss{};
-    ss << basename("test3.cpp");
+    ss << basename_("test3.cpp");
     EXPECT_EQ("test3.cpp:38", ss.str());
 }
 }

@@ -32,6 +32,6 @@ static std::size_t basename_start(char const* path) {
 /**
  * @brief base file name string with line number (e.g. `file.cpp:10`)
  */
-#define basename(name)  ((name ":" stringify__(__LINE__)) + jogasaki::utils::basename_start(name))
-#define base_filename()  (basename(__FILE__))
+#define basename_(name)  ((name ":" stringify__(__LINE__)) + jogasaki::utils::basename_start(name))
+#define base_filename()  (basename_(__FILE__))
 

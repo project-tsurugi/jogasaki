@@ -27,10 +27,10 @@ using takatori::util::throw_exception;
 
 namespace details {
 
-status catch_domain_error(std::function<status(void)> fn) {
+status catch_domain_error(std::function<status(void)> const& fn) {
     try {
         return fn();
-    } catch (std::domain_error& e) {
+    } catch (std::domain_error const& e) {
         LOG_LP(ERROR) << "Unexpected data error: " << e.what();
         if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
             LOG_LP(ERROR) << *tr;
@@ -223,7 +223,7 @@ status decode_nullable(
         auto odr = spec.ordering();
         auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
         if(! (flag == 0 || flag == 1)) {
-            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
+            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag; //NOLINT
             return status::err_data_corruption;
         }
         bool is_null = flag == 0;
@@ -247,7 +247,7 @@ status decode_nullable(
         auto odr = spec.ordering();
         auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
         if(! (flag == 0 || flag == 1)) {
-            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
+            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag; //NOLINT
             return status::err_data_corruption;
         }
         bool is_null = flag == 0;
@@ -298,7 +298,7 @@ status consume_stream_nullable(
         auto odr = spec.ordering();
         auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
         if(! (flag == 0 || flag == 1)) {
-            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag;
+            LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag; //NOLINT
             return status::err_data_corruption;
         }
         bool is_null = flag == 0;

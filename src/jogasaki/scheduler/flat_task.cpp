@@ -63,8 +63,11 @@ void submit_teardown(request_context& req_context, bool force) {
 }
 
 void print_task_diagnostic(const flat_task &t, std::ostream &os) {
+    os << std::boolalpha;
     os << "        - id: " << t.id() << std::endl;
     os << "          kind: " << t.kind() << std::endl;
+    os << "          sticky: " << t.sticky() << std::endl;
+    os << "          delayed: " << t.delayed() << std::endl;
     if(t.req_context() && t.req_context()->job()) {
         os << "          job_id: " << t.req_context()->job()->id() << std::endl;
     }

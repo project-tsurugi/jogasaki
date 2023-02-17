@@ -21,7 +21,9 @@ jogasakiタスクスケジューラが各種キューに保持しているタス
   - task_count: キューに存在するタスクの個数
   - tasks: キューに存在するタスクのリスト
     - id: タスクの識別子(TBD)
-    - kind: タスクの種別(TBD)
+    - kind: タスクの種別(開発者向けデバッグ用)
+    - sticky: タスクがスティッキー(transaction操作を伴い、特定のワーカーのみから実行される必要がある)か
+    - delayed: 遅延タスク(頻繁な起動が必要でないタスク)か
     - job_id: タスクが所属するジョブの識別子(TBD)
 
 出力例
@@ -38,6 +40,8 @@ workers:
         tasks:
         - id: 18446744073709551615
           kind: write
+          sticky: true
+          delayed: false
           job_id: 67
       delayed:
         task_count: 0
@@ -52,6 +56,8 @@ workers:
         tasks:
         - id: 20038
           kind: wrapped
+          sticky: true
+          delayed: true
           job_id: 54
 /:jogasaki print diagnostics end
 ```

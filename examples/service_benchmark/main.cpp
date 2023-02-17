@@ -505,6 +505,7 @@ public:
                         auto b = clock ::now();
                         if (auto res = commit_tx(handle); !res) {
                             LOG(ERROR) << "commit_tx failed";
+                            std::abort();
                         }
                         ret.commit_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                     }

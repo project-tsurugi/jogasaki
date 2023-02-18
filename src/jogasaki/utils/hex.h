@@ -26,9 +26,9 @@ namespace details {
 template<class T>
 class hex {
 public:
-    static constexpr std::size_t width = (std::numeric_limits<T>::digits + 1) / 4;
+    static constexpr std::size_t default_width = (std::numeric_limits<T>::digits + 1) / 4;
 
-    explicit hex(T const& value, int width = width) :
+    explicit hex(T const& value, int width = default_width) :
         value_(value), width_(width)
     {}
 
@@ -42,7 +42,7 @@ public:
 
 private:
     T const& value_;
-    std::size_t width_;
+    std::size_t width_{};
 };
 
 template <typename T>

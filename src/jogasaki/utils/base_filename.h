@@ -19,19 +19,19 @@
 
 namespace jogasaki::utils {
 
-static std::size_t basename_start(char const* path) {
+static inline std::size_t basename_start(char const* path) {
     auto* base = std::strrchr(path, '/');
     return base ? (base - path + 1) : 0;
 }
 
 }
 
-#define stringify_(t) #t
-#define stringify__(t) stringify_(t)
+#define stringify_(t) #t //NOLINT
+#define stringify__(t) stringify_(t) //NOLINT
 
 /**
  * @brief base file name string with line number (e.g. `file.cpp:10`)
  */
-#define basename_(name)  ((name ":" stringify__(__LINE__)) + jogasaki::utils::basename_start(name))
-#define base_filename()  (basename_(__FILE__))
+#define basename_(name)  ((name ":" stringify__(__LINE__)) + jogasaki::utils::basename_start(name)) //NOLINT
+#define base_filename()  (basename_(__FILE__)) //NOLINT
 

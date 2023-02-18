@@ -491,6 +491,7 @@ public:
                                 auto b = clock::now();
                                 if(auto res = do_statement(handle, seed, i, ret.records_); !res) {
                                     LOG(ERROR) << "do_statement failed";
+                                    std::abort();
                                 }
                                 ret.statement_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                             }
@@ -607,12 +608,27 @@ private:
         on_going_statements_.clear();
     }
 
+    bool wait_response(tateyama::api::server::mock::test_response& res) {
+        std::size_t cnt = 0;
+        constexpr std::size_t max_wait = 100;
+        while(! res.completed() && cnt < max_wait) {
+            std::this_thread::sleep_for(1ms);
+            ++cnt;
+        }
+        return cnt < max_wait;
+    }
+
     bool commit_tx(std::uint64_t handle) {
+        wait_for_statements();
         auto s = jogasaki::utils::encode_commit(handle);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+        if(! wait_response(*res)) {
+            LOG(ERROR) << "response timed out";
+            return false;
+        }
+        if(! st || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
         }
         auto ret = handle_result_only(res->body_);

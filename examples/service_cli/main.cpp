@@ -412,7 +412,10 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        while(!res->completed()) { /* noop */ }
+        if(! wait_response(*res)) {
+            LOG(ERROR) << "response timed out";
+            return false;
+        }
         bool error{false};
         if(! st || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
@@ -459,7 +462,10 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        while(!res->completed()) { /* noop */ }
+        if(! wait_response(*res)) {
+            LOG(ERROR) << "response timed out";
+            return false;
+        }
         if(! st || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
         }
@@ -471,6 +477,15 @@ private:
         wait_for_statements(); // just for cleanup
         return ret;
     }
+    bool wait_response(tateyama::api::server::mock::test_response& res) {
+        std::size_t cnt = 0;
+        constexpr std::size_t max_wait = 100;
+        while(! res.completed() && cnt < max_wait) {
+            std::this_thread::sleep_for(1ms);
+            ++cnt;
+        }
+        return cnt < max_wait;
+    }
     bool abort_tx() {
         if (! tx_processing_) {
             std::cout << "command was ignored. no transaction started yet" << std::endl;
@@ -481,7 +496,11 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+        if(! wait_response(*res)) {
+            LOG(ERROR) << "response timed out";
+            return false;
+        }
+        if(! st || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_);
@@ -644,7 +663,11 @@ private:
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         bool error{false};
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+        if(! wait_response(*res)) {
+            LOG(ERROR) << "response timed out";
+            return false;
+        }
+        if(! st || res->code_ != response_code::success) {
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
@@ -807,9 +830,7 @@ private:
         }
         on_going_statements_.emplace_back(
             std::async(std::launch::async, [&, res]() {
-                while(! res->completed()) {
-                    std::this_thread::sleep_for(20ms);
-                }
+                wait_response(*res);
                 if(res->code_ != response_code::success) {
                     std::cerr << "error executing command" << std::endl;
                 }

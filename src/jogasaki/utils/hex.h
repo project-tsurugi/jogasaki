@@ -28,7 +28,7 @@ class hex {
 public:
     static constexpr std::size_t default_width = (std::numeric_limits<T>::digits + 1) / 4;
 
-    explicit hex(T const& value, int width = default_width) :
+    explicit hex(T const& value, std::size_t width = default_width) :
         value_(value), width_(width)
     {}
 
@@ -46,7 +46,7 @@ private:
 };
 
 template <typename T>
-inline std::ostream& operator << (std::ostream& stream, const details::hex<T>& value) {
+std::ostream& operator<<(std::ostream& stream, details::hex<T> const& value) {
     value.write(stream);
     return stream;
 }
@@ -54,7 +54,7 @@ inline std::ostream& operator << (std::ostream& stream, const details::hex<T>& v
 } // namespace details
 
 template <typename T>
-inline details::hex<T> hex(const T& value, int width = details::hex<T>::width) {
+details::hex<T> hex(T const& value, std::size_t width = details::hex<T>::default_width) {
     return details::hex<T>(value, width);
 }
 

@@ -31,6 +31,10 @@ std::pair <maybe_shared_ptr<meta::record_meta>, accessor::record_ref>
 read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, data::aligned_buffer &buf,
     std::string_view storage_name, std::string_view data, memory::lifo_paged_memory_resource *resource) {
     auto idx = find_storage(tables, storage_name);
+    if(! idx) {
+        // Storage name is not available somehow. Return empty metadata and let caller handle this case.
+        return {};
+    }
     auto meta = index::create_meta(*idx, true);
     auto mapper = std::make_shared<index::mapper>(
         index::index_fields(*idx, true),

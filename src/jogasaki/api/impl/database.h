@@ -156,6 +156,8 @@ public:
     );
 
     void print_diagnostic(std::ostream& os) override;
+
+    std::string diagnostic_string() override;
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

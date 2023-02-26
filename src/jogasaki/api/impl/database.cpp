@@ -827,6 +827,12 @@ void database::print_diagnostic(std::ostream &os) {
     os << "/:jogasaki print diagnostics end" << std::endl;
 }
 
+std::string database::diagnostic_string() {
+    std::stringstream ss{};
+    print_diagnostic(ss);
+    return ss.str();
+}
+
 }
 
 namespace jogasaki::api {

@@ -404,6 +404,12 @@ public:
      */
     virtual void print_diagnostic(std::ostream& os) = 0;
 
+    /**
+     * @brief retrieve the output of print_diagnostic as a single string
+     * @attention This function is not thread-safe. This is for test/development purpose and should be called from single thread.
+     */
+    virtual std::string diagnostic_string() = 0;
+
 protected:
     virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;
 

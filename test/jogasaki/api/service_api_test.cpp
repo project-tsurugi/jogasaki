@@ -95,7 +95,6 @@ public:
         auto cfg = std::make_shared<configuration>();
         cfg->single_thread(false);
         cfg->prepare_test_tables(true);
-        cfg->stealing_enabled(false);
         set_dbpath(*cfg);
 
         db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};

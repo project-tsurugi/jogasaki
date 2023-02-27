@@ -33,6 +33,7 @@
 #include <jogasaki/api/impl/data_writer.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/utils/sanitize_utf8.h>
 
 #include <tateyama/status.h>
 
@@ -183,7 +184,7 @@ void error(
     T p{};
     sql::response::Response r{};
     e.set_status(map_status(s));
-    std::string m{msg};
+    std::string m{utils::sanitize_utf8(msg)};
     e.set_detail(m);
     p.set_allocated_error(&e);
     set_allocated_object(r, p);

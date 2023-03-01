@@ -475,7 +475,8 @@ yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn
         column.name(),
         type(column),
         std::move(criteria),
-        default_value(column, provider)
+        default_value(column, provider),
+        yugawara::storage::column::feature_set_type{}
     };
 }
 

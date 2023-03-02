@@ -79,9 +79,7 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
 
 status database::start() {
     LOG(INFO) << "SQL engine configuration " << *cfg_;
-    if (cfg_->quiescent()) {
-        return status::ok;
-    }
+    // this function is not called on maintenance/quiescent mode
     init();
     if (! kvs_db_) {
         std::map<std::string, std::string> opts{};
@@ -140,9 +138,7 @@ status database::start() {
 }
 
 status database::stop() {
-    if (cfg_->quiescent()) {
-        return status::ok;
-    }
+    // this function is not called on maintenance/quiescent mode
     if (cfg_->activate_scheduler()) {
         task_scheduler_->stop();
         task_scheduler_.reset();

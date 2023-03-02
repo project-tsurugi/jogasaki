@@ -41,6 +41,12 @@ framework::component::id_type bridge::id() const noexcept {
 }
 
 bool bridge::setup(framework::environment& env) {
+    // on maintenance/quiescent mode, sql resource exists, but does nothing.
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+        env.mode() == framework::boot_mode::maintenance_server ||
+        env.mode() == framework::boot_mode::quiescent_server) {
+        return true;
+    }
     if (db_) return true;
     auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();
     if(! kvs) {
@@ -48,19 +54,17 @@ bool bridge::setup(framework::environment& env) {
         return false;
     }
     auto cfg = convert_config(*env.configuration());
-    if(env.mode() == framework::boot_mode::maintenance_standalone ||
-        env.mode() == framework::boot_mode::maintenance_server ||
-        env.mode() == framework::boot_mode::quiescent_server) {
-        cfg->activate_scheduler(false);
-    }
-    if(env.mode() == framework::boot_mode::quiescent_server) {
-        cfg->quiescent(true);
-    }
     db_ = jogasaki::api::create_database(cfg, kvs->core_object());
     return true;
 }
 
-bool bridge::start(framework::environment&) {
+bool bridge::start(framework::environment& env) {
+    // on maintenance/quiescent mode, sql resource exists, but does nothing.
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+        env.mode() == framework::boot_mode::maintenance_server ||
+        env.mode() == framework::boot_mode::quiescent_server) {
+        return true;
+    }
     auto ret = db_->start() == status::ok;
     started_ = ret;
     return ret;

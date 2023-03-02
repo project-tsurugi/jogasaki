@@ -204,21 +204,6 @@ public:
     }
 
     /**
-     * @brief setter for quiescent flag
-     */
-    void quiescent(bool arg) noexcept {
-        quiescent_ = arg;
-    }
-
-    /**
-     * @brief accessor for quiescent flag
-     * @return whether the engine should be on quiescent mode, where no request is allowed
-     */
-    [[nodiscard]] bool quiescent() const noexcept {
-        return quiescent_;
-    }
-
-    /**
      * @brief accessor for max logging parallelism
      * @return the number of parallel workers for logging
      */
@@ -297,7 +282,6 @@ public:
             "tasked_write:" << cfg.tasked_write() << " " <<
             "lazy_worker:" << cfg.lazy_worker() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
-            "quiescent:" << cfg.quiescent() << " " <<
             "max_logging_parallelism:" << cfg.max_logging_parallelism() << " " <<
             "enable_logship:" << cfg.enable_logship() << " " <<
             "enable_index_join:" << cfg.enable_index_join() << " " <<
@@ -326,7 +310,6 @@ private:
     bool scheduler_rr_workers_ = false;
     bool lazy_worker_ = false;
     bool activate_scheduler_ = true;
-    bool quiescent_ = false;
     std::size_t max_logging_parallelism_ = 1;
     bool enable_logship_ = false;
     bool enable_index_join_ = false;

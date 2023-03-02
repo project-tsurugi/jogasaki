@@ -162,8 +162,6 @@ TEST_F(framework_test, quiescent_mode) {
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
     sv.add_service(sqlsvc);
     sv.setup();
-    auto* db = sqlsvc->database();
-    db->config()->prepare_benchmark_tables(true);
     sv.start();
     ASSERT_FALSE(sqlsvc->operator()(nullptr, nullptr));
     sv.shutdown();

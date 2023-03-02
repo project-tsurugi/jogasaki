@@ -45,6 +45,12 @@ framework::component::id_type bridge::id() const noexcept {
 }
 
 bool bridge::setup(framework::environment& env) {
+    // on maintenance/quiescent mode, sql service exists, but does nothing and returns error on sql request.
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+        env.mode() == framework::boot_mode::maintenance_server ||
+        env.mode() == framework::boot_mode::quiescent_server) {
+        return true;
+    }
     if (core_) return true;
     auto br = env.resource_repository().find<resource::bridge>();
     if(! br) {
@@ -56,8 +62,12 @@ bool bridge::setup(framework::environment& env) {
 }
 
 bool bridge::start(framework::environment& env) {
-    if (env.mode() == tateyama::framework::boot_mode::quiescent_server) {
-        quiescent_ = true;
+    // on maintenance/quiescent mode, sql service exists, but does nothing and returns error on sql request.
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+        env.mode() == framework::boot_mode::maintenance_server ||
+        env.mode() == framework::boot_mode::quiescent_server) {
+        quiescent_or_maintenance_ = true;
+        return true;
     }
     auto db = core_->database();
     auto diagnostic_resource = env.resource_repository().find<tateyama::diagnostic::resource::diagnostic_resource>();
@@ -68,16 +78,19 @@ bool bridge::start(framework::environment& env) {
 }
 
 bool bridge::shutdown(framework::environment& env) {
-    auto ret = core_->shutdown();
-    deactivated_ = ret;
-    auto diagnostic_resource = env.resource_repository().find<tateyama::diagnostic::resource::diagnostic_resource>();
-    diagnostic_resource->remove_print_callback("jogasaki");
-    return ret;
+    if(core_) {
+        auto ret = core_->shutdown();
+        deactivated_ = ret;
+        auto diagnostic_resource = env.resource_repository().find<tateyama::diagnostic::resource::diagnostic_resource>();
+        diagnostic_resource->remove_print_callback("jogasaki");
+        return ret;
+    }
+    return true;
 }
 
 bool bridge::operator()(std::shared_ptr<request> req, std::shared_ptr<response> res) {
-    if(quiescent_) {
-        LOG(ERROR) << "service is running on quiescent mode - no request is allowed";
+    if(quiescent_or_maintenance_) {
+        LOG(ERROR) << "service is running on quiescent or maintenance mode - no request is allowed";
         return false;
     }
     return (*core_)(std::move(req), std::move(res));
@@ -90,7 +103,10 @@ bridge::~bridge() {
 }
 
 jogasaki::api::database* bridge::database() const noexcept {
-    return core_->database();
+    if(core_) {
+        return core_->database();
+    }
+    return {};
 }
 
 }

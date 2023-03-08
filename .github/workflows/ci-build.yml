@@ -1,6 +1,6 @@
 name: Jogasaki-CI
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   Build:
@@ -231,12 +231,3 @@ jobs:
           status: ${{ job.status }}
           step_context: ${{ toJson(steps) }}
           username: ${{ github.workflow }}
-
-  Eisen:
-    uses: ./.github/workflows/eisen-integration-test.yml
-    if: (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
-    needs: Build
-    secrets:
-      GHA_PAT: ${{ secrets.GHA_PAT }}
-      GHCR_PAT: ${{ secrets.GHCR_PAT }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

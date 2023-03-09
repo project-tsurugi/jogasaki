@@ -26,3 +26,7 @@ GPATH
 GRTAGS
 GTAGS
 HTML/
+
+#gdb
+.gdb_history
+.gdb_init

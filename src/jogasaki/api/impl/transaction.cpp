@@ -37,6 +37,7 @@
 #include <jogasaki/executor/io/null_record_channel.h>
 #include <jogasaki/utils/backoff_timer.h>
 #include <jogasaki/utils/abort_error.h>
+#include <jogasaki/utils/hex.h>
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/index/index_accessor.h>
@@ -379,12 +380,15 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
         scheduler::submit_teardown(*rctx);
         return model::task_result::complete;
     }, true);
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx](){  // callback is copy-based
+    auto jobid = rctx->job()->id();
+    std::string txid{tx_->object()->transaction_id()};
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid](){  // callback is copy-based
+        VLOG(log_debug_timing_event) << "job(id=" << utils::hex(jobid) << ") to commit transaction(id=" << txid << ") completed";
         on_completion(rctx->status_code(), rctx->status_message());
     });
-    auto jobid = rctx->job()->id();
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
+    VLOG(log_debug_timing_event) << "job(id=" << utils::hex(jobid) << ") to commit transaction(id=" << txid << ") was just submitted";
     return jobid;
 }
 

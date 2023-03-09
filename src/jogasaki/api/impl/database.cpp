@@ -48,6 +48,7 @@
 #include <jogasaki/utils/backoff_timer.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/proto_debug_string.h>
+#include <jogasaki/utils/hex.h>
 #include <jogasaki/constants.h>
 
 #include <string_view>
@@ -810,12 +811,14 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             });
             return model::task_result::complete;
         }, false);  // create transaction is not sticky task while its waiting task is.
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle](){
+    auto jobid = rctx->job()->id();
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
+        VLOG(log_debug_timing_event) << "job(id=" << utils::hex(jobid) << ") to start transaction completed. Transaction id:" << handle->transaction_id();
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
-    auto jobid = rctx->job()->id();
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
+    VLOG(log_debug_timing_event) << "job(id=" << utils::hex(jobid) << ") to start transaction was just submitted";
     return jobid;
 }
 

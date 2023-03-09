@@ -772,6 +772,8 @@ void submit_task_begin_wait(request_context* rctx, scheduler::task_body_type&& b
     ts.schedule_task(std::move(t));
 }
 
+constexpr static std::string_view log_location_prefix_timing_start_tx = "/:jogasaki:timing:start_transaction";
+
 scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
@@ -813,12 +815,19 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         }, false);  // create transaction is not sticky task while its waiting task is.
     auto jobid = rctx->job()->id();
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
-        VLOG(log_debug_timing_event) << "job(id=" << utils::hex(jobid) << ") to start transaction completed. Transaction id:" << handle->transaction_id();
+        VLOG(log_debug_timing_event) << log_location_prefix_timing_start_tx
+            << " job("
+            << utils::hex(jobid)
+            << ") to start transaction completed. Transaction:"
+            << handle->transaction_id();
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
-    VLOG(log_debug_timing_event) << "job(id=" << utils::hex(jobid) << ") to start transaction was just submitted";
+    VLOG(log_debug_timing_event) << log_location_prefix_timing_start_tx
+        << " job("
+        << utils::hex(jobid)
+        << ") to start transaction was submitted";
     return jobid;
 }
 

@@ -51,6 +51,10 @@ class parameter_set;
  */
 class database {
 public:
+    /**
+     * @brief callback type for create transaction
+     * @note transaction_handle arg. may be valid only when transaction is created successfully
+     */
     using create_transaction_callback = std::function<void(transaction_handle, status, std::string_view)>;
 
     /**

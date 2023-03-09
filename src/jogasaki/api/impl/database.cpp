@@ -819,7 +819,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             << " job("
             << utils::hex(jobid)
             << ") to start transaction completed. Transaction:"
-            << handle->transaction_id();
+            << (*handle ? handle->transaction_id() : "<not available>");
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();

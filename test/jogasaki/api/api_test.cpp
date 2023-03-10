@@ -592,13 +592,15 @@ TEST_F(api_test, err_inactive_tx) {
     ASSERT_EQ(status::ok, tx->abort());
 }
 
-// currently INSERT requires columns list but unable to detect syntax error
-TEST_F(api_test, DISABLED_err_insert_stmt_with_no_columns) {
-    std::unique_ptr<api::executable_statement> stmt0{};
-    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 VALUES (1, 20.0)", stmt0));
-    auto tx = utils::create_transaction(*db_);
-    ASSERT_EQ(status::ok, tx->execute(*stmt0));
-    ASSERT_EQ(status::ok, tx->abort());
+
+
+TEST_F(api_test, err_querying_generated_rowid) {
+    // generated rowid is invisible even if it's renamed
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 int)");
+    execute_statement("INSERT INTO T (C0) VALUES (1)");
+    api::statement_handle handle{};
+    ASSERT_EQ(status::err_compiler_error, db_->prepare("SELECT __generated_rowid___T as rowid, C0 FROM T ORDER BY C0", handle));
 }
 
 TEST_F(api_test, err_insert_lack_of_values) {

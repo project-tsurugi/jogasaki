@@ -483,6 +483,32 @@ TEST_F(sql_test, pkless_insert) {
     }
 }
 
+TEST_F(sql_test, insert_without_explicit_column) {
+    std::unique_ptr<api::executable_statement> stmt0{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 VALUES (1, 20.0)", stmt0));
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->execute(*stmt0));
+    ASSERT_EQ(status::ok, tx->commit());
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(1,20.0)), result[0]);
+}
+
+TEST_F(sql_test, pkless_insert_without_explicit_column) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true});
+    execute_statement("create table TT (C0 int, C1 int)");
+    execute_statement("INSERT INTO TT VALUES (2,20)");
+    execute_statement("INSERT INTO TT VALUES (2,20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM TT", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,20)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,20)), result[1]);
+    }
+}
+
 // jogasaki should catch runtime exception from compiler
 TEST_F(sql_test, DISABLED_subquery) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
@@ -607,18 +633,6 @@ TEST_F(sql_test, DISABLED_long_sql) {
         std::string blanks(2*1024*1024*1024UL - 20UL, ' ');
         std::vector<mock::basic_record> result{};
         execute_query("select * " + blanks + "from TT", result);
-        ASSERT_EQ(1, result.size());
-    }
-}
-
-TEST_F(sql_test, generated_rowid) {
-    // generated rowid is invisible but renaming makes it visible
-    utils::set_global_tx_option(utils::create_tx_option{false, false});
-    execute_statement("create table T (C0 int)");
-    execute_statement("INSERT INTO T (C0) VALUES (1)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT __generated_rowid___T as rowid, C0 FROM T ORDER BY C0", result);
         ASSERT_EQ(1, result.size());
     }
 }

@@ -48,6 +48,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/utils/decimal.h>
+#include <jogasaki/utils/string_manipulation.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
@@ -469,6 +470,19 @@ yugawara::storage::column_value default_value(
     return {};
 }
 
+yugawara::storage::column::feature_set_type create_column_feature_set(
+    ::jogasaki::proto::metadata::storage::TableColumn const& column
+) {
+    if(utils::is_prefix(column.name(), generated_pkey_column_prefix)) {
+        // TODO add synthesized/hidden flags to TableColumn
+        return yugawara::storage::column::feature_set_type{
+            yugawara::storage::column_feature::synthesized,
+            yugawara::storage::column_feature::hidden
+        };
+    }
+    return yugawara::storage::column::feature_set_type{};
+}
+
 yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column, yugawara::storage::configurable_provider& provider) {
     yugawara::variable::criteria criteria{yugawara::variable::nullity{column.nullable()}};
     return yugawara::storage::column{
@@ -476,7 +490,7 @@ yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn
         type(column),
         std::move(criteria),
         default_value(column, provider),
-        yugawara::storage::column::feature_set_type{}
+        create_column_feature_set(column)
     };
 }
 

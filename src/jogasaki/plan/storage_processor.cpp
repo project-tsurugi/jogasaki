@@ -50,7 +50,6 @@ bool storage_processor::ensure(
     index& primary_index_prototype,
     yugawara::storage::prototype_processor::diagnostic_consumer_type const& diagnostic_consumer
 ) {
-    (void)location;
     (void)diagnostic_consumer;
 
     if(primary_index_prototype.keys().empty()) {
@@ -58,7 +57,16 @@ bool storage_processor::ensure(
         auto name = std::string(generated_pkey_column_prefix)+"_"+std::string{location.name()}+"_"+std::string{table_prototype.simple_name()};
         auto seq = std::make_shared<yugawara::storage::sequence>(name);
         auto& c = table_prototype.columns().emplace_back(
-            yugawara::storage::column{name, takatori::type::int8(), yugawara::variable::nullity{false}, {seq}}
+            yugawara::storage::column{
+                name,
+                takatori::type::int8(),
+                yugawara::variable::nullity{false},
+                {seq},
+                yugawara::storage::column::feature_set_type{
+                    yugawara::storage::column_feature::synthesized,
+                    yugawara::storage::column_feature::hidden
+                }
+            }
         );
         primary_index_prototype.keys().emplace_back(c);
         primary_key_sequence_ = seq;

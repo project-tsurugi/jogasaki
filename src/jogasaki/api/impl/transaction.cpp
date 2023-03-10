@@ -386,19 +386,21 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
     std::string txid{tx_->object()->transaction_id()};
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid](){  // callback is copy-based
         VLOG(log_debug_timing_event) << log_location_prefix_timing_commit
+            << " "
+            << txid
             << " job("
             << utils::hex(jobid)
-            << ") to commit transaction("
-            << txid << ") completed";
+            << ") to commit transaction completed";
         on_completion(rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
-    ts.schedule_task(std::move(t));
     VLOG(log_debug_timing_event) << log_location_prefix_timing_commit
+        << " "
+        << txid
         << " job("
         << utils::hex(jobid)
-        << ") to commit transaction("
-        << txid << ") was submitted";
+        << ") to commit transaction will be submitted";
+    ts.schedule_task(std::move(t));
     return jobid;
 }
 

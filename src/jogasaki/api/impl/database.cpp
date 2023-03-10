@@ -816,18 +816,19 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     auto jobid = rctx->job()->id();
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
         VLOG(log_debug_timing_event) << log_location_prefix_timing_start_tx
+            << " "
+            << (*handle ? handle->transaction_id() : "<tx id not available>")
             << " job("
             << utils::hex(jobid)
-            << ") to start transaction completed. Transaction:"
-            << (*handle ? handle->transaction_id() : "<not available>");
+            << ") to start transaction completed";
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
-    ts.schedule_task(std::move(t));
     VLOG(log_debug_timing_event) << log_location_prefix_timing_start_tx
         << " job("
         << utils::hex(jobid)
-        << ") to start transaction was submitted";
+        << ") to start transaction will be submitted";
+    ts.schedule_task(std::move(t));
     return jobid;
 }
 

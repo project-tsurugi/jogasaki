@@ -768,8 +768,6 @@ void submit_task_begin_wait(request_context* rctx, scheduler::task_body_type&& b
     ts.schedule_task(std::move(t));
 }
 
-constexpr static std::string_view log_location_prefix_timing_start_tx = "/:jogasaki:timing:start_transaction";
-
 scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
@@ -783,8 +781,9 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
 
     auto timer = std::make_shared<utils::backoff_timer>();
     auto handle = std::make_shared<transaction_handle>();
+    auto jobid = rctx->job()->id();
     auto t = scheduler::create_custom_task(rctx.get(),
-        [this, rctx, option, handle, timer=std::move(timer)]() {
+        [this, rctx, option, handle, timer=std::move(timer), jobid]() {
             auto res = create_transaction_internal(*handle, option);
             if(res != status::ok) {
                 rctx->status_code(res,
@@ -793,6 +792,9 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;
             }
+            VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting_end"
+                << " job_id:"
+                << utils::hex(jobid);
             rctx->status_code(res);
             if(! option.is_long() && ! option.readonly()) {
                 scheduler::submit_teardown(*rctx);
@@ -809,21 +811,17 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             });
             return model::task_result::complete;
         }, false);  // create transaction is not sticky task while its waiting task is.
-    auto jobid = rctx->job()->id();
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
-        VLOG(log_debug_timing_event) << log_location_prefix_timing_start_tx
-            << " "
+        VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:started "
             << (*handle ? handle->transaction_id() : "<tx id not available>")
-            << " job("
-            << utils::hex(jobid)
-            << ") to start transaction completed";
+            << " job_id:"
+            << utils::hex(jobid);
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
-    VLOG(log_debug_timing_event) << log_location_prefix_timing_start_tx
-        << " job("
-        << utils::hex(jobid)
-        << ") to start transaction will be submitted";
+    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting"
+        << " job_id:"
+        << utils::hex(jobid);
     ts.schedule_task(std::move(t));
     return jobid;
 }

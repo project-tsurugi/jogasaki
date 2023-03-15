@@ -337,16 +337,20 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
     ts.schedule_task(std::move(t));
 }
 
-constexpr static std::string_view log_location_prefix_timing_commit = "/:jogasaki:timing:commit";
-
 scheduler::job_context::job_id_type transaction::commit_async(transaction::callback on_completion) {
     auto rctx = create_request_context(
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
     );
     auto timer = std::make_shared<utils::backoff_timer>();
-    auto t = scheduler::create_custom_task(rctx.get(), [this, rctx, timer=std::move(timer)]() {
+    auto jobid = rctx->job()->id();
+    std::string txid{tx_->object()->transaction_id()};
+    auto t = scheduler::create_custom_task(rctx.get(), [this, rctx, timer=std::move(timer), jobid, txid]() {
         auto res = commit_internal();
+        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
+            << txid
+            << " job_id:"
+            << utils::hex(jobid);
         if(res == status::waiting_for_other_transaction) {
             timer->reset();
             submit_task_commit_wait(rctx.get(), [rctx, this, timer]() {
@@ -382,24 +386,18 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
         scheduler::submit_teardown(*rctx);
         return model::task_result::complete;
     }, true);
-    auto jobid = rctx->job()->id();
-    std::string txid{tx_->object()->transaction_id()};
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid](){  // callback is copy-based
-        VLOG(log_debug_timing_event) << log_location_prefix_timing_commit
-            << " "
+        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committed "
             << txid
-            << " job("
-            << utils::hex(jobid)
-            << ") to commit transaction completed";
+            << " job_id:"
+            << utils::hex(jobid);
         on_completion(rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
-    VLOG(log_debug_timing_event) << log_location_prefix_timing_commit
-        << " "
+    VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
         << txid
-        << " job("
-        << utils::hex(jobid)
-        << ") to commit transaction will be submitted";
+        << " job_id:"
+        << utils::hex(jobid);
     ts.schedule_task(std::move(t));
     return jobid;
 }

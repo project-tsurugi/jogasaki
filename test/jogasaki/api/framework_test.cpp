@@ -117,6 +117,10 @@ public:
         [&](){ ASSERT_TRUE(res->wait_completion()); }();
         return res->body_;
     }
+
+    [[nodiscard]] std::string_view label() const noexcept override {
+        return "test_endpoint";
+    }
     std::shared_ptr<framework::routing_service> router_{};
 };
 

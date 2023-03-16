@@ -90,6 +90,10 @@ jogasaki::api::database* bridge::database() const noexcept {
     return db_.get();
 }
 
+std::string_view bridge::label() const noexcept {
+    return "sql_resource";
+}
+
 std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg) {
     auto ret = std::make_shared<jogasaki::configuration>();
 

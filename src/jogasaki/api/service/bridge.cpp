@@ -109,5 +109,9 @@ jogasaki::api::database* bridge::database() const noexcept {
     return {};
 }
 
+std::string_view bridge::label() const noexcept {
+    return "sql_service";
+}
+
 }
 

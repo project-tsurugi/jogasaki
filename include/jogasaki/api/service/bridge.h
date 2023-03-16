@@ -47,6 +47,9 @@ class bridge : public framework::service {
 public:
     static constexpr id_type tag = framework::service_id_sql;
 
+    //@brief human readable label of this component
+    static constexpr std::string_view component_label = "sql_service";
+
     /**
      * @brief create new object
      */

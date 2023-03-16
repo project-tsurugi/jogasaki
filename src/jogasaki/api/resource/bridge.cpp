@@ -28,6 +28,7 @@
 #include <tateyama/framework/component_ids.h>
 #include <tateyama/framework/transactional_kvs_resource.h>
 
+#include <jogasaki/logging.h>
 #include <jogasaki/api/impl/service.h>
 
 namespace jogasaki::api::resource {
@@ -84,6 +85,7 @@ bridge::~bridge() {
     if(db_ && started_) {
         db_->stop();
     }
+    VLOG(log_info) << "/:tateyama:lifecycle:component:<dtor> " << component_label;
 }
 
 jogasaki::api::database* bridge::database() const noexcept {
@@ -91,7 +93,7 @@ jogasaki::api::database* bridge::database() const noexcept {
 }
 
 std::string_view bridge::label() const noexcept {
-    return "sql_resource";
+    return component_label;
 }
 
 std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg) {

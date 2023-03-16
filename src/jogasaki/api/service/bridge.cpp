@@ -100,6 +100,7 @@ bridge::~bridge() {
     if(core_ && ! deactivated_) {
         core_->shutdown(true);
     }
+    VLOG(log_info) << "/:tateyama:lifecycle:component:<dtor> " << component_label;
 }
 
 jogasaki::api::database* bridge::database() const noexcept {
@@ -110,7 +111,7 @@ jogasaki::api::database* bridge::database() const noexcept {
 }
 
 std::string_view bridge::label() const noexcept {
-    return "sql_service";
+    return component_label;
 }
 
 }

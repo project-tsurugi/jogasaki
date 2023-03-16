@@ -47,6 +47,9 @@ class bridge : public framework::resource {
 public:
     static constexpr id_type tag = framework::resource_id_sql;
 
+    //@brief human readable label of this component
+    static constexpr std::string_view component_label = "sql_resource";
+
     /**
      * @brief create new object
      */

@@ -42,6 +42,7 @@
 #include <jogasaki/index/utils.h>
 #include <jogasaki/index/index_accessor.h>
 #include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/request_logging.h>
 
 #include "request_context_factory.h"
 #include "jogasaki/index/field_factory.h"
@@ -126,12 +127,21 @@ bool transaction::execute_async(
     callback on_completion,
     bool sync
 ) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
+    req->status(scheduler::request_detail_status::accepted);
+    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());
+    log_request(*req);
+
     auto request_ctx = create_request_context(
         channel,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req
     );
     auto& ts = *database_->task_scheduler();
     auto jobid = request_ctx->job()->id();
+
+    req->status(scheduler::request_detail_status::submitted);
+    log_request(*req);
     ts.schedule_task(scheduler::flat_task{
         scheduler::task_enum_tag<scheduler::flat_task_kind::resolve>,
         request_ctx,
@@ -198,13 +208,15 @@ bool transaction::execute_dump(
 
 std::shared_ptr<request_context> transaction::create_request_context(
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    std::shared_ptr<memory::lifo_paged_memory_resource> resource
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource,
+    std::shared_ptr<scheduler::request_detail> request_detail
 ) {
     return impl::create_request_context(
         database_,
         tx_,
         channel,
-        std::move(resource)
+        std::move(resource),
+        std::move(request_detail)
     );
 }
 
@@ -215,9 +227,15 @@ bool transaction::execute_internal(
     bool sync
 ) {
     BOOST_ASSERT(channel);  //NOLINT
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
+    req->status(scheduler::request_detail_status::accepted);
+    req->transaction_id(transaction_id());
+    req->statement_text(static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text_shared());
+    log_request(*req);
+
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
     return execute_async_on_context(
-        create_request_context(channel, s.resource()),
+        create_request_context(channel, s.resource(), std::move(req)),
         statement,
         std::move(on_completion),
         sync
@@ -264,6 +282,10 @@ bool transaction::execute_async_on_context(
         });
 
         auto jobid = job->id();
+        if(auto req = job->request()) {
+            req->status(scheduler::request_detail_status::submitted);
+            log_request(*req);
+        }
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
             rctx.get(),
@@ -284,6 +306,10 @@ bool transaction::execute_async_on_context(
         });
 
         auto jobid = job->id();
+        if(auto req = job->request()) {
+            req->status(scheduler::request_detail_status::submitted);
+            log_request(*req);
+        }
         ts.schedule_task(scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::write>,
             rctx.get(),
@@ -296,6 +322,10 @@ bool transaction::execute_async_on_context(
     }
     // write on non-tasked mode or DDL
     scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
+    if(auto req = job->request()) {
+        req->status(scheduler::request_detail_status::submitted);
+        log_request(*req);
+    }
     sched.schedule(*e->operators(), *rctx);
     on_completion(rctx->status_code(), rctx->status_message());
     ts.unregister_job(job->id());
@@ -308,9 +338,15 @@ bool transaction::execute_load(
     std::vector<std::string> files,
     transaction::callback on_completion
 ) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
+    req->status(scheduler::request_detail_status::accepted);
+    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());
+    log_request(*req);
+
     auto rctx = create_request_context(
         nullptr,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req
     );
     auto ldr = std::make_shared<executor::file::loader>(
         std::move(files),
@@ -323,6 +359,9 @@ bool transaction::execute_load(
         on_completion(rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
+    req->status(scheduler::request_detail_status::submitted);
+    log_request(*req);
+
     ts.schedule_task(scheduler::flat_task{
         scheduler::task_enum_tag<scheduler::flat_task_kind::load>,
         rctx.get(),
@@ -338,9 +377,15 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
 }
 
 scheduler::job_context::job_id_type transaction::commit_async(transaction::callback on_completion) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);
+    req->status(scheduler::request_detail_status::accepted);
+    req->transaction_id(transaction_id());
+    log_request(*req);
+
     auto rctx = create_request_context(
         nullptr,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req
     );
     auto timer = std::make_shared<utils::backoff_timer>();
     auto jobid = rctx->job()->id();
@@ -398,6 +443,8 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
         << txid
         << " job_id:"
         << utils::hex(jobid);
+    req->status(scheduler::request_detail_status::submitted);
+    log_request(*req);
     ts.schedule_task(std::move(t));
     return jobid;
 }

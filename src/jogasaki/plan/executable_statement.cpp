@@ -32,14 +32,16 @@ executable_statement::executable_statement(
     maybe_shared_ptr<model::statement> operators,
     std::shared_ptr<variable_table_info> host_variable_info,
     std::shared_ptr<variable_table> host_variables,
-    std::shared_ptr<mirror_container> mirrors
+    std::shared_ptr<mirror_container> mirrors,
+    std::shared_ptr<std::string> sql_text
 ) noexcept:
     statement_(std::move(statement)),
     compiled_info_(std::move(compiled_info)),
     operators_(std::move(operators)),
     host_variable_info_(std::move(host_variable_info)),
     host_variables_(std::move(host_variables)),
-    mirrors_(std::move(mirrors))
+    mirrors_(std::move(mirrors)),
+    sql_text_(std::move(sql_text))
 {}
 
 maybe_shared_ptr<model::statement> const& executable_statement::operators() const noexcept {
@@ -75,6 +77,15 @@ bool executable_statement::is_ddl() const noexcept {
         k == statement_kind::drop_table ||
         k == statement_kind::create_index ||
         k == statement_kind::drop_index;
+}
+
+std::string_view executable_statement::sql_text() const noexcept {
+    if(! sql_text_) return {};
+    return *sql_text_;
+}
+
+std::shared_ptr<std::string> const &executable_statement::sql_text_shared() const noexcept {
+    return sql_text_;
 }
 
 }

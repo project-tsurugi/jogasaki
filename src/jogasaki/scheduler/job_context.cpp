@@ -53,5 +53,9 @@ job_context::job_completion_callback& job_context::callback() noexcept {
 std::size_t job_context::id() const noexcept {
     return id_;
 }
+
+std::atomic_bool &job_context::started() noexcept {
+    return started_;
+}
 }
 

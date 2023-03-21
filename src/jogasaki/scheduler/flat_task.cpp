@@ -28,6 +28,7 @@
 #include <jogasaki/executor/file/loader.h>
 #include <jogasaki/utils/trace_log.h>
 #include <jogasaki/utils/hex.h>
+#include <jogasaki/request_logging.h>
 
 namespace jogasaki::scheduler {
 
@@ -119,8 +120,13 @@ void flat_task::finish_job() {
     auto& ts = *req_context_->scheduler();
     auto& j = *job();
     auto& cb = j.callback();
+    auto req_detail = j.request();
     if(cb) {
         cb();
+    }
+    if(req_detail) {
+        req_detail->status(scheduler::request_detail_status::finishing);
+        log_request(*req_detail);
     }
     j.completion_latch().release();
 
@@ -130,6 +136,15 @@ void flat_task::finish_job() {
 }
 
 void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
+    auto started = job()->started().load();
+    if(! started) {
+        if(job()->started().compare_exchange_strong(started, true)) {
+            if(auto req = job()->request()) {
+                req->status(scheduler::request_detail_status::executing);
+                log_request(*req);
+            }
+        }
+    }
     auto job_completes = execute(ctx);
     auto idx = job()->preferred_worker_index().load();
     if (idx == job_context::undefined_index) {

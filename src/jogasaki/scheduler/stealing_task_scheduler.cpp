@@ -22,6 +22,7 @@
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/utils/hex.h>
 #include "task_scheduler.h"
 #include "thread_params.h"
 
@@ -125,6 +126,23 @@ void stealing_task_scheduler::unregister_job(std::size_t job_id) {
 }
 
 void stealing_task_scheduler::print_diagnostic(std::ostream &os) {
+    auto jobs = job_contexts_.size();
+    os << "job_count: " << jobs << std::endl;
+    if(jobs > 0) {
+        os << "jobs:" << std::endl;
+        for(auto&& [k, ctx] : job_contexts_) {
+            os << "  - job_id: " << utils::hex(ctx->id()) << std::endl;
+            if(auto diag = ctx->request()) {
+                os << "    job_kind: " << diag->kind() << std::endl;
+                os << "    job_status: " << diag->status() << std::endl;
+                os << "    sql_text: " << diag->statement_text() << std::endl;
+                os << "    transaction_id: " << diag->transaction_id() << std::endl;
+                os << "    channel_status: " << diag->channel_status() << std::endl;
+                os << "    channel_name: " << diag->channel_name() << std::endl;
+            }
+            os << "    task_count: " << ctx->task_count() << std::endl;
+        }
+    }
     scheduler_.print_diagnostic(os);
 }
 }

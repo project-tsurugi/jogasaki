@@ -70,4 +70,23 @@ private:
     std::vector<std::string> write_preserves_{};
 };
 
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, transaction_option value) {
+    out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ"));
+    if(value.write_preserves().empty()) {
+        return out;
+    }
+    out << " write_preserves:{";
+    for(auto&& s : value.write_preserves()) {
+        out << " ";
+        out << s;
+    }
+    out << " }";
+    return out;
+}
 }

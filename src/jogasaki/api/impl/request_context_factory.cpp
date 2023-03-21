@@ -24,7 +24,8 @@ std::shared_ptr<request_context> create_request_context(
     impl::database* db,
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    std::shared_ptr<memory::lifo_paged_memory_resource> resource
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource,
+    std::shared_ptr<scheduler::request_detail> request_detail
 ) {
     auto& c = db->configuration();
     auto rctx = std::make_shared<request_context>(
@@ -45,6 +46,7 @@ std::shared_ptr<request_context> create_request_context(
     rctx->storage_provider(db->tables());
 
     auto job = std::make_shared<scheduler::job_context>();
+    job->request(std::move(request_detail));
     rctx->job(maybe_shared_ptr{job.get()});
 
     auto& ts = *db->task_scheduler();

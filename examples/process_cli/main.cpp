@@ -260,7 +260,8 @@ private:
                 std::shared_ptr<model::statement>{},
                 std::shared_ptr<variable_table_info>{},
                 std::shared_ptr<variable_table>{},
-                std::move(mirrors)
+                std::move(mirrors),
+                std::make_shared<std::string>("<sql text>")
             )
         );
     }

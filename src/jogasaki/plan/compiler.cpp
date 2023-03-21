@@ -240,7 +240,7 @@ status prepare(
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
-    ctx.sql_text(sql);
+    ctx.sql_text(std::make_shared<std::string>(sql));
 
     std::unique_ptr<shakujo::model::program::Program> program{};
     if(auto res = parse_validate(sql, ctx, program); res != status::ok) {
@@ -570,7 +570,8 @@ void create_mirror_for_write(
             std::move(write),
             mirrors->host_variable_info(),
             std::move(vars),
-            mirrors
+            mirrors,
+            ctx.sql_text_shared()
         )
     );
 }
@@ -605,7 +606,8 @@ void create_mirror_for_ddl(
             std::move(ops),
             mirrors->host_variable_info(),
             std::move(vars),
-            mirrors
+            mirrors,
+            ctx.sql_text_shared()
         )
     );
 }
@@ -699,7 +701,8 @@ void create_mirror_for_execute(
         std::make_shared<executor::common::execute>(mirror),
         mirrors->host_variable_info(),
         std::move(vars),
-        mirrors
+        mirrors,
+        ctx.sql_text_shared()
     ));
 }
 
@@ -714,7 +717,7 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
     if(auto res = validate_host_variables(ctx, parameters, p->mirrors()->host_variable_info()); res != status::ok) {
         return res;
     }
-    ctx.sql_text(p->sql_text()); // compiler context doesn't always have sql text, so copy from prepared statement
+    ctx.sql_text(p->sql_text_shared()); // compiler context doesn't always have sql text, so copy from prepared statement
     switch(p->statement()->kind()) {
         case statement_kind::write:
             create_mirror_for_write(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);

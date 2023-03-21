@@ -28,6 +28,7 @@
 #include <takatori/type/decimal.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/request_logging.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/statement_handle.h>
@@ -44,6 +45,7 @@
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/backoff_timer.h>
 #include <jogasaki/utils/backoff_waiter.h>
@@ -247,6 +249,10 @@ status database::prepare_common(
     std::shared_ptr<yugawara::variable::configurable_provider> provider,
     std::unique_ptr<impl::prepared_statement>& statement
 ) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::prepare);
+    req->statement_text(std::make_shared<std::string>(sql)); //TODO want to use shared_ptr created in plan::prepare
+    req->status(scheduler::request_detail_status::accepted);
+    log_request(*req);
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
     ctx->resource(resource);
@@ -259,6 +265,8 @@ status database::prepare_common(
         return rc;
     }
     statement = std::make_unique<impl::prepared_statement>(ctx->prepared_statement());
+    req->status(scheduler::request_detail_status::finishing);
+    log_request(*req);
     return status::ok;
 }
 
@@ -449,6 +457,9 @@ status database::resolve_common(
 status database::destroy_statement(
     api::statement_handle prepared
 ) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::dispose_statement);
+    req->status(scheduler::request_detail_status::accepted);
+    log_request(*req);
     decltype(prepared_statements_)::accessor acc{};
     if (prepared_statements_.find(acc, prepared)) {
         prepared_statements_.erase(acc);
@@ -456,6 +467,8 @@ status database::destroy_statement(
         VLOG(log_warning) << "destroy_statement for invalid handle";
         return status::not_found;
     }
+    req->status(scheduler::request_detail_status::finishing);
+    log_request(*req);
     return status::ok;
 }
 
@@ -772,11 +785,19 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
 ) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::begin);
+    req->status(scheduler::request_detail_status::accepted);
+    std::stringstream ss{};
+    ss << option;
+    req->transaction_option_spec(ss.str());
+    log_request(*req);
+
     auto rctx = impl::create_request_context(
         this,
         nullptr,
         nullptr,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req
     );
 
     auto timer = std::make_shared<utils::backoff_timer>();
@@ -822,6 +843,8 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting"
         << " job_id:"
         << utils::hex(jobid);
+    req->status(scheduler::request_detail_status::submitted);
+    log_request(*req);
     ts.schedule_task(std::move(t));
     return jobid;
 }

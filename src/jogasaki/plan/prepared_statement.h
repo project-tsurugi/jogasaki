@@ -59,7 +59,7 @@ public:
         compiled_info_(std::move(compiled_info)),
         host_variables_(std::move(host_variables)),
         mirrors_(std::move(mirrors)),
-        sql_text_(sql_text)
+        sql_text_(std::make_shared<std::string>(sql_text))
     {}
 
     [[nodiscard]] maybe_shared_ptr<::takatori::statement::statement> const& statement() const noexcept {
@@ -83,15 +83,19 @@ public:
     }
 
     [[nodiscard]] std::string_view sql_text() const noexcept {
-        return sql_text_;
+        if(! sql_text_) return {};
+        return *sql_text_;
     }
 
+    [[nodiscard]] std::shared_ptr<std::string> const& sql_text_shared() const noexcept {
+        return sql_text_;
+    }
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
     std::shared_ptr<yugawara::variable::configurable_provider> host_variables_{};
     std::shared_ptr<mirror_container> mirrors_{};
-    std::string sql_text_{};
+    std::shared_ptr<std::string> sql_text_{};
 };
 
 }

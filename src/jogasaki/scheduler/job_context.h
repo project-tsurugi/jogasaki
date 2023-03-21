@@ -20,6 +20,7 @@
 
 #include <jogasaki/utils/latch.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/scheduler/request_detail.h>
 
 namespace jogasaki {
 class request_context;
@@ -89,6 +90,12 @@ public:
     [[nodiscard]] std::atomic_size_t& preferred_worker_index() noexcept;
 
     /**
+     * @brief accessor for the started flag used to mark whether any of the job tasks already ran
+     * @return started flag
+     */
+    [[nodiscard]] std::atomic_bool& started() noexcept;
+
+    /**
      * @brief reset the job context mutable variables to re-use
      */
     void reset() noexcept;
@@ -110,6 +117,23 @@ public:
      */
     [[nodiscard]] job_id_type id() const noexcept;
 
+    /**
+     * @brief setter for job info
+     */
+    void request(std::shared_ptr<request_detail> arg) noexcept {
+        if(arg) {
+            id_ = arg->id();
+        }
+        request_detail_ = std::move(arg);
+    }
+
+    /**
+     * @brief getter for job info
+     */
+    std::shared_ptr<request_detail> const& request() const noexcept {
+        return request_detail_;
+    }
+
 private:
 
     job_id_type id_{id_src_++};
@@ -117,9 +141,11 @@ private:
     cache_align std::atomic_bool completing_{false};
     cache_align std::atomic_size_t job_tasks_{};
     cache_align std::atomic_size_t preferred_worker_index_{undefined_index};
+    cache_align std::atomic_bool started_{false};
     job_completion_callback callback_{};
+    std::shared_ptr<request_detail> request_detail_{};
 
-    static inline std::atomic_size_t id_src_{0};
+    static inline std::atomic_size_t id_src_{1UL << 32UL};
 };
 
 }

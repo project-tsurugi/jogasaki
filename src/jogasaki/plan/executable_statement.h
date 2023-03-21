@@ -58,7 +58,8 @@ public:
         maybe_shared_ptr<model::statement> operators,
         std::shared_ptr<variable_table_info> host_variable_info,
         std::shared_ptr<variable_table> host_variables,
-        std::shared_ptr<mirror_container> mirrors
+        std::shared_ptr<mirror_container> mirrors,
+        std::shared_ptr<std::string> sql_text
     ) noexcept;
 
     [[nodiscard]] maybe_shared_ptr<model::statement> const& operators() const noexcept;
@@ -77,6 +78,10 @@ public:
 
     [[nodiscard]] std::shared_ptr<mirror_container> const& mirrors() const noexcept;
 
+    [[nodiscard]] std::string_view sql_text() const noexcept;
+
+    [[nodiscard]] std::shared_ptr<std::string> const& sql_text_shared() const noexcept;
+
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
@@ -84,6 +89,7 @@ private:
     std::shared_ptr<variable_table_info> host_variable_info_{};
     std::shared_ptr<variable_table> host_variables_{};
     std::shared_ptr<mirror_container> mirrors_{};
+    std::shared_ptr<std::string> sql_text_{};
 };
 
 }

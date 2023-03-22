@@ -322,12 +322,12 @@ bool transaction::execute_async_on_context(
     }
     // write on non-tasked mode or DDL
     scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
-    if(auto req = job->request()) {
-        req->status(scheduler::request_detail_status::submitted);
-        log_request(*req);
-    }
     sched.schedule(*e->operators(), *rctx);
     on_completion(rctx->status_code(), rctx->status_message());
+    if(auto req = job->request()) {
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req);
+    }
     ts.unregister_job(job->id());
     return true;
 }

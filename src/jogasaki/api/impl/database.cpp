@@ -842,7 +842,8 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     auto& ts = *rctx->scheduler();
     VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting"
         << " job_id:"
-        << utils::hex(jobid);
+        << utils::hex(jobid)
+        << " options:{" << req->transaction_option_spec() << "}";
     req->status(scheduler::request_detail_status::submitted);
     log_request(*req);
     ts.schedule_task(std::move(t));

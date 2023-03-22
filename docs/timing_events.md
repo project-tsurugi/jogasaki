@@ -23,7 +23,7 @@ jogasakiは下記のイベントをverbose log level 35 (jogasaki::log_debug_tim
 
 出力例
 ```
-I0316 07:46:02.838364 502928 database.cpp:822] /:jogasaki:timing:transaction:starting job_id:00000000000017f1
+I0316 07:46:02.838364 502928 database.cpp:822] /:jogasaki:timing:transaction:starting job_id:00000000000017f1 options:{type:ltx write_preserves:{ T0 T1 }}
 I0316 07:46:02.838768 501283 database.cpp:795] /:jogasaki:timing:transaction:starting_end job_id:00000000000017f1
 I0316 07:46:02.860045 501284 database.cpp:815] /:jogasaki:timing:transaction:started TID-0000000000000020 job_id:00000000000017f1
 

@@ -372,7 +372,7 @@ void service::command_explain(
 
     // log explain event here to include db_->resolve duration as well as db_->explain
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::explain);
-    req->statement_text(reinterpret_cast<api::impl::prepared_statement*>(handle.get())->body()->sql_text_shared());
+    req->statement_text(reinterpret_cast<api::impl::prepared_statement*>(handle.get())->body()->sql_text_shared());  //NOLINT
     req->status(scheduler::request_detail_status::accepted);
     log_request(*req);
 

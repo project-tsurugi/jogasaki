@@ -129,7 +129,7 @@ bool transaction::execute_async(
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
-    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());
+    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared()); //NOLINT
     log_request(*req);
 
     auto request_ctx = create_request_context(
@@ -230,7 +230,7 @@ bool transaction::execute_internal(
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
     req->transaction_id(transaction_id());
-    req->statement_text(static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text_shared());
+    req->statement_text(static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text_shared()); //NOLINT
     log_request(*req);
 
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
@@ -340,7 +340,7 @@ bool transaction::execute_load(
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
     req->status(scheduler::request_detail_status::accepted);
-    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());
+    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
     log_request(*req);
 
     auto rctx = create_request_context(

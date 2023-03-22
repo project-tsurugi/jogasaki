@@ -76,8 +76,8 @@ private:
  * @param value the target value
  * @return the output
  */
-inline std::ostream& operator<<(std::ostream& out, transaction_option value) {
-    out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ"));
+inline std::ostream& operator<<(std::ostream& out, transaction_option const& value) {
+    out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ")); //NOLINT
     if(value.write_preserves().empty()) {
         return out;
     }

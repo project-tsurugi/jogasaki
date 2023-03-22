@@ -57,5 +57,16 @@ std::size_t job_context::id() const noexcept {
 std::atomic_bool &job_context::started() noexcept {
     return started_;
 }
+
+void job_context::request(std::shared_ptr<request_detail> arg) noexcept {
+    if(arg) {
+        id_ = arg->id();
+    }
+    request_detail_ = std::move(arg);
+}
+
+std::shared_ptr<request_detail> const &job_context::request() const noexcept {
+    return request_detail_;
+}
 }
 

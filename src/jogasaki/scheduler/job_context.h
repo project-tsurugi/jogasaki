@@ -118,21 +118,14 @@ public:
     [[nodiscard]] job_id_type id() const noexcept;
 
     /**
-     * @brief setter for job info
+     * @brief setter for request detail
      */
-    void request(std::shared_ptr<request_detail> arg) noexcept {
-        if(arg) {
-            id_ = arg->id();
-        }
-        request_detail_ = std::move(arg);
-    }
+    void request(std::shared_ptr<request_detail> arg) noexcept;
 
     /**
-     * @brief getter for job info
+     * @brief getter for request detail
      */
-    std::shared_ptr<request_detail> const& request() const noexcept {
-        return request_detail_;
-    }
+    [[nodiscard]] std::shared_ptr<request_detail> const& request() const noexcept;
 
 private:
 

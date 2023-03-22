@@ -31,10 +31,12 @@
 #include <jogasaki/utils/proto_field_types.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/impl/transaction.h>
+#include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/proto_debug_string.h>
+#include <jogasaki/request_logging.h>
 
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
@@ -315,6 +317,12 @@ void service::command_rollback(
     if(! tx) {
         return;
     }
+    // log rollback event here to include db_->destroy_transaction duration as well as tx.abort
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::rollback);
+    req->transaction_id(tx.transaction_id());
+    req->status(scheduler::request_detail_status::accepted);
+    log_request(*req);
+
     if(auto rc = tx.abort(); rc == jogasaki::status::ok) {
         details::success<sql::response::ResultOnly>(*res, req_info);
     } else {
@@ -326,6 +334,8 @@ void service::command_rollback(
     if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
         throw_exception(std::logic_error{"destroy_transaction failed"});
     }
+    req->status(scheduler::request_detail_status::finishing);
+    log_request(*req);
 }
 
 void service::command_dispose_prepared_statement(
@@ -360,6 +370,12 @@ void service::command_explain(
     auto params = jogasaki::api::create_parameter_set();
     set_params(ex.parameters(), params);
 
+    // log explain event here to include db_->resolve duration as well as db_->explain
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::explain);
+    req->statement_text(reinterpret_cast<api::impl::prepared_statement*>(handle.get())->body()->sql_text_shared());
+    req->status(scheduler::request_detail_status::accepted);
+    log_request(*req);
+
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e);
         rc != jogasaki::status::ok) {
@@ -372,6 +388,9 @@ void service::command_explain(
     } else {
         throw_exception(std::logic_error{"explain failed"});
     }
+
+    req->status(scheduler::request_detail_status::finishing);
+    log_request(*req);
 }
 
 //TODO put global constant file
@@ -437,6 +456,10 @@ void service::command_describe_table(
 ) {
     auto& dt = proto_req.describe_table();
 
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::describe_table);
+    req->status(scheduler::request_detail_status::accepted);
+
+    log_request(*req);
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     auto table = db_->find_table(dt.name());
     if(! table) {
@@ -445,6 +468,9 @@ void service::command_describe_table(
         return;
     }
     details::success<sql::response::DescribeTable>(*res, table.get(), req_info);
+
+    req->status(scheduler::request_detail_status::finishing);
+    log_request(*req);
 }
 
 bool service::operator()(

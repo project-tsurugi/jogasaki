@@ -21,6 +21,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/utils/hex.h>
+#include <jogasaki/utils/convert_control_characters.h>
 
 namespace jogasaki {
 
@@ -34,13 +35,21 @@ std::string_view if_empty(std::string_view arg) {
     return arg;
 }
 
+std::string_view trim_string(std::string_view arg) {
+    constexpr static std::size_t str_len_request_log = 32;
+    if(arg.size() > str_len_request_log) {
+        return {arg.data(), str_len_request_log};
+    }
+    return arg;
+}
+
 void log_request(const scheduler::request_detail &req) {
     if(req.status() == scheduler::request_detail_status::accepted) {
         VLOG(log_debug_timing_event_fine) << timing_job_accepted
             << " job_id:" << utils::hex(req.id())
             << " kind:" << req.kind()
             << " tx:" << if_empty(req.transaction_id())
-            << " sql:{" << if_empty(req.statement_text()) << "}"
+            << " sql:{" << utils::convert_control_characters(if_empty(trim_string(req.statement_text()))) << "}"
             << " tx_options:{" << if_empty(req.transaction_option_spec()) << "}"
             ;
         return;

@@ -35,11 +35,13 @@ public:
     explicit transaction_option(
         bool readonly = false,
         bool is_long = false,
-        std::vector<std::string> write_preserves = {}
+        std::vector<std::string> write_preserves = {},
+        std::string_view label = {}
     ) :
         readonly_(readonly),
         is_long_(is_long),
-        write_preserves_(std::move(write_preserves))
+        write_preserves_(std::move(write_preserves)),
+        label_(label)
     {}
 
     transaction_option& readonly(bool arg) noexcept {
@@ -64,10 +66,14 @@ public:
         return write_preserves_;
     }
 
+    [[nodiscard]] std::string_view label() const noexcept {
+        return label_;
+    }
 private:
     bool readonly_ = false;
     bool is_long_ = false;
     std::vector<std::string> write_preserves_{};
+    std::string label_{};
 };
 
 /**
@@ -81,6 +87,7 @@ inline std::ostream& operator<<(std::ostream& out, transaction_option const& val
     if(value.write_preserves().empty()) {
         return out;
     }
+    out << " label:" << value.label();
     out << " write_preserves:{";
     for(auto&& s : value.write_preserves()) {
         out << " ";

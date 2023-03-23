@@ -114,12 +114,14 @@ public:
     void test_begin(std::uint64_t& handle,
         bool readonly = false,
         bool is_long = false,
-        std::vector<std::string> const& write_preserves = {}
+        std::vector<std::string> const& write_preserves = {},
+        std::string_view label = {}
     );
     void test_begin(begin_result& result,
-                    bool readonly = false,
-                    bool is_long = false,
-                    std::vector<std::string> const& write_preserves = {}
+        bool readonly = false,
+        bool is_long = false,
+        std::vector<std::string> const& write_preserves = {},
+        std::string_view label = {}
     );
     void test_commit(std::uint64_t& handle);
     void test_statement(std::string_view sql);
@@ -176,18 +178,20 @@ public:
 void service_api_test::test_begin(std::uint64_t& handle,
     bool readonly,
     bool is_long,
-    std::vector<std::string> const& write_preserves
+    std::vector<std::string> const& write_preserves,
+    std::string_view label
 ) {
     begin_result result{};
-    test_begin(result, readonly, is_long, write_preserves);
+    test_begin(result, readonly, is_long, write_preserves, label);
     handle = result.handle_;
 }
 void service_api_test::test_begin(begin_result& result,
                                   bool readonly,
                                   bool is_long,
-                                  std::vector<std::string> const& write_preserves
+                                  std::vector<std::string> const& write_preserves,
+                                  std::string_view label
 ) {
-    auto s = encode_begin(readonly, is_long, write_preserves);
+    auto s = encode_begin(readonly, is_long, write_preserves, label);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -1123,11 +1127,11 @@ TEST_F(service_api_test, null_host_variable) {
 TEST_F(service_api_test, begin_long_tx) {
     std::uint64_t tx_handle{};
     {
-        test_begin(tx_handle, false, true, {"T0", "T1"});
+        test_begin(tx_handle, false, true, {"T0", "T1"}, "mylabel");
         test_commit(tx_handle);
     }
     {
-        test_begin(tx_handle, true, true, {});
+        test_begin(tx_handle, true, true, {}, "mylabel2");
         test_commit(tx_handle);
     }
 }

@@ -93,6 +93,7 @@ void service::command_begin(
     bool readonly = false;
     bool is_long = false;
     auto& bg = proto_req.begin();
+    std::string_view label{};
     if(bg.has_option()) {
         auto& op = bg.option();
         if(op.type() == sql::request::TransactionType::READ_ONLY) {
@@ -105,8 +106,9 @@ void service::command_begin(
                 storages.emplace_back(x.table_name());
             }
         }
+        label = op.label();
     }
-    transaction_option opts{ readonly, is_long, std::move(storages) };
+    transaction_option opts{ readonly, is_long, std::move(storages), label };
     db_->create_transaction_async(
         [res, req_info](jogasaki::api::transaction_handle tx, status st, std::string_view msg) {
             if(st == jogasaki::status::ok) {

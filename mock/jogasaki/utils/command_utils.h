@@ -158,7 +158,8 @@ std::string encode_prepare(std::string sql, Args...args) {
 inline std::string encode_begin(
     bool readonly,
     bool is_long = false,
-    std::vector<std::string> const& write_preserves = {}
+    std::vector<std::string> const& write_preserves = {},
+    std::string_view label = {}
 ) {
     sql::request::Request r{};
     auto opt = r.mutable_begin()->mutable_option();
@@ -173,6 +174,9 @@ inline std::string encode_begin(
             auto* wp = opt->add_write_preserves();
             wp->set_table_name(s);
         }
+    }
+    if(! label.empty()) {
+        opt->set_label(label.data(), label.size());
     }
     auto s = serialize(r);
     return s;

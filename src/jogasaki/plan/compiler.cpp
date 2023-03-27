@@ -39,6 +39,8 @@
 #include <takatori/statement/write.h>
 #include <takatori/statement/create_table.h>
 #include <takatori/statement/drop_table.h>
+#include <takatori/statement/create_index.h>
+#include <takatori/statement/drop_index.h>
 #include <takatori/statement/execute.h>
 #include <takatori/scalar/immediate.h>
 #include <takatori/plan/process.h>
@@ -68,6 +70,8 @@
 #include <jogasaki/executor/process/impl/ops/emit.h>
 #include <jogasaki/executor/common/create_table.h>
 #include <jogasaki/executor/common/drop_table.h>
+#include <jogasaki/executor/common/create_index.h>
+#include <jogasaki/executor/common/drop_index.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/plan/parameter_set.h>
 #include <jogasaki/model/statement_kind.h>
@@ -136,6 +140,10 @@ std::shared_ptr<mirror_container> preprocess_mirror(
         case statement::statement_kind::create_table:
             break;
         case statement::statement_kind::drop_table:
+            break;
+        case statement::statement_kind::create_index:
+            break;
+        case statement::statement_kind::drop_index:
             break;
         default:
             fail();
@@ -595,6 +603,16 @@ void create_mirror_for_ddl(
             ops = std::make_shared<executor::common::drop_table>(node);
             break;
         }
+        case statement::statement_kind::create_index: {
+            auto& node = unsafe_downcast<statement::create_index>(*statement);
+            ops = std::make_shared<executor::common::create_index>(node);
+            break;
+        }
+        case statement::statement_kind::drop_index: {
+            auto& node = unsafe_downcast<statement::drop_index>(*statement);
+            ops = std::make_shared<executor::common::drop_index>(node);
+            break;
+        }
         default:
             fail();
     }
@@ -729,6 +747,12 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         case statement_kind::drop_table:
+            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::create_index:
+            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::drop_index:
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:

@@ -673,6 +673,43 @@ TEST_F(recovery_test, recovery_secondary_indices_verify_with_query) {
     ASSERT_TRUE(stg00);
 }
 
+TEST_F(recovery_test, recovery_secondary_indices_with_ddl) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+    execute_statement("CREATE INDEX SECONDARY0 ON T (C1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    {
+        std::string out{};
+        explain_statement("SELECT * FROM T WHERE C1=10", out);
+        EXPECT_TRUE(contains(out, "SECONDARY0"));
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C1=10", result);
+        ASSERT_EQ(1, result.size());
+    }
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+    {
+        std::string out{};
+        explain_statement("SELECT * FROM T WHERE C1=10", out);
+        EXPECT_TRUE(contains(out, "SECONDARY0"));
+    }
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C1=10", result);
+        ASSERT_EQ(2, result.size());
+    }
+
+    execute_statement("DROP TABLE T");
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL, C1 INT)");
+    execute_statement("CREATE INDEX SECONDARY0 ON T (C1)");
+}
+
 TEST_F(recovery_test, recover_sequence_multipletimes) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";

@@ -31,7 +31,7 @@ namespace jogasaki::executor::common {
 
 using takatori::util::fail;
 
-std::string create_metadata(std::string_view sql_text) {
+static std::string create_metadata(std::string_view sql_text) {
     proto::metadata::storage::Storage st{};
     proto::metadata::storage::TexualDefinition text{};
     st.set_message_version(metadata_format_version);

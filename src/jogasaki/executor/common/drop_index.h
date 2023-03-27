@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <takatori/statement/drop_table.h>
+#include <takatori/statement/drop_index.h>
 
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
@@ -23,21 +23,21 @@
 namespace jogasaki::executor::common {
 
 /**
- * @brief drop table statement
+ * @brief drop index statement
  */
-class drop_table : public model::statement {
+class drop_index : public model::statement {
 public:
 
     /**
      * @brief create empty object
      */
-    drop_table() = default;
+    drop_index() = default;
 
     /**
      * @brief create new object
      */
-    explicit drop_table(
-        takatori::statement::drop_table& ct
+    explicit drop_index(
+        takatori::statement::drop_index& ct
     ) noexcept;
 
     /**
@@ -51,7 +51,7 @@ public:
     bool operator()(request_context& context) const;
 
 private:
-    takatori::statement::drop_table* ct_{};
+    takatori::statement::drop_index* ct_{};
 
 };
 

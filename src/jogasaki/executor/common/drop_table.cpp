@@ -15,9 +15,6 @@
  */
 #include "drop_table.h"
 
-#include <thread>
-#include <chrono>
-
 #include <yugawara/binding/extract.h>
 
 #include <jogasaki/logging.h>

@@ -22,6 +22,8 @@
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/executor/common/create_table.h>
 #include <jogasaki/executor/common/drop_table.h>
+#include <jogasaki/executor/common/create_index.h>
+#include <jogasaki/executor/common/drop_index.h>
 #include "statement_scheduler.h"
 
 namespace jogasaki::scheduler {
@@ -58,6 +60,16 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
         }
         case kind::drop_table: {
             auto& dt = unsafe_downcast<executor::common::drop_table>(s);
+            dt(context);
+            break;
+        }
+        case kind::create_index: {
+            auto& ct = unsafe_downcast<executor::common::create_index>(s);
+            ct(context);
+            break;
+        }
+        case kind::drop_index: {
+            auto& dt = unsafe_downcast<executor::common::drop_index>(s);
             dt(context);
             break;
         }

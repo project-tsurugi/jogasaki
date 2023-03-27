@@ -16,7 +16,6 @@
 #include "create_index.h"
 
 #include <yugawara/binding/extract.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
@@ -28,8 +27,6 @@
 #include <jogasaki/recovery/storage_options.h>
 
 namespace jogasaki::executor::common {
-
-using takatori::util::fail;
 
 create_index::create_index(
     takatori::statement::create_index& ct

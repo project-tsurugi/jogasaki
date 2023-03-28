@@ -19,6 +19,6 @@
 
 namespace jogasaki {
 
-void log_request(scheduler::request_detail const& req);
+void log_request(scheduler::request_detail const& req, bool success = true);
 
 } // namespace

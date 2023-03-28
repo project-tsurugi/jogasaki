@@ -43,7 +43,7 @@ std::string_view trim_string(std::string_view arg) {
     return arg;
 }
 
-void log_request(const scheduler::request_detail &req) {
+void log_request(const scheduler::request_detail &req, bool success) {
     if(req.status() == scheduler::request_detail_status::accepted) {
         VLOG(log_debug_timing_event_fine) << timing_job_accepted
             << " job_id:" << utils::hex(req.id())
@@ -68,8 +68,8 @@ void log_request(const scheduler::request_detail &req) {
     }
     if(req.status() == scheduler::request_detail_status::finishing) {
         VLOG(log_debug_timing_event_fine) << timing_job_finishing
-            << " "
-            << "job_id:" << utils::hex(req.id());
+            << " job_id:" << utils::hex(req.id())
+            << " status:" << (success ? "success" : "error");
         return;
     }
 }

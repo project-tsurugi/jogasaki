@@ -265,6 +265,8 @@ status database::prepare_common(
     diagnostics_->clear();
     ctx->diag(*diagnostics_);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
         return rc;
     }
     statement = std::make_unique<impl::prepared_statement>(ctx->prepared_statement());
@@ -468,6 +470,8 @@ status database::destroy_statement(
         prepared_statements_.erase(acc);
     } else {
         VLOG_LP(log_warning) << "destroy_statement for invalid handle";
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
         return status::not_found;
     }
     req->status(scheduler::request_detail_status::finishing);

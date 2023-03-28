@@ -382,6 +382,8 @@ void service::command_explain(
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e);
         rc != jogasaki::status::ok) {
         details::error<sql::response::Explain>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
         return;
     }
     std::stringstream ss{};
@@ -467,6 +469,8 @@ void service::command_describe_table(
     if(! table) {
         VLOG(log_error) << log_location_prefix << "table not found : " << dt.name();
         details::error<sql::response::DescribeTable>(*res, status::err_not_found, "table not found", req_info);
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
         return;
     }
     details::success<sql::response::DescribeTable>(*res, table.get(), req_info);

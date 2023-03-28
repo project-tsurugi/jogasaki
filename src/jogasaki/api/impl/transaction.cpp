@@ -327,7 +327,7 @@ bool transaction::execute_async_on_context(
     on_completion(rctx->status_code(), rctx->status_message());
     if(auto req = job->request()) {
         req->status(scheduler::request_detail_status::finishing);
-        log_request(*req);
+        log_request(*req, rctx->status_code() == status::ok);
     }
     ts.unregister_job(job->id());
     return true;

@@ -126,7 +126,7 @@ void flat_task::finish_job() {
     }
     if(req_detail) {
         req_detail->status(scheduler::request_detail_status::finishing);
-        log_request(*req_detail);
+        log_request(*req_detail, req_context_->status_code() == status::ok);
     }
     j.completion_latch().release();
 

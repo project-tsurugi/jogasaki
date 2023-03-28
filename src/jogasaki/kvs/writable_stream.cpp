@@ -22,6 +22,7 @@
 #include <takatori/decimal/triple.h>
 #include <decimal.hh>
 
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/coder.h>
 #include <jogasaki/utils/decimal.h>
 
@@ -156,7 +157,7 @@ void writable_stream::write_decimal(std::int8_t sign, std::uint64_t lo, std::uin
 }
 
 void decimal_error_logging(std::string_view operation, runtime_t<meta::field_type_kind::decimal> data, std::size_t precision, std::size_t scale, std::size_t digits) {
-    VLOG(log_error) << "decimal operation (" << operation << ") failed. src=" << data << " precision= " << precision << " scale=" << scale << " digits=" << digits;
+    VLOG_LP(log_error) << "decimal operation (" << operation << ") failed. src=" << data << " precision= " << precision << " scale=" << scale << " digits=" << digits;
 }
 
 status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale) {

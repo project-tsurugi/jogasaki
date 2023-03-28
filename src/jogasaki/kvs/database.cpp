@@ -19,6 +19,7 @@
 #include <takatori/util/string_builder.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/logship/log_event_listener.h>
 #include "database.h"
 #include "transaction.h"
@@ -33,7 +34,7 @@ using takatori::util::throw_exception;
 database::~database() noexcept {
     if (handle_ && ! handle_borrowed_) {
         if(auto res = database_dispose(handle_); res != StatusCode::OK) {
-            LOG(ERROR) << "database_dispose failed";
+            LOG_LP(ERROR) << "database_dispose failed";
         }
     }
 }
@@ -45,7 +46,7 @@ std::unique_ptr<database> database::open(std::map<std::string, std::string> cons
     }
     DatabaseHandle handle{};
     if(auto res = sharksfin::database_open(dbopts, &handle); res != sharksfin::StatusCode::OK) {
-        LOG(ERROR) << "database_open failed with " << res;
+        LOG_LP(ERROR) << "database_open failed with " << res;
         return {};
     }
     auto ret = std::make_unique<database>(handle);
@@ -56,7 +57,7 @@ std::unique_ptr<database> database::open(std::map<std::string, std::string> cons
 bool database::close() {
     if(handle_borrowed_) return true;
     if(auto res = sharksfin::database_close(handle_); res != sharksfin::StatusCode::OK) {
-        LOG(ERROR) << "database_close failed with " << res;
+        LOG_LP(ERROR) << "database_close failed with " << res;
         return false;
     }
     return true;
@@ -130,7 +131,7 @@ bool database::update_sequence(transaction& tx, sequence_id id, sequence_version
             version,
             value
         ); res != sharksfin::StatusCode::OK) {
-        VLOG(log_error) << "sharksfin::sequence_put failed with error:" << res;
+        VLOG_LP(log_error) << "sharksfin::sequence_put failed with error:" << res;
         return false;
     }
     return true;

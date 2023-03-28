@@ -28,6 +28,7 @@
 #include <takatori/type/decimal.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/request_logging.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/transaction.h>
@@ -80,7 +81,7 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
 }
 
 status database::start() {
-    LOG(INFO) << "SQL engine configuration " << *cfg_;
+    LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
     // this function is not called on maintenance/quiescent mode
     init();
     if (! kvs_db_) {
@@ -102,7 +103,7 @@ status database::start() {
         kvs_db_ = kvs::database::open(opts);
     }
     if (! kvs_db_) {
-        LOG(ERROR) << "Opening database failed.";
+        LOG_LP(ERROR) << "Opening database failed.";
         return status::err_io_error;
     }
 
@@ -158,7 +159,7 @@ status database::stop() {
         if (cfg_->enable_logship()) {
             if (auto* l = kvs_db_->log_event_listener(); l != nullptr) {
                 if(! l->deinit()) {
-                    LOG(ERROR) << "shutting down log event listener failed.";
+                    LOG_LP(ERROR) << "shutting down log event listener failed.";
                     // even on error, proceed to shutdown all database
                 }
             }
@@ -328,7 +329,7 @@ status database::validate_option(transaction_option const& option) {
     if(option.is_long()) {
         for(auto&& wp : option.write_preserves()) {
             if(auto t = tables_->find_table(wp); ! t) {
-                VLOG(log_error) << "The table `" << wp << "` specified for write preserve is not found.";
+                VLOG_LP(log_error) << "The table `" << wp << "` specified for write preserve is not found.";
                 return status::err_invalid_argument;
             }
         }
@@ -374,7 +375,7 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
         completed = true;
         if(st != status::ok) {
             ret = st;
-            VLOG(log_error) << "do_create_transaction failed with error : " << st << " " << msg;
+            VLOG_LP(log_error) << "do_create_transaction failed with error : " << st << " " << msg;
             return;
         }
         handle = h;
@@ -389,7 +390,7 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
 }
 status database::create_transaction_internal(transaction_handle& handle, transaction_option const& option) {
     if (! kvs_db_) {
-        VLOG(log_error) << "database not started";
+        VLOG_LP(log_error) << "database not started";
         return status::err_invalid_state;
     }
     if(auto res = validate_option(option); res != status::ok) {
@@ -443,7 +444,7 @@ status database::resolve_common(
     ctx->diag(*diagnostics_);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
-        VLOG(log_error) << "compilation failed.";
+        VLOG_LP(log_error) << "compilation failed.";
         return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
@@ -464,7 +465,7 @@ status database::destroy_statement(
     if (prepared_statements_.find(acc, prepared)) {
         prepared_statements_.erase(acc);
     } else {
-        VLOG(log_warning) << "destroy_statement for invalid handle";
+        VLOG_LP(log_warning) << "destroy_statement for invalid handle";
         return status::not_found;
     }
     req->status(scheduler::request_detail_status::finishing);
@@ -479,7 +480,7 @@ status database::destroy_transaction(
     if (transactions_.find(acc, handle)) {
         transactions_.erase(acc);
     } else {
-        VLOG(log_warning) << "destroy_statement for invalid handle";
+        VLOG_LP(log_warning) << "destroy_statement for invalid handle";
         return status::not_found;
     }
     return status::ok;
@@ -513,13 +514,13 @@ status database::do_create_table(std::shared_ptr<yugawara::storage::table> table
     BOOST_ASSERT(table != nullptr);  //NOLINT
     std::string name{table->simple_name()};
     if (! kvs_db_) {
-        VLOG(log_error) << "db not started";
+        VLOG_LP(log_error) << "db not started";
         return status::err_invalid_state;
     }
     try {
         tables_->add_table(std::move(table));
     } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "table " << name << " already exists";
+        VLOG_LP(log_error) << "table " << name << " already exists";
         return status::err_already_exists;
     }
     return status::ok;
@@ -554,12 +555,12 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     }
 
     if (! kvs_db_) {
-        VLOG(log_error) << "db not started";
+        VLOG_LP(log_error) << "db not started";
         return status::err_invalid_state;
     }
 
     if(tables_->find_index(name)) {
-        VLOG(log_error) << "index " << name << " already exists";
+        VLOG_LP(log_error) << "index " << name << " already exists";
         return status::err_already_exists;
     }
 
@@ -577,7 +578,7 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     opt.payload(std::move(storage));
     if(auto stg = kvs_db_->create_storage(name, opt);! stg) {
         // something went wrong. Storage already exists. // TODO recreate storage with new storage option
-        VLOG(log_warning) << "storage " << name << " already exists ";
+        VLOG_LP(log_warning) << "storage " << name << " already exists ";
         return status::err_unknown;
     }
 
@@ -606,12 +607,12 @@ status database::do_drop_index(std::string_view name, std::string_view schema) {
     auto stg = kvs_db_->get_storage(name);
     if (stg) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-            VLOG(log_error) << res << " error on deleting storage " << name;
+            VLOG_LP(log_error) << res << " error on deleting storage " << name;
             return status::err_unknown;
         }
     } else {
         // kvs storage is already removed somehow, let's proceed and remove from metadata.
-        VLOG(log_info) << "kvs storage '" << name << "' not found.";
+        VLOG_LP(log_info) << "kvs storage '" << name << "' not found.";
     }
     tables_->remove_index(name);
     return status::ok;
@@ -621,20 +622,20 @@ status database::do_create_sequence(std::shared_ptr<yugawara::storage::sequence>
     (void)schema;
     BOOST_ASSERT(sequence != nullptr);  //NOLINT
     if (auto id = sequence->definition_id(); !id) {
-        VLOG(log_error) << "The sequence definition id is not specified for sequence " <<
+        VLOG_LP(log_error) << "The sequence definition id is not specified for sequence " <<
             sequence->simple_name() <<
             ". Specify definition id when creating the sequence.";
         return status::err_invalid_argument;
     }
     std::string name{sequence->simple_name()};
     if (! kvs_db_) {
-        VLOG(log_error) << "db not started";
+        VLOG_LP(log_error) << "db not started";
         return status::err_invalid_state;
     }
     try {
         tables_->add_sequence(std::move(sequence));
     } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "sequence " << name << " already exists";
+        VLOG_LP(log_error) << "sequence " << name << " already exists";
         return status::err_already_exists;
     }
     return status::ok;
@@ -667,7 +668,7 @@ status database::initialize_from_providers() {
         success = success && kvs_db_->get_or_create_storage(id);
     });
     if (! success) {
-        LOG(ERROR) << "creating table schema entries failed";
+        LOG_LP(ERROR) << "creating table schema entries failed";
         return status::err_io_error;
     }
     sequence_manager_ = std::make_unique<executor::sequence::manager>(*kvs_db_);
@@ -679,7 +680,7 @@ status database::initialize_from_providers() {
         sequence_manager_->load_id_map(tx.get());
         sequence_manager_->register_sequences(tx.get(), tables_);
         if(auto res = tx->commit(); res != status::ok) {
-            LOG(ERROR) << "committing table schema entries failed";
+            LOG_LP(ERROR) << "committing table schema entries failed";
             sequence_manager_.reset();
             return status::err_io_error;
         }
@@ -707,7 +708,7 @@ status database::recover_index_metadata(
     for(auto&& n : keys) {
         auto stg = kvs_db_->get_storage(n);
         if(! stg) {
-            LOG(ERROR) << "Metadata recovery failed. Missing storage:" << n;
+            LOG_LP(ERROR) << "Metadata recovery failed. Missing storage:" << n;
             return status::err_unknown;
         }
         sharksfin::StorageOptions opt{};
@@ -720,16 +721,16 @@ status database::recover_index_metadata(
         }
         proto::metadata::storage::IndexDefinition idef{};
         if(! recovery::validate_extract(payload, idef)) {
-            LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
+            LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }
         if(primary_only && ! idef.has_table_definition()) {
             skipped.emplace_back(n);
             continue;
         }
-        VLOG(log_info) << "Recover table/index " << n << " : " << utils::to_debug_string(idef);
+        VLOG_LP(log_info) << "Recover table/index " << n << " : " << utils::to_debug_string(idef);
         if(! recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
-            LOG(ERROR) << "Metadata recovery failed. Invalid metadata";
+            LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }
     }

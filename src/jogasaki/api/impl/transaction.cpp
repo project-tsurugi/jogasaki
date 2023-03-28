@@ -21,6 +21,7 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/plan/compiler.h>
@@ -252,7 +253,7 @@ bool validate_statement(
         // result_store_channel is for testing and error handling is not needed
         // null_record_channel is to discard the results and is correct usage
         auto msg = "statement has no result records, but called with API expecting result records";
-        VLOG(log_error)  << log_location_prefix << msg;
+        VLOG_LP(log_error) << msg;
         on_completion(status::err_illegal_operation, msg);
         return false;
     }

@@ -18,6 +18,7 @@
 #include <thread>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/error.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/utils/backoff_waiter.h>
@@ -51,7 +52,7 @@ transaction::~transaction() noexcept {
 status transaction::commit(bool async) {
     auto rc = sharksfin::transaction_commit(tx_, async);
     if (rc == sharksfin::StatusCode::WAITING_FOR_OTHER_TRANSACTION) {
-        VLOG(log_debug) << "commit request has been submitted - waiting for other transaction to finish";
+        VLOG_LP(log_debug) << "commit request has been submitted - waiting for other transaction to finish";
     } else if(rc == sharksfin::StatusCode::OK ||
         rc == sharksfin::StatusCode::ERR_ABORTED ||
         rc == sharksfin::StatusCode::ERR_ABORTED_RETRYABLE) {
@@ -120,7 +121,7 @@ status transaction::init(transaction_option const& options) {
     for(auto&& wp : options.write_preserves()) {
         auto s = database_->get_storage(wp);
         if(! s) {
-            VLOG(log_error) << "Specified write preserved storage '" << wp << "' is not found.";
+            VLOG_LP(log_error) << "Specified write preserved storage '" << wp << "' is not found.";
             return status::err_invalid_argument;
         }
         wps.emplace_back(s->handle());

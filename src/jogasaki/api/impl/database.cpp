@@ -68,6 +68,8 @@ namespace jogasaki::api::impl {
 using takatori::util::fail;
 using takatori::util::string_builder;
 
+constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:database ";
+
 std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
 }
@@ -375,7 +377,7 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
         completed = true;
         if(st != status::ok) {
             ret = st;
-            VLOG_LP(log_error) << "do_create_transaction failed with error : " << st << " " << msg;
+            VLOG(log_error) << log_location_prefix << "do_create_transaction failed with error : " << st << " " << msg;
             return;
         }
         handle = h;

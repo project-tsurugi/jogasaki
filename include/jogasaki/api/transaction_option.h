@@ -84,10 +84,10 @@ private:
  */
 inline std::ostream& operator<<(std::ostream& out, transaction_option const& value) {
     out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ")); //NOLINT
+    out << " label:" << value.label();
     if(value.write_preserves().empty()) {
         return out;
     }
-    out << " label:" << value.label();
     out << " write_preserves:{";
     for(auto&& s : value.write_preserves()) {
         out << " ";

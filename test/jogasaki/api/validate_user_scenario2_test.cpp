@@ -61,7 +61,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_phone_bill_tables(true);
         cfg->stealing_enabled(false);
         db_setup(cfg);
     }
@@ -75,7 +74,19 @@ using namespace std::string_view_literals;
 
 TEST_F(validate_user_scenario2_test, phone_bill_history_table) {
     // test scenario coming from batch verify
-    // use built-in secondary index for history table
+    execute_statement("create table history ("
+                      "caller_phone_number varchar(15) not null,"
+                      "recipient_phone_number varchar(15) not null,"
+                      "payment_categorty char(1) not null,"
+                      "start_time timestamp not null,"
+                      "time_secs int not null,"
+                      "charge int,"
+                      "df int not null,"
+                      "primary key (caller_phone_number, payment_categorty, start_time)"
+                      ")");
+    execute_statement("create index history_df_idx on history(df)");
+    execute_statement("create index idx_st on history(start_time)");
+    execute_statement("create index idx_rp on history(recipient_phone_number, payment_categorty, start_time)");
 
     auto d2000_1_1 = date_v{2000, 1, 1};
     auto d2000_5_5 = date_v{2000, 5, 5};

@@ -210,9 +210,6 @@ void database::init() {
     if(cfg_->prepare_analytics_benchmark_tables()) {
         executor::add_analytics_benchmark_tables(*tables_);
     }
-    if(cfg_->prepare_phone_bill_tables()) {
-        executor::add_phone_bill_tables(*tables_);
-    }
     initialized_ = true;
 }
 

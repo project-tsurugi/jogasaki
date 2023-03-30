@@ -20,7 +20,7 @@ jogasakiは下記のイベントをverbose log level 35 (jogasaki::log_debug_tim
 | /:jogasaki:timing:committing | トランザクションをコミットしようとする | |
 | /:jogasaki:timing:committing_end | トランザクションのコミットを受け付けさせた | |
 | /:jogasaki:timing:committed | トランザクションのコミットが完了した| |
-| /:jogasaki:timing:transaction:finished | トランザクションが終了した | 要求されたリクエスト種別によらず、トランザクション終了のみを表すイベント。 `status` の値 `committed` / `aborted` / `error`によって終了したトランザクションの状態を示す。 |
+| /:jogasaki:timing:transaction:finished | トランザクションが終了した | 要求されたリクエスト種別によらず、トランザクション終了のみを表すイベント。 `status` の値 `committed` / `aborted` によって終了したトランザクションの状態を示す。 |
 
 出力例
 ```
@@ -44,7 +44,7 @@ jogasakiは下記のイベントをverbose log level 37 (`jogasaki::log_debug_ti
 |/:jogasaki:timing:job_accepted | ジョブを受け付けた | ジョブID, リクエスト種、SQL文字列(*1)、トランザクションオプション、トランザクションID等も出力する |
 |/:jogasaki:timing:job_submitting | ジョブをスケジューラに投入しようとする (スケジューラを利用する場合のみ) | ジョブIDを出力する |
 |/:jogasaki:timing:job_started | ジョブがスケジューラ上で開始された (スケジューラを利用する場合のみ) | ジョブIDを出力する|
-|/:jogasaki:timing:job_finishing | ジョブが完了しようとする | ジョブIDを出力する。ジョブの実行結果をstatus (success/error) として出力する。|
+|/:jogasaki:timing:job_finishing | ジョブが完了しようとする | ジョブIDを出力する。ジョブの実行結果をstatus (success/failure) として出力する。|
 
 
 リクエスト種を下表に示す

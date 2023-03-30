@@ -69,7 +69,7 @@ void log_request(const scheduler::request_detail &req, bool success) {
     if(req.status() == scheduler::request_detail_status::finishing) {
         VLOG(log_debug_timing_event_fine) << timing_job_finishing
             << " job_id:" << utils::hex(req.id())
-            << " status:" << (success ? "success" : "failure");
+            << " status:" << (success ? "success" : "failure");  //NOLINT
         return;
     }
 }

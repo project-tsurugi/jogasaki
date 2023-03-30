@@ -31,6 +31,8 @@ I0316 07:46:02.860045 501284 database.cpp:815] /:jogasaki:timing:transaction:sta
 I0316 07:46:02.823669 502928 transaction.cpp:397] /:jogasaki:timing:committing TID-000000000000001f job_id:00000000000017f0
 I0316 07:46:02.823817 501281 transaction.cpp:350] /:jogasaki:timing:committing_end TID-000000000000001f job_id:00000000000017f0
 I0316 07:46:02.823943 501282 transaction.cpp:390] /:jogasaki:timing:committed TID-000000000000001f job_id:00000000000017f0
+
+I0330 16:27:42.184736 643047 transaction.cpp:446] /:jogasaki:timing:transaction:finished TID-0000000000000010 status:committed
 ```
 
 ## 細粒度タイミングイベント

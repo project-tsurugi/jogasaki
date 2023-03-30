@@ -72,7 +72,13 @@ status transaction::commit_internal() {
 }
 
 status transaction::abort() {
-    return tx_->object()->abort();
+    std::string txid{tx_->object()->transaction_id()};
+    auto ret = tx_->object()->abort();
+    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
+        << txid
+        << " status:"
+        << (ret == status::ok ? "aborted" : "error"); // though we do not expect abort fails
+    return ret;
 }
 
 status transaction::execute(
@@ -437,6 +443,10 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
             << txid
             << " job_id:"
             << utils::hex(jobid);
+        VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
+            << txid
+            << " status:"
+            << (rctx->status_code() == status::ok ? "committed" : "aborted");
         on_completion(rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();

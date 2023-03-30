@@ -20,6 +20,7 @@ jogasakiは下記のイベントをverbose log level 35 (jogasaki::log_debug_tim
 | /:jogasaki:timing:committing | トランザクションをコミットしようとする | |
 | /:jogasaki:timing:committing_end | トランザクションのコミットを受け付けさせた | |
 | /:jogasaki:timing:committed | トランザクションのコミットが完了した| |
+| /:jogasaki:timing:transaction:finished | トランザクションが終了した | 要求されたリクエスト種別によらず、トランザクション終了のみを表すイベント。 `status` の値 `committed` / `aborted` / `error`によって終了したトランザクションの状態を示す。 |
 
 出力例
 ```

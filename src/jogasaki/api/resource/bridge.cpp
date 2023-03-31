@@ -135,6 +135,9 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<bool>("enable_index_join")) {
         ret->enable_index_join(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("use_preferred_worker_for_current_thread")) {
+        ret->use_preferred_worker_for_current_thread(v.value());
+    }
 
     // datastore
     auto datastore_config = cfg.get_section("datastore");

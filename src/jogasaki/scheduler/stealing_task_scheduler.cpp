@@ -45,7 +45,11 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     auto idx = jctx.preferred_worker_index().load();
     if(auto& tctx = rctx.transaction(); tctx && t.sticky()) {
         std::uint32_t worker(
-            idx != job_context::undefined_index ? idx : scheduler_.preferred_worker_for_current_thread()
+            idx != job_context::undefined_index ? idx :
+                (scheduler_cfg_.use_preferred_worker_for_current_thread() ?
+                    scheduler_.preferred_worker_for_current_thread() :
+                    scheduler_.next_worker()
+                )
         );
         while(true) {
             if(tctx->increment_worker_count(worker)) {
@@ -107,8 +111,8 @@ tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::creat
     ret.assign_numa_nodes_uniformly(params.assign_numa_nodes_uniformly());
     ret.initial_core(params.inititial_core());
     ret.stealing_enabled(params.stealing_enabled());
-    ret.round_robbin(params.rr_workers());
     ret.lazy_worker(params.lazy_worker());
+    ret.use_preferred_worker_for_current_thread(params.use_preferred_worker_for_current_thread());
     return ret;
 }
 

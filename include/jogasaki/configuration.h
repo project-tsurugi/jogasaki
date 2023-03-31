@@ -263,6 +263,21 @@ public:
         return enable_index_join_;
     }
 
+    /**
+     * @brief setter for use_preferred_worker_for_current_thread flag
+     */
+    void use_preferred_worker_for_current_thread(bool arg) noexcept {
+        use_preferred_worker_for_current_thread_ = arg;
+    }
+
+    /**
+     * @brief accessor for use_preferred_worker_for_current_thread flag
+     * @return whether selecting preferred worker for current thread
+     */
+    [[nodiscard]] bool use_preferred_worker_for_current_thread() const noexcept {
+        return use_preferred_worker_for_current_thread_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -285,6 +300,7 @@ public:
             "max_logging_parallelism:" << cfg.max_logging_parallelism() << " " <<
             "enable_logship:" << cfg.enable_logship() << " " <<
             "enable_index_join:" << cfg.enable_index_join() << " " <<
+            "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
             "";
     }
 
@@ -313,6 +329,7 @@ private:
     std::size_t max_logging_parallelism_ = 1;
     bool enable_logship_ = false;
     bool enable_index_join_ = false;
+    bool use_preferred_worker_for_current_thread_ = false;
 };
 
 }

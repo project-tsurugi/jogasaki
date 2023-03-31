@@ -329,7 +329,7 @@ private:
     std::size_t max_logging_parallelism_ = 1;
     bool enable_logship_ = false;
     bool enable_index_join_ = false;
-    bool use_preferred_worker_for_current_thread_ = false;
+    bool use_preferred_worker_for_current_thread_ = true;
 };
 
 }

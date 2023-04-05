@@ -124,10 +124,11 @@ target_include_directories(${ENGINE}
         PRIVATE .
 )
 
-if(NOT PARQUET_VERSION VERSION_LESS 10.0.0)
-  set(PARQUET_PREFIX "Parquet::")
-else()
+# The following workaround is no longer necessary for cmake in 3.18 and later versions
+if(PARQUET_VERSION VERSION_LESS 10.0.0)
   set(PARQUET_PREFIX "")
+else()
+  set(PARQUET_PREFIX "Parquet::")
 endif()
 
 target_link_libraries(${ENGINE}

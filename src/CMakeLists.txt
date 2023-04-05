@@ -124,6 +124,12 @@ target_include_directories(${ENGINE}
         PRIVATE .
 )
 
+if(NOT PARQUET_VERSION VERSION_LESS 10.0.0)
+  set(PARQUET_PREFIX "Parquet::")
+else()
+  set(PARQUET_PREFIX "")
+endif()
+
 target_link_libraries(${ENGINE}
         PUBLIC api
         PUBLIC ${tateyama_engine}
@@ -144,7 +150,7 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
-        PRIVATE parquet_shared
+        PRIVATE ${PARQUET_PREFIX}parquet_shared
         PRIVATE mpdecpp
         )
 
@@ -204,7 +210,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::container
         INTERFACE glog::glog
         INTERFACE protobuf::libprotobuf
-        INTERFACE parquet_shared
+        INTERFACE ${PARQUET_PREFIX}parquet_shared
         INTERFACE mpdecpp
         )
 

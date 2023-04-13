@@ -130,11 +130,27 @@ void stealing_task_scheduler::unregister_job(std::size_t job_id) {
 }
 
 void stealing_task_scheduler::print_diagnostic(std::ostream &os) {
-    auto jobs = job_contexts_.size();
+    // In order to avoid timing issue while printing jobs,
+    // copy job contexts first so that it keeps shared_ptr until end of printing.
+    // Iterating tbb hash map is not thread-safe, and this is not complete solution,
+    // but we are doing our best for safety as much as possible.
+    std::unordered_map<std::size_t, std::shared_ptr<job_context>> copied{};
+    for(auto [k, c] : job_contexts_) {
+        (void) c;
+        {
+            decltype(job_contexts_)::accessor acc{};
+            if (! job_contexts_.find(acc, k)) {
+                // job already completed and is erased
+                continue;
+            }
+            copied.emplace(k, acc->second);
+        }
+    }
+    auto jobs = copied.size();
     os << "job_count: " << jobs << std::endl;
     if(jobs > 0) {
         os << "jobs:" << std::endl;
-        for(auto&& [k, ctx] : job_contexts_) {
+        for(auto&& [k, ctx] : copied) {
             os << "  - job_id: " << utils::hex(ctx->id()) << std::endl;
             if(auto diag = ctx->request()) {
                 os << "    job_kind: " << diag->kind() << std::endl;

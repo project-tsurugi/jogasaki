@@ -453,7 +453,7 @@ TEST_F(ddl_test, drop_indices_cascade) {
 }
 
 TEST_F(ddl_test, long_char_data) {
-    std::size_t len = 16384;
+    std::size_t len = 30*1024 / 2 - 4; // 4 for nullity bits
     std::string strlen = std::to_string(len);
     std::string c0(len, '0');
     std::string c1(len, '1');
@@ -471,7 +471,7 @@ TEST_F(ddl_test, long_char_data) {
 }
 
 TEST_F(ddl_test, max_key_len) {
-    std::size_t len = 35*1024 - 4; // 4 for nullity bits
+    std::size_t len = 30*1024 - 4; // 4 for nullity bits
     std::string strlen = std::to_string(len);
     std::string c0(len, '0');
     std::string c1(len, '1');
@@ -500,11 +500,39 @@ TEST_F(ddl_test, max_key_len) {
     }
 }
 
+TEST_F(ddl_test, insert_exceeding_max_key_len) {
+    std::size_t len = 30*1024 - 4 + 1; // 4 for nullity bits
+    std::string strlen = std::to_string(len);
+    std::string c0(len, '0');
+    execute_statement("CREATE TABLE T (C0 VARCHAR("+strlen+") NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T (C0) VALUES('"+c0+"')", status::err_invalid_argument);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
+TEST_F(ddl_test, insert_exceeding_max_key_len_on_secondary) {
+    // insert is successful on primary, but fails on secondary
+    std::size_t len = 30*1024 - 4; // 4 for nullity bits
+    std::string strlen = std::to_string(len);
+    std::string c0(len, '0');
+    execute_statement("CREATE TABLE T (C0 VARCHAR("+strlen+") NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES('"+c0+"', 1)", status::err_invalid_argument);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
 TEST_F(ddl_test, query_exceeding_max_key_len) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has no limit";
     }
-    std::size_t len = 35*1024 - 4; // 4 for nullity bits
+    std::size_t len = 30*1024 - 4; // 4 for nullity bits
     std::string strlen = std::to_string(len);
     std::string c0(len+1, '0');
     std::string c1(len+1, '1');
@@ -513,9 +541,24 @@ TEST_F(ddl_test, query_exceeding_max_key_len) {
     execute_statement("INSERT INTO T (C0) VALUES('"+dt+"')");
     std::vector<mock::basic_record> result{};
     execute_statement("SELECT * FROM T WHERE C0='"+c0+"'", status::err_invalid_argument);
-//    execute_statement("SELECT * FROM T WHERE C0>'"+c0+"' AND C0<'"+c1+"'", status::err_invalid_argument);  // TODO enable when shirakami is fixed
+    execute_statement("SELECT * FROM T WHERE C0>'"+c0+"' AND C0<'"+c1+"'", status::err_invalid_argument);
     execute_statement("UPDATE T SET C0='"+c1+"' WHERE C0='"+c0+"'", status::err_invalid_argument);
     execute_statement("DELETE FROM T WHERE C0='"+c1+"'", status::err_invalid_argument);
+}
 
+TEST_F(ddl_test, update_exceeding_max_key_len_on_secondary) {
+    // update is successful on primary, but fails on secondary
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has no limit";
+    }
+    std::size_t len = 30*1024 - 4 - 10; // 4 for nullity bits, 10 for approx. C1 length (but not enough considering terminator)
+    std::string strlen = std::to_string(len);
+    std::string c0(len, '0');
+    std::string c1(len, '1');
+    std::string dt(len, '0');
+    execute_statement("CREATE TABLE T (C0 VARCHAR("+strlen+") NOT NULL PRIMARY KEY, C1 VARCHAR(10))");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES('"+c0+"', 'x')");
+    execute_statement("UPDATE T SET C1='xxxxxxx' WHERE C1='x'", status::err_invalid_argument);
 }
 }

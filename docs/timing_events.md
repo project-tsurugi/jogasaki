@@ -74,6 +74,23 @@ I0322 07:50:37.448936 1330668 request_logging.cpp:61] /:jogasaki:timing:job_fini
 注
 (*1) ログの増加を減らすため、長いSQL文は適当な長さにtruncateされる。またログメッセージを一行に収めるために、改行等の制御文字は置換えられることがある。
 
+## ジョブメトリクス
+
+jogasakiはジョブに関する下記のメトリクスをverbose log level 37 (`jogasaki::log_debug_timing_event_fine`)で出力する
+
+|  ログプレフィックス  |  メトリクス内容  | 備考 |
+| ---- | ---- | ---- |
+|/:jogasaki:metrics:task_time | ジョブで実行されたタスクのelapsed timeの総和(microseconds) | ジョブIDも出力 |
+|/:jogasaki:metrics:task_count | ジョブで実行されたタスクの個数 | ジョブIDも出力 |
+|/:jogasaki:metrics:task_stealing_count | ジョブで実行されたタスクのうち、stealingによって実行されたものの個数 | ジョブIDも出力 |
+
+出力例
+```
+I0417 16:44:42.042572 1267301 flat_task.cpp:144] /:jogasaki:metrics:task_time job_id:0000000000002106 value:1168
+I0417 16:44:42.042640 1267301 flat_task.cpp:148] /:jogasaki:metrics:task_count job_id:0000000000002106 value:2
+I0417 16:44:42.042755 1267301 flat_task.cpp:152] /:jogasaki:metrics:task_stealing_count job_id:0000000000002106 value:1
+```
+
 ## タイミングイベント出力方法
 
 タイミングイベントログ・細粒度タイミングイベントログは [Google glog](https://github.com/google/glog) を使用してイベントログ用の [ロケーションプレフィックス](https://github.com/project-tsurugi/jogasaki/blob/master/docs/logging_policy.md#%E3%83%AD%E3%82%B1%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3%E3%83%97%E3%83%AC%E3%83%95%E3%82%A3%E3%83%83%E3%82%AF%E3%82%B9) を指定してサーバーログへ出力される。下記に[出力コードの例](https://github.com/project-tsurugi/jogasaki/blob/161986da8a32cfab6bbdf8367231c3c71de294d2/src/jogasaki/api/impl/database.cpp#L820) を示す。

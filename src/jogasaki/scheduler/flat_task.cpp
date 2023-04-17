@@ -119,11 +119,12 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
         case kind::load: load(); break;
     }
     auto end = clock::now();
-    auto req_detail = job()->request();
-    req_detail->task_duration_ns() += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
-    req_detail->task_count()++;
-    if(ctx.task_is_solen()) {
-        req_detail->task_steling_count()++;
+    if(auto req_detail = job()->request()) {
+        req_detail->task_duration_ns() += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+        req_detail->task_count()++;
+        if(ctx.task_is_solen()) {
+            req_detail->task_steling_count()++;
+        }
     }
     return ret;
 }

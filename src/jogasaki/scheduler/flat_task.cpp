@@ -101,18 +101,27 @@ void flat_task::write() {
     log_exit << *this;
 }
 
+void req() {
+
+}
+
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
+    auto begin = clock::now();
+    bool ret = false;
     switch(kind_) {
         using kind = flat_task_kind;
-        case kind::dag_events: dag_schedule(); return false;
-        case kind::bootstrap: bootstrap(ctx); return false;
-        case kind::resolve: resolve(ctx); return false;
-        case kind::teardown: return teardown();
-        case kind::wrapped: execute_wrapped(); return false;
-        case kind::write: write(); return false;
-        case kind::load: load(); return false;
+        case kind::dag_events: dag_schedule(); break;
+        case kind::bootstrap: bootstrap(ctx); break;
+        case kind::resolve: resolve(ctx); break;
+        case kind::teardown: ret = teardown(); break;
+        case kind::wrapped: execute_wrapped(); break;
+        case kind::write: write(); break;
+        case kind::load: load(); break;
     }
-    fail();
+    auto end = clock::now();
+    auto req_detail = job()->request();
+    req_detail->task_duration_ns() += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    return ret;
 }
 
 void flat_task::finish_job() {
@@ -127,6 +136,11 @@ void flat_task::finish_job() {
     if(req_detail) {
         req_detail->status(scheduler::request_detail_status::finishing);
         log_request(*req_detail, req_context_->status_code() == status::ok);
+
+        VLOG(log_debug_timing_event_fine) << "/:jogasaki:metrics:task_time"
+            << " job_id:" << utils::hex(req_detail->id())
+            << " value:" << req_detail->task_duration_ns() / 1000 // print task time in us
+            ;
     }
     j.completion_latch().release();
 

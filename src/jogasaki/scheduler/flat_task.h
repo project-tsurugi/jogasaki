@@ -126,6 +126,8 @@ public:
     using identity_type = std::size_t;
     static constexpr identity_type undefined_id = static_cast<identity_type>(-1);
 
+    using clock = std::chrono::high_resolution_clock;
+
     /**
      * @brief create new object
      */

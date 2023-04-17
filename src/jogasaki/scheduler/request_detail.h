@@ -259,13 +259,21 @@ public:
         return transaction_option_spec_;
     }
     /**
-     *
      * @brief accessor for request unique id
      * @return id value
      */
     [[nodiscard]] std::size_t id() const noexcept {
         return id_;
     }
+
+    /**
+     * @brief accessor for task duration field
+     * @return task duration field reference
+     */
+    [[nodiscard]] std::atomic_size_t& task_duration_ns() noexcept {
+        return task_duration_ns_;
+    }
+
 private:
     std::size_t id_{id_src_++};
     request_detail_kind kind_{};
@@ -275,6 +283,7 @@ private:
     std::atomic<request_detail_status> status_{};
     std::atomic<request_detail_channel_status> channel_status_{};
     std::string transaction_option_spec_{};
+    std::atomic_size_t task_duration_ns_{};
 
     static inline std::atomic_size_t id_src_{0};
 };

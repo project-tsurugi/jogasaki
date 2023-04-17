@@ -274,6 +274,21 @@ public:
         return task_duration_ns_;
     }
 
+    /**
+     * @brief accessor for task count field
+     * @return task count field reference
+     */
+    [[nodiscard]] std::atomic_size_t& task_count() noexcept {
+        return task_count_;
+    }
+
+    /**
+     * @brief accessor for task stealing count field
+     * @return task stealing count field reference
+     */
+    [[nodiscard]] std::atomic_size_t& task_steling_count() noexcept {
+        return task_stealing_count_;
+    }
 private:
     std::size_t id_{id_src_++};
     request_detail_kind kind_{};
@@ -284,6 +299,8 @@ private:
     std::atomic<request_detail_channel_status> channel_status_{};
     std::string transaction_option_spec_{};
     std::atomic_size_t task_duration_ns_{};
+    std::atomic_size_t task_count_{};
+    std::atomic_size_t task_stealing_count_{};
 
     static inline std::atomic_size_t id_src_{0};
 };

@@ -121,6 +121,10 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
     auto end = clock::now();
     auto req_detail = job()->request();
     req_detail->task_duration_ns() += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    req_detail->task_count()++;
+    if(ctx.task_is_solen()) {
+        req_detail->task_steling_count()++;
+    }
     return ret;
 }
 
@@ -140,6 +144,14 @@ void flat_task::finish_job() {
         VLOG(log_debug_timing_event_fine) << "/:jogasaki:metrics:task_time"
             << " job_id:" << utils::hex(req_detail->id())
             << " value:" << req_detail->task_duration_ns() / 1000 // print task time in us
+            ;
+        VLOG(log_debug_timing_event_fine) << "/:jogasaki:metrics:task_count"
+            << " job_id:" << utils::hex(req_detail->id())
+            << " value:" << req_detail->task_count()
+            ;
+        VLOG(log_debug_timing_event_fine) << "/:jogasaki:metrics:task_stealing_count"
+            << " job_id:" << utils::hex(req_detail->id())
+            << " value:" << req_detail->task_steling_count()
             ;
     }
     j.completion_latch().release();

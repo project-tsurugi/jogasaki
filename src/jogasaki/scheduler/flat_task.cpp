@@ -15,8 +15,6 @@
  */
 #include "flat_task.h"
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
@@ -31,8 +29,6 @@
 #include <jogasaki/request_logging.h>
 
 namespace jogasaki::scheduler {
-
-using takatori::util::fail;
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     log_entry << *this;

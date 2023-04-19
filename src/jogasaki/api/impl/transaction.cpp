@@ -378,7 +378,8 @@ bool transaction::execute_load(
 }
 
 void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& body) {
-    auto t = scheduler::create_custom_task(rctx, std::move(body), true, true);
+    // wait task does not need to be sticky because multiple commit operation for a transaction doesn't happen concurrently
+    auto t = scheduler::create_custom_task(rctx, std::move(body), false, true);
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
 }

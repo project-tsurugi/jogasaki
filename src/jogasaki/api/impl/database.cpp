@@ -780,7 +780,8 @@ std::shared_ptr<diagnostics> database::fetch_diagnostics() noexcept {
 }
 
 void submit_task_begin_wait(request_context* rctx, scheduler::task_body_type&& body) {
-    auto t = scheduler::create_custom_task(rctx, std::move(body), true, true);
+    // wait task does not need to be sticky because multiple begin operation for a transaction doesn't happen concurrently
+    auto t = scheduler::create_custom_task(rctx, std::move(body), false, true);
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
 }
@@ -835,7 +836,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 return model::task_result::yield;
             });
             return model::task_result::complete;
-        }, false);  // create transaction is not sticky task while its waiting task is.
+        }, false);  // create transaction is not sticky task
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:started "
             << (*handle ? handle->transaction_id() : "<tx id not available>")

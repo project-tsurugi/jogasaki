@@ -51,8 +51,15 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
                     scheduler_.next_worker()
                 )
         );
+        auto candidate = worker;
         while(true) {
             if(tctx->increment_worker_count(worker)) {
+                if(worker != candidate) {
+                    // The tx is already in use and task is assigned to different worker than original candidate.
+                    if(auto req_detail = t.job()->request()) {
+                        ++req_detail->sticky_task_worker_enforced_count();
+                    }
+                }
                 scheduler_.schedule_at(std::move(t), worker);
                 return;
             }

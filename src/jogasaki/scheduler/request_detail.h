@@ -289,6 +289,14 @@ public:
     [[nodiscard]] std::atomic_size_t& task_steling_count() noexcept {
         return task_stealing_count_;
     }
+
+    /**
+     * @brief accessor for sticky task reassigned count field
+     * @return counter of the sticky task reassigned to different worker than default candidate
+     */
+    [[nodiscard]] std::atomic_size_t& sticky_task_worker_enforced_count() noexcept {
+        return sticky_task_worker_enforced_count_;
+    }
 private:
     std::size_t id_{id_src_++};
     request_detail_kind kind_{};
@@ -301,6 +309,7 @@ private:
     std::atomic_size_t task_duration_ns_{};
     std::atomic_size_t task_count_{};
     std::atomic_size_t task_stealing_count_{};
+    std::atomic_size_t sticky_task_worker_enforced_count_{};
 
     static inline std::atomic_size_t id_src_{0};
 };

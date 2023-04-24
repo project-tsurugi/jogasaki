@@ -150,6 +150,10 @@ void flat_task::finish_job() {
             << " job_id:" << utils::hex(req_detail->id())
             << " value:" << req_detail->task_steling_count()
             ;
+        VLOG(log_debug_timing_event_fine) << "/:jogasaki:metrics:sticky_task_worker_enforced_count"
+            << " job_id:" << utils::hex(req_detail->id())
+            << " value:" << req_detail->sticky_task_worker_enforced_count()
+            ;
     }
     j.completion_latch().release();
 

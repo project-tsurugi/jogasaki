@@ -83,6 +83,7 @@ jogasakiはジョブに関する下記のメトリクスをverbose log level 37 
 |/:jogasaki:metrics:task_time | ジョブで実行されたタスクのelapsed timeの総和(microseconds) | ジョブIDも出力 |
 |/:jogasaki:metrics:task_count | ジョブで実行されたタスクの個数 | ジョブIDも出力 |
 |/:jogasaki:metrics:task_stealing_count | ジョブで実行されたタスクのうち、stealingによって実行されたものの個数 | ジョブIDも出力 |
+|/:jogasaki:metrics:sticky_task_count | ジョブで実行されたタスクのうちstickyであるものの個数 | ジョブIDも出力 |
 |/:jogasaki:metrics:sticky_task_worker_enforced_count | ジョブで実行されたstickyタスクのうち、トランザクションが使用中のためにワーカーが変更されたものの個数 | ジョブIDも出力 |
 
 出力例
@@ -90,7 +91,8 @@ jogasakiはジョブに関する下記のメトリクスをverbose log level 37 
 I0417 16:44:42.042572 1267301 flat_task.cpp:144] /:jogasaki:metrics:task_time job_id:0000000000002106 value:1168
 I0417 16:44:42.042640 1267301 flat_task.cpp:148] /:jogasaki:metrics:task_count job_id:0000000000002106 value:2
 I0417 16:44:42.042755 1267301 flat_task.cpp:152] /:jogasaki:metrics:task_stealing_count job_id:0000000000002106 value:1
-I0417 16:44:42.268316 1267301 flat_task.cpp:153] /:jogasaki:metrics:sticky_task_worker_enforced_count job_id:0000000000001b89 value:1
+I0417 16:44:42.865689 1267301 flat_task.cpp:156] /:jogasaki:metrics:sticky_task_count job_id:0000000000002106 value:1
+I0417 16:44:42.268316 1267301 flat_task.cpp:153] /:jogasaki:metrics:sticky_task_worker_enforced_count job_id:0000000000002106 value:1
 ```
 
 ## タイミングイベント出力方法

@@ -48,7 +48,6 @@ using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
 using decimal_v = takatori::decimal::triple;
 
-// scenarios that requires prepare_phone_bill_tables=true
 class validate_user_scenario2_test :
     public ::testing::Test,
     public api_test_base {

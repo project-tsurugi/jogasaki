@@ -115,14 +115,6 @@ public:
         prepare_test_tables_ = arg;
     }
 
-    [[nodiscard]] bool prepare_qa_tables() const noexcept {
-        return prepare_qa_tables_;
-    }
-
-    void prepare_qa_tables(bool arg) noexcept {
-        prepare_qa_tables_ = arg;
-    }
-
     [[nodiscard]] bool prepare_benchmark_tables() const noexcept {
         return prepare_benchmark_tables_;
     }
@@ -234,21 +226,6 @@ public:
     }
 
     /**
-     * @brief setter for prepare_phone_bill_tables flag
-     */
-    void prepare_phone_bill_tables(bool arg) noexcept {
-        prepare_phone_bill_tables_ = arg;
-    }
-
-    /**
-     * @brief accessor for prepare_phone_bill_tables
-     * @return whether built-in tables for phone billing benchmark are created
-     */
-    [[nodiscard]] bool prepare_phone_bill_tables() const noexcept {
-        return prepare_phone_bill_tables_;
-    }
-
-    /**
      * @brief setter for enable index join flag
      */
     void enable_index_join(bool arg) noexcept {
@@ -288,10 +265,8 @@ public:
             "assign_numa_nodes_uniformly:" << cfg.assign_numa_nodes_uniformly() << " " <<
             "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " " <<
             "prepare_test_tables:" << cfg.prepare_test_tables() << " " <<
-            "prepare_qa_tables:" << cfg.prepare_qa_tables() << " " <<
             "prepare_benchmark_tables:" << cfg.prepare_benchmark_tables() << " " <<
             "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
-            "prepare_phone_bill_tables:" << cfg.prepare_phone_bill_tables() << " " <<
             "stealing_enabled:" << cfg.stealing_enabled() << " " <<
             "db_location:" << cfg.db_location() << " " <<
             "tasked_write:" << cfg.tasked_write() << " " <<
@@ -316,10 +291,8 @@ private:
     std::size_t randomize_memory_usage_ = 0;
     std::size_t force_numa_node_ = numa_node_unspecified;
     bool prepare_test_tables_ = false;
-    bool prepare_qa_tables_ = false;
     bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
-    bool prepare_phone_bill_tables_ = false;
     bool stealing_enabled_ = true;
     std::string db_location_{};
     bool tasked_write_ = true;

@@ -114,9 +114,6 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<bool>("prepare_test_tables")) {
         ret->prepare_test_tables(v.value());
     }
-    if (auto v = jogasaki_config->get<bool>("prepare_qa_tables")) {
-        ret->prepare_qa_tables(v.value());
-    }
     if (auto v = jogasaki_config->get<bool>("prepare_benchmark_tables")) {
         ret->prepare_benchmark_tables(v.value());
     }

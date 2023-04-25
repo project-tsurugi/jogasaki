@@ -56,9 +56,13 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->stealing_enabled(false);
-        cfg->prepare_qa_tables(true);
         cfg->prepare_test_tables(true);
         db_setup(cfg);
+        execute_statement("create table qa_t1 (c_pk int primary key, c_i4 int not null, c_i8 bigint not null, c_f4 real not null, c_f8 double not null, c_ch varchar(*) not null)");
+        execute_statement("create index qa_t1_i4_idx on qa_t1(c_i4)");
+        execute_statement("create table qa_t2 ( c_pk1 int not null, c_pk2 varchar(*) not null, c_id1 int not null, c_id2 varchar(*) null, c_jk1 int not null, c_jk2 varchar(*) null, primary key (c_pk1, c_pk2))");
+        execute_statement("create index qa_t2_idc_idx on qa_t2(c_id1, c_id2)");
+        execute_statement("create index qa_t2_jk1_idx on qa_t2(c_jk1)");
     }
 
     void TearDown() override {
@@ -69,10 +73,10 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(validate_qa_test, insert_after_delete_with_secondary_indices) {
-    execute_statement( "INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')");
-    execute_statement( "DELETE FROM qa_t1");
+    execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')");
+    execute_statement("DELETE FROM qa_t1");
     wait_epochs();
-    execute_statement( "INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')");
+    execute_statement("INSERT INTO qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) VALUES (1, 10, 100, 1000.0, 10000.0, '100000')");
 
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM qa_t1", result);

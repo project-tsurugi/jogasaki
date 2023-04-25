@@ -97,10 +97,6 @@ void flat_task::write() {
     log_exit << *this;
 }
 
-void req() {
-
-}
-
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
     auto begin = clock::now();
     bool ret = false;
@@ -121,7 +117,7 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
         if(sticky_) {
             ++req_detail->sticky_task_count();
         }
-        if(ctx.task_is_solen()) {
+        if(ctx.task_is_stolen()) {
             ++req_detail->task_steling_count();
         }
     }

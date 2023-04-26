@@ -39,7 +39,7 @@ optional packages:
 
 ## Additional file installation for Apache Parquet
 
-Jogasaki requires Apache Parquet package versioned as `9.0.0.-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.) 
+Jogasaki requires Apache Parquet package versioned as `9.0.0-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.) 
 
 Installing Apache Paquet packages `libparquet-dev`, `libparquet-glib-dev` requires additional files installation. 
 If installing these packages from `apt install` command fails, issue below commands to install required files.

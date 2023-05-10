@@ -255,6 +255,21 @@ public:
         return use_preferred_worker_for_current_thread_;
     }
 
+    /**
+     * @brief setter for stealing_wait parameter
+     */
+    [[nodiscard]] std::size_t stealing_wait() const noexcept {
+        return stealing_wait_;
+    }
+
+    /**
+     * @brief accessor for stealing_wait parameter
+     * @return stealing_wait parameter (coefficient for local queue check before stealing)
+     */
+    void stealing_wait(std::size_t arg) noexcept {
+        stealing_wait_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -276,6 +291,7 @@ public:
             "enable_logship:" << cfg.enable_logship() << " " <<
             "enable_index_join:" << cfg.enable_index_join() << " " <<
             "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
+            "stealing_wait:" << cfg.stealing_wait() << " " <<
             "";
     }
 
@@ -303,6 +319,7 @@ private:
     bool enable_logship_ = false;
     bool enable_index_join_ = false;
     bool use_preferred_worker_for_current_thread_ = true;
+    std::size_t stealing_wait_ = 0;
 };
 
 }

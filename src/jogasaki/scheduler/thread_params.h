@@ -33,7 +33,8 @@ public:
         std::size_t force_numa_node = numa_node_unspecified,
         bool stealing_enabled = false,
         bool lazy_worker = false,
-        bool use_preferred_worker_for_current_thread = false
+        bool use_preferred_worker_for_current_thread = false,
+        std::size_t stealing_wait = 0
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),
@@ -43,7 +44,8 @@ public:
         force_numa_node_(force_numa_node),
         stealing_enabled_(stealing_enabled),
         lazy_worker_(lazy_worker),
-        use_preferred_worker_for_current_thread_(use_preferred_worker_for_current_thread)
+        use_preferred_worker_for_current_thread_(use_preferred_worker_for_current_thread),
+        stealing_wait_(stealing_wait)
     {}
 
     explicit thread_params(std::shared_ptr<configuration> const& cfg) :
@@ -56,13 +58,14 @@ public:
             cfg->force_numa_node(),
             cfg->stealing_enabled(),
             cfg->lazy_worker(),
-            cfg->use_preferred_worker_for_current_thread()
+            cfg->use_preferred_worker_for_current_thread(),
+            cfg->stealing_wait()
         )
     {}
 
     [[nodiscard]] std::size_t threads() const noexcept {
         return threads_;
-    };
+    }
 
     [[nodiscard]] bool is_set_core_affinity() const noexcept {
         return set_core_affinity_;
@@ -95,6 +98,11 @@ public:
     [[nodiscard]] bool use_preferred_worker_for_current_thread() const noexcept {
         return use_preferred_worker_for_current_thread_;
     }
+
+    [[nodiscard]] std::size_t stealing_wait() const noexcept {
+        return stealing_wait_;
+    }
+
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
@@ -105,6 +113,7 @@ private:
     bool stealing_enabled_{};
     bool lazy_worker_{};
     bool use_preferred_worker_for_current_thread_{};
+    std::size_t stealing_wait_{};
 };
 
 } // namespace

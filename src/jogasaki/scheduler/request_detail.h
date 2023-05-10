@@ -16,6 +16,8 @@
 #pragma once
 
 #include <atomic>
+#include <string>
+#include <string_view>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/utils/interference_size.h>

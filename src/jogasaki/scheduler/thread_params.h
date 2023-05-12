@@ -34,7 +34,7 @@ public:
         bool stealing_enabled = false,
         bool lazy_worker = false,
         bool use_preferred_worker_for_current_thread = false,
-        std::size_t stealing_wait = 0
+        std::size_t stealing_wait = 1
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),

@@ -319,7 +319,7 @@ private:
     bool enable_logship_ = false;
     bool enable_index_join_ = false;
     bool use_preferred_worker_for_current_thread_ = true;
-    std::size_t stealing_wait_ = 0;
+    std::size_t stealing_wait_ = 1;
 };
 
 }

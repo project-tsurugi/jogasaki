@@ -91,7 +91,7 @@ public:
 
 
     [[nodiscard]] std::size_t session_id() const override;
-    [[nodiscard]] std::size_t service_id() const;
+    [[nodiscard]] std::size_t service_id() const override;
     [[nodiscard]] std::string_view payload() const override;
 
     std::string payload_{};  //NOLINT
@@ -135,7 +135,7 @@ public:
 
     bool completed();
 
-    void session_id(std::size_t id);
+    void session_id(std::size_t id) override;
 
     template <class Rep = std::int64_t, class Period = std::milli>
     bool wait_completion(std::chrono::duration<Rep, Period> dur = std::chrono::milliseconds{2000}) {

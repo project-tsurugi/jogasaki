@@ -53,6 +53,7 @@ DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and a
 DEFINE_bool(readonly, false, "Specify readonly option when creating transaction");  //NOLINT
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_bool(simple, false, "use simple query");  //NOLINT
+DEFINE_bool(index_join, false, "enable index join");  //NOLINT
 
 namespace jogasaki::query_bench_cli {
 
@@ -222,6 +223,7 @@ bool fill_from_flags(
     cfg.thread_pool_size(FLAGS_thread_count);
     cfg.default_partitions(FLAGS_partitions);
     cfg.stealing_enabled(FLAGS_steal);
+    cfg.enable_index_join(FLAGS_index_join);
 
     if (FLAGS_minimum) {
         cfg.thread_pool_size(1);

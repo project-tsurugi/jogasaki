@@ -34,7 +34,8 @@ public:
         bool stealing_enabled = false,
         bool lazy_worker = false,
         bool use_preferred_worker_for_current_thread = false,
-        std::size_t stealing_wait = 1
+        std::size_t stealing_wait = 1,
+        std::size_t task_polling_wait = 0
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),
@@ -45,7 +46,8 @@ public:
         stealing_enabled_(stealing_enabled),
         lazy_worker_(lazy_worker),
         use_preferred_worker_for_current_thread_(use_preferred_worker_for_current_thread),
-        stealing_wait_(stealing_wait)
+        stealing_wait_(stealing_wait),
+        task_polling_wait_(task_polling_wait)
     {}
 
     explicit thread_params(std::shared_ptr<configuration> const& cfg) :
@@ -59,7 +61,8 @@ public:
             cfg->stealing_enabled(),
             cfg->lazy_worker(),
             cfg->use_preferred_worker_for_current_thread(),
-            cfg->stealing_wait()
+            cfg->stealing_wait(),
+            cfg->task_polling_wait()
         )
     {}
 
@@ -103,6 +106,9 @@ public:
         return stealing_wait_;
     }
 
+    [[nodiscard]] std::size_t task_polling_wait() const noexcept {
+        return task_polling_wait_;
+    }
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
@@ -114,6 +120,7 @@ private:
     bool lazy_worker_{};
     bool use_preferred_worker_for_current_thread_{};
     std::size_t stealing_wait_{};
+    std::size_t task_polling_wait_{};
 };
 
 } // namespace

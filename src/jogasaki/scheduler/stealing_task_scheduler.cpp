@@ -121,6 +121,7 @@ tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::creat
     ret.lazy_worker(params.lazy_worker());
     ret.use_preferred_worker_for_current_thread(params.use_preferred_worker_for_current_thread());
     ret.stealing_wait(params.stealing_wait());
+    ret.task_polling_wait(params.task_polling_wait());
     return ret;
 }
 

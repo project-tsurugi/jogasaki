@@ -256,18 +256,33 @@ public:
     }
 
     /**
-     * @brief setter for stealing_wait parameter
+     * @brief accessor for stealing_wait parameter
+     * @return stealing_wait parameter (coefficient for local queue check before stealing)
      */
     [[nodiscard]] std::size_t stealing_wait() const noexcept {
         return stealing_wait_;
     }
 
     /**
-     * @brief accessor for stealing_wait parameter
-     * @return stealing_wait parameter (coefficient for local queue check before stealing)
+     * @brief setter for stealing_wait parameter
      */
     void stealing_wait(std::size_t arg) noexcept {
         stealing_wait_ = arg;
+    }
+
+    /**
+     * @brief accessor for task_polling_wait parameter
+     * @return task_polling_wait parameter (duration in micro-second before polling task queue again)
+     */
+    [[nodiscard]] std::size_t task_polling_wait() const noexcept {
+        return task_polling_wait_;
+    }
+
+    /**
+     * @brief setter for task_polling_wait parameter
+     */
+    void task_polling_wait(std::size_t arg) noexcept {
+        task_polling_wait_ = arg;
     }
 
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
@@ -292,6 +307,7 @@ public:
             "enable_index_join:" << cfg.enable_index_join() << " " <<
             "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
             "stealing_wait:" << cfg.stealing_wait() << " " <<
+            "task_polling_wait:" << cfg.task_polling_wait() << " " <<
             "";
     }
 
@@ -320,6 +336,7 @@ private:
     bool enable_index_join_ = false;
     bool use_preferred_worker_for_current_thread_ = true;
     std::size_t stealing_wait_ = 1;
+    std::size_t task_polling_wait_ = 0;
 };
 
 }

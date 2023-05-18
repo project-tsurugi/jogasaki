@@ -98,7 +98,12 @@ void flat_task::write() {
 }
 
 bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
-    auto begin = clock::now();
+    // The variables begin and end are needed only for timing event log.
+    // Avoid calling clock::now() if log level is low. In case its cost is unexpectedly high.
+    std::chrono::time_point<clock> begin{};
+    if (VLOG_IS_ON(log_debug_timing_event_fine)) {
+        begin = clock::now();
+    }
     bool ret = false;
     switch(kind_) {
         using kind = flat_task_kind;
@@ -110,7 +115,10 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
         case kind::write: write(); break;
         case kind::load: load(); break;
     }
-    auto end = clock::now();
+    std::chrono::time_point<clock> end{};
+    if (VLOG_IS_ON(log_debug_timing_event_fine)) {
+        end = clock::now();
+    }
     if(auto req_detail = job()->request()) {
         req_detail->task_duration_ns() += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
         ++req_detail->task_count();

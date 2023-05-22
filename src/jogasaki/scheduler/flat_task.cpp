@@ -184,11 +184,8 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
         }
     }
     auto job_completes = execute(ctx);
-    auto idx = job()->preferred_worker_index().load();
-    if (idx == job_context::undefined_index) {
-        if(auto& tctx = req_context_->transaction(); tctx && sticky_) {
-            tctx->decrement_worker_count();
-        }
+    if(auto& tctx = req_context_->transaction(); tctx && sticky_) {
+        tctx->decrement_worker_count();
     }
     auto jobid = job()->id();
     auto cnt = --job()->task_count();

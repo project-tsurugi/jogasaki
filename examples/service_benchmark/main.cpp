@@ -610,7 +610,7 @@ private:
 
     bool wait_response(tateyama::api::server::mock::test_response& res) {
         std::size_t cnt = 0;
-        constexpr std::size_t max_wait = 100;
+        constexpr std::size_t max_wait = 10000;
         while(! res.completed() && cnt < max_wait) {
             std::this_thread::sleep_for(1ms);
             ++cnt;

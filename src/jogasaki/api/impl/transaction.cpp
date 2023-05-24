@@ -48,6 +48,10 @@
 #include "request_context_factory.h"
 #include "jogasaki/index/field_factory.h"
 
+#ifdef PERFORMANCE_TOOLS
+#include <performance-tools/marker.h>
+#endif
+
 namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
@@ -68,6 +72,9 @@ status transaction::commit() {
 }
 
 status transaction::commit_internal() {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("transaction::commit_internal");
+#endif
     return tx_->object()->commit();
 }
 

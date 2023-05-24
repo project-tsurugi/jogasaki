@@ -37,6 +37,10 @@
 #include "details/encode_key.h"
 #include "details/error_abort.h"
 
+#ifdef PERFORMANCE_TOOLS
+#include <performance-tools/marker.h>
+#endif
+
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
@@ -98,6 +102,9 @@ find::find(
 {}
 
 operation_status find::process_record(abstract::task_context* context) {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("find::process_record");
+#endif
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
     auto* p = find_context<class find_context>(index(), ctx.contexts());

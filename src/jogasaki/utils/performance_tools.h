@@ -15,20 +15,11 @@
  */
 #pragma once
 #include <string>
-#ifdef PERFORMANCE_TOOLS
-#include <performance-tools/perf_counter.h>
-#include <performance-tools/lap_counter.h>
-#else
 #include <jogasaki/utils/watch.h>
-#endif
 
 namespace jogasaki::utils {
 
-#ifdef PERFORMANCE_TOOLS
-using watch_class = performance_tools::lap_counter_class;
-#else
 using watch_class = jogasaki::utils::watch;
-#endif
 
 watch_class& get_watch();
 std::string textualize(watch_class&, watch_class::point_in_code, watch_class::point_in_code, std::string_view);

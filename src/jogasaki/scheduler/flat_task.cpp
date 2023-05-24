@@ -28,9 +28,16 @@
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/request_logging.h>
 
+#ifdef PERFORMANCE_TOOLS
+#include <performance-tools/marker.h>
+#endif
+
 namespace jogasaki::scheduler {
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::bootstrap");
+#endif
     log_entry << *this;
     trace_scope_name("bootstrap");  //NOLINT
     job()->preferred_worker_index().store(ctx.index());
@@ -42,6 +49,9 @@ void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
 }
 
 void flat_task::dag_schedule() {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::dag_schedule");
+#endif
     log_entry << *this;
     trace_scope_name("dag_schedule");  //NOLINT
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
@@ -77,6 +87,9 @@ void flat_task::resubmit(request_context& req_context) {
 }
 
 bool flat_task::teardown() {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::teardown");
+#endif
     log_entry << *this;
     trace_scope_name("teardown");  //NOLINT
     bool ret = true;
@@ -90,6 +103,9 @@ bool flat_task::teardown() {
 }
 
 void flat_task::write() {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::write");
+#endif
     log_entry << *this;
     trace_scope_name("write");  //NOLINT
     (*write_)(*req_context_);
@@ -133,6 +149,9 @@ bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
 }
 
 void flat_task::finish_job() {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::finish_job");
+#endif
     // job completed, and the latch needs to be released
     auto& ts = *req_context_->scheduler();
     auto& j = *job();
@@ -174,6 +193,9 @@ void flat_task::finish_job() {
 }
 
 void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::operator()");
+#endif
     auto started = job()->started().load();
     if(! started) {
         if(job()->started().compare_exchange_strong(started, true)) {
@@ -246,6 +268,9 @@ job_context* flat_task::job() const {
 }
 
 void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::resolve");
+#endif
     log_entry << *this;
     (void)ctx;
     auto& e = sctx_->executable_statement_;
@@ -301,6 +326,9 @@ flat_task::flat_task(
 {}
 
 void flat_task::load() {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::load");
+#endif
     log_entry << *this;
     auto res = (*loader_)();
     if(res == executor::file::loader_result::running) {
@@ -328,6 +356,9 @@ flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rct
 {}
 
 void flat_task::execute_wrapped() {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("flat_task::execute_wrapped");
+#endif
     //DVLOG(log_trace) << *this << " wrapped task executed.";
     trace_scope_name("executor_task");  //NOLINT
     model::task_result res{};

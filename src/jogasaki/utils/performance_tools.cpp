@@ -14,33 +14,11 @@
  * limitations under the License.
  */
 #include "performance_tools.h"
-#ifdef PERFORMANCE_TOOLS
-#include <performance-tools/lap_counter_init.h>
-#endif
 
 #include <memory>
 #include <sstream>
 
 namespace jogasaki::utils {
-
-#ifdef PERFORMANCE_TOOLS
-
-watch_class& get_watch() {
-    return performance_tools::get_watch();
-}
-
-std::string textualize(watch_class& result, watch_class::point_in_code bgn, watch_class::point_in_code end, std::string_view label) {
-    std::stringstream ss;
-
-    ss << "performance counter result for " << label << std::endl;
-    auto results = result.laps(bgn, end);
-    for(auto r : *results.get()) {
-        ss << label << "\t" << r << std::endl;
-    }
-    return ss.str();
-}
-
-#else
 
 watch_class& get_watch() {
     static std::unique_ptr<watch_class> watch_ = std::make_unique<watch_class>();
@@ -57,7 +35,5 @@ std::string textualize(
     ss << label << ": total " << result.duration(bgn, end) << "ms, average " << result.average_duration(bgn, end) << "ms" ;
     return ss.str();
 }
-
-#endif
 
 } // namespace

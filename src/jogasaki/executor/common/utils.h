@@ -24,12 +24,19 @@
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 
+#ifdef PERFORMANCE_TOOLS
+#include <performance-tools/marker.h>
+#endif
+
 namespace jogasaki::executor::common {
 
 // common utility functions
 
 template <class ...Args>
 void send_event(request_context& context, Args...args) {
+#ifdef PERFORMANCE_TOOLS
+    MARKER_SCOPE("send_event");
+#endif
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*context.stmt_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.process_internal_events();  // let's handle internal event first

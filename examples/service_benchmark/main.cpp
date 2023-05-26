@@ -47,12 +47,12 @@
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_int32(thread_count, 1, "Number of threads used in server thread pool");  //NOLINT
-DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
+DEFINE_bool(core_affinity, false, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
 DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
-DEFINE_bool(steal, false, "Enable stealing for task scheduling");  //NOLINT
+DEFINE_bool(steal, true, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
 DEFINE_bool(verify, false, "Whether to deserialize the query result records. Requires clients=1");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
@@ -70,6 +70,10 @@ DEFINE_int64(transactions, -1, "Number of transactions executed per client threa
 DEFINE_int32(clients, 1, "Number of client threads");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
 DEFINE_bool(tasked_insert, true, "run insert as task");  //NOLINT
+DEFINE_int32(stealing_wait, 0, "Coefficient for the number of times checking local queue before stealing");  //NOLINT
+DEFINE_int32(task_polling_wait, 0, "wait method/duration parameter in the worker's busy loop");  //NOLINT
+DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is selected depending on the current thread requesting schedule");  //NOLINT
+DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLINT
 
 namespace tateyama::service_benchmark {
 
@@ -245,6 +249,10 @@ public:
         cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
         cfg.default_partitions(FLAGS_partitions);
         cfg.stealing_enabled(FLAGS_steal);
+        cfg.stealing_wait(FLAGS_stealing_wait);
+        cfg.task_polling_wait(FLAGS_task_polling_wait);
+        cfg.use_preferred_worker_for_current_thread(FLAGS_use_preferred_worker_for_current_thread);
+        cfg.lazy_worker(FLAGS_lazy_worker);
 
         if (FLAGS_minimum) {
             cfg.single_thread(false);

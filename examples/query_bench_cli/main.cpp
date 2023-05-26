@@ -54,6 +54,10 @@ DEFINE_bool(readonly, false, "Specify readonly option when creating transaction"
 DEFINE_string(location, "TMP", "specify the database directory. Pass TMP to use temporary directory.");  //NOLINT
 DEFINE_bool(simple, false, "use simple query");  //NOLINT
 DEFINE_bool(index_join, false, "enable index join");  //NOLINT
+DEFINE_int32(stealing_wait, 0, "Coefficient for the number of times checking local queue before stealing");  //NOLINT
+DEFINE_int32(task_polling_wait, 0, "wait method/duration parameter in the worker's busy loop");  //NOLINT
+DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is selected depending on the current thread requesting schedule");  //NOLINT
+DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLINT
 
 namespace jogasaki::query_bench_cli {
 
@@ -224,6 +228,10 @@ bool fill_from_flags(
     cfg.default_partitions(FLAGS_partitions);
     cfg.stealing_enabled(FLAGS_steal);
     cfg.enable_index_join(FLAGS_index_join);
+    cfg.stealing_wait(FLAGS_stealing_wait);
+    cfg.task_polling_wait(FLAGS_task_polling_wait);
+    cfg.use_preferred_worker_for_current_thread(FLAGS_use_preferred_worker_for_current_thread);
+    cfg.lazy_worker(FLAGS_lazy_worker);
 
     if (FLAGS_minimum) {
         cfg.thread_pool_size(1);

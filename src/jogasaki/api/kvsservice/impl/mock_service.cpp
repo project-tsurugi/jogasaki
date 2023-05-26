@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/logging.h>
 #include "mock_service.h"
 
 namespace jogasaki::api::kvsservice::impl {
@@ -40,6 +39,7 @@ void mock_service::command_begin(tateyama::proto::kvs::request::Request const &p
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
+    std::cout << "mock_service::command_begin" << std::endl;
     //
     begin.release_success();
     success.release_transaction_handle();
@@ -57,17 +57,13 @@ void mock_service::command_commit(tateyama::proto::kvs::request::Request const&,
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
+    std::cout << "mock_service::command_commit" << std::endl;
     //
     commit.release_success();
 }
 
 bool mock_service::operator()(std::shared_ptr<tateyama::api::server::request const> req,
         std::shared_ptr<tateyama::api::server::response> res) {
-#if 0
-    std::string payload { req->payload() };
-    res->session_id(req->session_id());
-    return res->body(payload) == tateyama::status::ok;
-#endif
     // see jogasaki/src/jogasaki/api/impl/service.cpp::process()
     tateyama::proto::kvs::request::Request proto_req { };
     res->session_id(req->session_id());

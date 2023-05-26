@@ -22,8 +22,8 @@
 #include <memory>
 #include <regex>
 #include <atomic>
+#include <xmmintrin.h>
 
-#include <jogasaki/utils/latch.h>
 #include <tbb/concurrent_hash_map.h>
 #include <tbb/concurrent_queue.h>
 
@@ -139,7 +139,20 @@ public:
 
     template <class Rep = std::int64_t, class Period = std::milli>
     bool wait_completion(std::chrono::duration<Rep, Period> dur = std::chrono::milliseconds{2000}) {
-        return completion_latch_.wait(dur);
+        using clock = std::chrono::steady_clock;
+        auto begin = clock::now();
+        auto cnt = 0;
+        while(! completed_) {
+            ++cnt;
+            if(cnt % 10000 == 0) {
+                auto end = clock::now();
+                if(end-begin > dur) {
+                    return false;
+                }
+            }
+            _mm_pause();
+        }
+        return true;
     }
 
     [[nodiscard]] bool all_released() const noexcept;
@@ -151,7 +164,6 @@ public:
     std::string message_{};  //NOLINT
     response_code code_{response_code::unknown};  //NOLINT
     std::atomic_bool completed_{};  //NOLINT
-    jogasaki::utils::latch completion_latch_{};  //NOLINT
     std::size_t released_{};  //NOLINT
     std::function<void(std::string_view)> on_write_{}; //NOLINT
     std::size_t session_id_{};  //NOLINT

@@ -302,6 +302,7 @@ flat_task::flat_task(
 
 void flat_task::load() {
     log_entry << *this;
+    trace_scope_name("load");  //NOLINT
     auto res = (*loader_)();
     if(res == executor::file::loader_result::running) {
         auto& ts = *req_context_->scheduler();

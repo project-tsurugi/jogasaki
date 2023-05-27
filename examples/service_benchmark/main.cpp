@@ -74,6 +74,8 @@ DEFINE_int32(stealing_wait, -1, "Coefficient for the number of times checking lo
 DEFINE_int32(task_polling_wait, 0, "wait method/duration parameter in the worker's busy loop");  //NOLINT
 DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is selected depending on the current thread requesting schedule");  //NOLINT
 DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLINT
+DEFINE_bool(ltx, false, "use ltx instead of occ for benchmark. Use exclusively with --rtx.");  //NOLINT
+DEFINE_bool(rtx, false, "use ltx instead of occ for benchmark. Use exclusively with --ltx.");  //NOLINT
 
 namespace tateyama::service_benchmark {
 
@@ -210,6 +212,8 @@ class cli {
     std::int64_t duration_{};
     std::int64_t statements_{};
     std::size_t clients_{};
+    bool ltx_{}; //NOLINT
+    bool rtx_{}; //NOLINT
 
 public:
 
@@ -277,6 +281,8 @@ public:
         duration_ = FLAGS_duration;
         statements_ = FLAGS_statements;
         clients_ = FLAGS_clients;
+        ltx_ = FLAGS_ltx;
+        rtx_ = FLAGS_rtx;
 
         if (verify_query_records_ && clients_ != 1) {
             LOG(ERROR) << "--verify requires --clients=1";
@@ -294,6 +300,10 @@ public:
         }
         if (FLAGS_insert) {
             mode_ = mode::insert;
+        }
+        if (ltx_ && rtx_) {
+            LOG(ERROR) << "Both --ltx and --rtx are specified.";
+            return false;
         }
         if (FLAGS_minimum) {
             mode_ = mode::insert;
@@ -314,6 +324,8 @@ public:
             << "transactions:" << transactions_ << " "
             << "statements:" << statements_ << " "
             << "clients:" << clients_ << " "
+            << "ltx:" << ltx_ << " "
+            << "rtx:" << rtx_ << " "
             << "";
 
         return true;
@@ -484,11 +496,12 @@ public:
                     result_info ret{};
                     start.count_down_and_wait();
                     data_seed seed{i, 0};
+                    std::vector<std::string> write_preserves{"NEW_ORDER", "STOCK"};
                     while((transactions_ == -1 && !stop) || (transactions_ != -1 && ret.transactions_ < transactions_)) {
                         std::uint64_t handle{};
                         {
                             auto b = clock ::now();
-                            if (auto res = begin_tx(handle); !res) {
+                            if (auto res = begin_tx(handle, rtx_, ltx_, write_preserves); !res) {
                                 std::abort();
                             }
                             ret.begin_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
@@ -586,8 +599,12 @@ public:
     }
 
 private:
-    bool begin_tx(std::uint64_t& handle) {
-        auto s = jogasaki::utils::encode_begin(false);
+    bool begin_tx(std::uint64_t& handle,
+            bool readonly,
+            bool is_long,
+            std::vector<std::string> const& write_preserves
+    ) {
+        auto s = jogasaki::utils::encode_begin(readonly, is_long, write_preserves);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);

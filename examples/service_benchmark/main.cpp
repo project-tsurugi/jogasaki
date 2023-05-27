@@ -125,7 +125,7 @@ void show_result(
 ) {
     auto& transactions = result.transactions_;
     auto& statements = result.statements_;
-    auto& records = result.records_;
+//    auto& records = result.records_;
     auto transaction_ns = result.commit_ns_ + result.statement_ns_ + result.commit_ns_;
     auto& statement_ns = result.statement_ns_;
 
@@ -134,20 +134,20 @@ void show_result(
     LOG(INFO) << "  statements took : " << format((std::int64_t)(double)statement_ns / threads) << " ns/thread";
     LOG(INFO) << "executed: " <<
         format(transactions) << " transactions, " <<
-        format(statements) << " statements, " <<
-        format(records) << " records";
+        format(statements) << " statements";
+//        format(records) << " records";  // not supported yet
     LOG(INFO) << "throughput: " <<
         format((std::int64_t)((double)transactions / duration_ms * 1000)) << " transactions/s, " <<  //NOLINT
-        format((std::int64_t)((double)statements / statement_ns * threads * 1000 * 1000 * 1000)) << " statements/s, " <<  //NOLINT
-        format((std::int64_t)((double)records / statement_ns * threads * 1000 * 1000 * 1000)) << " records/s";  //NOLINT
+        format((std::int64_t)((double)statements / statement_ns * threads * 1000 * 1000 * 1000)) << " statements/s";  //NOLINT
+//        format((std::int64_t)((double)records / statement_ns * threads * 1000 * 1000 * 1000)) << " records/s";// not supported yet  //NOLINT
     LOG(INFO) << "throughput/thread: " <<
         format((std::int64_t)((double)transactions / threads / duration_ms * 1000)) << " transactions/s/thread, " <<  //NOLINT
-        format((std::int64_t)((double)statements / statement_ns * 1000 * 1000 * 1000)) << " statements/s/thread, " << //NOLINT
-        format((std::int64_t)((double)records/ statement_ns * 1000 * 1000 * 1000)) << " records/s/thread";  //NOLINT
+        format((std::int64_t)((double)statements / statement_ns * 1000 * 1000 * 1000)) << " statements/s/thread"; //NOLINT
+//        format((std::int64_t)((double)records/ statement_ns * 1000 * 1000 * 1000)) << " records/s/thread";// not supported yet  //NOLINT
     LOG(INFO) << "avg turn-around: " <<
         "transaction " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / transactions)) << " ns, " <<  //NOLINT
-        "statement " << format((std::int64_t)((double)statement_ns / statements)) << " ns, " <<  //NOLINT
-        "record " << format((std::int64_t)((double)statement_ns / records)) << " ns";  //NOLINT
+        "statement " << format((std::int64_t)((double)statement_ns / statements)) << " ns";  //NOLINT
+//        "record " << format((std::int64_t)((double)statement_ns / records)) << " ns";// not supported yet  //NOLINT
 }
 
 enum class profile {

@@ -70,7 +70,7 @@ DEFINE_int64(transactions, -1, "Number of transactions executed per client threa
 DEFINE_int32(clients, 1, "Number of client threads");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
 DEFINE_bool(tasked_insert, true, "run insert as task");  //NOLINT
-DEFINE_int32(stealing_wait, 0, "Coefficient for the number of times checking local queue before stealing");  //NOLINT
+DEFINE_int32(stealing_wait, -1, "Coefficient for the number of times checking local queue before stealing. Specify -1 to use jogasaki default.");  //NOLINT
 DEFINE_int32(task_polling_wait, 0, "wait method/duration parameter in the worker's busy loop");  //NOLINT
 DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is selected depending on the current thread requesting schedule");  //NOLINT
 DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLINT
@@ -216,9 +216,6 @@ public:
     void prepare_data(jogasaki::api::database& db, std::size_t rows) {
         auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(db);
         static constexpr std::size_t mod = 100;
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T0", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T1", rows, true, mod);
-        jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T2", rows, true, mod);
         jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "WAREHOUSE", rows, true, mod);
         jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "DISTRICT", rows, true, mod);
         jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "CUSTOMER", rows, true, mod);
@@ -248,8 +245,10 @@ public:
         cfg.initial_core(FLAGS_initial_core);
         cfg.assign_numa_nodes_uniformly(FLAGS_assign_numa_nodes_uniformly);
         cfg.default_partitions(FLAGS_partitions);
+        if(FLAGS_stealing_wait != -1) {
+            cfg.stealing_wait(FLAGS_stealing_wait);
+        }
         cfg.stealing_enabled(FLAGS_steal);
-        cfg.stealing_wait(FLAGS_stealing_wait);
         cfg.task_polling_wait(FLAGS_task_polling_wait);
         cfg.use_preferred_worker_for_current_thread(FLAGS_use_preferred_worker_for_current_thread);
         cfg.lazy_worker(FLAGS_lazy_worker);

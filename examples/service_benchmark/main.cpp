@@ -549,6 +549,7 @@ public:
         std::shared_ptr<jogasaki::configuration> cfg,
         jogasaki::common_cli::temporary_folder& dir
     ) {
+        auto begin = clock::now();
         if (FLAGS_location == "TMP") {
             dir.prepare();
             cfg->db_location(dir.path());
@@ -569,6 +570,9 @@ public:
         if (FLAGS_prepare_data > 0) {
             prepare_data(*db_, FLAGS_prepare_data);
         }
+        auto end = clock::now();
+        auto duration_ms = std::chrono::duration_cast<clock::duration>(end-begin).count()/1000/1000;
+        LOG(INFO) << "setup duration: " << format(duration_ms) << " ms";
     }
 
     int run(std::shared_ptr<jogasaki::configuration> cfg) {

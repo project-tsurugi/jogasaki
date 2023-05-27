@@ -130,23 +130,23 @@ void show_result(
     auto& statement_ns = result.statement_ns_;
 
     LOG(INFO) << "duration: " << format(duration_ms) << " ms";
-    LOG(INFO) << "  transactions took : " << format((std::int64_t)(double)transaction_ns / threads) << " ns/thread";
-    LOG(INFO) << "  statements took : " << format((std::int64_t)(double)statement_ns / threads) << " ns/thread";
+    LOG(INFO) << "  avg. begin-commit interval : " << format((std::int64_t)(double)transaction_ns / threads) << " ns/thread";
+    LOG(INFO) << "  avg. statements interval : " << format((std::int64_t)(double)statement_ns / threads) << " ns/thread";
     LOG(INFO) << "executed: " <<
         format(transactions) << " transactions, " <<
         format(statements) << " statements";
 //        format(records) << " records";  // not supported yet
     LOG(INFO) << "throughput: " <<
         format((std::int64_t)((double)transactions / duration_ms * 1000)) << " transactions/s, " <<  //NOLINT
-        format((std::int64_t)((double)statements / statement_ns * threads * 1000 * 1000 * 1000)) << " statements/s";  //NOLINT
-//        format((std::int64_t)((double)records / statement_ns * threads * 1000 * 1000 * 1000)) << " records/s";// not supported yet  //NOLINT
+        format((std::int64_t)((double)statements / duration_ms * 1000)) << " statements/s";  //NOLINT
+//        format((std::int64_t)((double)records / duration_ms * 1000)) << " records/s";// not supported yet  //NOLINT
     LOG(INFO) << "throughput/thread: " <<
         format((std::int64_t)((double)transactions / threads / duration_ms * 1000)) << " transactions/s/thread, " <<  //NOLINT
-        format((std::int64_t)((double)statements / statement_ns * 1000 * 1000 * 1000)) << " statements/s/thread"; //NOLINT
-//        format((std::int64_t)((double)records/ statement_ns * 1000 * 1000 * 1000)) << " records/s/thread";// not supported yet  //NOLINT
+        format((std::int64_t)((double)statements / threads / duration_ms * 1000)) << " statements/s/thread"; //NOLINT
+//        format((std::int64_t)((double)records/ threads / duration_ms * 1000)) << " records/s/thread";// not supported yet  //NOLINT
     LOG(INFO) << "avg turn-around: " <<
         "transaction " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / transactions)) << " ns, " <<  //NOLINT
-        "statement " << format((std::int64_t)((double)statement_ns / statements)) << " ns";  //NOLINT
+        "statement " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / statements)) << " ns";  //NOLINT
 //        "record " << format((std::int64_t)((double)statement_ns / records)) << " ns";// not supported yet  //NOLINT
 }
 
@@ -484,15 +484,15 @@ public:
                     result_info ret{};
                     start.count_down_and_wait();
                     data_seed seed{i, 0};
-                    std::uint64_t handle{};
-                    {
-                        auto b = clock ::now();
-                        if (auto res = begin_tx(handle); !res) {
-                            std::abort();
-                        }
-                        ret.begin_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
-                    }
                     while((transactions_ == -1 && !stop) || (transactions_ != -1 && ret.transactions_ < transactions_)) {
+                        std::uint64_t handle{};
+                        {
+                            auto b = clock ::now();
+                            if (auto res = begin_tx(handle); !res) {
+                                std::abort();
+                            }
+                            ret.begin_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
+                        }
                         for(std::size_t j=0, n=statements_; j < n; ++j) {
                             {
                                 auto b = clock::now();
@@ -508,14 +508,14 @@ public:
                             }
                         }
                         ++ret.transactions_;
-                    }
-                    {
-                        auto b = clock ::now();
-                        if (auto res = commit_tx(handle); !res) {
-                            LOG(ERROR) << "commit_tx failed";
-                            std::abort();
+                        {
+                            auto b = clock ::now();
+                            if (auto res = commit_tx(handle); !res) {
+                                LOG(ERROR) << "commit_tx failed";
+                                std::abort();
+                            }
+                            ret.commit_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                         }
-                        ret.commit_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
                     }
                     return ret;
                 })
@@ -591,8 +591,7 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        while(! res->completed()) { /* noop */ }
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+        if(! res->wait_completion() || ! st || !res->completed() || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
             return false;
         }
@@ -619,23 +618,13 @@ private:
         on_going_statements_.clear();
     }
 
-    bool wait_response(tateyama::api::server::mock::test_response& res) {
-        std::size_t cnt = 0;
-        constexpr std::size_t max_wait = 10000;
-        while(! res.completed() && cnt < max_wait) {
-            std::this_thread::sleep_for(1ms);
-            ++cnt;
-        }
-        return cnt < max_wait;
-    }
-
     bool commit_tx(std::uint64_t handle) {
         wait_for_statements();
         auto s = jogasaki::utils::encode_commit(handle);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(! wait_response(*res)) {
+        if(! res->wait_completion()) {
             LOG(ERROR) << "response timed out";
             return false;
         }

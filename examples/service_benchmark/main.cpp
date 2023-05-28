@@ -76,6 +76,7 @@ DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is se
 DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLINT
 DEFINE_bool(ltx, false, "use ltx instead of occ for benchmark. Use exclusively with --rtx.");  //NOLINT
 DEFINE_bool(rtx, false, "use ltx instead of occ for benchmark. Use exclusively with --ltx.");  //NOLINT
+DEFINE_int64(client_idle, 0, "clients take idle spin loop n times");  //NOLINT
 
 namespace tateyama::service_benchmark {
 
@@ -214,6 +215,7 @@ class cli {
     std::size_t clients_{};
     bool ltx_{}; //NOLINT
     bool rtx_{}; //NOLINT
+    std::int64_t client_idle_{};
 
 public:
 
@@ -283,6 +285,7 @@ public:
         clients_ = FLAGS_clients;
         ltx_ = FLAGS_ltx;
         rtx_ = FLAGS_rtx;
+        client_idle_ = FLAGS_client_idle;
 
         if (verify_query_records_ && clients_ != 1) {
             LOG(ERROR) << "--verify requires --clients=1";
@@ -326,6 +329,7 @@ public:
             << "clients:" << clients_ << " "
             << "ltx:" << ltx_ << " "
             << "rtx:" << rtx_ << " "
+            << "client_idle:" << client_idle_ << " "
             << "";
 
         return true;
@@ -518,6 +522,13 @@ public:
                             ++ret.statements_;
                             if (transactions_ == -1 && stop) {
                                 break;
+                            }
+                            if (client_idle_ > 0) {
+                                auto cn = 0;
+                                while(cn < client_idle_) {
+                                    _mm_pause();
+                                    ++cn;
+                                }
                             }
                         }
                         ++ret.transactions_;

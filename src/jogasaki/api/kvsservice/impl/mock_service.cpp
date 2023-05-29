@@ -81,8 +81,24 @@ void mock_service::command_rollback(tateyama::proto::kvs::request::Request const
     rollback.release_success();
 }
 
+static void dump_record(const ::google::protobuf::RepeatedPtrField<::tateyama::proto::kvs::data::Record> &records) {
+    std::cout << records.size() << std::endl;
+    for (const auto &r : records) {
+        auto n = r.names_size();
+        for (auto i = 0; i < n; i++) {
+            std::cout << r.names(i);
+            const auto &v = r.values(i);
+            std::cout << "\t" << v.value_case() << ": ";
+            std::cout << std::to_string(v.int8_value());
+            std::cout << std::endl;
+        }
+    }
+}
+
 void mock_service::command_put(tateyama::proto::kvs::request::Request const &proto_req,
         std::shared_ptr<tateyama::api::server::response> const &res) {
+    dump_record(proto_req.put().records());
+    //
     tateyama::proto::kvs::response::Put put { };
     tateyama::proto::kvs::response::Put_Success success { };
     success.set_written(proto_req.put().records_size());
@@ -101,6 +117,8 @@ void mock_service::command_put(tateyama::proto::kvs::request::Request const &pro
 
 void mock_service::command_get(tateyama::proto::kvs::request::Request const &proto_req,
         std::shared_ptr<tateyama::api::server::response> const &res) {
+    dump_record(proto_req.get().keys());
+    //
     tateyama::proto::kvs::response::Get get { };
     tateyama::proto::kvs::response::Get_Success success { };
     success.mutable_records()->CopyFrom(proto_req.get().keys());
@@ -120,6 +138,8 @@ void mock_service::command_get(tateyama::proto::kvs::request::Request const &pro
 
 void mock_service::command_remove(tateyama::proto::kvs::request::Request const &proto_req,
         std::shared_ptr<tateyama::api::server::response> const &res) {
+    dump_record(proto_req.remove().keys());
+    //
     tateyama::proto::kvs::response::Remove remove { };
     tateyama::proto::kvs::response::Remove_Success success { };
     success.set_removed(proto_req.remove().keys_size());

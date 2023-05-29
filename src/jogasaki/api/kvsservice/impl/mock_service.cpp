@@ -15,8 +15,6 @@
  */
 #include <jogasaki/logging_helper.h>
 #include "mock_service.h"
-#include <iostream>
-#include <stdio.h>
 
 namespace jogasaki::api::kvsservice::impl {
 
@@ -41,7 +39,6 @@ void mock_service::command_begin(tateyama::proto::kvs::request::Request const &p
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
-    std::cout << "mock_service::command_begin" << std::endl;
     //
     begin.release_success();
     success.release_transaction_handle();
@@ -59,7 +56,6 @@ void mock_service::command_commit(tateyama::proto::kvs::request::Request const&,
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
-    std::cout << "mock_service::command_commit" << std::endl;
     //
     commit.release_success();
 }
@@ -76,29 +72,12 @@ void mock_service::command_rollback(tateyama::proto::kvs::request::Request const
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
-    std::cout << "mock_service::command_rollback" << std::endl;
     //
     rollback.release_success();
 }
 
-static void dump_record(const ::google::protobuf::RepeatedPtrField<::tateyama::proto::kvs::data::Record> &records) {
-    std::cout << records.size() << std::endl;
-    for (const auto &r : records) {
-        auto n = r.names_size();
-        for (auto i = 0; i < n; i++) {
-            std::cout << r.names(i);
-            const auto &v = r.values(i);
-            std::cout << "\t" << v.value_case() << ": ";
-            std::cout << std::to_string(v.int8_value());
-            std::cout << std::endl;
-        }
-    }
-}
-
 void mock_service::command_put(tateyama::proto::kvs::request::Request const &proto_req,
         std::shared_ptr<tateyama::api::server::response> const &res) {
-    dump_record(proto_req.put().records());
-    //
     tateyama::proto::kvs::response::Put put { };
     tateyama::proto::kvs::response::Put_Success success { };
     success.set_written(proto_req.put().records_size());
@@ -110,15 +89,12 @@ void mock_service::command_put(tateyama::proto::kvs::request::Request const &pro
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
-    std::cout << "mock_service::command_put: " << std::to_string(proto_req.put().records_size()) << std::endl;
     //
     put.release_success();
 }
 
 void mock_service::command_get(tateyama::proto::kvs::request::Request const &proto_req,
         std::shared_ptr<tateyama::api::server::response> const &res) {
-    dump_record(proto_req.get().keys());
-    //
     tateyama::proto::kvs::response::Get get { };
     tateyama::proto::kvs::response::Get_Success success { };
     success.mutable_records()->CopyFrom(proto_req.get().keys());
@@ -130,7 +106,6 @@ void mock_service::command_get(tateyama::proto::kvs::request::Request const &pro
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
-    std::cout << "mock_service::command_get: " << std::to_string(proto_req.get().keys_size()) << std::endl;
     //
     success.mutable_records()->ExtractSubrange(0, success.mutable_records()->size(), nullptr);
     get.release_success();
@@ -138,8 +113,6 @@ void mock_service::command_get(tateyama::proto::kvs::request::Request const &pro
 
 void mock_service::command_remove(tateyama::proto::kvs::request::Request const &proto_req,
         std::shared_ptr<tateyama::api::server::response> const &res) {
-    dump_record(proto_req.remove().keys());
-    //
     tateyama::proto::kvs::response::Remove remove { };
     tateyama::proto::kvs::response::Remove_Success success { };
     success.set_removed(proto_req.remove().keys_size());
@@ -151,7 +124,6 @@ void mock_service::command_remove(tateyama::proto::kvs::request::Request const &
     }
     res->code(tateyama::api::server::response_code::success);
     res->body(ss.str());
-    std::cout << "mock_service::command_remove: " << std::to_string(proto_req.remove().keys_size()) << std::endl;
     //
     remove.release_success();
 }

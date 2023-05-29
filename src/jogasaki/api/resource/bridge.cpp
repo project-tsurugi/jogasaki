@@ -138,6 +138,9 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<std::size_t>("task_polling_wait")) {
         ret->task_polling_wait(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("tasked_write")) {
+        ret->tasked_write(v.value());
+    }
 
     // datastore
     auto datastore_config = cfg.get_section("datastore");

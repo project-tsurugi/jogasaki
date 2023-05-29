@@ -47,6 +47,14 @@ private:
             std::shared_ptr<tateyama::api::server::response> const &res);
     void command_commit(tateyama::proto::kvs::request::Request const &proto_req,
             std::shared_ptr<tateyama::api::server::response> const &res);
+    void command_rollback(tateyama::proto::kvs::request::Request const &proto_req,
+            std::shared_ptr<tateyama::api::server::response> const &res);
+    void command_put(tateyama::proto::kvs::request::Request const &proto_req,
+            std::shared_ptr<tateyama::api::server::response> const &res);
+    void command_get(tateyama::proto::kvs::request::Request const &proto_req,
+            std::shared_ptr<tateyama::api::server::response> const &res);
+    void command_remove(tateyama::proto::kvs::request::Request const &proto_req,
+            std::shared_ptr<tateyama::api::server::response> const &res);
 };
 
 }

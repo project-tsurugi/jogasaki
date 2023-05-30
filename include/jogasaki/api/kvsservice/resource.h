@@ -22,6 +22,8 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/component_ids.h>
 
+#include <jogasaki/api/kvsservice/database.h>
+
 namespace jogasaki::api::kvsservice {
 
 using tateyama::api::server::request;
@@ -79,6 +81,10 @@ public:
      * @see `tateyama::framework::component::label()`
      */
     [[nodiscard]] std::string_view label() const noexcept override;
+
+private:
+    std::unique_ptr<jogasaki::api::kvsservice::database> db_;  // to use incomplete object, do not add {} after var. name.
+    bool started_{false};
 };
 
 }

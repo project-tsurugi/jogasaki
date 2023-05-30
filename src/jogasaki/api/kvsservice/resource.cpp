@@ -26,14 +26,24 @@ framework::component::id_type resource::id() const noexcept {
 }
 
 bool resource::setup(framework::environment&) {
+    if (db_) return true;
+    db_ = std::make_unique<database>();
     return true;
 }
 
 bool resource::start(framework::environment&) {
-    return true;
+    auto ret = db_->start() == status::ok;
+    started_ = ret;
+    return ret;
 }
 
 bool resource::shutdown(framework::environment&) {
+    if(started_) {
+        if(db_->stop() == status::ok) {
+            started_ = false;
+            return true;
+        }
+    }
     return true;
 }
 

@@ -87,9 +87,9 @@ TEST_F(secondary_index_ddl_test, basic) {
     {
         std::string plan{};
         explain_statement("SELECT * FROM T WHERE C1=10", plan);
-        // verify 1. scan op exists 2. with target index I
+        // verify 1. find op exists 2. with target index I
         EXPECT_TRUE(contains(plan,
-            R"({"kind":"scan","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
 }
@@ -107,9 +107,9 @@ TEST_F(secondary_index_ddl_test, pkless_table) {
     {
         std::string plan{};
         explain_statement("SELECT * FROM T WHERE C1=10", plan);
-        // verify 1. scan op exists 2. with target index I
+        // verify 1. find op exists 2. with target index I
         EXPECT_TRUE(contains(plan,
-            R"({"kind":"scan","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
 }
@@ -151,7 +151,7 @@ TEST_F(secondary_index_ddl_test, drop) {
         explain_statement("SELECT * FROM T WHERE C1=10", plan);
         // verify 1. scan op exists 2. with target index I
         EXPECT_TRUE(contains(plan,
-            R"({"kind":"scan","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
 }

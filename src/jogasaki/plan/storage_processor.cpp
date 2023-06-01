@@ -98,9 +98,12 @@ bool storage_processor::ensure(
     yugawara::storage::prototype_processor::diagnostic_consumer_type const& diagnostic_consumer
 ) {
     (void)location;
-    (void)secondary_index_prototype;
     (void)diagnostic_consumer;
-    //TODO implement and modify secondary indices
+    yugawara::storage::index_feature_set secondary_index_features{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+    };
+    secondary_index_prototype.features() = secondary_index_features;
     return true;
 }
 

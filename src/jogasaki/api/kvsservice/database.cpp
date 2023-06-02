@@ -16,13 +16,4 @@
 #include <jogasaki/api/kvsservice/database.h>
 
 namespace jogasaki::api::kvsservice {
-
-status database::start() {
-    return status::ok;
-}
-
-status database::stop() {
-    return status::ok;
-}
-
 }

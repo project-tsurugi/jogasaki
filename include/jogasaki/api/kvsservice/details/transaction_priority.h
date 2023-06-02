@@ -24,12 +24,12 @@ namespace jogasaki::api::kvsservice::details {
  */
 enum class transaction_priority : std::uint32_t {
     /**
-     * @briefuse default transaction priority.
+     * @brief use default transaction priority.
      */
     priority_unspecified = 0U,
 
     /**
-     * @briefhalts the running transactions immediately.
+     * @brief halts the running transactions immediately.
      */
     interrupt,
 

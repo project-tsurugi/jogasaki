@@ -15,20 +15,33 @@
  */
 #pragma once
 
-namespace jogasaki::api::kvsservice::details {
+#include <cstdint>
+
+namespace jogasaki::api::kvsservice {
+
+class transaction;
 
 /**
- * @brief the target index specification.
+ * @brief the information to specify a transaction
  */
-class index {
+class transaction_info {
 public:
-    index(std::string_view table_name, std::string_view index_name = {}) noexcept;
+    transaction_info() = default;
 
-    std::string_view table_name() const noexcept;
-    std::string_view index_name() const noexcept;
+    /**
+     * @brief create new object
+     * @param tx the transaction of this transaction_info
+     */
+    transaction_info(transaction *tx) noexcept;
+
+    /**
+     * @brief retrieves the system_id of this transaction
+     * @return the system_id of rhe transaction
+     */
+    std::uint64_t system_id() const noexcept;
+
 private:
-    std::string table_name_ {};
-    std::string index_name_ {};
+    std::uint64_t system_id_ {};
 };
 
 }

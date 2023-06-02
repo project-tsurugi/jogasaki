@@ -28,7 +28,7 @@ using table_areas = std::vector<std::string>;
 class transaction_option {
 public:
     transaction_option() = default;
-    transaction_option(enum transaction_type type, table_areas write_preserves);
+    transaction_option(enum transaction_type type, table_areas write_preserves) noexcept;
 
     enum transaction_type type() const noexcept {
         return type_;
@@ -74,9 +74,9 @@ public:
     };
 
 private:
-    enum transaction_type type_{};
-    enum transaction_priority priority_{};
-    std::string label_{};
+    enum transaction_type type_ {};
+    enum transaction_priority priority_ {};
+    std::string label_ {};
     bool modifies_definitions_ {};
     table_areas write_preserves_ {};
     table_areas inclusive_read_areas_ {};

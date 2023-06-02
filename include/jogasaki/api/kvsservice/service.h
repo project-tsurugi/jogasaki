@@ -23,7 +23,6 @@
 #include <tateyama/framework/component_ids.h>
 
 namespace jogasaki::api::kvsservice::impl {
-class service;
 class mock_service;
 };
 

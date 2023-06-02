@@ -15,14 +15,19 @@
  */
 #pragma once
 
-#include <jogasaki/api/kvsservice/details/storage.h>
+#include <mutex>
+
+#include <jogasaki/api/resource/bridge.h>
+#include <jogasaki/api/kvsservice/transaction.h>
 #include <jogasaki/api/kvsservice/details/transaction_option.h>
+
+namespace jogasaki::kvs {
+class database;
+}
 
 namespace jogasaki::api::kvsservice {
 
-using transaction = details::transaction;
 using transaction_option = details::transaction_option;
-using storage = details::storage;
 
 /**
 * @brief kvs database core for remote kvs service.
@@ -33,6 +38,12 @@ public:
      * @brief create new object
      */
     database() = default;
+
+    /**
+     * @brief create new object
+     * @param bridge the resource of Jogasaki
+     */
+    database(std::shared_ptr<jogasaki::api::resource::bridge> bridge);
 
     database(database const& other) = delete;
     database& operator=(database const& other) = delete;
@@ -47,7 +58,7 @@ public:
      * @return status::ok when successful
      * @return other code when error
      */
-    status start();
+    [[nodiscard]] status start();
 
     /**
      * @brief stop servicing database
@@ -57,7 +68,7 @@ public:
      * @return status::ok when successful
      * @return other code when error
      */
-    status stop();
+    [[nodiscard]] status stop();
 
     /**
      * @brief begin the new transaction
@@ -66,29 +77,28 @@ public:
      * @return status::ok when successful
      * @return any other error otherwise
      */
-    status begin_transaction(transaction_option& option, std::unique_ptr<transaction>& tx);
+    [[nodiscard]] status begin_transaction(const transaction_option& option, std::shared_ptr<transaction>& tx);
 
     /**
-     * @brief close the transaction transaction
+     * @brief close the transaction
      * @param tx the transaction
      * @return status::ok when successful
      * @return any other error otherwise
      */
-    status close_transaction(transaction& tx);
+    [[nodiscard]] status close_transaction(std::shared_ptr<transaction> tx);
 
     /**
-     * @brief retrieve the storage on the database or create if not found
-     * @param name name of the storage
-     * @return storage object for the given name
-     * @return nullptr if the any error occurs
-     * @attention Multiple threads can call this function simultaneously to get the storages and each thread can use one
-     * retrieved to update storage content. That can be done concurrently.
-     * But concurrent operations for adding/removing storage entries are not strictly controlled for safety.
-     * For the time being, storages are expected to be created sequentially before any transactions are started.
-     * Accessing the storage object which is deleted by storage::delete_storage() causes undefined behavior.
+     * @brief find a transaction by system_id
+     * @param system_id id of the transaction
+     * @return the transaction
+     * @return nullptr if not found
      */
-    std::unique_ptr<storage> get_or_create_storage(std::string_view name);
+    [[nodiscard]] std::shared_ptr<transaction> find_transaction(std::uint64_t system_id);
 
+private:
+    std::shared_ptr<kvs::database> kvs_db_{};
+    std::map<std::uint64_t, std::shared_ptr<transaction>> id2tx_map_ {};
+    std::mutex mtx_id2tx_map_{};
 };
 
 }

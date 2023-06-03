@@ -300,6 +300,21 @@ public:
         lightweight_job_level_ = arg;
     }
 
+    /**
+     * @brief setter for enable_hybrid_scheduler flag
+     */
+    void enable_hybrid_scheduler(bool arg) noexcept {
+        enable_hybrid_scheduler_ = arg;
+    }
+
+    /**
+     * @brief accessor for enable_hybrid_scheduler flag
+     * @return whether serial-stealing hybrid scheduler is enabled or not
+     */
+    [[nodiscard]] bool enable_hybrid_scheduler() const noexcept {
+        return enable_hybrid_scheduler_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -324,6 +339,7 @@ public:
             "stealing_wait:" << cfg.stealing_wait() << " " <<
             "task_polling_wait:" << cfg.task_polling_wait() << " " <<
             "lightweight_job_level:" << cfg.lightweight_job_level() << " " <<
+            "enable_hybrid_scheduler:" << cfg.enable_hybrid_scheduler() << " " <<
             "";
     }
 
@@ -354,6 +370,7 @@ private:
     std::size_t stealing_wait_ = 1;
     std::size_t task_polling_wait_ = 0;
     std::size_t lightweight_job_level_ = 0;
+    bool enable_hybrid_scheduler_ = false;
 };
 
 }

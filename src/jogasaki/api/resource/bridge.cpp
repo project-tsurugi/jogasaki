@@ -141,6 +141,12 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<bool>("tasked_write")) {
         ret->tasked_write(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("enable_hybrid_scheduler")) {
+        ret->enable_hybrid_scheduler(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::size_t>("lightweight_job_level")) {
+        ret->lightweight_job_level(v.value());
+    }
 
     // datastore
     auto datastore_config = cfg.get_section("datastore");

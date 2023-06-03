@@ -27,6 +27,7 @@ namespace jogasaki::scheduler {
 enum class task_scheduler_kind : std::int32_t {
     serial = 0,
     stealing,
+    hybrid,
 };
 
 /**

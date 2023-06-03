@@ -43,6 +43,7 @@
 #include <jogasaki/kvs/storage_dump.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/scheduler/serial_task_scheduler.h>
+#include <jogasaki/scheduler/hybrid_task_scheduler.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/scheduler/job_context.h>
@@ -126,6 +127,8 @@ status database::start() {
         if (! task_scheduler_) {
             if (cfg_->single_thread()) {
                 task_scheduler_ = std::make_shared<scheduler::serial_task_scheduler>();
+            } else if(cfg_->enable_hybrid_scheduler()) {
+                task_scheduler_ = std::make_shared<scheduler::hybrid_task_scheduler>(scheduler::thread_params(cfg_));
             } else {
                 task_scheduler_ = std::make_shared<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
             }

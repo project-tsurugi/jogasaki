@@ -136,13 +136,17 @@ bool transaction::execute_async(
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
-    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared()); //NOLINT
+    auto const& stmt = reinterpret_cast<impl::prepared_statement*>(prepared.get())->body();  //NOLINT
+    req->statement_text(stmt->sql_text_shared());
     log_request(*req);
 
     auto request_ctx = create_request_context(
         channel,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req
+    );
+    request_ctx->lightweight(
+            stmt->mirrors()->work_level().value() <= static_cast<std::int32_t>(request_ctx->configuration()->lightweight_job_level())
     );
     auto& ts = *database_->task_scheduler();
     auto jobid = request_ctx->job()->id();
@@ -237,12 +241,18 @@ bool transaction::execute_internal(
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
     req->transaction_id(transaction_id());
-    req->statement_text(static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text_shared()); //NOLINT
+    auto const& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body(); //NOLINT
+    req->statement_text(stmt->sql_text_shared());
     log_request(*req);
 
     auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
+    auto rctx = create_request_context(channel, s.resource(), std::move(req));
+    rctx->lightweight(
+        stmt->mirrors()->work_level().value() <=
+            static_cast<std::int32_t>(rctx->configuration()->lightweight_job_level())
+    );
     return execute_async_on_context(
-        create_request_context(channel, s.resource(), std::move(req)),
+        std::move(rctx),
         statement,
         std::move(on_completion),
         sync

@@ -134,6 +134,14 @@ maybe_shared_ptr<yugawara::storage::configurable_provider> const& request_contex
     return storage_provider_;
 }
 
+void request_context::lightweight(bool arg) noexcept {
+    lightweight_ = arg;
+}
+
+bool request_context::lightweight() const noexcept {
+    return lightweight_;
+}
+
 void prepare_scheduler(request_context& rctx) {
     std::shared_ptr<scheduler::task_scheduler> sched{};
     if(rctx.configuration()->single_thread()) {

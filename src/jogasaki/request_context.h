@@ -184,6 +184,17 @@ public:
      */
     [[nodiscard]] maybe_shared_ptr<yugawara::storage::configurable_provider> const& storage_provider() const noexcept;
 
+    /**
+     * @brief setter for the lightweight parameter
+     */
+    void lightweight(bool arg) noexcept;
+
+    /**
+     * @brief accessor for the lightweight parameter
+     * @return whether the request is lightweight (i.e. expected to finish fast)
+     */
+    [[nodiscard]] bool lightweight() const noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -201,6 +212,7 @@ private:
 
     std::atomic<status> status_code_{status::ok};
     std::string status_message_{};
+    bool lightweight_{};
 };
 
 /**

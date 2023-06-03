@@ -105,10 +105,14 @@ public:
             kind_ = kind;
         }
     }
+
     [[nodiscard]] statement_work_level_kind kind() const noexcept {
         return kind_;
     }
 
+    [[nodiscard]] underlying_type value() const noexcept {
+        return static_cast<underlying_type>(kind_);
+    }
 private:
     statement_work_level_kind kind_{statement_work_level_kind::undefined};
 };

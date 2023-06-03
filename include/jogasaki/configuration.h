@@ -285,6 +285,21 @@ public:
         task_polling_wait_ = arg;
     }
 
+    /**
+     * @brief accessor for lightweight_job_level parameter
+     * @return lightweight_job_level parameter
+     */
+    [[nodiscard]] std::size_t lightweight_job_level() const noexcept {
+        return lightweight_job_level_;
+    }
+
+    /**
+     * @brief setter for lightweight_job_level parameter
+     */
+    void lightweight_job_level(std::size_t arg) noexcept {
+        lightweight_job_level_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -308,6 +323,7 @@ public:
             "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
             "stealing_wait:" << cfg.stealing_wait() << " " <<
             "task_polling_wait:" << cfg.task_polling_wait() << " " <<
+            "lightweight_job_level:" << cfg.lightweight_job_level() << " " <<
             "";
     }
 
@@ -337,6 +353,7 @@ private:
     bool use_preferred_worker_for_current_thread_ = true;
     std::size_t stealing_wait_ = 1;
     std::size_t task_polling_wait_ = 0;
+    std::size_t lightweight_job_level_ = 0;
 };
 
 }

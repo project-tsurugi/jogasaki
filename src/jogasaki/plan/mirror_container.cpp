@@ -44,4 +44,8 @@ std::shared_ptr<meta::external_record_meta> const& mirror_container::external_wr
     return external_writer_meta_;
 }
 
+statement_work_level& mirror_container::work_level() noexcept {
+    return work_level_;
+}
+
 }

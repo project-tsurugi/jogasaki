@@ -49,6 +49,7 @@
 #include <takatori/plan/graph.h>
 #include <takatori/plan/forward.h>
 #include <takatori/relation/emit.h>
+#include <takatori/relation/find.h>
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/logging.h>
@@ -104,11 +105,58 @@ void preprocess(
         std::addressof(process),
         executor::process::impl::create_block_variables_definition(process.operators(), info)
     );
-    takatori::relation::enumerate_bottom(process.operators(), [&container, &info](takatori::relation::expression const& op){
-        if (op.kind() == takatori::relation::expression_kind::emit) {
-            auto& e = unsafe_downcast<takatori::relation::emit>(op);
-            container->external_writer_meta(executor::process::impl::ops::emit::create_meta(info, e.columns()));
-        }
+    takatori::relation::sort_from_upstream(process.operators(), [&container, &info](takatori::relation::expression const& op){
+        switch(op.kind()) {
+            case takatori::relation::expression_kind::emit: {
+                auto& e = unsafe_downcast<takatori::relation::emit>(op);
+                container->external_writer_meta(executor::process::impl::ops::emit::create_meta(info, e.columns()));
+                container->work_level().set_minimum(statement_work_level_kind::key_operation);
+                break;
+            }
+            case takatori::relation::expression_kind::find: {
+                auto& f = unsafe_downcast<takatori::relation::find>(op);
+
+                auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(f.source());
+                auto& table = secondary_or_primary_index.table();
+                auto primary = table.owner()->find_primary_index(table);
+                if(*primary == secondary_or_primary_index) {
+                    // find uses primary index
+                    container->work_level().set_minimum(statement_work_level_kind::key_operation);
+                    break;
+                }
+                // find uses secondary index
+                container->work_level().set_minimum(statement_work_level_kind::simple_crud);
+                break;
+            }
+            case takatori::relation::expression_kind::values: //fall-thru
+            case takatori::relation::expression_kind::write: //fall-thru
+                container->work_level().set_minimum(statement_work_level_kind::key_operation);
+                break;
+            case takatori::relation::expression_kind::filter: //fall-thru
+            case takatori::relation::expression_kind::project: //fall-thru
+            // TODO check if UDF is not used for filter/project
+                container->work_level().set_minimum(statement_work_level_kind::simple_crud);
+                break;
+            case takatori::relation::expression_kind::take_flat: //fall-thru
+            case takatori::relation::expression_kind::offer: //fall-thru
+                container->work_level().set_minimum(statement_work_level_kind::simple_multirecord_operation);
+                break;
+            case takatori::relation::expression_kind::join_find: //fall-thru
+            case takatori::relation::expression_kind::join_group: //fall-thru
+            case takatori::relation::expression_kind::take_group: //fall-thru
+            case takatori::relation::expression_kind::take_cogroup: //fall-thru
+                // TODO check if UDF is not used
+                container->work_level().set_minimum(statement_work_level_kind::join);
+                break;
+            case takatori::relation::expression_kind::aggregate_group:
+                container->work_level().set_minimum(statement_work_level_kind::aggregate);
+                break;
+            case takatori::relation::expression_kind::scan:
+                container->work_level().set_minimum(statement_work_level_kind::infinity);
+                break;
+            default:
+                break;
+    }
     });
 }
 
@@ -120,6 +168,7 @@ std::shared_ptr<mirror_container> preprocess_mirror(
     auto container = std::make_shared<mirror_container>();
     switch(statement->kind()) {
         case statement::statement_kind::execute:
+            container->work_level().set_minimum(statement_work_level_kind::key_operation);
             takatori::plan::sort_from_upstream(
                 unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
                 [&container, &info](takatori::plan::step const& s){
@@ -129,6 +178,17 @@ std::shared_ptr<mirror_container> preprocess_mirror(
                             preprocess(process, info, container);
                             break;
                         }
+                        case takatori::plan::step_kind::group:
+                            container->work_level().set_minimum(statement_work_level_kind::join);
+                            break;
+                        case takatori::plan::step_kind::aggregate:
+                            // TODO check if UDF is not used
+                            container->work_level().set_minimum(statement_work_level_kind::aggregate);
+                            break;
+                        case takatori::plan::step_kind::forward:
+                            // TODO check if UDF is not used
+                            container->work_level().set_minimum(statement_work_level_kind::simple_multirecord_operation);
+                            break;
                         default:
                             break;
                     }
@@ -136,14 +196,19 @@ std::shared_ptr<mirror_container> preprocess_mirror(
             );
             break;
         case statement::statement_kind::write:
+            container->work_level().set_minimum(statement_work_level_kind::simple_write);
             break;
         case statement::statement_kind::create_table:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::drop_table:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::create_index:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::drop_index:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         default:
             fail();

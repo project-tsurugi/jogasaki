@@ -19,6 +19,7 @@
 
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/plan/statement_work_level.h>
 
 namespace jogasaki::plan {
 
@@ -86,10 +87,17 @@ public:
      */
     std::shared_ptr<meta::external_record_meta> const& external_writer_meta() const noexcept;
 
+    /**
+     * @brief accessor to the statement work level
+     * @returns statement work level
+     */
+    [[nodiscard]] statement_work_level& work_level() noexcept;
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
     std::shared_ptr<meta::external_record_meta> external_writer_meta_{};
+    statement_work_level work_level_{};
 };
 
 }

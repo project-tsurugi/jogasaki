@@ -75,6 +75,7 @@ file(GLOB SRCS
         "jogasaki/memory/*.cpp"
         "jogasaki/meta/*.cpp"
         "jogasaki/mock/*.cpp"
+        "jogasaki/plan/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/serializer/*.cpp"
         "jogasaki/kvs/*.cpp"

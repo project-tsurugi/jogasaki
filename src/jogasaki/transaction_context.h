@@ -171,10 +171,24 @@ public:
      */
     bool decrement_worker_count();
 
+    /**
+     * @brief try lock on the transaction object
+     * @return true if lock acquired successfully
+     * @return false otherwise
+     */
+    bool try_lock();
+
+    /**
+     * @brief unlock the transaction object
+     */
+    void unlock();
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
     details::worker_manager mgr_{};
+    std::mutex mutex_{};
+    std::unique_lock<std::mutex> lock_{mutex_, std::defer_lock};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

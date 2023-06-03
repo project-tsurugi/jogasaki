@@ -73,7 +73,7 @@ TEST_F(hybrid_scheduler_test, basic) {
     s.stop();
 }
 
-TEST_F(hybrid_scheduler_test, simple_request_runs_serial_scheduler) {
+TEST_F(hybrid_scheduler_test, non_transactional_request_runs_serial_scheduler) {
     hybrid_task_scheduler s{};
     ASSERT_EQ(task_scheduler_kind::hybrid, s.kind());
 
@@ -93,13 +93,35 @@ TEST_F(hybrid_scheduler_test, simple_request_runs_serial_scheduler) {
     s.stop();
 }
 
+TEST_F(hybrid_scheduler_test, simple_request_runs_serial_scheduler) {
+    hybrid_task_scheduler s{};
+    ASSERT_EQ(task_scheduler_kind::hybrid, s.kind());
+
+    bool executed = false;
+    auto task = std::make_shared<test_task>([&]() {
+        executed = true;
+    });
+    job_context jctx{};
+    auto tx = std::make_shared<transaction_context>(nullptr);
+    request_context rctx{{}, {}, {}, tx};
+    rctx.lightweight(true);
+    rctx.job(maybe_shared_ptr{&jctx});
+    auto jobid = jctx.id();
+    s.start();
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task, false});
+    s.wait_for_progress(jobid);
+    ASSERT_TRUE(executed);
+    s.stop();
+}
+
 TEST_F(hybrid_scheduler_test, serial_scheduler_called_recursively) {
     // verify behavior when scheduler is called within task
     hybrid_task_scheduler s{};
     ASSERT_EQ(task_scheduler_kind::hybrid, s.kind());
 
     job_context jctx{};
-    request_context rctx{};
+    auto tx = std::make_shared<transaction_context>(nullptr);
+    request_context rctx{{}, {}, {}, tx};
     rctx.lightweight(true);
     rctx.job(maybe_shared_ptr{&jctx});
     auto jobid = jctx.id();

@@ -76,6 +76,14 @@ bool transaction_context::decrement_worker_count() {
     return mgr_.decrement_and_clear_on_zero();
 }
 
+bool transaction_context::try_lock() {
+    return lock_.try_lock();
+}
+
+void transaction_context::unlock() {
+    lock_.unlock();
+}
+
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
 }

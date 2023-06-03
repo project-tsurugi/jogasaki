@@ -32,16 +32,26 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
                 return;
             }
             if(cur == hybrid_execution_mode_kind::undefined) {
-                // TODO check if tx lock available, and then acquire the lock
-                if(! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::serial)) {
+                if(auto tx = t.req_context()->transaction(); !tx || tx->try_lock()) {
+                    if (!mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::serial)) {
+                        if (tx) {
+                            tx->unlock();
+                        }
+                        continue;
+                    }
+                    auto jobid = t.job()->id();
+                    serial_scheduler_.do_schedule_task(std::move(t));
+                    serial_scheduler_.wait_for_progress(jobid);
+                    if (tx) {
+                        tx->unlock();
+                    }
+                    return;
+                }
+                if (!mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::stealing)) {
                     continue;
                 }
-                auto jobid = t.job()->id();
-                serial_scheduler_.do_schedule_task(std::move(t));
-                serial_scheduler_.wait_for_progress(jobid);
-                // TODO unlock
-                return;
             }
+            break;
         }
     }
     stealing_scheduler_.do_schedule_task(std::move(t));

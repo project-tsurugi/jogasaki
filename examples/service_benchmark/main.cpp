@@ -260,6 +260,8 @@ public:
         cfg.task_polling_wait(FLAGS_task_polling_wait);
         cfg.use_preferred_worker_for_current_thread(FLAGS_use_preferred_worker_for_current_thread);
         cfg.lazy_worker(FLAGS_lazy_worker);
+        cfg.enable_hybrid_scheduler(FLAGS_enable_hybrid_scheduler);
+        cfg.lightweight_job_level(FLAGS_lightweight_job_level);
 
         if (FLAGS_minimum) {
             cfg.single_thread(false);
@@ -417,12 +419,13 @@ public:
                 auto mod = profile_.stock_item_id_max_ > profile_.stock_item_id_min_ ?
                     profile_.stock_item_id_max_ - profile_.stock_item_id_min_ : 1;
                 std::int64_t id = profile_.stock_item_id_min_ + seed.rnd_() % mod;
+                std::int64_t w_id = FLAGS_prepare_data ? id : (client+1);
                 res = issue_common(false,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"s_quantity", ValueCase::kFloat8Value, static_cast<double>(seed.rnd_())}, //NOLINT
                         {"s_i_id", ValueCase::kInt8Value, id},
-                        {"s_w_id", ValueCase::kInt8Value, static_cast<std::int64_t>(client+1)},
+                        {"s_w_id", ValueCase::kInt8Value, w_id},
                     },
                     {}
                 );
@@ -432,10 +435,11 @@ public:
                 auto mod = profile_.district_id_max_ > profile_.district_id_min_ ?
                     profile_.district_id_max_ - profile_.district_id_min_: 1;
                 std::int64_t id = profile_.district_id_min_ + seed.rnd_() % mod;
+                std::int64_t w_id = FLAGS_prepare_data ? id : (client+1);
                 res = issue_common(true,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
-                        {"d_w_id", ValueCase::kInt8Value, static_cast<std::int64_t>(client+1)},
+                        {"d_w_id", ValueCase::kInt8Value, w_id},
                         {"d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(id)},
                     },
                     [&](std::string_view data) {
@@ -450,11 +454,12 @@ public:
                 break;
             }
             case mode::query2: {
+                std::int64_t w_id = FLAGS_prepare_data ? 1 : (client+1);
                 res = issue_common(true,
                     handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"no_d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(1)},
-                        {"no_w_id", ValueCase::kInt8Value, static_cast<std::int64_t>(client+1)},
+                        {"no_w_id", ValueCase::kInt8Value, w_id},
                     },
                     [&](std::string_view data) {
                         DVLOG(jogasaki::log_debug) << "write: " << jogasaki::utils::binary_printer{data.data(), data.size()};

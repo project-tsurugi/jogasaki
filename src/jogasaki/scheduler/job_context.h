@@ -21,6 +21,7 @@
 #include <jogasaki/utils/latch.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
 
 namespace jogasaki {
 class request_context;
@@ -127,6 +128,13 @@ public:
      */
     [[nodiscard]] std::shared_ptr<request_detail> const& request() const noexcept;
 
+    /**
+     * @brief accessor for hybrid execution mode
+     * @details Hybrid scheduler uses this field to remember internal scheduler (serial or stealing) for the job.
+     */
+    [[nodiscard]] std::atomic<hybrid_execution_mode_kind>& hybrid_execution_mode() noexcept {
+        return hybrid_execution_mode_;
+    }
 private:
 
     job_id_type id_{id_src_++};
@@ -137,6 +145,7 @@ private:
     cache_align std::atomic_bool started_{false};
     job_completion_callback callback_{};
     std::shared_ptr<request_detail> request_detail_{};
+    cache_align std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
 
     static inline std::atomic_size_t id_src_{1UL << 32UL};
 };

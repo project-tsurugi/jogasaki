@@ -77,6 +77,8 @@ DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLIN
 DEFINE_bool(ltx, false, "use ltx instead of occ for benchmark. Use exclusively with --rtx.");  //NOLINT
 DEFINE_bool(rtx, false, "use ltx instead of occ for benchmark. Use exclusively with --ltx.");  //NOLINT
 DEFINE_int64(client_idle, 0, "clients take idle spin loop n times");  //NOLINT
+DEFINE_bool(enable_hybrid_scheduler, false, "enable serial-stealing hybrid scheduler");  //NOLINT
+DEFINE_int32(lightweight_job_level, 0, "Specify job level regarded as lightweight");  //NOLINT
 
 namespace tateyama::service_benchmark {
 

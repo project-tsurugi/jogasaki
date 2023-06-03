@@ -1,4 +1,4 @@
-# Jogasaki - A SQL execution engine 
+# Jogasaki SQL job scheduler
 
 ## Requirements
 

@@ -77,11 +77,11 @@ bool transaction_context::decrement_worker_count() {
 }
 
 bool transaction_context::try_lock() {
-    return lock_.try_lock();
+    return mutex_.try_lock();
 }
 
 void transaction_context::unlock() {
-    lock_.unlock();
+    mutex_.unlock();
 }
 
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {

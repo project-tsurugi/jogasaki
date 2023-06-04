@@ -187,8 +187,7 @@ private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
     details::worker_manager mgr_{};
-    std::mutex mutex_{};
-    std::unique_lock<std::mutex> lock_{mutex_, std::defer_lock};
+    std::recursive_mutex mutex_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

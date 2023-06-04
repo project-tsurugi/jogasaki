@@ -33,6 +33,7 @@
 namespace jogasaki::scheduler {
 
 using namespace std::literals::string_literals;
+using namespace std::chrono_literals;
 using namespace jogasaki;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
@@ -54,6 +55,18 @@ private:
 
 };
 
+bool wait(std::atomic_bool& b, std::size_t timeout_ms) {
+    auto cnt = 0;
+    while(! b) {
+        std::this_thread::sleep_for(1ms);
+        ++cnt;
+        if(timeout_ms < cnt) {
+            return false;
+        }
+    }
+    return true;
+}
+
 TEST_F(hybrid_scheduler_test, basic) {
     hybrid_task_scheduler s{};
     ASSERT_EQ(task_scheduler_kind::hybrid, s.kind());
@@ -65,11 +78,9 @@ TEST_F(hybrid_scheduler_test, basic) {
     job_context jctx{};
     request_context rctx{};
     rctx.job(maybe_shared_ptr{&jctx});
-    auto jobid = jctx.id();
     s.start();
     s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task, false});
-    s.wait_for_progress(jobid);
-    ASSERT_TRUE(executed);
+    ASSERT_TRUE(wait(executed, 1000));
     s.stop();
 }
 
@@ -88,9 +99,9 @@ TEST_F(hybrid_scheduler_test, non_transactional_request_runs_serial_scheduler) {
     auto jobid = jctx.id();
     s.start();
     s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task, false});
-    s.wait_for_progress(jobid);
-    ASSERT_TRUE(executed);
+    ASSERT_TRUE(wait(executed, 1000));
     s.stop();
+    ASSERT_TRUE(executed);
 }
 
 TEST_F(hybrid_scheduler_test, simple_request_runs_serial_scheduler) {
@@ -106,12 +117,11 @@ TEST_F(hybrid_scheduler_test, simple_request_runs_serial_scheduler) {
     request_context rctx{{}, {}, {}, tx};
     rctx.lightweight(true);
     rctx.job(maybe_shared_ptr{&jctx});
-    auto jobid = jctx.id();
     s.start();
     s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task, false});
-    s.wait_for_progress(jobid);
-    ASSERT_TRUE(executed);
+    ASSERT_TRUE(wait(executed, 1000));
     s.stop();
+    ASSERT_TRUE(executed);
 }
 
 TEST_F(hybrid_scheduler_test, serial_scheduler_called_recursively) {
@@ -145,9 +155,8 @@ TEST_F(hybrid_scheduler_test, serial_scheduler_called_recursively) {
 
     s.start();
     s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task0, false});
-    s.wait_for_progress(jobid);
-    ASSERT_TRUE(executed0);
-    ASSERT_TRUE(executed1);
+    ASSERT_TRUE(wait(executed0, 1000));
+    ASSERT_TRUE(wait(executed1, 1000));
     s.stop();
 }
 }

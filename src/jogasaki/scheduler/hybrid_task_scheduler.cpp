@@ -18,7 +18,7 @@
 namespace jogasaki::scheduler {
 
 hybrid_task_scheduler::hybrid_task_scheduler(thread_params params) :
-    stealing_scheduler_(std::move(params))
+    stealing_scheduler_(params)
 {}
 
 void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
@@ -28,7 +28,7 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
         stealing_scheduler_.do_schedule_task(std::move(t));
         return;
     }
-    do {  // retry from here if modifying `mode` variable fails
+    while(true) {  // retry from here if modifying `mode` variable fails
         auto cur = mode.load();
         if(cur == hybrid_execution_mode_kind::serial) {
             serial_scheduler_.do_schedule_task(std::move(t));
@@ -62,7 +62,8 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
             serial_scheduler_.do_schedule_task(std::move(t));
             serial_scheduler_.wait_for_progress(jobid);
         }
-    } while(false);
+        break;
+    }
 }
 
 void hybrid_task_scheduler::start() {

@@ -22,39 +22,48 @@ hybrid_task_scheduler::hybrid_task_scheduler(thread_params params) :
 {}
 
 void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
+    auto& mode = t.job()->hybrid_execution_mode();
     auto* rctx = t.req_context();
-    if(rctx->lightweight()) {
-        auto& mode = t.job()->hybrid_execution_mode();
-        while(true) {
-            auto cur = mode.load();
-            if(cur == hybrid_execution_mode_kind::serial) {
-                serial_scheduler_.do_schedule_task(std::move(t));
-                return;
-            }
-            if(cur == hybrid_execution_mode_kind::undefined) {
-                if(auto tx = t.req_context()->transaction(); !tx || tx->try_lock()) {
-                    if (!mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::serial)) {
-                        if (tx) {
-                            tx->unlock();
-                        }
-                        continue;
-                    }
-                    auto jobid = t.job()->id();
-                    serial_scheduler_.do_schedule_task(std::move(t));
-                    serial_scheduler_.wait_for_progress(jobid);
-                    if (tx) {
-                        tx->unlock();
-                    }
-                    return;
-                }
-                if (!mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::stealing)) {
-                    continue;
-                }
-            }
-            break;
-        }
+    if(! rctx->lightweight()) {
+        stealing_scheduler_.do_schedule_task(std::move(t));
+        return;
     }
-    stealing_scheduler_.do_schedule_task(std::move(t));
+    do {  // retry from here if modifying `mode` variable fails
+        auto cur = mode.load();
+        if(cur == hybrid_execution_mode_kind::serial) {
+            serial_scheduler_.do_schedule_task(std::move(t));
+            return;
+        }
+        if(cur == hybrid_execution_mode_kind::stealing) {
+            stealing_scheduler_.do_schedule_task(std::move(t));
+            return;
+        }
+
+        // cur == hybrid_execution_mode_kind::undefined
+        auto& tx = t.req_context()->transaction();
+        if(tx && ! tx->try_lock()) {
+            if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::stealing)) {
+                continue;
+            }
+            stealing_scheduler_.do_schedule_task(std::move(t));
+            return;
+        }
+
+        // without tx, or tx lock acquired successfully
+        if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::serial)) {
+            if (tx) {
+                tx->unlock();
+            }
+            continue;
+        }
+
+        auto jobid = t.job()->id();
+        serial_scheduler_.do_schedule_task(std::move(t));
+        serial_scheduler_.wait_for_progress(jobid);
+        if (tx) {
+            tx->unlock();
+        }
+    } while(false);
 }
 
 void hybrid_task_scheduler::start() {

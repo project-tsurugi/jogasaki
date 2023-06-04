@@ -58,7 +58,7 @@ TEST_F(hybrid_scheduler_test, basic) {
     hybrid_task_scheduler s{};
     ASSERT_EQ(task_scheduler_kind::hybrid, s.kind());
 
-    bool executed = false;
+    std::atomic_bool executed = false;
     auto task = std::make_shared<test_task>([&]() {
         executed = true;
     });
@@ -77,7 +77,7 @@ TEST_F(hybrid_scheduler_test, non_transactional_request_runs_serial_scheduler) {
     hybrid_task_scheduler s{};
     ASSERT_EQ(task_scheduler_kind::hybrid, s.kind());
 
-    bool executed = false;
+    std::atomic_bool executed = false;
     auto task = std::make_shared<test_task>([&]() {
         executed = true;
     });
@@ -97,7 +97,7 @@ TEST_F(hybrid_scheduler_test, simple_request_runs_serial_scheduler) {
     hybrid_task_scheduler s{};
     ASSERT_EQ(task_scheduler_kind::hybrid, s.kind());
 
-    bool executed = false;
+    std::atomic_bool executed = false;
     auto task = std::make_shared<test_task>([&]() {
         executed = true;
     });
@@ -126,8 +126,8 @@ TEST_F(hybrid_scheduler_test, serial_scheduler_called_recursively) {
     rctx.job(maybe_shared_ptr{&jctx});
     auto jobid = jctx.id();
 
-    bool executed0 = false;
-    bool executed1 = false;
+    std::atomic_bool executed0 = false;
+    std::atomic_bool executed1 = false;
 
     auto task0 = std::make_shared<test_task>([&]() {
         executed0 = true;

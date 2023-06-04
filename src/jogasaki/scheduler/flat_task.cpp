@@ -184,15 +184,15 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
         }
     }
     auto& tctx = req_context_->transaction();
-    if(tctx && sticky_) {
-        while(! tctx->try_lock()) {
-            _mm_pause();
+    bool job_completes{};
+    {
+        auto lk = (tctx && sticky_) ?
+            std::unique_lock{tctx->mutex()} :
+            std::unique_lock<transaction_context::mutex_type>{};
+        job_completes = execute(ctx);
+        if (tctx && sticky_) {
+            tctx->decrement_worker_count();
         }
-    }
-    auto job_completes = execute(ctx);
-    if(tctx && sticky_) {
-        tctx->decrement_worker_count();
-        tctx->unlock();
     }
     auto jobid = job()->id();
     auto cnt = --job()->task_count();

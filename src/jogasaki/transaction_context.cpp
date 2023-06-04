@@ -76,12 +76,8 @@ bool transaction_context::decrement_worker_count() {
     return mgr_.decrement_and_clear_on_zero();
 }
 
-bool transaction_context::try_lock() {
-    return mutex_.try_lock();
-}
-
-void transaction_context::unlock() {
-    mutex_.unlock();
+transaction_context::mutex_type &transaction_context::mutex() noexcept {
+    return mutex_;
 }
 
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {

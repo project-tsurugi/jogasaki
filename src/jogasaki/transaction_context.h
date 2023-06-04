@@ -85,6 +85,8 @@ private:
  */
 class transaction_context {
 public:
+    using mutex_type = std::recursive_mutex;
+
     /**
      * @brief create empty object
      */
@@ -172,22 +174,16 @@ public:
     bool decrement_worker_count();
 
     /**
-     * @brief try lock on the transaction object
-     * @return true if lock acquired successfully
-     * @return false otherwise
+     * @brief accessor to the mutex for transaction lock
+     * @return the mutex
      */
-    bool try_lock();
-
-    /**
-     * @brief unlock the transaction object
-     */
-    void unlock();
+    mutex_type& mutex() noexcept;
 
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
     details::worker_manager mgr_{};
-    std::recursive_mutex mutex_{};
+    mutex_type mutex_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

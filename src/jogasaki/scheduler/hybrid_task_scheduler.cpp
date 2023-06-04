@@ -41,27 +41,26 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
 
         // cur == hybrid_execution_mode_kind::undefined
         auto& tx = t.req_context()->transaction();
-        if(tx && ! tx->try_lock()) {
-            if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::stealing)) {
+        {
+            auto lk = tx ?
+                std::unique_lock{tx->mutex(), std::defer_lock} :
+                std::unique_lock<transaction_context::mutex_type>{};
+            if (tx && ! lk.try_lock()) {
+                if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::stealing)) {
+                    continue;
+                }
+                stealing_scheduler_.do_schedule_task(std::move(t));
+                return;
+            }
+
+            // without tx, or tx lock acquired successfully
+            if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::serial)) {
                 continue;
             }
-            stealing_scheduler_.do_schedule_task(std::move(t));
-            return;
-        }
 
-        // without tx, or tx lock acquired successfully
-        if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::serial)) {
-            if (tx) {
-                tx->unlock();
-            }
-            continue;
-        }
-
-        auto jobid = t.job()->id();
-        serial_scheduler_.do_schedule_task(std::move(t));
-        serial_scheduler_.wait_for_progress(jobid);
-        if (tx) {
-            tx->unlock();
+            auto jobid = t.job()->id();
+            serial_scheduler_.do_schedule_task(std::move(t));
+            serial_scheduler_.wait_for_progress(jobid);
         }
     } while(false);
 }

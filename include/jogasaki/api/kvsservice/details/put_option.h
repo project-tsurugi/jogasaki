@@ -19,6 +19,9 @@
 
 namespace jogasaki::api::kvsservice::details {
 
+/**
+ * @brief put operation behavior
+ */
 enum class put_option : std::uint32_t {
     /**
      * @brief to update the existing entry, or create new one if the entry doesn't exist.

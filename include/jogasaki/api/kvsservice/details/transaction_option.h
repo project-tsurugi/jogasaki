@@ -27,12 +27,28 @@ using table_areas = std::vector<std::string>;
  */
 class transaction_option {
 public:
+    /**
+     * @brief create new object
+     */
     transaction_option() = default;
+
+    /**
+     * @brief create new object
+     * @param type type of the transaction
+     * @param write_preserves write preservations for long transactions
+     */
     transaction_option(enum transaction_type type, table_areas write_preserves) noexcept;
 
+    /**
+     * @brief accessor to the transaction type
+     */
     enum transaction_type type() const noexcept {
         return type_;
     };
+
+    /**
+     * @brief accessor to the write preservations
+     */
     const table_areas &write_preserves() const noexcept {
         return write_preserves_;
     };

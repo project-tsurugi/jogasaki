@@ -23,7 +23,7 @@
 #include <tateyama/framework/component_ids.h>
 
 namespace jogasaki::api::kvsservice::impl {
-class mock_service;
+class service;
 };
 
 namespace jogasaki::api::kvsservice {
@@ -39,7 +39,7 @@ namespace framework = tateyama::framework;
  */
 class service : public framework::service {
 public:
-    static constexpr id_type tag = 10001; // FIXME framework::service_id_kvsservice;
+    static constexpr id_type tag = framework::service_id_remote_kvs;
 
     //@brief human readable label of this component
     static constexpr std::string_view component_label = "kvsservice_service";
@@ -91,7 +91,7 @@ public:
      */
     [[nodiscard]] std::string_view label() const noexcept override;
 private:
-    std::unique_ptr<jogasaki::api::kvsservice::impl::mock_service> core_;  // to use incomplete object, do not add {} after var. name.
+    std::unique_ptr<jogasaki::api::kvsservice::impl::service> core_;  // to use incomplete object, do not add {} after var. name.
     bool deactivated_{false};
 };
 

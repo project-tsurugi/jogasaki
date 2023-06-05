@@ -32,7 +32,7 @@ public:
      * @brief create new object
      * @param tx the transaction of this transaction_info
      */
-    transaction_info(transaction *tx) noexcept;
+    transaction_info(transaction const*tx) noexcept;
 
     /**
      * @brief retrieves the system_id of this transaction
@@ -42,6 +42,7 @@ public:
 
 private:
     std::uint64_t system_id_ {};
+    // TODO sharksfin TransactionHandle
 };
 
 }

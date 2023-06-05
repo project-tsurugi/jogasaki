@@ -15,44 +15,87 @@
  */
 #pragma once
 
+#include <mutex>
+
 #include <jogasaki/api/kvsservice/details/index.h>
+#include <jogasaki/api/kvsservice/details/commit_option.h>
 #include <jogasaki/api/kvsservice/details/put_option.h>
 #include <jogasaki/api/kvsservice/transaction_info.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::api::kvsservice {
 
 using index = details::index;
+using commit_option = details::commit_option;
+using put_option = details::put_option;
 
 /**
  * @brief a transaction of KVS database
  */
 class transaction {
 public:
-    transaction() = default;
+    /**
+     * @brief the callback type used for async execution
+     * @see commit_async
+     */
+    using callback = std::function<void(status, std::string_view)>;
+
+    /**
+     * @brief create new object
+     */
+    transaction();
+
+    transaction(transaction const& other) = delete;
+    transaction& operator=(transaction const& other) = delete;
+    transaction(transaction&& other) noexcept = delete;
+    transaction& operator=(transaction&& other) noexcept = delete;
 
     /**
      * @brief retrieves the transaction_info of this transaction
      * @return the transaction_info of this transaction
      */
-    [[nodiscard]] const transaction_info &info() const noexcept;
+    [[nodiscard]] const std::shared_ptr<transaction_info> info() const noexcept;
 
     /**
-     * @brief commit the transaction
+     * @brief acquire the lock of this transaction
+     */
+    void lock();
+
+    /**
+     * @brief try to acquire the lock of this transaction
+     * @return true the lock has been acquired
+     * @return false the lock couldn't be acquired
+     */
+    bool try_lock();
+
+    /**
+     * @brief release the lock of this transaction
+     */
+    void unlock();
+
+    /**
+     * @brief commit the transaction synchronously
      * @details commit the current transaction. When successful,
      * the object gets invalidated and should not be used any more.
-     * @param tx the transaction
+     * @param opt commit operation behavior
      * @return status::ok if the operation is successful
      * @return other status code when error occurs
      */
-     // FIXME support commit type (and async commit?)
-    [[nodiscard]] status commit();
+    [[nodiscard]] status commit(commit_option opt = commit_option::commit_type_unspecified);
+
+    /**
+     * @brief commit the transaction asynchronously
+     * @param on_completion callback to be called on completion
+     * @param opt commit operation behavior
+     */
+    void commit_async(callback on_completion,
+                      commit_option opt = commit_option::commit_type_unspecified);
 
     /**
      * @brief abort the transaction
      * @details abort the current transaction. When successful,
      * the object gets invalidated and should not be used any more.
-     * @param tx the transaction
      * @return status::ok if the operation is successful
      * @return other status code when error occurs
      */
@@ -60,7 +103,6 @@ public:
 
     /**
      * @brief put the value for the given key
-     * @param tx transaction used
      * @param table the name of the table
      * @param key the key for the entry
      * @param value the value for the entry
@@ -71,13 +113,14 @@ public:
      * @return status::abort_retryable on occ error
      * @return otherwise, other status code
      * @note status::not_found is not returned even if the record doesn't exist for the key
+     * @see jogasaki::api::create_parameter_set()
      */
-    [[nodiscard]] status put(std::string_view table, std::string_view key, std::string_view value,
-               enum details::put_option opt = details::put_option::create_or_update);
+    [[nodiscard]] status put(std::string_view table, jogasaki::api::parameter_set const &key,
+                             jogasaki::api::parameter_set const &value,
+                             put_option opt = put_option::create_or_update);
 
     /**
      * @brief get the value for the given key
-     * @param tx transaction used for the point query
      * @param index the name of the index
      * @param key key for searching
      * @param value[out] the value of the entry matching the key
@@ -86,22 +129,25 @@ public:
      * @return status::not_found if the entry for the key is not found
      * @return status::abort_retryable on occ error
      * @return otherwise, other status code
+     * @see jogasaki::api::create_parameter_set()
      */
-    [[nodiscard]] status get(index index, std::string_view key, std::string_view& value);
+    [[nodiscard]] status get(index const index, jogasaki::api::parameter_set const &key,
+                             jogasaki::api::parameter_set &value);
 
     /**
      * @brief remove the entry for the given key
-     * @param tx transaction used for the delete operation
      * @param table the name of the table
      * @param key the key for searching
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry for the key is not found
      * @return status::abort_retryable on occ error
      * @return otherwise, other status code
+     * @see jogasaki::api::create_parameter_set()
      */
-    [[nodiscard]] status remove(std::string_view table, std::string_view key);
+    [[nodiscard]] status remove(std::string_view table, jogasaki::api::parameter_set const &key);
 
 private:
-    transaction_info info_{};
+    std::shared_ptr<transaction_info> info_{};
+    std::mutex mtx_tx_{};
 };
 }

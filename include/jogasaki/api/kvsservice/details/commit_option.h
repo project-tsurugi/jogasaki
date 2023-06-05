@@ -19,32 +19,33 @@
 
 namespace jogasaki::api::kvsservice::details {
 
-// the transaction commit status.
-enum class commit_status : std::uint32_t {
+/**
+ * @brief commit operation behavior
+ */
+enum class commit_option : std::uint32_t {
     /**
-     * @brief the default commit status (rely on the database settings).
+     * @brief the default commit type (rely on the database settings).
      */
-    commit_status_unspecified = 0U,
+    commit_type_unspecified = 0,
 
     /**
-     * @brief commit operation has accepted, and the transaction will never abort except system errors.
+     * @brief wait unti the commit operation has accepted.
      */
-    accepted,
+    accepted = 10,
 
     /**
-     * @brief commit data has been visible for others.
+     * @brief wait until the commit data have been visible for others.
      */
-    available,
+    available = 20,
 
     /**
-     * @brief commit data has been saved on the local disk.
+     * @brief wait until the commit data have been saved on the local disk.
      */
-    stored,
+    stored = 30,
 
     /**
-     * @brief commit data has been propagated to the all suitable nodes.
+     * @brief wait until the commit data have been propagated to the all suitable replicas.
      */
-    propagated,
+    propagated = 40,
 };
-
 }

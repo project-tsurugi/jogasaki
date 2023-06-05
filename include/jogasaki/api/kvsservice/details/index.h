@@ -22,10 +22,23 @@ namespace jogasaki::api::kvsservice::details {
  */
 class index {
 public:
+    /**
+     * @brief create new object
+     * @param table_name the name of the table
+     * @param index_name the name of the index
+     */
     index(std::string_view table_name, std::string_view index_name = {}) noexcept;
 
+    /**
+     * @brief accessor to the table name
+     */
     std::string_view table_name() const noexcept;
+
+    /**
+     * @brief accessor to the index name
+     */
     std::string_view index_name() const noexcept;
+
 private:
     std::string table_name_ {};
     std::string index_name_ {};

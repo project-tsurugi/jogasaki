@@ -16,6 +16,7 @@
 #pragma once
 
 #include <mutex>
+#include <optional>
 
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/api/kvsservice/transaction.h>
@@ -43,7 +44,7 @@ public:
      * @brief create new object
      * @param bridge the resource of Jogasaki
      */
-    database(std::shared_ptr<jogasaki::api::resource::bridge> bridge);
+    database(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge);
 
     database(database const& other) = delete;
     database& operator=(database const& other) = delete;
@@ -54,7 +55,7 @@ public:
      * @brief start servicing database
      * @details database initialization is done by this function.
      * No request should be made to database prior to this call.
-     * @attention this function is not thread-safe. stop()/start() should be called from single thread at a time.
+     * @attention this function is not thread-safe. start() should be called from single thread at a time.
      * @return status::ok when successful
      * @return other code when error
      */
@@ -64,7 +65,7 @@ public:
      * @brief stop servicing database
      * @details stopping database and closing internal resources.
      * No request should be made to the database after this call.
-     * @attention this function is not thread-safe. stop()/start() should be called from single thread at a time.
+     * @attention this function is not thread-safe. stop() should be called from single thread at a time.
      * @return status::ok when successful
      * @return other code when error
      */
@@ -77,7 +78,21 @@ public:
      * @return status::ok when successful
      * @return any other error otherwise
      */
-    [[nodiscard]] status begin_transaction(const transaction_option& option, std::shared_ptr<transaction>& tx);
+    [[nodiscard]] status begin_transaction(transaction_option const& option, std::shared_ptr<transaction>& tx);
+
+    /**
+     * @brief begin the new transaction
+     * @param option transaction option
+     * @param args arguments for the enhanced begin operation
+     * @param tx_info [out] the transaction information filled when successful
+     * @return status::ok when successful
+     * @return any other error otherwise
+     * @note std::enable_if<std::is_base_of<transaction_info, T>>
+     * that calls T::T(transaction_info, Args...)
+     */
+    template<class T, class...Args>
+    [[nodiscard]] status begin_enhanced(transaction_option const& option, Args&&... args,
+                                        std::shared_ptr<T>& tx_info);
 
     /**
      * @brief close the transaction
@@ -90,10 +105,10 @@ public:
     /**
      * @brief find a transaction by system_id
      * @param system_id id of the transaction
-     * @return the transaction
-     * @return nullptr if not found
+     * @return the transaction of the system_id
+     * @return std::nullopt no transaction of the system_id
      */
-    [[nodiscard]] std::shared_ptr<transaction> find_transaction(std::uint64_t system_id);
+    [[nodiscard]] std::optional<std::shared_ptr<transaction>> find_transaction(std::uint64_t system_id);
 
 private:
     std::shared_ptr<kvs::database> kvs_db_{};

@@ -16,7 +16,7 @@
 #include <jogasaki/api/kvsservice/service.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/logging.h>
-#include "impl/mock_service.h"
+#include "impl/service.h"
 
 namespace jogasaki::api::kvsservice {
 
@@ -33,7 +33,7 @@ framework::component::id_type service::id() const noexcept {
 bool service::setup(framework::environment& env) {
     if (core_) return true;
     // auto rsc = env.resource_repository().find<jogasaki::api::kvsservice::resource>();
-    core_ = std::make_unique<jogasaki::api::kvsservice::impl::mock_service>(env.configuration());
+    core_ = std::make_unique<jogasaki::api::kvsservice::impl::service>(env.configuration());
     return true;
 }
 

@@ -84,15 +84,15 @@ public:
      * @brief begin the new transaction
      * @param option transaction option
      * @param args arguments for the enhanced begin operation
-     * @param tx_info [out] the transaction information filled when successful
+     * @param tx [out] the transaction information filled when successful
      * @return status::ok when successful
      * @return any other error otherwise
-     * @note std::enable_if<std::is_base_of<transaction_info, T>>
-     * that calls T::T(transaction_info, Args...)
+     * @note std::enable_if<std::is_base_of<transaction, T>>
+     * that calls T::T(transaction, Args...)
      */
     template<class T, class...Args>
     [[nodiscard]] status begin_enhanced(transaction_option const& option, Args&&... args,
-                                        std::shared_ptr<T>& tx_info);
+                                        std::shared_ptr<T>& tx);
 
     /**
      * @brief close the transaction

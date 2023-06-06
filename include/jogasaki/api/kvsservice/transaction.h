@@ -20,8 +20,8 @@
 #include <jogasaki/api/kvsservice/details/index.h>
 #include <jogasaki/api/kvsservice/details/commit_option.h>
 #include <jogasaki/api/kvsservice/details/put_option.h>
-#include <jogasaki/api/kvsservice/transaction_info.h>
 #include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/record.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::api::kvsservice {
@@ -52,10 +52,10 @@ public:
     transaction& operator=(transaction&& other) noexcept = delete;
 
     /**
-     * @brief retrieves the transaction_info of this transaction
-     * @return the transaction_info of this transaction
+     * @brief retrieves the system_id of this transaction
+     * @return the system_id of rhe transaction
      */
-    [[nodiscard]] const std::shared_ptr<transaction_info> info() const noexcept;
+    std::uint64_t system_id() const noexcept;
 
     /**
      * @brief acquire the lock of this transaction
@@ -132,7 +132,7 @@ public:
      * @see jogasaki::api::create_parameter_set()
      */
     [[nodiscard]] status get(index const index, jogasaki::api::parameter_set const &key,
-                             jogasaki::api::parameter_set &value);
+                             jogasaki::api::record &value);
 
     /**
      * @brief remove the entry for the given key
@@ -147,7 +147,7 @@ public:
     [[nodiscard]] status remove(std::string_view table, jogasaki::api::parameter_set const &key);
 
 private:
-    std::shared_ptr<transaction_info> info_{};
-    std::mutex mtx_tx_{};
+    std::uint64_t system_id_ {};
+    std::mutex mtx_tx_{}; // for lock(), try_lock(), unlock()
 };
 }

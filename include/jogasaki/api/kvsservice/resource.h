@@ -40,7 +40,7 @@ public:
     static constexpr id_type tag = framework::resource_id_remote_kvs;
 
     //@brief human readable label of this component
-    static constexpr std::string_view component_label = "kvsservice_resource";
+    static constexpr std::string_view component_label = "remote_kvs_resource";
 
     /**
      * @brief create new object

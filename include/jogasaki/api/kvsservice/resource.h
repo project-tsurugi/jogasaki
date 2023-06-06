@@ -84,7 +84,7 @@ public:
 
 private:
     std::unique_ptr<jogasaki::api::kvsservice::database> db_;  // to use incomplete object, do not add {} after var. name.
-    bool started_{false};
+    // bool started_{false};
 };
 
 }

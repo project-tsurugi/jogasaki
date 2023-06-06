@@ -18,7 +18,8 @@
 
 namespace jogasaki::api::kvsservice::impl {
 
-service::service(std::shared_ptr<tateyama::api::configuration::whole>) {
+service::service(std::shared_ptr<tateyama::api::configuration::whole> const&,
+                 jogasaki::api::kvsservice::database* db) : db_(db) {
 }
 
 void service::command_begin(tateyama::proto::kvs::request::Request const &,

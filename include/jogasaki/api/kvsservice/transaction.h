@@ -52,10 +52,15 @@ public:
     transaction& operator=(transaction&& other) noexcept = delete;
 
     /**
+     * @brief destructor the object
+     */
+    ~transaction() = default;
+
+    /**
      * @brief retrieves the system_id of this transaction
      * @return the system_id of rhe transaction
      */
-    std::uint64_t system_id() const noexcept;
+    [[nodiscard]] std::uint64_t system_id() const noexcept;
 
     /**
      * @brief acquire the lock of this transaction
@@ -131,7 +136,7 @@ public:
      * @return otherwise, other status code
      * @see jogasaki::api::create_parameter_set()
      */
-    [[nodiscard]] status get(index const index, jogasaki::api::parameter_set const &key,
+    [[nodiscard]] status get(index &index, jogasaki::api::parameter_set const &key,
                              jogasaki::api::record &value);
 
     /**

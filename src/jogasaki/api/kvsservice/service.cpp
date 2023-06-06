@@ -33,7 +33,8 @@ framework::component::id_type service::id() const noexcept {
 bool service::setup(framework::environment& env) {
     if (core_) return true;
     // auto rsc = env.resource_repository().find<jogasaki::api::kvsservice::resource>();
-    core_ = std::make_unique<jogasaki::api::kvsservice::impl::service>(env.configuration());
+    // FIXME
+    core_ = std::make_unique<jogasaki::api::kvsservice::impl::service>(env.configuration(), nullptr);
     return true;
 }
 

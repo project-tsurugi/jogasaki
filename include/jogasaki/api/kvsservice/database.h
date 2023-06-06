@@ -44,12 +44,17 @@ public:
      * @brief create new object
      * @param bridge the resource of Jogasaki
      */
-    database(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge);
+    explicit database(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge);
 
     database(database const& other) = delete;
     database& operator=(database const& other) = delete;
     database(database&& other) noexcept = delete;
     database& operator=(database&& other) noexcept = delete;
+
+    /**
+     * @brief destructor the object
+     */
+    ~database() = default;
 
     /**
      * @brief start servicing database

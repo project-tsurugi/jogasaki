@@ -33,7 +33,7 @@ class mock_service {
 public:
     mock_service() = default;
 
-    mock_service(std::shared_ptr<tateyama::api::configuration::whole> cfg);
+    explicit mock_service(std::shared_ptr<tateyama::api::configuration::whole> const &cfg);
 
     bool operator()(std::shared_ptr<tateyama::api::server::request const> req,
             std::shared_ptr<tateyama::api::server::response> res);

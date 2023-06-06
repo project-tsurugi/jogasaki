@@ -42,28 +42,28 @@ public:
     /**
      * @brief accessor to the transaction type
      */
-    enum transaction_type type() const noexcept {
+    [[nodiscard]] enum transaction_type type() const noexcept {
         return type_;
     };
 
     /**
      * @brief accessor to the write preservations
      */
-    const table_areas &write_preserves() const noexcept {
+    [[nodiscard]] const table_areas &write_preserves() const noexcept {
         return write_preserves_;
     };
 
     void priority(enum transaction_priority priority) noexcept {
         priority_ = priority;
     }
-    enum transaction_priority priority() const noexcept {
+    [[nodiscard]] enum transaction_priority priority() const noexcept {
         return priority_;
     };
 
     void label(std::string_view label) noexcept {
         label_ = label;
     }
-    const std::string &label() const noexcept {
+    [[nodiscard]] const std::string &label() const noexcept {
         return label_;
     };
 
@@ -71,21 +71,21 @@ public:
     void modifies_definitions(bool modify) noexcept {
         modifies_definitions_ = modify;
     }
-    bool modifies_definitions() const noexcept {
+    [[nodiscard]] bool modifies_definitions() const noexcept {
         return modifies_definitions_;
     };
 
     void inclusive_read_areas(table_areas area) noexcept {
         inclusive_read_areas_ = std::move(area);
     }
-    const table_areas &inclusive_read_areas() const noexcept {
+    [[nodiscard]] const table_areas &inclusive_read_areas() const noexcept {
         return inclusive_read_areas_;
     };
 
     void exclusive_read_areas(table_areas area) noexcept {
         exclusive_read_areas_ = std::move(area);
     }
-    const table_areas &exclusive_read_areas() const noexcept {
+    [[nodiscard]] const table_areas &exclusive_read_areas() const noexcept {
         return exclusive_read_areas_;
     };
 

@@ -18,7 +18,7 @@
 
 namespace jogasaki::api::kvsservice::impl {
 
-mock_service::mock_service(std::shared_ptr<tateyama::api::configuration::whole>) {
+mock_service::mock_service(std::shared_ptr<tateyama::api::configuration::whole> const&) {
 }
 
 void mock_service::command_begin(tateyama::proto::kvs::request::Request const &proto_req,

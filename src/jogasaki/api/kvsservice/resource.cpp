@@ -37,8 +37,7 @@ bool resource::shutdown(framework::environment&) {
     return true;
 }
 
-resource::~resource() {
-}
+resource::~resource() = default;
 
 std::string_view resource::label() const noexcept {
     return component_label;

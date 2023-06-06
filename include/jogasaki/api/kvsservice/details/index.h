@@ -27,17 +27,17 @@ public:
      * @param table_name the name of the table
      * @param index_name the name of the index
      */
-    index(std::string_view table_name, std::string_view index_name = {}) noexcept;
+    explicit index(std::string_view table_name, std::string_view index_name = {}) noexcept;
 
     /**
      * @brief accessor to the table name
      */
-    std::string_view table_name() const noexcept;
+    [[nodiscard]] std::string_view table_name() const noexcept;
 
     /**
      * @brief accessor to the index name
      */
-    std::string_view index_name() const noexcept;
+    [[nodiscard]] std::string_view index_name() const noexcept;
 
 private:
     std::string table_name_ {};

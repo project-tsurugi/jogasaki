@@ -21,6 +21,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
 
 namespace jogasaki {
 
@@ -308,6 +309,22 @@ public:
         return sticky_task_worker_enforced_count_;
     }
 
+    /**
+     * @brief setter of the hybrid_execution_mode
+     */
+    void hybrid_execution_mode(hybrid_execution_mode_kind arg) {
+        hybrid_execution_mode_ = arg;
+    }
+
+    /**
+     * @brief getter of the hybrid_execution_mode
+     * @returns the mode (serial/stealing) on which the requested job has been run on. This is set undefined if
+     * job is not scheduled/executed with hybrid scheduler.
+     */
+    [[nodiscard]] hybrid_execution_mode_kind hybrid_execution_mode() const noexcept {
+        return hybrid_execution_mode_;
+    }
+
 private:
     std::size_t id_{id_src_++};
     request_detail_kind kind_{};
@@ -322,6 +339,7 @@ private:
     std::atomic_size_t task_stealing_count_{};
     std::atomic_size_t sticky_task_count_{};
     std::atomic_size_t sticky_task_worker_enforced_count_{};
+    std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
 
     static inline std::atomic_size_t id_src_{0};
 };

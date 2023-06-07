@@ -24,10 +24,6 @@ hybrid_task_scheduler::hybrid_task_scheduler(thread_params params) :
 void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
     auto& mode = t.job()->hybrid_execution_mode();
     auto* rctx = t.req_context();
-    if(! rctx->lightweight()) {
-        stealing_scheduler_.do_schedule_task(std::move(t));
-        return;
-    }
     while(true) {  // retry from here if modifying `mode` variable fails
         auto cur = mode.load();
         if(cur == hybrid_execution_mode_kind::serial) {
@@ -40,6 +36,14 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
         }
 
         // cur == hybrid_execution_mode_kind::undefined
+        if(! rctx->lightweight()) {
+            if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::stealing)) {
+                continue;
+            }
+            if(auto d = t.job()->request()) {
+                d->hybrid_execution_mode(hybrid_execution_mode_kind::stealing);
+            }
+        }
         auto& tx = t.req_context()->transaction();
         {
             auto lk = tx ?
@@ -49,6 +53,9 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
                 if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::stealing)) {
                     continue;
                 }
+                if(auto d = t.job()->request()) {
+                    d->hybrid_execution_mode(hybrid_execution_mode_kind::stealing);
+                }
                 stealing_scheduler_.do_schedule_task(std::move(t));
                 return;
             }
@@ -57,7 +64,9 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
             if (! mode.compare_exchange_strong(cur, hybrid_execution_mode_kind::serial)) {
                 continue;
             }
-
+            if(auto d = t.job()->request()) {
+                d->hybrid_execution_mode(hybrid_execution_mode_kind::serial);
+            }
             auto jobid = t.job()->id();
             serial_scheduler_.do_schedule_task(std::move(t));
             serial_scheduler_.wait_for_progress(jobid);

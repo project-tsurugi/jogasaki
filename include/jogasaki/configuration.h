@@ -370,7 +370,7 @@ private:
     std::size_t stealing_wait_ = 1;
     std::size_t task_polling_wait_ = 0;
     std::size_t lightweight_job_level_ = 0;
-    bool enable_hybrid_scheduler_ = false;
+    bool enable_hybrid_scheduler_ = true;
 };
 
 }

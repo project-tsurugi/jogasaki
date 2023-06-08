@@ -339,13 +339,13 @@ status database::validate_option(transaction_option const& option) {
 }
 
 std::vector<std::string> add_secondary_indices(
-    std::vector<std::string> const& write_preserves,
+    std::vector<std::string> const& table_areas,
     yugawara::storage::configurable_provider const& tables
 ) {
     std::vector<std::string> ret{};
-    ret.reserve(write_preserves.size()*approx_index_count_per_table);
-    for(auto&& wp : write_preserves) {
-        auto t = tables.find_table(wp);
+    ret.reserve(table_areas.size()*approx_index_count_per_table);
+    for(auto&& ta : table_areas) {
+        auto t = tables.find_table(ta);
         if(! t) continue;
         tables.each_index([&](std::string_view , std::shared_ptr<yugawara::storage::index const> const& entry) {
             if(entry->table() == *t) {
@@ -365,7 +365,9 @@ kvs::transaction_option from(transaction_option const& option, yugawara::storage
     }
     return kvs::transaction_option{
         type,
-        add_secondary_indices(option.write_preserves(), tables)
+        add_secondary_indices(option.write_preserves(), tables),
+        add_secondary_indices(option.read_areas_inclusive(), tables),
+        add_secondary_indices(option.read_areas_exclusive(), tables),
     };
 }
 

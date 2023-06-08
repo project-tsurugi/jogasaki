@@ -87,6 +87,28 @@ TEST_F(long_tx_api_test, delete_to_non_preserved) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
+TEST_F(long_tx_api_test, reading_outside_read_area) {
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE S (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE W (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 1)");
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {"W"}, {}, {"T"}, "TEST");
+        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_illegal_operation);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {"W"}, {"S"}, {}, "TEST");
+        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_illegal_operation);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {"W"}, {"S"}, {"T"}, "TEST");
+        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_illegal_operation);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+}
+
 TEST_F(long_tx_api_test, verify_key_locator) {
     // borrowed multiple_tx_iud_same_key scenario in long_tx_test to verify commit error code handling
     // erroneous key and storage name should be dumped in the server log

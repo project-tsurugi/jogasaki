@@ -37,7 +37,10 @@ std::shared_ptr<api::transaction_handle> create_transaction(
     api::database& db,
     bool readonly,
     bool is_long,
-    std::vector<std::string> const& write_preserves = {}
+    std::vector<std::string> const& write_preserves = {},
+    std::vector<std::string> const& read_areas_inclusive = {},
+    std::vector<std::string> const& read_areas_exclusive = {},
+    std::string_view label = {}
 );
 
 std::shared_ptr<api::transaction_handle> create_transaction(

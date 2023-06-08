@@ -36,12 +36,16 @@ public:
         bool readonly = false,
         bool is_long = false,
         std::vector<std::string> write_preserves = {},
-        std::string_view label = {}
+        std::string_view label = {},
+        std::vector<std::string> read_areas_inclusive = {},
+        std::vector<std::string> read_areas_exclusive = {}
     ) :
         readonly_(readonly),
         is_long_(is_long),
         write_preserves_(std::move(write_preserves)),
-        label_(label)
+        label_(label),
+        read_areas_inclusive_(std::move(read_areas_inclusive)),
+        read_areas_exclusive_(std::move(read_areas_exclusive))
     {}
 
     transaction_option& readonly(bool arg) noexcept {
@@ -69,11 +73,21 @@ public:
     [[nodiscard]] std::string_view label() const noexcept {
         return label_;
     }
+
+    [[nodiscard]] std::vector<std::string> const& read_areas_inclusive() const noexcept {
+        return read_areas_inclusive_;
+    }
+
+    [[nodiscard]] std::vector<std::string> const& read_areas_exclusive() const noexcept {
+        return read_areas_exclusive_;
+    }
 private:
     bool readonly_ = false;
     bool is_long_ = false;
     std::vector<std::string> write_preserves_{};
     std::string label_{};
+    std::vector<std::string> read_areas_inclusive_{};
+    std::vector<std::string> read_areas_exclusive_{};
 };
 
 /**
@@ -85,15 +99,30 @@ private:
 inline std::ostream& operator<<(std::ostream& out, transaction_option const& value) {
     out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ")); //NOLINT
     out << " label:" << value.label();
-    if(value.write_preserves().empty()) {
-        return out;
+    if(! value.write_preserves().empty()) {
+        out << " write_preserves:{";
+        for (auto &&s: value.write_preserves()) {
+            out << " ";
+            out << s;
+        }
+        out << " }";
     }
-    out << " write_preserves:{";
-    for(auto&& s : value.write_preserves()) {
-        out << " ";
-        out << s;
+    if(! value.read_areas_inclusive().empty()) {
+        out << " read_areas_inclusive:{";
+        for (auto &&s: value.read_areas_inclusive()) {
+            out << " ";
+            out << s;
+        }
+        out << " }";
     }
-    out << " }";
+    if(! value.read_areas_exclusive().empty()) {
+        out << " read_areas_exclusive:{";
+        for (auto &&s: value.read_areas_exclusive()) {
+            out << " ";
+            out << s;
+        }
+        out << " }";
+    }
     return out;
 }
 }

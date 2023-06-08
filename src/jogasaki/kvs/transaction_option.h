@@ -35,6 +35,11 @@ public:
     using write_preserves_type = std::vector<std::string>;
 
     /**
+     * @brief entity type for read areas for the long transaction
+     */
+    using read_areas_type = std::vector<std::string>;
+
+    /**
      * @brief retries infinite times.
      */
     static inline constexpr std::size_t INF = std::numeric_limits<std::size_t>::max();
@@ -70,10 +75,14 @@ public:
      */
     transaction_option(
         transaction_type type,
-        write_preserves_type write_preserves
+        write_preserves_type write_preserves,
+        read_areas_type read_areas_inclusive,
+        read_areas_type read_areas_exclusive
     ) noexcept :
         transaction_type_(type),
-        write_preserves_(std::move(write_preserves))
+        write_preserves_(std::move(write_preserves)),
+        read_areas_inclusive_(std::move(read_areas_inclusive)),
+        read_areas_exclusive_(std::move(read_areas_exclusive))
     {}
 
     /**
@@ -106,6 +115,24 @@ public:
      */
     [[nodiscard]] constexpr write_preserves_type const& write_preserves() const noexcept {
         return write_preserves_;
+    }
+
+    /**
+     * @brief returns the inclusive read area objects.
+     * @return the read area objects if set for the transaction
+     * @return empty vector otherwise
+     */
+    [[nodiscard]] constexpr read_areas_type const& read_areas_inclusive() const noexcept {
+        return read_areas_inclusive_;
+    }
+
+    /**
+     * @brief returns the exclusive read area objects.
+     * @return the read area objects if set for the transaction
+     * @return empty vector otherwise
+     */
+    [[nodiscard]] constexpr read_areas_type const& read_areas_exclusive() const noexcept {
+        return read_areas_exclusive_;
     }
 
     /**
@@ -144,6 +171,8 @@ private:
     std::size_t retry_count_ { 0L };
     transaction_type transaction_type_ { transaction_type::occ };
     write_preserves_type write_preserves_{};
+    read_areas_type read_areas_inclusive_{};
+    read_areas_type read_areas_exclusive_{};
 };
 
 /**

@@ -25,7 +25,12 @@
 namespace jogasaki::utils {
 
 std::shared_ptr<api::transaction_handle>
-create_transaction(api::database& db, bool readonly, bool is_long, std::vector<std::string> const& write_preserves) {
+create_transaction(api::database& db, bool readonly, bool is_long,
+    std::vector<std::string> const& write_preserves,
+    std::vector<std::string> const& read_areas_inclusive,
+    std::vector<std::string> const& read_areas_exclusive,
+    std::string_view label
+) {
     auto p = std::addressof(db);
     auto tx = std::shared_ptr<api::transaction_handle>{
         new api::transaction_handle(),
@@ -37,9 +42,12 @@ create_transaction(api::database& db, bool readonly, bool is_long, std::vector<s
         }
     };
     if(auto rc = db.create_transaction(*tx, api::transaction_option{
-                readonly,
-                is_long,
-                write_preserves
+            readonly,
+            is_long,
+            write_preserves,
+            label,
+            read_areas_inclusive,
+            read_areas_exclusive
             }
         ); rc != status::ok) {
         return {};

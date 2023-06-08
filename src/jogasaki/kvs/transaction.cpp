@@ -114,22 +114,44 @@ status transaction::create_transaction(
     return status::ok;
 }
 
+template <class T, class E>
+bool extract_storages(
+    kvs::database* database,
+    std::vector<std::unique_ptr<kvs::storage>>& stgs,
+    E const& names,
+    T& table_areas
+) {
+    for(auto&& wp : names) {
+        auto s = database->get_storage(wp);
+        if(! s) {
+            VLOG_LP(log_error) << "Specified storage '" << wp << "' is not found.";
+            return false;
+        }
+        table_areas.emplace_back(s->handle());
+        stgs.emplace_back(std::move(s));
+    }
+    return true;
+}
+
 status transaction::init(transaction_option const& options) {
     sharksfin::TransactionOptions::WritePreserves wps{};
+    sharksfin::TransactionOptions::ReadAreas rai{};
+    sharksfin::TransactionOptions::ReadAreas rae{};
     std::vector<std::unique_ptr<kvs::storage>> stgs{}; // to keep storages during transaction_begin call
-    stgs.reserve(options.write_preserves().size());
-    for(auto&& wp : options.write_preserves()) {
-        auto s = database_->get_storage(wp);
-        if(! s) {
-            VLOG_LP(log_error) << "Specified write preserved storage '" << wp << "' is not found.";
-            return status::err_invalid_argument;
-        }
-        wps.emplace_back(s->handle());
-        stgs.emplace_back(std::move(s));
+    stgs.reserve(options.write_preserves().size()+
+        options.read_areas_inclusive().size()+options.read_areas_exclusive().size());
+
+    bool success = extract_storages(database_, stgs, options.write_preserves(), wps);
+    success = success && extract_storages(database_, stgs, options.read_areas_inclusive(), rai);
+    success = success && extract_storages(database_, stgs, options.read_areas_exclusive(), rae);
+    if(! success) {
+        return status::err_invalid_argument;
     }
     sharksfin::TransactionOptions opts{
         type(options.type()),
         std::move(wps),
+        std::move(rai),
+        std::move(rae)
     };
     if(auto res = sharksfin::transaction_begin(database_->handle(), opts, &tx_); res != sharksfin::StatusCode::OK) {
         return resolve(res);

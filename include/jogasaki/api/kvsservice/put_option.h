@@ -17,35 +17,26 @@
 
 #include <cstdint>
 
-namespace jogasaki::api::kvsservice::details {
+namespace jogasaki::api::kvsservice {
 
 /**
- * @brief commit operation behavior
+ * @brief put operation behavior
  */
-enum class commit_option : std::uint32_t {
+enum class put_option : std::uint32_t {
     /**
-     * @brief the default commit type (rely on the database settings).
+     * @brief to update the existing entry, or create new one if the entry doesn't exist.
      */
-    commit_type_unspecified = 0,
+    create_or_update = 0U,
 
     /**
-     * @brief wait unti the commit operation has accepted.
+     * @brief to create new entry. status::err_already_exists is returned from put operation if the entry already exist.
      */
-    accepted = 10,
+    create,
 
     /**
-     * @brief wait until the commit data have been visible for others.
+     * @brief to update existing entry. status::err_not_found is returned from put operation if the entry doesn't exist.
      */
-    available = 20,
-
-    /**
-     * @brief wait until the commit data have been saved on the local disk.
-     */
-    stored = 30,
-
-    /**
-     * @brief wait until the commit data have been propagated to the all suitable replicas.
-     */
-    propagated = 40,
+    update,
 };
+
 }

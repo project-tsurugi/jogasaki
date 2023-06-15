@@ -41,7 +41,9 @@ class service : public framework::service {
 public:
     static constexpr id_type tag = framework::service_id_remote_kvs;
 
-    //@brief human readable label of this component
+    /**
+     * @brief human readable label of this component
+     */
     static constexpr std::string_view component_label = "remote_kvs_service";
 
     /**
@@ -87,7 +89,7 @@ public:
     ~service() override;
 
     /**
-     * @see `tateyama::framework::component::label()`
+     * @see tateyama::framework::component::label()
      */
     [[nodiscard]] std::string_view label() const noexcept override;
 private:

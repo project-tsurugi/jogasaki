@@ -27,7 +27,7 @@
 #include "tateyama/proto/kvs/request.pb.h"
 #include "tateyama/proto/kvs/response.pb.h"
 
-#include <jogasaki/api/kvsservice/database.h>
+#include <jogasaki/api/kvsservice/store.h>
 
 namespace jogasaki::api::kvsservice::impl {
 
@@ -36,7 +36,7 @@ public:
     service() = default;
 
     explicit service(std::shared_ptr<tateyama::api::configuration::whole> const &cfg,
-                     jogasaki::api::kvsservice::database* db);
+                     jogasaki::api::kvsservice::store* store);
 
     bool operator()(std::shared_ptr<tateyama::api::server::request const> req,
                     std::shared_ptr<tateyama::api::server::response> res);
@@ -59,7 +59,7 @@ private:
     void command_remove(tateyama::proto::kvs::request::Request const &proto_req,
                         std::shared_ptr<tateyama::api::server::response> const &res);
 
-    jogasaki::api::kvsservice::database* db_{};
+    jogasaki::api::kvsservice::store* store_{};
 };
 
 }

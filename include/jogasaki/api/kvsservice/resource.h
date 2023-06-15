@@ -22,7 +22,7 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/component_ids.h>
 
-#include <jogasaki/api/kvsservice/database.h>
+#include <jogasaki/api/kvsservice/store.h>
 
 namespace jogasaki::api::kvsservice {
 
@@ -39,7 +39,9 @@ class resource : public framework::resource {
 public:
     static constexpr id_type tag = framework::resource_id_remote_kvs;
 
-    //@brief human readable label of this component
+    /**
+     * @brief human readable label of this component
+     */
     static constexpr std::string_view component_label = "remote_kvs_resource";
 
     /**
@@ -70,7 +72,7 @@ public:
     /**
      * @brief shutdown the component (the state will be `deactivated`)
      */
-    bool shutdown(framework::environment&) override;
+    bool shutdown(framework::environment& env) override;
 
     /**
      * @brief destructor the object
@@ -78,12 +80,12 @@ public:
     ~resource() override;
 
     /**
-     * @see `tateyama::framework::component::label()`
+     * @see tateyama::framework::component::label()
      */
     [[nodiscard]] std::string_view label() const noexcept override;
 
 private:
-    std::unique_ptr<jogasaki::api::kvsservice::database> db_;  // to use incomplete object, do not add {} after var. name.
+    std::unique_ptr<jogasaki::api::kvsservice::store> store_;  // to use incomplete object, do not add {} after var. name.
     // bool started_{false};
 };
 

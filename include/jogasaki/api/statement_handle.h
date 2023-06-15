@@ -32,7 +32,6 @@ namespace jogasaki::api {
  */
 class statement_handle {
 public:
-
     /**
      * @brief create empty handle - null reference
      */

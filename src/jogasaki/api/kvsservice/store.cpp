@@ -13,36 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <jogasaki/api/kvsservice/store.h>
 
-#include <cstdint>
-
-namespace jogasaki::api::kvsservice::details {
-
-/**
- * @brief the transaction type.
- */
-enum class transaction_type : std::uint32_t {
-    /**
-     * @brief use default transaction type.
-     */
-    unspecified = 0U,
-
-    /**
-     * @brief short transactions (optimistic concurrency control).
-     */
-    occ,
-
-    /**
-     * @brief long transactions (pessimistic concurrency control).
-     */
-    ltx,
-
-    /**
-     * @brief read only transactions (may be abort-free).
-     */
-    read_only,
-};
-
+namespace jogasaki::api::kvsservice {
 }
-

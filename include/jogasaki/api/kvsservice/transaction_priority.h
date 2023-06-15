@@ -15,33 +15,38 @@
  */
 #pragma once
 
-namespace jogasaki::api::kvsservice::details {
+#include <cstdint>
+
+namespace jogasaki::api::kvsservice {
 
 /**
- * @brief the target index specification.
+ * @brief the transaction priority.
  */
-class index {
-public:
+enum class transaction_priority : std::uint32_t {
     /**
-     * @brief create new object
-     * @param table_name the name of the table
-     * @param index_name the name of the index
+     * @brief use default transaction priority.
      */
-    explicit index(std::string_view table_name, std::string_view index_name = {}) noexcept;
+    priority_unspecified = 0U,
 
     /**
-     * @brief accessor to the table name
+     * @brief halts the running transactions immediately.
      */
-    [[nodiscard]] std::string_view table_name() const noexcept;
+    interrupt,
 
     /**
-     * @brief accessor to the index name
+     * @brief prevents new transactions and waits for the running transactions will end.
      */
-    [[nodiscard]] std::string_view index_name() const noexcept;
+    wait,
 
-private:
-    std::string table_name_ {};
-    std::string index_name_ {};
+    /**
+     * @brief halts the running transactions immediately, and keep lock-out until its end.
+     */
+    interrupt_exclude,
+
+    /**
+     * @brief prevents new transactions and waits for the running transactions will end, and keep lock-out until its end.
+     */
+    wait_exclude,
 };
 
 }

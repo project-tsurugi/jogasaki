@@ -30,6 +30,7 @@
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
 
@@ -670,6 +671,9 @@ TEST_F(sql_test, DISABLED_literal_with_invalid_char) {
 
 TEST_F(sql_test, verify_non_null_error_with_update) {
     // once UPDATE failure lost records being updated
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on error";
+    }
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table T (C0 int not null primary key, C1 int)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (1,1)");
@@ -685,6 +689,9 @@ TEST_F(sql_test, verify_non_null_error_with_update) {
 
 TEST_F(sql_test, verify_non_null_error_with_update_no_pred) {
     // once UPDATE failure lost records being updated
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on error";
+    }
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table T (C0 int not null primary key, C1 int)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (1,1)");

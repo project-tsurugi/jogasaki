@@ -55,7 +55,9 @@ enum class put_option : std::uint32_t {
 /**
  * @brief storage object in the database
  * @details storage typically represents a table on the database in the transaction engine layer.
- * The object is thread unsafe, and should not be called from different threads simultaneously.
+ * This object is simply a wrapper for sharksfin::StorageHandle and assumed to be usable concurrently from multiple threads
+ * as long as the involved transactions are different. Exceptions are object creation/destruction/set_options that are
+ * expected to be one time operation in object life-time.
  */
 class storage {
 public:
@@ -169,6 +171,8 @@ public:
      * @brief set the storage options
      * @param options storage options to set
      * @param tx transaction used
+     * @note this method is thread unsafe and should not be called simultaneously from multiple threads.
+     * This is expected to be called only once during the object initialization. Do not race with `get_options`.
      * @return status::ok if the operation is successful
      * @return otherwise, other status code
      */
@@ -177,9 +181,7 @@ public:
     );
 
     /**
-     * @brief set the storage options
-     * @param options storage options to set
-     * @param tx transaction used
+     * @brief get the storage options
      * @return status::ok if the operation is successful
      * @return otherwise, other status code
      */

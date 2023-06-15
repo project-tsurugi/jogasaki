@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <takatori/relation/write.h>
+#include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/logging.h>
@@ -36,6 +37,7 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using variable = takatori::descriptor::variable;
+using takatori::util::throw_exception;
 
 void write_partial::finish(abstract::task_context* context) {
     if (! context) return;
@@ -100,6 +102,11 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 
     // encode values from key_store_/value_store_ and send to kvs
     if(auto res = primary_.encode_and_put(context, *ctx.transaction()); res != status::ok) {
+        if (res == status::err_integrity_constraint_violation) { // i.e. null to non-nullable column
+            if (auto res2 = ctx.transaction()->abort(); res2 != status::ok) {
+                throw_exception(std::logic_error{"abort failed unexpectedly"});
+            }
+        }
         return details::error_abort(ctx, res);
     }
 

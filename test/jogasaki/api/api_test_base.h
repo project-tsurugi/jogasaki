@@ -100,7 +100,8 @@ public:
         std::string_view query,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::parameter_set const& params,
-        status expected = status::ok
+        status expected = status::ok,
+        bool no_abort = false
     );
     void execute_statement(
         std::string_view query,
@@ -110,7 +111,8 @@ public:
 
     void execute_statement(
         std::string_view query,
-        status expected = status::ok
+        status expected = status::ok,
+        bool no_abort = false
     );
 
     void execute_statement(
@@ -124,7 +126,8 @@ public:
         api::statement_handle prepared,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::parameter_set const& params,
-        status expected = status::ok
+        status expected = status::ok,
+        bool no_abort = false
     );
     void execute_statement(
         api::statement_handle prepared,
@@ -134,7 +137,8 @@ public:
 
     void execute_statement(
         api::statement_handle prepared,
-        status expected = status::ok
+        status expected = status::ok,
+        bool no_abort = false
     );
     void resolve(std::string& query, std::string_view place_holder, std::string value);
 

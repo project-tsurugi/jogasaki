@@ -178,15 +178,20 @@ void api_test_base::execute_statement(
     std::string_view query,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     api::parameter_set const& params,
-    status expected
+    status expected,
+    bool no_abort
 ) {
     api::statement_handle prepared{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    execute_statement(prepared, variables, params, expected);
+    execute_statement(prepared, variables, params, expected, no_abort);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
-void api_test_base::execute_statement(std::string_view query, api::transaction_handle& tx, status expected) {
+void api_test_base::execute_statement(
+    std::string_view query,
+    api::transaction_handle& tx,
+    status expected
+) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
@@ -194,11 +199,15 @@ void api_test_base::execute_statement(std::string_view query, api::transaction_h
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
-void api_test_base::execute_statement(std::string_view query, status expected) {
+void api_test_base::execute_statement(
+    std::string_view query,
+    status expected,
+    bool no_abort
+) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    execute_statement(prepared, expected);
+    execute_statement(prepared, expected, no_abort);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 
@@ -246,27 +255,38 @@ void api_test_base::execute_statement(
     api::statement_handle prepared,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     api::parameter_set const& params,
-    status expected
+    status expected,
+    bool no_abort
 ) {
     auto tx = utils::create_transaction(*db_);
     execute_statement(prepared, variables, params, *tx, expected);
     if (expected == status::ok) {
         ASSERT_EQ(status::ok, tx->commit());
     } else {
-        ASSERT_EQ(status::ok, tx->abort());
+        if(! no_abort) {
+            ASSERT_EQ(status::ok, tx->abort());
+        }
     }
 }
 
-void api_test_base::execute_statement(api::statement_handle prepared, api::transaction_handle& tx, status expected) {
+void api_test_base::execute_statement(
+    api::statement_handle prepared,
+    api::transaction_handle& tx,
+    status expected
+) {
     api::impl::parameter_set params{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     execute_statement(prepared, variables, params, tx, expected);
 }
 
-void api_test_base::execute_statement(api::statement_handle prepared, status expected) {
+void api_test_base::execute_statement(
+    api::statement_handle prepared,
+    status expected,
+    bool no_abort
+) {
     api::impl::parameter_set params{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
-    execute_statement(prepared, variables, params, expected);
+    execute_statement(prepared, variables, params, expected, no_abort);
 }
 
 void api_test_base::resolve(std::string& query, std::string_view place_holder, std::string value) {

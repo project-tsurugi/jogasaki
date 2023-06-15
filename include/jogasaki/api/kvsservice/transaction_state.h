@@ -107,7 +107,7 @@ class transaction_state {
      * @brief returns the transaction operation kind.
      * @return the transaction operation kind
      */
-    constexpr state_kind kind() const noexcept {
+    [[nodiscard]] constexpr state_kind kind() const noexcept {
         return kind_;
     }
 

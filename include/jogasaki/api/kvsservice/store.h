@@ -16,7 +16,6 @@
 #pragma once
 
 #include <future>
-#include <optional>
 #include <tbb/concurrent_hash_map.h>
 
 #include <jogasaki/api/resource/bridge.h>
@@ -24,7 +23,6 @@
 
 #include "transaction.h"
 #include "transaction_option.h"
-#include "transaction_result.h"
 
 namespace jogasaki::api::kvsservice {
 
@@ -58,38 +56,31 @@ public:
     ~store() = default;
 
     /**
-     * @brief begin the new transaction synchronously.
-     * This method blocks until the transaction object is created.
-     * Use transaction_begin_async() if you don't wait for a long time.
+     * @brief begin the new transaction
+     * The state of the returned transaction is usually transaction_state::state_kind::started,
+     * but sometimes it can be waiting_start.
+     * You should check whether the state is started, or wait until the state is started.
+     * Requesting transaction operations is permitted after the state is started.
+     * You can check the state of the transaction by transaction::state().
      * @param option transaction option
      * @param tx [out] the transaction filled when successful
      * @return status::ok when successful
      * @return any other error otherwise
+     * @see transaction::state()
      */
     [[nodiscard]] status transaction_begin(transaction_option const& option,
                                            std::shared_ptr<transaction>& tx);
-
-    /**
-     * @brief begin the new transaction asynchronously.
-     * This method returns instantly, you can get the operation status always and
-     * the transaction if succeeded from the returned future object.
-     * @param option transaction option
-     * @return the future object of transaction_result including operation status
-     * and std::shared_ptr<transaction> if succeeded.
-     */
-    [[nodiscard]] std::future<transaction_result> transaction_begin_async(
-            transaction_option const& option);
 
     /**
      * @brief find the transaction with the system_id.
      * system_id should be the return value of transaction::system_id().
      * This method is thread-safe.
      * @param system_id system_id of the transaction
-     * @return the optional value with the transaction
-     * @return std::nullopt if the transaction is not found
+     * @return valid shared_ptr with the transaction if exists
+     * @return shared_ptr with nullptr is not exists
      * @see transaction::system_id()
      */
-    [[nodiscard]] std::optional<std::shared_ptr<transaction>> transaction_find(std::uint64_t system_id);
+    [[nodiscard]] std::shared_ptr<transaction> transaction_find(std::uint64_t system_id);
 
     /**
      * @brief dispose the transaction
@@ -101,7 +92,7 @@ public:
      */
     [[nodiscard]] status transaction_dispose(std::shared_ptr<transaction> tx);
 private:
-    sharksfin::DatabaseHandle db_;
+    sharksfin::DatabaseHandle db_{};
     tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>> transactions_{};
 };
 

@@ -75,6 +75,13 @@ install(DIRECTORY
         PATTERN "proto/sql/*.pb.h"
         )
 
+install(DIRECTORY
+        ${CMAKE_BINARY_DIR}/src/tateyama
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tateyama
+        FILES_MATCHING
+        PATTERN "proto/kvs/*.pb.h"
+        )
+
 file(GLOB SOURCES
         "jogasaki/*.cpp"
         "jogasaki/accessor/*.cpp"

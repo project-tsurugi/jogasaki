@@ -31,6 +31,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/id.h>
 #include "api_test_base.h"
 
 namespace jogasaki::testing {
@@ -162,4 +163,57 @@ TEST_F(validate_qa_test, long_update) {
     EXPECT_EQ(1, result.size());
 }
 
+TEST_F(validate_qa_test, verify_non_null_error_with_update) {
+    // once UPDATE failure lost records being updated
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on error";
+    }
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 int not null primary key, C1 int)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1,1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2,2)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3,3)");
+    execute_statement("UPDATE T SET C0=null WHERE C0=1", status::err_integrity_constraint_violation, true);  // set no_abort=true to verify tx aborted automatically
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from T", result);
+        ASSERT_EQ(3, result.size());
+    }
+}
+
+TEST_F(validate_qa_test, verify_non_null_error_with_update_no_pred) {
+    // once UPDATE failure lost records being updated
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on error";
+    }
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 int not null primary key, C1 int)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1,1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2,2)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3,3)");
+    execute_statement("UPDATE T SET C0=null", status::err_integrity_constraint_violation, true);  // set no_abort=true to verify tx aborted automatically
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from T", result);
+        ASSERT_EQ(3, result.size());
+    }
+}
+
+TEST_F(validate_qa_test, delete_with_secondary) {
+    // once UPDATE->DELETE caused NOT_FOUND error
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on error";
+    }
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 int not null primary key, C1 int, C2 char(2))");
+    execute_statement("create index I on T(C2)");
+    execute_statement("INSERT INTO T (C0, C1, C2) VALUES (1,1, '1')");
+    execute_statement("UPDATE T SET C1=2, C2='2' WHERE C0=1");
+    execute_statement("DELETE FROM T");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from T", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
 }

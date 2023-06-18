@@ -36,11 +36,10 @@ std::vector<field_info> index_fields(
         for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
             auto&& k = idx.keys()[i];
             auto kc = bindings(k.column());
-            auto& type = k.column().type();
             auto t = utils::type_for(k.column().type());
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            spec.storage(extract_storage_spec(type));
+            spec.storage(extract_storage_spec(k.column().type()));
             ret.emplace_back(
                 t,
                 true,

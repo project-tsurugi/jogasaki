@@ -307,6 +307,7 @@ status write::create_fields(
             auto t = utils::type_for(type);
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
+            // pass storage spec with fields for write
             spec.storage(index::extract_storage_spec(type));
             bool nullable = k.column().criteria().nullity().nullable();
             if(variable_indices.count(kc.reference()) == 0) {
@@ -334,6 +335,7 @@ status write::create_fields(
             auto t = utils::type_for(type);
             bool nullable = c.criteria().nullity().nullable();
             auto spec = kvs::spec_value;
+            // pass storage spec with fields for write
             spec.storage(index::extract_storage_spec(type));
             if(variable_indices.count(b.reference()) == 0) {
                 // no column specified - use default value

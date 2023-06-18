@@ -25,6 +25,7 @@
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/index/field_info.h>
+#include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
 #include "write_secondary_context.h"
 
@@ -170,12 +171,16 @@ private:
             bool found = false;
             for(std::size_t i=0, n=primary->keys().size(); i<n; ++i) {
                 if(primary->keys().at(i) == k) {
+                    auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
+                        kvs::spec_key_ascending : kvs::spec_key_descending;
+                    // pass storage spec with fields for write
+                    spec.storage(index::extract_storage_spec(k.column().type()));
                     ret.emplace_back(
                         primary_key_meta->at(i),
                         primary_key_meta->value_offset(i),
                         primary_key_meta->nullity_offset(i),
                         k.column().criteria().nullity().nullable(),
-                        k.direction() == yugawara::storage::sort_direction::ascendant ? kvs::spec_key_ascending : kvs::spec_key_descending,
+                        spec,
                         true
                     );
                     found = true;
@@ -185,12 +190,16 @@ private:
             if(found) continue;
             for(std::size_t i=0, n=primary->values().size(); i<n; ++i) {
                 if(primary->values().at(i) == k.column()) {
+                    auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
+                        kvs::spec_key_ascending : kvs::spec_key_descending;
+                    // pass storage spec with fields for write
+                    spec.storage(index::extract_storage_spec(k.column().type()));
                     ret.emplace_back(
                         primary_value_meta->at(i),
                         primary_value_meta->value_offset(i),
                         primary_value_meta->nullity_offset(i),
                         k.column().criteria().nullity().nullable(),
-                        k.direction() == yugawara::storage::sort_direction::ascendant ? kvs::spec_key_ascending : kvs::spec_key_descending,
+                        spec,
                         false
                     );
                     found = true;

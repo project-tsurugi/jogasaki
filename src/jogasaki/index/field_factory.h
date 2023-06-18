@@ -30,11 +30,23 @@ namespace jogasaki::index {
 using takatori::util::sequence_view;
 using variable_table_info = executor::process::impl::variable_table_info;
 
+/**
+ * @brief create index fields for given storage::index
+ * @details this function create fields for writing or decoding
+ * @param idx the yugawara index object
+ * @param key whether key fields are requested, or value fields
+ * @return the index fields information
+ */
 std::vector<field_info> index_fields(
     yugawara::storage::index const& idx,
     bool key
 );
 
+/**
+ * @brief create index fields for given storage::index
+ * @details this function create fields for read
+ * @return the index fields information
+ */
 template <class Column>
 std::vector<index::field_info> create_fields(
     yugawara::storage::index const& idx,
@@ -60,7 +72,7 @@ std::vector<index::field_info> create_fields(
             auto kc = bindings(k.column());
             auto t = utils::type_for(k.column().type());
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
-                kvs::spec_key_ascending : kvs::spec_key_descending;
+                kvs::spec_key_ascending : kvs::spec_key_descending; // no storage spec with fields for read
             if (mapping.count(kc) == 0) {
                 ret.emplace_back(
                     t,
@@ -96,7 +108,7 @@ std::vector<index::field_info> create_fields(
                 0,
                 0,
                 c.criteria().nullity().nullable(),
-                kvs::spec_value
+                kvs::spec_value // no storage spec with fields for read
             );
             continue;
         }
@@ -107,7 +119,7 @@ std::vector<index::field_info> create_fields(
             varinfo.at(var).value_offset(),
             varinfo.at(var).nullity_offset(),
             c.criteria().nullity().nullable(),
-            kvs::spec_value
+            kvs::spec_value // no storage spec with fields for read
         );
     }
     return ret;

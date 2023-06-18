@@ -38,6 +38,7 @@ bool metadata_store::put(std::size_t def_id, std::size_t id) {
     kvs::writable_stream value{val_buf.data(), val_buf.capacity()};
     data::any k{std::in_place_type<std::int64_t>, def_id};
     data::any v{std::in_place_type<std::int64_t>, id};
+    // no storage spec because field type is fixed
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
         res != status::ok) {
         VLOG(log_error) << "*** encode failed with error: " << res;
@@ -77,6 +78,7 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(std::unique_ptr
     kvs::readable_stream key{k.data(), k.size()};
     kvs::readable_stream value{v.data(), v.size()};
     data::any dest{};
+    // no storage spec because field type is fixed
     if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
         res != status::ok) {
         throw_exception(std::logic_error{""});
@@ -132,6 +134,7 @@ bool metadata_store::remove(std::size_t def_id) {
     data::aligned_buffer key_buf{10};
     kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
     data::any k{std::in_place_type<std::int64_t>, def_id};
+    // no storage spec because field type is fixed
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key); res != status::ok) {
         VLOG(log_error) << "*** encode failed with error: " << res;
         return false;

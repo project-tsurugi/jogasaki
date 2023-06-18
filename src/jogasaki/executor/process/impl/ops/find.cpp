@@ -242,7 +242,7 @@ std::vector<details::secondary_index_field_info> find::create_secondary_key_fiel
         auto kc = bindings(k.column());
         auto t = utils::type_for(k.column().type());
         auto spec = k.direction() == relation::sort_direction::ascendant ?
-            kvs::spec_key_ascending : kvs::spec_key_descending;
+            kvs::spec_key_ascending : kvs::spec_key_descending; // no storage spec with fields for read
         ret.emplace_back(
             t,
             k.column().criteria().nullity().nullable(),

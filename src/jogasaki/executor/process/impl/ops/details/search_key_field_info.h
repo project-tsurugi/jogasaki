@@ -83,7 +83,7 @@ std::vector<details::search_key_field_info> create_search_key_fields(
         auto kc = bindings(k.column());
         auto t = utils::type_for(k.column().type());
         auto spec = k.direction() == relation::sort_direction::ascendant ?
-            kvs::spec_key_ascending : kvs::spec_key_descending;
+            kvs::spec_key_ascending : kvs::spec_key_descending; // no storage spec with fields for read
         if (var_to_expression.count(kc) == 0) {
             continue;
         }

@@ -44,7 +44,10 @@ bool drop_table::operator()(request_context& context) const {
     // drop secondary indices
     std::vector<std::string> indices{};
     provider.each_table_index(*t, [&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& entry) {
-        (void) entry;
+        if(c.simple_name() == entry->simple_name()) {
+            // skip primary
+            return;
+        }
         indices.emplace_back(id);
     });
 

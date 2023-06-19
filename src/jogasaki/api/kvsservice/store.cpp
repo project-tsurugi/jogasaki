@@ -23,7 +23,7 @@ store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
     db_(dynamic_cast<jogasaki::api::impl::database*>(bridge->database())->kvs_db()->handle()){
 }
 
-status store::transaction_begin(transaction_option const&, std::shared_ptr<transaction>& tx) {
+status store::begin_transaction(transaction_option const &, std::shared_ptr<transaction>& tx) {
     // FIXME call sharksfin: transaction_begin
     sharksfin::TransactionControlHandle handle {};
     tx = std::make_shared<transaction>(handle);
@@ -35,7 +35,7 @@ status store::transaction_begin(transaction_option const&, std::shared_ptr<trans
     return status::ok;
 }
 
-std::shared_ptr<transaction> store::transaction_find(std::uint64_t system_id) {
+std::shared_ptr<transaction> store::find_transaction(std::uint64_t system_id) {
     decltype(transactions_)::accessor acc{};
     if (transactions_.find(acc, system_id)) {
         return acc->second;

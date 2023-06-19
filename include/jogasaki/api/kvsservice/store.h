@@ -62,7 +62,7 @@ public:
      * @return any other error otherwise
      * @see transaction::state()
      */
-    [[nodiscard]] status transaction_begin(transaction_option const& option,
+    [[nodiscard]] status begin_transaction(transaction_option const& option,
                                            std::shared_ptr<transaction>& tx);
 
     /**
@@ -74,7 +74,7 @@ public:
      * @return shared_ptr with nullptr is not exists
      * @see transaction::system_id()
      */
-    [[nodiscard]] std::shared_ptr<transaction> transaction_find(std::uint64_t system_id);
+    [[nodiscard]] std::shared_ptr<transaction> find_transaction(std::uint64_t system_id);
 
     /**
      * @brief dispose the transaction

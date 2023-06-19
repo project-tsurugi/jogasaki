@@ -58,7 +58,7 @@ void service::command_begin(tateyama::proto::kvs::request::Request const &proto_
     auto &proto_opt = proto_req.begin().transaction_option();
     auto option = convert(proto_opt);
     std::shared_ptr<transaction> tx{};
-    auto status = store_->transaction_begin(option, tx);
+    auto status = store_->begin_transaction(option, tx);
     if (status != status::ok) {
         // FIXME
         // tateyama::proto::kvs::response::UnknownError unknown {};
@@ -88,7 +88,7 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
     auto &proto_handle = proto_req.commit().transaction_handle();
     // FIXME
     // auto proto_type = proto_req.commit().type();
-    auto tx = store_->transaction_find(proto_handle.system_id());
+    auto tx = store_->find_transaction(proto_handle.system_id());
     if (tx == nullptr) {
         // FIXME
     }
@@ -114,7 +114,7 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
                                     std::shared_ptr<tateyama::api::server::response> &res) {
     auto &proto_handle = proto_req.rollback().transaction_handle();
     // FIXME
-    auto tx = store_->transaction_find(proto_handle.system_id());
+    auto tx = store_->find_transaction(proto_handle.system_id());
     if (tx == nullptr) {
         // FIXME
     }

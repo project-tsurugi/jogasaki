@@ -49,7 +49,6 @@ status transaction::abort() {
 }
 
 status transaction::put(std::string_view, tateyama::proto::kvs::data::Record const &,
-                        tateyama::proto::kvs::data::Record const &,
                         put_option) {
     // FIXME
     return status::ok;

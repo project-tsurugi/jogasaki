@@ -138,6 +138,9 @@ public:
      * @brief remove the record for the given primary key
      * @param table the full qualified name of the table
      * @param primary_key the key for searching
+     * the primary_key should contain all columns of the primary key.
+     * the primary_key should only contain the primary key data.
+     * the order of each column is free, any order will be accepted.
      * @param opt option to set remove mode
      * @return status::ok successfully deleted the existing record
      * @return status::ok if opt=remove_option::instant and the target record is absent

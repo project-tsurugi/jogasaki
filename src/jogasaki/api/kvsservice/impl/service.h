@@ -47,17 +47,19 @@ public:
 
 private:
     void command_begin(tateyama::proto::kvs::request::Request const &proto_req,
-                       std::shared_ptr<tateyama::api::server::response> const &res);
+                       std::shared_ptr<tateyama::api::server::response> &res);
     void command_commit(tateyama::proto::kvs::request::Request const &proto_req,
-                        std::shared_ptr<tateyama::api::server::response> const &res);
+                        std::shared_ptr<tateyama::api::server::response> &res);
     void command_rollback(tateyama::proto::kvs::request::Request const &proto_req,
-                          std::shared_ptr<tateyama::api::server::response> const &res);
+                          std::shared_ptr<tateyama::api::server::response> &res);
+    void command_close_transaction(tateyama::proto::kvs::request::Request const &proto_req,
+                          std::shared_ptr<tateyama::api::server::response> &res);
     void command_put(tateyama::proto::kvs::request::Request const &proto_req,
-                     std::shared_ptr<tateyama::api::server::response> const &res);
+                     std::shared_ptr<tateyama::api::server::response> &res);
     void command_get(tateyama::proto::kvs::request::Request const &proto_req,
-                     std::shared_ptr<tateyama::api::server::response> const &res);
+                     std::shared_ptr<tateyama::api::server::response> &res);
     void command_remove(tateyama::proto::kvs::request::Request const &proto_req,
-                        std::shared_ptr<tateyama::api::server::response> const &res);
+                        std::shared_ptr<tateyama::api::server::response> &res);
 
     jogasaki::api::kvsservice::store* store_{};
 };

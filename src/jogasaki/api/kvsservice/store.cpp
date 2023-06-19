@@ -13,7 +13,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <jogasaki/api/kvsservice/store.h>
+#include <jogasaki/api/impl/database.h>
 
 namespace jogasaki::api::kvsservice {
+
+store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
+    db_(dynamic_cast<jogasaki::api::impl::database*>(bridge->database())->kvs_db()->handle()){
+}
+
+status store::transaction_begin(transaction_option const&, std::shared_ptr<transaction>& tx) {
+    // FIXME call sharksfin: transaction_begin
+    sharksfin::TransactionControlHandle handle {};
+    tx = std::make_shared<transaction>(handle);
+    //
+    decltype(transactions_)::accessor acc{};
+    if (transactions_.insert(acc, tx->system_id())) {
+        acc->second = tx;
+    }
+    return status::ok;
+}
+
+std::shared_ptr<transaction> store::transaction_find(std::uint64_t system_id) {
+    decltype(transactions_)::accessor acc{};
+    if (transactions_.find(acc, system_id)) {
+        return acc->second;
+    }
+    return nullptr;
+}
+
+status store::transaction_dispose(std::uint64_t system_id) {
+    // FIXME call sharksfin: transaction_dispose
+    //
+    decltype(transactions_)::accessor acc{};
+    if (transactions_.find(acc, system_id)) {
+        transactions_.erase(acc);
+    }
+    return status::ok;
+}
 }

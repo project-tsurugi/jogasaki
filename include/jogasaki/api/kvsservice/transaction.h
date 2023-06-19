@@ -39,7 +39,7 @@ public:
     /**
      * @brief create new object
      */
-    transaction();
+    transaction() = default;
 
     /**
      * @brief create new object
@@ -58,18 +58,6 @@ public:
     ~transaction() = default;
 
     /**
-     * @brief retrieves the native transaction control handle in the transaction layer
-     * @return the handle held by this object
-     */
-    [[nodiscard]] sharksfin::TransactionControlHandle control_handle() const noexcept;
-
-    /**
-     * @brief retrieves the native handle in the transaction layer
-     * @return the handle held by this object
-     */
-    [[nodiscard]] sharksfin::TransactionHandle handle() const noexcept;
-
-    /**
      * @brief retrieves the system_id of this transaction
      * @return the system_id of the transaction
      */
@@ -79,7 +67,7 @@ public:
      * @brief retrieves the state of this transaction
      * @return the state of the transaction
      */
-    [[nodiscard]] transaction_state state() const noexcept;
+    [[nodiscard]] transaction_state state() const;
 
     /**
      * @brief retrieves the reference of the mutex
@@ -104,7 +92,7 @@ public:
     [[nodiscard]] status commit();
 
     /**
-     * @brief abort the transaction synchronously
+     * @brief abort the transaction
      * @details abort the current transaction. When successful,
      * the object gets invalidated and should not be used any more.
      * @return status::ok if the operation is successful
@@ -137,7 +125,7 @@ public:
 
     /**
      * @brief get the value for the given primary key
-     * @param index the name of the table
+     * @param table the full qualified name of the table
      * @param primary_key primary key for searching
      * the primary_key should contain all columns of the primary key.
      * the primary_key should only contain the primary key data.
@@ -157,11 +145,10 @@ public:
      * @param table the name of the table
      * @param primary_key the key for searching
      * @param opt option to set remove mode
-     * @return status::ok if the target content was successfully deleted.
-     * If opt is instant, returns status::ok after successful operation
-     * whether the content of the primary_key exists or not.
+     * @return status::ok if the target content was successfully deleted or
+     * only if opt is instant and the target content was not found.
      * @return status::err_inactive_transaction if the transaction is inactive and the request is rejected
-     * @return status::not_found if opt is counting and the target content was not found
+     * @return status::not_found only if opt is counting and the target content was not found
      * @return status::err_invalid_argument if the specified key isn't a primary key or not enough
      * @return otherwise if error was occurred
      */

@@ -25,7 +25,14 @@ framework::component::id_type resource::id() const noexcept {
     return tag;
 }
 
-bool resource::setup(framework::environment&) {
+bool resource::setup(framework::environment &env) {
+    if (store_) return true;
+    auto bridge = env.resource_repository().find<jogasaki::api::resource::bridge>();
+    if(! bridge) {
+        LOG(ERROR) << "failed to find jogasaki resource bridge";
+        return false;
+    }
+    store_ = std::make_unique<jogasaki::api::kvsservice::store>(bridge);
     return true;
 }
 
@@ -38,6 +45,10 @@ bool resource::shutdown(framework::environment&) {
 }
 
 resource::~resource() = default;
+
+store* resource::store() const noexcept {
+    return store_.get();
+}
 
 std::string_view resource::label() const noexcept {
     return component_label;

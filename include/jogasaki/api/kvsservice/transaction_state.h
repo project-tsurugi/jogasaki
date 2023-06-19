@@ -23,7 +23,7 @@ namespace jogasaki::api::kvsservice {
  * @brief the transaction state.
  */
 class transaction_state {
-
+public:
     /**
      * @brief the transaction state kind enum.
      */
@@ -76,7 +76,7 @@ class transaction_state {
     /**
      * @brief create new object
      */
-    explicit transaction_state(state_kind kind) noexcept;
+    explicit transaction_state(state_kind kind) noexcept: kind_(kind){};
 
     /**
      * @brief destruct the object

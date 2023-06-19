@@ -80,13 +80,17 @@ public:
     ~resource() override;
 
     /**
+     * @brief accessor to the database
+     */
+    [[nodiscard]] jogasaki::api::kvsservice::store* store() const noexcept;
+
+    /**
      * @see tateyama::framework::component::label()
      */
     [[nodiscard]] std::string_view label() const noexcept override;
 
 private:
     std::unique_ptr<jogasaki::api::kvsservice::store> store_;  // to use incomplete object, do not add {} after var. name.
-    // bool started_{false};
 };
 
 }

@@ -39,12 +39,6 @@ public:
      */
     explicit store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge);
 
-    /**
-     * @brief create new object
-     * @param db database handle of sharksfin
-     */
-    explicit store(sharksfin::DatabaseHandle db);
-
     store(store const &other) = delete;
     store &operator=(store const &other) = delete;
     store(store &&other) noexcept = delete;
@@ -84,13 +78,16 @@ public:
 
     /**
      * @brief dispose the transaction
-     * If the transaction is still running (e.g. commit/abort has not been requested and no abort condition has been met
-     * with APIs) the transaction will be aborted (by calling transaction_abort(rollback=true)) and then disposed.
-     * @param tx the transaction to be disposed
+     * If the transaction is still running (e.g. commit/abort has not been requested
+     * and no abort condition has been met with APIs), the transaction will be aborted
+     * and then disposed.
+     * You should call this method after the transaction object is needless,
+     * should not use the disposed transaction object after calling this method.
+     * @param system_id system_id of the transaction
      * @return status::ok when successful
      * @return any other error otherwise
      */
-    [[nodiscard]] status transaction_dispose(std::shared_ptr<transaction> tx);
+    [[nodiscard]] status transaction_dispose(std::uint64_t system_id);
 private:
     sharksfin::DatabaseHandle db_{};
     tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>> transactions_{};

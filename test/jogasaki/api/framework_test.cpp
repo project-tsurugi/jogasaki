@@ -78,8 +78,35 @@ public:
 using namespace std::string_view_literals;
 using namespace tateyama;
 
+static constexpr std::string_view default_configuration {  // NOLINT
+    "[sql]\n"
+        "thread_pool_size=5\n"
+        "lazy_worker=false\n"
+        "enable_index_join=false\n"
+        "stealing_enabled=true\n"
+        "default_partitions=5\n"
+        "stealing_wait=1\n"
+        "task_polling_wait=0\n"
+        "tasked_write=true\n"
+        "lightweight_job_level=0\n"
+        "enable_hybrid_scheduler=true\n"
+
+    "[ipc_endpoint]\n"
+        "database_name=tsurugi\n"
+        "threads=104\n"
+        "datachannel_buffer_size=64\n"
+
+    "[stream_endpoint]\n"
+        "port=12345\n"
+        "threads=104\n"
+
+    "[datastore]\n"
+        "log_location=\n"
+        "logging_max_parallelism=112\n"
+};
+
 TEST_F(framework_test, server_to_start_sql_engine) {
-    auto conf = tateyama::api::configuration::create_configuration();
+    auto conf = tateyama::api::configuration::create_configuration("", default_configuration);
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);
@@ -125,7 +152,7 @@ public:
 };
 
 TEST_F(framework_test, send_request_with_header) {
-    auto conf = tateyama::api::configuration::create_configuration();
+    auto conf = tateyama::api::configuration::create_configuration("", default_configuration);
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);
@@ -157,7 +184,7 @@ TEST_F(framework_test, send_request_with_header) {
 }
 
 TEST_F(framework_test, quiescent_mode) {
-    auto conf = tateyama::api::configuration::create_configuration();
+    auto conf = tateyama::api::configuration::create_configuration("", default_configuration);
     framework::boot_mode mode = framework::boot_mode::quiescent_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);

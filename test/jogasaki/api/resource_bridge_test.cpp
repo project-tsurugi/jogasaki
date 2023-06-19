@@ -71,6 +71,23 @@ public:
 
 using namespace std::string_view_literals;
 
+static constexpr std::string_view default_configuration {  // NOLINT
+    "[sql]\n"
+        "thread_pool_size=5\n"
+        "lazy_worker=false\n"
+        "enable_index_join=false\n"
+        "stealing_enabled=true\n"
+        "default_partitions=5\n"
+        "stealing_wait=1\n"
+        "task_polling_wait=0\n"
+        "tasked_write=true\n"
+        "lightweight_job_level=0\n"
+        "enable_hybrid_scheduler=true\n"
+    "[datastore]\n"
+        "log_location=\n"
+        "logging_max_parallelism=112\n"
+};
+
 TEST_F(resource_bridge_test, resource_cfg) {
     std::stringstream ss{
         "[sql]\n"
@@ -81,7 +98,7 @@ TEST_F(resource_bridge_test, resource_cfg) {
         "log_location=LOCATION\n"
         "logging_max_parallelism=111\n"
     };
-    tateyama::api::configuration::whole cfg{ss};
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
 
     auto c = api::resource::convert_config(cfg);
     EXPECT_EQ(99, c->thread_pool_size());
@@ -96,7 +113,7 @@ TEST_F(resource_bridge_test, cfg_default_value) {
     std::stringstream ss{
         "[datastore]\n"
     };
-    tateyama::api::configuration::whole cfg{ss};
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
     auto c = api::resource::convert_config(cfg);
     jogasaki::configuration jc{};
     EXPECT_NE(jc.max_logging_parallelism(), c->max_logging_parallelism());

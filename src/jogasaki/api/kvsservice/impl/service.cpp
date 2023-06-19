@@ -139,7 +139,7 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
 void service::command_close_transaction(tateyama::proto::kvs::request::Request const &proto_req,
                                std::shared_ptr<tateyama::api::server::response> &res) {
     auto &proto_handle = proto_req.close_transaction().transaction_handle();
-    auto status = store_->transaction_dispose(proto_handle.system_id());
+    auto status = store_->dispose_transaction(proto_handle.system_id());
     if (status != status::ok) {
         // FIXME
     }

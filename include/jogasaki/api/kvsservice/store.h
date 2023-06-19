@@ -87,7 +87,7 @@ public:
      * @return status::ok when successful
      * @return any other error otherwise
      */
-    [[nodiscard]] status transaction_dispose(std::uint64_t system_id);
+    [[nodiscard]] status dispose_transaction(std::uint64_t system_id);
 private:
     sharksfin::DatabaseHandle db_{};
     tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>> transactions_{};

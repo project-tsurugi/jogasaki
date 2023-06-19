@@ -43,7 +43,7 @@ std::shared_ptr<transaction> store::find_transaction(std::uint64_t system_id) {
     return nullptr;
 }
 
-status store::transaction_dispose(std::uint64_t system_id) {
+status store::dispose_transaction(std::uint64_t system_id) {
     // FIXME call sharksfin: transaction_dispose
     //
     decltype(transactions_)::accessor acc{};

@@ -157,11 +157,43 @@ void service::command_close_transaction(tateyama::proto::kvs::request::Request c
     close.release_success();
 }
 
+static put_option convert(tateyama::proto::kvs::request::Put_Type type) {
+    switch (type) {
+        case tateyama::proto::kvs::request::Put_Type::Put_Type_PUT_TYPE_UNSPECIFIED:
+            return put_option::create_or_update;
+        case tateyama::proto::kvs::request::Put_Type::Put_Type_OVERWRITE:
+            return put_option::create_or_update;
+        case tateyama::proto::kvs::request::Put_Type::Put_Type_IF_ABSENT:
+            return put_option::create;
+        case tateyama::proto::kvs::request::Put_Type:: Put_Type_IF_PRESENT:
+            return put_option::update;
+        default:
+            // FIXME
+            return put_option::create_or_update;
+    }
+}
 void service::command_put(tateyama::proto::kvs::request::Request const &proto_req,
                                std::shared_ptr<tateyama::api::server::response> &res) {
+    auto &proto_handle = proto_req.put().transaction_handle();
+    auto tx = store_->find_transaction(proto_handle.system_id());
+    if (tx == nullptr) {
+        // FIXME
+    }
+    auto &table = proto_req.put().index().table_name();
+    put_option opt = convert(proto_req.put().type());
+    auto written = 0;
+    for (auto &record : proto_req.put().records()) {
+        auto status = tx->put(table, record, opt);
+        if (status == status::ok) {
+            written++;
+        } else {
+            // FIXME
+        }
+    }
+    //
     tateyama::proto::kvs::response::Put put { };
     tateyama::proto::kvs::response::Put_Success success { };
-    success.set_written(proto_req.put().records_size());
+    success.set_written(written);
     put.set_allocated_success(&success);
     //
     std::stringstream ss { };
@@ -176,9 +208,24 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
 
 void service::command_get(tateyama::proto::kvs::request::Request const &proto_req,
                                std::shared_ptr<tateyama::api::server::response> &res) {
-    tateyama::proto::kvs::response::Get get { };
+    auto &proto_handle = proto_req.put().transaction_handle();
+    auto tx = store_->find_transaction(proto_handle.system_id());
+    if (tx == nullptr) {
+        // FIXME
+    }
+    auto &table = proto_req.get().index().table_name();
     tateyama::proto::kvs::response::Get_Success success { };
-    success.mutable_records()->CopyFrom(proto_req.get().keys());
+    for (auto &key : proto_req.get().keys()) {
+        tateyama::proto::kvs::data::Record record;
+        auto status = tx->get(table, key, record);
+        if (status == status::ok) {
+            success.mutable_records()->AddAllocated(&record);
+        } else {
+            // FIXME
+        }
+    }
+    //
+    tateyama::proto::kvs::response::Get get { };
     get.set_allocated_success(&success);
     //
     std::stringstream ss { };
@@ -192,11 +239,41 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
     get.release_success();
 }
 
+static remove_option convert(tateyama::proto::kvs::request::Remove_Type type) {
+    switch (type) {
+        case tateyama::proto::kvs::request::Remove_Type::Remove_Type_REMOVE_TYPE_UNSPECIFIED:
+            return remove_option::counting;
+        case tateyama::proto::kvs::request::Remove_Type::Remove_Type_COUNTING:
+            return remove_option::counting;
+        case tateyama::proto::kvs::request::Remove_Type::Remove_Type_INSTANT:
+            return remove_option::instant;
+        default:
+            // FIXME
+            return remove_option::counting;
+    }
+}
 void service::command_remove(tateyama::proto::kvs::request::Request const &proto_req,
                                   std::shared_ptr<tateyama::api::server::response> &res) {
+    auto &proto_handle = proto_req.put().transaction_handle();
+    auto tx = store_->find_transaction(proto_handle.system_id());
+    if (tx == nullptr) {
+        // FIXME
+    }
+    auto &table = proto_req.remove().index().table_name();
+    auto opt = convert(proto_req.remove().type());
+    auto removed = 0;
+    for (auto &record : proto_req.put().records()) {
+        auto status = tx->remove(table, record, opt);
+        if (status == status::ok) {
+            removed++;
+        } else {
+            // FIXME
+        }
+    }
+    //
     tateyama::proto::kvs::response::Remove remove { };
     tateyama::proto::kvs::response::Remove_Success success { };
-    success.set_removed(proto_req.remove().keys_size());
+    success.set_removed(removed);
     remove.set_allocated_success(&success);
     //
     std::stringstream ss { };

@@ -38,11 +38,6 @@ public:
 
     /**
      * @brief create new object
-     */
-    transaction() = default;
-
-    /**
-     * @brief create new object
      * @param handle transaction control handle of sharksfin
      */
     explicit transaction(sharksfin::TransactionControlHandle handle);

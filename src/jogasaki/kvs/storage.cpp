@@ -76,7 +76,7 @@ status storage::put(
     }
     if (res == StatusCode::ALREADY_EXISTS) {
         if (option == put_option::create) {
-            return status::err_already_exists;
+            return status::already_exists;
         }
         return status::ok;
     }

@@ -58,6 +58,7 @@ enum class status : std::int64_t {
     err_inactive_transaction = -24,
     err_resource_limit_reached = -25,
     err_data_corruption = -26,
+    err_unique_constraint_violation = -27,
 
     // internal status
     waiting_for_other_transaction = -10001,
@@ -103,6 +104,7 @@ enum class status : std::int64_t {
         case status::err_inactive_transaction: return "err_inactive_transaction"sv;
         case status::err_resource_limit_reached: return "err_resource_limit_reached"sv;
         case status::err_data_corruption: return "err_data_corruption"sv;
+        case status::err_unique_constraint_violation: return "err_unique_constraint_violation"sv;
 
         case status::waiting_for_other_transaction: return "waiting_for_other_transaction"sv;
     }

@@ -102,7 +102,7 @@ TEST_F(api_test, primary_key_violation) {
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt));
     auto tx = utils::create_transaction(*db_);
-    ASSERT_EQ(status::err_already_exists, tx->execute(*stmt));
+    ASSERT_EQ(status::err_unique_constraint_violation, tx->execute(*stmt));
     ASSERT_EQ(status::ok, tx->abort());
 
     std::vector<mock::basic_record> result{};
@@ -120,7 +120,7 @@ TEST_F(api_test, primary_key_violation_in_same_tx) {
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt1));
     auto tx = utils::create_transaction(*db_);
     ASSERT_EQ(status::ok, tx->execute(*stmt0));
-    ASSERT_EQ(status::err_already_exists, tx->execute(*stmt1));
+    ASSERT_EQ(status::err_unique_constraint_violation, tx->execute(*stmt1));
     ASSERT_EQ(status::ok, tx->abort());
 
     std::vector<mock::basic_record> result{};
@@ -588,7 +588,7 @@ TEST_F(api_test, err_inactive_tx) {
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt1));
     auto tx = utils::create_transaction(*db_);
     ASSERT_EQ(status::ok, tx->execute(*stmt0));
-    ASSERT_EQ(status::err_already_exists, tx->execute(*stmt1));
+    ASSERT_EQ(status::err_unique_constraint_violation, tx->execute(*stmt1));
     ASSERT_EQ(status::err_inactive_transaction, tx->execute(*stmt0));
     ASSERT_EQ(status::ok, tx->abort());
 }

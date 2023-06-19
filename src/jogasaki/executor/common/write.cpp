@@ -99,9 +99,11 @@ bool write::operator()(request_context& context) const {
                     {static_cast<char*>(value->data()), value->size()},
                     opt
                 ); res != status::ok) {
-                if (opt == kvs::put_option::create && res == status::err_already_exists) {
+                if (opt == kvs::put_option::create && res == status::already_exists) {
                     if(kind_ == write_kind::insert) {
                         // integrity violation should be handled in SQL layer and forces transaction abort
+                        // status::already_exists is an internal code, raise it as constraint violation
+                        res = status::err_unique_constraint_violation;
                         if(auto res2 = tx->abort(); res2 != status::ok) {
                             // abort should be always successful
                             fail();

@@ -168,6 +168,7 @@ inline sql::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_inactive_transaction: return sql::status::Status::ERR_INACTIVE_TRANSACTION;
         case jogasaki::status::err_data_corruption: return sql::status::Status::ERR_DATA_CORRUPTION;
         case jogasaki::status::err_resource_limit_reached: return sql::status::Status::ERR_RESOURCE_LIMIT_REACHED;
+        case jogasaki::status::err_unique_constraint_violation: return sql::status::Status::ERR_UNIQUE_CONSTRAINT_VIOLATION;
         case jogasaki::status::waiting_for_other_transaction: return sql::status::Status::ERR_UNKNOWN;  // wait_for_transaction is internal, should not be exposed
     }
     fail();

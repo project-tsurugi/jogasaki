@@ -391,7 +391,7 @@ void load_storage_data(api::database& db, std::shared_ptr<configurable_provider>
         if(auto res = db.create_executable(ss.str(), stmt); res != status::ok) {
             fail();
         }
-        if(auto res = tx->execute(*stmt); res != status::ok && res != status::err_already_exists) {
+        if(auto res = tx->execute(*stmt); res != status::ok && res != status::err_unique_constraint_violation) {
             fail();
         }
         if (i == n-1 || (i != 0 && (i % record_per_transaction) == 0)) {

@@ -425,7 +425,7 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
                     case ::sharksfin::TransactionState::StateKind::ABORTED: {
                         // get result and return error info
                         rctx->status_code(
-                            status::err_aborted_retryable,
+                            status::err_serialization_failure,
                             utils::create_abort_message(*rctx, *tx_, *database_->tables()));
                         break;
                     }

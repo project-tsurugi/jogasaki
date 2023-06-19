@@ -152,7 +152,7 @@ inline sql::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_unsupported: return sql::status::Status::ERR_UNSUPPORTED;
         case jogasaki::status::err_user_error: return sql::status::Status::ERR_USER_ERROR;
         case jogasaki::status::err_aborted: return sql::status::Status::ERR_ABORTED;
-        case jogasaki::status::err_aborted_retryable: return sql::status::Status::ERR_ABORTED_RETRYABLE;
+        case jogasaki::status::err_serialization_failure: return sql::status::Status::ERR_SERIALIZATION_FAILURE;
         case jogasaki::status::err_not_found: return sql::status::Status::ERR_NOT_FOUND;
         case jogasaki::status::err_already_exists: return sql::status::Status::ERR_ALREADY_EXISTS;
         case jogasaki::status::err_inconsistent_index: return sql::status::Status::ERR_INCONSISTENT_INDEX;

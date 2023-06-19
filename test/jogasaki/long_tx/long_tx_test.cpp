@@ -198,7 +198,7 @@ TEST_F(long_tx_test, multiple_tx_iud_same_key) {
     execute_statement("UPDATE T0 SET C1=10.0 WHERE C0=1", *tx1);
     execute_statement("UPDATE T0 SET C1=20.0 WHERE C0=1", *tx2);
     ASSERT_EQ(status::ok, tx1->commit());
-    ASSERT_EQ(status::err_aborted_retryable, tx2->commit());
+    ASSERT_EQ(status::err_serialization_failure, tx2->commit());
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0 ORDER BY C0", result);
     ASSERT_EQ(2, result.size());
@@ -493,7 +493,7 @@ TEST_F(long_tx_test, commit_wait_error) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx1);
     ASSERT_EQ(status::ok, tx1->commit());
     f.get();
-    EXPECT_EQ(status::err_aborted_retryable, st2);
+    EXPECT_EQ(status::err_serialization_failure, st2);
     ASSERT_TRUE(vf.finished());
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T0 ORDER BY C0", result);
@@ -522,12 +522,12 @@ TEST_F(long_tx_test, occ_accessing_wp) {
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        execute_statement("SELECT * FROM T0 WHERE C0=1", *tx2, status::err_aborted_retryable);
+        execute_statement("SELECT * FROM T0 WHERE C0=1", *tx2, status::err_serialization_failure);
         ASSERT_EQ(status::ok, tx2->abort());
     }
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        execute_statement("DELETE FROM T0 WHERE C0=1", *tx2, status::err_aborted_retryable);
+        execute_statement("DELETE FROM T0 WHERE C0=1", *tx2, status::err_serialization_failure);
         ASSERT_EQ(status::ok, tx2->abort());
     }
     {
@@ -537,7 +537,7 @@ TEST_F(long_tx_test, occ_accessing_wp) {
     }
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        execute_statement("UPDATE T0 SET C1=3.0 WHERE C1=1", *tx2, status::err_aborted_retryable);
+        execute_statement("UPDATE T0 SET C1=3.0 WHERE C1=1", *tx2, status::err_serialization_failure);
         ASSERT_EQ(status::ok, tx2->abort());
     }
 }

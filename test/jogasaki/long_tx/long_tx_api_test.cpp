@@ -119,7 +119,7 @@ TEST_F(long_tx_api_test, verify_key_locator) {
     execute_statement("UPDATE T0 SET C1=10.0 WHERE C0=1", *tx1);
     execute_statement("UPDATE T0 SET C1=20.0 WHERE C0=1", *tx2);
     ASSERT_EQ(status::ok, tx1->commit());
-    ASSERT_EQ(status::err_aborted_retryable, tx2->commit());
+    ASSERT_EQ(status::err_serialization_failure, tx2->commit());
 }
 
 TEST_F(long_tx_api_test, verify_key_locator_with_char) {
@@ -133,6 +133,6 @@ TEST_F(long_tx_api_test, verify_key_locator_with_char) {
     execute_statement("UPDATE T SET C1=1 WHERE C0='11111111111111111111111111111111'", *tx1);
     execute_statement("UPDATE T SET C1=2 WHERE C0='11111111111111111111111111111111'", *tx2);
     ASSERT_EQ(status::ok, tx1->commit());
-    ASSERT_EQ(status::err_aborted_retryable, tx2->commit());
+    ASSERT_EQ(status::err_serialization_failure, tx2->commit());
 }
 }

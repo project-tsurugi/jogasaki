@@ -308,6 +308,14 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
         }
     }
     success_get(success, res);
+    //
+    while (success.records_size() > 0) {
+        auto record = success.mutable_records(success.records_size()-1);
+        while (record->values_size() > 0) {
+            record->mutable_values()->ReleaseLast();
+        }
+        success.mutable_records()->ReleaseLast();
+    }
 }
 
 static remove_option convert(tateyama::proto::kvs::request::Remove_Type type) {

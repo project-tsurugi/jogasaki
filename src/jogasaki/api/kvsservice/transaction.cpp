@@ -50,19 +50,25 @@ status transaction::abort() {
 
 status transaction::put(std::string_view, tateyama::proto::kvs::data::Record const &,
                         put_option) {
-    // FIXME
+    // FIXME call sharksfin
     return status::ok;
 }
 
-status transaction::get(std::string_view, tateyama::proto::kvs::data::Record const &,
-                        tateyama::proto::kvs::data::Record &) {
-    // FIXME
+status transaction::get(std::string_view, tateyama::proto::kvs::data::Record const &primary_key,
+                        tateyama::proto::kvs::data::Record &record) {
+    // FIXME call sharksfin
+    for (auto i = 0; i < primary_key.names_size(); i++) {
+        std::string name = primary_key.names(i);
+        record.mutable_names()->Add(std::move(name));
+        auto value = primary_key.values(i);
+        record.mutable_values()->AddAllocated(&value);
+    }
     return status::ok;
 }
 
 status transaction::remove(std::string_view, tateyama::proto::kvs::data::Record const &,
                         remove_option) {
-    // FIXME
+    // FIXME call sharksfin
     return status::ok;
 }
 

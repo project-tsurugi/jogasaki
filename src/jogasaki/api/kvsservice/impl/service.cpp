@@ -53,6 +53,30 @@ static transaction_option convert(tateyama::proto::kvs::transaction::Option cons
     return opt;
 }
 
+static void reply(tateyama::proto::kvs::response::Response &proto_res, std::shared_ptr<tateyama::api::server::response> &res) {
+    std::string s { };
+    if (!proto_res.SerializeToString(&s)) {
+        // FIXME throw_exception(std::logic_error{"SerializeToOstream failed"});
+    }
+    res->code(tateyama::api::server::response_code::success);
+    res->body(s);
+}
+
+static void success_begin(std::shared_ptr<transaction> const &tx, std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::transaction::Handle handle { };
+    tateyama::proto::kvs::response::Begin_Success success { };
+    tateyama::proto::kvs::response::Begin begin { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    handle.set_system_id(tx->system_id());
+    success.set_allocated_transaction_handle(&handle);
+    begin.set_allocated_success(&success);
+    proto_res.set_allocated_begin(&begin);
+    reply(proto_res, res);
+    begin.release_success();
+    success.release_transaction_handle();
+    proto_res.release_begin();
+}
+
 void service::command_begin(tateyama::proto::kvs::request::Request const &proto_req,
                                  std::shared_ptr<tateyama::api::server::response> &res) {
     auto &proto_opt = proto_req.begin().transaction_option();
@@ -64,23 +88,18 @@ void service::command_begin(tateyama::proto::kvs::request::Request const &proto_
         // tateyama::proto::kvs::response::UnknownError unknown {};
         // unknown.set_message();
     }
+    success_begin(tx, res);
+}
 
-    tateyama::proto::kvs::transaction::Handle handle { };
-    tateyama::proto::kvs::response::Begin_Success success { };
-    tateyama::proto::kvs::response::Begin begin { };
-    handle.set_system_id(tx->system_id());
-    success.set_allocated_transaction_handle(&handle);
-    begin.set_allocated_success(&success);
-    //
-    std::stringstream ss { };
-    if (!begin.SerializeToOstream(&ss)) {
-        // FIXME throw_exception(std::logic_error{"SerializeToOstream failed"});
-    }
-    res->code(tateyama::api::server::response_code::success);
-    res->body(ss.str());
-    //
-    begin.release_success();
-    success.release_transaction_handle();
+static void success_commit(std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::Commit commit { };
+    tateyama::proto::kvs::response::Void v { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    commit.set_allocated_success(&v);
+    proto_res.set_allocated_commit(&commit);
+    reply(proto_res, res);
+    commit.release_success();
+    proto_res.release_commit();
 }
 
 void service::command_commit(tateyama::proto::kvs::request::Request const&proto_req,
@@ -96,18 +115,18 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
     if (status != status::ok) {
         // FIXME
     }
-    tateyama::proto::kvs::response::Commit commit { };
+    success_commit(res);
+}
+
+static void success_rollback(std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::Rollback rollback { };
     tateyama::proto::kvs::response::Void v { };
-    commit.set_allocated_success(&v);
-    //
-    std::stringstream ss { };
-    if (!commit.SerializeToOstream(&ss)) {
-        // throw_exception(std::logic_error{"SerializeToOstream failed"});
-    }
-    res->code(tateyama::api::server::response_code::success);
-    res->body(ss.str());
-    //
-    commit.release_success();
+    tateyama::proto::kvs::response::Response proto_res { };
+    rollback.set_allocated_success(&v);
+    proto_res.set_allocated_rollback(&rollback);
+    reply(proto_res, res);
+    rollback.release_success();
+    proto_res.release_rollback();
 }
 
 void service::command_rollback(tateyama::proto::kvs::request::Request const &proto_req,
@@ -122,18 +141,18 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
     if (status != status::ok) {
         // FIXME
     }
-    tateyama::proto::kvs::response::Rollback rollback { };
+    success_rollback(res);
+}
+
+static void success_close_transaction(std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::CloseTransaction close { };
     tateyama::proto::kvs::response::Void v { };
-    rollback.set_allocated_success(&v);
-    //
-    std::stringstream ss { };
-    if (!rollback.SerializeToOstream(&ss)) {
-        // throw_exception(std::logic_error{"SerializeToOstream failed"});
-    }
-    res->code(tateyama::api::server::response_code::success);
-    res->body(ss.str());
-    //
-    rollback.release_success();
+    tateyama::proto::kvs::response::Response proto_res { };
+    close.set_allocated_success(&v);
+    proto_res.set_allocated_close_transaction(&close);
+    reply(proto_res, res);
+    close.release_success();
+    proto_res.release_close_transaction();
 }
 
 void service::command_close_transaction(tateyama::proto::kvs::request::Request const &proto_req,
@@ -143,18 +162,7 @@ void service::command_close_transaction(tateyama::proto::kvs::request::Request c
     if (status != status::ok) {
         // FIXME
     }
-    tateyama::proto::kvs::response::CloseTransaction close { };
-    tateyama::proto::kvs::response::Void v { };
-    close.set_allocated_success(&v);
-    //
-    std::stringstream ss { };
-    if (!close.SerializeToOstream(&ss)) {
-        // throw_exception(std::logic_error{"SerializeToOstream failed"});
-    }
-    res->code(tateyama::api::server::response_code::success);
-    res->body(ss.str());
-    //
-    close.release_success();
+    success_close_transaction(res);
 }
 
 static put_option convert(tateyama::proto::kvs::request::Put_Type type) {
@@ -172,6 +180,19 @@ static put_option convert(tateyama::proto::kvs::request::Put_Type type) {
             return put_option::create_or_update;
     }
 }
+
+static void success_put(int written, std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::Put put { };
+    tateyama::proto::kvs::response::Put_Success success { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    success.set_written(written);
+    put.set_allocated_success(&success);
+    proto_res.set_allocated_put(&put);
+    reply(proto_res, res);
+    put.release_success();
+    proto_res.release_put();
+}
+
 void service::command_put(tateyama::proto::kvs::request::Request const &proto_req,
                                std::shared_ptr<tateyama::api::server::response> &res) {
     auto &proto_handle = proto_req.put().transaction_handle();
@@ -190,20 +211,20 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
             // FIXME
         }
     }
-    //
-    tateyama::proto::kvs::response::Put put { };
-    tateyama::proto::kvs::response::Put_Success success { };
-    success.set_written(written);
-    put.set_allocated_success(&success);
-    //
-    std::stringstream ss { };
-    if (!put.SerializeToOstream(&ss)) {
-        // throw_exception(std::logic_error{"SerializeToOstream failed"});
+    success_put(written, res);
+}
+
+static void success_get(tateyama::proto::kvs::response::Get_Success &success, std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::Get get { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    get.set_allocated_success(&success);
+    proto_res.set_allocated_get(&get);
+    reply(proto_res, res);
+    while (success.records_size() > 0) {
+        success.mutable_records()->ReleaseLast();
     }
-    res->code(tateyama::api::server::response_code::success);
-    res->body(ss.str());
-    //
-    put.release_success();
+    get.release_success();
+    proto_res.release_get();
 }
 
 void service::command_get(tateyama::proto::kvs::request::Request const &proto_req,
@@ -224,19 +245,7 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
             // FIXME
         }
     }
-    //
-    tateyama::proto::kvs::response::Get get { };
-    get.set_allocated_success(&success);
-    //
-    std::stringstream ss { };
-    if (!get.SerializeToOstream(&ss)) {
-        // throw_exception(std::logic_error{"SerializeToOstream failed"});
-    }
-    res->code(tateyama::api::server::response_code::success);
-    res->body(ss.str());
-    //
-    success.mutable_records()->ExtractSubrange(0, success.mutable_records()->size(), nullptr);
-    get.release_success();
+    success_get(success, res);
 }
 
 static remove_option convert(tateyama::proto::kvs::request::Remove_Type type) {
@@ -252,6 +261,19 @@ static remove_option convert(tateyama::proto::kvs::request::Remove_Type type) {
             return remove_option::counting;
     }
 }
+
+static void success_remove(int removed, std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::Remove remove { };
+    tateyama::proto::kvs::response::Remove_Success success { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    success.set_removed(removed);
+    remove.set_allocated_success(&success);
+    proto_res.set_allocated_remove(&remove);
+    reply(proto_res, res);
+    remove.release_success();
+    proto_res.release_remove();
+}
+
 void service::command_remove(tateyama::proto::kvs::request::Request const &proto_req,
                                   std::shared_ptr<tateyama::api::server::response> &res) {
     auto &proto_handle = proto_req.put().transaction_handle();
@@ -270,20 +292,7 @@ void service::command_remove(tateyama::proto::kvs::request::Request const &proto
             // FIXME
         }
     }
-    //
-    tateyama::proto::kvs::response::Remove remove { };
-    tateyama::proto::kvs::response::Remove_Success success { };
-    success.set_removed(removed);
-    remove.set_allocated_success(&success);
-    //
-    std::stringstream ss { };
-    if (!remove.SerializeToOstream(&ss)) {
-        // throw_exception(std::logic_error{"SerializeToOstream failed"});
-    }
-    res->code(tateyama::api::server::response_code::success);
-    res->body(ss.str());
-    //
-    remove.release_success();
+    success_remove(removed, res);
 }
 
 bool service::operator()(std::shared_ptr<tateyama::api::server::request const> req, // NOLINT

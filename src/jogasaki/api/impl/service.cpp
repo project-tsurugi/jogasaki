@@ -810,20 +810,20 @@ void details::reply(
     details::request_info const& req_info,
     bool body_head
 ) {
-    std::stringstream ss{};
-    if (!r.SerializeToOstream(&ss)) {
+    std::string ss{};
+    if (!r.SerializeToString(&ss)) {
         throw_exception(std::logic_error{"SerializeToOstream failed"});
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id() << " len=" << ss.str().size() << "): " << utils::to_debug_string(r);
-        res.body_head(ss.str());
+        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id() << " len=" << ss.size() << "): " << utils::to_debug_string(r);
+        res.body_head(ss);
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.str().size() << "): " << utils::to_debug_string(r);
-        res.body(ss.str());
+        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.size() << "): " << utils::to_debug_string(r);
+        res.body(ss);
     }
 }
 

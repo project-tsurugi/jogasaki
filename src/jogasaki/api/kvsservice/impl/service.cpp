@@ -199,7 +199,11 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
         reply(status::err_invalid_argument, res);
         return;
     }
-    auto status = tx->commit();
+    status status;
+    {
+        std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
+        status = tx->commit();
+    }
     if (status == status::ok) {
         success_commit(res);
     } else {
@@ -232,7 +236,11 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
         reply(status::err_invalid_argument, res);
         return;
     }
-    auto status = tx->abort();
+    status status;
+    {
+        std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
+        status = tx->abort();
+    }
     if (status == status::ok) {
         success_rollback(res);
     } else {
@@ -317,7 +325,11 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
     auto &table = put.index().table_name();
     put_option opt = convert(put.type());
     auto &record = put.records(0);
-    auto status = tx->put(table, record, opt);
+    status status;
+    {
+        std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
+        status = tx->put(table, record, opt);
+    }
     if (status != status::ok) {
         reply(status, res);
         return;
@@ -360,7 +372,11 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
     tateyama::proto::kvs::response::Get_Success success { };
     auto &key = get.keys(0);
     tateyama::proto::kvs::data::Record record;
-    auto status = tx->get(table, key, record);
+    status status;
+    {
+        std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
+        status = tx->get(table, key, record);
+    }
     if (status != status::ok) {
         // FIXME
         reply(status, res);
@@ -422,7 +438,12 @@ void service::command_remove(tateyama::proto::kvs::request::Request const &proto
     auto opt = convert(remove.type());
     auto removed = 0;
     for (auto &key : remove.keys()) {
-        auto status = tx->remove(table, key, opt);
+        status status;
+        {
+            // FIXME
+            std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
+            status = tx->remove(table, key, opt);
+        }
         if (status == status::ok) {
             removed++;
         } else {

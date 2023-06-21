@@ -57,12 +57,7 @@ status transaction::put(std::string_view, tateyama::proto::kvs::data::Record con
 status transaction::get(std::string_view, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
     // FIXME call sharksfin
-    for (auto i = 0; i < primary_key.names_size(); i++) {
-        std::string name = primary_key.names(i);
-        record.mutable_names()->Add(std::move(name));
-        auto value = primary_key.values(i);
-        record.mutable_values()->AddAllocated(&value);
-    }
+    record.CopyFrom(primary_key);
     return status::ok;
 }
 

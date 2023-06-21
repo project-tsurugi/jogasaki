@@ -409,6 +409,10 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
     auto jobid = rctx->job()->id();
     std::string txid{tx_->object()->transaction_id()};
     auto t = scheduler::create_custom_task(rctx.get(), [this, rctx, timer=std::move(timer), jobid, txid]() {
+        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
+            << txid
+            << " job_id:"
+            << utils::hex(jobid);
         auto res = commit_internal();
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
             << txid
@@ -461,10 +465,6 @@ scheduler::job_context::job_id_type transaction::commit_async(transaction::callb
         on_completion(rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
-    VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
-        << txid
-        << " job_id:"
-        << utils::hex(jobid);
     req->status(scheduler::request_detail_status::submitted);
     log_request(*req);
     ts.schedule_task(std::move(t));

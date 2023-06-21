@@ -812,6 +812,10 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     auto jobid = rctx->job()->id();
     auto t = scheduler::create_custom_task(rctx.get(),
         [this, rctx, option, handle, timer=std::move(timer), jobid]() {
+            VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting"
+                << " job_id:"
+                << utils::hex(jobid)
+                << " options:{" << rctx->job()->request()->transaction_option_spec() << "}";
             auto res = create_transaction_internal(*handle, option);
             if(res != status::ok) {
                 rctx->status_code(res,
@@ -847,10 +851,6 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         on_completion(*handle, rctx->status_code(), rctx->status_message());
     });
     auto& ts = *rctx->scheduler();
-    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting"
-        << " job_id:"
-        << utils::hex(jobid)
-        << " options:{" << req->transaction_option_spec() << "}";
     req->status(scheduler::request_detail_status::submitted);
     log_request(*req);
     ts.schedule_task(std::move(t));

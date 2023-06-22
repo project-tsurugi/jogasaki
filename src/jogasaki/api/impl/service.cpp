@@ -177,6 +177,11 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     return tx;
 }
 
+void abort_tx(jogasaki::api::transaction_handle tx) {
+    // expecting no error from abort
+    tx.abort();
+}
+
 void service::command_execute_statement(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
@@ -191,11 +196,13 @@ void service::command_execute_statement(
     auto& sql = eq.sql();
     if(sql.empty()) {
         VLOG(log_error) << log_location_prefix << "missing sql";
+        abort_tx(tx);
         details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql", req_info);
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
+        abort_tx(tx);
         details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
         return;
     }
@@ -217,6 +224,7 @@ void service::command_execute_query(
     if(sql.empty()) {
         VLOG(log_error) << log_location_prefix << "missing sql";
         details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql", req_info);
+        abort_tx(tx);
         return;
     }
     execute_query(res, details::query_info{sql}, tx, req_info);
@@ -259,6 +267,7 @@ void service::command_execute_prepared_statement(
     }
     auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, *res, req_info);
     if(! handle) {
+        abort_tx(tx);
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
@@ -266,6 +275,7 @@ void service::command_execute_prepared_statement(
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
+        abort_tx(tx);
         details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
         return;
     }
@@ -285,6 +295,7 @@ void service::command_execute_prepared_query(
     }
     auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, *res, req_info);
     if(! handle) {
+        abort_tx(tx);
         return;
     }
     auto params = jogasaki::api::create_parameter_set();

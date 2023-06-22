@@ -123,7 +123,8 @@ public:
         std::vector<std::string> const& write_preserves = {},
         std::string_view label = {}
     );
-    void test_commit(std::uint64_t& handle);
+    void test_commit(std::uint64_t& handle, status expected = status::ok);
+    void test_rollback(std::uint64_t& handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::uint64_t tx_handle);
     void test_query(std::string_view query = "select * from T0");
@@ -201,8 +202,28 @@ void service_api_test::test_begin(begin_result& result,
     result = decode_begin(res->body_);
 }
 
-void service_api_test::test_commit(std::uint64_t& handle) {
+void service_api_test::test_commit(std::uint64_t& handle, status expected) {
     auto s = encode_commit(handle);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    ASSERT_TRUE(st);
+
+    ASSERT_EQ(expected == status::ok ? response_code::success : response_code::application_error, res->code_);
+    {
+        auto [success, error] = decode_result_only(res->body_);
+        if(expected == status::ok) {
+            ASSERT_TRUE(success);
+        } else {
+            ASSERT_FALSE(success);
+            ASSERT_EQ(api::impl::details::map_status(expected), error.status_);
+        }
+    }
+}
+
+void service_api_test::test_rollback(std::uint64_t& handle) {
+    auto s = encode_rollback(handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -892,9 +913,9 @@ TEST_F(service_api_test, empty_request) {
 
 TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
     std::uint64_t tx_handle{};
-    test_begin(tx_handle);
     std::uint64_t stmt_handle{0};
     {
+        test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -910,8 +931,10 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         ASSERT_FALSE(success);
         ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
+        test_commit(tx_handle, status::err_inactive_transaction); // verify tx already aborted
     }
     {
+        test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -927,8 +950,9 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         ASSERT_FALSE(success);
         ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
+        test_rollback(tx_handle); // Even tx has been aborted already, requesting rollback is successful.
+        //note that repeating rollback here results in segv because commit or rollback request destroys tx body and tx handle gets dangling
     }
-    test_commit(tx_handle);
 }
 
 void service_api_test::execute_statement_as_query(std::string_view sql) {

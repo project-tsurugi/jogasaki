@@ -160,16 +160,21 @@ sequence* manager::find_sequence(sequence_definition_id def_id) {
 }
 
 bool manager::notify_updates(kvs::transaction& tx) {
-    if (used_sequences_.count(std::addressof(tx)) == 0) {
-        return true;
+    std::unordered_set<sequence*> copy{};
+    {
+        decltype(used_sequences_)::accessor acc{};
+        if (!used_sequences_.find(acc, std::addressof(tx))) {
+            return true;
+        }
+        copy = acc->second;
+        used_sequences_.erase(acc);
     }
-    for(auto* p : used_sequences_[std::addressof(tx)]) {
+    for(auto* p : copy) {
         auto s = p->get();
         if (!db_->update_sequence(tx, p->info().id(), s.version_, s.value_)) {
             return false;
         }
     }
-    used_sequences_[std::addressof(tx)].clear();
     return true;
 }
 
@@ -189,7 +194,9 @@ bool manager::remove_sequence(
 }
 
 void manager::mark_sequence_used_by(kvs::transaction& tx, sequence& seq) {
-    used_sequences_[std::addressof(tx)].emplace(std::addressof(seq));
+    decltype(used_sequences_)::accessor acc{};
+    used_sequences_.insert(acc, std::addressof(tx));
+    acc->second.emplace(std::addressof(seq));
 }
 
 

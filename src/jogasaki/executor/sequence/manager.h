@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <unordered_set>
+#include <tbb/concurrent_hash_map.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/storage/configurable_provider.h>
@@ -63,7 +64,6 @@ private:
  * @brief sequence manager
  * @details this object owns in-memory sequence objects, provides APIs to get current/next sequence values,
  * and manages sequence objects synchronization with kvs layer.
- * This object is thread-safe and multiple threads/transactions can use this object simultaneously.
  */
 class manager {
     friend class sequence;
@@ -105,6 +105,7 @@ public:
 
     /**
      * @brief load sequence id mapping from system_sequences table and initialize in-memory sequence objects.
+     * This function is not thread-safe. Only a thread can call this member function at a time.
      * @returns the number of sequence entries read from the system table
      */
     std::size_t load_id_map(kvs::transaction* tx = nullptr);
@@ -113,6 +114,7 @@ public:
      * @brief register the sequence properties for the definition id
      * @details using the id_map currently held, create the in-memory sequence object with the given spec.
      * If the id_map doesn't has the given def_id, ask kvs to assign new sequence id. Optionally save the id map.
+     * This function is not thread-safe. Only a thread can call this member function at a time.
      * @param def_id the key to uniquely identify the sequence
      * @param name the name of the sequence
      * @param initial_value initial value of the sequence
@@ -140,6 +142,7 @@ public:
     /**
      * @brief bulk registering sequences
      * @details this function retrieves sequence definitions from provider and register one by one.
+     * This function is not thread-safe. Only a thread can call this member function at a time.
      * @param provider the config. provider that gives sequences definitions.
      */
     void register_sequences(
@@ -149,6 +152,7 @@ public:
 
     /**
      * @brief find sequence
+     * This function is not thread-safe. Only a thread can call this member function at a time.
      * @param def_id the sequence definition id for search
      * @return the sequence object if found
      * @return nullptr if not found
@@ -160,6 +164,7 @@ public:
      * @details when sequence value is updated with sequence::next() call, this function must be called before commit
      * of the transaction that calls next(). Otherwise, the updates are not sent to kvs and results in losing updates
      * for the sequences.
+     * This function is thread-safe and multiple threads can call simultaneously as long as passed tx are different.
      * @param tx the transaction that updated the sequence and the value needs to be durable together
      * @return true if successful
      * @return false otherwise
@@ -168,6 +173,7 @@ public:
 
     /**
      * @brief remove the sequence (the in-memory sequence object, id_map entry and kvs object) completely
+     * This function is not thread-safe. Only a thread can call this member function at a time.
      * @param def_id the definition id of the sequence to be removed
      * @return true if successful
      * @return false otherwise
@@ -186,10 +192,14 @@ public:
 private:
     kvs::database* db_{};
     sequences_type sequences_{};
-    std::unordered_map<kvs::transaction*, std::unordered_set<sequence*>> used_sequences_{};
+    tbb::concurrent_hash_map<kvs::transaction*, std::unordered_set<sequence*>> used_sequences_{};
 
+    /**
+     * @brief mark the sequence used by given transaction
+     * This function is thread-safe and multiple threads can call simultaneously.
+     */
     void mark_sequence_used_by(kvs::transaction& tx, sequence& seq);
-    std::tuple<sequence_definition_id, sequence_id, bool> read_entry(std::unique_ptr<kvs::iterator>& it);
+
     void save_id_map(kvs::transaction* tx);
     void remove_id_map(sequence_definition_id def_id, kvs::transaction* tx);
 };

@@ -199,11 +199,14 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
         reply(status::err_invalid_argument, res);
         return;
     }
-    status status;
+    status status_tx;
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
-        status = tx->commit();
+        status_tx = tx->commit();
     }
+    // FIXME
+    status status_store = store_->dispose_transaction(tx->system_id());
+    status status = (status_tx != status::ok ? status_tx : status_store);
     if (status == status::ok) {
         success_commit(res);
     } else {
@@ -236,11 +239,14 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
         reply(status::err_invalid_argument, res);
         return;
     }
-    status status;
+    status status_tx;
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
-        status = tx->abort();
+        status_tx = tx->abort();
     }
+    // FIXME
+    status status_store = store_->dispose_transaction(tx->system_id());
+    status status = (status_tx != status::ok ? status_tx : status_store);
     if (status == status::ok) {
         success_rollback(res);
     } else {

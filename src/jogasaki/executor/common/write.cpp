@@ -15,7 +15,7 @@
  */
 #include "write.h"
 
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/data/any.h>
@@ -46,7 +46,7 @@ using jogasaki::executor::process::impl::ops::write_kind;
 using jogasaki::executor::process::impl::expression::evaluator;
 using yugawara::compiled_info;
 
-using takatori::util::fail;
+using takatori::util::throw_exception;
 using data::any;
 
 write::write(
@@ -82,7 +82,7 @@ bool write::operator()(request_context& context) const {
     for(auto&& e : targets) {
         auto stg = db->get_or_create_storage(e.storage_name_);
         if(! stg) {
-            fail();
+            throw_exception(std::logic_error{""});
         }
         kvs::put_option opt = ((kind_ == write_kind::insert || kind_ == write_kind::insert_skip) && e.primary_) ?
             kvs::put_option::create :
@@ -106,7 +106,7 @@ bool write::operator()(request_context& context) const {
                         res = status::err_unique_constraint_violation;
                         if(auto res2 = tx->abort(); res2 != status::ok) {
                             // abort should be always successful
-                            fail();
+                            throw_exception(std::logic_error{""});
                         }
                     } else {
                         // write_kind::insert_skip
@@ -133,6 +133,9 @@ sequence_value next_sequence_value(request_context& ctx, sequence_definition_id 
     BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
     auto& mgr = *ctx.sequence_manager();
     auto* seq = mgr.find_sequence(def_id);
+    if(seq == nullptr) {
+        throw_exception(std::logic_error{""});
+    }
     auto ret = seq->next(*ctx.transaction()->object());
     mgr.notify_updates(*ctx.transaction()->object());
     return ret;
@@ -272,7 +275,7 @@ status create_generated_field(
             if (auto id = dv.element<column_value_kind::sequence>()->definition_id()) {
                 def_id = *id;
             } else {
-                fail("sequence must be defined with definition_id");
+                throw_exception(std::logic_error{"sequence must be defined with definition_id"});
             }
         }
     }

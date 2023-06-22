@@ -152,12 +152,13 @@ public:
 
     /**
      * @brief find sequence
-     * This function is not thread-safe. Only a thread can call this member function at a time.
+     * This function can be called from multiple threads as far as it doesn't compete with functions modifying sequences
+     * (i.e. load_id_map(), register_sequence(), register_sequences() and remove_sequence()).
      * @param def_id the sequence definition id for search
      * @return the sequence object if found
      * @return nullptr if not found
      */
-    sequence* find_sequence(sequence_definition_id def_id);
+    sequence* find_sequence(sequence_definition_id def_id) const;
 
     /**
      * @brief notifies kvs of the current sequence value so that they are made durable together with the updating tx

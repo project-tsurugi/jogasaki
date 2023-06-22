@@ -153,11 +153,11 @@ void manager::register_sequences(
     save_id_map(tx);
 }
 
-sequence* manager::find_sequence(sequence_definition_id def_id) {
+sequence* manager::find_sequence(sequence_definition_id def_id) const {
     if (sequences_.count(def_id) == 0) {
         return nullptr;
     }
-    return sequences_[def_id].sequence();
+    return sequences_.at(def_id).sequence();
 }
 
 bool manager::notify_updates(kvs::transaction& tx) {

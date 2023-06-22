@@ -18,7 +18,7 @@
 #include <atomic>
 #include <unordered_set>
 
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/logging.h>
@@ -36,7 +36,7 @@
 
 namespace jogasaki::executor::sequence {
 
-using takatori::util::fail;
+using takatori::util::throw_exception;
 using kind = meta::field_type_kind;
 
 manager::sequences_type create_sequences(manager::id_map_type const& id_map) {
@@ -72,8 +72,9 @@ std::size_t manager::load_id_map(kvs::transaction* tx) {
             sequences_[def_id] = details::sequence_element(id);
             ++ret;
         }); ! res) {
-        VLOG(log_error) << "Sequences scan failed : " << res;
-        fail();
+        std::stringstream ss{};
+        ss << "Sequences scan failed : " << res;
+        throw_exception(std::logic_error{ss.str()});
     }
     if (created_tx) {
         (void)created_tx ->commit();
@@ -186,7 +187,7 @@ bool manager::remove_sequence(
         return false;
     }
     if (auto res = db_->delete_sequence(sequences_[def_id].id()); !res) {
-        fail();
+        throw_exception(std::logic_error{""});
     }
     remove_id_map(def_id, tx);
     sequences_.erase(def_id);
@@ -211,7 +212,7 @@ void manager::save_id_map(kvs::transaction* tx) {
     for(auto& [def_id, element] : sequences_) {
         auto id = element.id();
         if(auto res = s.put(def_id, id); ! res) {
-            fail();
+            throw_exception(std::logic_error{""});
         }
     }
     if (created_tx) {
@@ -235,7 +236,7 @@ void manager::remove_id_map(
     }
     metadata_store s{*tx};
     if(! s.remove(def_id)) {
-        fail();
+        throw_exception(std::logic_error{""});
     }
     if (created_tx) {
         (void) created_tx->commit();

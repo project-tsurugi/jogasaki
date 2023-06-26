@@ -103,9 +103,11 @@ public:
 
     /**
      * @brief setter for the result status
-     * @details this overwrites the status code with more severe status code (e.g. warning is overwritten by an error)
+     * @details check if error is already reported, and if not, set the passed status value/msg.
      * If error code is already set to this object, this is no-op.
-     * @return true if the give status is set
+     * @param val the new status value to be set
+     * @param msg the new status message to be set
+     * @return true if the given status is set
      * @return false if the error status is already set and nothing is changed
      * @note this function is thread-safe and multiple threads can call this function concurrently
      */

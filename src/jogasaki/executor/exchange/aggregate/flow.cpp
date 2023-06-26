@@ -105,8 +105,11 @@ void flow::transfer() {
         }
     }
     updatable_info().empty_input(empty);
-    if (generate_record_on_empty_ && empty) {
+    if (generate_record_on_empty_ && empty && context_->status_code() == status::ok) {
         // generate a special record for empty input
+        // unless an error happens on upstream of this exchange (in that case adding the record for empty input
+        // behaves like reading empty records successfully) Canceling processing the output record on the downstream
+        // steps is not implemented yet.
         auto& partitions = sinks_[0]->input_partitions();
         auto& p = partitions.emplace_back(std::make_unique<input_partition>(info_));
         p->aggregate_empty_input();

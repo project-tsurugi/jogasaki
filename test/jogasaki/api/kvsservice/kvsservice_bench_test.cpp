@@ -241,15 +241,14 @@ public:
         std::int64_t start = now_nsec();
         std::int64_t sum = 0;
         for (auto i = 0; i < loop; i++) {
-            auto v = tx(loopback);
-            sum += v;
+            sum += tx(loopback);
         }
         std::int64_t end = now_nsec();
         double sec = 1e-9 * (end - start);
         std::cout << "elapse=" << sec << "[sec]";
         std::cout << ", loop=" << loop;
         std::cout << ", speed=" << std::fixed << std::setprecision(1) << loop / sec << "[tps]" << std::endl;
-        std::cout << v << std::endl;
+        std::cout << sum << std::endl;
     }
 private:
     std::int64_t v = now_nsec();

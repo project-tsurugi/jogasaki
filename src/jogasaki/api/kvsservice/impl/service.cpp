@@ -509,6 +509,11 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
             command_not_supported(proto_req, res);
             break;
         }
+        case tateyama::proto::kvs::request::Request::COMMAND_NOT_SET: {
+            // for transfer benchmark
+            reply(tateyama::api::server::response_code::success,"", res);
+            break;
+        }
         default:
             reply(tateyama::api::server::response_code::io_error,
                   "invalid request code", res);

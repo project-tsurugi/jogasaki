@@ -134,9 +134,6 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
         if (record.names_size() != 2 || record.values_size() != 2) {
             return status::err_unsupported;
         }
-        if (record.names(0) != "key") {
-            return status::err_unsupported;
-        }
     }
     sharksfin::StorageHandle storage{};
     if (auto s = get_storage(table, storage);
@@ -186,9 +183,6 @@ status transaction::get(std::string_view table, tateyama::proto::kvs::data::Reco
         if (primary_key.names_size() == 0) {
             return status::err_invalid_key_length;
         }
-        if (primary_key.names(0) != "key") {
-            return status::err_unsupported;
-        }
     }
     sharksfin::StorageHandle storage{};
     if (auto s = get_storage(table, storage);
@@ -218,9 +212,6 @@ status transaction::remove(std::string_view table, tateyama::proto::kvs::data::R
         // FIXME
         if (primary_key.names_size() == 0) {
             return status::err_invalid_key_length;
-        }
-        if (primary_key.names(0) != "key") {
-            return status::err_unsupported;
         }
     }
     sharksfin::StorageHandle storage{};

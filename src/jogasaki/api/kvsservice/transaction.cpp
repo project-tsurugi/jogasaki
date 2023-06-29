@@ -101,31 +101,137 @@ status transaction::abort() {
 //    return convert(status_a);
 }
 
-status transaction::put(std::string_view, tateyama::proto::kvs::data::Record const &,
-                        put_option opt) {
+static status get_storage(sharksfin::TransactionHandle &tx, std::string_view name, sharksfin::StorageHandle &storage) {
+    // NOTE  sharksfin::storage_get(tx, key, &storage) returns NOT_IMPLEMENTED
+    sharksfin::DatabaseHandle db{};
+    if (auto code = sharksfin::transaction_borrow_owner(tx, &db);
+            code != sharksfin::StatusCode::OK) {
+        return convert(code);
+    }
+    sharksfin::Slice key {name};
+    auto code = sharksfin::storage_get(db, key, &storage);
+    return convert(code);
+}
+
+static sharksfin::PutOperation convert(put_option opt) {
     switch (opt) {
         case put_option::create_or_update:
-            break;
+            return sharksfin::PutOperation::CREATE_OR_UPDATE;
         case put_option::create:
+            return sharksfin::PutOperation::CREATE;
         case put_option::update:
-            break;
+            return sharksfin::PutOperation::UPDATE;
         default:
             throw_exception(std::logic_error{"unknown put_option"});
     }
-    return status::ok;
 }
 
-status transaction::get(std::string_view, tateyama::proto::kvs::data::Record const &primary_key,
+status transaction::put(std::string_view table, tateyama::proto::kvs::data::Record const &record,
+                        put_option opt) {
+    {
+        // FIXME
+        if (record.names_size() != 2 || record.values_size() != 2) {
+            return status::err_unsupported;
+        }
+        if (record.names(0) != "key") {
+            return status::err_unsupported;
+        }
+    }
+    sharksfin::StorageHandle storage{};
+    if (auto s = get_storage(tx_handle_, table, storage);
+        s != status::ok) {
+        return s;
+    }
+    // FIXME
+    auto key = record.values(0).int8_value();
+    auto value = record.values(1).int8_value();
+    auto keyS = sharksfin::Slice(&key, sizeof(key));
+    auto valueS = sharksfin::Slice(&value, sizeof(value));
+    auto option = convert(opt);
+    auto code = sharksfin::content_put(tx_handle_, storage, keyS, valueS, option);
+    auto code_d = sharksfin::storage_dispose(storage);
+    return convert(code, code_d);
+}
+
+status transaction::get(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
-    // FIXME call sharksfin
-    record.CopyFrom(primary_key);
+    {
+        // FIXME
+        if (primary_key.names_size() == 0) {
+            return status::err_invalid_key_length;
+        }
+        if (primary_key.names(0) != "key") {
+            return status::err_unsupported;
+        }
+    }
+    sharksfin::StorageHandle storage{};
+    if (auto s = get_storage(tx_handle_, table, storage);
+            s != status::ok) {
+        return s;
+    }
+    // FIXME
+    auto key = primary_key.values(0).int8_value();
+    auto keyS = sharksfin::Slice(&key, sizeof(key));
+    sharksfin::Slice valueS{};
+    auto code = sharksfin::content_get(tx_handle_, storage, keyS, &valueS);
+    if (code == sharksfin::StatusCode::OK) {
+        if (valueS.size() == sizeof(long)) {
+            // FIXME
+            record.add_names(primary_key.names(0));
+            record.add_names("value0");
+            {
+                tateyama::proto::kvs::data::Value *value = new tateyama::proto::kvs::data::Value();
+                value->set_int8_value(key);
+                record.mutable_values()->AddAllocated(value);
+            }
+            {
+                long v = *(long *) valueS.data();
+                tateyama::proto::kvs::data::Value *value = new tateyama::proto::kvs::data::Value();
+                value->set_int8_value(v);
+                record.mutable_values()->AddAllocated(value);
+            }
+        } else {
+            code = sharksfin::StatusCode::ERR_INVALID_ARGUMENT;
+        }
+    }
+    auto code_d = sharksfin::storage_dispose(storage);
+    return convert(code, code_d);
     return status::ok;
 }
 
-status transaction::remove(std::string_view, tateyama::proto::kvs::data::Record const &,
-                        remove_option) {
-    // FIXME call sharksfin
-    return status::ok;
+status transaction::remove(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
+                        remove_option opt) {
+    {
+        // FIXME
+        if (primary_key.names_size() == 0) {
+            return status::err_invalid_key_length;
+        }
+        if (primary_key.names(0) != "key") {
+            return status::err_unsupported;
+        }
+    }
+    sharksfin::StorageHandle storage{};
+    if (auto s = get_storage(tx_handle_, table, storage);
+            s != status::ok) {
+        return s;
+    }
+    auto key = primary_key.values(0).int8_value();
+    auto keyS = sharksfin::Slice(&key, sizeof(key));
+    if (opt == remove_option::counting) {
+        auto code = sharksfin::content_check_exist(tx_handle_, storage, keyS);
+        switch (code) {
+            case sharksfin::StatusCode::OK:
+                break;
+            case sharksfin::StatusCode::NOT_FOUND:
+                return status::not_found;
+            default:
+                return convert(code);
+        }
+    }
+    // FIXME
+    auto code = sharksfin::content_delete(tx_handle_, storage, keyS);
+    auto code_d = sharksfin::storage_dispose(storage);
+    return convert(code, code_d);
 }
 
 }

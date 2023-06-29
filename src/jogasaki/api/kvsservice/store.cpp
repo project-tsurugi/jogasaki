@@ -20,6 +20,8 @@
 
 #include "convert.h"
 
+#include <iostream>
+
 namespace jogasaki::api::kvsservice {
 
 store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) {
@@ -38,6 +40,14 @@ store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) {
     db_ = kvs->handle();
     if (db_ == nullptr) {
         throw_exception(std::logic_error{"kvs->handle() is null"});
+    }
+    // FIXME just for debug
+    std::vector<std::string> names{};
+    auto status = sharksfin::storage_list(db_, names);
+    if (status == sharksfin::StatusCode::OK) {
+        for (auto &name : names) {
+            std::cout << name << std::endl;
+        }
     }
 }
 

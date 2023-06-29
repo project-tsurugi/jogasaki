@@ -96,6 +96,9 @@ static void reply(status value, std::string_view msg, std::shared_ptr<tateyama::
         s += msg;
     }
     tateyama::proto::kvs::response::UnknownError proto_err{};
+    // FIXME
+    // tateyama::proto::kvs::response::Response proto_res { };
+    // proto_res.set_err(&proto_err);
     proto_err.set_message(s);
     reply(proto_err, res);
     proto_err.release_message();
@@ -384,6 +387,7 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
     tateyama::proto::kvs::response::Get_Success success { };
     auto &key = get.keys(0);
     tateyama::proto::kvs::data::Record record;
+    // FIXME
     status status;
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
@@ -397,6 +401,7 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
     success.mutable_records()->AddAllocated(&record);
     success_get(success, res);
     //
+    // FIXME
     while (success.records_size() > 0) {
         success.mutable_records()->ReleaseLast();
     }

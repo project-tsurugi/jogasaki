@@ -155,7 +155,7 @@ public:
 
 private:
     sharksfin::TransactionControlHandle ctrl_handle_{};
-    sharksfin::TransactionHandle tx_handle_{}; // NOLINT
+    sharksfin::TransactionHandle tx_handle_{};
     std::uint64_t system_id_ {};
     std::mutex mtx_tx_{};
 };

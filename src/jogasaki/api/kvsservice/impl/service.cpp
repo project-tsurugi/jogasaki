@@ -16,6 +16,7 @@
 #include <jogasaki/logging_helper.h>
 #include <takatori/util/exception.h>
 #include "service.h"
+#include "jogasaki/api/kvsservice/convert.h"
 
 using takatori::util::throw_exception;
 
@@ -116,7 +117,7 @@ static void command_not_supported(tateyama::proto::kvs::request::Request const &
 static transaction_type convert(tateyama::proto::kvs::transaction::Type const type) {
     switch (type) {
         case tateyama::proto::kvs::transaction::TYPE_UNSPECIFIED:
-            return transaction_type::unspecified;
+            return transaction_type::occ;
         case tateyama::proto::kvs::transaction::SHORT:
             return transaction_type::occ;
         case tateyama::proto::kvs::transaction::LONG:
@@ -166,6 +167,11 @@ void service::command_begin(tateyama::proto::kvs::request::Request const &proto_
                                  std::shared_ptr<tateyama::api::server::response> &res) {
     auto &begin = proto_req.begin();
     auto option = convert(begin.transaction_option());
+    if (option.type() != transaction_type::occ) {
+        // FIXME
+        command_not_supported(proto_req, res);
+        return;
+    }
     std::shared_ptr<transaction> tx{};
     auto status = store_->begin_transaction(option, tx);
     if (status == status::ok) {
@@ -206,7 +212,7 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
     }
     // FIXME
     status status_store = store_->dispose_transaction(tx->system_id());
-    status status = (status_tx != status::ok ? status_tx : status_store);
+    status status = convert(status_tx, status_store);
     if (status == status::ok) {
         success_commit(res);
     } else {
@@ -246,7 +252,7 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
     }
     // FIXME
     status status_store = store_->dispose_transaction(tx->system_id());
-    status status = (status_tx != status::ok ? status_tx : status_store);
+    status status = convert(status_tx, status_store);
     if (status == status::ok) {
         success_rollback(res);
     } else {

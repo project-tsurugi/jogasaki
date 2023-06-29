@@ -16,62 +16,80 @@
 
 #include <jogasaki/api/kvsservice/store.h>
 #include <jogasaki/api/impl/database.h>
+#include <sharksfin/api.h>
+
+#include "convert.h"
 
 namespace jogasaki::api::kvsservice {
 
-store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
-    db_(dynamic_cast<jogasaki::api::impl::database*>(bridge->database())->kvs_db()->handle()){
+store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) {
+//    db_(dynamic_cast<jogasaki::api::impl::database*>(bridge->database())->kvs_db()->handle()){
+    if (bridge.get() == nullptr) {
+        throw_exception(std::logic_error{"jogasaki::api::resource::bridge is null"});
+    }
+    auto db = dynamic_cast<jogasaki::api::impl::database*>(bridge->database());
+    if (db == nullptr) {
+        throw_exception(std::logic_error{"jogasaki::api::resource::bridge->database() is null"});
+    }
+    auto kvs = db->kvs_db();
+    if (kvs == nullptr) {
+        throw_exception(std::logic_error{"kvs is null"});
+    }
+    db_ = kvs->handle();
+    if (db_ == nullptr) {
+        throw_exception(std::logic_error{"kvs->handle() is null"});
+    }
 }
 
-#define DUMMY_TX // FIXME just for test only
-#ifdef DUMMY_TX
-static std::shared_ptr<transaction> dummy_tx = std::make_shared<transaction>(nullptr);
-#endif
+static sharksfin::TransactionOptions::TransactionType convert(transaction_type type) {
+    switch (type) {
+        case transaction_type::unspecified:
+            return sharksfin::TransactionOptions::TransactionType::SHORT;
+        case transaction_type::occ:
+            return sharksfin::TransactionOptions::TransactionType::SHORT;
+        case transaction_type::ltx:
+            return sharksfin::TransactionOptions::TransactionType::LONG;
+        case transaction_type::read_only:
+            return sharksfin::TransactionOptions::TransactionType::READ_ONLY;
+        default:
+            throw_exception(std::logic_error{"unknown transaction_type"});
+    }
+}
+static sharksfin::TransactionOptions convert(transaction_option const &option) {
+    auto type = convert(option.type());
+    sharksfin::TransactionOptions::WritePreserves wps{}; // FIXME
+    return sharksfin::TransactionOptions(type, wps);
+}
 
-status store::begin_transaction(transaction_option const &, std::shared_ptr<transaction>& tx) {
-#ifndef DUMMY_TX
-    // FIXME call sharksfin: transaction_begin
-    sharksfin::TransactionControlHandle handle {};
+status store::begin_transaction(transaction_option const &option, std::shared_ptr<transaction>& tx) {
+    sharksfin::TransactionControlHandle handle{};
+    auto options = convert(option);
+    auto state = sharksfin::transaction_begin(db_, options, &handle);
+    if (state != sharksfin::StatusCode::OK) {
+        return convert(state);
+    }
     tx = std::make_shared<transaction>(handle);
     //
     decltype(transactions_)::accessor acc{};
     if (transactions_.insert(acc, tx->system_id())) {
         acc->second = tx;
     }
-#else
-    tx = dummy_tx;
-#endif
     return status::ok;
 }
 
-std::shared_ptr<transaction> store::find_transaction(std::uint64_t
-#ifndef DUMMY_TX
-system_id
-#endif
-) {
-#ifndef DUMMY_TX
+std::shared_ptr<transaction> store::find_transaction(std::uint64_t system_id) {
     decltype(transactions_)::accessor acc{};
     if (transactions_.find(acc, system_id)) {
         return acc->second;
     }
     return nullptr;
-#else
-    return dummy_tx;
-#endif
 }
 
-status store::dispose_transaction(std::uint64_t
-#ifndef DUMMY_TX
-system_id
-#endif
-) {
-    // FIXME call sharksfin: transaction_dispose
-#ifndef DUMMY_TX
+status store::dispose_transaction(std::uint64_t system_id) {
     decltype(transactions_)::accessor acc{};
     if (transactions_.find(acc, system_id)) {
         transactions_.erase(acc);
     }
-#endif
     return status::ok;
 }
 }

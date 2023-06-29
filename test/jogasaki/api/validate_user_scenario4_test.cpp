@@ -72,8 +72,7 @@ public:
 using namespace std::string_view_literals;
 
 // regression test scenario tsurugi-issues/issues/86
-// TODO enable after phantom issues are all fixed
-TEST_F(validate_user_scenario4_test, DISABLED_phantom_with_ddl) {
+TEST_F(validate_user_scenario4_test, phantom_with_ddl) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});
     for(std::size_t i=0; i < 20; ++i) {
         if (i != 0) {

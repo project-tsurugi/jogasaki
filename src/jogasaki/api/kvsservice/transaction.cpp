@@ -144,12 +144,35 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
     }
     // FIXME
     auto key = record.values(0).int8_value();
-    auto value = record.values(1).int8_value();
     auto keyS = sharksfin::Slice(&key, sizeof(key));
+    bool exists = false;
+    if (opt != put_option::create_or_update) {
+        auto code = sharksfin::content_check_exist(tx_handle_, storage, keyS);
+        exists = code == sharksfin::StatusCode::OK;
+    }
+    // FIXME
+    auto value = record.values(1).int8_value();
     auto valueS = sharksfin::Slice(&value, sizeof(value));
     auto option = convert(opt);
     auto code = sharksfin::content_put(tx_handle_, storage, keyS, valueS, option);
     auto code_d = sharksfin::storage_dispose(storage);
+    if (code == sharksfin::StatusCode::OK) {
+        switch (opt) {
+            case put_option::create:
+                if (exists) {
+                    code = sharksfin::StatusCode::ALREADY_EXISTS;
+                }
+                break;
+            case put_option::update:
+                if (!exists) {
+                    code = sharksfin::StatusCode::NOT_FOUND;
+                }
+                break;
+            default:
+                break;
+        }
+
+    }
     return convert(code, code_d);
 }
 

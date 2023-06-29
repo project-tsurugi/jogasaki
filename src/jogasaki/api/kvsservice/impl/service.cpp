@@ -345,11 +345,16 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status = tx->put(table, record, opt);
     }
-    if (status != status::ok) {
-        reply(status, res);
-        return;
+    switch (status) {
+        case status::ok:
+        case status::not_found: //opt==update && newly put
+        case status::already_exists: // opt==create && updated
+            success_put(1, res);  // FIXME
+            break;
+        default:
+            reply(status, res);
+            break;
     }
-    success_put(1, res);
 }
 
 /*

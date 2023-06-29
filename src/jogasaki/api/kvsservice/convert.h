@@ -17,7 +17,6 @@
 
 #include <sharksfin/api.h>
 #include <takatori/util/exception.h>
-using takatori::util::throw_exception;
 
 namespace jogasaki::api::kvsservice {
 
@@ -68,7 +67,7 @@ inline status convert(sharksfin::StatusCode code) {
         case sharksfin::StatusCode::ERR_INVALID_KEY_LENGTH:
             return status::err_invalid_key_length;
         default:
-            throw_exception(std::logic_error{"unknown code"});
+            takatori::util::throw_exception(std::logic_error{"unknown code"});
     }
 }
 
@@ -84,6 +83,40 @@ inline status convert(status s1, status s2) {
         return s1;
     }
     return s2;
+}
+
+inline transaction_state::state_kind convert(sharksfin::TransactionState::StateKind kind) {
+    switch (kind) {
+        case sharksfin::TransactionState::StateKind::UNKNOWN:
+            return transaction_state::state_kind::unknown;
+        case sharksfin::TransactionState::StateKind::WAITING_START:
+            return transaction_state::state_kind::waiting_start;
+        case sharksfin::TransactionState::StateKind::STARTED:
+            return transaction_state::state_kind::started;
+        case sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
+            return transaction_state::state_kind::waiting_cc_commit;
+        case sharksfin::TransactionState::StateKind::ABORTED:
+            return transaction_state::state_kind::aborted;
+        case sharksfin::TransactionState::StateKind::WAITING_DURABLE:
+            return transaction_state::state_kind::waiting_durable;
+        case sharksfin::TransactionState::StateKind::DURABLE:
+            return transaction_state::state_kind::durable;
+        default:
+            takatori::util::throw_exception(std::logic_error{"unknown kind"});
+    }
+}
+
+inline sharksfin::PutOperation convert(put_option opt) {
+    switch (opt) {
+        case put_option::create_or_update:
+            return sharksfin::PutOperation::CREATE_OR_UPDATE;
+        case put_option::create:
+            return sharksfin::PutOperation::CREATE;
+        case put_option::update:
+            return sharksfin::PutOperation::UPDATE;
+        default:
+            takatori::util::throw_exception(std::logic_error{"unknown put_option"});
+    }
 }
 
 }

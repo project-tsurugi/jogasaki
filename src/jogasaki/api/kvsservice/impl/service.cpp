@@ -84,14 +84,15 @@ static std::string_view to_string_view(status value) noexcept {
         case status::err_blocked_by_concurrent_operation: return "err_blocked_by_concurrent_operation";
         case status::err_resource_limit_reached: return "err_resource_limit_reached";
         case status::err_invalid_key_length: return "err_invalid_key_length";
-        default: return "FIXME PROGRAM_ERROR"; // FIXME
+        default:
+            throw_exception(std::logic_error{"unknown status"});
     }
 }
 
 static void reply(status value, std::string_view msg, std::shared_ptr<tateyama::api::server::response> &res) {
     // FIXME
     std::string s {to_string_view(value) };
-    if (msg.size() > 0) {
+    if (!msg.empty()) {
         s += ": ";
         s += msg;
     }
@@ -170,11 +171,6 @@ void service::command_begin(tateyama::proto::kvs::request::Request const &proto_
                                  std::shared_ptr<tateyama::api::server::response> &res) {
     auto &begin = proto_req.begin();
     auto option = convert(begin.transaction_option());
-    if (option.type() != transaction_type::occ) {
-        // FIXME
-        command_not_supported(proto_req, res);
-        return;
-    }
     std::shared_ptr<transaction> tx{};
     auto status = store_->begin_transaction(option, tx);
     if (status == status::ok) {
@@ -305,8 +301,7 @@ static put_option convert(tateyama::proto::kvs::request::Put_Type type) {
         case tateyama::proto::kvs::request::Put_Type:: Put_Type_IF_PRESENT:
             return put_option::update;
         default:
-            // FIXME
-            return put_option::create_or_update;
+            throw_exception(std::logic_error{"unknown Put_Type"});
     }
 }
 
@@ -347,8 +342,8 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
     }
     switch (status) {
         case status::ok:
-        case status::not_found: //opt==update && newly put
-        case status::already_exists: // opt==create && updated
+        case status::not_found: //opt==update && newly put successfully
+        case status::already_exists: // opt==create && updated successfully
             success_put(1, res);  // FIXME
             break;
         default:
@@ -392,7 +387,6 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
     tateyama::proto::kvs::response::Get_Success success { };
     auto &key = get.keys(0);
     tateyama::proto::kvs::data::Record record;
-    // FIXME
     status status;
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
@@ -424,8 +418,7 @@ static remove_option convert(tateyama::proto::kvs::request::Remove_Type type) {
         case tateyama::proto::kvs::request::Remove_Type::Remove_Type_INSTANT:
             return remove_option::instant;
         default:
-            // FIXME
-            return remove_option::counting;
+            throw_exception(std::logic_error{"unknown Remove_Type"});
     }
 }
 
@@ -458,21 +451,23 @@ void service::command_remove(tateyama::proto::kvs::request::Request const &proto
     }
     auto &table = remove.index().table_name();
     auto opt = convert(remove.type());
-    auto removed = 0;
-    for (auto &key : remove.keys()) {
-        status status;
-        {
-            // FIXME
-            std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
-            status = tx->remove(table, key, opt);
-        }
-        if (status == status::ok) {
-            removed++;
-        } else {
-            // FIXME
-        }
+    auto &key = remove.keys(0);
+    status status;
+    {
+        std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
+        status = tx->remove(table, key, opt);
     }
-    success_remove(removed, res);
+    switch (status) {
+        case status::ok:
+            success_remove(1, res);
+            break;
+        case status::not_found:
+            success_remove(0, res);
+            break;
+        default:
+            reply(status, res);
+            break;
+    }
 }
 
 /*
@@ -526,8 +521,9 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
             break;
         }
         case tateyama::proto::kvs::request::Request::COMMAND_NOT_SET: {
-            // for transfer benchmark
-            reply(tateyama::api::server::response_code::success,"", res);
+            // NOTE: for transfer benchmark of empty message
+            // see tsubakuro/modules/kvs/src/bench/java/com/tsurugidb/tsubakuro/kvs/bench/EmptyMessageBench.java
+            reply(tateyama::api::server::response_code::success, "", res);
             break;
         }
         default:

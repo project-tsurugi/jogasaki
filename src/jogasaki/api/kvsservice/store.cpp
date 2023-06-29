@@ -19,36 +19,12 @@
 #include <sharksfin/api.h>
 
 #include "convert.h"
-
-#include <iostream>
+using takatori::util::throw_exception;
 
 namespace jogasaki::api::kvsservice {
 
-store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) {
-//    db_(dynamic_cast<jogasaki::api::impl::database*>(bridge->database())->kvs_db()->handle()){
-    if (bridge.get() == nullptr) {
-        throw_exception(std::logic_error{"jogasaki::api::resource::bridge is null"});
-    }
-    auto db = dynamic_cast<jogasaki::api::impl::database*>(bridge->database());
-    if (db == nullptr) {
-        throw_exception(std::logic_error{"jogasaki::api::resource::bridge->database() is null"});
-    }
-    auto kvs = db->kvs_db();
-    if (kvs == nullptr) {
-        throw_exception(std::logic_error{"kvs is null"});
-    }
-    db_ = kvs->handle();
-    if (db_ == nullptr) {
-        throw_exception(std::logic_error{"kvs->handle() is null"});
-    }
-    // FIXME just for debug
-    std::vector<std::string> names{};
-    auto status = sharksfin::storage_list(db_, names);
-    if (status == sharksfin::StatusCode::OK) {
-        for (auto &name : names) {
-            std::cout << name << std::endl;
-        }
-    }
+store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
+    db_(dynamic_cast<jogasaki::api::impl::database*>(bridge->database())->kvs_db()->handle()) {
 }
 
 static sharksfin::TransactionOptions::TransactionType convert(transaction_type type) {

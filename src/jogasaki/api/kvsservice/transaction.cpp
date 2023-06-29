@@ -18,6 +18,7 @@
 #include <sharksfin/api.h>
 
 #include "convert.h"
+using takatori::util::throw_exception;
 
 namespace jogasaki::api::kvsservice {
 
@@ -38,8 +39,8 @@ transaction::transaction(sharksfin::TransactionControlHandle handle) : ctrl_hand
 }
 
 transaction::~transaction() {
-    for (auto it = storage_map_.begin(); it != storage_map_.end(); it++) {
-        auto storage = it->second;
+    for (auto &it : storage_map_) {
+        auto storage = it.second;
         sharksfin::storage_dispose(storage);
         // FIXME error log
     }
@@ -49,31 +50,10 @@ std::uint64_t transaction::system_id() const noexcept {
     return system_id_;
 }
 
-static transaction_state::state_kind convert(sharksfin::TransactionState::StateKind kind) {
-    switch (kind) {
-        case sharksfin::TransactionState::StateKind::UNKNOWN:
-            return transaction_state::state_kind::unknown;
-        case sharksfin::TransactionState::StateKind::WAITING_START:
-            return transaction_state::state_kind::waiting_start;
-        case sharksfin::TransactionState::StateKind::STARTED:
-            return transaction_state::state_kind::started;
-        case sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
-            return transaction_state::state_kind::waiting_cc_commit;
-        case sharksfin::TransactionState::StateKind::ABORTED:
-            return transaction_state::state_kind::aborted;
-        case sharksfin::TransactionState::StateKind::WAITING_DURABLE:
-            return transaction_state::state_kind::waiting_durable;
-        case sharksfin::TransactionState::StateKind::DURABLE:
-            return transaction_state::state_kind::durable;
-        default:
-            throw_exception(std::logic_error{"unknown kind"});
-    }
-}
-
 transaction_state transaction::state() const {
+    transaction_state::state_kind kind;
     sharksfin::TransactionState state;
     auto status = sharksfin::transaction_check(ctrl_handle_, state);
-    transaction_state::state_kind kind;
     if (status == sharksfin::StatusCode::OK) {
         kind = convert(state.state_kind());
     } else {
@@ -126,17 +106,25 @@ status transaction::get_storage(std::string_view name, sharksfin::StorageHandle 
     return convert(code);
 }
 
-static sharksfin::PutOperation convert(put_option opt) {
-    switch (opt) {
-        case put_option::create_or_update:
-            return sharksfin::PutOperation::CREATE_OR_UPDATE;
-        case put_option::create:
-            return sharksfin::PutOperation::CREATE;
-        case put_option::update:
-            return sharksfin::PutOperation::UPDATE;
-        default:
-            throw_exception(std::logic_error{"unknown put_option"});
+static sharksfin::StatusCode put_code(sharksfin::StatusCode code, put_option opt, bool exists) {
+    if (code != sharksfin::StatusCode::OK) {
+        return code;
     }
+    switch (opt) {
+        case put_option::create:
+            if (exists) {
+                return sharksfin::StatusCode::ALREADY_EXISTS;
+            }
+            break;
+        case put_option::update:
+            if (!exists) {
+                return sharksfin::StatusCode::NOT_FOUND;
+            }
+            break;
+        default:
+            break;
+    }
+    return code;
 }
 
 status transaction::put(std::string_view table, tateyama::proto::kvs::data::Record const &record,
@@ -158,7 +146,7 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
     // FIXME
     auto key = record.values(0).int8_value();
     auto keyS = sharksfin::Slice(&key, sizeof(key));
-    bool exists = false;
+    bool exists {};
     if (opt != put_option::create_or_update) {
         auto code = sharksfin::content_check_exist(tx_handle_, storage, keyS);
         exists = code == sharksfin::StatusCode::OK;
@@ -168,23 +156,27 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
     auto valueS = sharksfin::Slice(&value, sizeof(value));
     auto option = convert(opt);
     auto code = sharksfin::content_put(tx_handle_, storage, keyS, valueS, option);
-    if (code == sharksfin::StatusCode::OK) {
-        switch (opt) {
-            case put_option::create:
-                if (exists) {
-                    code = sharksfin::StatusCode::ALREADY_EXISTS;
-                }
-                break;
-            case put_option::update:
-                if (!exists) {
-                    code = sharksfin::StatusCode::NOT_FOUND;
-                }
-                break;
-            default:
-                break;
-        }
-    }
+    code = put_code(code, opt, exists);
     return convert(code);
+}
+
+static void make_record(tateyama::proto::kvs::data::Record const &primary_key,
+                        sharksfin::Slice const &valueS,
+                        tateyama::proto::kvs::data::Record &record) {
+    // FIXME
+    record.add_names(primary_key.names(0));
+    record.add_names("value0");
+    {
+        auto value = new tateyama::proto::kvs::data::Value();
+        value->set_int8_value(primary_key.values(0).int8_value());
+        record.mutable_values()->AddAllocated(value);
+    }
+    {
+        auto value = new tateyama::proto::kvs::data::Value();
+        auto v = *(google::protobuf::int64 *) valueS.data();
+        value->set_int8_value(v);
+        record.mutable_values()->AddAllocated(value);
+    }
 }
 
 status transaction::get(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
@@ -209,22 +201,11 @@ status transaction::get(std::string_view table, tateyama::proto::kvs::data::Reco
     sharksfin::Slice valueS{};
     auto code = sharksfin::content_get(tx_handle_, storage, keyS, &valueS);
     if (code == sharksfin::StatusCode::OK) {
-        if (valueS.size() == sizeof(long)) {
-            // FIXME
-            record.add_names(primary_key.names(0));
-            record.add_names("value0");
-            {
-                tateyama::proto::kvs::data::Value *value = new tateyama::proto::kvs::data::Value();
-                value->set_int8_value(key);
-                record.mutable_values()->AddAllocated(value);
-            }
-            {
-                long v = *(long *) valueS.data();
-                tateyama::proto::kvs::data::Value *value = new tateyama::proto::kvs::data::Value();
-                value->set_int8_value(v);
-                record.mutable_values()->AddAllocated(value);
-            }
+        // FIXME
+        if (valueS.size() == sizeof(google::protobuf::int64)) {
+            make_record(primary_key, valueS, record);
         } else {
+            // FIXME
             code = sharksfin::StatusCode::ERR_INVALID_ARGUMENT;
         }
     }
@@ -251,19 +232,17 @@ status transaction::remove(std::string_view table, tateyama::proto::kvs::data::R
     auto keyS = sharksfin::Slice(&key, sizeof(key));
     if (opt == remove_option::counting) {
         auto code = sharksfin::content_check_exist(tx_handle_, storage, keyS);
-        switch (code) {
-            case sharksfin::StatusCode::OK:
-                break;
-            case sharksfin::StatusCode::NOT_FOUND:
-                return status::not_found;
-            default:
-                return convert(code);
+        if (code != sharksfin::StatusCode::OK) {
+            // NOT_FOUND, or error
+            return convert(code);
         }
     }
     // FIXME
     auto code = sharksfin::content_delete(tx_handle_, storage, keyS);
+    if (opt == remove_option::instant && code == sharksfin::StatusCode::NOT_FOUND) {
+        code = sharksfin::StatusCode::OK;
+    }
     return convert(code);
 }
 
 }
-

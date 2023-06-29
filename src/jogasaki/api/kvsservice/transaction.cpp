@@ -30,7 +30,19 @@ transaction::transaction(sharksfin::TransactionControlHandle handle) : ctrl_hand
     } else {
         throw_exception(std::logic_error{"TransactionControlHandle is null"});
     }
+    if (auto code = sharksfin::transaction_borrow_owner(tx_handle_, &db_);
+            code != sharksfin::StatusCode::OK) {
+        throw_exception(std::logic_error{"transaction_borrow_owner failed"});
+    }
     system_id_ = (std::uint64_t)(this); // NOLINT
+}
+
+transaction::~transaction() {
+    for (auto it = storage_map_.begin(); it != storage_map_.end(); it++) {
+        auto storage = it->second;
+        sharksfin::storage_dispose(storage);
+        // FIXME error log
+    }
 }
 
 std::uint64_t transaction::system_id() const noexcept {
@@ -101,15 +113,16 @@ status transaction::abort() {
 //    return convert(status_a);
 }
 
-static status get_storage(sharksfin::TransactionHandle &tx, std::string_view name, sharksfin::StorageHandle &storage) {
-    // NOTE  sharksfin::storage_get(tx, key, &storage) returns NOT_IMPLEMENTED
-    sharksfin::DatabaseHandle db{};
-    if (auto code = sharksfin::transaction_borrow_owner(tx, &db);
-            code != sharksfin::StatusCode::OK) {
-        return convert(code);
+status transaction::get_storage(std::string_view name, sharksfin::StorageHandle &storage) {
+    storage = storage_map_[std::string{name}];
+    if (storage != nullptr) {
+        return status::ok;
     }
     sharksfin::Slice key {name};
-    auto code = sharksfin::storage_get(db, key, &storage);
+    auto code = sharksfin::storage_get(db_, key, &storage);
+    if (code == sharksfin::StatusCode::OK) {
+        storage_map_[std::string{name}] = storage;
+    }
     return convert(code);
 }
 
@@ -138,7 +151,7 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
         }
     }
     sharksfin::StorageHandle storage{};
-    if (auto s = get_storage(tx_handle_, table, storage);
+    if (auto s = get_storage(table, storage);
         s != status::ok) {
         return s;
     }
@@ -155,7 +168,6 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
     auto valueS = sharksfin::Slice(&value, sizeof(value));
     auto option = convert(opt);
     auto code = sharksfin::content_put(tx_handle_, storage, keyS, valueS, option);
-    auto code_d = sharksfin::storage_dispose(storage);
     if (code == sharksfin::StatusCode::OK) {
         switch (opt) {
             case put_option::create:
@@ -171,9 +183,8 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
             default:
                 break;
         }
-
     }
-    return convert(code, code_d);
+    return convert(code);
 }
 
 status transaction::get(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
@@ -188,7 +199,7 @@ status transaction::get(std::string_view table, tateyama::proto::kvs::data::Reco
         }
     }
     sharksfin::StorageHandle storage{};
-    if (auto s = get_storage(tx_handle_, table, storage);
+    if (auto s = get_storage(table, storage);
             s != status::ok) {
         return s;
     }
@@ -217,9 +228,7 @@ status transaction::get(std::string_view table, tateyama::proto::kvs::data::Reco
             code = sharksfin::StatusCode::ERR_INVALID_ARGUMENT;
         }
     }
-    auto code_d = sharksfin::storage_dispose(storage);
-    return convert(code, code_d);
-    return status::ok;
+    return convert(code);
 }
 
 status transaction::remove(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
@@ -234,7 +243,7 @@ status transaction::remove(std::string_view table, tateyama::proto::kvs::data::R
         }
     }
     sharksfin::StorageHandle storage{};
-    if (auto s = get_storage(tx_handle_, table, storage);
+    if (auto s = get_storage(table, storage);
             s != status::ok) {
         return s;
     }
@@ -253,8 +262,7 @@ status transaction::remove(std::string_view table, tateyama::proto::kvs::data::R
     }
     // FIXME
     auto code = sharksfin::content_delete(tx_handle_, storage, keyS);
-    auto code_d = sharksfin::storage_dispose(storage);
-    return convert(code, code_d);
+    return convert(code);
 }
 
 }

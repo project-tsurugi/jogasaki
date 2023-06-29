@@ -16,6 +16,7 @@
 #pragma once
 
 #include <future>
+#include <map>
 #include <mutex>
 
 #include <sharksfin/api.h>
@@ -50,7 +51,7 @@ public:
     /**
      * @brief destructor the object
      */
-    ~transaction() = default;
+    ~transaction();
 
     /**
      * @brief retrieves the system_id of this transaction
@@ -156,7 +157,11 @@ public:
 private:
     sharksfin::TransactionControlHandle ctrl_handle_{};
     sharksfin::TransactionHandle tx_handle_{};
+    sharksfin::DatabaseHandle db_{};
     std::uint64_t system_id_ {};
     std::mutex mtx_tx_{};
+    std::map<std::string, sharksfin::StorageHandle> storage_map_ { };
+
+    status get_storage(std::string_view name, sharksfin::StorageHandle &storage);
 };
 }

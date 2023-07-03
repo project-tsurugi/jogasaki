@@ -34,7 +34,7 @@ namespace jogasaki::api::kvsservice {
 /**
  * @brief a transaction of KVS database
  */
-class transaction {
+class alignas(64) transaction {
 public:
 
     /**

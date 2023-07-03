@@ -89,7 +89,8 @@ public:
      */
     [[nodiscard]] status dispose_transaction(std::uint64_t system_id);
 private:
-    sharksfin::DatabaseHandle db_{};
+    jogasaki::api::database *db_{};
+    sharksfin::DatabaseHandle db_handle_{};
     tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>> transactions_{};
 };
 

@@ -21,6 +21,7 @@
 
 #include <sharksfin/api.h>
 #include <tateyama/proto/kvs/data.pb.h>
+#include <jogasaki/api/database.h>
 
 #include "index.h"
 #include "commit_option.h"
@@ -28,6 +29,10 @@
 #include "remove_option.h"
 #include "status.h"
 #include "transaction_state.h"
+
+namespace jogasaki::api::impl {
+class database;
+}
 
 namespace jogasaki::api::kvsservice {
 
@@ -39,9 +44,10 @@ public:
 
     /**
      * @brief create new object
+     * @param db database of jogasaki
      * @param handle transaction control handle of sharksfin
      */
-    explicit transaction(sharksfin::TransactionControlHandle handle);
+    explicit transaction(jogasaki::api::database *db, sharksfin::TransactionControlHandle handle);
 
     transaction(transaction const& other) = delete;
     transaction& operator=(transaction const& other) = delete;
@@ -51,7 +57,7 @@ public:
     /**
      * @brief destructor the object
      */
-    ~transaction();
+    ~transaction() = default;
 
     /**
      * @brief retrieves the system_id of this transaction
@@ -155,12 +161,12 @@ public:
                                 remove_option opt = remove_option::counting);
 
 private:
+    jogasaki::api::impl::database *db_{};
+    sharksfin::DatabaseHandle db_handle_{};
     sharksfin::TransactionControlHandle ctrl_handle_{};
     sharksfin::TransactionHandle tx_handle_{};
-    sharksfin::DatabaseHandle db_{};
     std::uint64_t system_id_ {};
     std::mutex mtx_tx_{};
-    std::map<std::string, sharksfin::StorageHandle> storage_map_ { };
 
     status get_storage(std::string_view name, sharksfin::StorageHandle &storage);
 };

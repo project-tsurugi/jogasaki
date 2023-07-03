@@ -15,14 +15,19 @@
  */
 
 #include <jogasaki/api/kvsservice/transaction.h>
+#include <jogasaki/api/impl/database.h>
 #include <sharksfin/api.h>
 
 #include "convert.h"
+#include "mapped_record.h"
+
 using takatori::util::throw_exception;
 
 namespace jogasaki::api::kvsservice {
 
-transaction::transaction(sharksfin::TransactionControlHandle handle) : ctrl_handle_(handle) {
+transaction::transaction(jogasaki::api::database *db,
+                         sharksfin::TransactionControlHandle handle) :
+    db_(dynamic_cast<jogasaki::api::impl::database *>(db)), ctrl_handle_(handle) {
     if (handle != nullptr) {
         auto status = sharksfin::transaction_borrow_handle(handle, &tx_handle_);
         if (status != sharksfin::StatusCode::OK) {
@@ -31,19 +36,11 @@ transaction::transaction(sharksfin::TransactionControlHandle handle) : ctrl_hand
     } else {
         throw_exception(std::logic_error{"TransactionControlHandle is null"});
     }
-    if (auto code = sharksfin::transaction_borrow_owner(tx_handle_, &db_);
+    if (auto code = sharksfin::transaction_borrow_owner(tx_handle_, &db_handle_);
             code != sharksfin::StatusCode::OK) {
         throw_exception(std::logic_error{"transaction_borrow_owner failed"});
     }
     system_id_ = (std::uint64_t)(this); // NOLINT
-}
-
-transaction::~transaction() {
-    for (auto &it : storage_map_) {
-        auto storage = it.second;
-        sharksfin::storage_dispose(storage);
-        // FIXME error log
-    }
 }
 
 std::uint64_t transaction::system_id() const noexcept {
@@ -94,16 +91,88 @@ status transaction::abort() {
 }
 
 status transaction::get_storage(std::string_view name, sharksfin::StorageHandle &storage) {
-    storage = storage_map_[std::string{name}];
-    if (storage != nullptr) {
+    sharksfin::Slice key {name};
+    auto code = sharksfin::storage_get(db_handle_, key, &storage);
+    return convert(code);
+}
+
+static bool equal_type(takatori::type::type_kind kind,
+                       tateyama::proto::kvs::data::Value::ValueCase val_case) {
+    switch (kind) {
+        case takatori::type::type_kind::boolean:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kBooleanValue;
+        case takatori::type::type_kind::int1:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kInt4Value; // FIXME
+        case takatori::type::type_kind::int2:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kInt4Value; // FIXME
+        case takatori::type::type_kind::int4:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kInt4Value;
+        case takatori::type::type_kind::int8:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kInt8Value;
+        case takatori::type::type_kind::float4:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kFloat4Value;
+        case takatori::type::type_kind::float8:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kFloat8Value;
+        case takatori::type::type_kind::decimal:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kDecimalValue;
+        case takatori::type::type_kind::character:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kCharacterValue;
+        case takatori::type::type_kind::octet:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kOctetValue;
+        case takatori::type::type_kind::bit:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kOctetValue; // FIXME
+        case takatori::type::type_kind::date:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kDateValue;
+        case takatori::type::type_kind::time_of_day:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kTimeOfDayValue;
+        case takatori::type::type_kind::time_point:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kTimePointValue;
+        case takatori::type::type_kind::datetime_interval:
+            return val_case == tateyama::proto::kvs::data::Value::ValueCase::kDatetimeIntervalValue;
+        default:
+            takatori::util::throw_exception(std::logic_error{"unknown type_kind"});
+    }
+}
+
+static status get_table(jogasaki::api::impl::database* db_,
+                        std::string_view table_name,
+                        std::shared_ptr<yugawara::storage::table const> &table) {
+    if (table_name.empty()) {
+        return status::err_invalid_argument;
+    }
+    table = db_->tables()->find_table(table_name);
+    if (table != nullptr) {
         return status::ok;
     }
-    sharksfin::Slice key {name};
-    auto code = sharksfin::storage_get(db_, key, &storage);
-    if (code == sharksfin::StatusCode::OK) {
-        storage_map_[std::string{name}] = storage;
+    return status::err_unknown;
+}
+
+static status check_put_record(jogasaki::api::impl::database* db_,
+                               std::string_view table_name,
+                               tateyama::proto::kvs::data::Record const &record) {
+    std::shared_ptr<yugawara::storage::table const> table {};
+    if (auto s = get_table(db_, table_name, table); s != status::ok) {
+        return s;
     }
-    return convert(code);
+    // TODO support default values (currently all columns' values are necessary)
+    auto columns = table->columns();
+    if (columns.size() != static_cast<unsigned long>(record.names_size())) {
+        return status::err_invalid_argument; // FIXME
+    }
+    mapped_record m_rec{record};
+    for (auto &col : columns) {
+        // TODO should be case-insensitive
+        auto value = m_rec.get_value(col.simple_name());
+        if (value == nullptr) {
+            // unknown column name
+            return status::err_invalid_argument; // FIXME
+        }
+        if (!equal_type(col.type().kind(), value->value_case())) {
+            // invalid data type
+            return status::err_invalid_argument; // FIXME
+        }
+    }
+    return status::ok;
 }
 
 static sharksfin::StatusCode put_code(sharksfin::StatusCode code, put_option opt, bool exists) {
@@ -135,6 +204,10 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
             return status::err_unsupported;
         }
     }
+    if (auto s = check_put_record(db_, table, record);
+        s != status::ok) {
+        return s;
+    }
     sharksfin::StorageHandle storage{};
     if (auto s = get_storage(table, storage);
         s != status::ok) {
@@ -157,9 +230,42 @@ status transaction::put(std::string_view table, tateyama::proto::kvs::data::Reco
     return convert(code);
 }
 
+static status check_primary_key(jogasaki::api::impl::database* db_,
+                                std::string_view table_name,
+                                tateyama::proto::kvs::data::Record const &primary_key,
+                                std::vector<tateyama::proto::kvs::data::Value const*> &key_values) {
+    std::shared_ptr<yugawara::storage::table const> table {};
+    if (auto s = get_table(db_, table_name, table); s != status::ok) {
+        return s;
+    }
+    auto primary = table->owner()->find_primary_index(*table.get());
+    if (primary == nullptr) {
+        return status::err_invalid_argument;
+    }
+    auto keys = primary->keys();
+    if (keys.size() != static_cast<std::size_t>(primary_key.names_size())) {
+        return status::err_invalid_key_length;
+    }
+    mapped_record m_key{primary_key};
+    for (auto &key : keys) {
+        auto &col = key.column();
+        auto value = m_key.get_value(col.simple_name());
+        if (value == nullptr) {
+            // unknown column name
+            return status::err_invalid_argument; // FIXME
+        }
+        if (!equal_type(col.type().kind(), value->value_case())) {
+            // invalid data type
+            return status::err_invalid_argument; // FIXME
+        }
+        key_values.emplace_back(value);
+    }
+    return status::ok;
+}
+
 static void make_record(tateyama::proto::kvs::data::Record const &primary_key,
-                        sharksfin::Slice const &valueS,
-                        tateyama::proto::kvs::data::Record &record) {
+                sharksfin::Slice const &valueS,
+                tateyama::proto::kvs::data::Record &record) {
     // FIXME
     record.add_names(primary_key.names(0));
     record.add_names("value0");
@@ -178,11 +284,10 @@ static void make_record(tateyama::proto::kvs::data::Record const &primary_key,
 
 status transaction::get(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
-    {
-        // FIXME
-        if (primary_key.names_size() == 0) {
-            return status::err_invalid_key_length;
-        }
+    std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
+    if (auto s = check_primary_key(db_, table, primary_key, key_values);
+        s != status::ok) {
+        return s;
     }
     sharksfin::StorageHandle storage{};
     if (auto s = get_storage(table, storage);
@@ -208,11 +313,10 @@ status transaction::get(std::string_view table, tateyama::proto::kvs::data::Reco
 
 status transaction::remove(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
                         remove_option opt) {
-    {
-        // FIXME
-        if (primary_key.names_size() == 0) {
-            return status::err_invalid_key_length;
-        }
+    std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
+    if (auto s = check_primary_key(db_, table, primary_key, key_values);
+            s != status::ok) {
+        return s;
     }
     sharksfin::StorageHandle storage{};
     if (auto s = get_storage(table, storage);

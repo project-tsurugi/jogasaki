@@ -24,7 +24,8 @@ using takatori::util::throw_exception;
 namespace jogasaki::api::kvsservice {
 
 store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
-    db_(dynamic_cast<jogasaki::api::impl::database*>(bridge->database())->kvs_db()->handle()) {
+    db_(bridge->database()) {
+    db_handle_ = dynamic_cast<jogasaki::api::impl::database*>(db_)->kvs_db()->handle();
 }
 
 static sharksfin::TransactionOptions::TransactionType convert(transaction_type type) {
@@ -50,11 +51,11 @@ static sharksfin::TransactionOptions convert(transaction_option const &option) {
 status store::begin_transaction(transaction_option const &option, std::shared_ptr<transaction>& tx) {
     sharksfin::TransactionControlHandle handle{};
     auto options = convert(option);
-    auto state = sharksfin::transaction_begin(db_, options, &handle);
+    auto state = sharksfin::transaction_begin(db_handle_, options, &handle);
     if (state != sharksfin::StatusCode::OK) {
         return convert(state);
     }
-    tx = std::make_shared<transaction>(handle);
+    tx = std::make_shared<transaction>(db_, handle);
     //
     decltype(transactions_)::accessor acc{};
     if (transactions_.insert(acc, tx->system_id())) {

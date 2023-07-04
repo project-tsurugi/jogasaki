@@ -104,7 +104,7 @@ public:
 
     /**
      * @brief put the record to the table
-     * @param table the full qualified name of the table
+     * @param table_name the full qualified name of the table
      * @param record the record to be put.
      * the record should always contain all columns of the table.
      * the order of each column is free, any order will be accepted.
@@ -119,12 +119,12 @@ public:
      * @return status::err_invalid_argument if the specified record doesn't contain all columns of the table
      * @return otherwise if error was occurred
      */
-    [[nodiscard]] status put(std::string_view table, tateyama::proto::kvs::data::Record const &record,
+    [[nodiscard]] status put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                              put_option opt = put_option::create_or_update);
 
     /**
      * @brief get the record for the given primary key
-     * @param table the full qualified name of the table
+     * @param table_name the full qualified name of the table
      * @param primary_key primary key for searching.
      * the primary_key should contain all columns of the primary key.
      * the primary_key should only contain the primary key data.
@@ -138,12 +138,12 @@ public:
      * @return status::err_invalid_argument if the specified key isn't a primary key or not enough
      * @return otherwise if error was occurred
      */
-    [[nodiscard]] status get(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
+    [[nodiscard]] status get(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                              tateyama::proto::kvs::data::Record &record);
 
     /**
      * @brief remove the record for the given primary key
-     * @param table the full qualified name of the table
+     * @param table_name the full qualified name of the table
      * @param primary_key the key for searching
      * the primary_key should contain all columns of the primary key.
      * the primary_key should only contain the primary key data.
@@ -156,7 +156,7 @@ public:
      * @return status::err_invalid_argument if the specified key isn't a primary key or not enough
      * @return otherwise if error was occurred
      */
-    [[nodiscard]] status remove(std::string_view table,
+    [[nodiscard]] status remove(std::string_view table_name,
                                 tateyama::proto::kvs::data::Record const &primary_key,
                                 remove_option opt = remove_option::counting);
 

@@ -137,5 +137,56 @@ enum class status : std::int64_t {
      * @brief key length passed to the API is invalid
      */
     err_invalid_key_length = -18,
+
+    /**
+     * @brief The operation result data is too large
+     */
+    err_result_too_large = -1'001,
+
+    /**
+     * @brief Target resource is not authorized.
+     */
+    err_not_authorized = -2'001,
+
+    /**
+     * @brief Transaction is not active.
+     */
+    err_transaction_inactive = -10'001,
+
+    /**
+     * @brief Transaction is aborted by writing out of write preservation, or writing in read only transaction.
+     */
+    err_write_protected = -12'002,
+
+    /**
+     * @brief The specified table is not found.
+     */
+    err_table_not_found = -20'001,
+
+    /**
+     * @brief The specified column is not found.
+     */
+    err_column_not_found = -20'002,
+
+    /**
+     * @brief The column type is inconsistent.
+     */
+    err_column_type_mismatch = -20'003,
+
+    /**
+     * @brief The search key is mismatch for the table or index.
+     */
+    err_mismatch_key = -20'011,
+
+    /**
+     * @brief Several columns are not specified in {@code PUT} operation.
+     */
+    err_incomplete_columns = -20'021,
+
+    /**
+     * @brief Operations was failed by integrity constraint violation.
+     */
+    err_integrity_constraint_violation = -30'001,
+
 };
 }

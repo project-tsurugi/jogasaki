@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
+#include <unordered_set>
+
 #include <jogasaki/api/kvsservice/transaction.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/serializer/value_input.h>
 #include <sharksfin/api.h>
 
 #include "convert.h"
 #include "mapped_record.h"
+#include "serializer.h"
 
 using takatori::util::throw_exception;
+using cbuffer = takatori::util::const_buffer_view;
 
 namespace jogasaki::api::kvsservice {
 
@@ -144,32 +149,61 @@ static status get_table(jogasaki::api::impl::database* db_,
     if (table != nullptr) {
         return status::ok;
     }
-    return status::err_unknown;
+    return status::err_table_not_found;
 }
 
-static status check_put_record(jogasaki::api::impl::database* db_,
-                               std::string_view table_name,
-                               tateyama::proto::kvs::data::Record const &record) {
-    std::shared_ptr<yugawara::storage::table const> table {};
-    if (auto s = get_table(db_, table_name, table); s != status::ok) {
-        return s;
+static status make_primary_key_names(std::shared_ptr<yugawara::storage::table const> &table,
+                                   std::unordered_set<std::string_view> &primary_key_names) {
+    const auto primary = table->owner()->find_primary_index(*table);
+    if (primary == nullptr) {
+        return status::err_invalid_argument;
+    }
+    for (auto & key : primary->keys()) {
+        primary_key_names.emplace(key.column().simple_name());
+    }
+    return status::ok;
+}
+
+static bool is_valid_record(tateyama::proto::kvs::data::Record const &record) {
+    return record.names_size() >= 1 && record.names_size() == record.values_size();
+}
+
+static status check_put_record(std::shared_ptr<yugawara::storage::table const> &table,
+                               tateyama::proto::kvs::data::Record const &record,
+                               std::vector<tateyama::proto::kvs::data::Value const*> &key_values,
+                               std::vector<tateyama::proto::kvs::data::Value const*> &value_values) {
+    if (!is_valid_record(record)) {
+        return status::err_invalid_argument;
     }
     // TODO support default values (currently all columns' values are necessary)
-    auto columns = table->columns();
-    if (columns.size() != static_cast<unsigned long>(record.names_size())) {
-        return status::err_invalid_argument; // FIXME
+    const auto columns = table->columns();
+    auto col_size = columns.size();
+    decltype(col_size) rec_size = static_cast<decltype(col_size)>(record.names_size());
+    if (rec_size < col_size) {
+        return status::err_incomplete_columns;
+    } else if (rec_size > col_size) {
+        return status::err_mismatch_key;
+    }
+    std::unordered_set<std::string_view> primary_key_names{};
+    if (auto s = make_primary_key_names(table, primary_key_names);
+        s != status::ok) {
+        return s;
     }
     mapped_record m_rec{record};
     for (auto &col : columns) {
+        auto col_name = col.simple_name();
         // TODO should be case-insensitive
-        auto value = m_rec.get_value(col.simple_name());
+        auto value = m_rec.get_value(col_name);
         if (value == nullptr) {
-            // unknown column name
-            return status::err_invalid_argument; // FIXME
+            return status::err_column_not_found;
         }
         if (!equal_type(col.type().kind(), value->value_case())) {
-            // invalid data type
-            return status::err_invalid_argument; // FIXME
+            return status::err_column_type_mismatch;
+        }
+        if (primary_key_names.find(col_name) != primary_key_names.cend()) {
+            key_values.emplace_back(value);
+        } else {
+            value_values.emplace_back(value);
         }
     }
     return status::ok;
@@ -196,144 +230,167 @@ static sharksfin::StatusCode put_code(sharksfin::StatusCode code, put_option opt
     return code;
 }
 
-status transaction::put(std::string_view table, tateyama::proto::kvs::data::Record const &record,
+status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
-    {
-        // FIXME
-        if (record.names_size() != 2 || record.values_size() != 2) {
-            return status::err_unsupported;
-        }
+    std::shared_ptr<yugawara::storage::table const> table{};
+    if (auto s = get_table(db_, table_name, table); s != status::ok) {
+        return s;
     }
-    if (auto s = check_put_record(db_, table, record);
+    std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
+    std::vector<tateyama::proto::kvs::data::Value const*> value_values{};
+    if (auto s = check_put_record(table, record, key_values, value_values);
         s != status::ok) {
         return s;
     }
+    std::string key{};
+    if (auto s = serialize(key_values, key); s != status::ok) {
+        return s;
+    }
+    std::string value{};
+    if (auto s = serialize(value_values, value); s != status::ok) {
+        return s;
+    }
+    sharksfin::Slice key_slice {key};
+    sharksfin::Slice value_slice {value};
     sharksfin::StorageHandle storage{};
-    if (auto s = get_storage(table, storage);
-        s != status::ok) {
+    if (auto s = get_storage(table_name, storage); s != status::ok) {
         return s;
     }
-    // FIXME
-    auto key = record.values(0).int8_value();
-    auto keyS = sharksfin::Slice(&key, sizeof(key));
     bool exists {};
     if (opt != put_option::create_or_update) {
-        auto code = sharksfin::content_check_exist(tx_handle_, storage, keyS);
+        auto code = sharksfin::content_check_exist(tx_handle_, storage, key_slice);
         exists = code == sharksfin::StatusCode::OK;
     }
-    // FIXME
-    auto value = record.values(1).int8_value();
-    auto valueS = sharksfin::Slice(&value, sizeof(value));
     auto option = convert(opt);
-    auto code = sharksfin::content_put(tx_handle_, storage, keyS, valueS, option);
+    auto code = sharksfin::content_put(tx_handle_, storage, key_slice, value_slice, option);
     code = put_code(code, opt, exists);
     return convert(code);
 }
 
-static status check_primary_key(jogasaki::api::impl::database* db_,
-                                std::string_view table_name,
+static status check_primary_key(std::shared_ptr<yugawara::storage::table const> &table,
                                 tateyama::proto::kvs::data::Record const &primary_key,
                                 std::vector<tateyama::proto::kvs::data::Value const*> &key_values) {
-    std::shared_ptr<yugawara::storage::table const> table {};
-    if (auto s = get_table(db_, table_name, table); s != status::ok) {
-        return s;
+    if (!is_valid_record(primary_key)) {
+        return status::err_invalid_argument;
     }
-    auto primary = table->owner()->find_primary_index(*table.get());
+    const auto primary = table->owner()->find_primary_index(*table);
     if (primary == nullptr) {
         return status::err_invalid_argument;
     }
-    auto keys = primary->keys();
-    if (keys.size() != static_cast<std::size_t>(primary_key.names_size())) {
-        return status::err_invalid_key_length;
+    const auto keys = primary->keys();
+    auto key_size = keys.size();
+    decltype(key_size) req_size = static_cast<decltype(key_size)>(primary_key.names_size());
+    if (key_size != req_size) {
+        return status::err_mismatch_key;
     }
     mapped_record m_key{primary_key};
-    for (auto &key : keys) {
+    for (const auto &key : keys) {
         auto &col = key.column();
         auto value = m_key.get_value(col.simple_name());
         if (value == nullptr) {
-            // unknown column name
-            return status::err_invalid_argument; // FIXME
+            return status::err_column_not_found;
         }
         if (!equal_type(col.type().kind(), value->value_case())) {
-            // invalid data type
-            return status::err_invalid_argument; // FIXME
+            return status::err_column_type_mismatch;
         }
         key_values.emplace_back(value);
     }
     return status::ok;
 }
 
-static void make_record(tateyama::proto::kvs::data::Record const &primary_key,
-                sharksfin::Slice const &valueS,
+static void add_column(std::string_view col_name,
+                       tateyama::proto::kvs::data::Value const *value,
+                       tateyama::proto::kvs::data::Record &record) {
+    record.add_names(col_name.data());
+    auto new_value = new tateyama::proto::kvs::data::Value(std::move(*value));
+    record.mutable_values()->AddAllocated(new_value);
+}
+
+static void add_column(yugawara::storage::column const &column,
+                       cbuffer &view, const char *iter,
+                       tateyama::proto::kvs::data::Record &record) {
+    record.add_names(column.simple_name().data());
+    auto new_value = new tateyama::proto::kvs::data::Value();
+    deserialize(column.type(), view, iter, new_value);
+    record.mutable_values()->AddAllocated(new_value);
+}
+
+static void make_record(std::shared_ptr<yugawara::storage::table const> &table,
+                    tateyama::proto::kvs::data::Record const &primary_key,
+                sharksfin::Slice const &value_slice,
                 tateyama::proto::kvs::data::Record &record) {
-    // FIXME
-    record.add_names(primary_key.names(0));
-    record.add_names("value0");
-    {
-        auto value = new tateyama::proto::kvs::data::Value();
-        value->set_int8_value(primary_key.values(0).int8_value());
-        record.mutable_values()->AddAllocated(value);
-    }
-    {
-        auto value = new tateyama::proto::kvs::data::Value();
-        auto v = *(google::protobuf::int64 *) valueS.data();
-        value->set_int8_value(v);
-        record.mutable_values()->AddAllocated(value);
+    auto input = value_slice.to_string_view();
+    cbuffer view { input.data(), input.size() };
+    auto const* iter = view.begin();
+    //
+    mapped_record m_key {primary_key};
+    for (auto &col : table->columns()) {
+        auto col_name = col.simple_name();
+        auto value = m_key.get_value(col_name);
+        if (value != nullptr) {
+            add_column(col_name, value, record);
+        } else {
+            add_column(col, view, iter, record);
+        }
     }
 }
 
-status transaction::get(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
+status transaction::get(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
+    std::shared_ptr<yugawara::storage::table const> table {};
+    if (auto s = get_table(db_, table_name, table); s != status::ok) {
+        return s;
+    }
     std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
-    if (auto s = check_primary_key(db_, table, primary_key, key_values);
+    if (auto s = check_primary_key(table, primary_key, key_values);
         s != status::ok) {
         return s;
     }
-    sharksfin::StorageHandle storage{};
-    if (auto s = get_storage(table, storage);
-            s != status::ok) {
+    std::string key {};
+    if (auto s = serialize(key_values, key); s != status::ok) {
         return s;
     }
-    // FIXME
-    auto key = primary_key.values(0).int8_value();
-    auto keyS = sharksfin::Slice(&key, sizeof(key));
-    sharksfin::Slice valueS{};
-    auto code = sharksfin::content_get(tx_handle_, storage, keyS, &valueS);
+    sharksfin::StorageHandle storage{};
+    if (auto s = get_storage(table_name, storage); s != status::ok) {
+        return s;
+    }
+    sharksfin::Slice key_slice {key};
+    sharksfin::Slice value_slice{};
+    auto code = sharksfin::content_get(tx_handle_, storage, key_slice, &value_slice);
     if (code == sharksfin::StatusCode::OK) {
-        // FIXME
-        if (valueS.size() == sizeof(google::protobuf::int64)) {
-            make_record(primary_key, valueS, record);
-        } else {
-            // FIXME
-            code = sharksfin::StatusCode::ERR_INVALID_ARGUMENT;
-        }
+        make_record(table, primary_key, value_slice, record);
     }
     return convert(code);
 }
 
-status transaction::remove(std::string_view table, tateyama::proto::kvs::data::Record const &primary_key,
+status transaction::remove(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         remove_option opt) {
+    std::shared_ptr<yugawara::storage::table const> table {};
+    if (auto s = get_table(db_, table_name, table); s != status::ok) {
+        return s;
+    }
     std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
-    if (auto s = check_primary_key(db_, table, primary_key, key_values);
+    if (auto s = check_primary_key(table, primary_key, key_values);
             s != status::ok) {
+        return s;
+    }
+    std::string key {};
+    if (auto s = serialize(key_values, key); s != status::ok) {
         return s;
     }
     sharksfin::StorageHandle storage{};
-    if (auto s = get_storage(table, storage);
-            s != status::ok) {
+    if (auto s = get_storage(table_name, storage); s != status::ok) {
         return s;
     }
-    auto key = primary_key.values(0).int8_value();
-    auto keyS = sharksfin::Slice(&key, sizeof(key));
+    sharksfin::Slice key_slice {key};
     if (opt == remove_option::counting) {
-        auto code = sharksfin::content_check_exist(tx_handle_, storage, keyS);
+        auto code = sharksfin::content_check_exist(tx_handle_, storage, key_slice);
         if (code != sharksfin::StatusCode::OK) {
             // NOT_FOUND, or error
             return convert(code);
         }
     }
-    // FIXME
-    auto code = sharksfin::content_delete(tx_handle_, storage, keyS);
+    auto code = sharksfin::content_delete(tx_handle_, storage, key_slice);
     if (opt == remove_option::instant && code == sharksfin::StatusCode::NOT_FOUND) {
         code = sharksfin::StatusCode::OK;
     }

@@ -65,7 +65,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->stealing_enabled(false);
         db_setup(cfg);
     }
 

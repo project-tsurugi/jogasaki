@@ -56,7 +56,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->stealing_enabled(false);
         cfg->prepare_test_tables(true);
         db_setup(cfg);
         execute_statement("create table qa_t1 (c_pk int primary key, c_i4 int not null, c_i8 bigint not null, c_f4 real not null, c_f8 double not null, c_ch varchar(*) not null)");

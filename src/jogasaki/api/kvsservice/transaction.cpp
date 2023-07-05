@@ -302,7 +302,7 @@ static void add_column(std::string_view col_name,
                        tateyama::proto::kvs::data::Value const *value,
                        tateyama::proto::kvs::data::Record &record) {
     record.add_names(col_name.data());
-    auto new_value = new tateyama::proto::kvs::data::Value(std::move(*value));
+    auto new_value = new tateyama::proto::kvs::data::Value(*value);
     record.mutable_values()->AddAllocated(new_value);
 }
 

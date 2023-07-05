@@ -22,7 +22,7 @@ namespace jogasaki::api::kvsservice {
 /**
  * @brief represents status code of API operations.
  */
-enum class status : std::int64_t {
+enum class status : std::int32_t {
 
     /**
      * @brief operation was succeeded.
@@ -52,141 +52,143 @@ enum class status : std::int64_t {
     /**
      * @brief unknown errors.
      */
-    err_unknown = -1,
+    err_unknown = 100,
 
     /**
      * @brief I/O error.
      */
-    err_io_error = -2,
+    err_io_error = 102,
 
     /**
      * @brief API arguments are invalid.
      */
-    err_invalid_argument = -3,
+    err_invalid_argument = 103,
 
     /**
      * @brief API state is invalid.
      */
-    err_invalid_state = -4,
+    err_invalid_state = 104,
 
     /**
      * @brief operation is unsupported.
      */
-    err_unsupported = -5,
+    err_unsupported = 105,
 
     /**
      * @brief transaction operation met an user-defined error.
      * @details this code is returned only from transaction_exec() and transaction_commit()
      */
-    err_user_error = -6,
+    err_user_error = 106,
 
     /**
      * @brief transaction is aborted
      */
-    err_aborted = -7,
+    err_aborted = 107,
 
     /**
      * @brief transaction is aborted, but retry might resolve the situation
      */
-    err_aborted_retryable = -8,
+    err_aborted_retryable = 108,
 
     /**
      * @brief api call timed out
      */
-    err_time_out = -9,
+    err_time_out = 109,
 
     /**
      * @brief the feature is not yet implemented
      */
-    err_not_implemented = -10,
+    err_not_implemented = 110,
 
     /**
      * @brief the operation is not valid
      */
-    err_illegal_operation = -11,
+    err_illegal_operation = 111,
 
     /**
      * @brief the operation conflicted on write preserve
      */
-    err_conflict_on_write_preserve = -12,
+    err_conflict_on_write_preserve = 112,
+
+    // NOTE: sharksfin::StatusCode doesn't have the error code of -13
 
     /**
      * @brief long tx issued write operation without preservation
      */
-    err_write_without_write_preserve = -14,
+    err_write_without_write_preserve = 114,
 
     /**
      * @brief transaction is inactive
      * @details transaction is inactive since it's already committed or aborted. The request is failed.
      */
-    err_inactive_transaction = -15,
+    err_inactive_transaction = 115,
 
     /**
      * @brief requested operation is blocked by concurrent operation
      * @details the request cannot be fulfilled due to the operation concurrently executed by other transaction.
      * After the blocking transaction completes, re-trying the request may lead to different result.
      */
-    err_blocked_by_concurrent_operation = -16,
+    err_blocked_by_concurrent_operation = 116,
 
     /**
      * @brief reached resource limit and request could not be accomplished
      */
-    err_resource_limit_reached = -17,
+    err_resource_limit_reached = 117,
 
     /**
      * @brief key length passed to the API is invalid
      */
-    err_invalid_key_length = -18,
+    err_invalid_key_length = 118,
 
     /**
      * @brief The operation result data is too large
      */
-    err_result_too_large = -1'001,
+    err_result_too_large = 1'001,
 
     /**
      * @brief Target resource is not authorized.
      */
-    err_not_authorized = -2'001,
+    err_not_authorized = 2'001,
 
     /**
      * @brief Transaction is not active.
      */
-    err_transaction_inactive = -10'001,
+    err_transaction_inactive = 10'001,
 
     /**
      * @brief Transaction is aborted by writing out of write preservation, or writing in read only transaction.
      */
-    err_write_protected = -12'002,
+    err_write_protected = 12'002,
 
     /**
      * @brief The specified table is not found.
      */
-    err_table_not_found = -20'001,
+    err_table_not_found = 20'001,
 
     /**
      * @brief The specified column is not found.
      */
-    err_column_not_found = -20'002,
+    err_column_not_found = 20'002,
 
     /**
      * @brief The column type is inconsistent.
      */
-    err_column_type_mismatch = -20'003,
+    err_column_type_mismatch = 20'003,
 
     /**
      * @brief The search key is mismatch for the table or index.
      */
-    err_mismatch_key = -20'011,
+    err_mismatch_key = 20'011,
 
     /**
      * @brief Several columns are not specified in {@code PUT} operation.
      */
-    err_incomplete_columns = -20'021,
+    err_incomplete_columns = 20'021,
 
     /**
      * @brief Operations was failed by integrity constraint violation.
      */
-    err_integrity_constraint_violation = -30'001,
+    err_integrity_constraint_violation = 30'001,
 
 };
 }

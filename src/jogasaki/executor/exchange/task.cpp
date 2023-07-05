@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
@@ -30,7 +31,7 @@
 namespace jogasaki::executor::exchange {
 
 model::task_result task::operator()() {
-    VLOG(log_debug) << *this << " exchange_task executed.";
+    VLOG_LP(log_debug) << *this << " exchange_task executed.";
     common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
 
     context()->scheduler()->schedule_task(

@@ -28,6 +28,7 @@
 #include <takatori/type/character.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -620,7 +621,7 @@ bool evaluate_bool(
     utils::checkpoint_holder h{resource};
     auto a = eval(ctx, variables, resource);
     if (a.error()) {
-        VLOG(log_error) << "evaluation error: " << a.to<process::impl::expression::error>();
+        VLOG_LP(log_error) << "evaluation error: " << a.to<process::impl::expression::error>();
     }
     return a && a.to<bool>();
 }

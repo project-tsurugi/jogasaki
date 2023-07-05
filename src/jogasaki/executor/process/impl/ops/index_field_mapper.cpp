@@ -16,6 +16,7 @@
 #include "index_field_mapper.h"
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/index/index_accessor.h>
@@ -124,7 +125,7 @@ status index_field_mapper::find_primary_index(
         if (res == status::not_found) {
             // primary key not found. Inconsistency between primary/secondary indices.
             res = status::err_inconsistent_index;
-            VLOG(log_error) << res << " missing record detected in the secondary index";
+            VLOG_LP(log_error) << res << " missing record detected in the secondary index";
         }
         return res;
     }

@@ -18,6 +18,7 @@
 #include <yugawara/binding/extract.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::executor::common {
@@ -43,13 +44,13 @@ bool drop_index::operator()(request_context& context) const {
     auto stg = context.database()->get_storage(name);
     if (stg) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-            VLOG(log_error) << res << " error on deleting storage " << name;
+            VLOG_LP(log_error) << res << " error on deleting storage " << name;
             context.status_code(status::err_unknown);
             return false;
         }
     } else {
         // kvs storage is already removed somehow, let's proceed and remove from metadata.
-        VLOG(log_info) << "kvs storage '" << name << "' not found.";
+        VLOG_LP(log_info) << "kvs storage '" << name << "' not found.";
     }
     provider.remove_index(name);
     return true;

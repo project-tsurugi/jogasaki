@@ -20,6 +20,7 @@
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -57,11 +58,11 @@ bool create_storage_option(
 bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
     proto::metadata::storage::Storage st{};
     if (! st.ParseFromArray(payload.data(), payload.size())) {
-        VLOG(log_error) << "Invalid metadata data is detected in the storage.";
+        VLOG_LP(log_error) << "Invalid metadata data is detected in the storage.";
         return false;
     }
     if(st.message_version() != metadata_format_version) {
-        VLOG(log_error) << "Incompatible metadata version (" << st.message_version() <<
+        VLOG_LP(log_error) << "Incompatible metadata version (" << st.message_version() <<
             ") is stored in the storage. This version is not supported.";
         return false;
     }
@@ -99,7 +100,7 @@ bool merge_deserialized_storage_option(
         ++cnt;
     });
     if(cnt != 1) {
-        VLOG(log_error) << "deserialization error: too many indices";
+        VLOG_LP(log_error) << "deserialization error: too many indices";
         return false;
     }
 
@@ -112,7 +113,7 @@ bool merge_deserialized_storage_option(
         try {
             target.add_sequence(s, overwrite);
         } catch(std::invalid_argument& e) {
-            VLOG(log_error) << "sequence " << s->simple_name() << " already exists";
+            VLOG_LP(log_error) << "sequence " << s->simple_name() << " already exists";
             return false;
         }
     }
@@ -121,7 +122,7 @@ bool merge_deserialized_storage_option(
     try {
         target.add_table(idx->shared_table(), overwrite);
     } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
+        VLOG_LP(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
         return false;
     }
 
@@ -129,7 +130,7 @@ bool merge_deserialized_storage_option(
     try {
         target.add_index(idx, overwrite);
     } catch(std::invalid_argument& e) {
-        VLOG(log_error) << "primary index " << idx->simple_name() << " already exists";
+        VLOG_LP(log_error) << "primary index " << idx->simple_name() << " already exists";
         return false;
     }
     return true;

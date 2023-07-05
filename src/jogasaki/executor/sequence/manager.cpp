@@ -22,6 +22,7 @@
 #include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -79,7 +80,7 @@ std::size_t manager::load_id_map(kvs::transaction* tx) {
     if (created_tx) {
         (void)created_tx ->commit();
     }
-    VLOG(log_debug) << "Sequences loaded from system table : " << ret;
+    VLOG_LP(log_debug) << "Sequences loaded from system table : " << ret;
     return ret;
 }
 

@@ -199,7 +199,7 @@ void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
     // Be careful and don't touch job or request contexts after decrementing the counter which makes teardown job to finish.
     (void)cnt;
     (void)jobid;
-    //VLOG(log_debug) << "decremented job " << jobid << " task count to " << cnt;
+    //VLOG_LP(log_debug) << "decremented job " << jobid << " task count to " << cnt;
     if(! job_completes) {
         return;
     }

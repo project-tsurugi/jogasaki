@@ -18,6 +18,7 @@
 #include <yugawara/binding/extract.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::executor::common {
@@ -36,7 +37,7 @@ bool drop_table::operator()(request_context& context) const {
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
     auto t = provider.find_table(c.simple_name());
     if(t == nullptr) {
-        VLOG(log_error) << "table '" << c.simple_name() << "' not found";
+        VLOG_LP(log_error) << "table '" << c.simple_name() << "' not found";
         context.status_code(status::err_not_found);
         return false;
     }
@@ -54,7 +55,7 @@ bool drop_table::operator()(request_context& context) const {
     for(auto&& n : indices) {
         if(auto stg = context.database()->get_storage(n)) {
             if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-                VLOG(log_error) << "deleting storage '" << n << "' failed: " << res;
+                VLOG_LP(log_error) << "deleting storage '" << n << "' failed: " << res;
                 context.status_code(status::err_unknown);
                 return false;
             }
@@ -63,7 +64,7 @@ bool drop_table::operator()(request_context& context) const {
 
     if(auto stg = context.database()->get_storage(c.simple_name())) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-            VLOG(log_error) << "deleting storage '" << c.simple_name() << "' failed: " << res;
+            VLOG_LP(log_error) << "deleting storage '" << c.simple_name() << "' failed: " << res;
             context.status_code(status::err_unknown);
             return false;
         }
@@ -98,18 +99,18 @@ bool drop_table::operator()(request_context& context) const {
 
     for(auto&& n : indices) {
         if(! provider.remove_index(n)) {
-            VLOG(log_warning) << "secondary index '" << n << "' not found";
+            VLOG_LP(log_warning) << "secondary index '" << n << "' not found";
         }
     }
 
     // drop primary index
     if(! provider.remove_index(c.simple_name())) {
-        VLOG(log_warning) << "primary index for table '" << c.simple_name() << "' not found";
+        VLOG_LP(log_warning) << "primary index for table '" << c.simple_name() << "' not found";
     }
 
     // drop table
     if(! provider.remove_relation(c.simple_name())) {
-        VLOG(log_warning) << "table '" << c.simple_name() << "' not found";
+        VLOG_LP(log_warning) << "table '" << c.simple_name() << "' not found";
     }
     return true;
 }

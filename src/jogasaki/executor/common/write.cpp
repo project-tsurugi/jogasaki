@@ -22,6 +22,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/error.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
@@ -164,7 +165,7 @@ status encode_tuple(
                 switch(f.kind_) {
                     case process::impl::ops::default_value_kind::nothing:
                         if (! f.nullable_) {
-                            VLOG(log_error) << "Null assigned for non-nullable field.";
+                            VLOG_LP(log_error) << "Null assigned for non-nullable field.";
                             return status::err_integrity_constraint_violation;
                         }
                         if(auto res = kvs::encode_nullable({}, f.type_, f.spec_, s); res != status::ok) {
@@ -200,11 +201,11 @@ status encode_tuple(
                 process::impl::expression::evaluator_context c{};
                 auto res = eval(c, empty, &resource);
                 if (res.error()) {
-                    VLOG(log_error) << "evaluation error: " << res.to<process::impl::expression::error>();
+                    VLOG_LP(log_error) << "evaluation error: " << res.to<process::impl::expression::error>();
                     return status::err_expression_evaluation_failure;
                 }
                 if(! utils::convert_any(res, f.type_)) {
-                    VLOG(log_error) << "type mismatch: expected " << f.type_ << ", value index is " << res.type_index();
+                    VLOG_LP(log_error) << "type mismatch: expected " << f.type_ << ", value index is " << res.type_index();
                     return status::err_expression_evaluation_failure;
                 }
                 if (f.nullable_) {
@@ -213,7 +214,7 @@ status encode_tuple(
                     }
                 } else {
                     if(! res) {
-                        VLOG(log_error) << "Null assigned for non-nullable field.";
+                        VLOG_LP(log_error) << "Null assigned for non-nullable field.";
                         return status::err_integrity_constraint_violation;
                     }
                     if(auto rc = kvs::encode(res, f.type_, f.spec_, s); rc != status::ok) {

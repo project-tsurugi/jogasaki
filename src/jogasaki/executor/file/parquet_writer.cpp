@@ -28,6 +28,7 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/utils/decimal.h>
@@ -62,7 +63,7 @@ bool parquet_writer::init(std::string_view path) {
             column_writers_.emplace_back(rgwriter->column(i));
         }
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet writer init error: " << e.what();
+        VLOG_LP(log_error) << "Parquet writer init error: " << e.what();
         return false;
     }
     return true;
@@ -92,7 +93,7 @@ bool parquet_writer::write(accessor::record_ref ref) {
             }
         }
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet writer write error: " << e.what();
+        VLOG_LP(log_error) << "Parquet writer write error: " << e.what();
         return false;
     }
     ++write_count_;
@@ -171,7 +172,7 @@ bool parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_typ
     auto y = sv.rescale(-static_cast<std::int64_t>(colopt.scale_));
     if((decimal::context.status() & MPD_Inexact) != 0) {
         // value error
-        VLOG(log_error) << "value error: decimal rescaling failed. src=" << v << " scale=" << colopt.scale_;
+        VLOG_LP(log_error) << "value error: decimal rescaling failed. src=" << v << " scale=" << colopt.scale_;
         return false;
     }
     utils::decimal_buffer out{};
@@ -208,7 +209,7 @@ bool parquet_writer::close() {
         // Write the bytes to file
         DCHECK(fs_->Close().ok());
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet writer close error: " << e.what();
+        VLOG_LP(log_error) << "Parquet writer close error: " << e.what();
         return false;
     }
     return true;

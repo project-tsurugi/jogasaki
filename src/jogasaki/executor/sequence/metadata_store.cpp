@@ -22,6 +22,8 @@
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 
 namespace jogasaki::executor::sequence {
 
@@ -41,12 +43,12 @@ bool metadata_store::put(std::size_t def_id, std::size_t id) {
     // no storage spec because field type is fixed
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
         res != status::ok) {
-        VLOG(log_error) << "*** encode failed with error: " << res;
+        VLOG_LP(log_error) << "*** encode failed with error: " << res;
         return false;
     }
     if(auto res = kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
         res != status::ok) {
-        VLOG(log_error) << "*** encode_nullable failed with error: " << res;
+        VLOG_LP(log_error) << "*** encode_nullable failed with error: " << res;
         return false;
     }
     if (auto res = stg_->put(
@@ -54,7 +56,7 @@ bool metadata_store::put(std::size_t def_id, std::size_t id) {
             {key.data(), key.size()},
             {value.data(), value.size()}
         ); res != status::ok) {
-        VLOG(log_error) << "*** put sequence def_id failed with error: " << res;
+        VLOG_LP(log_error) << "*** put sequence def_id failed with error: " << res;
         return false;
     }
     return true;
@@ -105,7 +107,7 @@ bool metadata_store::scan(metadata_store::scan_consumer_type const& consumer) {
             it
         );
         res != status::ok || !it) {
-        VLOG(log_error) << "scan failed with error : " << res;
+        VLOG_LP(log_error) << "scan failed with error : " << res;
         return false;
     }
     while(status::ok == it->next()) {
@@ -136,11 +138,11 @@ bool metadata_store::remove(std::size_t def_id) {
     data::any k{std::in_place_type<std::int64_t>, def_id};
     // no storage spec because field type is fixed
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key); res != status::ok) {
-        VLOG(log_error) << "*** encode failed with error: " << res;
+        VLOG_LP(log_error) << "*** encode failed with error: " << res;
         return false;
     }
     if (auto res = stg_->remove(*tx_, {key.data(), key.size()}); res != status::ok && res != status::not_found) {
-        VLOG(log_error) << "*** remove sequence def_id failed with error: " << res;
+        VLOG_LP(log_error) << "*** remove sequence def_id failed with error: " << res;
         return false;
     }
     return true;

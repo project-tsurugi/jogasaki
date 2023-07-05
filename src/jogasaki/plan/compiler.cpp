@@ -53,6 +53,7 @@
 #include <takatori/util/downcast.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/variable_order.h>
@@ -252,7 +253,7 @@ status create_prepared_statement(
         for(auto&& e : result.diagnostics()) {
             msg << e.code() << " " << e.message() << " ";
         }
-        VLOG(log_error) << status::err_compiler_error << ": " <<  msg.str();
+        VLOG_LP(log_error) << status::err_compiler_error << ": " <<  msg.str();
         ctx.diag()->set(msg.str());
         return status::err_compiler_error;
     }
@@ -294,14 +295,14 @@ status parse_validate(
             }
             std::stringstream msg{};
             msg << "syntax validation failed: " << errs.str();
-            VLOG(log_error) << status::err_parse_error << ": " << msg.str();
+            VLOG_LP(log_error) << status::err_parse_error << ": " << msg.str();
             ctx.diag()->set(msg.str());
             return status::err_parse_error;
         }
     } catch (shakujo::parser::Parser::Exception &e) {
         std::stringstream msg{};
         msg << "parsing statement failed: " << e.message() << " (" << e.region() << ")";
-        VLOG(log_error) << status::err_parse_error << ": " <<  msg.str();
+        VLOG_LP(log_error) << status::err_parse_error << ": " <<  msg.str();
         ctx.diag()->set(msg.str());
         return status::err_parse_error;
     }
@@ -360,7 +361,7 @@ status prepare(
         for(auto&& e : errors) {
             msg << e.code() << " " << e.message();
         }
-        VLOG(log_error) << status::err_compiler_error << ": " <<  msg.str();
+        VLOG_LP(log_error) << status::err_compiler_error << ": " <<  msg.str();
         ctx.diag()->set(msg.str());
         return status::err_compiler_error;
     }
@@ -578,7 +579,7 @@ status validate_host_variables(
         if(! parameters->find(name)) {
             std::stringstream ss{};
             ss << "Value is not assigned for host variable '" << name << "'";
-            VLOG(log_error) << status::err_unresolved_host_variable << ": " << ss.str();
+            VLOG_LP(log_error) << status::err_unresolved_host_variable << ": " << ss.str();
             ctx.diag()->set(ss.str());
             return status::err_unresolved_host_variable;
         }
@@ -598,7 +599,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     auto target = vars->store().ref();
     for(auto& [name, e] : *parameters) {
         if(! info->exists(name)) {
-            VLOG(log_warning) << "Parameter '" << name << "' is passed but not used by the statement";
+            VLOG_LP(log_warning) << "Parameter '" << name << "' is passed but not used by the statement";
             continue;
         }
         auto os = info->at(name);

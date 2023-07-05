@@ -22,6 +22,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/impl/parameter_set.h>
@@ -129,12 +130,12 @@ loader_result loader::operator()() {
     }
     if (error_aborting_) {
         if (running_statement_count_ == 0) {
-            VLOG(log_error) << "transaction is aborted due to the error during loading";
+            VLOG_LP(log_error) << "transaction is aborted due to the error during loading";
             // currently err_aborted should be used in order to report tx aborted. When abort can be reported
             // in different channel, original status code should be passed. TODO
             status_ = status::err_aborted;
             tx_->abort();
-            VLOG(log_info) << "transaction aborted";
+            VLOG_LP(log_info) << "transaction aborted";
             error_aborted_ = true;
             return loader_result::error;
         }
@@ -164,7 +165,7 @@ loader_result loader::operator()() {
             if(! reader_) {
                 status_ = status::err_io_error;
                 msg_ = "opening parquet file failed.";
-                VLOG(log_error) << msg_;
+                VLOG_LP(log_error) << msg_;
                 error_aborting_ = true;
                 return loader_result::running;
             }
@@ -190,7 +191,7 @@ loader_result loader::operator()() {
                     ss << "load failed with the statement position:" << records_loaded_ << " status:" << st << " with message \"" << msg << "\"";
                     status_ = st;
                     msg_ = ss.str();
-                    VLOG(log_error) << msg_;
+                    VLOG_LP(log_error) << msg_;
                     error_aborting_ = true;
                     return;
                 }

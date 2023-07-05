@@ -19,6 +19,7 @@
 #include <takatori/util/downcast.h>
 #include <takatori/relation/project.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -78,7 +79,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {
-            VLOG(log_error) << "evaluation error: " << result.to<expression::error>();
+            VLOG_LP(log_error) << "evaluation error: " << result.to<expression::error>();
             return details::error_abort(ctx, status::err_expression_evaluation_failure);
         }
         using t = takatori::type::type_kind;
@@ -97,7 +98,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
                 case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), result); break;
                 case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;
                 default:
-                    VLOG(log_error) << "Unsupported type in project operator result:" << cinfo.type_of(v).kind();
+                    VLOG_LP(log_error) << "Unsupported type in project operator result:" << cinfo.type_of(v).kind();
                     return details::error_abort(ctx, status::err_unsupported);
             }
         }

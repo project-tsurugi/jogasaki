@@ -20,6 +20,7 @@
 #include <boost/endian/conversion.hpp>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
 #include "readable_stream.h"
 
@@ -110,7 +111,7 @@ public:
         std::string_view sv{data};
         auto sz = sv.length();
         if(max_len < sz) {
-            VLOG(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
+            VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
             return status::err_type_mismatch;
         }
         do_write(sv.data(), sz, odr);
@@ -138,7 +139,7 @@ public:
         std::string_view sv{data};
         auto sz = sv.length();
         if(max_len < sz) {
-            VLOG(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
+            VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
             return status::err_type_mismatch;
         }
         auto len = static_cast<details::binary_encoding_prefix_type>(sz);

@@ -20,6 +20,7 @@
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -37,7 +38,7 @@ bool deserialize_into_provider(
     utils::storage_metadata_serializer ser{};
     auto deserialized = std::make_shared<yugawara::storage::configurable_provider>();
     if(! ser.deserialize(idef, src, target, overwrite)) {
-        VLOG(log_error) << "deserialization error";
+        VLOG_LP(log_error) << "deserialization error";
         return false;
     }
     return true;
@@ -51,7 +52,7 @@ bool serialize_index(
     idef = {};
     utils::storage_metadata_serializer ser{};
     if(! ser.serialize(i, idef, option)) {
-        VLOG(log_error) << "serialization error";
+        VLOG_LP(log_error) << "serialization error";
         return false;
     }
     return true;

@@ -22,6 +22,7 @@
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/error.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
@@ -269,7 +270,7 @@ status encode_fields(
             }
         } else {
             if(source.is_null(f.nullity_offset_)) {
-                VLOG(log_error) << "Null assigned for non-nullable field.";
+                VLOG_LP(log_error) << "Null assigned for non-nullable field.";
                 return status::err_integrity_constraint_violation;
             }
             if(auto res = kvs::encode(source, f.offset_, f.type_, f.spec_, target); res != status::ok) {

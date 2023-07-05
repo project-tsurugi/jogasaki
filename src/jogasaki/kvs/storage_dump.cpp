@@ -19,6 +19,7 @@
 #include <boost/assert.hpp>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/iterator.h>
 
@@ -65,7 +66,7 @@ public:
                 break;
             }
             if (res != status::ok) {
-                VLOG(log_error) << res << " unexpected error on dump";
+                VLOG_LP(log_error) << res << " unexpected error on dump";
                 eof_ = true;
                 return res;
             }
@@ -160,7 +161,7 @@ static status process_step(database& db, Step& step) {
     auto tx = db.create_transaction();
     auto res = step(*tx);
     if(auto res2 = tx->commit(); res2 != status::ok) {
-        VLOG(log_error) << res2 << " commit failed";
+        VLOG_LP(log_error) << res2 << " commit failed";
     }
     return res;
 }

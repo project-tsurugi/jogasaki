@@ -16,6 +16,7 @@
 #include "encode_key.h"
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/checkpoint_holder.h>
@@ -38,11 +39,11 @@ status encode_key(
             expression::evaluator_context ctx{};
             auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {
-                VLOG(log_error) << "evaluation error: " << a.to<expression::error>();
+                VLOG_LP(log_error) << "evaluation error: " << a.to<expression::error>();
                 return status::err_expression_evaluation_failure;
             }
             if(! utils::convert_any(a, k.type_)) {
-                VLOG(log_error) << "type mismatch: expected " << k.type_ << ", value index is " << a.type_index();
+                VLOG_LP(log_error) << "type mismatch: expected " << k.type_ << ", value index is " << a.type_index();
                 return status::err_expression_evaluation_failure;
             }
             if (k.nullable_) {
@@ -51,7 +52,7 @@ status encode_key(
                 }
             } else {
                 if(a.empty()) {
-                    VLOG(log_error) << "Null assigned for non-nullable field.";
+                    VLOG_LP(log_error) << "Null assigned for non-nullable field.";
                     return status::err_integrity_constraint_violation;
                 }
                 if(auto res = kvs::encode(a, k.type_, k.spec_, s);res != status::ok) {

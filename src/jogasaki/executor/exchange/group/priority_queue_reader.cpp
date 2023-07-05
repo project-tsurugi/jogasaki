@@ -15,6 +15,7 @@
  */
 #include "priority_queue_reader.h"
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 
 namespace jogasaki::executor::exchange::group {
 
@@ -39,7 +40,7 @@ priority_queue_reader::priority_queue_reader(
             }
         }
     }
-    VLOG(log_debug) << "reader initialized to merge " << queue_.size() << " pointer tables";
+    VLOG_LP(log_debug) << "reader initialized to merge " << queue_.size() << " pointer tables";
 }
 
 void priority_queue_reader::pop_queue(bool read) { //NOLINT

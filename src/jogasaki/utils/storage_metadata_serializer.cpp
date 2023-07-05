@@ -43,6 +43,7 @@
 #include <yugawara/variable/criteria.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/kvs/coder.h>
@@ -312,13 +313,13 @@ bool storage_metadata_serializer::serialize(
 ) {
     proto::metadata::storage::IndexDefinition idef{};
     if(! serialize(idx, idef, option)) {
-        VLOG(log_error) << "serialization failed";
+        VLOG_LP(log_error) << "serialization failed";
         return false;
     }
 
     std::stringstream ss{};
     if (! idef.SerializeToOstream(&ss)) {
-        VLOG(log_error) << "serialization failed";
+        VLOG_LP(log_error) << "serialization failed";
         return false;
     }
     out = ss.str();
@@ -459,7 +460,7 @@ yugawara::storage::column_value default_value(
             try {
                 provider.add_sequence(seq);
             } catch (std::invalid_argument& e) {
-                VLOG(log_error) << "default_value: sequence already exists";
+                VLOG_LP(log_error) << "default_value: sequence already exists";
                 return {};
             }
             return column_value{std::move(seq)};
@@ -519,7 +520,7 @@ bool deserialize_table(
             std::move(columns)
         ), overwrite);
     } catch (std::invalid_argument& e) {
-        VLOG(log_error) << "deserialize_table: table already exists";
+        VLOG_LP(log_error) << "deserialize_table: table already exists";
         return false;
     }
     return true;
@@ -572,7 +573,7 @@ bool deserialize_index(
     for(auto&& k : idef.keys()) {
         auto* c = find_column(*tbl, k.name());
         if(c == nullptr) {
-            VLOG(log_error) << "key column '" << k.name() << "' not found in the base table";
+            VLOG_LP(log_error) << "key column '" << k.name() << "' not found in the base table";
             return false;
         }
         keys.emplace_back(*c ,direction(k.direction()));
@@ -582,7 +583,7 @@ bool deserialize_index(
     for(auto&& v : idef.values()) {
         auto* c = find_column(*tbl, v);
         if(c == nullptr) {
-            VLOG(log_error) << "value column '" << v << "' not found in the base table";
+            VLOG_LP(log_error) << "value column '" << v << "' not found in the base table";
             return false;
         }
         values.emplace_back(*c);
@@ -609,7 +610,7 @@ bool storage_metadata_serializer::deserialize(
 ) {
     proto::metadata::storage::IndexDefinition idef{};
     if (! idef.ParseFromArray(src.data(), src.size())) {
-        VLOG(log_error) << "storage metadata deserialize: parse error";
+        VLOG_LP(log_error) << "storage metadata deserialize: parse error";
         return false;
     }
     return deserialize(idef, in, out, overwrite);
@@ -635,7 +636,7 @@ bool storage_metadata_serializer::deserialize(
         try {
             out.add_index(idx, overwrite);
         } catch (std::invalid_argument& e) {
-            VLOG(log_error) << "storage metadata deserialize: index already exists";
+            VLOG_LP(log_error) << "storage metadata deserialize: index already exists";
             return false;
         }
         return true;
@@ -658,7 +659,7 @@ bool storage_metadata_serializer::deserialize(
     try {
         out.add_index(idx, overwrite);
     } catch (std::invalid_argument& e) {
-        VLOG(log_error) << "storage metadata deserialize: index already exists";
+        VLOG_LP(log_error) << "storage metadata deserialize: index already exists";
         return false;
     }
     return true;

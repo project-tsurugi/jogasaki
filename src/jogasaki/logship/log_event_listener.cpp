@@ -30,6 +30,7 @@
 #endif
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/index/index_accessor.h>
 #include <jogasaki/index/field_factory.h>
@@ -93,7 +94,7 @@ log_event_listener::~log_event_listener() = default;
 bool log_event_listener::init(jogasaki::configuration& cfg) {
     auto sz = cfg.max_logging_parallelism();
     if(auto rc = collector_->init(sz); rc != 0) {
-        VLOG(log_error) << collector_->get_error_message(rc);
+        VLOG_LP(log_error) << collector_->get_error_message(rc);
         return false;
     }
     buffers_.resize(sz);
@@ -182,12 +183,12 @@ bool log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRec
     while(it != end) {
         std::string_view k{};
         if(! convert(true, it->key_, it->storage_id_, *buf, k)) {
-            VLOG(log_error) << "error conversion: " << it->key_;
+            VLOG_LP(log_error) << "error conversion: " << it->key_;
             return false;
         }
         std::string_view v{};
         if(! convert(false, it->value_, it->storage_id_, *buf, v)) {
-            VLOG(log_error) << "error conversion: " << it->value_;
+            VLOG_LP(log_error) << "error conversion: " << it->value_;
             return false;
         }
         buf->records().emplace_back(
@@ -201,7 +202,7 @@ bool log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRec
         ++it; //NOLINT
     }
     if(auto rc = collector_->write_message(worker, buf->records()); rc != 0) {
-        VLOG(log_error) << collector_->get_error_message(rc);
+        VLOG_LP(log_error) << collector_->get_error_message(rc);
         return false;
     }
     return true;
@@ -209,7 +210,7 @@ bool log_event_listener::operator()(std::size_t worker, LogRecord* begin, LogRec
 
 bool log_event_listener::deinit() {
     if(auto rc = collector_->finish(); rc != 0) {
-        VLOG(log_error) << collector_->get_error_message(rc);
+        VLOG_LP(log_error) << collector_->get_error_message(rc);
         return false;
     }
     return true;
@@ -223,7 +224,7 @@ log_event_listener::log_event_listener(std::shared_ptr<yugawara::storage::config
 std::unique_ptr<log_event_listener> create_log_event_listener(configuration& cfg, std::shared_ptr<yugawara::storage::configurable_provider> provider) {
     auto ret = std::make_unique<log_event_listener>(std::move(provider));
     if(auto rc = ret->init(cfg); ! rc) {
-        VLOG(log_error) << "creating log_event_listener failed.";
+        VLOG_LP(log_error) << "creating log_event_listener failed.";
         return {};
     }
     return ret;

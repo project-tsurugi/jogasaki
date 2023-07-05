@@ -20,6 +20,7 @@
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -63,7 +64,7 @@ bool create_table::operator()(request_context& context) const {
     auto& provider = *context.storage_provider();
     auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
     if(provider.find_table(c->simple_name())) {
-        VLOG(log_info) << "Table " << c->simple_name() << " already exists.";
+        VLOG_LP(log_info) << "Table " << c->simple_name() << " already exists.";
         context.status_code(status::err_already_exists);
         return false;
     }
@@ -74,7 +75,7 @@ bool create_table::operator()(request_context& context) const {
         executor::sequence::metadata_store ms{*context.transaction()->object()};
         std::size_t def_id{};
         if(! ms.find_next_empty_def_id(def_id)) {
-            VLOG(log_error) << "assigning sequence def id failed";
+            VLOG_LP(log_error) << "assigning sequence def id failed";
             context.status_code(status::err_unknown);
             return false;
         }
@@ -107,7 +108,7 @@ bool create_table::operator()(request_context& context) const {
     sharksfin::StorageOptions options{};
     options.payload(std::move(storage));
     if(auto stg = context.database()->create_storage(c->simple_name(), options);! stg) {
-        VLOG(log_info) << "storage " << c->simple_name() << " already exists ";
+        VLOG_LP(log_info) << "storage " << c->simple_name() << " already exists ";
         // recovery possibly issues CREATE TABLE ddl and in that case storage already exists.
         // TODO when recovery stops using CREATE TABLE, handle this as error
     }

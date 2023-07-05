@@ -22,6 +22,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/error.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include "write_secondary_context.h"
 
@@ -80,7 +81,7 @@ status details::write_secondary_target::encode_and_put(
         return res;
     }
     if(auto res = ctx.stg_->put(tx, k, {}, kvs::put_option::create_or_update); res != status::ok) {
-        VLOG(log_error) << "upserting to secondary index failed: " << res;
+        VLOG_LP(log_error) << "upserting to secondary index failed: " << res;
         return res;
     }
     return status::ok;
@@ -99,9 +100,9 @@ status details::write_secondary_target::encode_and_remove(
     }
     if(auto res = ctx.stg_->remove(tx, k); ! is_ok(res)) {
         if (res == status::not_found) {
-            VLOG(log_warning) << "inconsistent secondary index - entry not found";
+            VLOG_LP(log_warning) << "inconsistent secondary index - entry not found";
         } else {
-            VLOG(log_error) << "removing from secondary index failed: " << res;
+            VLOG_LP(log_error) << "removing from secondary index failed: " << res;
         }
         return res;
     }

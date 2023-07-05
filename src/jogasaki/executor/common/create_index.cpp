@@ -19,6 +19,7 @@
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -44,7 +45,7 @@ bool create_index::operator()(request_context& context) const {
     auto& provider = *context.storage_provider();
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->definition());
     if(provider.find_index(i->simple_name())) {
-        VLOG(log_error) << "Index " << i->simple_name() << " already exists.";
+        VLOG_LP(log_error) << "Index " << i->simple_name() << " already exists.";
         context.status_code(status::err_already_exists);
         return false;
     }
@@ -63,9 +64,9 @@ bool create_index::operator()(request_context& context) const {
     sharksfin::StorageOptions options{};
     options.payload(std::move(storage));
     if(auto stg = context.database()->create_storage(i->simple_name(), options);! stg) {
-        VLOG(log_info) << "storage " << i->simple_name() << " already exists ";
+        VLOG_LP(log_info) << "storage " << i->simple_name() << " already exists ";
         // something went wrong. Storage already exists. // TODO recreate storage with new storage option
-        VLOG(log_warning) << "storage " << i->simple_name() << " already exists ";
+        VLOG_LP(log_warning) << "storage " << i->simple_name() << " already exists ";
         context.status_code(status::err_unknown);
         return false;
     }

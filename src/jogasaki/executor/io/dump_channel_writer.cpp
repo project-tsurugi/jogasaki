@@ -21,6 +21,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/utils/interference_size.h>
@@ -62,7 +63,7 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
         p = p / fn;
         parquet_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
         if (! parquet_writer_) {
-            VLOG(log_error) << "parquet file creation failed on path " << p.string();
+            VLOG_LP(log_error) << "parquet file creation failed on path " << p.string();
             return false;
         }
     }

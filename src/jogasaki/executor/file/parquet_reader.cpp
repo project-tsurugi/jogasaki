@@ -26,6 +26,7 @@
 #include <takatori/util/string_builder.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/utils/decimal.h>
@@ -179,7 +180,7 @@ bool parquet_reader::next(accessor::record_ref& ref) {
                 case meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(reader, type, null, nodata)); break;
                 default: {
-                    VLOG(log_error) << "Parquet reader saw invalid type: " << parameter_meta_->at(i).kind();
+                    VLOG_LP(log_error) << "Parquet reader saw invalid type: " << parameter_meta_->at(i).kind();
                     return false;
                 }
             }
@@ -189,7 +190,7 @@ bool parquet_reader::next(accessor::record_ref& ref) {
             ref.set_null(parameter_meta_->nullity_offset(i), null);
         }
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet reader read error: " << e.what();
+        VLOG_LP(log_error) << "Parquet reader read error: " << e.what();
         return false;
     }
     ++read_count_;
@@ -270,7 +271,7 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
                 c->physical_type() == parquet::Type::type::INT64) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
             }
-            VLOG(log_error) << "unsupported length for int : " << c->type_length() << " physical type:" << c->physical_type();
+            VLOG_LP(log_error) << "unsupported length for int : " << c->type_length() << " physical type:" << c->physical_type();
             break;
         case parquet::LogicalType::Type::DECIMAL: {
             if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
@@ -329,7 +330,7 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
         default:
             break;
     }
-    VLOG(log_debug) << "Column '" << c->name() << "' physical data type '" << c->physical_type() << "' logical data type '" << c->logical_type()->ToString() << "' is not supported and will be ignored.";
+    VLOG_LP(log_debug) << "Column '" << c->name() << "' physical data type '" << c->physical_type() << "' logical data type '" << c->logical_type()->ToString() << "' is not supported and will be ignored.";
     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::undefined>};
 }
 
@@ -393,7 +394,7 @@ bool validate_option(parquet_reader_option const& opt, parquet::FileMetaData& pm
         if(! l.empty_ && l.index_ != npos && static_cast<std::size_t>(pmeta.schema()->num_columns()) <= l.index_) {
             auto msg = string_builder{} <<
                 "Reference column index " << l.index_ << " is out of range" << string_builder::to_string;
-            VLOG(log_error) << msg;
+            VLOG_LP(log_error) << msg;
             return false;
         }
         if(! l.empty_  && l.index_ == npos) {
@@ -407,7 +408,7 @@ bool validate_option(parquet_reader_option const& opt, parquet::FileMetaData& pm
             if(! found) {
                 auto msg = string_builder{} <<
                     "Referenced column name " << l.name_ << " not found" << string_builder::to_string;
-                VLOG(log_error) << msg;
+                VLOG_LP(log_error) << msg;
                 return false;
             }
         }
@@ -463,7 +464,7 @@ bool validate_parameter_mapping(
         if(parquet_meta.at(e).kind() == meta::field_type_kind::undefined) {
             auto msg = string_builder{} <<
                 "Unsupported type - Parquet column '" << (nam.has_value() ? *nam : "") << "'" << string_builder::to_string;
-            VLOG(log_error) << msg;
+            VLOG_LP(log_error) << msg;
             return false;
         }
         if(parameter_meta.at(i).kind() != parquet_meta.at(e).kind()) {
@@ -471,7 +472,7 @@ bool validate_parameter_mapping(
                 "Invalid parameter type - Parquet column '" << (nam.has_value() ? *nam : "") << "' of type " <<
                 parquet_meta.at(e) << " assigned to parameter of type " << parameter_meta.at(i) <<
                 string_builder::to_string;
-            VLOG(log_error) << msg;
+            VLOG_LP(log_error) << msg;
             return false;
         }
     }
@@ -479,12 +480,12 @@ bool validate_parameter_mapping(
 }
 
 void dump_file_metadata(parquet::FileMetaData& pmeta) {
-    VLOG(log_debug) << "*** begin dump metadata for parquet file ***";
-    VLOG(log_debug) << "#columns:" << pmeta.num_columns();
-    VLOG(log_debug) << "size:" << pmeta.size();
-    VLOG(log_debug) << "num_rows:" << pmeta.num_rows();
-    VLOG(log_debug) << "created_by:" << pmeta.created_by();
-    VLOG(log_debug) << "schema name:" << pmeta.schema()->name();
+    VLOG_LP(log_debug) << "*** begin dump metadata for parquet file ***";
+    VLOG_LP(log_debug) << "#columns:" << pmeta.num_columns();
+    VLOG_LP(log_debug) << "size:" << pmeta.size();
+    VLOG_LP(log_debug) << "num_rows:" << pmeta.num_rows();
+    VLOG_LP(log_debug) << "created_by:" << pmeta.created_by();
+    VLOG_LP(log_debug) << "schema name:" << pmeta.schema()->name();
 
     auto rg = pmeta.RowGroup(0);
     for(std::size_t i=0, n=pmeta.schema()->num_columns(); i<n; ++i) {
@@ -498,10 +499,10 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
             ss << parquet::EncodingToString(enc);
         }
         ss << " ]";
-        VLOG(log_debug) << ss.str();
+        VLOG_LP(log_debug) << ss.str();
     }
 
-    VLOG(log_debug) << "*** end dump metadata for parquet file ***";
+    VLOG_LP(log_debug) << "*** end dump metadata for parquet file ***";
 }
 
 bool parquet_reader::init(std::string_view path, parquet_reader_option const* opt) {
@@ -511,7 +512,7 @@ bool parquet_reader::init(std::string_view path, parquet_reader_option const* op
         auto file_metadata = file_reader_->metadata();
         dump_file_metadata(*file_metadata);
         if(file_metadata->num_row_groups() != 1) {
-            VLOG(log_error) << "parquet file format error : more than one row groups";
+            VLOG_LP(log_error) << "parquet file format error : more than one row groups";
             return false;
         }
         if(opt != nullptr) {
@@ -545,7 +546,7 @@ bool parquet_reader::init(std::string_view path, parquet_reader_option const* op
             column_readers_.emplace_back(row_group_reader_->Column(i));
         }
     } catch (std::exception const& e) {
-        VLOG(log_error) << "Parquet reader init error: " << e.what();
+        VLOG_LP(log_error) << "Parquet reader init error: " << e.what();
         return false;
     }
     return true;

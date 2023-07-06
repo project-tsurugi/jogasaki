@@ -112,6 +112,8 @@ void set_allocated_object(sql::response::Response& r, T& p) {
         r.set_allocated_explain(&p);
     } else if constexpr (std::is_same_v<T, sql::response::DescribeTable>) {  //NOLINT
         r.set_allocated_describe_table(&p);
+    } else if constexpr (std::is_same_v<T, sql::response::ListTables>) {  //NOLINT
+        r.set_allocated_list_tables(&p);
     } else {
         static_fail();
     }
@@ -131,6 +133,8 @@ void release_object(sql::response::Response& r, T&) {
         r.release_explain();
     } else if constexpr (std::is_same_v<T, sql::response::DescribeTable>) {  //NOLINT
         r.release_describe_table();
+    } else if constexpr (std::is_same_v<T, sql::response::ListTables>) {  //NOLINT
+        r.release_list_tables();
     } else {
         static_fail();
     }
@@ -341,6 +345,46 @@ inline void success<sql::response::DescribeTable>(
     r.release_describe_table();
 }
 
+template<>
+inline void success<sql::response::ListTables>(
+    tateyama::api::server::response& res,
+    std::vector<std::string> simple_names,
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
+    sql::response::Response r{};
+    sql::response::ListTables lt{};
+    r.set_allocated_list_tables(&lt);
+    sql::response::ListTables_Success success{};
+    lt.set_allocated_success(&success);
+    for(auto&& n : simple_names) {
+        auto* name = success.add_table_path_names();
+        name->add_identifiers()->set_label(n);
+    }
+    res.code(response_code::success);
+    reply(res, r, req_info);
+    lt.release_success();
+    r.release_list_tables();
+}
+
+template<>
+inline void success<sql::response::GetSearchPath>(
+    tateyama::api::server::response& res,
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
+    sql::response::Response r{};
+    sql::response::GetSearchPath sp{};
+    r.set_allocated_get_search_path(&sp);
+    sql::response::GetSearchPath_Success success{};
+    sp.set_allocated_success(&success);
+
+    // currently search path is not in place yet, so return empty success object
+
+    res.code(response_code::success);
+    reply(res, r, req_info);
+    sp.release_success();
+    r.release_get_search_path();
+}
+
 inline void send_body_head(
     tateyama::api::server::response& res,
     channel_info const& info,
@@ -468,6 +512,16 @@ private:
     );
 
     void command_describe_table(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
+    );
+    void command_list_tables(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
+    );
+    void command_get_search_path(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::request_info const& req_info

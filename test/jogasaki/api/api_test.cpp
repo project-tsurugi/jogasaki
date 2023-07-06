@@ -607,4 +607,29 @@ TEST_F(api_test, err_insert_lack_of_values) {
     std::unique_ptr<api::executable_statement> stmt0{};
     ASSERT_EQ(status::err_parse_error, db_->create_executable("INSERT INTO T0(C0, C1) VALUES (1)", stmt0));
 }
+
+bool contains(std::vector<std::string> const& v, std::string_view s) {
+    auto it = v.begin();
+    while(it != v.end()) {
+        if(*it == s) {
+            return true;
+        }
+        ++it;
+    }
+    return false;
+}
+
+TEST_F(api_test, list_tables) {
+    execute_statement("create table TT0 (C0 int)");
+    execute_statement("create table TT1 (C0 int)");
+    execute_statement("create index I0 on TT0 (C0)");
+    execute_statement("create index I1 on TT1 (C0)");
+    std::vector<std::string> simple_names{};
+    ASSERT_EQ(status::ok, db_->list_tables(simple_names));
+    ASSERT_TRUE(contains(simple_names, "TT0"));
+    ASSERT_TRUE(contains(simple_names, "TT1"));
+    ASSERT_FALSE(contains(simple_names, "I0"));
+    ASSERT_FALSE(contains(simple_names, "I1"));
+}
+
 }

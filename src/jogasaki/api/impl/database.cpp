@@ -871,6 +871,13 @@ std::string database::diagnostic_string() {
     return ss.str();
 }
 
+jogasaki::status jogasaki::api::impl::database::list_tables(std::vector<std::string>& out) {
+    tables_->each_relation([&](std::string_view, std::shared_ptr<yugawara::storage::relation const> const& t) {
+        out.emplace_back(t->simple_name());
+    });
+    return status::ok;
+}
+
 }
 
 namespace jogasaki::api {

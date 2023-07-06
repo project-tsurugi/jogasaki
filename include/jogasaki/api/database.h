@@ -414,6 +414,13 @@ public:
      */
     virtual std::string diagnostic_string() = 0;
 
+    /**
+     * @brief list tables simple name
+     * @param out list of table names
+     * @return status::ok if successful
+     * @return any other error otherwise
+     */
+    virtual status list_tables(std::vector<std::string>& out) = 0;
 protected:
     virtual status do_create_transaction(transaction_handle& handle, transaction_option const& option) = 0;
 

@@ -158,6 +158,30 @@ void service::command_prepare(
     }
 }
 
+void service::command_list_tables(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    details::request_info const& req_info
+) {
+    (void) proto_req;
+    std::vector<std::string> simple_names{};
+    if(auto rc = db_->list_tables(simple_names); rc == jogasaki::status::ok) {
+        details::success<sql::response::ListTables>(*res, simple_names, req_info);
+    } else {
+        details::error<sql::response::ListTables>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+    }
+}
+
+void service::command_get_search_path(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    details::request_info const& req_info
+) {
+    (void) proto_req;
+    // return empty for the time being
+    details::success<sql::response::GetSearchPath>(*res, req_info);
+}
+
 template<class T>
 jogasaki::api::transaction_handle validate_transaction_handle(
     T msg,
@@ -610,6 +634,16 @@ bool service::process(
         case sql::request::Request::RequestCase::kDescribeTable: {
             trace_scope_name("cmd-describe_table");  //NOLINT
             command_describe_table(proto_req, res, req_info);
+            break;
+        }
+        case sql::request::Request::RequestCase::kListTables: {
+            trace_scope_name("cmd-list_tables");  //NOLINT
+            command_list_tables(proto_req, res, req_info);
+            break;
+        }
+        case sql::request::Request::RequestCase::kGetSearchPath: {
+            trace_scope_name("cmd-get_search_path");  //NOLINT
+            command_get_search_path(proto_req, res, req_info);
             break;
         }
         default:

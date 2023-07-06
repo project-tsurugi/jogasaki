@@ -516,6 +516,24 @@ inline std::string encode_describe_table(std::string_view name) {
     return s;
 }
 
+inline std::string encode_list_tables() {
+    sql::request::Request r{};
+    auto* lt = r.mutable_listtables();
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_listtables();
+    return s;
+}
+
+inline std::string encode_get_search_path() {
+    sql::request::Request r{};
+    auto* lt = r.mutable_getsearchpath();
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_getsearchpath();
+    return s;
+}
+
 struct column_info {
     column_info(
         std::string_view name,
@@ -561,5 +579,49 @@ inline std::pair<table_info, error> decode_describe_table(std::string_view res) 
         std::move(cols)
     };
     return {info, {}};
+}
+
+inline std::vector<std::string> decode_list_tables(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_list_tables())  {
+        LOG(ERROR) << "**** missing list_tables **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {};
+    }
+    auto& lt = resp.list_tables();
+    if (lt.has_error()) {
+        auto& er = lt.error();
+        return {};
+    }
+
+    std::vector<std::string> ret{};
+    for(auto&& n : lt.success().table_path_names()) {
+        // assuming currently simple name only
+        ret.emplace_back(n.identifiers().Get(0).label());
+    }
+    return ret;
+}
+
+inline std::vector<std::string> decode_get_search_path(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_get_search_path())  {
+        LOG(ERROR) << "**** missing get_search_path **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {};
+    }
+    auto& gsp = resp.get_search_path();
+    if (gsp.has_error()) {
+        auto& er = gsp.error();
+        return {};
+    }
+
+    std::vector<std::string> ret{};
+    for(auto&& n : gsp.success().search_paths()) {
+        // assuming simple name only
+        ret.emplace_back(n.identifiers().Get(0).label());
+    }
+    return ret;
 }
 }

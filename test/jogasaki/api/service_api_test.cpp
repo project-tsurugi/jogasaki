@@ -1495,4 +1495,50 @@ TEST_F(service_api_test, tx_id) {
     LOG(INFO) << "tx_id: " << result.transaction_id_;
 }
 
+bool contains(std::vector<std::string> const& v, std::string_view s) {
+    auto it = v.begin();
+    while(it != v.end()) {
+        if(*it == s) {
+            return true;
+        }
+        ++it;
+    }
+    return false;
+}
+
+TEST_F(service_api_test, list_tables) {
+    execute_statement("create table TT0 (C0 INT)");
+    execute_statement("create table TT1 (C0 INT)");
+    execute_statement("create index II on TT0(C0)");
+    auto s = encode_list_tables();
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::success, res->code_);
+
+    auto result = decode_list_tables(res->body_);
+    ASSERT_TRUE(contains(result, "TT0"));
+    ASSERT_TRUE(contains(result, "TT1"));
+    ASSERT_FALSE(contains(result, "II"));
+}
+
+TEST_F(service_api_test, get_search_path) {
+    auto s = encode_get_search_path();
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::success, res->code_);
+
+    auto result = decode_get_search_path(res->body_);
+    ASSERT_EQ(0, result.size());
+}
+
 }

@@ -209,27 +209,6 @@ static status check_put_record(std::shared_ptr<yugawara::storage::table const> &
     return status::ok;
 }
 
-static sharksfin::StatusCode put_code(sharksfin::StatusCode code, put_option opt, bool exists) {
-    if (code != sharksfin::StatusCode::OK) {
-        return code;
-    }
-    switch (opt) {
-        case put_option::create:
-            if (exists) {
-                return sharksfin::StatusCode::ALREADY_EXISTS;
-            }
-            break;
-        case put_option::update:
-            if (!exists) {
-                return sharksfin::StatusCode::NOT_FOUND;
-            }
-            break;
-        default:
-            break;
-    }
-    return code;
-}
-
 status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
     std::shared_ptr<yugawara::storage::table const> table{};
@@ -256,15 +235,10 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
     if (auto s = get_storage(table_name, storage); s != status::ok) {
         return s;
     }
-    bool exists {};
-    if (opt != put_option::create_or_update) {
-        auto code = sharksfin::content_check_exist(tx_handle_, storage, key_slice);
-        exists = code == sharksfin::StatusCode::OK;
-    }
     auto option = convert(opt);
     auto code = sharksfin::content_put(tx_handle_, storage, key_slice, value_slice, option);
-    code = put_code(code, opt, exists);
-    return convert(code);
+    auto code2 = sharksfin::storage_dispose(storage);
+    return convert(code, code2);
 }
 
 static status check_primary_key(std::shared_ptr<yugawara::storage::table const> &table,
@@ -360,7 +334,8 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
     if (code == sharksfin::StatusCode::OK) {
         make_record(table, primary_key, value_slice, record);
     }
-    return convert(code);
+    auto code2 = sharksfin::storage_dispose(storage);
+    return convert(code, code2);
 }
 
 status transaction::remove(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
@@ -387,14 +362,16 @@ status transaction::remove(std::string_view table_name, tateyama::proto::kvs::da
         auto code = sharksfin::content_check_exist(tx_handle_, storage, key_slice);
         if (code != sharksfin::StatusCode::OK) {
             // NOT_FOUND, or error
-            return convert(code);
+            auto code2 = sharksfin::storage_dispose(storage);
+            return convert(code, code2);
         }
     }
     auto code = sharksfin::content_delete(tx_handle_, storage, key_slice);
     if (opt == remove_option::instant && code == sharksfin::StatusCode::NOT_FOUND) {
         code = sharksfin::StatusCode::OK;
     }
-    return convert(code);
+    auto code2 = sharksfin::storage_dispose(storage);
+    return convert(code, code2);
 }
 
 }

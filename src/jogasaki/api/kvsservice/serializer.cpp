@@ -108,7 +108,7 @@ status serialize(std::vector<tateyama::proto::kvs::data::Value const*> &values, 
 }
 
 void deserialize(takatori::type::data const &data, takatori::util::const_buffer_view &view,
-                   const char *iter, tateyama::proto::kvs::data::Value *value) {
+                 takatori::util::buffer_view::const_iterator &iter, tateyama::proto::kvs::data::Value *value) {
     switch (data.kind()) {
         case takatori::type::type_kind::int4:
             value->set_int4_value(jogasaki::serializer::read_int(iter, view.end()));

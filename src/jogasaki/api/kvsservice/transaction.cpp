@@ -307,7 +307,7 @@ static void add_column(std::string_view col_name,
 }
 
 static void add_column(yugawara::storage::column const &column,
-                       cbuffer &view, const char *iter,
+                       cbuffer &view, takatori::util::buffer_view::const_iterator &iter,
                        tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
     auto new_value = new tateyama::proto::kvs::data::Value();
@@ -321,7 +321,7 @@ static void make_record(std::shared_ptr<yugawara::storage::table const> &table,
                 tateyama::proto::kvs::data::Record &record) {
     auto input = value_slice.to_string_view();
     cbuffer view { input.data(), input.size() };
-    auto const* iter = view.begin();
+    takatori::util::buffer_view::const_iterator iter = view.cbegin();
     //
     mapped_record m_key {primary_key};
     for (auto &col : table->columns()) {

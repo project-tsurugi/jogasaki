@@ -29,8 +29,8 @@ namespace jogasaki::api::kvsservice {
 status serialize(std::vector<tateyama::proto::kvs::data::Value const*> &values, std::string &results);
 
 void deserialize(takatori::type::data const &data,
-                   takatori::util::const_buffer_view &view,
-                   const char *iter,
-                   tateyama::proto::kvs::data::Value *value);
+                 takatori::util::const_buffer_view &view,
+                 takatori::util::buffer_view::const_iterator &iter,
+                 tateyama::proto::kvs::data::Value *value);
 
 }

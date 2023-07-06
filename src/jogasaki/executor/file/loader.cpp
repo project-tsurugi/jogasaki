@@ -191,7 +191,7 @@ loader_result loader::operator()() {
                     ss << "load failed with the statement position:" << records_loaded_ << " status:" << st << " with message \"" << msg << "\"";
                     status_ = st;
                     msg_ = ss.str();
-                    VLOG_LP(log_error) << msg_;
+                    VLOG_LP(log_error) << msg_;  //NOLINT
                     error_aborting_ = true;
                     return;
                 }

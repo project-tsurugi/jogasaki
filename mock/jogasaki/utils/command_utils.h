@@ -519,6 +519,7 @@ inline std::string encode_describe_table(std::string_view name) {
 inline std::string encode_list_tables() {
     sql::request::Request r{};
     auto* lt = r.mutable_listtables();
+    (void) lt;
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_listtables();
@@ -528,6 +529,7 @@ inline std::string encode_list_tables() {
 inline std::string encode_get_search_path() {
     sql::request::Request r{};
     auto* lt = r.mutable_getsearchpath();
+    (void) lt;
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_getsearchpath();
@@ -591,7 +593,6 @@ inline std::vector<std::string> decode_list_tables(std::string_view res) {
     }
     auto& lt = resp.list_tables();
     if (lt.has_error()) {
-        auto& er = lt.error();
         return {};
     }
 
@@ -613,7 +614,6 @@ inline std::vector<std::string> decode_get_search_path(std::string_view res) {
     }
     auto& gsp = resp.get_search_path();
     if (gsp.has_error()) {
-        auto& er = gsp.error();
         return {};
     }
 

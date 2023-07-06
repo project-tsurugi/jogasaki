@@ -348,7 +348,7 @@ inline void success<sql::response::DescribeTable>(
 template<>
 inline void success<sql::response::ListTables>(
     tateyama::api::server::response& res,
-    std::vector<std::string> simple_names,
+    std::vector<std::string> simple_names,  //NOLINT(performance-unnecessary-value-param)
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
     sql::response::Response r{};

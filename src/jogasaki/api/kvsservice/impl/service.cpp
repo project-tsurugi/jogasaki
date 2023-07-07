@@ -345,9 +345,11 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
     }
     switch (status) {
         case status::ok:
-        case status::not_found: //opt==update && newly put successfully
-        case status::already_exists: // opt==create && updated successfully
             success_put(1, res);
+            break;
+        case status::already_exists: // opt==create && didn't create
+        case status::not_found: // opt==update && didn't update
+            success_put(0, res);
             break;
         default:
             error_put(status, res);

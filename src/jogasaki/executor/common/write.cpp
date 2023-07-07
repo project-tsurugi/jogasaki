@@ -70,6 +70,12 @@ model::statement_kind write::kind() const noexcept {
     return model::statement_kind::write;
 }
 
+void abort_transaction(transaction_context& tx) {
+    if (auto res = tx.abort(); res != status::ok) {
+        throw_exception(std::logic_error{"abort failed unexpectedly"});
+    }
+}
+
 bool write::operator()(request_context& context) const {
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
@@ -77,6 +83,8 @@ bool write::operator()(request_context& context) const {
     std::vector<details::write_target> targets{};
     if(auto res = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(),
             info_, *resource_, host_variables_, targets); res != status::ok) {
+        // errors from create_targets() are in SQL layer, so we need to abort tx manually
+        abort_transaction(*tx);
         context.status_code(res);
         return false;
     }
@@ -105,10 +113,7 @@ bool write::operator()(request_context& context) const {
                         // integrity violation should be handled in SQL layer and forces transaction abort
                         // status::already_exists is an internal code, raise it as constraint violation
                         res = status::err_unique_constraint_violation;
-                        if(auto res2 = tx->abort(); res2 != status::ok) {
-                            // abort should be always successful
-                            throw_exception(std::logic_error{""});
-                        }
+                        abort_transaction(*tx);
                     } else {
                         // write_kind::insert_skip
                         // duplicated key is simply ignored

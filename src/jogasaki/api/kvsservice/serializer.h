@@ -23,14 +23,16 @@
 #include <jogasaki/serializer/value_input.h>
 #include <takatori/type/data.h>
 #include <takatori/type/type_kind.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 
 namespace jogasaki::api::kvsservice {
 
-status serialize(std::vector<tateyama::proto::kvs::data::Value const*> &values, std::string &results);
+status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable,
+                 std::vector<tateyama::proto::kvs::data::Value const*> &values,
+                 jogasaki::kvs::writable_stream &results);
 
-void deserialize(takatori::type::data const &data,
-                 takatori::util::const_buffer_view &view,
-                 takatori::util::buffer_view::const_iterator &iter,
-                 tateyama::proto::kvs::data::Value *value);
+status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::data const &data,
+                   jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value);
 
 }

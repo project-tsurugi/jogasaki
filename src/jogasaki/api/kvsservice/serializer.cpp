@@ -15,73 +15,82 @@
  */
 
 #include "serializer.h"
-#include <jogasaki/serializer/value_output.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <takatori/util/exception.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/data/aligned_buffer.h>
 
 using buffer = takatori::util::buffer_view;
 using takatori::util::throw_exception;
+using kind = jogasaki::meta::field_type_kind;
 
 namespace jogasaki::api::kvsservice {
 
-static std::size_t calc_max_bufsize(std::vector<tateyama::proto::kvs::data::Value const*> &values) {
-    std::size_t len = 0;
+status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vector<tateyama::proto::kvs::data::Value const*> &values,
+                 jogasaki::kvs::writable_stream &results) {
     for (auto value: values) {
-        len += 1; // for type data
+        jogasaki::status s{};
         switch (value->value_case()) {
-            case tateyama::proto::kvs::data::Value::ValueCase::kBooleanValue:
-                len += 4;
+            case tateyama::proto::kvs::data::Value::ValueCase::kInt4Value: {
+                data::any data{std::in_place_type<std::int32_t>, value->int4_value()};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::int4>},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::int4>},
+                                              spec, results);
+                }
                 break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kInt4Value:
-                len += 4;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kInt8Value: {
+                data::any data{std::in_place_type<std::int64_t>, value->int8_value()};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::int8>},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::int8>},
+                                              spec, results);
+                }
                 break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kInt8Value:
-                len += 8;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kFloat4Value: {
+                data::any data{std::in_place_type<std::float_t>, value->float4_value()};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::float4>},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::float4>},
+                                              spec, results);
+                }
                 break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kFloat4Value:
-                len += 4;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kFloat8Value: {
+                data::any data{std::in_place_type<std::double_t>, value->float8_value()};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::float8>},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::float8>},
+                                              spec, results);
+                }
                 break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kFloat8Value:
-                len += 8;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kCharacterValue: {
+                std::string_view view = value->character_value();
+                accessor::text txt {view.data(), view.size()};
+                data::any data{std::in_place_type<accessor::text>, txt};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::character>},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::character>},
+                                              spec, results);
+                }
                 break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kCharacterValue:
-                // string length (8 bytes) + string data
-                len += 8 + value->character_value().size();
-                break;
-            default:
-                takatori::util::throw_exception(std::logic_error{"not implemented: unknown value_case"});
-                break;
-        }
-    }
-    len = ((len + 63) / 64) * 64;
-    return len;
-}
-
-status serialize(std::vector<tateyama::proto::kvs::data::Value const*> &values, std::string &results) {
-    results.resize(calc_max_bufsize(values));
-    buffer buf { results.data(), results.size() };
-    buffer::iterator iter = buf.begin();
-    for (auto value : values) {
-        bool b = false;
-        switch (value->value_case()) {
-            case tateyama::proto::kvs::data::Value::ValueCase::kBooleanValue:
-                b = jogasaki::serializer::write_int(value->boolean_value() ? 1 : 0, iter, buf.end());
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kInt4Value:
-                b = jogasaki::serializer::write_int(value->int4_value(), iter, buf.end());
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kInt8Value:
-                b = jogasaki::serializer::write_int(value->int8_value(), iter, buf.end());
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kFloat4Value:
-                b = jogasaki::serializer::write_float4(value->float4_value(), iter, buf.end());
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kFloat8Value:
-                b = jogasaki::serializer::write_float8(value->float8_value(), iter, buf.end());
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kCharacterValue:
-                b = jogasaki::serializer::write_character(value->character_value(), iter, buf.end());
-                break;
+            }
                 /*
+            case tateyama::proto::kvs::data::Value::ValueCase::kBooleanValue:
             case tateyama::proto::kvs::data::Value::ValueCase::kDecimalValue:
             case tateyama::proto::kvs::data::Value::ValueCase::kOctetValue:
             case tateyama::proto::kvs::data::Value::ValueCase::kDateValue:
@@ -95,42 +104,92 @@ status serialize(std::vector<tateyama::proto::kvs::data::Value const*> &values, 
                 takatori::util::throw_exception(std::logic_error{"not implemented: unknown value_case"});
                 break;
         }
-        if (!b) {
-            throw std::runtime_error("underflow");
+        if (s != jogasaki::status::ok) {
+            return status::err_invalid_argument; // FIXME
         }
     }
-    // TODO necessary?
-//    if (!jogasaki::serializer::write_end_of_contents(iter, buf.end())) {
-//        takatori::util::throw_exception(std::logic_error{"write_end_of_contents failed"});
-//    }
-    results.resize(std::distance(buf.begin(), iter));
     return status::ok;
 }
 
-void deserialize(takatori::type::data const &data, takatori::util::const_buffer_view &view,
-                 takatori::util::buffer_view::const_iterator &iter, tateyama::proto::kvs::data::Value *value) {
+status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::data const &data, jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
+    data::any dest{};
+    jogasaki::status s{};
     switch (data.kind()) {
         case takatori::type::type_kind::int4:
-            value->set_int4_value(jogasaki::serializer::read_int(iter, view.end()));
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::int4>},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::int4>},
+                                                   spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument; // FIXME
+            }
+            value->set_int4_value(dest.to<std::int32_t>());
             break;
         case takatori::type::type_kind::int8:
-            value->set_int8_value(jogasaki::serializer::read_int(iter, view.end()));
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::int8>},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::int8>},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument; // FIXME
+            }
+            value->set_int8_value(dest.to<std::int64_t>());
             break;
         case takatori::type::type_kind::float4:
-            value->set_float4_value(jogasaki::serializer::read_float4(iter, view.end()));
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::float4>},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::float4>},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument; // FIXME
+            }
+            value->set_float4_value(dest.to<std::float_t>());
             break;
         case takatori::type::type_kind::float8:
-            value->set_float8_value(jogasaki::serializer::read_float8(iter, view.end()));
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::float8>},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::float8>},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument; // FIXME
+            }
+            value->set_float8_value(dest.to<std::double_t>());
             break;
         case takatori::type::type_kind::character: {
-            auto s = jogasaki::serializer::read_character(iter, view.end());
-            value->set_character_value(s.data(), s.size());
+            jogasaki::memory::page_pool pool{};
+            jogasaki::memory::monotonic_paged_memory_resource mem{&pool}; // TODO correct?
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::character>},
+                                                   spec, dest, &mem);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::character>},
+                                          spec, dest, &mem);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument; // FIXME
+            }
+            auto txt = dest.to<accessor::text>();
+            auto sv = static_cast<std::string_view>(txt);
+            value->set_character_value(sv.data(), sv.size());
             break;
         }
         default:
             takatori::util::throw_exception(std::logic_error{"not implemented: unknown value_case"});
             break;
     }
+    return status::ok;
 }
 
 }

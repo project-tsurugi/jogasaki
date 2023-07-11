@@ -16,7 +16,7 @@
 
 #include "serializer.h"
 #include <jogasaki/memory/page_pool.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <takatori/util/exception.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/aligned_buffer.h>
@@ -25,7 +25,19 @@ using buffer = takatori::util::buffer_view;
 using takatori::util::throw_exception;
 using kind = jogasaki::meta::field_type_kind;
 
+using takatori::util::throw_exception;
+
 namespace jogasaki::api::kvsservice {
+
+std::size_t get_bufsize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vector<tateyama::proto::kvs::data::Value const*> &values) {
+    // NOTE empty_stream is created just for getting enough buffer size
+    jogasaki::kvs::writable_stream empty_stream{nullptr, 0, true};
+    auto s = serialize(spec, nullable, values, empty_stream);
+    if (s != status::ok) {
+        throw_exception(std::logic_error{"serialize with empty buffer failed"});
+    }
+    return empty_stream.size();
+}
 
 status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vector<tateyama::proto::kvs::data::Value const*> &values,
                  jogasaki::kvs::writable_stream &results) {
@@ -105,7 +117,7 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vec
                 break;
         }
         if (s != jogasaki::status::ok) {
-            return status::err_invalid_argument; // FIXME
+            return status::err_invalid_argument;
         }
     }
     return status::ok;
@@ -124,7 +136,7 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
                                                    spec, dest);
             }
             if (s != jogasaki::status::ok) {
-                return status::err_invalid_argument; // FIXME
+                return status::err_invalid_argument;
             }
             value->set_int4_value(dest.to<std::int32_t>());
             break;
@@ -137,7 +149,7 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
                                           spec, dest);
             }
             if (s != jogasaki::status::ok) {
-                return status::err_invalid_argument; // FIXME
+                return status::err_invalid_argument;
             }
             value->set_int8_value(dest.to<std::int64_t>());
             break;
@@ -150,7 +162,7 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
                                           spec, dest);
             }
             if (s != jogasaki::status::ok) {
-                return status::err_invalid_argument; // FIXME
+                return status::err_invalid_argument;
             }
             value->set_float4_value(dest.to<std::float_t>());
             break;
@@ -163,13 +175,13 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
                                           spec, dest);
             }
             if (s != jogasaki::status::ok) {
-                return status::err_invalid_argument; // FIXME
+                return status::err_invalid_argument;
             }
             value->set_float8_value(dest.to<std::double_t>());
             break;
         case takatori::type::type_kind::character: {
             jogasaki::memory::page_pool pool{};
-            jogasaki::memory::monotonic_paged_memory_resource mem{&pool}; // TODO correct?
+            jogasaki::memory::lifo_paged_memory_resource mem{&pool};
             if (nullable) {
                 s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::character>},
                                                    spec, dest, &mem);
@@ -178,7 +190,7 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
                                           spec, dest, &mem);
             }
             if (s != jogasaki::status::ok) {
-                return status::err_invalid_argument; // FIXME
+                return status::err_invalid_argument;
             }
             auto txt = dest.to<accessor::text>();
             auto sv = static_cast<std::string_view>(txt);

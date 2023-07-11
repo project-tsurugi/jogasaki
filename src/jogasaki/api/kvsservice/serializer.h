@@ -28,6 +28,9 @@
 
 namespace jogasaki::api::kvsservice {
 
+std::size_t get_bufsize(jogasaki::kvs::coding_spec const &spec, bool nullable,
+                        std::vector<tateyama::proto::kvs::data::Value const*> &values);
+
 status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable,
                  std::vector<tateyama::proto::kvs::data::Value const*> &values,
                  jogasaki::kvs::writable_stream &results);

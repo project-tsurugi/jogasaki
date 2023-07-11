@@ -209,37 +209,10 @@ static status check_put_record(std::shared_ptr<yugawara::storage::table const> &
     return status::ok;
 }
 
-static std::size_t calc_max_bufsize(std::vector<tateyama::proto::kvs::data::Value const*> &values) {
-    std::size_t len = 0;
-    for (auto value: values) {
-        len += 1; // for type data
-        switch (value->value_case()) {
-            case tateyama::proto::kvs::data::Value::ValueCase::kBooleanValue:
-                len += 4;
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kInt4Value:
-                len += 4;
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kInt8Value:
-                len += 8;
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kFloat4Value:
-                len += 4;
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kFloat8Value:
-                len += 8;
-                break;
-            case tateyama::proto::kvs::data::Value::ValueCase::kCharacterValue:
-                // string length (8 bytes) + string data
-                len += 8 + value->character_value().size();
-                break;
-            default:
-                takatori::util::throw_exception(std::logic_error{"not implemented: unknown value_case"});
-                break;
-        }
-    }
-    return len;
-}
+constexpr jogasaki::kvs::coding_spec spec_primary_key = jogasaki::kvs::spec_key_ascending;
+constexpr jogasaki::kvs::coding_spec spec_value = jogasaki::kvs::spec_value;
+constexpr bool nullable_primary_key = false;
+constexpr bool nullable_value = true;
 
 status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
@@ -253,14 +226,16 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
         s != status::ok) {
         return s;
     }
-    jogasaki::data::aligned_buffer key_buffer{calc_max_bufsize(key_values)};
+    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, key_values);
+    jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(jogasaki::kvs::spec_key_ascending, false, key_values, key_stream); s != status::ok) {
+    if (auto s = serialize(spec_primary_key, nullable_primary_key, key_values, key_stream); s != status::ok) {
         return s;
     }
-    jogasaki::data::aligned_buffer value_buffer{calc_max_bufsize(value_values)};
+    auto value_size = get_bufsize(spec_value, nullable_value, value_values);
+    jogasaki::data::aligned_buffer value_buffer{value_size};
     jogasaki::kvs::writable_stream value_stream{value_buffer.data(), value_buffer.capacity()};
-    if (auto s = serialize(jogasaki::kvs::spec_value, true, value_values, value_stream); s != status::ok) {
+    if (auto s = serialize(spec_value, nullable_value, value_values, value_stream); s != status::ok) {
         return s;
     }
     sharksfin::Slice key_slice {key_stream.data(), key_stream.size()};
@@ -314,16 +289,21 @@ static void add_column(std::string_view col_name,
     record.mutable_values()->AddAllocated(new_value);
 }
 
-static void add_column(yugawara::storage::column const &column,
+static status add_column(yugawara::storage::column const &column,
                        jogasaki::kvs::readable_stream &stream,
                        tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
     auto new_value = new tateyama::proto::kvs::data::Value();
-    deserialize(jogasaki::kvs::spec_value, true, column.type(), stream, new_value);
+    if (auto s = deserialize(jogasaki::kvs::spec_value, true, column.type(), stream, new_value);
+        s != status::ok) {
+        delete new_value;
+        return s;
+    }
     record.mutable_values()->AddAllocated(new_value);
+    return status::ok;
 }
 
-static void make_record(std::shared_ptr<yugawara::storage::table const> &table,
+static status make_record(std::shared_ptr<yugawara::storage::table const> &table,
                     tateyama::proto::kvs::data::Record const &primary_key,
                 sharksfin::Slice const &value_slice,
                 tateyama::proto::kvs::data::Record &record) {
@@ -336,10 +316,12 @@ static void make_record(std::shared_ptr<yugawara::storage::table const> &table,
         auto value = m_key.get_value(col_name);
         if (value != nullptr) {
             add_column(col_name, value, record);
-        } else {
-            add_column(col, stream, record);
+        } else if (auto s = add_column(col, stream, record);
+            s != status::ok) {
+            return s;
         }
     }
+    return status::ok;
 }
 
 status transaction::get(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
@@ -353,9 +335,10 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
         s != status::ok) {
         return s;
     }
-    jogasaki::data::aligned_buffer key_buffer{calc_max_bufsize(key_values)};
+    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, key_values);
+    jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(jogasaki::kvs::spec_key_ascending, false, key_values, key_stream); s != status::ok) {
+    if (auto s = serialize(spec_primary_key, nullable_primary_key, key_values, key_stream); s != status::ok) {
         return s;
     }
     sharksfin::StorageHandle storage{};
@@ -365,11 +348,11 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
     sharksfin::Slice key_slice {key_stream.data(), key_stream.size()};
     sharksfin::Slice value_slice{};
     auto code = sharksfin::content_get(tx_handle_, storage, key_slice, &value_slice);
-    if (code == sharksfin::StatusCode::OK) {
-        make_record(table, primary_key, value_slice, record);
-    }
     auto code2 = sharksfin::storage_dispose(storage);
-    return convert(code, code2);
+    if (code != sharksfin::StatusCode::OK || code2 != sharksfin::StatusCode::OK) {
+        return convert(code, code2);
+    }
+    return make_record(table, primary_key, value_slice, record);
 }
 
 status transaction::remove(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
@@ -383,9 +366,10 @@ status transaction::remove(std::string_view table_name, tateyama::proto::kvs::da
             s != status::ok) {
         return s;
     }
-    jogasaki::data::aligned_buffer key_buffer{calc_max_bufsize(key_values)};
+    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, key_values);
+    jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(jogasaki::kvs::spec_key_ascending, false, key_values, key_stream); s != status::ok) {
+    if (auto s = serialize(spec_primary_key, nullable_primary_key, key_values, key_stream); s != status::ok) {
         return s;
     }
     sharksfin::StorageHandle storage{};

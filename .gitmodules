@@ -4,9 +4,6 @@
 [submodule "third_party/mizugaki"]
 	path = third_party/mizugaki
 	url = git@github.com:project-tsurugi/mizugaki.git
-[submodule "third_party/performance-tools"]
-	path = third_party/performance-tools
-	url = git@github.com:project-tsurugi/sandbox-performance-tools.git
 [submodule "third_party/concurrentqueue"]
 	path = third_party/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue.git

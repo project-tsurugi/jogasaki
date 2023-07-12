@@ -20,6 +20,11 @@
 
 namespace jogasaki::api::kvsservice {
 
+/**
+ * @brief convert sharksfin::StatusCode to jogasaki::api::kvsservice::status
+ * @param code the code of sharksfin::StatusCode
+ * @return the value of kvsservice::status corresponding to the code
+ */
 inline status convert(sharksfin::StatusCode code) {
     switch (code) {
         case sharksfin::StatusCode::OK:
@@ -71,6 +76,13 @@ inline status convert(sharksfin::StatusCode code) {
     }
 }
 
+/**
+ * @brief convert two sharksfin::StatusCode to a jogasaki::api::kvsservice::status
+ * @param code1 the code of sharksfin::StatusCode
+ * @param code2 the code of sharksfin::StatusCode
+ * @return if code1 is not StatusCode::OK, kvsservice::status corresponding to the code1
+ * @return otherwise, kvsservice::status corresponding to the code2
+ */
 inline status convert(sharksfin::StatusCode code1, sharksfin::StatusCode code2) {
     if (status s = convert(code1); s != status::ok) {
         return s;
@@ -78,6 +90,13 @@ inline status convert(sharksfin::StatusCode code1, sharksfin::StatusCode code2) 
     return convert(code2);
 }
 
+/**
+ * @brief convert two jogasaki::api::kvsservice::status to a jogasaki::api::kvsservice::status
+ * @param s1 the status of jogasaki::api::kvsservice::status
+ * @param s2 the status jogasaki::api::kvsservice::status
+ * @return if s1 is not status::ok, returns s1
+ * @return otherwise, returns s2
+ */
 inline status convert(status s1, status s2) {
     if (s1 != status::ok) {
         return s1;
@@ -85,6 +104,11 @@ inline status convert(status s1, status s2) {
     return s2;
 }
 
+/**
+ * @brief convert sharksfin::TransactionState::StateKind to jogasaki::api::kvsservice::transaction_state::state_kind
+ * @param kind the value of sharksfin::TransactionState::StateKind
+ * @return the value of transaction_state::state_kind corresponding to the kind
+ */
 inline transaction_state::state_kind convert(sharksfin::TransactionState::StateKind kind) {
     switch (kind) {
         case sharksfin::TransactionState::StateKind::UNKNOWN:
@@ -106,6 +130,11 @@ inline transaction_state::state_kind convert(sharksfin::TransactionState::StateK
     }
 }
 
+/**
+ * @brief convert jogasaki::api::kvsservice::put_option to sharksfin::PutOperation
+ * @param opt the value of jogasaki::api::kvsservice::put_option
+ * @return the value of sharksfin::PutOperation corresponding to the opt
+ */
 inline sharksfin::PutOperation convert(put_option opt) {
     switch (opt) {
         case put_option::create_or_update:

@@ -28,49 +28,9 @@
 #include <tateyama/proto/kvs/request.pb.h>
 #include <tateyama/proto/kvs/response.pb.h>
 
+#include "test_utils.h"
+
 namespace jogasaki::api::kvsservice {
-
-static constexpr std::string_view default_configuration {  // NOLINT
-        "[sql]\n"
-        "thread_pool_size=5\n"
-        "lazy_worker=false\n"
-        "enable_index_join=false\n"
-        "stealing_enabled=true\n"
-        "default_partitions=5\n"
-        "stealing_wait=1\n"
-        "task_polling_wait=0\n"
-        "tasked_write=true\n"
-        "lightweight_job_level=0\n"
-        "enable_hybrid_scheduler=true\n"
-
-        "[ipc_endpoint]\n"
-        "database_name=tsurugi\n"
-        "threads=104\n"
-        "datachannel_buffer_size=64\n"
-
-        "[stream_endpoint]\n"
-        "port=12345\n"
-        "threads=104\n"
-
-        "[fdw]\n"
-        "name=tsurugi\n"
-        "threads=104\n"
-
-        "[datastore]\n"
-        "log_location=\n"
-        "logging_max_parallelism=112\n"
-
-        "[cc]\n"
-        "epoch_duration=40000\n"
-
-        "[system]\n"
-        "pid_directory = /tmp\n"
-
-};
-
-std::string_view default_property_for_bootstrap() {
-    return default_configuration;
-}
 
 std::int64_t now_nsec() noexcept {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -259,10 +219,8 @@ private:
  *  --gtest_also_run_disabled_tests --gtest_filter=kvsservice_bench_test.DISABLED_tx
  */
 TEST_F(kvsservice_bench_test, DISABLED_tx) {
-
-    auto conf = tateyama::api::configuration::create_configuration(
-            "/work/tsurugidb/tsurugi.ini", default_property_for_bootstrap());
-    tateyama::framework::server sv {tateyama::framework::boot_mode::database_server, conf};
+    tateyama::framework::server sv {tateyama::framework::boot_mode::database_server,
+                                    default_configuration()};
     tateyama::framework::add_core_components(sv);
     sv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
     // sv.add_service(std::make_shared<jogasaki::api::service::bridge>());

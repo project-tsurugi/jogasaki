@@ -18,6 +18,8 @@
 
 #include <tateyama/framework/server.h>
 
+#include <jogasaki/api/service/bridge.h>
+#include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/api/kvsservice/service.h>
 #include <jogasaki/api/kvsservice/resource.h>
 
@@ -26,23 +28,24 @@
 namespace jogasaki::api::kvsservice {
 
 class mock_server_test: public ::testing::Test {
-public:
-    void SetUp() override {
-    }
+    public:
+        void SetUp() override {
+        }
 
-    void TearDown() override {
-    }
-};
+        void TearDown() override {
+        }
+    };
 
-TEST_F(mock_server_test, DISABLED_start_shutdown) {
+TEST_F(mock_server_test, start_shutdown) {
     tateyama::framework::server sv {tateyama::framework::boot_mode::database_server,
                                     default_configuration()};
     tateyama::framework::add_core_components(sv);
+    sv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
+    sv.add_service(std::make_shared<jogasaki::api::service::bridge>());
     sv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
     sv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
     EXPECT_TRUE(sv.setup());
     EXPECT_TRUE(sv.start());
-    std::this_thread::sleep_for(std::chrono::minutes(10)); // FIXME
     EXPECT_TRUE(sv.shutdown());
 }
 

@@ -60,13 +60,13 @@ bool equal_type(takatori::type::type_kind kind,
     }
 }
 
-status get_table(jogasaki::api::impl::database* db_,
+status get_table(jogasaki::api::impl::database* db,
                         std::string_view table_name,
                         std::shared_ptr<yugawara::storage::table const> &table) {
     if (table_name.empty()) {
         return status::err_invalid_argument;
     }
-    table = db_->tables()->find_table(table_name);
+    table = db->tables()->find_table(table_name);
     if (table != nullptr) {
         return status::ok;
     }
@@ -102,8 +102,9 @@ status check_put_record(std::shared_ptr<yugawara::storage::table const> &table,
     auto rec_size = static_cast<decltype(col_size)>(record.names_size());
     if (rec_size < col_size) {
         return status::err_incomplete_columns;
-    } else if (rec_size > col_size) {
-        return status::err_mismatch_key;
+    }
+    if (rec_size > col_size) {
+        return status::err_invalid_argument;
     }
     std::unordered_set<std::string_view> primary_key_names{};
     if (auto s = make_primary_key_names(table, primary_key_names);
@@ -174,7 +175,7 @@ status add_column(yugawara::storage::column const &column,
                          tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
     auto new_value = new tateyama::proto::kvs::data::Value();
-    if (auto s = deserialize(jogasaki::kvs::spec_value, true, column.type(), stream, new_value);
+    if (auto s = deserialize(spec_primary_key, nullable_primary_key, column.type(), stream, new_value);
             s != status::ok) {
         delete new_value;
         return s;

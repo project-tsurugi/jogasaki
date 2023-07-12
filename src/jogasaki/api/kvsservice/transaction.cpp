@@ -98,11 +98,6 @@ status transaction::get_storage(std::string_view name, sharksfin::StorageHandle 
     return convert(code);
 }
 
-constexpr jogasaki::kvs::coding_spec spec_primary_key = jogasaki::kvs::spec_key_ascending;
-constexpr jogasaki::kvs::coding_spec spec_value = jogasaki::kvs::spec_value;
-constexpr bool nullable_primary_key = false;
-constexpr bool nullable_value = true;
-
 status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
     std::shared_ptr<yugawara::storage::table const> table{};

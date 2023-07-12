@@ -20,11 +20,25 @@
 
 namespace jogasaki::api::kvsservice {
 
+/**
+ * @brief the wrapper to get a column value by a column name.
+ */
 class mapped_record {
 public:
     mapped_record() = default;
 
+    /**
+     * @brief create new object
+     * @param record the record
+     */
     explicit mapped_record(tateyama::proto::kvs::data::Record const &record);
+
+    /**
+     * @brief get the value of specified column name
+     * @param column the name of the column
+     * @return the value of the specified column
+     * @return nullptr if the column not found
+     */
     const tateyama::proto::kvs::data::Value *get_value(std::string_view column);
 private:
     std::unordered_map<std::string, tateyama::proto::kvs::data::Value const&> map_ {};

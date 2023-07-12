@@ -22,6 +22,3 @@
 [submodule "third_party/linenoise-ng"]
 	path = third_party/linenoise-ng
 	url = https://github.com/arangodb/linenoise-ng.git
-[submodule "third_party/hayatsuki"]
-	path = third_party/hayatsuki
-	url = git@github.com:project-tsurugi/hayatsuki.git

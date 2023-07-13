@@ -27,7 +27,7 @@
 
 namespace jogasaki::api::kvsservice {
 
-class mock_server_test: public ::testing::Test {
+class server_test: public ::testing::Test {
     public:
         void SetUp() override {
         }
@@ -36,16 +36,60 @@ class mock_server_test: public ::testing::Test {
         }
     };
 
-TEST_F(mock_server_test, start_shutdown) {
+TEST_F(server_test, resouce_check) {
     tateyama::framework::server sv {tateyama::framework::boot_mode::database_server,
                                     default_configuration()};
     tateyama::framework::add_core_components(sv);
     sv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
     sv.add_service(std::make_shared<jogasaki::api::service::bridge>());
-    sv.add_resource(std::make_shared<jogasaki::api::kvsservice::resource>());
+    auto rsc = std::make_shared<jogasaki::api::kvsservice::resource>();
+    sv.add_resource(rsc);
     sv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
     EXPECT_TRUE(sv.setup());
     EXPECT_TRUE(sv.start());
+    auto store = rsc->store();
+    EXPECT_NE(store, nullptr);
+    EXPECT_TRUE(sv.shutdown());
+}
+
+TEST_F(server_test, store_check) {
+    tateyama::framework::server sv {tateyama::framework::boot_mode::database_server,
+                                    default_configuration()};
+    tateyama::framework::add_core_components(sv);
+    sv.add_resource(std::make_shared<jogasaki::api::resource::bridge>());
+    sv.add_service(std::make_shared<jogasaki::api::service::bridge>());
+    auto rsc = std::make_shared<jogasaki::api::kvsservice::resource>();
+    sv.add_resource(rsc);
+    sv.add_service(std::make_shared<jogasaki::api::kvsservice::service>());
+    EXPECT_TRUE(sv.setup());
+    EXPECT_TRUE(sv.start());
+    auto store = rsc->store();
+    EXPECT_NE(store, nullptr);
+    table_areas wp{};
+    transaction_option opt {transaction_type::occ, wp};
+    std::shared_ptr<transaction> tx{};
+    {
+        auto s = store->begin_transaction(opt, tx);
+        EXPECT_EQ(s, status::ok);
+        EXPECT_NE(tx, nullptr);
+        EXPECT_NE(tx.get(), nullptr);
+        EXPECT_NE(tx->system_id(), 0);
+    }
+    {
+        auto tx2 = store->find_transaction(tx->system_id());
+        EXPECT_NE(tx2, nullptr);
+        EXPECT_NE(tx2.get(), nullptr);
+        EXPECT_EQ(tx2->system_id(), tx->system_id());
+    }
+    {
+        auto id = tx->system_id();
+        auto s = tx->commit();
+        EXPECT_EQ(s, status::ok);
+        auto s2 = store->dispose_transaction(id);
+        EXPECT_EQ(s2, status::ok);
+        auto tx2 = store->find_transaction(id);
+        EXPECT_EQ(tx2, nullptr);
+    }
     EXPECT_TRUE(sv.shutdown());
 }
 

@@ -30,3 +30,6 @@ HTML/
 #gdb
 .gdb_history
 .gdb_init
+
+# WSL related files
+*:Zone.Identifier

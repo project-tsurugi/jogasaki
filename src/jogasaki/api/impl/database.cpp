@@ -332,6 +332,25 @@ status database::validate_option(transaction_option const& option) {
     return status::ok;
 }
 
+std::vector<std::string> add_wp_to_read_area_inclusive(
+    std::vector<std::string> const& write_preserves,
+    std::vector<std::string> const& read_areas_inclusive
+) {
+    if(read_areas_inclusive.empty()) {
+        // Any table is readable. No need to add wps.
+        return {};
+    }
+    std::set<std::string> rai{read_areas_inclusive.begin(), read_areas_inclusive.end()}; //std::set to remove duplicate
+    for(auto&& wp : write_preserves) {
+        rai.emplace(wp);
+    }
+    std::vector<std::string> ret{};
+    for(auto&& ra : rai) {
+        ret.emplace_back(ra);
+    }
+    return ret;
+}
+
 std::vector<std::string> add_secondary_indices(
     std::vector<std::string> const& table_areas,
     yugawara::storage::configurable_provider const& tables
@@ -357,10 +376,12 @@ kvs::transaction_option from(transaction_option const& option, yugawara::storage
     } else if (option.is_long()) {
         type = kvs::transaction_option::transaction_type::ltx;
     }
+    // SQL IUD almost always (except INSERT OR REPLACE) require read semantics, so write preserve will be added to rai.
+    std::vector<std::string> rai{add_wp_to_read_area_inclusive(option.write_preserves(), option.read_areas_inclusive())};
     return kvs::transaction_option{
         type,
         add_secondary_indices(option.write_preserves(), tables),
-        add_secondary_indices(option.read_areas_inclusive(), tables),
+        add_secondary_indices(rai, tables),
         add_secondary_indices(option.read_areas_exclusive(), tables),
     };
 }

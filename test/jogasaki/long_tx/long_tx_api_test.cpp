@@ -151,4 +151,110 @@ TEST_F(long_tx_api_test, begin_tx_with_bad_read_area_name) {
         ASSERT_FALSE(tx);
     }
 }
+
+TEST_F(long_tx_api_test, wps_added_to_rai) {
+    // verify wps are in read area inclusive
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    execute_statement("CREATE TABLE R (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO R VALUES (10)");
+    {
+        // no read area inclusive meaning all tables readable
+        auto tx = utils::create_transaction(*db_, false, true, {"T"}, {});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        // wp is added to read area inclusive
+        auto tx = utils::create_transaction(*db_, false, true, {"T"}, {"R"});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        // duplicate entries safely ignored
+        auto tx = utils::create_transaction(*db_, false, true, {"T"}, {"R", "T"});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    {
+        // exclusive wins if specified
+        auto tx = utils::create_transaction(*db_, false, true, {"T"}, {"R"}, {"T"});
+        execute_statement("SELECT * FROM T", *tx, status::err_illegal_operation);
+    }
+}
+
+TEST_F(long_tx_api_test, multiple_read_areas_variations) {
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    execute_statement("CREATE TABLE R (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO R VALUES (10)");
+    {
+        // inclusive read area only
+        auto tx = utils::create_transaction(*db_, false, true, {}, {"R"}, {});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM R", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        execute_statement("SELECT * FROM T", *tx, status::err_illegal_operation);
+        ASSERT_EQ(status::err_inactive_transaction, tx->commit());
+    }
+    {
+        // exclusive read area only
+        auto tx = utils::create_transaction(*db_, false, true, {}, {}, {"R"});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+    }
+    {
+        // inclusive and exclusive specified
+        auto tx = utils::create_transaction(*db_, false, true, {}, {"T"}, {"R"});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+        ASSERT_EQ(status::err_inactive_transaction, tx->commit());
+    }
+    {
+        // duplicate inclusive and exclusive
+        auto tx = utils::create_transaction(*db_, false, true, {}, {"T","T"}, {"R","R"});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx, result);
+            ASSERT_EQ(1, result.size());
+        }
+        execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+        ASSERT_EQ(status::err_inactive_transaction, tx->commit());
+    }
+    {
+        // same table in inclusive and exclusive
+        {
+            auto tx = utils::create_transaction(*db_, false, true, {}, {"T", "R"}, {"R", "T"});
+            execute_statement("SELECT * FROM T", *tx, status::err_illegal_operation);
+        }
+        {
+            auto tx = utils::create_transaction(*db_, false, true, {}, {"T", "R"}, {"R", "T"});
+            execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+        }
+    }
+}
+
+
 }

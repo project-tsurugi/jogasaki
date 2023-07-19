@@ -35,8 +35,10 @@ create_transaction(api::database& db, bool readonly, bool is_long,
     auto tx = std::shared_ptr<api::transaction_handle>{
         new api::transaction_handle(),
         [p](api::transaction_handle* arg) {
-            if (arg != nullptr && *arg) {
-                p->destroy_transaction(*arg);
+            if(arg != nullptr) {
+                if (*arg) {
+                    p->destroy_transaction(*arg);
+                }
                 delete arg;  //NOLINT
             }
         }

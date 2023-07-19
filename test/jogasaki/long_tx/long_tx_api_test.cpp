@@ -276,6 +276,26 @@ TEST_F(long_tx_api_test, ra_with_occ) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
+TEST_F(long_tx_api_test, ra_with_rtx) {
+    // verify simply ignored
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    execute_statement("CREATE TABLE R (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO R VALUES (10)");
+    auto tx = utils::create_transaction(*db_, true, false, {}, {"T"});
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T", *tx, result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM R", *tx, result);
+        ASSERT_EQ(1, result.size());
+    }
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
 TEST_F(long_tx_api_test, wp_with_occ) {
     // error if wp is specified for occ
     execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
@@ -285,4 +305,13 @@ TEST_F(long_tx_api_test, wp_with_occ) {
     auto tx = utils::create_transaction(*db_, false, false, {"T"});
     ASSERT_FALSE(tx);
 }
+
+TEST_F(long_tx_api_test, wp_with_rtx) {
+    // error if wp is specified for rtx
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    auto tx = utils::create_transaction(*db_, true, false, {"T"});
+    ASSERT_FALSE(tx);
+}
+
 }

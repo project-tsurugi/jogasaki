@@ -334,6 +334,18 @@ status database::validate_option(transaction_option const& option) {
                 return status::err_invalid_argument;
             }
         }
+        for(auto&& rae : option.read_areas_exclusive()) {
+            if(auto t = tables_->find_table(rae); ! t) {
+                VLOG_LP(log_error) << "The table `" << rae << "` specified for exclusive read area is not found.";
+                return status::err_invalid_argument;
+            }
+        }
+        for(auto&& rai : option.read_areas_inclusive()) {
+            if(auto t = tables_->find_table(rai); ! t) {
+                VLOG_LP(log_error) << "The table `" << rai << "` specified for inclusive read area is not found.";
+                return status::err_invalid_argument;
+            }
+        }
     }
     return status::ok;
 }

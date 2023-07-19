@@ -135,4 +135,20 @@ TEST_F(long_tx_api_test, verify_key_locator_with_char) {
     ASSERT_EQ(status::ok, tx1->commit());
     ASSERT_EQ(status::err_serialization_failure, tx2->commit());
 }
+
+TEST_F(long_tx_api_test, begin_tx_with_bad_wp_name) {
+    auto tx = utils::create_transaction(*db_, false, true, {"dummy_table"});
+    ASSERT_FALSE(tx);
+}
+
+TEST_F(long_tx_api_test, begin_tx_with_bad_read_area_name) {
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {}, {"dummy_table"});
+        ASSERT_FALSE(tx);
+    }
+    {
+        auto tx = utils::create_transaction(*db_, false, true, {}, {}, {"dummy_table"});
+        ASSERT_FALSE(tx);
+    }
+}
 }

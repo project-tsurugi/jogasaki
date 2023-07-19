@@ -114,13 +114,15 @@ public:
         bool readonly = false,
         bool is_long = false,
         std::vector<std::string> const& write_preserves = {},
-        std::string_view label = {}
+        std::string_view label = {},
+        bool modifies_definitions = false
     );
     void test_begin(begin_result& result,
         bool readonly = false,
         bool is_long = false,
         std::vector<std::string> const& write_preserves = {},
-        std::string_view label = {}
+        std::string_view label = {},
+        bool modifies_definitions = false
     );
     void test_commit(std::uint64_t& handle, status expected = status::ok);
     void test_rollback(std::uint64_t& handle);
@@ -179,19 +181,22 @@ void service_api_test::test_begin(std::uint64_t& handle,
     bool readonly,
     bool is_long,
     std::vector<std::string> const& write_preserves,
-    std::string_view label
+    std::string_view label,
+    bool modifies_definitions
 ) {
     begin_result result{};
-    test_begin(result, readonly, is_long, write_preserves, label);
+    test_begin(result, readonly, is_long, write_preserves, label, modifies_definitions);
     handle = result.handle_;
 }
-void service_api_test::test_begin(begin_result& result,
-                                  bool readonly,
-                                  bool is_long,
-                                  std::vector<std::string> const& write_preserves,
-                                  std::string_view label
+void service_api_test::test_begin(
+    begin_result& result,
+    bool readonly,
+    bool is_long,
+    std::vector<std::string> const& write_preserves,
+    std::string_view label,
+    bool modifies_definitions
 ) {
-    auto s = encode_begin(readonly, is_long, write_preserves, label);
+    auto s = encode_begin(readonly, is_long, write_preserves, label, modifies_definitions);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -1539,6 +1544,14 @@ TEST_F(service_api_test, get_search_path) {
 
     auto result = decode_get_search_path(res->body_);
     ASSERT_EQ(0, result.size());
+}
+
+
+TEST_F(service_api_test, modifies_definitions) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle, false, true, {}, "modifies_definitions", true);
+    test_statement("CREATE TABLE TT(C0 INT)", tx_handle);
+    test_commit(tx_handle);
 }
 
 }

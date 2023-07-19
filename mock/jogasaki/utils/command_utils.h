@@ -159,7 +159,8 @@ inline std::string encode_begin(
     bool readonly,
     bool is_long = false,
     std::vector<std::string> const& write_preserves = {},
-    std::string_view label = {}
+    std::string_view label = {},
+    bool modifies_definitions = false
 ) {
     sql::request::Request r{};
     auto opt = r.mutable_begin()->mutable_option();
@@ -178,6 +179,7 @@ inline std::string encode_begin(
     if(! label.empty()) {
         opt->set_label(label.data(), label.size());
     }
+    opt->set_modifies_definitions(modifies_definitions);
     auto s = serialize(r);
     return s;
 }

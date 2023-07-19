@@ -38,14 +38,16 @@ public:
         std::vector<std::string> write_preserves = {},
         std::string_view label = {},
         std::vector<std::string> read_areas_inclusive = {},
-        std::vector<std::string> read_areas_exclusive = {}
+        std::vector<std::string> read_areas_exclusive = {},
+        bool modifies_definitions = false
     ) :
         readonly_(readonly),
         is_long_(is_long),
         write_preserves_(std::move(write_preserves)),
         label_(label),
         read_areas_inclusive_(std::move(read_areas_inclusive)),
-        read_areas_exclusive_(std::move(read_areas_exclusive))
+        read_areas_exclusive_(std::move(read_areas_exclusive)),
+        modifies_definitions_(modifies_definitions)
     {}
 
     transaction_option& readonly(bool arg) noexcept {
@@ -81,6 +83,16 @@ public:
     [[nodiscard]] std::vector<std::string> const& read_areas_exclusive() const noexcept {
         return read_areas_exclusive_;
     }
+
+    transaction_option& modifies_definitions(bool arg) noexcept {
+        modifies_definitions_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] bool modifies_definitions() const noexcept {
+        return modifies_definitions_;
+    }
+
 private:
     bool readonly_ = false;
     bool is_long_ = false;
@@ -88,6 +100,7 @@ private:
     std::string label_{};
     std::vector<std::string> read_areas_inclusive_{};
     std::vector<std::string> read_areas_exclusive_{};
+    bool modifies_definitions_ = false;
 };
 
 /**
@@ -99,6 +112,7 @@ private:
 inline std::ostream& operator<<(std::ostream& out, transaction_option const& value) {
     out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ")); //NOLINT
     out << " label:" << value.label();
+    out << std::boolalpha << " modifies_definitions:" << value.modifies_definitions();
     if(! value.write_preserves().empty()) {
         out << " write_preserves:{";
         for (auto &&s: value.write_preserves()) {

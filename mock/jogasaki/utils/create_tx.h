@@ -33,6 +33,8 @@ void set_global_tx_option(create_tx_option const& opt);
 
 create_tx_option* get_global_tx_option();
 
+std::shared_ptr<api::transaction_handle> create_transaction(api::database& db, api::transaction_option options);
+
 std::shared_ptr<api::transaction_handle> create_transaction(
     api::database& db,
     bool readonly,

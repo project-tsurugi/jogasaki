@@ -332,6 +332,12 @@ status database::validate_option(transaction_option const& option) {
     return status::ok;
 }
 
+void add_system_tables(
+    std::vector<std::string>& write_preserves
+) {
+    write_preserves.emplace_back(system_sequences_name);
+}
+
 std::vector<std::string> add_wp_to_read_area_inclusive(
     std::vector<std::string> const& write_preserves,
     std::vector<std::string> const& read_areas_inclusive
@@ -345,6 +351,7 @@ std::vector<std::string> add_wp_to_read_area_inclusive(
         rai.emplace(wp);
     }
     std::vector<std::string> ret{};
+    ret.reserve(rai.size());
     for(auto&& ra : rai) {
         ret.emplace_back(ra);
     }
@@ -376,11 +383,20 @@ kvs::transaction_option from(transaction_option const& option, yugawara::storage
     } else if (option.is_long()) {
         type = kvs::transaction_option::transaction_type::ltx;
     }
+
+    // add system tables to wp if modifies_definitions=true
+    auto* wps = std::addressof(option.write_preserves());
+    std::vector<std::string> with_system_tables{};
+    if(option.modifies_definitions()) {
+        with_system_tables = option.write_preserves();
+        add_system_tables(with_system_tables);
+        wps = std::addressof(with_system_tables);
+    }
     // SQL IUD almost always (except INSERT OR REPLACE) require read semantics, so write preserve will be added to rai.
-    std::vector<std::string> rai{add_wp_to_read_area_inclusive(option.write_preserves(), option.read_areas_inclusive())};
+    std::vector<std::string> rai{add_wp_to_read_area_inclusive(*wps, option.read_areas_inclusive())};
     return kvs::transaction_option{
         type,
-        add_secondary_indices(option.write_preserves(), tables),
+        add_secondary_indices(*wps, tables),
         add_secondary_indices(rai, tables),
         add_secondary_indices(option.read_areas_exclusive(), tables),
     };

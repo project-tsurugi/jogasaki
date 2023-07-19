@@ -94,6 +94,7 @@ void service::command_begin(
     std::vector<std::string> rae{};
     bool readonly = false;
     bool is_long = false;
+    bool modifies_definitions = false;
     auto& bg = proto_req.begin();
     std::string_view label{};
     if(bg.has_option()) {
@@ -103,22 +104,31 @@ void service::command_begin(
         }
         if(op.type() == sql::request::TransactionType::LONG) {
             is_long = true;
-            wps.reserve(op.write_preserves().size());
-            for(auto&& x : op.write_preserves()) {
-                wps.emplace_back(x.table_name());
-            }
-            rai.reserve(op.inclusive_read_areas().size());
-            for(auto&& x : op.inclusive_read_areas()) {
-                rai.emplace_back(x.table_name());
-            }
-            rae.reserve(op.exclusive_read_areas().size());
-            for(auto&& x : op.exclusive_read_areas()) {
-                rae.emplace_back(x.table_name());
-            }
+        }
+        modifies_definitions = op.modifies_definitions();
+        wps.reserve(op.write_preserves().size());
+        for(auto&& x : op.write_preserves()) {
+            wps.emplace_back(x.table_name());
+        }
+        rai.reserve(op.inclusive_read_areas().size());
+        for(auto&& x : op.inclusive_read_areas()) {
+            rai.emplace_back(x.table_name());
+        }
+        rae.reserve(op.exclusive_read_areas().size());
+        for(auto&& x : op.exclusive_read_areas()) {
+            rae.emplace_back(x.table_name());
         }
         label = op.label();
     }
-    transaction_option opts{ readonly, is_long, std::move(wps), label, std::move(rai), std::move(rae) };
+    transaction_option opts{
+        readonly,
+        is_long,
+        std::move(wps),
+        label,
+        std::move(rai),
+        std::move(rae),
+        modifies_definitions
+    };
     db_->create_transaction_async(
         [res, req_info](jogasaki::api::transaction_handle tx, status st, std::string_view msg) {
             if(st == jogasaki::status::ok) {

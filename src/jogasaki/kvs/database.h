@@ -25,9 +25,6 @@
 #include "storage.h"
 #include <jogasaki/common_types.h>
 
-namespace jogasaki::logship {
-class log_event_listener;
-}
 namespace jogasaki::kvs {
 
 using takatori::util::fail;
@@ -183,22 +180,9 @@ public:
      */
     [[nodiscard]] bool delete_sequence(sequence_id id);
 
-    /**
-     * @brief setter for log event listener
-     * @param listener listener object to be called back when log event occurs
-     */
-    void log_event_listener(std::unique_ptr<logship::log_event_listener> listener);
-
-    /**
-     * @brief accessor for log event listener
-     * @return listener object held by this instance
-     */
-    [[nodiscard]] logship::log_event_listener* log_event_listener() noexcept;
-
 private:
     sharksfin::DatabaseHandle handle_{};
     bool handle_borrowed_{true};
-    std::unique_ptr<logship::log_event_listener> listener_{};
 };
 
 /**

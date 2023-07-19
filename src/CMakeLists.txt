@@ -84,7 +84,6 @@ file(GLOB SOURCES
         "jogasaki/executor/sequence/*.cpp"
         "jogasaki/index/*.cpp"
         "jogasaki/kvs/*.cpp"
-        "jogasaki/logship/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"
@@ -155,10 +154,6 @@ target_link_libraries(${ENGINE}
         PRIVATE mpdecpp
         )
 
-if(LOGSHIP)
-    target_link_libraries(${ENGINE} PRIVATE hayatsuki-engine)
-endif()
-
 if(LIKWID_ENABLE)
     target_link_libraries(${ENGINE}
             PRIVATE likwid::likwid
@@ -214,10 +209,6 @@ target_link_libraries(jogasaki-impl
         INTERFACE ${PARQUET_PREFIX}parquet_shared
         INTERFACE mpdecpp
         )
-
-if(LOGSHIP)
-    target_link_libraries(jogasaki-impl INTERFACE hayatsuki-engine)
-endif()
 
 if(MC_QUEUE)
     target_compile_definitions(jogasaki-impl INTERFACE MC_QUEUE)

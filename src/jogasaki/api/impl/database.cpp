@@ -37,7 +37,6 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
-#include <jogasaki/logship/log_event_listener.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/storage_dump.h>
@@ -135,13 +134,6 @@ status database::start() {
         }
         task_scheduler_->start();
     }
-
-    if (cfg_->enable_logship()) {
-        if (auto l = logship::create_log_event_listener(*cfg_, tables_)) {
-            kvs_db_->log_event_listener(std::move(l));
-            // ignore error for now TODO
-        }
-    }
     return status::ok;
 }
 
@@ -158,16 +150,6 @@ status database::stop() {
     if (kvs_db_) {
         if(! kvs_db_->close()) {
             return status::err_io_error;
-        }
-
-        // deinit event listener should come after kvs_db_->close() as it possibly sends last records on db shutdown
-        if (cfg_->enable_logship()) {
-            if (auto* l = kvs_db_->log_event_listener(); l != nullptr) {
-                if(! l->deinit()) {
-                    LOG_LP(ERROR) << "shutting down log event listener failed.";
-                    // even on error, proceed to shutdown all database
-                }
-            }
         }
         kvs_db_ = nullptr;
     }

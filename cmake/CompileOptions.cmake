@@ -47,7 +47,3 @@ if(LIKWID_ENABLE)
     message("likwid enabled")
     add_definitions(-DLIKWID_PERFMON)
 endif()
-
-if(LOGSHIP)
-    add_definitions(-DLOGSHIP)
-endif()

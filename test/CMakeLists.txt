@@ -100,15 +100,6 @@ if(${SHARKSFIN_IMPLEMENTATION} STREQUAL "shirakami")
     endforeach()
 endif()
 
-if(LOGSHIP)
-    file(GLOB LOGSHIP_TESTS
-            "jogasaki/logship/*.cpp"
-            )
-    foreach(file ${LOGSHIP_TESTS})
-        list(APPEND SRCS ${file})
-    endforeach()
-endif()
-
 # add implementation specific testcases
 file(GLOB ADDED
         "jogasaki/targets/${SHARKSFIN_IMPLEMENTATION}/*.cpp"

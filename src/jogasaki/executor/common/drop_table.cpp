@@ -20,6 +20,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/executor/sequence/exception.h>
 
 namespace jogasaki::executor::common {
 
@@ -31,6 +32,36 @@ model::statement_kind drop_table::kind() const noexcept {
     return model::statement_kind::drop_table;
 }
 
+bool drop_auto_generated_sequences(
+    request_context& context,
+    yugawara::storage::table const& t,
+    std::vector<std::string>& generated_sequences) {
+    auto& provider = *context.storage_provider();
+    for(auto&& col : t.columns()) {
+        // normally, sequence referenced in default value should not be dropped. Only the exception is one auto-generated for primary key.
+        if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
+            generated_sequences.emplace_back(col.simple_name());
+            if(auto s = provider.find_sequence(col.simple_name())) {
+                if(s->definition_id().has_value()) {
+                    auto def_id = s->definition_id().value();
+                    try {
+                        if(! context.sequence_manager()->remove_sequence(def_id, context.transaction()->object().get())) {
+                            VLOG_LP(log_error) << "sequence '" << col.simple_name() << "' not found";
+                            context.status_code(status::err_not_found);
+                            return false;
+                        }
+                    } catch(executor::sequence::exception const& e) {
+                        VLOG_LP(log_error) << "removing sequence '" << col.simple_name() << "' not found";
+                        context.status_code(e.get_status(), e.what());
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool drop_table::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
@@ -39,6 +70,12 @@ bool drop_table::operator()(request_context& context) const {
     if(t == nullptr) {
         VLOG_LP(log_error) << "table '" << c.simple_name() << "' not found";
         context.status_code(status::err_not_found);
+        return false;
+    }
+
+    std::vector<std::string> generated_sequences{};
+    // drop auto-generated sequences first because accessing system table causes cc error
+    if(! drop_auto_generated_sequences(context, *t, generated_sequences)) {
         return false;
     }
 
@@ -67,24 +104,6 @@ bool drop_table::operator()(request_context& context) const {
             VLOG_LP(log_error) << "deleting storage '" << c.simple_name() << "' failed: " << res;
             context.status_code(status::err_unknown);
             return false;
-        }
-    }
-
-    std::vector<std::string> generated_sequences{};
-    // drop auto-generated sequences
-    for(auto&& col : t->columns()) {
-        // normally, sequence referenced in default value should not be dropped. Only the exception is one auto-generated for primary key.
-        if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
-            generated_sequences.emplace_back(col.simple_name());
-            if(auto s = provider.find_sequence(col.simple_name())) {
-                if(s->definition_id().has_value()) {
-                    auto def_id = s->definition_id().value();
-                    if(! context.sequence_manager()->remove_sequence(def_id, context.transaction()->object().get())) {
-                        context.status_code(status::err_unknown);
-                        return false;
-                    }
-                }
-            }
         }
     }
 

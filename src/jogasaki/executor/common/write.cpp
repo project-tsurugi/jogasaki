@@ -31,6 +31,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/as_any.h>
@@ -83,7 +84,9 @@ bool write::operator()(request_context& context) const {
     std::vector<details::write_target> targets{};
     if(auto res = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(),
             info_, *resource_, host_variables_, targets); res != status::ok) {
-        // errors from create_targets() are in SQL layer, so we need to abort tx manually
+        // Errors from create_targets() are in SQL layer, so we need to abort tx manually.
+        // An exception is sequence generation error which can abort tx,
+        // even so, aborting again will do no harm since sharksfin tx manages is_active flag and omits aborting again.
         abort_transaction(*tx);
         context.status_code(res);
         return false;
@@ -135,7 +138,7 @@ bool write::operator()(request_context& context) const {
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-sequence_value next_sequence_value(request_context& ctx, sequence_definition_id def_id) {
+status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out) {
     BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
     auto& mgr = *ctx.sequence_manager();
     auto* seq = mgr.find_sequence(def_id);
@@ -143,8 +146,13 @@ sequence_value next_sequence_value(request_context& ctx, sequence_definition_id 
         throw_exception(std::logic_error{""});
     }
     auto ret = seq->next(*ctx.transaction()->object());
-    mgr.notify_updates(*ctx.transaction()->object());
-    return ret;
+    try {
+        mgr.notify_updates(*ctx.transaction()->object());
+    } catch(executor::sequence::exception const& e) {
+        return e.get_status();
+    }
+    out = ret;
+    return status::ok;
 }
 
 // encode tuple into buf, and return result data length
@@ -186,7 +194,10 @@ status encode_tuple(
                     }
                     case process::impl::ops::default_value_kind::sequence:
                         // increment sequence - loop might increment the sequence twice
-                        auto v = next_sequence_value(ctx, f.def_id_);
+                        sequence_value v{};
+                        if(auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
+                            return res;
+                        }
                         any a{std::in_place_type<std::int64_t>, v};
                         if (f.nullable_) {
                             if(auto res = kvs::encode_nullable(a, f.type_, f.spec_, s); res != status::ok) {

@@ -107,6 +107,7 @@ public:
      * @brief load sequence id mapping from system_sequences table and initialize in-memory sequence objects.
      * This function is not thread-safe. Only a thread can call this member function at a time.
      * @returns the number of sequence entries read from the system table
+     * @throws sequence::exception if any error occurs, then passed transaction is aborted.
      */
     std::size_t load_id_map(kvs::transaction* tx = nullptr);
 
@@ -126,6 +127,7 @@ public:
      * @param save_id_map_entry indicates whether the id_map entry for registered sequence should be saved now.
      * Set false if you are registering multiples sequences and they should be saved later.
      * @return the in-memory sequence object just registered
+     * @throws sequence::exception if any error occurs, then passed transaction is aborted.
      */
     sequence* register_sequence(
         kvs::transaction* tx,
@@ -144,6 +146,7 @@ public:
      * @details this function retrieves sequence definitions from provider and register one by one.
      * This function is not thread-safe. Only a thread can call this member function at a time.
      * @param provider the config. provider that gives sequences definitions.
+     * @throws sequence::exception if any error occurs, then passed transaction is aborted.
      */
     void register_sequences(
         kvs::transaction* tx,
@@ -169,6 +172,7 @@ public:
      * @param tx the transaction that updated the sequence and the value needs to be durable together
      * @return true if successful
      * @return false otherwise
+     * @throws sequence::exception if any error occurs, then passed transaction is aborted.
      */
     bool notify_updates(kvs::transaction& tx);
 
@@ -178,6 +182,7 @@ public:
      * @param def_id the definition id of the sequence to be removed
      * @return true if successful
      * @return false otherwise
+     * @throws sequence::exception if any error occurs, then passed transaction is aborted.
      */
     bool remove_sequence(
         sequence_definition_id def_id,

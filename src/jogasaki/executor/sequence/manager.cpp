@@ -32,8 +32,10 @@
 
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/sequence/info.h>
+#include <jogasaki/executor/sequence/exception.h>
 
 #include "metadata_store.h"
+
 
 namespace jogasaki::executor::sequence {
 
@@ -67,16 +69,11 @@ std::size_t manager::load_id_map(kvs::transaction* tx) {
         tx = created_tx.get();
     }
     metadata_store s{*tx};
-
     std::size_t ret{};
-    if(auto res = s.scan([this, &ret](std::int64_t def_id, std::int64_t id) {
-            sequences_[def_id] = details::sequence_element(id);
-            ++ret;
-        }); ! res) {
-        std::stringstream ss{};
-        ss << "Sequences scan failed : " << res;
-        throw_exception(std::logic_error{ss.str()});
-    }
+    s.scan([this, &ret](std::int64_t def_id, std::int64_t id) {
+        sequences_[def_id] = details::sequence_element(id);
+        ++ret;
+    });
     if (created_tx) {
         (void)created_tx ->commit();
     }
@@ -97,7 +94,10 @@ sequence* manager::register_sequence(
 ) {
     sequence_id seq_id{};
     if(sequences_.count(def_id) == 0) {
-        seq_id = db_->create_sequence();
+        if(auto rc = db_->create_sequence(seq_id); rc != status::ok) {
+            (void) tx->abort();
+            throw_exception(exception{rc});
+        }
         sequences_[def_id] = details::sequence_element{seq_id};
     } else {
         seq_id = sequences_[def_id].id();
@@ -115,12 +115,18 @@ sequence* manager::register_sequence(
         )
     );
 
-    auto [version, value] = db_->read_sequence(seq_id);
-    if (version == version_invalid || version == 0) {
-        version = 1;
-        value = initial_value;
+    sequence_versioned_value v{1, initial_value};
+    auto rc = db_->read_sequence(seq_id, v);
+    if(rc != status::ok && rc != status::err_not_found) {
+        (void) tx->abort();
+        throw_exception(exception{rc});
     }
-    sequences_[def_id].sequence(std::make_unique<sequence>(*p, *this, version, value));
+    if(rc == status::err_not_found || v.version_ == 0) {
+        // there was a confusion on initial version. Fix it by making the rule that the initial state is of version 1.
+        v.version_ = 1;
+        v.value_ = initial_value;
+    }
+    sequences_[def_id].sequence(std::make_unique<sequence>(*p, *this, v.version_, v.value_));
 
     if (save_id_map_entry) {
         save_id_map(tx);
@@ -165,7 +171,7 @@ bool manager::notify_updates(kvs::transaction& tx) {
     std::unordered_set<sequence*> copy{};
     {
         decltype(used_sequences_)::accessor acc{};
-        if (!used_sequences_.find(acc, std::addressof(tx))) {
+        if (! used_sequences_.find(acc, std::addressof(tx))) {
             return true;
         }
         copy = acc->second;
@@ -173,8 +179,9 @@ bool manager::notify_updates(kvs::transaction& tx) {
     }
     for(auto* p : copy) {
         auto s = p->get();
-        if (!db_->update_sequence(tx, p->info().id(), s.version_, s.value_)) {
-            return false;
+        if (auto rc = db_->update_sequence(tx, p->info().id(), s.version_, s.value_); rc != status::ok) {
+            // status::err_not_found never comes here because the sequence is already in used list
+            throw_exception(exception{rc});
         }
     }
     return true;
@@ -187,8 +194,10 @@ bool manager::remove_sequence(
     if (sequences_.count(def_id) == 0) {
         return false;
     }
-    if (auto res = db_->delete_sequence(sequences_[def_id].id()); !res) {
-        throw_exception(std::logic_error{""});
+    if (auto rc = db_->delete_sequence(sequences_[def_id].id()); rc != status::ok) {
+        // status::err_not_found never comes here because the sequence is already in sequences_
+        (void) tx->abort();
+        throw_exception(exception{rc});
     }
     remove_id_map(def_id, tx);
     sequences_.erase(def_id);
@@ -212,9 +221,7 @@ void manager::save_id_map(kvs::transaction* tx) {
     metadata_store s{*tx};
     for(auto& [def_id, element] : sequences_) {
         auto id = element.id();
-        if(auto res = s.put(def_id, id); ! res) {
-            throw_exception(std::logic_error{""});
-        }
+        s.put(def_id, id);
     }
     if (created_tx) {
         (void) created_tx->commit();
@@ -236,9 +243,7 @@ void manager::remove_id_map(
         tx = created_tx.get();
     }
     metadata_store s{*tx};
-    if(! s.remove(def_id)) {
-        throw_exception(std::logic_error{""});
-    }
+    s.remove(def_id);
     if (created_tx) {
         (void) created_tx->commit();
     }

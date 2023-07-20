@@ -144,9 +144,11 @@ public:
 
     /**
      * @brief create new sequence
-     * @returns the newly assigned sequence id
+     * @param out the newly assigned sequence id
+     * @return status::ok if successful
+     * @return any other error
      */
-    [[nodiscard]] sequence_id create_sequence();
+    [[nodiscard]] status create_sequence(sequence_id& out);
 
     /**
      * @brief update sequence value and version
@@ -155,10 +157,12 @@ public:
      * @param id the sequence id whose value/version will be updated
      * @param version the version of the sequence value
      * @param value the new sequence value
-     * @return true if successful, or false otherwise
+     * @return status::ok if successful
+     * @return status::err_not_found if sequence is not found. Passed transaction is aborted.
+     * @return any other error
      * @warning multiple put calls to a sequence with same version number cause undefined behavior.
      */
-    [[nodiscard]] bool update_sequence(
+    [[nodiscard]] status update_sequence(
         transaction& tx,
         sequence_id id,
         sequence_version version,
@@ -168,17 +172,22 @@ public:
      * @brief get sequence value
      * @details retrieve sequence value of the "latest" version from the transaction engine.
      * @param id the sequence id whose value/version are to be retrieved
-     * @returns versioned value that holds the sequence's latest version number and value
+     * @param out versioned value that holds the sequence's latest version number and value
+     * @return status::ok if successful
+     * @return status::err_not_found if sequence is not found
+     * @return any other error
      */
-    [[nodiscard]] sequence_versioned_value read_sequence(sequence_id id);
+    [[nodiscard]] status read_sequence(sequence_id id, sequence_versioned_value& out);
 
     /**
      * @brief delete the sequence
      * @param handle the database handle where the sequence exists
      * @param id the sequence id that will be deleted
-     * @return true if successful, or false otherwise
+     * @return status::ok if successful
+     * @return status::err_not_found if sequence is not found
+     * @return any other error
      */
-    [[nodiscard]] bool delete_sequence(sequence_id id);
+    [[nodiscard]] status delete_sequence(sequence_id id);
 
 private:
     sharksfin::DatabaseHandle handle_{};

@@ -30,6 +30,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/id.h>
 #include "../api/api_test_base.h"
 
 namespace jogasaki::testing {
@@ -91,12 +92,24 @@ TEST_F(transaction_and_ddl_test, create_with_ltx_modifies_definitions) {
     }
 }
 
-TEST_F(transaction_and_ddl_test, DISABLED_create_with_ltx_wo_modifies_definitions) {
+TEST_F(transaction_and_ddl_test, create_with_ltx_wo_modifies_definitions) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory won't raise error with ddl on ltx";
+    }
     api::transaction_option opts{};
     opts.is_long(true).modifies_definitions(false);
     {
         auto tx = utils::create_transaction(*db_, opts);
         execute_statement("CREATE TABLE TT (C1 INT)", *tx, status::err_illegal_operation);
+    }
+}
+
+TEST_F(transaction_and_ddl_test, create_with_rtx) {
+    api::transaction_option opts{};
+    opts.readonly(true).modifies_definitions(false);
+    {
+        auto tx = utils::create_transaction(*db_, opts);
+        execute_statement("CREATE TABLE TT (C1 INT)", *tx, status::err_unsupported); //TODO fix
     }
 }
 }

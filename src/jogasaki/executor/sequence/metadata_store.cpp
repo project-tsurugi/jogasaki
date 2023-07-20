@@ -24,6 +24,7 @@
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/executor/sequence/exception.h>
 
 namespace jogasaki::executor::sequence {
 
@@ -33,7 +34,7 @@ using takatori::util::throw_exception;
 metadata_store::metadata_store() = default;
 metadata_store::~metadata_store() = default;
 
-bool metadata_store::put(std::size_t def_id, std::size_t id) {
+void metadata_store::put(std::size_t def_id, std::size_t id) {
     data::aligned_buffer key_buf{10};
     data::aligned_buffer val_buf{10};
     kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
@@ -43,39 +44,42 @@ bool metadata_store::put(std::size_t def_id, std::size_t id) {
     // no storage spec because field type is fixed
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
         res != status::ok) {
-        VLOG_LP(log_error) << "*** encode failed with error: " << res;
-        return false;
+        (void) tx_->abort();
+        throw_exception(exception{res, "encode failed"});
     }
     if(auto res = kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
         res != status::ok) {
-        VLOG_LP(log_error) << "*** encode_nullable failed with error: " << res;
-        return false;
+        (void) tx_->abort();
+        throw_exception(exception{res, "encode_nullable failed"});
     }
     if (auto res = stg_->put(
             *tx_,
             {key.data(), key.size()},
             {value.data(), value.size()}
         ); res != status::ok) {
-        VLOG_LP(log_error) << "*** put sequence def_id failed with error: " << res;
-        return false;
+        throw_exception(exception{res, "put sequence def_id failed"});
     }
-    return true;
 }
 
-std::tuple<sequence_definition_id, sequence_id, bool> read_entry(std::unique_ptr<kvs::iterator>& it) {
+std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
+    std::unique_ptr<kvs::iterator>& it,
+    kvs::transaction& tx
+) {
     std::string_view k{};
     std::string_view v{};
     if (auto r = it->key(k); r != status::ok) {
         if(r == status::not_found) {
             return {{}, {}, false};
         }
-        throw_exception(std::logic_error{""});
+        (void) tx.abort();
+        throw_exception(exception{r});
     }
     if (auto r = it->value(v); r != status::ok) {
         if(r == status::not_found) {
             return {{}, {}, false};
         }
-        throw_exception(std::logic_error{""});
+        (void) tx.abort();
+        throw_exception(exception{r});
     }
     kvs::readable_stream key{k.data(), k.size()};
     kvs::readable_stream value{v.data(), v.size()};
@@ -83,20 +87,22 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(std::unique_ptr
     // no storage spec because field type is fixed
     if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
         res != status::ok) {
-        throw_exception(std::logic_error{""});
+        (void) tx.abort();
+        throw_exception(exception{res});
     }
     sequence_definition_id def_id{};
     sequence_id id{};
     def_id = dest.to<std::int64_t>();
     if(auto res = kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
         res != status::ok) {
-        throw_exception(std::logic_error{""});
+        (void) tx.abort();
+        throw_exception(exception{res});
     }
     id = dest.to<std::int64_t>();
     return {def_id, id, true};
 }
 
-bool metadata_store::scan(metadata_store::scan_consumer_type const& consumer) {
+void metadata_store::scan(metadata_store::scan_consumer_type const& consumer) {
     std::unique_ptr<kvs::iterator> it{};
     if(auto res = stg_->scan(
             *tx_,
@@ -107,29 +113,24 @@ bool metadata_store::scan(metadata_store::scan_consumer_type const& consumer) {
             it
         );
         res != status::ok || !it) {
-        VLOG_LP(log_error) << "scan failed with error : " << res;
-        return false;
+        throw_exception(exception{res, "scan failed"});
     }
     while(status::ok == it->next()) {
-        auto [def_id, seq_id, found] = read_entry(it);
+        auto [def_id, seq_id, found] = read_entry(it, *tx_);
         if (! found) continue;
         consumer(def_id, seq_id);
     }
-    return true;
 }
 
-bool metadata_store::find_next_empty_def_id(std::size_t& def_id) {
+void metadata_store::find_next_empty_def_id(std::size_t& def_id) {
     std::size_t not_used = 0;
-    if(auto res = scan([&not_used](std::size_t def_id, std::size_t id){
-            (void) id;
-            if(def_id <= not_used) {
-                not_used = def_id + 1;
-            }
-        }); ! res) {
-        return res;
-    }
+    scan([&not_used](std::size_t def_id, std::size_t id){
+        (void) id;
+        if(def_id <= not_used) {
+            not_used = def_id + 1;
+        }
+    });
     def_id = not_used;
-    return true;
 }
 
 bool metadata_store::remove(std::size_t def_id) {
@@ -138,12 +139,14 @@ bool metadata_store::remove(std::size_t def_id) {
     data::any k{std::in_place_type<std::int64_t>, def_id};
     // no storage spec because field type is fixed
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key); res != status::ok) {
-        VLOG_LP(log_error) << "*** encode failed with error: " << res;
-        return false;
+        (void) tx_->abort();
+        throw_exception(exception{res, "encode failed"});
     }
-    if (auto res = stg_->remove(*tx_, {key.data(), key.size()}); res != status::ok && res != status::not_found) {
-        VLOG_LP(log_error) << "*** remove sequence def_id failed with error: " << res;
-        return false;
+    if (auto res = stg_->remove(*tx_, {key.data(), key.size()}); res != status::ok) {
+        if(res == status::not_found) {
+            return false;
+        }
+        throw_exception(exception{res, "remove sequence def_id failed"});
     }
     return true;
 }

@@ -45,17 +45,17 @@ public:
 TEST_F(sequence_metadata_store_test, simple) {
     auto tx = db_->create_transaction();
     metadata_store s{*tx};
-    EXPECT_TRUE(s.put(0, 0));
-    EXPECT_TRUE(s.put(1, 100));
-    EXPECT_TRUE(s.put(2, 200));
+    s.put(0, 0);
+    s.put(1, 100);
+    s.put(2, 200);
 }
 
 TEST_F(sequence_metadata_store_test, scan) {
     auto tx = db_->create_transaction();
     metadata_store s{*tx};
-    EXPECT_TRUE(s.put(1, 100));
-    EXPECT_TRUE(s.put(0, 0));
-    EXPECT_TRUE(s.put(2, 200));
+    s.put(1, 100);
+    s.put(0, 0);
+    s.put(2, 200);
 
     std::vector<std::pair<std::size_t, std::size_t>> result{};
     std::vector<std::pair<std::size_t, std::size_t>> exp{
@@ -63,17 +63,15 @@ TEST_F(sequence_metadata_store_test, scan) {
         {1, 100},
         {2, 200},
     };
-    EXPECT_TRUE(s.scan([&] (std::size_t def_id, std::size_t id) {
+    s.scan([&] (std::size_t def_id, std::size_t id) {
         result.emplace_back(def_id, id);
-    }));
+    });
     EXPECT_EQ(exp, result);
 }
 
 std::size_t next_empty_slot(metadata_store& s) {
     std::size_t def_id{};
-    [&]() {
-        ASSERT_TRUE(s.find_next_empty_def_id(def_id));
-    }();
+    s.find_next_empty_def_id(def_id);
     return def_id;
 }
 
@@ -81,29 +79,29 @@ TEST_F(sequence_metadata_store_test, find_next_defid) {
     auto tx = db_->create_transaction();
     metadata_store s{*tx};
     EXPECT_EQ(0, next_empty_slot(s));
-    EXPECT_TRUE(s.put(1, 100));
+    s.put(1, 100);
     EXPECT_EQ(0, next_empty_slot(s));
-    EXPECT_TRUE(s.put(0, 0));
+    s.put(0, 0);
     EXPECT_EQ(2, next_empty_slot(s));
-    EXPECT_TRUE(s.put(2, 200));
-    EXPECT_TRUE(s.put(4, 200));
+    s.put(2, 200);
+    s.put(4, 200);
     EXPECT_EQ(3, next_empty_slot(s));
-    EXPECT_TRUE(s.put(3, 200));
+    s.put(3, 200);
     EXPECT_EQ(5, next_empty_slot(s));
 }
 
 TEST_F(sequence_metadata_store_test, remove) {
     auto tx = db_->create_transaction();
     metadata_store s{*tx};
-    EXPECT_TRUE(s.put(0, 0));
-    EXPECT_TRUE(s.put(1, 100));
-    EXPECT_TRUE(s.put(2, 200));
+    s.put(0, 0);
+    s.put(1, 100);
+    s.put(2, 200);
     EXPECT_EQ(3, s.size());
     EXPECT_TRUE(s.remove(1));
     EXPECT_EQ(2, s.size());
     EXPECT_TRUE(s.remove(2));
     EXPECT_EQ(1, s.size());
-    EXPECT_TRUE(s.remove(3)); // removing non-existing is handled as success
+    EXPECT_FALSE(s.remove(3));
     EXPECT_EQ(1, s.size());
 }
 

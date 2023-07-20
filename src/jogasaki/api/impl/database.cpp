@@ -37,6 +37,7 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/kvs/storage_dump.h>
@@ -713,8 +714,13 @@ status database::initialize_from_providers() {
         if(auto res = kvs::transaction::create_transaction(*kvs_db_, tx); res != status::ok) {
             return res;
         }
-        sequence_manager_->load_id_map(tx.get());
-        sequence_manager_->register_sequences(tx.get(), tables_);
+        try {
+            sequence_manager_->load_id_map(tx.get());
+            sequence_manager_->register_sequences(tx.get(), tables_);
+        } catch(executor::sequence::exception& e) {
+            LOG_LP(ERROR) << "registering sequences failed:" << e.get_status() << " " << e.what();
+            return e.get_status();
+        }
         if(auto res = tx->commit(); res != status::ok) {
             LOG_LP(ERROR) << "committing table schema entries failed";
             sequence_manager_.reset();

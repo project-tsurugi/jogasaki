@@ -56,32 +56,34 @@ public:
      * @brief put new entry for mapping from definition id to sequence id
      * @param def_id definition id of the sequence
      * @param id sequence id
-     * @return true if successful
-     * @return false otherwise
+     * @throws sequence::exception if any error occurs, then transaction held by this object is aborted.
+     * This object should not be used any more.
      */
-    bool put(std::size_t def_id, std::size_t id);
+    void put(std::size_t def_id, std::size_t id);
 
     /**
      * @brief scan mapping
      * @param consumer consumer function for each mapping entry
-     * @return true if successful
-     * @return false otherwise
+     * @throws sequence::exception if any error occurs, then transaction held by this object is aborted.
+     * This object should not be used any more.
      */
-    bool scan(scan_consumer_type const& consumer);
+    void scan(scan_consumer_type const& consumer);
 
     /**
      * @brief find usable definition id
      * @param def_id [out] parameter filled with empty definition id available
-     * @return true if successful
-     * @return false otherwise
+     * @throws sequence::exception if any error occurs, then transaction held by this object is aborted.
+     * This object should not be used any more.
      */
-    bool find_next_empty_def_id(std::size_t& def_id);
+    void find_next_empty_def_id(std::size_t& def_id);
 
     /**
      * @brief remove the mappping entry for from definition id
      * @param def_id definition id of the sequence to be removed
      * @return true if successful
-     * @return false otherwise
+     * @return false if entry is not found
+     * @throws sequence::exception if any error occurs, then transaction held by this object is aborted.
+     * This object should not be used any more.
      */
     bool remove(std::size_t def_id);
 

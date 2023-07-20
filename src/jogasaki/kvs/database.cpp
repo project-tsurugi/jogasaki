@@ -113,30 +113,31 @@ std::unique_ptr<storage> database::get_or_create_storage(std::string_view name) 
     return {};
 }
 
-sequence_id database::create_sequence() {
+status database::create_sequence(sequence_id& out) {
     sequence_id id{};
     if (auto res = sharksfin::sequence_create(handle_, &id); res != sharksfin::StatusCode::OK) {
-        throw_exception(std::logic_error{
-            string_builder{} << "sequence_create failed with error:" << res << string_builder::to_string
-        });
+        return resolve(res);
     }
-    return id;
+    out = id;
+    return status::ok;
 }
 
-bool database::update_sequence(transaction& tx, sequence_id id, sequence_version version, sequence_value value) noexcept {
+status database::update_sequence(transaction& tx, sequence_id id, sequence_version version, sequence_value value) noexcept {
     if (auto res = sharksfin::sequence_put(
             tx.handle(),
             id,
             version,
             value
         ); res != sharksfin::StatusCode::OK) {
-        VLOG_LP(log_error) << "sharksfin::sequence_put failed with error:" << res;
-        return false;
+        if (res == sharksfin::StatusCode::NOT_FOUND) {
+            return status::err_not_found;
+        }
+        return resolve(res);
     }
-    return true;
+    return status::ok;
 }
 
-sequence_versioned_value database::read_sequence(sequence_id id) {
+status database::read_sequence(sequence_id id, sequence_versioned_value& out) {
     sequence_versioned_value ret{};
     if (auto res = sharksfin::sequence_get(
             handle_,
@@ -145,25 +146,25 @@ sequence_versioned_value database::read_sequence(sequence_id id) {
             &ret.value_
         ); res != sharksfin::StatusCode::OK) {
         if (res == sharksfin::StatusCode::NOT_FOUND) {
-            return {version_invalid, 0};
+            return status::err_not_found;
         }
-        throw_exception(std::logic_error{
-            string_builder{} << "sequence_get failed with error:" << res << string_builder::to_string
-        });
+        return resolve(res);
     }
-    return ret;
+    out = ret;
+    return status::ok;
 }
 
-bool database::delete_sequence(sequence_id id) {
+status database::delete_sequence(sequence_id id) {
     if (auto res = sharksfin::sequence_delete(
             handle_,
             id
         ); res != sharksfin::StatusCode::OK) {
-        throw_exception(std::logic_error{
-            string_builder{} << "sequence_delete failed with error:" << res << string_builder::to_string
-        });
+        if (res == sharksfin::StatusCode::NOT_FOUND) {
+            return status::err_not_found;
+        }
+        return resolve(res);
     }
-    return true;
+    return status::ok;
 }
 
 database::database(DatabaseHandle handle) : handle_(handle) {}

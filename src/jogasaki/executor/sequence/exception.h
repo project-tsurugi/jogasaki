@@ -38,7 +38,7 @@ public:
     /**
      * @brief destruct the object
      */
-    ~exception() = default;
+    ~exception() override = default;
 
     exception(exception const& other) = default;
     exception& operator=(exception const& other) = default;
@@ -50,11 +50,11 @@ public:
         msg_(msg)
     {}
 
-    char const* what() const noexcept {
+    [[nodiscard]] char const* what() const noexcept override {
         return msg_.c_str();
     }
 
-    status get_status() const noexcept {
+    [[nodiscard]] status get_status() const noexcept {
         return status_;
     }
 

@@ -211,21 +211,6 @@ public:
     }
 
     /**
-     * @brief setter for enable logship flag
-     */
-    void enable_logship(bool arg) noexcept {
-        enable_logship_ = arg;
-    }
-
-    /**
-     * @brief accessor for enable logship flag
-     * @return whether logship is enabled or not
-     */
-    [[nodiscard]] bool enable_logship() const noexcept {
-        return enable_logship_;
-    }
-
-    /**
      * @brief setter for enable index join flag
      */
     void enable_index_join(bool arg) noexcept {
@@ -333,7 +318,6 @@ public:
             "lazy_worker:" << cfg.lazy_worker() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
             "max_logging_parallelism:" << cfg.max_logging_parallelism() << " " <<
-            "enable_logship:" << cfg.enable_logship() << " " <<
             "enable_index_join:" << cfg.enable_index_join() << " " <<
             "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
             "stealing_wait:" << cfg.stealing_wait() << " " <<
@@ -364,7 +348,6 @@ private:
     bool lazy_worker_ = false;
     bool activate_scheduler_ = true;
     std::size_t max_logging_parallelism_ = 1;
-    bool enable_logship_ = false;
     bool enable_index_join_ = false;
     bool use_preferred_worker_for_current_thread_ = true;
     std::size_t stealing_wait_ = 1;

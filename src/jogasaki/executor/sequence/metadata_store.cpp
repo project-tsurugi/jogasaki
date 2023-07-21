@@ -57,7 +57,7 @@ void metadata_store::put(std::size_t def_id, std::size_t id) {
             {key.data(), key.size()},
             {value.data(), value.size()}
         ); res != status::ok) {
-        throw_exception(exception{res, "put sequence def_id failed"});
+        throw_exception(exception{res, "writing sequence metadata to system storage failed"});
     }
 }
 

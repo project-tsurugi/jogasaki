@@ -96,8 +96,7 @@ TEST_F(sequence_test, generate_primary_key) {
     }
 }
 
-// sequence recovery needs latest limestone, but shirakami testcase failed after upgrading limestone
-TEST_F(sequence_test, DISABLED_recovery) {
+TEST_F(sequence_test, recovery) {
     utils::set_global_tx_option({false, false}); // to customize
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";

@@ -26,6 +26,7 @@
 #include <jogasaki/common.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/utils/proto_field_types.h>
@@ -489,9 +490,14 @@ void service::command_execute_load(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& ed = proto_req.execute_load();
-    auto tx = validate_transaction_handle(ed, *res, req_info);
-    if(! tx) {
-        return;
+    jogasaki::api::transaction_handle tx{};
+    if(ed.has_transaction_handle()) {
+        tx = validate_transaction_handle(ed, *res, req_info);
+        if (!tx) {
+            return;
+        }
+    } else {
+        // non-transactional load
     }
     auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, *res, req_info);
     if(! handle) {
@@ -1040,23 +1046,45 @@ void service::execute_load(
     if(! callbacks_.emplace(cid, std::move(c))) {
         throw_exception(std::logic_error{"callback already exists"});
     }
-    if(auto rc = reinterpret_cast<api::impl::transaction*>(tx.get())->execute_load(  //NOLINT
-            statement,
-            q.params(),
-            files,
-            [cbp, this, req_info](status s, std::string_view message){
-                if (s == jogasaki::status::ok) {
-                    details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
-                } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, s, message, req_info);
+    if(tx) {
+        if (auto rc = reinterpret_cast<api::impl::transaction *>(tx.get())->execute_load(  //NOLINT
+                statement,
+                q.params(),
+                files,
+                [cbp, this, req_info](status s, std::string_view message) {
+                    if (s == jogasaki::status::ok) {
+                        details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
+                    } else {
+                        details::error<sql::response::ResultOnly>(*cbp->response_, s, message, req_info);
+                    }
+                    if (!callbacks_.erase(cbp->id_)) {
+                        throw_exception(std::logic_error{"missing callback"});
+                    }
                 }
-                if(! callbacks_.erase(cbp->id_)) {
-                    throw_exception(std::logic_error{"missing callback"});
+            ); !rc) {
+            // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
+            throw_exception(std::logic_error{"execute_load failed"});
+        }
+    } else {
+        //non transactional load
+        if (auto rc = reinterpret_cast<api::impl::database*>(db_)->execute_load(  //NOLINT
+                statement,
+                q.params(),
+                files,
+                [cbp, this, req_info](status s, std::string_view message) {
+                    if (s == jogasaki::status::ok) {
+                        details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
+                    } else {
+                        details::error<sql::response::ResultOnly>(*cbp->response_, s, message, req_info);
+                    }
+                    if (!callbacks_.erase(cbp->id_)) {
+                        throw_exception(std::logic_error{"missing callback"});
+                    }
                 }
-            }
-        ); ! rc) {
-        // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
-        throw_exception(std::logic_error{"execute_load failed"});
+            ); !rc) {
+            // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
+            throw_exception(std::logic_error{"execute_load failed"});
+        }
     }
 }
 

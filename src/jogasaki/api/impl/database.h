@@ -55,6 +55,8 @@ using takatori::util::maybe_shared_ptr;
  */
 class database : public api::database {
 public:
+    using callback = std::function<void(status, std::string_view)>;
+
     using create_transaction_callback = api::database::create_transaction_callback;
 
     database();
@@ -160,6 +162,13 @@ public:
     std::string diagnostic_string() override;
 
     status list_tables(std::vector<std::string>& out) override;
+
+    bool execute_load(
+        api::statement_handle prepared,
+        maybe_shared_ptr<api::parameter_set const> parameters,
+        std::vector<std::string> files,
+        callback on_completion
+    );
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

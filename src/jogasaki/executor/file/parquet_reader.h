@@ -54,6 +54,7 @@ struct parquet_reader_field_locator {
 
 class parquet_reader_option {
 public:
+
     parquet_reader_option() = default;
 
     /**
@@ -82,6 +83,8 @@ public:
  */
 class parquet_reader {
 public:
+    static constexpr std::size_t index_unspecified = static_cast<std::size_t>(-1);
+
     /**
      * @brief create new object
      * @details this function is intended to be called from open(). Use open() function because it can report error
@@ -120,13 +123,22 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& meta();
 
     /**
+     * @brief accessor to the row group count
+     */
+    [[nodiscard]] std::size_t row_group_count() const noexcept;
+
+    /**
      * @brief factory function to construct the new parquet_writer object
      * @param meta metadata of the written records
      * @param path the file path that is to be written
      * @return newly created object on success
      * @return nullptr otherwise
      */
-    static std::shared_ptr<parquet_reader> open(std::string_view path, parquet_reader_option const* opt = nullptr);
+    static std::shared_ptr<parquet_reader> open(
+        std::string_view path,
+        parquet_reader_option const* opt = nullptr,
+        std::size_t row_group_index = index_unspecified
+    );
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
@@ -139,8 +151,10 @@ private:
     std::size_t read_count_{};
     data::aligned_buffer buf_{};
     std::vector<std::size_t> parameter_to_parquet_field_{};
+    std::size_t row_group_count_{};
+    std::size_t row_group_index_{};
 
-    bool init(std::string_view path, parquet_reader_option const* opt);
+    bool init(std::string_view path, parquet_reader_option const* opt, std::size_t row_group_index);
 };
 
 

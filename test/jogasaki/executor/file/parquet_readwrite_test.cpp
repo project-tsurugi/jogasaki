@@ -335,5 +335,112 @@ TEST_F(parquet_readwrite_test, generate_decimal_sample) {
     EXPECT_TRUE(reader->close());
 }
 
+TEST_F(parquet_readwrite_test, multi_row_groups) {
+    boost::filesystem::path p{path()};
+    p = p / "multi_row_groups.parquet";
+    auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+
+    writer->write(rec.ref());
+    writer->write(rec.ref());
+    writer->new_row_group();
+    writer->write(rec.ref());
+    writer->new_row_group();
+    writer->write(rec.ref());
+    writer->write(rec.ref());
+    writer->close();
+    EXPECT_EQ(p.string(), writer->path());
+    EXPECT_EQ(5, writer->write_count());
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    {
+        auto reader = parquet_reader::open(p.string());
+        ASSERT_TRUE(reader);
+        auto meta = reader->meta();
+        ASSERT_EQ(2, meta->field_count());
+        EXPECT_EQ("C0", meta->field_name(0));
+        EXPECT_EQ("C1", meta->field_name(1));
+        EXPECT_TRUE(meta->nullable(0));
+        EXPECT_TRUE(meta->nullable(1));
+        EXPECT_EQ(meta::field_type_kind::int8, meta->at(0).kind());
+        EXPECT_EQ(meta::field_type_kind::float8, meta->at(1).kind());
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_FALSE(reader->next(ref));
+        }
+        EXPECT_EQ(2, reader->read_count());
+        EXPECT_EQ(p.string(), reader->path());
+        EXPECT_TRUE(reader->close());
+    }
+    {
+        auto reader = parquet_reader::open(p.string(), nullptr, 1);
+        ASSERT_TRUE(reader);
+        auto meta = reader->meta();
+        ASSERT_EQ(2, meta->field_count());
+        EXPECT_EQ("C0", meta->field_name(0));
+        EXPECT_EQ("C1", meta->field_name(1));
+        EXPECT_TRUE(meta->nullable(0));
+        EXPECT_TRUE(meta->nullable(1));
+        EXPECT_EQ(meta::field_type_kind::int8, meta->at(0).kind());
+        EXPECT_EQ(meta::field_type_kind::float8, meta->at(1).kind());
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_FALSE(reader->next(ref));
+        }
+        EXPECT_EQ(1, reader->read_count());
+        EXPECT_EQ(p.string(), reader->path());
+        EXPECT_TRUE(reader->close());
+    }
+    {
+        auto reader = parquet_reader::open(p.string(), nullptr, 2);
+        ASSERT_TRUE(reader);
+        auto meta = reader->meta();
+        ASSERT_EQ(2, meta->field_count());
+        EXPECT_EQ("C0", meta->field_name(0));
+        EXPECT_EQ("C1", meta->field_name(1));
+        EXPECT_TRUE(meta->nullable(0));
+        EXPECT_TRUE(meta->nullable(1));
+        EXPECT_EQ(meta::field_type_kind::int8, meta->at(0).kind());
+        EXPECT_EQ(meta::field_type_kind::float8, meta->at(1).kind());
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_FALSE(reader->next(ref));
+        }
+        EXPECT_EQ(2, reader->read_count());
+        EXPECT_EQ(p.string(), reader->path());
+        EXPECT_TRUE(reader->close());
+    }
+}
+
 }
 

@@ -434,7 +434,9 @@ std::string encode_execute_prepared_statement_or_query(
     } else {
         std::abort();
     }
-    stmt->mutable_transaction_handle()->set_handle(tx_handle);
+    if(tx_handle != 0) {
+        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+    }
     stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
     auto* params = stmt->mutable_parameters();
     fill_parameters(parameters, params);

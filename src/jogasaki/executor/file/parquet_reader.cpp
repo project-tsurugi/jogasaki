@@ -223,9 +223,13 @@ parquet_reader_option create_default(meta::record_meta const& meta) {
     return {std::move(locs), meta};
 }
 
-std::shared_ptr<parquet_reader> parquet_reader::open(std::string_view path, parquet_reader_option const* opt) {
+std::shared_ptr<parquet_reader> parquet_reader::open(
+    std::string_view path,
+    parquet_reader_option const* opt,
+    std::size_t row_group_index
+) {
     auto ret = std::make_shared<parquet_reader>();
-    if(ret->init(path, opt)) {
+    if(ret->init(path, opt, row_group_index)) {
         return ret;
     }
     return {};
@@ -481,12 +485,19 @@ bool validate_parameter_mapping(
 
 void dump_file_metadata(parquet::FileMetaData& pmeta) {
     VLOG_LP(log_debug) << "*** begin dump metadata for parquet file ***";
-    VLOG_LP(log_debug) << "#columns:" << pmeta.num_columns();
     VLOG_LP(log_debug) << "size:" << pmeta.size();
     VLOG_LP(log_debug) << "num_rows:" << pmeta.num_rows();
     VLOG_LP(log_debug) << "created_by:" << pmeta.created_by();
-    VLOG_LP(log_debug) << "schema name:" << pmeta.schema()->name();
 
+    VLOG_LP(log_debug) << "num_row_groups:" << pmeta.num_row_groups();
+    for(std::size_t i=0, n=pmeta.num_row_groups(); i<n; ++i) {
+        auto rg = pmeta.RowGroup(i);
+        VLOG_LP(log_debug) << "  RowGroup:" << i << " num_rows:" << rg->num_rows() <<
+                " total_byte_size:" << rg->total_byte_size() << " total_compressed_size:" << rg->total_compressed_size();
+    }
+    VLOG_LP(log_debug) << "schema name:" << pmeta.schema()->name();
+    VLOG_LP(log_debug) << "num_columns:" << pmeta.num_columns();
+    // encodings can be different among row groups, but we don't use such format so often, so simply display fixed rg.
     auto rg = pmeta.RowGroup(0);
     for(std::size_t i=0, n=pmeta.schema()->num_columns(); i<n; ++i) {
         auto&& c = pmeta.schema()->Column(i);
@@ -505,16 +516,23 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
     VLOG_LP(log_debug) << "*** end dump metadata for parquet file ***";
 }
 
-bool parquet_reader::init(std::string_view path, parquet_reader_option const* opt) {
+bool parquet_reader::init(
+    std::string_view path,
+    parquet_reader_option const* opt,
+    std::size_t row_group_index
+) {
     try {
         path_ = std::string{path};
         file_reader_ = parquet::ParquetFileReader::OpenFile(path_.string(), false);
         auto file_metadata = file_reader_->metadata();
         dump_file_metadata(*file_metadata);
-        if(file_metadata->num_row_groups() != 1) {
-            VLOG_LP(log_error) << "parquet file format error : more than one row groups";
+        row_group_count_ = file_metadata->num_row_groups();
+        if(row_group_index != index_unspecified && row_group_index >= row_group_count_) {
+            VLOG_LP(log_error) << "row group index:" << row_group_index <<
+                    " too large for row group count:" << row_group_count_;
             return false;
         }
+        row_group_index_ = row_group_index == index_unspecified ? 0 : row_group_index;
         if(opt != nullptr) {
             parameter_meta_ = maybe_shared_ptr{opt->meta_};
             if(! validate_option(*opt, *file_metadata)) {
@@ -532,7 +550,6 @@ bool parquet_reader::init(std::string_view path, parquet_reader_option const* op
             parameter_meta_ = maybe_shared_ptr{d.meta_};
             parameter_to_parquet_field_ = create_parameter_to_parquet_field(d, *file_metadata);
         }
-
         if(! meta_) {
             return false;
         }
@@ -540,7 +557,7 @@ bool parquet_reader::init(std::string_view path, parquet_reader_option const* op
         columns_ = create_columns_meta(*file_metadata);
         buf_ = data::aligned_buffer{parameter_meta_->record_size(), parameter_meta_->record_alignment()};
         buf_.resize(parameter_meta_->record_size());
-        row_group_reader_ = file_reader_->RowGroup(0);
+        row_group_reader_ = file_reader_->RowGroup(row_group_index_);
         column_readers_.reserve(meta_->field_count());
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
             column_readers_.emplace_back(row_group_reader_->Column(i));
@@ -550,5 +567,9 @@ bool parquet_reader::init(std::string_view path, parquet_reader_option const* op
         return false;
     }
     return true;
+}
+
+std::size_t parquet_reader::row_group_count() const noexcept {
+    return row_group_count_;
 }
 }

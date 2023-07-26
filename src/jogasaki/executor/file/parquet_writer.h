@@ -97,6 +97,11 @@ public:
     [[nodiscard]] std::size_t write_count() const noexcept;
 
     /**
+     * @brief close current row group and move to new one
+     */
+    void new_row_group();
+
+    /**
      * @brief factory function to construct the new parquet_writer object
      * @param meta metadata of the written records
      * @param path the file path that is to be written
@@ -109,6 +114,7 @@ private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
     std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
+    parquet::RowGroupWriter* row_group_writer_{};
     std::vector<parquet::ColumnWriter*> column_writers_{};
     boost::filesystem::path path_{};
     std::size_t write_count_{};

@@ -167,7 +167,7 @@ public:
     void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);
 
     template <class ... Args>
-    void test_load(status expected, Args ... args);
+    void test_load(bool transactional, status expected, Args ... args);
 
     void execute_statement_as_query(std::string_view sql);
 
@@ -1271,7 +1271,28 @@ TEST_F(service_api_test, execute_dump_load) {
         ss << " ";
     }
     LOG(INFO) << "dump files: " << ss.str();
-    test_load(status::ok, files[0]);
+    test_load(true, status::ok, files[0]);
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T0 ORDER BY C0", result);
+        ASSERT_EQ(10, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1,10.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(10,100.0)), result[9]);
+    }
+}
+
+TEST_F(service_api_test, execute_dump_load_non_tx) {
+    std::vector<std::string> files{};
+    test_dump(files);
+    test_statement("delete from T0");
+    std::stringstream ss{};
+    for(auto&& s : files) {
+        ss << s;
+        ss << " ";
+    }
+    LOG(INFO) << "dump files: " << ss.str();
+    test_load(false, status::ok, files[0]);
     {
         using kind = meta::field_type_kind;
         std::vector<mock::basic_record> result{};
@@ -1343,7 +1364,13 @@ TEST_F(service_api_test, dump_error_with_query_result) {
 TEST_F(service_api_test, load_no_file) {
     // no file is specified - success
     std::vector<std::string> files{};
-    test_load(status::ok);
+    test_load(true, status::ok);
+}
+
+TEST_F(service_api_test, DISABLED_load_no_file_non_tx) {
+    // no file is specified - success
+    std::vector<std::string> files{};
+    test_load(false, status::ok);
 }
 
 TEST_F(service_api_test, load_empty_file_name) {
@@ -1351,7 +1378,15 @@ TEST_F(service_api_test, load_empty_file_name) {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
     std::vector<std::string> files{};
-    test_load(status::err_aborted, "");
+    test_load(true, status::err_aborted, "");
+}
+
+TEST_F(service_api_test, load_empty_file_name_non_tx) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
+    }
+    std::vector<std::string> files{};
+    test_load(false, status::err_io_error, "");
 }
 
 TEST_F(service_api_test, load_missing_files) {
@@ -1359,11 +1394,18 @@ TEST_F(service_api_test, load_missing_files) {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
     std::vector<std::string> files{};
-    test_load(status::err_aborted, "dummy1.parquet", "dummy2.parquet");
+    test_load(true, status::err_aborted, "dummy1.parquet", "dummy2.parquet");
+}
+TEST_F(service_api_test, load_missing_files_non_tx) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
+    }
+    std::vector<std::string> files{};
+    test_load(true, status::err_aborted, "dummy1.parquet", "dummy2.parquet");
 }
 
 template <class ... Args>
-void service_api_test::test_load(status expected, Args...files) {
+void service_api_test::test_load(bool transactional, status expected, Args...files) {
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
@@ -1372,7 +1414,9 @@ void service_api_test::test_load(status expected, Args...files) {
         std::pair{"p1"s, sql::common::AtomType::FLOAT8}
     );
     std::uint64_t tx_handle{};
-    test_begin(tx_handle);
+    if(transactional) {
+        test_begin(tx_handle);
+    }
     {
         std::vector<parameter> parameters{
             {"p0"s, ValueCase::kReferenceColumnName, std::any{std::in_place_type<std::string>, "C0"}},
@@ -1393,7 +1437,9 @@ void service_api_test::test_load(status expected, Args...files) {
             auto [success, error] = decode_result_only(res->body_);
             if(expected == status::ok) {
                 ASSERT_TRUE(success);
-                test_commit(tx_handle);
+                if(transactional) {
+                    test_commit(tx_handle);
+                }
             } else {
                 ASSERT_FALSE(success);
                 ASSERT_EQ(api::impl::details::map_status(expected), error.status_);

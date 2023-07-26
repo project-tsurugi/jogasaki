@@ -186,6 +186,7 @@ public:
         kvs::transaction_option const& options
     );
 
+    status commit_internal();
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
@@ -203,7 +204,6 @@ private:
         std::shared_ptr<scheduler::request_detail> request_detail
     );
 
-    status commit_internal();
 
     status init(kvs::transaction_option const& options);
 };

@@ -48,6 +48,18 @@ parquet_writer::parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta
     meta_(std::move(meta))
 {}
 
+void parquet_writer::new_row_group() {
+    if(row_group_writer_) {
+        row_group_writer_->Close();
+        column_writers_.clear();
+    }
+    row_group_writer_ = file_writer_->AppendBufferedRowGroup();
+    column_writers_.reserve(meta_->field_count());
+    for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
+        column_writers_.emplace_back(row_group_writer_->column(i));
+    }
+}
+
 bool parquet_writer::init(std::string_view path) {
     try {
         path_ = std::string{path};
@@ -57,11 +69,7 @@ bool parquet_writer::init(std::string_view path) {
         parquet::WriterProperties::Builder builder;
         builder.compression(parquet::Compression::SNAPPY);
         file_writer_ = parquet::ParquetFileWriter::Open(fs_, schema, builder.build());
-        auto* rgwriter = file_writer_->AppendBufferedRowGroup();
-        column_writers_.reserve(meta_->field_count());
-        for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-            column_writers_.emplace_back(rgwriter->column(i));
-        }
+        new_row_group();
     } catch (std::exception const& e) {
         VLOG_LP(log_error) << "Parquet writer init error: " << e.what();
         return false;

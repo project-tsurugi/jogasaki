@@ -34,6 +34,9 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/executor/batch/batch_executor.h>
+#include <jogasaki/executor/batch/batch_file_executor.h>
+#include <jogasaki/executor/batch/batch_block_executor.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
@@ -913,6 +916,55 @@ jogasaki::status jogasaki::api::impl::database::list_tables(std::vector<std::str
         out.emplace_back(t->simple_name());
     });
     return status::ok;
+}
+
+bool database::execute_load(
+    api::statement_handle prepared,
+    maybe_shared_ptr<api::parameter_set const> parameters,
+    std::vector<std::string> files,
+    callback on_completion
+) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
+    req->status(scheduler::request_detail_status::accepted);
+    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
+    log_request(*req);
+
+    auto rctx = impl::create_request_context(
+        this,
+        nullptr,
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req
+    );
+
+    auto ldr = std::make_shared<executor::batch::batch_executor>(
+        std::move(files),
+        prepared,
+        std::move(parameters),
+        this,
+        [rctx]() {
+            scheduler::submit_teardown(*rctx);
+        }
+    );
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, ldr](){  // callback is copy-based
+        (void)ldr; // to keep ownership
+        auto [st, msg] = ldr->error_info();
+        on_completion(st, msg);
+    });
+
+    auto& ts = *rctx->scheduler();
+    req->status(scheduler::request_detail_status::submitted);
+    log_request(*req);
+
+    // non tx loader boostrap task
+    auto t = scheduler::create_custom_task(rctx.get(),
+        [rctx, ldr]() {
+            (void) rctx;
+            ldr->bootstrap();
+            return model::task_result::complete;
+        }, false);  // create transaction is not sticky task
+    ts.schedule_task(std::move(t));
+    return true;
 }
 
 }

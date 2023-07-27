@@ -36,6 +36,7 @@ class batch_executor;
  */
 class cache_align batch_file_executor {
 public:
+    using release_callback_type = std::function<void(batch_block_executor*)>;
 
     /**
      * @brief create empty object
@@ -61,7 +62,8 @@ public:
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::impl::database* db,
-        batch_executor* parent = nullptr
+        batch_executor* parent = nullptr,
+        release_callback_type release_cb = {}
     ) noexcept;
 
     /**
@@ -94,6 +96,12 @@ public:
     [[nodiscard]] std::size_t block_count() const noexcept;
 
     /**
+     * @brief accessor to the number of child nodes held by this object
+     * @return the block count
+     */
+    [[nodiscard]] std::size_t child_count() const noexcept;
+
+    /**
      * @brief factory function to construct file executor
      * @see constructor for the details of parameters
      * @return newly created file executor
@@ -104,7 +112,8 @@ public:
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::impl::database* db,
-        batch_executor* parent = nullptr
+        batch_executor* parent = nullptr,
+        release_callback_type release_cb = {}
     );
 
 private:
@@ -116,6 +125,7 @@ private:
     tbb::concurrent_hash_map<batch_block_executor*, std::shared_ptr<batch_block_executor>> children_{};
     std::atomic_size_t next_block_index_{};
     std::size_t block_count_{};
+    release_callback_type release_cb_{};
 
     bool init();
 };

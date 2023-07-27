@@ -109,6 +109,8 @@ TEST_F(batch_executor_test, simple) {
     ps->set_reference_column("p0", "C0");
 
     std::atomic_bool called = false;
+    std::atomic_size_t file_release_count = 0;
+    std::atomic_size_t block_release_count = 0;
     auto root = std::make_shared<batch_executor>(
         std::vector<std::string>{p0.string(), p1.string()},
         prepared,
@@ -116,7 +118,18 @@ TEST_F(batch_executor_test, simple) {
         reinterpret_cast<api::impl::database*>(db_.get()),
         [&](){
             called = true;
-
+        },
+        batch_executor_option{
+            batch_executor_option::undefined,
+            batch_executor_option::undefined,
+            [&](batch_file_executor* arg) {
+                std::cerr << "release file:" << arg << std::endl;
+                ++file_release_count;
+            },
+            [&](batch_block_executor* arg) {
+                std::cerr << "release block:" << arg << std::endl;
+                ++block_release_count;
+            }
         }
     );
 
@@ -165,6 +178,8 @@ TEST_F(batch_executor_test, simple) {
         EXPECT_EQ((mock::create_nullable_record<kind::int8>(10)), result[5]);
     }
     ASSERT_TRUE(called);
+    EXPECT_EQ(2, file_release_count);
+    EXPECT_EQ(4, block_release_count);
 }
 
 TEST_F(batch_executor_test, bootstrap) {
@@ -187,6 +202,8 @@ TEST_F(batch_executor_test, bootstrap) {
     ps->set_reference_column("p0", "C0");
 
     std::atomic_bool called = false;
+    std::atomic_size_t file_release_count = 0;
+    std::atomic_size_t block_release_count = 0;
     auto root = std::make_shared<batch_executor>(
         std::vector<std::string>{p0.string(), p1.string()},
         prepared,
@@ -194,7 +211,18 @@ TEST_F(batch_executor_test, bootstrap) {
         reinterpret_cast<api::impl::database*>(db_.get()),
         [&](){
             called = true;
-
+        },
+        batch_executor_option{
+            batch_executor_option::undefined,
+            batch_executor_option::undefined,
+            [&](batch_file_executor* arg) {
+                std::cerr << "release file:" << arg << std::endl;
+                ++file_release_count;
+            },
+            [&](batch_block_executor* arg) {
+                std::cerr << "release block:" << arg << std::endl;
+                ++block_release_count;
+            }
         }
     );
     root->bootstrap();
@@ -213,6 +241,8 @@ TEST_F(batch_executor_test, bootstrap) {
         EXPECT_EQ((mock::create_nullable_record<kind::int8>(10)), result[5]);
     }
     ASSERT_TRUE(called);
+    EXPECT_EQ(2, file_release_count);
+    EXPECT_EQ(4, block_release_count);
 }
 
 }

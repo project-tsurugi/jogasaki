@@ -54,6 +54,9 @@ std::shared_ptr<batch_block_executor> batch_file_executor::release(batch_block_e
         ret = std::move(acc->second);
         children_.erase(acc);
     }
+    if(release_cb_) {
+        release_cb_(arg);
+    }
     return ret;
 }
 
@@ -66,13 +69,15 @@ batch_file_executor::batch_file_executor(
     api::statement_handle prepared,
     maybe_shared_ptr<const api::parameter_set> parameters,
     api::impl::database *db,
-    batch_executor* parent
+    batch_executor* parent,
+    release_callback_type release_cb
 ) noexcept:
     file_(std::move(file)),
     prepared_(prepared),
     parameters_(std::move(parameters)),
     db_(db),
-    parent_(parent)
+    parent_(parent),
+    release_cb_(std::move(release_cb))
 {}
 
 std::size_t batch_file_executor::block_count() const noexcept {
@@ -91,19 +96,30 @@ bool batch_file_executor::init() {
 }
 
 std::shared_ptr<batch_file_executor>
-batch_file_executor::create_file_executor(std::string file, api::statement_handle prepared,
-    maybe_shared_ptr<const api::parameter_set> parameters, api::impl::database *db, batch_executor *parent) {
+batch_file_executor::create_file_executor(
+    std::string file,
+    api::statement_handle prepared,
+    maybe_shared_ptr<const api::parameter_set> parameters,
+    api::impl::database *db,
+    batch_executor *parent,
+    release_callback_type release_cb
+) {
     auto ret = std::make_shared<batch_file_executor>(
         std::move(file),
         prepared,
         std::move(parameters),
         db,
-        parent
+        parent,
+        std::move(release_cb)
     );
     if(! ret->init()) {
         return {};
     }
     return ret;
+}
+
+std::size_t batch_file_executor::child_count() const noexcept {
+    return children_.size();
 }
 
 }

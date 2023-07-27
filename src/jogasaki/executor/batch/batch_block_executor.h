@@ -69,8 +69,10 @@ public:
     /**
      * @brief execute statement
      * @details execute next statement in this block. New line is read from the block and statement is scheduled.
+     * @returns true if new line is read successfully and statement task is scheduled
+     * @returns false if there is no new line
      */
-    void execute_statement();
+    bool execute_statement();
 
     /**
      * @brief accessor to the total number of statements executed

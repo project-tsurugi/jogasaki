@@ -15,16 +15,13 @@
  */
 #pragma once
 
-#include <atomic>
-
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/statement_handle.h>
-#include <jogasaki/api/impl/transaction.h>
-#include <jogasaki/executor/file/parquet_reader.h>
+#include <cstddef>
+#include <functional>
 
 namespace jogasaki::executor::batch {
+
+class batch_file_executor;
+class batch_block_executor;
 
 /**
  * @brief option object for batch executors
@@ -32,6 +29,16 @@ namespace jogasaki::executor::batch {
 class batch_executor_option {
 public:
     static constexpr std::size_t undefined = static_cast<std::size_t>(-1);
+
+    /**
+     * @brief callback type for batch_executor::release()
+     */
+    using release_file_callback_type = std::function<void(batch_file_executor*)>;
+
+    /**
+     * @brief callback type for batch_file_executor::release()
+     */
+    using release_block_callback_type = std::function<void(batch_block_executor*)>;
 
     /**
      * @brief create empty object
@@ -48,10 +55,14 @@ public:
      * @brief create new object
      * @param max_concurrent_files the max number of files opened and processed by one batch_executor at a time
      * @param max_concurrent_blocks_per_file the max number of blocks processed by one batch_file_executor at a time
+     * @param release_file_cb callback on releasing file
+     * @param release_block_cb callback on releasing block
      */
     batch_executor_option(
         std::size_t max_concurrent_files,
-        std::size_t max_concurrent_blocks_per_file
+        std::size_t max_concurrent_blocks_per_file,
+        release_file_callback_type release_file_cb = {},
+        release_block_callback_type release_block_cb = {}
     ) noexcept;
 
     /**
@@ -64,9 +75,21 @@ public:
      */
     [[nodiscard]] std::size_t max_concurrent_blocks_per_file() const noexcept;
 
+    /**
+     * @brief accessor for the callback on releasing file
+     */
+    [[nodiscard]] release_file_callback_type release_file_cb() const noexcept;
+
+    /**
+     * @brief accessor for the callback on releasing block
+     */
+    [[nodiscard]] release_block_callback_type release_block_cb() const noexcept;
+
 private:
     std::size_t max_concurrent_files_{undefined};
     std::size_t max_concurrent_blocks_per_file_{undefined};
+    release_file_callback_type release_file_cb_{};
+    release_block_callback_type release_block_cb_{};
 };
 
 }

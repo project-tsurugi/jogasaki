@@ -111,44 +111,64 @@ void create_reader_option_and_maping(
     out = {std::move(locs), *vinfo->meta()};
 }
 
-void batch_block_executor::find_and_process_next_block() {
-    if(! parent_) {
-        // for testing
-        return;
+bool execute_statement_on_next_block(batch_file_executor& f) {
+    auto&& [success, next_block] = f.next_block();
+    if(! success) {
+        // let's abort the batch - error_info already called
+        return true;
     }
+    if(next_block) {
+        return next_block->execute_statement();
+    }
+    return false;
+}
 
-    auto self = parent_->release(this); // to keep this by the end of this scope
+void batch_block_executor::find_and_process_next_block() {
+    if(! parent_) return; // for testing
+    auto to_exit = execute_statement_on_next_block(*parent_);
+
+    auto self = parent_->release(this); // keep self by the end of this scope
     (void) self;
 
-    auto&& [success, next_block] = parent_->next_block();
-    if(success && next_block) {
-        next_block->execute_statement();
+    if(to_exit) {
         return;
     }
+
     auto* r = root();
-    if(! r) {
-        // for testing
+    if(! r) return; // for testing
+
+    if(parent_->child_count() != 0) {
         return;
     }
-    while(true) {
-        if(auto&& [success, next_file] = r->next_file(); success && next_file) {
-            if(auto&& [success, next_block] =  next_file->next_block(); success && next_block) {
-                next_block->execute_statement();
-                return;
-            }
-            // file has no block - skip to next file
-            continue;
+    // no new block in the parent file
+    auto parent = r->release(parent_);
+    (void) parent;
+
+    while(true) { // to repeat next file
+        auto&& [success, next_file] = r->next_file();
+        if(! success) {
+            // let's abort the batch - error_info already called
+            return;
         }
-        // no more file
-        break;
+        if(! next_file) {
+            // no more file
+            break;
+        }
+        if(execute_statement_on_next_block(*next_file)) {
+            return;
+        }
+        // file has no block - skip to next file
+        r->release(next_file.get());
     }
-    if(root() && root()->running_statements() == 0) {
+
+    // no more file
+    if(r->child_count() == 0) {
         // end of loader
-        root()->finish();
+        r->finish();
     }
 }
 
-void batch_block_executor::execute_statement() {
+bool batch_block_executor::execute_statement() {
     if (root() && root()->error_aborting()) {
         VLOG_LP(log_error) << "transaction is aborted due to the error during loading";
         // currently err_aborted should be used in order to report load aborted. When abort can be reported
@@ -158,7 +178,7 @@ void batch_block_executor::execute_statement() {
             // end of loader
             root()->finish();
         }
-        return;
+        return false;
     }
 
     // read records, assign host variables, submit tasks
@@ -169,7 +189,7 @@ void batch_block_executor::execute_statement() {
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {
             (void) root()->error_info(status::err_io_error, "opening parquet file failed.");
-            return;
+            return false;
         }
 
         if(auto res = api::impl::transaction::create_transaction(*db_, tx_,
@@ -187,7 +207,7 @@ void batch_block_executor::execute_statement() {
             (void) root()->error_info(res, "committing tx failed.");
         }
         find_and_process_next_block();
-        return;
+        return false;
     }
 
     set_parameter(*ps, ref, mapping_);
@@ -215,9 +235,9 @@ void batch_block_executor::execute_statement() {
 
             // execute next statement
             execute_statement();
-//            ++records_loaded_;
         }
     );
+    return true;
 }
 
 batch_executor *batch_block_executor::root() const noexcept {

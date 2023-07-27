@@ -105,11 +105,17 @@ TEST_F(batch_file_executor_test, simple) {
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
 
+    std::atomic_size_t release_count = 0;
     auto file = batch_file_executor::create_file_executor(
         p.string(),
         prepared,
         std::shared_ptr{std::move(ps)},
-        reinterpret_cast<api::impl::database*>(db_.get())
+        reinterpret_cast<api::impl::database*>(db_.get()),
+        nullptr,
+        [&](batch_block_executor* arg) {
+            ++release_count;
+            std::cerr << "release: " << arg << std::endl;
+        }
     );
 
     ASSERT_EQ(3, file->block_count());
@@ -141,6 +147,7 @@ TEST_F(batch_file_executor_test, simple) {
     EXPECT_EQ(2, b1->statements_executed());
     EXPECT_EQ(1, b2->statements_executed());
 
+    EXPECT_EQ(3, release_count);
 }
 
 }

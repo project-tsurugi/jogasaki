@@ -50,7 +50,8 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
         prepared_,
         parameters_,
         db_,
-        this
+        this,
+        options_.release_block_cb()
     );
     if(! file) {
         return {false, nullptr};
@@ -133,6 +134,23 @@ void batch_executor::bootstrap() {
     if(running_statements_ == 0 && error_aborting_) {
         finish();
     }
+}
+
+std::shared_ptr<batch_file_executor> batch_executor::release(batch_file_executor *arg) {
+    std::shared_ptr<batch_file_executor> ret{};
+    decltype(children_)::accessor acc{};
+    if (children_.find(acc, arg)) {
+        ret = std::move(acc->second);
+        children_.erase(acc);
+    }
+    if(options_.release_file_cb()) {
+        options_.release_file_cb()(arg);
+    }
+    return ret;
+}
+
+std::size_t batch_executor::child_count() const noexcept {
+    return children_.size();
 }
 
 }

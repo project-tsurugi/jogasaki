@@ -47,6 +47,7 @@ public:
      */
     using callback_type = std::function<void(void)>;
 
+
     /**
      * @brief create empty object
      */
@@ -85,6 +86,15 @@ public:
     std::pair<bool, std::shared_ptr<batch_file_executor>> next_file();
 
     /**
+     * @brief detach the child file executor from this object to release
+     * @details detach the child file executor and returns its ownership
+     * @param arg the file executor to be released
+     * @return the file executor released
+     * @return nullptr if the file executor is not owned by this object
+     */
+    std::shared_ptr<batch_file_executor> release(batch_file_executor* arg);
+
+    /**
      * @brief accessor to the number of statements being scheduled/executed
      * @return the running statement count
      */
@@ -95,6 +105,12 @@ public:
      * @return the error status and message
      */
     [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
+
+    /**
+     * @brief accessor to the number of child nodes held by this object
+     * @return the block count
+     */
+    [[nodiscard]] std::size_t child_count() const noexcept;
 
     /**
      * @brief setter for the error information

@@ -183,11 +183,11 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vec
     return status::ok;
 }
 
-status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::data const &data,
+status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::type_kind const kind,
                    jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
     data::any dest{};
     jogasaki::status s{};
-    switch (data.kind()) {
+    switch (kind) {
         case takatori::type::type_kind::int4:
             if (nullable) {
                 s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::int4>},

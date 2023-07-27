@@ -57,13 +57,13 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable,
  * @brief deserialize the value
  * @param spec the coding_spec to serialize the values
  * @param nullable whether the value is nullable or not
- * @param data data type
+ * @param kind data kind type
  * @param stream the input buffer to read serialized data
  * @param value [out]the output value
  * @return status::ok if succeeded
  * @return otherwise if error was occurred
  */
-status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::data const &data,
+status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::type_kind const kind,
                    jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value);
 
 }

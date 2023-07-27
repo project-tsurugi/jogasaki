@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-#include "serializer.h"
+#include <jogasaki/utils/decimal.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <takatori/util/exception.h>
-#include <jogasaki/data/any.h>
-#include <jogasaki/data/aligned_buffer.h>
+#include "serializer.h"
 
 using buffer = takatori::util::buffer_view;
 using takatori::util::throw_exception;
@@ -101,17 +100,78 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vec
                 }
                 break;
             }
-                /*
-            case tateyama::proto::kvs::data::Value::ValueCase::kBooleanValue:
-            case tateyama::proto::kvs::data::Value::ValueCase::kDecimalValue:
-            case tateyama::proto::kvs::data::Value::ValueCase::kOctetValue:
-            case tateyama::proto::kvs::data::Value::ValueCase::kDateValue:
-            case tateyama::proto::kvs::data::Value::ValueCase::kTimeOfDayValue:
-            case tateyama::proto::kvs::data::Value::ValueCase::kTimePointValue:
-            case tateyama::proto::kvs::data::Value::ValueCase::kDatetimeIntervalValue:
+            case tateyama::proto::kvs::data::Value::ValueCase::kBooleanValue: {
+                std::int8_t v = value->boolean_value() ? 1 : 0;
+                data::any data{std::in_place_type<std::int8_t>, v};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::int1>},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::int1>},
+                                              spec, results);
+                }
+                break;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kDecimalValue: {
+                auto dec = value->decimal_value();
+                if (dec.unscaled_value().size() > 16) {
+                    // NOTE jogasaki::utils::read_decimal() supports size <= 16 only
+                    return status::err_not_implemented;
+                }
+                auto triple = jogasaki::utils::read_decimal(dec.unscaled_value(), dec.exponent());
+                data::any data{std::in_place_type<takatori::decimal::triple>, triple};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data,meta::field_type{std::make_shared<meta::decimal_field_option>()},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{std::make_shared<meta::decimal_field_option>()},
+                                              spec, results);
+                }
+                break;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kDateValue: {
+                takatori::datetime::date date{value->date_value()};
+                data::any data{std::in_place_type<takatori::datetime::date>, date};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::date>},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::date>},
+                                              spec, results);
+                }
+                break;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kTimeOfDayValue: {
+                takatori::datetime::time_of_day::time_unit nanosec {value->time_of_day_value()};
+                takatori::datetime::time_of_day time{nanosec};
+                data::any data{std::in_place_type<takatori::datetime::time_of_day>, time};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
+                                              spec, results);
+                }
+                break;
+            }
+            case tateyama::proto::kvs::data::Value::ValueCase::kTimePointValue: {
+                 auto &tp = value->time_point_value();
+                takatori::datetime::time_point::offset_type offset{tp.offset_seconds()};
+                takatori::datetime::time_point::difference_type diff{tp.nano_adjustment()};
+                takatori::datetime::time_point time{offset, diff};
+                data::any data{std::in_place_type<takatori::datetime::time_point>, time};
+                if (nullable) {
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{std::make_shared<meta::time_point_field_option>()},
+                                                       spec, results);
+                } else {
+                    s = jogasaki::kvs::encode(data, meta::field_type{std::make_shared<meta::time_point_field_option>()},
+                                              spec, results);
+                }
+                break;
+            }
             case tateyama::proto::kvs::data::Value::ValueCase::kTimeOfDayWithTimeZoneValue:
             case tateyama::proto::kvs::data::Value::ValueCase::kTimePointWithTimeZoneValue:
-                 */
+            case tateyama::proto::kvs::data::Value::ValueCase::kDatetimeIntervalValue:
             default:
                 takatori::util::throw_exception(std::logic_error{"not implemented: unknown value_case"});
                 break;
@@ -123,7 +183,8 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vec
     return status::ok;
 }
 
-status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::data const &data, jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
+status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takatori::type::data const &data,
+                   jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
     data::any dest{};
     jogasaki::status s{};
     switch (data.kind()) {
@@ -195,6 +256,104 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
             auto txt = dest.to<accessor::text>();
             auto sv = static_cast<std::string_view>(txt);
             value->set_character_value(sv.data(), sv.size());
+            break;
+        }
+        case takatori::type::type_kind::boolean: {
+            return status::err_not_implemented;
+            break;
+        }
+        case takatori::type::type_kind::int1: {
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::int1>},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::int1>},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument;
+            }
+            value->set_boolean_value(dest.to<bool>() ? true : false);
+            break;
+        }
+        case takatori::type::type_kind::decimal: {
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{std::make_shared<meta::decimal_field_option>()},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{std::make_shared<meta::decimal_field_option>()},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument;
+            }
+            auto triple = dest.to<takatori::decimal::triple>();
+            const auto lo = triple.coefficient_low();
+            const auto hi = triple.coefficient_high();
+            std::uint8_t buf[sizeof(lo) + sizeof(hi)];
+            auto v = lo;
+            for (int i = 0; i < 8; i++) {
+                buf[i] = v & 0x0ff;
+                v >>= 8;
+            }
+            v = hi;
+            for (int i = 0; i < 8; i++) {
+                buf[8 + i] = v & 0x0ff;
+                v >>= 8;
+            }
+            auto *decimal = new tateyama::proto::kvs::data::Decimal;
+            decimal->set_unscaled_value(buf, sizeof(buf));
+            decimal->set_exponent(triple.exponent());
+            value->set_allocated_decimal_value(decimal);
+            break;
+        }
+        case takatori::type::type_kind::date: {
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::date>},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::date>},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument;
+            }
+            auto date = dest.to<takatori::datetime::date>();
+            value->set_date_value(date.days_since_epoch());
+            break;
+        }
+        case takatori::type::type_kind::time_of_day: {
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument;
+            }
+            auto time = dest.to<takatori::datetime::time_of_day>();
+            value->set_time_of_day_value(time.time_since_epoch().count());
+            break;
+        }
+        case takatori::type::type_kind::time_point: {
+            if (nullable) {
+                s = jogasaki::kvs::decode_nullable(stream,
+                                                   meta::field_type{std::make_shared<meta::time_point_field_option>()},
+                                                   spec, dest);
+            } else {
+                s = jogasaki::kvs::decode(stream, meta::field_type{std::make_shared<meta::time_point_field_option>()},
+                                          spec, dest);
+            }
+            if (s != jogasaki::status::ok) {
+                return status::err_invalid_argument;
+            }
+            auto tp = dest.to<takatori::datetime::time_point>();
+            tateyama::proto::kvs::data::TimePoint *timepoint = new tateyama::proto::kvs::data::TimePoint;
+            timepoint->set_offset_seconds(tp.seconds_since_epoch().count());
+            timepoint->set_nano_adjustment(tp.subsecond().count());
+            value->set_allocated_time_point_value(timepoint);
             break;
         }
         default:

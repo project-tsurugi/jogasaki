@@ -31,7 +31,8 @@ class batch_executor;
 class batch_file_executor;
 
 /**
- * @brief loader to conduct reading files and executing statements
+ * @brief batch block executor
+ * @details part of the block executor object tree and handles a block in a file
  */
 class cache_align batch_block_executor {
 public:
@@ -49,6 +50,12 @@ public:
 
     /**
      * @brief create new object
+     * @param file the file path containing parameter
+     * @param block_index 0-origin index of the block to process that is read from the file
+     * @param prepared the statement to be executed
+     * @param parameters the parameter prototype (types and names) whose value will be filled on execution
+     * @param db the database instance
+     * @param parent the parent of this node. Can be nullptr for testing.
      */
     batch_block_executor(
         std::string file,
@@ -60,16 +67,14 @@ public:
     ) noexcept;
 
     /**
-     * @brief conduct part of the load requests
-     * @return running there is more to do
-     * @return ok if all load requests are done
-     * @return error if any error occurs
+     * @brief execute statement
+     * @details execute next statement in this block. New line is read from the block and statement is scheduled.
      */
     void execute_statement();
 
     /**
-     * @brief accessor to the total number of loaded records
-     * @return the total number
+     * @brief accessor to the total number of statements executed
+     * @return the statement count
      */
     [[nodiscard]] std::size_t statements_executed() const noexcept;
 
@@ -79,10 +84,22 @@ public:
      */
     [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
 
+    /**
+     * @brief accessor to the parent
+     */
     [[nodiscard]] batch_file_executor* parent() const noexcept;
 
+    /**
+     * @brief accessor to the top level batch executor
+     */
     [[nodiscard]] batch_executor* root() const noexcept;
 
+    /**
+     * @brief factory function to construct block executor
+     * @see constructor for the details of parameters
+     * @return newly created block executor
+     * @return nullptr when creation failed
+     */
     static std::shared_ptr<batch_block_executor> create_block_executor(
         std::string file,
         std::size_t block_index,
@@ -91,6 +108,7 @@ public:
         api::impl::database* db,
         batch_file_executor* parent = nullptr
     );
+
 private:
     std::string file_{};
     std::size_t block_index_{};
@@ -107,7 +125,7 @@ private:
     status status_{status::ok};
     std::string msg_{};
 
-    void process_next();
+    void find_and_process_next_block();
 };
 
 }

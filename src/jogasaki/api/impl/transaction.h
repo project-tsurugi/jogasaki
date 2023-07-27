@@ -69,7 +69,18 @@ public:
         callback on_completion
     );
 
+    /**
+     * @brief abort the transaction
+     * @return status::ok when successful
+     * @return error code otherwise
+     * @note this function is synchronous
+     */
     status abort();
+
+    /**
+     * @brief accessor to the database held by this object
+     * @returns database reference
+     */
     impl::database& database();
 
     /**
@@ -186,7 +197,15 @@ public:
         kvs::transaction_option const& options
     );
 
+    /**
+     * @brief commit function for internal use
+     * @details this is for internal use (esps, commit operation for loading), not intended for external caller.
+     * @return status::ok when successful
+     * @return error code otherwise
+     * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
+     */
     status commit_internal();
+
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
@@ -203,7 +222,6 @@ private:
         std::shared_ptr<memory::lifo_paged_memory_resource> resource,
         std::shared_ptr<scheduler::request_detail> request_detail
     );
-
 
     status init(kvs::transaction_option const& options);
 };

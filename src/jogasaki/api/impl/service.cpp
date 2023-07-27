@@ -1035,7 +1035,7 @@ void service::execute_load(
     details::request_info const& req_info
 ) {
     for(auto&& f : files) {
-        LOG(INFO) << log_location_prefix << "load processing file: " << f;
+        VLOG(log_info) << log_location_prefix << "load processing file: " << f;
     }
     BOOST_ASSERT(! q.has_sql());  //NOLINT
     jogasaki::api::statement_handle statement{q.sid()};

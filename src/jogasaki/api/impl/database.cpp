@@ -957,13 +957,14 @@ bool database::execute_load(
     log_request(*req);
 
     // non tx loader boostrap task
-    auto t = scheduler::create_custom_task(rctx.get(),
-        [rctx, ldr]() {
-            (void) rctx;
-            ldr->bootstrap();
-            return model::task_result::complete;
-        }, false);  // create transaction is not sticky task
-    ts.schedule_task(std::move(t));
+    ts.schedule_task(
+        scheduler::create_custom_task(rctx.get(),
+            [rctx, ldr]() {
+                (void) rctx;
+                ldr->bootstrap();
+                return model::task_result::complete;
+            }, false)
+    );
     return true;
 }
 

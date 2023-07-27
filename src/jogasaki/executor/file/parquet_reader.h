@@ -128,9 +128,11 @@ public:
     [[nodiscard]] std::size_t row_group_count() const noexcept;
 
     /**
-     * @brief factory function to construct the new parquet_writer object
-     * @param meta metadata of the written records
-     * @param path the file path that is to be written
+     * @brief factory function to construct the new parquet_reader object
+     * @param path the path to the pqrquet file to read
+     * @param opt the options for reader
+     * @param row_group_index the 0-origin index specifying the row group to read. Specify `undefined` to read the first
+     * row group in the file.
      * @return newly created object on success
      * @return nullptr otherwise
      */

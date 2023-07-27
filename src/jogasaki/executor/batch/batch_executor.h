@@ -34,10 +34,17 @@ class batch_file_executor;
 class batch_block_executor;
 
 /**
- * @brief loader to conduct reading files and executing statements
+ * @brief batch executor
+ * @details the top level object of batch execution hierarchy tree (with file/block executors).
+ * Except the root, tree nodes are dynamically constructed and destroyed as the batch execution proceeds.
+ * Each of the object tree node is owned by its parent, and only the ownership of the root (batch_executor)
+ * should be managed by user of this object.
  */
 class cache_align batch_executor {
 public:
+    /**
+     * @brief callback type
+     */
     using callback_type = std::function<void(void)>;
 
     /**
@@ -53,6 +60,12 @@ public:
 
     /**
      * @brief create new object
+     * @param files the files holding parameter values
+     * @param prepared the statement to be executed
+     * @param parameters the parameter prototype (types and names) whose value will be filled on execution
+     * @param db the database instance
+     * @param cb the callback to be called on batch execution completion
+     * @param opt options to customize executor behavior
      */
     batch_executor(
         std::vector<std::string> files,
@@ -63,18 +76,17 @@ public:
         batch_executor_option opt = {}
     ) noexcept;
 
-
     /**
-     * @brief conduct part of the load requests
-     * @return running there is more to do
-     * @return ok if all load requests are done
-     * @return error if any error occurs
+     * @brief create new file executor
+     * @details create new file executor and own as a child
+     * @return pair of Successful flag and the newly created file executor. If error occurs, Successful flag is false.
+     * If there is no more file to process, Successful=true and nullptr is returned.
      */
     std::pair<bool, std::shared_ptr<batch_file_executor>> next_file();
 
     /**
-     * @brief accessor to the total number of loaded records
-     * @return the total number
+     * @brief accessor to the number of statements being scheduled/executed
+     * @return the running statement count
      */
     [[nodiscard]] std::atomic_size_t& running_statements() noexcept;
 
@@ -84,14 +96,38 @@ public:
      */
     [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
 
+    /**
+     * @brief setter for the error information
+     * @returns true if the passed status is set
+     * @returns false if the status is already set to a value other than status::ok, and setting to new value failed
+     * @note this function is thread safe
+     */
     [[nodiscard]] bool error_info(status val, std::string_view msg) noexcept;
 
+    /**
+     * @brief accessor to the error aborting flag
+     * @details this is set when error status is set via error_info() and used to check current batch execution is going
+     * to stop.
+     */
     std::atomic_bool& error_aborting() noexcept;
 
+    /**
+     * @brief accessor to the options
+     * @return the bath executor options
+     */
     [[nodiscard]] batch_executor_option const& options() const noexcept;
 
+    /**
+     * @brief request bootstrap
+     * @details this function create child file/block executors and schedule statements execution. Useful to bulk
+     * invoke children.
+     */
     void bootstrap();
 
+    /**
+     * @brief declare finishing the batch execution
+     * @details finish the batch execution and invoke completion callback
+     */
     void finish();
 
 private:

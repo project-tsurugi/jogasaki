@@ -27,7 +27,7 @@
 namespace jogasaki::executor::batch {
 
 /**
- * @brief loader to conduct reading files and executing statements
+ * @brief option object for batch executors
  */
 class batch_executor_option {
 public:
@@ -46,14 +46,22 @@ public:
 
     /**
      * @brief create new object
+     * @param max_concurrent_files the max number of files opened and processed by one batch_executor at a time
+     * @param max_concurrent_blocks_per_file the max number of blocks processed by one batch_file_executor at a time
      */
     batch_executor_option(
         std::size_t max_concurrent_files,
         std::size_t max_concurrent_blocks_per_file
     ) noexcept;
 
+    /**
+     * @brief accessor for the max concurrent files value
+     */
     [[nodiscard]] std::size_t max_concurrent_files() const noexcept;
 
+    /**
+     * @brief accessor for the max concurrent blocks value
+     */
     [[nodiscard]] std::size_t max_concurrent_blocks_per_file() const noexcept;
 
 private:

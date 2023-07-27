@@ -406,6 +406,16 @@ inline void fill_parameters(
     }
 }
 
+/**
+ * @brief encode msg for execute
+ * @tparam T
+ * @tparam Args
+ * @param tx_handle the tx handle used for execute. Specify 0 not to include tx in the msg (non-transactional operation)
+ * @param stmt_handle the statement handle to execute
+ * @param parameters parameters to fill
+ * @param args
+ * @return the encoded message
+ */
 template<class T, class ...Args>
 std::string encode_execute_prepared_statement_or_query(
     std::uint64_t tx_handle,

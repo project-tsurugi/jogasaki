@@ -111,7 +111,7 @@ void create_reader_option_and_maping(
     out = {std::move(locs), *vinfo->meta()};
 }
 
-void batch_block_executor::process_next() {
+void batch_block_executor::find_and_process_next_block() {
     if(! parent_) {
         // for testing
         return;
@@ -186,7 +186,7 @@ void batch_block_executor::execute_statement() {
         if(auto res = tx_->commit_internal(); res != status::ok) {
             (void) root()->error_info(res, "committing tx failed.");
         }
-        process_next();
+        find_and_process_next_block();
         return;
     }
 

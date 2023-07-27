@@ -31,7 +31,8 @@ class batch_block_executor;
 class batch_executor;
 
 /**
- * @brief loader to conduct reading files and executing statements
+ * @brief batch file executor
+ * @details part of the block executor object tree and handles one of the bulk files for batch execution
  */
 class cache_align batch_file_executor {
 public:
@@ -47,6 +48,14 @@ public:
     batch_file_executor(batch_file_executor&& other) noexcept = delete;
     batch_file_executor& operator=(batch_file_executor&& other) noexcept = delete;
 
+    /**
+     * @brief create new object
+     * @param file the file path containing parameter
+     * @param prepared the statement to be executed
+     * @param parameters the parameter prototype (types and names) whose value will be filled on execution
+     * @param db the database instance
+     * @param parent the parent of this node. Can be nullptr for testing.
+     */
     batch_file_executor(
         std::string file,
         api::statement_handle prepared,
@@ -56,15 +65,26 @@ public:
     ) noexcept;
 
     /**
-     * @brief conduct part of the load requests
-     * @return running there is more to do
-     * @return ok if all load requests are done
-     * @return error if any error occurs
+     * @brief create new block executor
+     * @details create new block executor and own as a child. When the child is not necessary, it should be released
+     * by `release()` function to save memory consumption. Otherwise the child is kept as long as this object is alive.
+     * @return pair of Successful flag and the newly created block executor. If error occurs, Successful flag is false.
+     * If there is no more file to process, Successful=true and nullptr is returned.
      */
     std::pair<bool, std::shared_ptr<batch_block_executor>> next_block();
 
+    /**
+     * @brief detach the child block executor from this object to release
+     * @details detach the child block executor and returns its ownership
+     * @param arg the block executor to be released
+     * @return the block executor released
+     * @return nullptr if the block executor is not owned by this object
+     */
     std::shared_ptr<batch_block_executor> release(batch_block_executor* arg);
 
+    /**
+     * @brief accessor to the parent
+     */
     [[nodiscard]] batch_executor* parent() const noexcept;
 
     /**
@@ -73,6 +93,12 @@ public:
      */
     [[nodiscard]] std::size_t block_count() const noexcept;
 
+    /**
+     * @brief factory function to construct file executor
+     * @see constructor for the details of parameters
+     * @return newly created file executor
+     * @return nullptr when creation failed
+     */
     static std::shared_ptr<batch_file_executor> create_file_executor(
         std::string file,
         api::statement_handle prepared,

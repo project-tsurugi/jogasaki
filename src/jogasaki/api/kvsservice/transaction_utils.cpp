@@ -162,7 +162,7 @@ status check_primary_key(std::shared_ptr<yugawara::storage::table const> &table,
     return status::ok;
 }
 
-void add_column(std::string_view col_name,
+void add_key_column(std::string_view col_name,
                        tateyama::proto::kvs::data::Value const *value,
                        tateyama::proto::kvs::data::Record &record) {
     record.add_names(col_name.data());
@@ -170,12 +170,12 @@ void add_column(std::string_view col_name,
     record.mutable_values()->AddAllocated(new_value);
 }
 
-status add_column(yugawara::storage::column const &column,
+status add_value_column(yugawara::storage::column const &column,
                          jogasaki::kvs::readable_stream &stream,
                          tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
     auto new_value = new tateyama::proto::kvs::data::Value();
-    if (auto s = deserialize(spec_primary_key, nullable_primary_key, column.type(), stream, new_value);
+    if (auto s = deserialize(spec_value, nullable_value, column.type(), stream, new_value);
             s != status::ok) {
         delete new_value;
         return s;
@@ -196,8 +196,8 @@ status make_record(std::shared_ptr<yugawara::storage::table const> &table,
         auto col_name = col.simple_name();
         auto value = m_key.get_value(col_name);
         if (value != nullptr) {
-            add_column(col_name, value, record);
-        } else if (auto s = add_column(col, stream, record);
+            add_key_column(col_name, value, record);
+        } else if (auto s = add_value_column(col, stream, record);
                 s != status::ok) {
             return s;
         }

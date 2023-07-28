@@ -25,6 +25,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/executor/file/parquet_reader.h>
 #include "batch_executor_option.h"
+#include "batch_execution_state.h"
 
 namespace jogasaki::executor::batch {
 
@@ -94,37 +95,10 @@ public:
     std::shared_ptr<batch_file_executor> release(batch_file_executor* arg);
 
     /**
-     * @brief accessor to the number of statements being scheduled/executed
-     * @return the running statement count
-     */
-    [[nodiscard]] std::atomic_size_t& running_statements() noexcept;
-
-    /**
-     * @brief accessor to the error information
-     * @return the error status and message
-     */
-    [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
-
-    /**
      * @brief accessor to the number of child nodes held by this object
      * @return the block count
      */
     [[nodiscard]] std::size_t child_count() const noexcept;
-
-    /**
-     * @brief setter for the error information
-     * @returns true if the passed status is set
-     * @returns false if the status is already set to a value other than status::ok, and setting to new value failed
-     * @note this function is thread safe
-     */
-    [[nodiscard]] bool error_info(status val, std::string_view msg) noexcept;
-
-    /**
-     * @brief accessor to the error aborting flag
-     * @details this is set when error status is set via error_info() and used to check current batch execution is going
-     * to stop.
-     */
-    std::atomic_bool& error_aborting() noexcept;
 
     /**
      * @brief accessor to the options
@@ -145,6 +119,11 @@ public:
      */
     void finish();
 
+    /**
+     * @brief accessor to the execution state
+     * @return the bath executor state
+     */
+    [[nodiscard]] std::shared_ptr<batch_execution_state> const& state() const noexcept;
 private:
     std::vector<std::string> files_{};
     api::statement_handle prepared_{};
@@ -152,16 +131,13 @@ private:
     api::impl::database* db_{};
     callback_type callback_{};
     batch_executor_option options_{};
+    std::shared_ptr<batch_execution_state> state_{std::make_shared<batch_execution_state>()};
 
-    std::atomic_size_t running_statements_{0};
     std::unordered_map<std::string, file::parameter> mapping_{};
-    std::atomic_bool error_aborting_{false};
     std::atomic_bool finished_{false};
     std::atomic_size_t next_file_index_{};
     tbb::concurrent_hash_map<batch_file_executor*, std::shared_ptr<batch_file_executor>> children_{};
 
-    std::atomic<status> status_code_{status::ok};
-    std::string status_message_{};
 
 };
 

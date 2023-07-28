@@ -169,10 +169,12 @@ void batch_block_executor::find_and_process_next_block() {
 }
 
 bool batch_block_executor::execute_statement() {
-    if (root() && root()->error_aborting()) {
-        if(root()->running_statements() == 0) {
+    if (state_->error_aborting()) {
+        if(state_->running_statements() == 0) {
             // end of loader
-            root()->finish();
+            if(root()) {
+                root()->finish();
+            }
         }
         return false;
     }
@@ -184,13 +186,13 @@ bool batch_block_executor::execute_statement() {
         create_reader_option_and_maping(*parameters_, prepared_, mapping_, opt);
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {
-            (void) root()->error_info(status::err_io_error, "opening parquet file failed.");
+            (void) state_->error_info(status::err_io_error, "opening parquet file failed.");
             return false;
         }
 
         if(auto res = api::impl::transaction::create_transaction(*db_, tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
-            (void) root()->error_info(res, "starting new tx failed.");
+            (void) state_->error_info(res, "starting new tx failed.");
             reader_->close();
             reader_.reset();
             // currently handled as unrecoverable error
@@ -205,7 +207,7 @@ bool batch_block_executor::execute_statement() {
         reader_.reset();
 
         if(auto res = tx_->commit_internal(); res != status::ok) {
-            (void) root()->error_info(res, "committing tx failed.");
+            (void) root()->state()->error_info(res, "committing tx failed.");
             return false;
         }
         find_and_process_next_block();
@@ -214,22 +216,17 @@ bool batch_block_executor::execute_statement() {
 
     set_parameter(*ps, ref, mapping_);
 
-    if(root()) {
-        ++root()->running_statements();
+    if (state_->error_aborting()) {
+        return false;
     }
+    ++state_->running_statements();
     tx_->execute_async(prepared_,
         std::move(ps),
         nullptr,
-        [&](status st, std::string_view msg){
-            if(root()) {
-                --root()->running_statements();
-                if(root()->error_aborting()) {
-                    // When error occurs during batch execution, callback and exit execution.
-                    // Releasing executors are not done in small pieces,
-                    // but it's left to the destruction of batch_executor to release all in bulk.
-                    root()->finish();
-                    return;
-                }
+        [&, state = state_](status st, std::string_view msg){
+            --state->running_statements();
+            if(state->error_aborting()) {
+                return;
             }
             ++statements_executed_;
             if(st != status::ok) {
@@ -239,9 +236,7 @@ bool batch_block_executor::execute_statement() {
                     " statement position:" << statements_executed_ <<
                     " status:" << st <<
                     " message:\"" << msg << "\"";
-                if(root()) {
-                    (void) root()->error_info(st, ss.str());
-                }
+                (void) state->error_info(st, ss.str());
                 VLOG_LP(log_error) << ss.str();  //NOLINT
                 return;
             }
@@ -272,6 +267,7 @@ batch_block_executor::batch_block_executor(
     api::statement_handle prepared,
     maybe_shared_ptr<const api::parameter_set> parameters,
     api::impl::database *db,
+    std::shared_ptr<batch_execution_state> state,
     batch_file_executor* parent
 ) noexcept:
     file_(std::move(file)),
@@ -279,6 +275,7 @@ batch_block_executor::batch_block_executor(
     prepared_(prepared),
     parameters_(std::move(parameters)),
     db_(db),
+    state_(std::move(state)),
     parent_(parent)
 {}
 
@@ -289,6 +286,7 @@ batch_block_executor::create_block_executor(
     api::statement_handle prepared,
     maybe_shared_ptr<const api::parameter_set> parameters,
     api::impl::database *db,
+    std::shared_ptr<batch_execution_state> state,
     batch_file_executor *parent
 ) {
     auto ret = std::make_shared<batch_block_executor>(
@@ -297,6 +295,7 @@ batch_block_executor::create_block_executor(
         prepared,
         std::move(parameters),
         db,
+        std::move(state),
         parent
     );
     // do init when needed

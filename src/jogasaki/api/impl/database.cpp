@@ -948,7 +948,7 @@ bool database::execute_load(
     );
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, ldr](){  // callback is copy-based
         (void)ldr; // to keep ownership
-        auto [st, msg] = ldr->error_info();
+        auto [st, msg] = ldr->state()->error_info();
         on_completion(st, msg);
     });
 

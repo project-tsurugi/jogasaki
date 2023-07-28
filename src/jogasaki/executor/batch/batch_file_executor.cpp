@@ -35,6 +35,7 @@ std::pair<bool, std::shared_ptr<batch_block_executor>> batch_file_executor::next
         prepared_,
         parameters_,
         db_,
+        state_,
         this
     );
 
@@ -69,6 +70,7 @@ batch_file_executor::batch_file_executor(
     api::statement_handle prepared,
     maybe_shared_ptr<const api::parameter_set> parameters,
     api::impl::database *db,
+    std::shared_ptr<batch_execution_state> state,
     batch_executor* parent,
     release_callback_type release_cb
 ) noexcept:
@@ -76,6 +78,7 @@ batch_file_executor::batch_file_executor(
     prepared_(prepared),
     parameters_(std::move(parameters)),
     db_(db),
+    state_(std::move(state)),
     parent_(parent),
     release_cb_(std::move(release_cb))
 {}
@@ -88,7 +91,7 @@ bool batch_file_executor::init() {
     // create reader and check file metadata
     auto reader = file::parquet_reader::open(file_, nullptr, file::parquet_reader::index_unspecified);
     if(! reader) {
-        (void) parent()->error_info(status::err_io_error, "opening parquet file failed.");
+        (void) parent_->state()->error_info(status::err_io_error, "opening parquet file failed.");
         return false;
     }
     block_count_ = reader->row_group_count();
@@ -101,6 +104,7 @@ batch_file_executor::create_file_executor(
     api::statement_handle prepared,
     maybe_shared_ptr<const api::parameter_set> parameters,
     api::impl::database *db,
+    std::shared_ptr<batch_execution_state> state,
     batch_executor *parent,
     release_callback_type release_cb
 ) {
@@ -109,6 +113,7 @@ batch_file_executor::create_file_executor(
         prepared,
         std::move(parameters),
         db,
+        std::move(state),
         parent,
         std::move(release_cb)
     );

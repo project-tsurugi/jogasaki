@@ -53,6 +53,7 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
         prepared_,
         parameters_,
         db_,
+        state_,
         this,
         options_.release_block_cb()
     );
@@ -69,40 +70,12 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
     }
 }
 
-bool batch_executor::error_info(status val, std::string_view msg) noexcept {
-    error_aborting_ = true;
-    status s;
-    do {
-        s = status_code_.load();
-        if (s != status::ok) {
-            return false;
-        }
-    } while (!status_code_.compare_exchange_strong(s, val));
-
-    if(val != status::ok) {  // to ensure status::ok has no error msg
-        status_message_.assign(msg);
-    }
-    return true;
-}
-
-std::pair<status, std::string> batch_executor::error_info() const noexcept {
-    return {status_code_, status_message_};
-}
-
-std::atomic_bool &batch_executor::error_aborting() noexcept {
-    return error_aborting_;
-}
-
 void batch_executor::finish() {
     if(finished_) return;
     if(callback_) {
         callback_();
     }
     finished_ = true;
-}
-
-std::atomic_size_t &batch_executor::running_statements() noexcept {
-    return running_statements_;
 }
 
 batch_executor_option const &batch_executor::options() const noexcept {
@@ -134,7 +107,7 @@ void batch_executor::bootstrap() {
         }
         process_file(*f, options_.max_concurrent_blocks_per_file());
     }
-    if(running_statements_ == 0 && error_aborting_) {
+    if(state_->running_statements() == 0 && state_->error_aborting()) {
         finish();
     }
 }
@@ -154,6 +127,10 @@ std::shared_ptr<batch_file_executor> batch_executor::release(batch_file_executor
 
 std::size_t batch_executor::child_count() const noexcept {
     return children_.size();
+}
+
+std::shared_ptr<batch_execution_state> const &batch_executor::state() const noexcept {
+    return state_;
 }
 
 }

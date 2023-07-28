@@ -22,6 +22,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/executor/batch/batch_execution_state.h>
 
 namespace jogasaki::executor::batch {
 
@@ -62,6 +63,7 @@ public:
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::impl::database* db,
+        std::shared_ptr<batch_execution_state> state,
         batch_executor* parent = nullptr,
         release_callback_type release_cb = {}
     ) noexcept;
@@ -112,6 +114,7 @@ public:
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::impl::database* db,
+        std::shared_ptr<batch_execution_state> state,
         batch_executor* parent = nullptr,
         release_callback_type release_cb = {}
     );
@@ -121,6 +124,7 @@ private:
     api::statement_handle prepared_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
     api::impl::database* db_{};
+    std::shared_ptr<batch_execution_state> state_{};
     batch_executor* parent_{};
     tbb::concurrent_hash_map<batch_block_executor*, std::shared_ptr<batch_block_executor>> children_{};
     std::atomic_size_t next_block_index_{};

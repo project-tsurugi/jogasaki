@@ -26,6 +26,7 @@
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/executor/batch/batch_file_executor.h>
 #include <jogasaki/executor/batch/batch_block_executor.h>
+#include <jogasaki/kvs/id.h>
 
 namespace jogasaki::executor::batch {
 
@@ -203,6 +204,9 @@ TEST_F(batch_executor_test, variation3) {
 }
 
 TEST_F(batch_executor_test, many_files) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     std::size_t file_count = 100;
     std::vector<std::vector<std::size_t>> defs{};
     defs.reserve(file_count);
@@ -213,6 +217,9 @@ TEST_F(batch_executor_test, many_files) {
 }
 
 TEST_F(batch_executor_test, many_blocks) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     std::size_t block_count = 100;
     std::vector<std::vector<std::size_t>> defs{};
     std::vector<std::size_t> blocks{};
@@ -226,6 +233,9 @@ TEST_F(batch_executor_test, many_blocks) {
 
 // TODO handle session limit error
 TEST_F(batch_executor_test, DISABLED_many_files_and_blocks) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     std::size_t block_count = 50;
     std::size_t file_count = 50;
     std::vector<std::vector<std::size_t>> defs{};

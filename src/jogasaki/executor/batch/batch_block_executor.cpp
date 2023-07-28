@@ -216,11 +216,13 @@ bool batch_block_executor::execute_statement() {
     if (state_->error_aborting()) {
         return false;
     }
+    std::shared_ptr<batch_executor> r = root() ? root()->shared() : nullptr;
     ++state_->running_statements();
     tx_->execute_async(info_.prepared(),
         std::move(ps),
         nullptr,
-        [&, state = state_](status st, std::string_view msg){
+        [&, state = state_, root = std::move(r)](status st, std::string_view msg){
+            (void) root; // let callback own the tree root
             --state->running_statements();
             if(state->error_aborting()) {
                 return;

@@ -102,12 +102,6 @@ public:
     void bootstrap();
 
     /**
-     * @brief declare finishing the batch execution
-     * @details finish the batch execution and invoke completion callback
-     */
-    void finish();
-
-    /**
      * @brief accessor to the execution state
      * @return the bath executor state
      */
@@ -119,7 +113,6 @@ private:
     std::shared_ptr<batch_execution_state> state_{std::make_shared<batch_execution_state>()};
 
     std::unordered_map<std::string, file::parameter> mapping_{};
-    std::atomic_bool finished_{false};
     std::atomic_size_t next_file_index_{};
     tbb::concurrent_hash_map<batch_file_executor*, std::shared_ptr<batch_file_executor>> children_{};
 

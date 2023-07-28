@@ -60,14 +60,6 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
     }
 }
 
-void batch_executor::finish() {
-    if(finished_) return;
-    if(info_.callback()) {
-        info_.callback()();
-    }
-    finished_ = true;
-}
-
 batch_executor_option const &batch_executor::options() const noexcept {
     return info_.options();
 }

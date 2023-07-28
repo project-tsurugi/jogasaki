@@ -81,12 +81,6 @@ public:
     [[nodiscard]] std::size_t statements_executed() const noexcept;
 
     /**
-     * @brief accessor to the error information
-     * @return the error status and message
-     */
-    [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
-
-    /**
      * @brief accessor to the parent
      */
     [[nodiscard]] batch_file_executor* parent() const noexcept;
@@ -124,8 +118,6 @@ private:
     std::atomic_size_t statements_executed_{0};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::unordered_map<std::string, file::parameter> mapping_{};
-    status status_{status::ok};
-    std::string msg_{};
 
     void find_and_process_next_block();
 };

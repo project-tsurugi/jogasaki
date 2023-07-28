@@ -47,7 +47,6 @@ public:
      */
     using callback_type = std::function<void(void)>;
 
-
     /**
      * @brief create empty object
      */

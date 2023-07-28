@@ -170,10 +170,6 @@ void batch_block_executor::find_and_process_next_block() {
 
 bool batch_block_executor::execute_statement() {
     if (root() && root()->error_aborting()) {
-        VLOG_LP(log_error) << "transaction is aborted due to the error during loading";
-        // currently err_aborted should be used in order to report load aborted. When abort can be reported
-        // in different channel, original status code should be passed. TODO
-        (void) root()->error_info(status::err_aborted, "load failed");
         if(root()->running_statements() == 0) {
             // end of loader
             root()->finish();
@@ -195,6 +191,8 @@ bool batch_block_executor::execute_statement() {
         if(auto res = api::impl::transaction::create_transaction(*db_, tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
             (void) root()->error_info(res, "starting new tx failed.");
+            reader_->close();
+            reader_.reset();
             // currently handled as unrecoverable error
             // TODO limit the number of tx used by batch executor
             return false;
@@ -208,6 +206,7 @@ bool batch_block_executor::execute_statement() {
 
         if(auto res = tx_->commit_internal(); res != status::ok) {
             (void) root()->error_info(res, "committing tx failed.");
+            return false;
         }
         find_and_process_next_block();
         return false;
@@ -222,17 +221,28 @@ bool batch_block_executor::execute_statement() {
         std::move(ps),
         nullptr,
         [&](status st, std::string_view msg){
-            (void) msg;
             if(root()) {
                 --root()->running_statements();
+                if(root()->error_aborting()) {
+                    // When error occurs during batch execution, callback and exit execution.
+                    // Releasing executors are not done in small pieces,
+                    // but it's left to the destruction of batch_executor to release all in bulk.
+                    root()->finish();
+                    return;
+                }
             }
             ++statements_executed_;
             if(st != status::ok) {
                 std::stringstream ss{};
-//                ss << "load failed with the statement position:" << records_loaded_ << " status:" << st << " with message \"" << msg << "\"";
-                status_ = st;
-                msg_ = ss.str();
-                VLOG_LP(log_error) << msg_;  //NOLINT
+                ss << "Executing statement failed. file:" << file_ <<
+                    " block index:" << block_index_ <<
+                    " statement position:" << statements_executed_ <<
+                    " status:" << st <<
+                    " message:\"" << msg << "\"";
+                if(root()) {
+                    (void) root()->error_info(st, ss.str());
+                }
+                VLOG_LP(log_error) << ss.str();  //NOLINT
                 return;
             }
 
@@ -250,10 +260,6 @@ batch_executor *batch_block_executor::root() const noexcept {
 
 batch_file_executor *batch_block_executor::parent() const noexcept {
     return parent_;
-}
-
-std::pair<status, std::string> batch_block_executor::error_info() const noexcept {
-    return {status_, msg_};
 }
 
 std::size_t batch_block_executor::statements_executed() const noexcept {

@@ -939,11 +939,13 @@ bool database::execute_load(
 
     auto ldr = std::make_shared<executor::batch::batch_executor>(
         std::move(files),
-        prepared,
-        std::move(parameters),
-        this,
-        [rctx]() {
-            scheduler::submit_teardown(*rctx);
+        executor::batch::batch_execution_info{
+            prepared,
+            std::move(parameters),
+            this,
+            [rctx]() {
+                scheduler::submit_teardown(*rctx);
+            }
         }
     );
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, ldr](){  // callback is copy-based

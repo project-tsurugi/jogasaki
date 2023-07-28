@@ -106,16 +106,20 @@ TEST_F(batch_block_executor_test, simple) {
     auto block = std::make_shared<batch_block_executor>(
         p.string(),
         0,
-        prepared,
-        std::shared_ptr{std::move(ps)},
-        reinterpret_cast<api::impl::database*>(db_.get())
+        batch_execution_info{
+            prepared,
+            std::shared_ptr{std::move(ps)},
+            reinterpret_cast<api::impl::database*>(db_.get()),
+            []() {}
+        },
+        std::make_shared<batch_execution_state>()
     );
 
     block->execute_statement();
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 
-    ASSERT_EQ(status::ok, block->error_info().first);
+    ASSERT_EQ(status::ok, block->state()->error_info().first);
 
     {
         std::vector<mock::basic_record> result{};
@@ -148,16 +152,20 @@ TEST_F(batch_block_executor_test, multiple_row_groups) {
     auto block = std::make_shared<batch_block_executor>(
         p.string(),
         1,
-        prepared,
-        std::shared_ptr{std::move(ps)},
-        reinterpret_cast<api::impl::database*>(db_.get())
+        batch_execution_info{
+            prepared,
+            std::shared_ptr{std::move(ps)},
+            reinterpret_cast<api::impl::database*>(db_.get()),
+            []() {}
+        },
+        std::make_shared<batch_execution_state>()
     );
 
     block->execute_statement();
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 
-    ASSERT_EQ(status::ok, block->error_info().first);
+    ASSERT_EQ(status::ok, block->state()->error_info().first);
 
     {
         std::vector<mock::basic_record> result{};

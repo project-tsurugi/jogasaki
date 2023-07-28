@@ -180,17 +180,17 @@ bool batch_block_executor::execute_statement() {
     }
 
     // read records, assign host variables, submit tasks
-    auto ps = std::shared_ptr<api::parameter_set>{parameters_->clone()};
+    auto ps = std::shared_ptr<api::parameter_set>{info_.parameters()->clone()};
     if(! reader_) {
         file::parquet_reader_option opt{};
-        create_reader_option_and_maping(*parameters_, prepared_, mapping_, opt);
+        create_reader_option_and_maping(*info_.parameters(), info_.prepared(), mapping_, opt);
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {
             (void) state_->error_info(status::err_io_error, "opening parquet file failed.");
             return false;
         }
 
-        if(auto res = api::impl::transaction::create_transaction(*db_, tx_,
+        if(auto res = api::impl::transaction::create_transaction(*info_.db(), tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
             (void) state_->error_info(res, "starting new tx failed.");
             reader_->close();
@@ -220,7 +220,7 @@ bool batch_block_executor::execute_statement() {
         return false;
     }
     ++state_->running_statements();
-    tx_->execute_async(prepared_,
+    tx_->execute_async(info_.prepared(),
         std::move(ps),
         nullptr,
         [&, state = state_](status st, std::string_view msg){
@@ -264,17 +264,13 @@ std::size_t batch_block_executor::statements_executed() const noexcept {
 batch_block_executor::batch_block_executor(
     std::string file,
     std::size_t block_index,
-    api::statement_handle prepared,
-    maybe_shared_ptr<const api::parameter_set> parameters,
-    api::impl::database *db,
+    batch_execution_info info,
     std::shared_ptr<batch_execution_state> state,
     batch_file_executor* parent
 ) noexcept:
     file_(std::move(file)),
     block_index_(block_index),
-    prepared_(prepared),
-    parameters_(std::move(parameters)),
-    db_(db),
+    info_(std::move(info)),
     state_(std::move(state)),
     parent_(parent)
 {}
@@ -283,23 +279,23 @@ std::shared_ptr<batch_block_executor>
 batch_block_executor::create_block_executor(
     std::string file,
     std::size_t block_index,
-    api::statement_handle prepared,
-    maybe_shared_ptr<const api::parameter_set> parameters,
-    api::impl::database *db,
+    batch_execution_info info,
     std::shared_ptr<batch_execution_state> state,
     batch_file_executor *parent
 ) {
     auto ret = std::make_shared<batch_block_executor>(
         std::move(file),
         block_index,
-        prepared,
-        std::move(parameters),
-        db,
+        std::move(info),
         std::move(state),
         parent
     );
     // do init when needed
     return ret;
+}
+
+std::shared_ptr<batch_execution_state> const &batch_block_executor::state() const noexcept {
+    return state_;
 }
 
 }

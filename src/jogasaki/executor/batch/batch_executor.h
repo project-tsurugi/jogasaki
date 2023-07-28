@@ -26,6 +26,7 @@
 #include <jogasaki/executor/file/parquet_reader.h>
 #include "batch_executor_option.h"
 #include "batch_execution_state.h"
+#include "batch_execution_info.h"
 
 namespace jogasaki::executor::batch {
 
@@ -44,11 +45,6 @@ class batch_block_executor;
 class cache_align batch_executor {
 public:
     /**
-     * @brief callback type
-     */
-    using callback_type = std::function<void(void)>;
-
-    /**
      * @brief create empty object
      */
     batch_executor() = default;
@@ -62,19 +58,11 @@ public:
     /**
      * @brief create new object
      * @param files the files holding parameter values
-     * @param prepared the statement to be executed
-     * @param parameters the parameter prototype (types and names) whose value will be filled on execution
-     * @param db the database instance
-     * @param cb the callback to be called on batch execution completion
-     * @param opt options to customize executor behavior
+     * @param info the static execution information
      */
     batch_executor(
         std::vector<std::string> files,
-        api::statement_handle prepared,
-        maybe_shared_ptr<api::parameter_set const> parameters,
-        api::impl::database* db,
-        callback_type cb,
-        batch_executor_option opt = {}
+        batch_execution_info info
     ) noexcept;
 
     /**
@@ -124,20 +112,16 @@ public:
      * @return the bath executor state
      */
     [[nodiscard]] std::shared_ptr<batch_execution_state> const& state() const noexcept;
+
 private:
     std::vector<std::string> files_{};
-    api::statement_handle prepared_{};
-    maybe_shared_ptr<api::parameter_set const> parameters_{};
-    api::impl::database* db_{};
-    callback_type callback_{};
-    batch_executor_option options_{};
+    batch_execution_info info_{};
     std::shared_ptr<batch_execution_state> state_{std::make_shared<batch_execution_state>()};
 
     std::unordered_map<std::string, file::parameter> mapping_{};
     std::atomic_bool finished_{false};
     std::atomic_size_t next_file_index_{};
     tbb::concurrent_hash_map<batch_file_executor*, std::shared_ptr<batch_file_executor>> children_{};
-
 
 };
 

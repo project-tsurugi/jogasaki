@@ -23,6 +23,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/executor/file/parquet_reader.h>
 #include <jogasaki/executor/batch/batch_execution_state.h>
+#include <jogasaki/executor/batch/batch_execution_info.h>
 
 namespace jogasaki::executor::batch {
 
@@ -53,17 +54,12 @@ public:
      * @brief create new object
      * @param file the file path containing parameter
      * @param block_index 0-origin index of the block to process that is read from the file
-     * @param prepared the statement to be executed
-     * @param parameters the parameter prototype (types and names) whose value will be filled on execution
-     * @param db the database instance
      * @param parent the parent of this node. Can be nullptr for testing.
      */
     batch_block_executor(
         std::string file,
         std::size_t block_index,
-        api::statement_handle prepared,
-        maybe_shared_ptr<api::parameter_set const> parameters,
-        api::impl::database* db,
+        batch_execution_info info,
         std::shared_ptr<batch_execution_state> state,
         batch_file_executor* parent = nullptr
     ) noexcept;
@@ -93,6 +89,11 @@ public:
     [[nodiscard]] batch_executor* root() const noexcept;
 
     /**
+     * @brief accessor to the execution state
+     * @return the bath executor state
+     */
+    [[nodiscard]] std::shared_ptr<batch_execution_state> const& state() const noexcept;
+    /**
      * @brief factory function to construct block executor
      * @see constructor for the details of parameters
      * @return newly created block executor
@@ -101,9 +102,7 @@ public:
     static std::shared_ptr<batch_block_executor> create_block_executor(
         std::string file,
         std::size_t block_index,
-        api::statement_handle prepared,
-        maybe_shared_ptr<api::parameter_set const> parameters,
-        api::impl::database* db,
+        batch_execution_info info,
         std::shared_ptr<batch_execution_state> state,
         batch_file_executor* parent = nullptr
     );
@@ -112,9 +111,7 @@ private:
     std::string file_{};
     std::size_t block_index_{};
     std::shared_ptr<file::parquet_reader> reader_{};
-    api::statement_handle prepared_{};
-    maybe_shared_ptr<api::parameter_set const> parameters_{};
-    api::impl::database* db_{};
+    batch_execution_info info_{};
     std::shared_ptr<batch_execution_state> state_{};
     batch_file_executor* parent_{};
 

@@ -22,18 +22,10 @@ namespace jogasaki::executor::batch {
 
 batch_executor::batch_executor(
     std::vector<std::string> files,
-    api::statement_handle prepared,
-    maybe_shared_ptr<const api::parameter_set> parameters,
-    api::impl::database *db,
-    callback_type cb,
-    batch_executor_option opt
+    batch_execution_info info
 ) noexcept:
     files_(std::move(files)),
-    prepared_(prepared),
-    parameters_(std::move(parameters)),
-    db_(db),
-    callback_(std::move(cb)),
-    options_(opt)
+    info_(std::move(info))
 {}
 
 std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file() {
@@ -50,12 +42,10 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
 
     auto file = batch_file_executor::create_file_executor(
         files_[cur],
-        prepared_,
-        parameters_,
-        db_,
+        info_,
         state_,
         this,
-        options_.release_block_cb()
+        info_.options().release_block_cb()
     );
     if(! file) {
         return {false, nullptr};
@@ -72,14 +62,14 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
 
 void batch_executor::finish() {
     if(finished_) return;
-    if(callback_) {
-        callback_();
+    if(info_.callback()) {
+        info_.callback()();
     }
     finished_ = true;
 }
 
 batch_executor_option const &batch_executor::options() const noexcept {
-    return options_;
+    return info_.options();
 }
 
 void process_file(batch_file_executor& f, std::size_t mb) {
@@ -96,7 +86,7 @@ void process_file(batch_file_executor& f, std::size_t mb) {
 }
 
 void batch_executor::bootstrap() {
-    auto mf = options_.max_concurrent_files();
+    auto mf = info_.options().max_concurrent_files();
     for(std::size_t i=0; mf == batch_executor_option::undefined || i < mf; ++i) {
         auto&& [success, f] = next_file();
         if(! success) {
@@ -105,7 +95,7 @@ void batch_executor::bootstrap() {
         if(! f) {
             break;
         }
-        process_file(*f, options_.max_concurrent_blocks_per_file());
+        process_file(*f, info_.options().max_concurrent_blocks_per_file());
     }
     if(state_->running_statements() == 0 && state_->error_aborting()) {
         finish();
@@ -119,8 +109,8 @@ std::shared_ptr<batch_file_executor> batch_executor::release(batch_file_executor
         ret = std::move(acc->second);
         children_.erase(acc);
     }
-    if(options_.release_file_cb()) {
-        options_.release_file_cb()(arg);
+    if(info_.options().release_file_cb()) {
+        info_.options().release_file_cb()(arg);
     }
     return ret;
 }

@@ -108,9 +108,13 @@ TEST_F(batch_file_executor_test, simple) {
     std::atomic_size_t release_count = 0;
     auto file = batch_file_executor::create_file_executor(
         p.string(),
-        prepared,
-        std::shared_ptr{std::move(ps)},
-        reinterpret_cast<api::impl::database*>(db_.get()),
+        batch_execution_info{
+            prepared,
+            std::shared_ptr{std::move(ps)},
+            reinterpret_cast<api::impl::database*>(db_.get()),
+            []() {}
+        },
+        std::make_shared<batch_execution_state>(),
         nullptr,
         [&](batch_block_executor* arg) {
             ++release_count;

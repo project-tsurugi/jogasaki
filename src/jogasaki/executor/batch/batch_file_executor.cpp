@@ -86,6 +86,7 @@ bool batch_file_executor::init() {
     auto reader = file::parquet_reader::open(file_, nullptr, file::parquet_reader::index_unspecified);
     if(! reader) {
         (void) parent_->state()->error_info(status::err_io_error, "opening parquet file failed.");
+        finish(info_, *state_);
         return false;
     }
     block_count_ = reader->row_group_count();

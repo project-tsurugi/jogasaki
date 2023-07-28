@@ -164,7 +164,7 @@ void batch_block_executor::find_and_process_next_block() {
     // no more file
     if(r->child_count() == 0) {
         // end of loader
-        r->finish();
+        finish(info_, *state_);
     }
 }
 
@@ -172,9 +172,7 @@ bool batch_block_executor::execute_statement() {
     if (state_->error_aborting()) {
         if(state_->running_statements() == 0) {
             // end of loader
-            if(root()) {
-                root()->finish();
-            }
+            finish(info_, *state_);
         }
         return false;
     }
@@ -187,12 +185,14 @@ bool batch_block_executor::execute_statement() {
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {
             (void) state_->error_info(status::err_io_error, "opening parquet file failed.");
+            finish(info_, *state_);
             return false;
         }
 
         if(auto res = api::impl::transaction::create_transaction(*info_.db(), tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
             (void) state_->error_info(res, "starting new tx failed.");
+            finish(info_, *state_);
             reader_->close();
             reader_.reset();
             // currently handled as unrecoverable error
@@ -208,6 +208,7 @@ bool batch_block_executor::execute_statement() {
 
         if(auto res = tx_->commit_internal(); res != status::ok) {
             (void) root()->state()->error_info(res, "committing tx failed.");
+            finish(info_, *state_);
             return false;
         }
         find_and_process_next_block();
@@ -237,6 +238,7 @@ bool batch_block_executor::execute_statement() {
                     " status:" << st <<
                     " message:\"" << msg << "\"";
                 (void) state->error_info(st, ss.str());
+                finish(info_, *state_);
                 VLOG_LP(log_error) << ss.str();  //NOLINT
                 return;
             }

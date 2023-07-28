@@ -23,6 +23,8 @@
 
 namespace jogasaki::executor::batch {
 
+class batch_execution_info;
+
 /**
  * @brief option object for batch executors
  */
@@ -69,11 +71,28 @@ public:
      */
     [[nodiscard]] std::atomic_size_t& running_statements() noexcept;
 
+    /**
+     * @brief setter for the finished flag
+     * @returns true if the finished state successfully changed from false to true
+     * @returns false otherwise
+     * @note this function is thread safe
+     */
+    bool finish() noexcept;
+
+    /**
+     * @brief accessor to the number of statements being scheduled/executed
+     * @return the running statement count
+     */
+    [[nodiscard]] bool finished() noexcept;
+
 private:
     std::atomic<status> status_code_{status::ok};
     std::string status_message_{};
     std::atomic_bool error_aborting_{false};
     std::atomic_size_t running_statements_{0};
+    std::atomic_bool finished_{false};
 };
+
+void finish(batch_execution_info const& info, batch_execution_state& state);
 
 }

@@ -98,7 +98,7 @@ void batch_executor::bootstrap() {
         process_file(*f, info_.options().max_concurrent_blocks_per_file());
     }
     if(state_->running_statements() == 0 && state_->error_aborting()) {
-        finish();
+        batch::finish(info_, *state_);
     }
 }
 

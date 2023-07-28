@@ -19,6 +19,8 @@
 #include <atomic>
 #include <string>
 
+#include "batch_execution_info.h"
+
 namespace jogasaki::executor::batch {
 
 
@@ -49,4 +51,28 @@ bool batch_execution_state::error_info(status val, std::string_view msg) noexcep
 std::atomic_size_t &batch_execution_state::running_statements() noexcept {
     return running_statements_;
 }
+
+bool batch_execution_state::finish() noexcept {
+    bool s{};
+    do {
+        s = finished_.load();
+        if (s) {
+            return false;
+        }
+    } while (! finished_.compare_exchange_strong(s, true));
+    return true;
+}
+
+bool batch_execution_state::finished() noexcept {
+    return finished_;
+}
+
+void finish(batch_execution_info const& info, batch_execution_state& state) {
+    if(info.callback()) {
+        if(state.finish()) {
+            info.callback()();
+        }
+    }
+}
+
 }

@@ -83,7 +83,7 @@ bool batch_file_executor::init() {
     // create reader and check file metadata
     auto reader = file::parquet_reader::open(file_, nullptr, file::parquet_reader::index_unspecified);
     if(! reader) {
-        (void) state_->error_info(status::err_io_error, "opening parquet file failed.");
+        state_->error_info(status::err_io_error, "opening parquet file failed.");
         finish(info_, *state_);
         return false;
     }

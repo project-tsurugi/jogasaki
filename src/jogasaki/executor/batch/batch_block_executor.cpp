@@ -184,14 +184,14 @@ bool batch_block_executor::execute_statement() {
         create_reader_option_and_maping(*info_.parameters(), info_.prepared(), mapping_, opt);
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {
-            (void) state_->error_info(status::err_io_error, "opening parquet file failed.");
+            state_->error_info(status::err_io_error, "opening parquet file failed.");
             finish(info_, *state_);
             return false;
         }
 
         if(auto res = api::impl::transaction::create_transaction(*info_.db(), tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
-            (void) state_->error_info(res, "starting new tx failed.");
+            state_->error_info(res, "starting new tx failed.");
             finish(info_, *state_);
             reader_->close();
             reader_.reset();
@@ -207,7 +207,7 @@ bool batch_block_executor::execute_statement() {
         reader_.reset();
 
         if(auto res = tx_->commit_internal(); res != status::ok) {
-            (void) state_->error_info(res, "committing tx failed.");
+            state_->error_info(res, "committing tx failed.");
             finish(info_, *state_);
             return false;
         }
@@ -237,7 +237,7 @@ bool batch_block_executor::execute_statement() {
                     " statement position:" << statements_executed_ <<
                     " status:" << st <<
                     " message:\"" << msg << "\"";
-                (void) state->error_info(st, ss.str());
+                state->error_info(st, ss.str());
                 finish(info_, *state_);
                 VLOG_LP(log_error) << ss.str();  //NOLINT
                 return;

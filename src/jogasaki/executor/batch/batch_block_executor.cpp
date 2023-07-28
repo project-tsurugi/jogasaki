@@ -207,7 +207,7 @@ bool batch_block_executor::execute_statement() {
         reader_.reset();
 
         if(auto res = tx_->commit_internal(); res != status::ok) {
-            (void) root()->state()->error_info(res, "committing tx failed.");
+            (void) state_->error_info(res, "committing tx failed.");
             finish(info_, *state_);
             return false;
         }

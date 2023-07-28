@@ -26,7 +26,7 @@ namespace jogasaki::executor::batch {
 class batch_execution_info;
 
 /**
- * @brief option object for batch executors
+ * @brief dynamic state information on the batch execution
  */
 class batch_execution_state {
 public:
@@ -45,7 +45,7 @@ public:
      * @brief accessor to the error aborting flag
      * @details this is set when error status is set via error_info() and used to check current batch execution is going
      * to stop. This is useful to check the execution error state periodically, in order to proceed.
-     * @note When error occurs during batch execution, the thread should callback and exit execution immediately.
+     * @note When error occurs during batch execution, the thread should completion_callback and exit execution immediately.
      * Releasing executors are not done in small pieces, but it's left to the destruction of batch_executor to release
      * all in bulk.
      */
@@ -83,7 +83,7 @@ public:
      * @brief accessor to the number of statements being scheduled/executed
      * @return the running statement count
      */
-    [[nodiscard]] bool finished() noexcept;
+    [[nodiscard]] bool finished() const noexcept;
 
 private:
     std::atomic<status> status_code_{status::ok};
@@ -93,6 +93,14 @@ private:
     std::atomic_bool finished_{false};
 };
 
+/**
+ * @brief finish the batch execution
+ * @details declare end of batch execution and invoke completion callback.
+ * This function is idempotent and calling more than once does no harm.
+ * @param info static information on the batch execution
+ * @param state dynamic state of the batch execution
+ * @note this function is thread safe and multiple threads can call simultaneously
+ */
 void finish(batch_execution_info const& info, batch_execution_state& state);
 
 }

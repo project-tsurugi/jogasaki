@@ -16,10 +16,7 @@
 #include "batch_execution_info.h"
 
 #include <cstddef>
-#include <atomic>
 #include <string>
-
-#include <jogasaki/status.h>
 
 namespace jogasaki::executor::batch {
 
@@ -34,8 +31,28 @@ batch_execution_info::batch_execution_info(
     prepared_(prepared),
     parameters_(std::move(parameters)),
     db_(db),
-    callback_(std::move(cb)),
+    completion_callback_(std::move(cb)),
     options_(std::move(opt))
 {}
+
+api::statement_handle batch_execution_info::prepared() const noexcept {
+    return prepared_;
+}
+
+const maybe_shared_ptr<const api::parameter_set> &batch_execution_info::parameters() const noexcept {
+    return parameters_;
+}
+
+api::impl::database *batch_execution_info::db() const noexcept {
+    return db_;
+}
+
+batch_execution_info::completion_callback_type batch_execution_info::completion_callback() const noexcept {
+    return completion_callback_;
+}
+
+batch_executor_option const &batch_execution_info::options() const noexcept {
+    return options_;
+}
 
 }

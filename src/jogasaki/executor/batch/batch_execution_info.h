@@ -16,15 +16,11 @@
 #pragma once
 
 #include <cstddef>
-#include <atomic>
 #include <string>
 #include <functional>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/status.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/transaction.h>
@@ -38,9 +34,9 @@ namespace jogasaki::executor::batch {
 class batch_execution_info {
 public:
     /**
-     * @brief callback type
+     * @brief completion_callback type
      */
-    using callback_type = std::function<void(void)>;
+    using completion_callback_type = std::function<void(void)>;
 
     /**
      * @brief create new object
@@ -65,34 +61,40 @@ public:
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::impl::database* db,
-        callback_type cb,
+        completion_callback_type cb,
         batch_executor_option opt = {}
     ) noexcept;
 
-    [[nodiscard]] api::statement_handle prepared() const noexcept {
-        return prepared_;
-    }
-    [[nodiscard]] maybe_shared_ptr<api::parameter_set const> const& parameters() const noexcept {
-        return parameters_;
-    }
+    /**
+     * @brief accessor to the prepared statement for batch execution
+     */
+    [[nodiscard]] api::statement_handle prepared() const noexcept;
 
-    [[nodiscard]] api::impl::database* db() const noexcept {
-        return db_;
-    }
+    /**
+     * @brief accessor to the parameter prototype
+     */
+    [[nodiscard]] maybe_shared_ptr<api::parameter_set const> const& parameters() const noexcept;
 
-    [[nodiscard]] callback_type callback() const noexcept {
-        return callback_;
-    }
+    /**
+     * @brief accessor to the database
+     */
+    [[nodiscard]] api::impl::database* db() const noexcept;
 
-    [[nodiscard]] batch_executor_option const& options() const noexcept {
-        return options_;
-    }
+    /**
+     * @brief accessor to the callback on batch execution completion
+     */
+    [[nodiscard]] completion_callback_type completion_callback() const noexcept;
+
+    /**
+     * @brief accessor to the batch execution options
+     */
+    [[nodiscard]] batch_executor_option const& options() const noexcept;
 
 private:
     api::statement_handle prepared_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
     api::impl::database* db_{};
-    callback_type callback_{};
+    completion_callback_type completion_callback_{};
     batch_executor_option options_{};
 };
 

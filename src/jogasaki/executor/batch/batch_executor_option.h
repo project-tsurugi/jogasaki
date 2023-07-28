@@ -31,12 +31,12 @@ public:
     static constexpr std::size_t undefined = static_cast<std::size_t>(-1);
 
     /**
-     * @brief callback type for batch_executor::release()
+     * @brief completion_callback type for batch_executor::release()
      */
     using release_file_callback_type = std::function<void(batch_file_executor*)>;
 
     /**
-     * @brief callback type for batch_file_executor::release()
+     * @brief completion_callback type for batch_file_executor::release()
      */
     using release_block_callback_type = std::function<void(batch_block_executor*)>;
 
@@ -55,8 +55,8 @@ public:
      * @brief create new object
      * @param max_concurrent_files the max number of files opened and processed by one batch_executor at a time
      * @param max_concurrent_blocks_per_file the max number of blocks processed by one batch_file_executor at a time
-     * @param release_file_cb callback on releasing file
-     * @param release_block_cb callback on releasing block
+     * @param release_file_cb completion_callback on releasing file
+     * @param release_block_cb completion_callback on releasing block
      */
     batch_executor_option(
         std::size_t max_concurrent_files,
@@ -76,12 +76,12 @@ public:
     [[nodiscard]] std::size_t max_concurrent_blocks_per_file() const noexcept;
 
     /**
-     * @brief accessor for the callback on releasing file
+     * @brief accessor for the completion_callback on releasing file
      */
     [[nodiscard]] release_file_callback_type release_file_cb() const noexcept;
 
     /**
-     * @brief accessor for the callback on releasing block
+     * @brief accessor for the completion_callback on releasing block
      */
     [[nodiscard]] release_block_callback_type release_block_cb() const noexcept;
 

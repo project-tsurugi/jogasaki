@@ -63,14 +63,14 @@ bool batch_execution_state::finish() noexcept {
     return true;
 }
 
-bool batch_execution_state::finished() noexcept {
+bool batch_execution_state::finished() const noexcept {
     return finished_;
 }
 
 void finish(batch_execution_info const& info, batch_execution_state& state) {
-    if(info.callback()) {
+    if(info.completion_callback()) {
         if(state.finish()) {
-            info.callback()();
+            info.completion_callback()();
         }
     }
 }

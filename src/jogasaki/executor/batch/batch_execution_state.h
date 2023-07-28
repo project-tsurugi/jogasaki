@@ -36,10 +36,10 @@ public:
     batch_execution_state() = default;
 
     ~batch_execution_state() = default;
-    batch_execution_state(batch_execution_state const& other) = default;
-    batch_execution_state& operator=(batch_execution_state const& other) = default;
-    batch_execution_state(batch_execution_state&& other) noexcept = default;
-    batch_execution_state& operator=(batch_execution_state&& other) noexcept = default;
+    batch_execution_state(batch_execution_state const& other) = delete;
+    batch_execution_state& operator=(batch_execution_state const& other) = delete;
+    batch_execution_state(batch_execution_state&& other) noexcept = delete;
+    batch_execution_state& operator=(batch_execution_state&& other) noexcept = delete;
 
     /**
      * @brief accessor to the error aborting flag
@@ -49,7 +49,7 @@ public:
      * Releasing executors are not done in small pieces, but it's left to the destruction of batch_executor to release
      * all in bulk.
      */
-    bool error_aborting() const noexcept;
+    [[nodiscard]] bool error_aborting() const noexcept;
 
     /**
      * @brief accessor to the error information

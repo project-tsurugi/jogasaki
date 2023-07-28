@@ -35,7 +35,7 @@ batch_execution_info::batch_execution_info(
     parameters_(std::move(parameters)),
     db_(db),
     callback_(std::move(cb)),
-    options_(opt)
+    options_(std::move(opt))
 {}
 
 }

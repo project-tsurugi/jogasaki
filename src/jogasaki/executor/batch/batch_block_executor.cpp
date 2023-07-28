@@ -195,6 +195,9 @@ bool batch_block_executor::execute_statement() {
         if(auto res = api::impl::transaction::create_transaction(*db_, tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
             (void) root()->error_info(res, "starting new tx failed.");
+            // currently handled as unrecoverable error
+            // TODO limit the number of tx used by batch executor
+            return false;
         }
     }
 

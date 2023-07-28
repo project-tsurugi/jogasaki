@@ -149,7 +149,7 @@ std::shared_ptr<meta::record_meta> create_meta(
     static_assert(sizeof...(Kinds) <= basic_record_field_size * bits_per_byte); // nullity bits should be
                                                                                 // contained in a field
     // too many creation is likely to be a program error (e.g. using wrong constructor)
-    static constexpr std::size_t limit_creating_meta = 1000;
+    static constexpr std::size_t limit_creating_meta = 1000000;
     cache_align thread_local std::size_t create_count = 0;
     if (++create_count > limit_creating_meta) {
         fail();

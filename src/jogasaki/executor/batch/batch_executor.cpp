@@ -37,6 +37,9 @@ batch_executor::batch_executor(
 {}
 
 std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file() {
+    if(files_.empty()) {
+        return {true, nullptr};
+    }
     std::size_t cur{};
     do {
         cur = next_file_index_.load();

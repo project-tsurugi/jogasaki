@@ -57,7 +57,8 @@ public:
         temporary_.clean();
     }
 
-    void create_test_file(boost::filesystem::path const& p, std::vector<std::size_t> record_counts, std::size_t file_index) {
+    void test_bootstrap(std::vector<std::vector<std::size_t>> block_def_list);
+    void create_test_file(boost::filesystem::path const& p, std::vector<std::size_t> record_counts, std::size_t initial) {
         auto rec = mock::create_nullable_record<kind::int8, kind::float8>();
         auto writer = file::parquet_writer::open(
             std::make_shared<meta::external_record_meta>(
@@ -66,11 +67,12 @@ public:
             ), p.string());
         ASSERT_TRUE(writer);
         std::size_t pos = 0;
+        std::size_t ind = initial;
         for(auto record_count : record_counts) {
             for(std::size_t i=0; i< record_count; ++i) {
-                auto j = file_index*record_count + i;
-                auto rec = mock::create_nullable_record<kind::int8, kind::float8>(j*10, j*100.0);
+                auto rec = mock::create_nullable_record<kind::int8, kind::float8>(ind, ind);
                 writer->write(rec.ref());
+                ++ind;
             }
             if(pos != record_counts.size()-1) { // skip if last
                 writer->new_row_group();
@@ -96,7 +98,7 @@ TEST_F(batch_executor_test, simple) {
     auto p0 = d / "simple0.parquet";
     auto p1 = d / "simple1.parquet";
     create_test_file(p0, {1, 2}, 0);
-    create_test_file(p1, {2, 1}, 0);
+    create_test_file(p1, {2, 1}, 3);
 
     auto* impl = db_impl();
     api::statement_handle prepared{};
@@ -171,11 +173,11 @@ TEST_F(batch_executor_test, simple) {
         execute_query("SELECT * FROM TT ORDER BY C0", result);
         ASSERT_EQ(6, result.size());
         EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[2]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[3]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(10)), result[4]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(10)), result[5]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(1)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(2)), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(4)), result[4]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(5)), result[5]);
     }
     ASSERT_TRUE(called);
     EXPECT_EQ(2, file_release_count);
@@ -183,13 +185,74 @@ TEST_F(batch_executor_test, simple) {
 }
 
 TEST_F(batch_executor_test, bootstrap) {
+    test_bootstrap({{1, 2}, {2, 1}});
+}
+
+TEST_F(batch_executor_test, variation1) {
+    test_bootstrap({{1, 2, 3}, {1}, {1, 3}});
+}
+
+TEST_F(batch_executor_test, variation2) {
+    test_bootstrap({{100}});
+}
+
+TEST_F(batch_executor_test, variation3) {
+    test_bootstrap({{1}, {1}, {1}, {1}, {1}});
+}
+
+TEST_F(batch_executor_test, many_files) {
+    std::size_t file_count = 100;
+    std::vector<std::vector<std::size_t>> defs{};
+    defs.reserve(file_count);
+    for(std::size_t i=0; i < file_count; ++i) {
+        defs.emplace_back(std::vector<std::size_t>{i});
+    }
+    test_bootstrap(std::move(defs));
+}
+
+TEST_F(batch_executor_test, many_blocks) {
+    std::size_t block_count = 100;
+    std::vector<std::vector<std::size_t>> defs{};
+    std::vector<std::size_t> blocks{};
+    blocks.reserve(block_count);
+    for(std::size_t i=0; i < block_count; ++i) {
+        blocks.emplace_back(i);
+    }
+    defs.emplace_back(std::move(blocks));
+    test_bootstrap(std::move(defs));
+}
+
+TEST_F(batch_executor_test, many_files_and_blocks) {
+    std::size_t block_count = 50;
+    std::size_t file_count = 50;
+    std::vector<std::vector<std::size_t>> defs{};
+    std::vector<std::size_t> blocks{};
+    blocks.reserve(block_count);
+    for(std::size_t i=0; i < block_count; ++i) {
+        blocks.emplace_back(i);
+    }
+    for(std::size_t i=0; i < file_count; ++i) {
+        defs.emplace_back(blocks);
+    }
+    test_bootstrap(std::move(defs));
+}
+void batch_executor_test::test_bootstrap(std::vector<std::vector<std::size_t>> block_def_list) {
     execute_statement("CREATE TABLE TT (C0 BIGINT)");
 
+    std::size_t file_count = block_def_list.size();
     boost::filesystem::path d{path()};
-    auto p0 = d / "simple0.parquet";
-    auto p1 = d / "simple1.parquet";
-    create_test_file(p0, {1, 2}, 0);
-    create_test_file(p1, {2, 1}, 0);
+    std::vector<std::string> files{};
+    std::size_t statement_count = 0;
+    std::size_t block_count = 0;
+    for(std::size_t i=0; i < file_count; ++i) {
+        auto file = d / ("simple"+std::to_string(i)+".parquet");
+        create_test_file(file, block_def_list[i], statement_count);
+        for(auto&& e : block_def_list[i]) {
+            statement_count += e;
+        }
+        block_count += block_def_list[i].size();
+        files.emplace_back(file.string());
+    }
 
     auto* impl = db_impl();
     api::statement_handle prepared{};
@@ -205,7 +268,7 @@ TEST_F(batch_executor_test, bootstrap) {
     std::atomic_size_t file_release_count = 0;
     std::atomic_size_t block_release_count = 0;
     auto root = std::make_shared<batch_executor>(
-        std::vector<std::string>{p0.string(), p1.string()},
+        files,
         prepared,
         std::shared_ptr{std::move(ps)},
         reinterpret_cast<api::impl::database*>(db_.get()),
@@ -216,11 +279,11 @@ TEST_F(batch_executor_test, bootstrap) {
             batch_executor_option::undefined,
             batch_executor_option::undefined,
             [&](batch_file_executor* arg) {
-                std::cerr << "release file:" << arg << std::endl;
+//                std::cerr << "release file:" << arg << std::endl;
                 ++file_release_count;
             },
             [&](batch_block_executor* arg) {
-                std::cerr << "release block:" << arg << std::endl;
+//                std::cerr << "release block:" << arg << std::endl;
                 ++block_release_count;
             }
         }
@@ -232,17 +295,14 @@ TEST_F(batch_executor_test, bootstrap) {
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TT ORDER BY C0", result);
-        ASSERT_EQ(6, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[2]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[3]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(10)), result[4]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(10)), result[5]);
+        ASSERT_EQ(statement_count, result.size());
+        for(std::size_t i=0; i < statement_count; ++i) {
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(i)), result[i]);
+        }
     }
     ASSERT_TRUE(called);
-    EXPECT_EQ(2, file_release_count);
-    EXPECT_EQ(4, block_release_count);
+    EXPECT_EQ(file_count, file_release_count);
+    EXPECT_EQ(block_count, block_release_count);
 }
 
 }

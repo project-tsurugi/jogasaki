@@ -121,4 +121,53 @@ TEST_F(serializer_test, ser_string) {
         }
     }
 }
+
+TEST_F(serializer_test, ser_bool) {
+    std::vector<bool> answers {true, false};
+    for (auto answer : answers) {
+        for (auto is_key: {true, false}) {
+            tateyama::proto::kvs::data::Value v1{};
+            tateyama::proto::kvs::data::Value v2{};
+            v1.set_boolean_value(answer);
+            test(is_key, takatori::type::type_kind::boolean, v1, v2);
+            EXPECT_EQ(v2.boolean_value(), answer);
+        }
+    }
+}
+
+tateyama::proto::kvs::data::Decimal dec(const long hi, const long lo, const int exp) noexcept {
+    char data[16]{};
+    long v = lo;
+    for (int i = 0; i < 8; i++) {
+        data[i] = v & 0x0ff;
+        v >>= 8;
+    }
+    v = hi;
+    for (int i = 0; i < 8; i++) {
+        data[8 + i] = v & 0x0ff;
+        v >>= 8;
+    }
+    tateyama::proto::kvs::data::Decimal d{};
+    d.set_unscaled_value(data, sizeof(data));
+    d.set_exponent(exp);
+    return d;
+}
+
+TEST_F(serializer_test, DISABLED_ser_decimal) {
+    std::vector<tateyama::proto::kvs::data::Decimal> answers {
+        dec(0, 0, 0), dec(0, 1, 0), dec(1, 0, 0)};
+    for (auto answer : answers) {
+        for (auto is_key: {true, false}) {
+            tateyama::proto::kvs::data::Value v1{};
+            tateyama::proto::kvs::data::Value v2{};
+            auto *d = new tateyama::proto::kvs::data::Decimal;
+            d->set_unscaled_value(answer.unscaled_value());
+            d->set_exponent(answer.exponent());
+            v1.set_allocated_decimal_value(d);
+            test(is_key, takatori::type::type_kind::decimal, v1, v2);
+            EXPECT_EQ(v2.decimal_value().unscaled_value(), answer.unscaled_value());
+            EXPECT_EQ(v2.decimal_value().exponent(), answer.exponent());
+        }
+    }
+}
 }

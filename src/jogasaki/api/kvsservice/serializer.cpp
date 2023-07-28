@@ -104,10 +104,10 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vec
                 std::int8_t v = value->boolean_value() ? 1 : 0;
                 data::any data{std::in_place_type<std::int8_t>, v};
                 if (nullable) {
-                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::int1>},
+                    s = jogasaki::kvs::encode_nullable(data, meta::field_type{meta::field_enum_tag<kind::boolean>},
                                                        spec, results);
                 } else {
-                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::int1>},
+                    s = jogasaki::kvs::encode(data, meta::field_type{meta::field_enum_tag<kind::boolean>},
                                               spec, results);
                 }
                 break;
@@ -119,13 +119,13 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vec
                     return status::err_not_implemented;
                 }
                 auto triple = jogasaki::utils::read_decimal(dec.unscaled_value(), dec.exponent());
+                auto type{meta::field_type{std::make_shared<meta::decimal_field_option>(
+                        jogasaki::decimal_default_precision, jogasaki::dumped_decimal_default_scale)}};
                 data::any data{std::in_place_type<takatori::decimal::triple>, triple};
                 if (nullable) {
-                    s = jogasaki::kvs::encode_nullable(data,meta::field_type{std::make_shared<meta::decimal_field_option>()},
-                                                       spec, results);
+                    s = jogasaki::kvs::encode_nullable(data, type, spec, results);
                 } else {
-                    s = jogasaki::kvs::encode(data, meta::field_type{std::make_shared<meta::decimal_field_option>()},
-                                              spec, results);
+                    s = jogasaki::kvs::encode(data, type, spec, results);
                 }
                 break;
             }
@@ -259,15 +259,11 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
             break;
         }
         case takatori::type::type_kind::boolean: {
-            return status::err_not_implemented;
-            break;
-        }
-        case takatori::type::type_kind::int1: {
             if (nullable) {
-                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::int1>},
+                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{meta::field_enum_tag<kind::boolean>},
                                                    spec, dest);
             } else {
-                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::int1>},
+                s = jogasaki::kvs::decode(stream, meta::field_type{meta::field_enum_tag<kind::boolean>},
                                           spec, dest);
             }
             if (s != jogasaki::status::ok) {

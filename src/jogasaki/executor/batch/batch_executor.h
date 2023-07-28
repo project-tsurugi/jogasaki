@@ -16,6 +16,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/logging.h>
@@ -42,7 +43,7 @@ class batch_block_executor;
  * Each of the object tree node is owned by its parent, and only the ownership of the root (batch_executor)
  * should be managed by user of this object.
  */
-class cache_align batch_executor {
+class cache_align batch_executor : public std::enable_shared_from_this<batch_executor> {
 public:
     /**
      * @brief create empty object
@@ -55,15 +56,6 @@ public:
     batch_executor(batch_executor&& other) noexcept = delete;
     batch_executor& operator=(batch_executor&& other) noexcept = delete;
 
-    /**
-     * @brief create new object
-     * @param files the files holding parameter values
-     * @param info the static execution information
-     */
-    batch_executor(
-        std::vector<std::string> files,
-        batch_execution_info info
-    ) noexcept;
 
     /**
      * @brief create new file executor
@@ -107,6 +99,23 @@ public:
      */
     [[nodiscard]] std::shared_ptr<batch_execution_state> const& state() const noexcept;
 
+    /**
+     * @brief get shared ptr for `this`
+     * @return the shared_ptr of this object
+     */
+    [[nodiscard]] std::shared_ptr<batch_executor> shared() noexcept;
+
+    /**
+     * @brief factory function to construct executor
+     * @see constructor for the details of parameters
+     * @return newly created executor
+     * @return nullptr when creation failed
+     */
+    static std::shared_ptr<batch_executor> create_batch_executor(
+        std::vector<std::string> files,
+        batch_execution_info info
+    );
+
 private:
     std::vector<std::string> files_{};
     batch_execution_info info_{};
@@ -116,6 +125,15 @@ private:
     std::atomic_size_t next_file_index_{};
     tbb::concurrent_hash_map<batch_file_executor*, std::shared_ptr<batch_file_executor>> children_{};
 
+    /**
+     * @brief create new object
+     * @param files the files holding parameter values
+     * @param info the static execution information
+     */
+    batch_executor(
+        std::vector<std::string> files,
+        batch_execution_info info
+    ) noexcept;
 };
 
 }

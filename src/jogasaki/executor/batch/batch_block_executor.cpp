@@ -170,10 +170,6 @@ void batch_block_executor::find_and_process_next_block() {
 
 bool batch_block_executor::execute_statement() {
     if (state_->error_aborting()) {
-        if(state_->running_statements() == 0) {
-            // end of loader
-            finish(info_, *state_);
-        }
         return false;
     }
 
@@ -192,9 +188,9 @@ bool batch_block_executor::execute_statement() {
         if(auto res = api::impl::transaction::create_transaction(*info_.db(), tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
             state_->error_info(res, "starting new tx failed.");
-            finish(info_, *state_);
             reader_->close();
             reader_.reset();
+            finish(info_, *state_);
             // currently handled as unrecoverable error
             // TODO limit the number of tx used by batch executor
             return false;
@@ -285,15 +281,15 @@ batch_block_executor::create_block_executor(
     std::shared_ptr<batch_execution_state> state,
     batch_file_executor *parent
 ) {
-    auto ret = std::make_shared<batch_block_executor>(
-        std::move(file),
-        block_index,
-        std::move(info),
-        std::move(state),
-        parent
+    return std::shared_ptr<batch_block_executor>(
+        new batch_block_executor{
+            std::move(file),
+            block_index,
+            std::move(info),
+            std::move(state),
+            parent
+        }
     );
-    // do init when needed
-    return ret;
 }
 
 std::shared_ptr<batch_execution_state> const &batch_block_executor::state() const noexcept {

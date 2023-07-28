@@ -937,7 +937,7 @@ bool database::execute_load(
         req
     );
 
-    auto ldr = std::make_shared<executor::batch::batch_executor>(
+    auto ldr = executor::batch::batch_executor::create_batch_executor(
         std::move(files),
         executor::batch::batch_execution_info{
             prepared,

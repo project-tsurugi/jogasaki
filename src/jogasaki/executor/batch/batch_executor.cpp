@@ -114,5 +114,22 @@ std::shared_ptr<batch_execution_state> const &batch_executor::state() const noex
     return state_;
 }
 
+std::shared_ptr<batch_executor>
+batch_executor::create_batch_executor(
+    std::vector<std::string> files,
+    batch_execution_info info
+) {
+    return std::shared_ptr<batch_executor>(
+        new batch_executor{
+            std::move(files),
+            std::move(info),
+        }
+    );
+}
+
+std::shared_ptr<batch_executor> batch_executor::shared() noexcept {
+    return shared_from_this();
+}
+
 }
 

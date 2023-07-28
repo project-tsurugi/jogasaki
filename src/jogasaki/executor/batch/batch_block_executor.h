@@ -51,20 +51,6 @@ public:
     batch_block_executor& operator=(batch_block_executor&& other) noexcept = delete;
 
     /**
-     * @brief create new object
-     * @param file the file path containing parameter
-     * @param block_index 0-origin index of the block to process that is read from the file
-     * @param parent the parent of this node. Can be nullptr for testing.
-     */
-    batch_block_executor(
-        std::string file,
-        std::size_t block_index,
-        batch_execution_info info,
-        std::shared_ptr<batch_execution_state> state,
-        batch_file_executor* parent = nullptr
-    ) noexcept;
-
-    /**
      * @brief execute statement
      * @details execute next statement in this block. New line is read from the block and statement is scheduled.
      * @returns true if new line is read successfully and statement task is scheduled
@@ -119,6 +105,20 @@ private:
     std::atomic_size_t statements_executed_{0};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::unordered_map<std::string, file::parameter> mapping_{};
+
+    /**
+     * @brief create new object
+     * @param file the file path containing parameter
+     * @param block_index 0-origin index of the block to process that is read from the file
+     * @param parent the parent of this node. Can be nullptr for testing.
+     */
+    batch_block_executor(
+        std::string file,
+        std::size_t block_index,
+        batch_execution_info info,
+        std::shared_ptr<batch_execution_state> state,
+        batch_file_executor* parent = nullptr
+    ) noexcept;
 
     void find_and_process_next_block();
 };

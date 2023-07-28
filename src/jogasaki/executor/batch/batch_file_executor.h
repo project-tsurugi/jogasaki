@@ -51,21 +51,6 @@ public:
     batch_file_executor& operator=(batch_file_executor&& other) noexcept = delete;
 
     /**
-     * @brief create new object
-     * @param file the file path containing parameter
-     * @param prepared the statement to be executed
-     * @param parameters the parameter prototype (types and names) whose value will be filled on execution
-     * @param db the database instance
-     * @param parent the parent of this node. Can be nullptr for testing.
-     */
-    batch_file_executor(
-        std::string file,
-        batch_execution_info info,
-        std::shared_ptr<batch_execution_state> state,
-        batch_executor* parent = nullptr
-    ) noexcept;
-
-    /**
      * @brief create new block executor
      * @details create new block executor and own as a child. When the child is not necessary, it should be released
      * by `release()` function to save memory consumption. Otherwise the child is kept as long as this object is alive.
@@ -128,6 +113,21 @@ private:
     tbb::concurrent_hash_map<batch_block_executor*, std::shared_ptr<batch_block_executor>> children_{};
     std::atomic_size_t next_block_index_{};
     std::size_t block_count_{};
+
+    /**
+     * @brief create new object
+     * @param file the file path containing parameter
+     * @param prepared the statement to be executed
+     * @param parameters the parameter prototype (types and names) whose value will be filled on execution
+     * @param db the database instance
+     * @param parent the parent of this node. Can be nullptr for testing.
+     */
+    batch_file_executor(
+        std::string file,
+        batch_execution_info info,
+        std::shared_ptr<batch_execution_state> state,
+        batch_executor* parent = nullptr
+    ) noexcept;
 
     bool init();
 };

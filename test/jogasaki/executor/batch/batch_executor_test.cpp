@@ -58,7 +58,11 @@ public:
         temporary_.clean();
     }
 
-    void test_bootstrap(std::vector<std::vector<std::size_t>> block_def_list);
+    void test_bootstrap(
+        std::vector<std::vector<std::size_t>> block_def_list,
+        std::size_t max_concurrent_files = batch_executor_option::undefined,
+        std::size_t max_concurrent_blocks_per_file = batch_executor_option::undefined
+    );
     void create_test_file(boost::filesystem::path const& p, std::vector<std::size_t> record_counts, std::size_t initial) {
         auto rec = mock::create_nullable_record<kind::int8, kind::float8>();
         auto writer = file::parquet_writer::open(
@@ -114,7 +118,7 @@ TEST_F(batch_executor_test, simple) {
     std::atomic_bool called = false;
     std::atomic_size_t file_release_count = 0;
     std::atomic_size_t block_release_count = 0;
-    auto root = std::make_shared<batch_executor>(
+    auto root = batch_executor::create_batch_executor(
         std::vector<std::string>{p0.string(), p1.string()},
         batch_execution_info{
             prepared,
@@ -203,6 +207,14 @@ TEST_F(batch_executor_test, variation3) {
     test_bootstrap({{1}, {1}, {1}, {1}, {1}});
 }
 
+TEST_F(batch_executor_test, max_file_block_params) {
+    test_bootstrap({{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, 1, 1);
+}
+
+TEST_F(batch_executor_test, files_with_empty_blocks) {
+    test_bootstrap({{1, 0, 0}, {0}, {0, 0}, {1}, {0}});
+}
+
 TEST_F(batch_executor_test, many_files) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory timed out the testcase";
@@ -249,7 +261,12 @@ TEST_F(batch_executor_test, DISABLED_many_files_and_blocks) {
     }
     test_bootstrap(std::move(defs));
 }
-void batch_executor_test::test_bootstrap(std::vector<std::vector<std::size_t>> block_def_list) {
+
+void batch_executor_test::test_bootstrap(
+    std::vector<std::vector<std::size_t>> block_def_list,
+    std::size_t max_concurrent_files,
+    std::size_t max_concurrent_blocks_per_file
+) {
     execute_statement("CREATE TABLE TT (C0 BIGINT)");
 
     std::size_t file_count = block_def_list.size();
@@ -280,7 +297,7 @@ void batch_executor_test::test_bootstrap(std::vector<std::vector<std::size_t>> b
     std::atomic_bool called = false;
     std::atomic_size_t file_release_count = 0;
     std::atomic_size_t block_release_count = 0;
-    auto root = std::make_shared<batch_executor>(
+    auto root = batch_executor::create_batch_executor(
         files,
         batch_execution_info{
             prepared,
@@ -290,8 +307,8 @@ void batch_executor_test::test_bootstrap(std::vector<std::vector<std::size_t>> b
                 called = true;
             },
             batch_executor_option{
-                batch_executor_option::undefined,
-                batch_executor_option::undefined,
+                max_concurrent_files,
+                max_concurrent_blocks_per_file,
                 [&](batch_file_executor* arg) {
 //                std::cerr << "release file:" << arg << std::endl;
                     ++file_release_count;

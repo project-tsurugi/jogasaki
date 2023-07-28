@@ -98,11 +98,13 @@ batch_file_executor::create_file_executor(
     std::shared_ptr<batch_execution_state> state,
     batch_executor *parent
 ) {
-    auto ret = std::make_shared<batch_file_executor>(
-        std::move(file),
-        std::move(info),
-        std::move(state),
-        parent
+    auto ret = std::shared_ptr<batch_file_executor>(
+        new batch_file_executor{
+            std::move(file),
+            std::move(info),
+            std::move(state),
+            parent
+        }
     );
     if(! ret->init()) {
         return {};

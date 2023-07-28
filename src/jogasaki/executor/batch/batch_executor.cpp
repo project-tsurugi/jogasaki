@@ -44,8 +44,7 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
         files_[cur],
         info_,
         state_,
-        this,
-        info_.options().release_block_cb()
+        this
     );
     if(! file) {
         return {false, nullptr};

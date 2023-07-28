@@ -38,7 +38,6 @@ class batch_executor;
  */
 class cache_align batch_file_executor {
 public:
-    using release_callback_type = std::function<void(batch_block_executor*)>;
 
     /**
      * @brief create empty object
@@ -63,8 +62,7 @@ public:
         std::string file,
         batch_execution_info info,
         std::shared_ptr<batch_execution_state> state,
-        batch_executor* parent = nullptr,
-        release_callback_type release_cb = {}
+        batch_executor* parent = nullptr
     ) noexcept;
 
     /**
@@ -118,8 +116,7 @@ public:
         std::string file,
         batch_execution_info info,
         std::shared_ptr<batch_execution_state> state,
-        batch_executor* parent = nullptr,
-        release_callback_type release_cb = {}
+        batch_executor* parent = nullptr
     );
 
 private:
@@ -131,7 +128,6 @@ private:
     tbb::concurrent_hash_map<batch_block_executor*, std::shared_ptr<batch_block_executor>> children_{};
     std::atomic_size_t next_block_index_{};
     std::size_t block_count_{};
-    release_callback_type release_cb_{};
 
     bool init();
 };

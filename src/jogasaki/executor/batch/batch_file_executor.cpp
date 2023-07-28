@@ -53,8 +53,8 @@ std::shared_ptr<batch_block_executor> batch_file_executor::release(batch_block_e
         ret = std::move(acc->second);
         children_.erase(acc);
     }
-    if(release_cb_) {
-        release_cb_(arg);
+    if(info_.options().release_block_cb()) {
+        info_.options().release_block_cb()(arg);
     }
     return ret;
 }
@@ -67,14 +67,12 @@ batch_file_executor::batch_file_executor(
     std::string file,
     batch_execution_info info,
     std::shared_ptr<batch_execution_state> state,
-    batch_executor* parent,
-    release_callback_type release_cb
+    batch_executor* parent
 ) noexcept:
     file_(std::move(file)),
     info_(std::move(info)),
     state_(std::move(state)),
-    parent_(parent),
-    release_cb_(std::move(release_cb))
+    parent_(parent)
 {}
 
 std::size_t batch_file_executor::block_count() const noexcept {
@@ -98,15 +96,13 @@ batch_file_executor::create_file_executor(
     std::string file,
     batch_execution_info info,
     std::shared_ptr<batch_execution_state> state,
-    batch_executor *parent,
-    release_callback_type release_cb
+    batch_executor *parent
 ) {
     auto ret = std::make_shared<batch_file_executor>(
         std::move(file),
         std::move(info),
         std::move(state),
-        parent,
-        std::move(release_cb)
+        parent
     );
     if(! ret->init()) {
         return {};

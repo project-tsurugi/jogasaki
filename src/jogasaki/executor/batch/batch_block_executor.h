@@ -53,10 +53,17 @@ public:
     /**
      * @brief execute statement
      * @details execute next statement in this block. New line is read from the block and statement is scheduled.
-     * @returns true if new line is read successfully and statement task is scheduled
-     * @returns false if there is no new line
+     * @returns pair of `Success`, `Found` flags. `Success` is false if reading new line is not successful or
+     * there is an error during processing the new line. `Found` is meaningful only when `Success` is true.
+     * `Found` is false if there is no new line to read. `Found` is true if reading is successful and statement task
+     * is scheduled correctly.
      */
-    bool execute_statement();
+    std::pair<bool, bool> next_statement();
+
+    /**
+     * @brief callback function on ending statement
+     */
+    void end_of_statement();
 
     /**
      * @brief accessor to the total number of statements executed
@@ -120,7 +127,6 @@ private:
         batch_file_executor* parent = nullptr
     ) noexcept;
 
-    void find_and_process_next_block();
 };
 
 }

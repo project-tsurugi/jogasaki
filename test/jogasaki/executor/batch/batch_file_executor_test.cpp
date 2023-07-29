@@ -131,9 +131,9 @@ TEST_F(batch_file_executor_test, simple) {
     ASSERT_TRUE(s2);
     ASSERT_TRUE(s3);
     ASSERT_FALSE(b3);
-    b0->execute_statement();
-    b1->execute_statement();
-    b2->execute_statement();
+    b0->next_statement();
+    b1->next_statement();
+    b2->next_statement();
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 

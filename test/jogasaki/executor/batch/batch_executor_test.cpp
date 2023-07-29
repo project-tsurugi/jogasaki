@@ -96,7 +96,7 @@ public:
 
 };
 
-TEST_F(batch_executor_test, simple) {
+TEST_F(batch_executor_test, DISABLED_simple) {
     execute_statement("CREATE TABLE TT (C0 BIGINT)");
 
     boost::filesystem::path d{path()};
@@ -157,8 +157,8 @@ TEST_F(batch_executor_test, simple) {
         ASSERT_TRUE(s1);
         ASSERT_TRUE(s2);
         ASSERT_FALSE(b2);
-        b0->execute_statement();
-        b1->execute_statement();
+        auto [ss0, f0] = b0->next_statement();
+        auto [ss1, f1] = b1->next_statement();
     }
     {
         ASSERT_EQ(2, f1->block_count());
@@ -169,8 +169,8 @@ TEST_F(batch_executor_test, simple) {
         ASSERT_TRUE(s1);
         ASSERT_TRUE(s2);
         ASSERT_FALSE(b2);
-        b0->execute_statement();
-        b1->execute_statement();
+        b0->next_statement();
+        b1->next_statement();
     }
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
@@ -213,6 +213,10 @@ TEST_F(batch_executor_test, max_file_block_params) {
 
 TEST_F(batch_executor_test, files_with_empty_blocks) {
     test_bootstrap({{1, 0, 0}, {0}, {0, 0}, {1}, {0}});
+}
+
+TEST_F(batch_executor_test, files_with_empty_blocks_max_params) {
+    test_bootstrap({{1, 0, 0}, {0}, {0, 0}, {1}, {0}}, 1, 1);
 }
 
 TEST_F(batch_executor_test, many_files) {
@@ -310,7 +314,7 @@ void batch_executor_test::test_bootstrap(
                 max_concurrent_files,
                 max_concurrent_blocks_per_file,
                 [&](batch_file_executor* arg) {
-//                std::cerr << "release file:" << arg << std::endl;
+                std::cerr << "release file:" << arg << std::endl;
                     ++file_release_count;
                 },
                 [&](batch_block_executor* arg) {

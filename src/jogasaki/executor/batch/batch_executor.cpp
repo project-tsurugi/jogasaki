@@ -28,7 +28,44 @@ batch_executor::batch_executor(
     info_(std::move(info))
 {}
 
+std::pair<bool, bool> batch_executor::create_block(std::shared_ptr<batch_file_executor> const& file) {
+    bool block_created = false;
+    auto mb = info_.options().max_concurrent_blocks_per_file();
+    std::size_t n = (mb == batch_executor_option::undefined) ? std::numeric_limits<std::size_t>::max() : mb;
+    for(std::size_t i=0; i < n; ++i) {
+        auto&& [success, blk] = file->next_block();
+        if(! success) {
+            return {false, false};
+        }
+        if(! blk) {
+            break;
+        }
+        block_created = true;
+    }
+    return {true, block_created};
+}
+
 std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file() {
+    while(true) { // to repeat on other file
+        auto [success, file] = create_next_file();
+        if (! success || ! file) {
+            return {success, std::move(file)};
+        }
+
+        auto [s, block_created] = create_block(file);
+        if (! s) {
+            release(file.get());
+            return {false, {}};
+        }
+        if (! block_created) {
+            release(file.get());
+            continue;
+        }
+        return {true, std::move(file)};
+    }
+}
+
+std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::create_next_file() {
     if(files_.empty()) {
         return {true, nullptr};
     }
@@ -63,34 +100,20 @@ batch_executor_option const &batch_executor::options() const noexcept {
     return info_.options();
 }
 
-void process_file(batch_file_executor& f, std::size_t mb) {
-    for(std::size_t i=0; mb == batch_executor_option::undefined || i < mb; ++i) {
-        auto&& [success, blk] = f.next_block();
-        if(! success) {
-            return;
-        }
-        if(! blk) {
-            break;
-        }
-        blk->execute_statement();
-    }
-}
 
-void batch_executor::bootstrap() {
+bool batch_executor::bootstrap() {
     auto mf = info_.options().max_concurrent_files();
-    for(std::size_t i=0; mf == batch_executor_option::undefined || i < mf; ++i) {
+    std::size_t n = (mf == batch_executor_option::undefined) ? std::numeric_limits<std::size_t>::max() : mf;
+    for(std::size_t i=0; i < n; ++i) {
         auto&& [success, f] = next_file();
         if(! success) {
-            break;
+            return false;
         }
         if(! f) {
-            break;
+            return true;
         }
-        process_file(*f, info_.options().max_concurrent_blocks_per_file());
     }
-    if(state_->running_statements() == 0 && state_->error_aborting()) {
-        batch::finish(info_, *state_);
-    }
+    return true;
 }
 
 std::shared_ptr<batch_file_executor> batch_executor::release(batch_file_executor *arg) {
@@ -129,6 +152,28 @@ batch_executor::create_batch_executor(
 
 std::shared_ptr<batch_executor> batch_executor::shared() noexcept {
     return shared_from_this();
+}
+
+void batch_executor::end_of_file(batch_file_executor *arg) {
+    auto [s, file] = next_file();
+    if (! s) {
+        return;
+    }
+
+    auto f = release(arg);
+    (void) f;
+
+    if (file) {
+        return;
+    }
+
+    // no more file
+    if(child_count() != 0) {
+        // other files are in progress, so leave finalizing batch to it
+        return;
+    }
+    // end of batch
+    finish(info_, *state_);
 }
 
 }

@@ -111,66 +111,9 @@ void create_reader_option_and_maping(
     out = {std::move(locs), *vinfo->meta()};
 }
 
-bool execute_statement_on_next_block(batch_file_executor& f) {
-    auto&& [success, next_block] = f.next_block();
-    if(! success) {
-        // let's abort the batch - error_info already called
-        return true;
-    }
-    if(next_block) {
-        return next_block->execute_statement();
-    }
-    return false;
-}
-
-void batch_block_executor::find_and_process_next_block() {
-    if(! parent_) return; // for testing
-    auto to_exit = execute_statement_on_next_block(*parent_);
-
-    auto self = parent_->release(this); // keep self by the end of this scope
-    (void) self;
-
-    if(to_exit) {
-        return;
-    }
-
-    auto* r = root();
-    if(! r) return; // for testing
-
-    if(parent_->child_count() != 0) {
-        return;
-    }
-    // no new block in the parent file
-    auto parent = r->release(parent_);
-    (void) parent;
-
-    while(true) { // to repeat next file
-        auto&& [success, next_file] = r->next_file();
-        if(! success) {
-            // let's abort the batch - error_info already called
-            return;
-        }
-        if(! next_file) {
-            // no more file
-            break;
-        }
-        if(execute_statement_on_next_block(*next_file)) {
-            return;
-        }
-        // file has no block - skip to next file
-        r->release(next_file.get());
-    }
-
-    // no more file
-    if(r->child_count() == 0) {
-        // end of loader
-        finish(info_, *state_);
-    }
-}
-
-bool batch_block_executor::execute_statement() {
+std::pair<bool, bool> batch_block_executor::next_statement() {
     if (state_->error_aborting()) {
-        return false;
+        return {false, false};
     }
 
     // read records, assign host variables, submit tasks
@@ -182,7 +125,7 @@ bool batch_block_executor::execute_statement() {
         if(! reader_) {
             state_->error_info(status::err_io_error, "opening parquet file failed.");
             finish(info_, *state_);
-            return false;
+            return {false, false};
         }
 
         if(auto res = api::impl::transaction::create_transaction(*info_.db(), tx_,
@@ -193,7 +136,7 @@ bool batch_block_executor::execute_statement() {
             finish(info_, *state_);
             // currently handled as unrecoverable error
             // TODO limit the number of tx used by batch executor
-            return false;
+            return {false, false};
         }
     }
 
@@ -205,16 +148,15 @@ bool batch_block_executor::execute_statement() {
         if(auto res = tx_->commit_internal(); res != status::ok) {
             state_->error_info(res, "committing tx failed.");
             finish(info_, *state_);
-            return false;
+            return {false, false};
         }
-        find_and_process_next_block();
-        return false;
+        return {true, false};
     }
 
     set_parameter(*ps, ref, mapping_);
 
     if (state_->error_aborting()) {
-        return false;
+        return {false, false};
     }
     std::shared_ptr<batch_executor> r = root() ? root()->shared() : nullptr;
     ++state_->running_statements();
@@ -240,12 +182,10 @@ bool batch_block_executor::execute_statement() {
                 VLOG_LP(log_error) << ss.str();  //NOLINT
                 return;
             }
-
-            // execute next statement
-            execute_statement();
+            end_of_statement();
         }
     );
-    return true;
+    return {true, true};
 }
 
 batch_executor *batch_block_executor::root() const noexcept {
@@ -296,6 +236,18 @@ batch_block_executor::create_block_executor(
 
 std::shared_ptr<batch_execution_state> const &batch_block_executor::state() const noexcept {
     return state_;
+}
+
+void batch_block_executor::end_of_statement() {
+    // execute next statement
+    auto [s, f] = next_statement();
+    if(! s) {
+        return;
+    }
+    if(! f) {
+        if(! parent_) return; // for testing
+        parent_->end_of_block(this);
+    }
 }
 
 }

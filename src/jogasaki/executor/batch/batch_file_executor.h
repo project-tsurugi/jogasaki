@@ -104,6 +104,9 @@ public:
         batch_executor* parent = nullptr
     );
 
+    void end_of_block(batch_block_executor* arg);
+
+
 private:
     std::string file_{};
     batch_execution_info info_{};
@@ -130,6 +133,8 @@ private:
     ) noexcept;
 
     bool init();
+
+    std::pair<bool, std::shared_ptr<batch_block_executor>> create_next_block();
 };
 
 }

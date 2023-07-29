@@ -21,6 +21,26 @@
 namespace jogasaki::executor::batch {
 
 std::pair<bool, std::shared_ptr<batch_block_executor>> batch_file_executor::next_block() {
+    while(true) {
+        auto [success, blk] = create_next_block();
+        if (!success || !blk) {
+            return {success, std::move(blk)};
+        }
+
+        auto [s, found] = blk->next_statement();
+        if (! s) {
+            release(blk.get());
+            return {false, {}};
+        }
+        if (! found) {
+            release(blk.get());
+            continue;
+        }
+        return {true, std::move(blk)};
+    }
+}
+
+std::pair<bool, std::shared_ptr<batch_block_executor>> batch_file_executor::create_next_block() {
     std::size_t cur{};
     do {
         cur = next_block_index_.load();
@@ -118,6 +138,28 @@ std::size_t batch_file_executor::child_count() const noexcept {
 
 std::shared_ptr<batch_execution_state> const &batch_file_executor::state() const noexcept {
     return state_;
+}
+
+void batch_file_executor::end_of_block(batch_block_executor *arg) {
+    auto [success, next] = next_block();
+    if(! success) {
+        return;
+    }
+
+    auto self = release(arg); // keep self by the end of this scope
+    (void) self;
+
+    if(next) {
+        return;
+    }
+
+    if(child_count() != 0) {
+        // other block in the file are in progress, so leave finalizing file to it
+        return;
+    }
+
+    if(! parent_) return; //for testing
+    parent_->end_of_file(this);
 }
 
 }

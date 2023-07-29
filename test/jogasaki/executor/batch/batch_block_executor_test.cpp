@@ -115,7 +115,7 @@ TEST_F(batch_block_executor_test, simple) {
         std::make_shared<batch_execution_state>()
     );
 
-    block->execute_statement();
+    block->next_statement();
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 
@@ -161,7 +161,7 @@ TEST_F(batch_block_executor_test, multiple_row_groups) {
         std::make_shared<batch_execution_state>()
     );
 
-    block->execute_statement();
+    block->next_statement();
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 

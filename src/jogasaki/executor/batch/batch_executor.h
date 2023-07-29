@@ -90,8 +90,10 @@ public:
      * @brief request bootstrap
      * @details this function create child file/block executors and schedule statements execution. Useful to bulk
      * invoke children.
+     * @returns true when successful
+     * @returns false on error
      */
-    void bootstrap();
+    bool bootstrap();
 
     /**
      * @brief accessor to the execution state
@@ -104,6 +106,11 @@ public:
      * @return the shared_ptr of this object
      */
     [[nodiscard]] std::shared_ptr<batch_executor> shared() noexcept;
+
+    /**
+     * @brief callback function on ending file
+     */
+    void end_of_file(batch_file_executor* arg);
 
     /**
      * @brief factory function to construct executor
@@ -134,6 +141,16 @@ private:
         std::vector<std::string> files,
         batch_execution_info info
     ) noexcept;
+
+    /**
+     * @brief create new file executor
+     * @details create new file executor and own as a child
+     * @return pair of Successful flag and the newly created file executor. If error occurs, Successful flag is false.
+     * If there is no more file to process, Successful=true and nullptr is returned.
+     */
+    std::pair<bool, std::shared_ptr<batch_file_executor>> create_next_file();
+
+    std::pair<bool, bool> create_block(std::shared_ptr<batch_file_executor> const& file);
 };
 
 }

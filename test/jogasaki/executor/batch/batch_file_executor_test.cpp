@@ -111,14 +111,18 @@ TEST_F(batch_file_executor_test, simple) {
         batch_execution_info{
             prepared,
             std::shared_ptr{std::move(ps)},
-            reinterpret_cast<api::impl::database*>(db_.get())
+            reinterpret_cast<api::impl::database*>(db_.get()),
+            [](){},
+            batch_executor_option{
+                {},
+                [&](batch_block_executor* arg) {
+                    ++release_count;
+                    std::cerr << "release: " << arg << std::endl;
+                }
+            }
         },
         std::make_shared<batch_execution_state>(),
-        nullptr,
-        [&](batch_block_executor* arg) {
-            ++release_count;
-            std::cerr << "release: " << arg << std::endl;
-        }
+        nullptr
     );
 
     ASSERT_EQ(3, file->block_count());
@@ -130,10 +134,10 @@ TEST_F(batch_file_executor_test, simple) {
     ASSERT_TRUE(s1);
     ASSERT_TRUE(s2);
     ASSERT_TRUE(s3);
+    ASSERT_TRUE(b0);
+    ASSERT_TRUE(b1);
+    ASSERT_TRUE(b2);
     ASSERT_FALSE(b3);
-    b0->next_statement();
-    b1->next_statement();
-    b2->next_statement();
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 

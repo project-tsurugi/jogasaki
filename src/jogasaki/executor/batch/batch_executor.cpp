@@ -25,10 +25,11 @@ batch_executor::batch_executor(
     batch_execution_info info
 ) noexcept:
     files_(std::move(files)),
-    info_(std::move(info))
+    info_(std::move(info)),
+    remaining_file_count_(files_.size())
 {}
 
-std::pair<bool, bool> batch_executor::create_block(std::shared_ptr<batch_file_executor> const& file) {
+std::pair<bool, bool> batch_executor::create_blocks(std::shared_ptr<batch_file_executor> const& file) {
     bool block_created = false;
     auto mb = info_.options().max_concurrent_blocks_per_file();
     std::size_t n = (mb == batch_executor_option::undefined) ? std::numeric_limits<std::size_t>::max() : mb;
@@ -42,6 +43,10 @@ std::pair<bool, bool> batch_executor::create_block(std::shared_ptr<batch_file_ex
         }
         block_created = true;
     }
+    if(file->remaining_block_count() == 0) {
+        // blocks might have been created, but they finished already, so handle as if they are not created
+        block_created = false;
+    }
     return {true, block_created};
 }
 
@@ -52,7 +57,7 @@ std::pair<bool, std::shared_ptr<batch_file_executor>> batch_executor::next_file(
             return {success, std::move(file)};
         }
 
-        auto [s, block_created] = create_block(file);
+        auto [s, block_created] = create_blocks(file);
         if (! s) {
             release(file.get());
             return {false, {}};
@@ -110,23 +115,29 @@ bool batch_executor::bootstrap() {
             return false;
         }
         if(! f) {
-            return true;
+            break;
         }
+    }
+    if(remaining_file_count_ == 0) {
+        // during bootstap, files all consumed.
+        finish(info_, *state_);
     }
     return true;
 }
 
-std::shared_ptr<batch_file_executor> batch_executor::release(batch_file_executor *arg) {
+std::pair<std::shared_ptr<batch_file_executor>, std::size_t> batch_executor::release(batch_file_executor *arg) {
     std::shared_ptr<batch_file_executor> ret{};
     decltype(children_)::accessor acc{};
     if (children_.find(acc, arg)) {
         ret = std::move(acc->second);
         children_.erase(acc);
     }
+    auto cnt = --remaining_file_count_;
+
     if(info_.options().release_file_cb()) {
         info_.options().release_file_cb()(arg);
     }
-    return ret;
+    return {ret, cnt};
 }
 
 std::size_t batch_executor::child_count() const noexcept {
@@ -160,7 +171,7 @@ void batch_executor::end_of_file(batch_file_executor *arg) {
         return;
     }
 
-    auto f = release(arg);
+    auto [f, cnt] = release(arg);
     (void) f;
 
     if (file) {
@@ -168,7 +179,7 @@ void batch_executor::end_of_file(batch_file_executor *arg) {
     }
 
     // no more file
-    if(child_count() != 0) {
+    if(cnt != 0) {
         // other files are in progress, so leave finalizing batch to it
         return;
     }

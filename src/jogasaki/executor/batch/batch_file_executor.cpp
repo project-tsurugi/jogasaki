@@ -66,17 +66,21 @@ std::pair<bool, std::shared_ptr<batch_block_executor>> batch_file_executor::crea
     }
 }
 
-std::shared_ptr<batch_block_executor> batch_file_executor::release(batch_block_executor *arg) {
+std::pair<std::shared_ptr<batch_block_executor>, std::size_t> batch_file_executor::release(batch_block_executor *arg) {
     std::shared_ptr<batch_block_executor> ret{};
     decltype(children_)::accessor acc{};
     if (children_.find(acc, arg)) {
         ret = std::move(acc->second);
         children_.erase(acc);
     }
+    // Operations removing from children_ and fetching its size cannot be atomic, so we use remaining_block_count_
+    // to check if this block is the last.
+    auto cnt = --remaining_block_count_;
+
     if(info_.options().release_block_cb()) {
         info_.options().release_block_cb()(arg);
     }
-    return ret;
+    return {ret, cnt};
 }
 
 batch_executor *batch_file_executor::parent() const noexcept {
@@ -108,6 +112,7 @@ bool batch_file_executor::init() {
         return false;
     }
     block_count_ = reader->row_group_count();
+    remaining_block_count_ = block_count_;
     return true;
 }
 
@@ -146,20 +151,24 @@ void batch_file_executor::end_of_block(batch_block_executor *arg) {
         return;
     }
 
-    auto self = release(arg); // keep self by the end of this scope
+    auto [self, cnt] = release(arg); // keep self by the end of this scope
     (void) self;
 
     if(next) {
         return;
     }
 
-    if(child_count() != 0) {
+    if(cnt != 0) {
         // other block in the file are in progress, so leave finalizing file to it
         return;
     }
 
     if(! parent_) return; //for testing
     parent_->end_of_file(this);
+}
+
+std::size_t batch_file_executor::remaining_block_count() const noexcept {
+    return remaining_block_count_;
 }
 
 }

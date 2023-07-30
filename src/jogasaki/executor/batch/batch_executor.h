@@ -69,10 +69,10 @@ public:
      * @brief detach the child file executor from this object to release
      * @details detach the child file executor and returns its ownership
      * @param arg the file executor to be released
-     * @return the file executor released
-     * @return nullptr if the file executor is not owned by this object
+     * @return the pair of file executor released (nullptr if the file executor is not owned by this object)
+     * and the remaining incomplete files
      */
-    std::shared_ptr<batch_file_executor> release(batch_file_executor* arg);
+    std::pair<std::shared_ptr<batch_file_executor>, std::size_t> release(batch_file_executor *arg);
 
     /**
      * @brief accessor to the number of child nodes held by this object
@@ -131,6 +131,7 @@ private:
     std::unordered_map<std::string, file::parameter> mapping_{};
     std::atomic_size_t next_file_index_{};
     tbb::concurrent_hash_map<batch_file_executor*, std::shared_ptr<batch_file_executor>> children_{};
+    std::atomic_size_t remaining_file_count_{};
 
     /**
      * @brief create new object
@@ -150,7 +151,7 @@ private:
      */
     std::pair<bool, std::shared_ptr<batch_file_executor>> create_next_file();
 
-    std::pair<bool, bool> create_block(std::shared_ptr<batch_file_executor> const& file);
+    std::pair<bool, bool> create_blocks(std::shared_ptr<batch_file_executor> const& file);
 };
 
 }

@@ -96,7 +96,7 @@ public:
 
 };
 
-TEST_F(batch_executor_test, DISABLED_simple) {
+TEST_F(batch_executor_test, simple) {
     execute_statement("CREATE TABLE TT (C0 BIGINT)");
 
     boost::filesystem::path d{path()};
@@ -128,14 +128,12 @@ TEST_F(batch_executor_test, DISABLED_simple) {
                 called = true;
             },
             batch_executor_option{
-                batch_executor_option::undefined,
-                batch_executor_option::undefined,
                 [&](batch_file_executor* arg) {
-                    std::cerr << "release file:" << arg << std::endl;
+//                    std::cerr << "release file:" << arg << std::endl;
                     ++file_release_count;
                 },
                 [&](batch_block_executor* arg) {
-                    std::cerr << "release block:" << arg << std::endl;
+//                    std::cerr << "release block:" << arg << std::endl;
                     ++block_release_count;
                 }
             }
@@ -145,33 +143,14 @@ TEST_F(batch_executor_test, DISABLED_simple) {
     auto&& [s0, f0] = root->next_file();
     auto&& [s1, f1] = root->next_file();
     auto&& [s2, f2] = root->next_file();
+    ASSERT_TRUE(s0);
+    ASSERT_TRUE(s1);
     ASSERT_TRUE(s2);
+    ASSERT_TRUE(f0);
+    ASSERT_TRUE(f1);
     ASSERT_FALSE(f2);
-
-    {
-        ASSERT_EQ(2, f0->block_count());
-        auto&& [s0, b0] = f0->next_block();
-        auto&& [s1, b1] = f0->next_block();
-        auto&& [s2, b2] = f0->next_block();
-        ASSERT_TRUE(s0);
-        ASSERT_TRUE(s1);
-        ASSERT_TRUE(s2);
-        ASSERT_FALSE(b2);
-        auto [ss0, f0] = b0->next_statement();
-        auto [ss1, f1] = b1->next_statement();
-    }
-    {
-        ASSERT_EQ(2, f1->block_count());
-        auto&& [s0, b0] = f1->next_block();
-        auto&& [s1, b1] = f1->next_block();
-        auto&& [s2, b2] = f1->next_block();
-        ASSERT_TRUE(s0);
-        ASSERT_TRUE(s1);
-        ASSERT_TRUE(s2);
-        ASSERT_FALSE(b2);
-        b0->next_statement();
-        b1->next_statement();
-    }
+    ASSERT_EQ(2, f0->block_count());
+    ASSERT_EQ(2, f1->block_count());
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 
@@ -219,6 +198,14 @@ TEST_F(batch_executor_test, files_with_empty_blocks_max_params) {
     test_bootstrap({{1, 0, 0}, {0}, {0, 0}, {1}, {0}}, 1, 1);
 }
 
+TEST_F(batch_executor_test, all_empty_files) {
+    test_bootstrap({{0, 0, 0}, {0}, {0, 0}, {0}, {0}});
+}
+
+TEST_F(batch_executor_test, all_empty_blocks_except_one) {
+    test_bootstrap({{1, 0}, {1, 0, 0}, {1, 0, 0}, {1, 0}, {1}, {1}});
+}
+
 TEST_F(batch_executor_test, many_files) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory timed out the testcase";
@@ -228,6 +215,23 @@ TEST_F(batch_executor_test, many_files) {
     defs.reserve(file_count);
     for(std::size_t i=0; i < file_count; ++i) {
         defs.emplace_back(std::vector<std::size_t>{i});
+    }
+    test_bootstrap(std::move(defs));
+}
+
+TEST_F(batch_executor_test, many_files_with_many_empty_ones) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+    std::size_t file_count = 100;
+    std::vector<std::vector<std::size_t>> defs{};
+    defs.reserve(file_count);
+    for(std::size_t i=0; i < file_count/2; ++i) {
+        defs.emplace_back(std::vector<std::size_t>{0});
+    }
+    defs.emplace_back(std::vector<std::size_t>{1});
+    for(std::size_t i=0; i < file_count/2; ++i) {
+        defs.emplace_back(std::vector<std::size_t>{0});
     }
     test_bootstrap(std::move(defs));
 }
@@ -246,6 +250,28 @@ TEST_F(batch_executor_test, many_blocks) {
     defs.emplace_back(std::move(blocks));
     test_bootstrap(std::move(defs));
 }
+
+TEST_F(batch_executor_test, many_blocks_with_many_empty_ones) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+    std::size_t block_count = 100;
+    std::vector<std::vector<std::size_t>> defs{};
+    std::vector<std::size_t> blocks{};
+    blocks.reserve(block_count);
+
+    for(std::size_t i=0; i < block_count/2; ++i) {
+        blocks.emplace_back(0);
+    }
+    blocks.emplace_back(1);
+    for(std::size_t i=0; i < block_count/2; ++i) {
+        blocks.emplace_back(0);
+    }
+
+    defs.emplace_back(std::move(blocks));
+    test_bootstrap(std::move(defs));
+}
+
 
 // TODO handle session limit error
 TEST_F(batch_executor_test, DISABLED_many_files_and_blocks) {
@@ -314,7 +340,7 @@ void batch_executor_test::test_bootstrap(
                 max_concurrent_files,
                 max_concurrent_blocks_per_file,
                 [&](batch_file_executor* arg) {
-                std::cerr << "release file:" << arg << std::endl;
+//                std::cerr << "release file:" << arg << std::endl;
                     ++file_release_count;
                 },
                 [&](batch_block_executor* arg) {

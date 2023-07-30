@@ -61,7 +61,7 @@ public:
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::impl::database* db,
-        completion_callback_type cb,
+        completion_callback_type cb = {},
         batch_executor_option opt = {}
     ) noexcept;
 

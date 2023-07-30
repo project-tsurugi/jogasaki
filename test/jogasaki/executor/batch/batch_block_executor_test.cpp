@@ -103,7 +103,7 @@ TEST_F(batch_block_executor_test, simple) {
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
 
-    auto block = std::make_shared<batch_block_executor>(
+    auto block = batch_block_executor::create_block_executor(
         p.string(),
         0,
         batch_execution_info{
@@ -149,7 +149,7 @@ TEST_F(batch_block_executor_test, multiple_row_groups) {
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
 
-    auto block = std::make_shared<batch_block_executor>(
+    auto block = batch_block_executor::create_block_executor(
         p.string(),
         1,
         batch_execution_info{

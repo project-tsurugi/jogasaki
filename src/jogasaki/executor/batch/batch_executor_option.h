@@ -66,6 +66,19 @@ public:
     ) noexcept;
 
     /**
+     * @brief create new object
+     * @param release_file_cb completion_callback on releasing file
+     * @param release_block_cb completion_callback on releasing block
+     */
+    batch_executor_option(
+        release_file_callback_type release_file_cb,
+        release_block_callback_type release_block_cb = {}
+    ) noexcept :
+        release_file_cb_(std::move(release_file_cb)),
+        release_block_cb_(std::move(release_block_cb))
+    {}
+
+    /**
      * @brief accessor for the max concurrent files value
      */
     [[nodiscard]] std::size_t max_concurrent_files() const noexcept;

@@ -63,10 +63,10 @@ public:
      * @brief detach the child block executor from this object to release
      * @details detach the child block executor and returns its ownership
      * @param arg the block executor to be released
-     * @return the block executor released
-     * @return nullptr if the block executor is not owned by this object
+     * @return the pair of block executor released (nullptr if the block executor is not owned by this object)
+     * and the remaining incomplete blocks
      */
-    std::shared_ptr<batch_block_executor> release(batch_block_executor* arg);
+    std::pair<std::shared_ptr<batch_block_executor>, std::size_t> release(batch_block_executor *arg);
 
     /**
      * @brief accessor to the parent
@@ -90,6 +90,12 @@ public:
      * @return the bath executor state
      */
     [[nodiscard]] std::shared_ptr<batch_execution_state> const& state() const noexcept;
+
+    /**
+     * @brief accessor to the number of remaining blocks waiting for processing
+     * @return the unprocessed block count
+     */
+    [[nodiscard]] std::size_t remaining_block_count() const noexcept;
 
     /**
      * @brief factory function to construct file executor
@@ -116,6 +122,7 @@ private:
     tbb::concurrent_hash_map<batch_block_executor*, std::shared_ptr<batch_block_executor>> children_{};
     std::atomic_size_t next_block_index_{};
     std::size_t block_count_{};
+    std::atomic_size_t remaining_block_count_{};
 
     /**
      * @brief create new object

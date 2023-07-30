@@ -26,6 +26,7 @@
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/executor/batch/batch_block_executor.h>
 #include <jogasaki/executor/batch/batch_executor.h>
+#include <jogasaki/kvs/id.h>
 
 namespace jogasaki::executor::batch {
 
@@ -89,6 +90,9 @@ public:
 };
 
 TEST_F(batch_file_executor_test, simple) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     execute_statement("CREATE TABLE TT (C0 BIGINT)");
 
     boost::filesystem::path p{path()};

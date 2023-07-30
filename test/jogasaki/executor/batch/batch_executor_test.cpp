@@ -203,6 +203,9 @@ TEST_F(batch_executor_test, all_empty_files) {
 }
 
 TEST_F(batch_executor_test, all_empty_blocks_except_one) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{1, 0}, {1, 0, 0}, {1, 0, 0}, {1, 0}, {1}, {1}});
 }
 

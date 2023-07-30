@@ -10,26 +10,26 @@
 
 * バッチ
 
-パラメーターをバルクで渡して同一のステートメントを繰り返し実行する仕組みのこと
+パラメーターをバルクで渡し同一のステートメントを繰り返し実行する仕組みのこと
 いわゆる業務バッチ処理とは直接関係ない
 
-* ファイル
+* (パラメーター)ファイル
 
 バッチ実行のためのパラメーターが格納されているファイルを指す
 
 * ブロック
 
-ファイルが複数のブロックに分割されていて、各ブロックは並列に読み込みが可能であると想定する。
+パラメーターファイルの分割単位。ファイルは複数のブロックに分割され、ブロック単位で並列に読み込みが可能。
 
 ## ロードとの関連
 
 * non-transactional loadはbatch executorの枠組みを使用している
-* batch executorはloadだけではなく、より広くファイル・通信路からパラメーターセットを受け取ってバルク実行するもの
+* batch executorはloadだけではなく、より広くファイル・通信路からパラメーターセットを受け取ってバルク実行するためのもの
 
 ## batch executor オブジェクトモデル
 
 batch executionは下記のオブジェクト階層からなるツリーを動的に組み換えながら実行される
-上の項目が下の項目の親で、親と子は1:N (N=0, 1, ...)。
+上の項目が下の項目の親で、親と子は1:N (N=0, 1, ...)。ただしbathc block executorとstatement間は 1:0,1 。
 
 * batch executor
   * batch実行全体を司るもの
@@ -44,6 +44,30 @@ batch executionは下記のオブジェクト階層からなるツリーを動�
 * statement 
   * ステートメントの1回の実行を司るもの
   * C++のクラスでは表現されず、実行のスケジュールで生成され、完了コールバックで開放とみなす
+
+## 並列化モデル
+
+### 並列化パラメーター
+
+* `max_concurrent_files`
+
+1つのbatch executorが最大で同時に処理するファイル数
+
+* `max_concurrent_blocks_per_file`
+
+1つのbatch file executorが最大で同時に処理するブロック数
+
+### 並列実行モデル
+- batch executorは `max_concurrent_files` 個 以下のファイルへ処理を並列化する
+- batch file executorは `max_concurrent_blocks_per_file` 個以下のブロックへ処理を並列化する
+- batch block executorが同時に処理するステートメントは最大で1つ
+- ステートメントの完了時にステートメントコールバックによってステートメント完了がblock executorへ通知される
+  - batch block executorは残りステートメントがあるかどうか確認し、あればその実行をスケジュールする
+  - なければ blockの処理を完了として、上位(file executor)に完了を通知する
+  - file executorは残りブロックがあるか確認し、あればその実行(ステートメント含む)をスケジュールする
+  - なければ fileの処理を完了として、上位(batch executor)に完了を通知する
+  - batch executorは残りファイルがあるか確認し、あればその実行(`max_concurrent_blocks_per_file`個のブロックを含む)をスケジュールする
+  - なければ batchの処理を完了として、バッチ完了コールバックによって呼び出し側へ完了を通知する
 
 ## ツリーノードの状態遷移
 
@@ -65,9 +89,9 @@ batch executionは下記のオブジェクト階層からなるツリーを動�
 * disposed
   * 終了状態
   * deactivatedから遷移
-    * (batch executor) 
+    * (batch executor) 呼出側がownしているbatch executorをdestructした
     * (batch executor, statement以外) 親へのrelease要求によりノードが開放された
-    * (statement)
+    * (statement) statement実行完了コールバックのオブジェクトがdestructされた
 
 ## ownership, object life-cycle
 

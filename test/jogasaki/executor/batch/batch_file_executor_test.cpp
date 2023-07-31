@@ -96,7 +96,7 @@ TEST_F(batch_file_executor_test, simple) {
     execute_statement("CREATE TABLE TT (C0 BIGINT)");
 
     boost::filesystem::path p{path()};
-    p = p / "multiple_row_groups.parquet";
+    p = p / "simple.parquet";
     create_test_file(p, {1, 2, 1}, 0);
 
     auto* impl = db_impl();
@@ -134,16 +134,12 @@ TEST_F(batch_file_executor_test, simple) {
     auto&&[s1, b1] = file->next_block();
     auto&&[s2, b2] = file->next_block();
     auto&&[s3, b3] = file->next_block();
-    ASSERT_TRUE(s0);
-    ASSERT_TRUE(s1);
-    ASSERT_TRUE(s2);
-    ASSERT_TRUE(s3);
-    ASSERT_TRUE(b0);
-    ASSERT_TRUE(b1);
-    ASSERT_TRUE(b2);
-    ASSERT_FALSE(b3);
+
+    // avoid checking if blocks are created - some might be failed to create as previous one catches up
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
+
+    ASSERT_EQ(0, file->remaining_block_count());
 
     {
         std::vector<mock::basic_record> result{};
@@ -154,10 +150,6 @@ TEST_F(batch_file_executor_test, simple) {
         EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[2]);
         EXPECT_EQ((mock::create_nullable_record<kind::int8>(10)), result[3]);
     }
-    EXPECT_EQ(1, b0->statements_executed());
-    EXPECT_EQ(2, b1->statements_executed());
-    EXPECT_EQ(1, b2->statements_executed());
-
     EXPECT_EQ(3, release_count);
 }
 

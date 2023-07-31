@@ -120,7 +120,7 @@ status serialize(jogasaki::kvs::coding_spec const &spec, bool nullable, std::vec
                 }
                 auto triple = jogasaki::utils::read_decimal(dec.unscaled_value(), dec.exponent());
                 auto type{meta::field_type{std::make_shared<meta::decimal_field_option>(
-                        jogasaki::decimal_default_precision, jogasaki::dumped_decimal_default_scale)}};
+                        jogasaki::decimal_default_precision, 0)}};
                 data::any data{std::in_place_type<takatori::decimal::triple>, triple};
                 if (nullable) {
                     s = jogasaki::kvs::encode_nullable(data, type, spec, results);
@@ -273,12 +273,12 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
             break;
         }
         case takatori::type::type_kind::decimal: {
+            auto type{meta::field_type{std::make_shared<meta::decimal_field_option>(
+                    jogasaki::decimal_default_precision, 0)}};
             if (nullable) {
-                s = jogasaki::kvs::decode_nullable(stream, meta::field_type{std::make_shared<meta::decimal_field_option>()},
-                                                   spec, dest);
+                s = jogasaki::kvs::decode_nullable(stream, type, spec, dest);
             } else {
-                s = jogasaki::kvs::decode(stream, meta::field_type{std::make_shared<meta::decimal_field_option>()},
-                                          spec, dest);
+                s = jogasaki::kvs::decode(stream, type, spec, dest);
             }
             if (s != jogasaki::status::ok) {
                 return status::err_invalid_argument;
@@ -289,12 +289,12 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, takato
             std::uint8_t buf[sizeof(lo) + sizeof(hi)];
             auto v = lo;
             for (int i = 0; i < 8; i++) {
-                buf[i] = v & 0x0ff;
+                buf[15 - i] = v & 0x0ff;
                 v >>= 8;
             }
             v = hi;
             for (int i = 0; i < 8; i++) {
-                buf[8 + i] = v & 0x0ff;
+                buf[7 - i] = v & 0x0ff;
                 v >>= 8;
             }
             auto *decimal = new tateyama::proto::kvs::data::Decimal;

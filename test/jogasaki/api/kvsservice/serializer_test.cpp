@@ -135,16 +135,16 @@ TEST_F(serializer_test, ser_bool) {
     }
 }
 
-tateyama::proto::kvs::data::Decimal dec(const long hi, const long lo, const int exp) noexcept {
+static tateyama::proto::kvs::data::Decimal dec(const long hi, const long lo, const int exp) noexcept {
     char data[16]{};
     long v = lo;
     for (int i = 0; i < 8; i++) {
-        data[i] = v & 0x0ff;
+        data[15 - i] = v & 0x0ff;
         v >>= 8;
     }
     v = hi;
     for (int i = 0; i < 8; i++) {
-        data[8 + i] = v & 0x0ff;
+        data[7 - i] = v & 0x0ff;
         v >>= 8;
     }
     tateyama::proto::kvs::data::Decimal d{};
@@ -153,7 +153,7 @@ tateyama::proto::kvs::data::Decimal dec(const long hi, const long lo, const int 
     return d;
 }
 
-TEST_F(serializer_test, DISABLED_ser_decimal) {
+TEST_F(serializer_test, ser_decimal) {
     std::vector<tateyama::proto::kvs::data::Decimal> answers {
         dec(0, 0, 0), dec(0, 1, 0), dec(1, 0, 0)};
     for (auto answer : answers) {
@@ -170,4 +170,73 @@ TEST_F(serializer_test, DISABLED_ser_decimal) {
         }
     }
 }
+
+TEST_F(serializer_test, ser_date) {
+    // date (number of days offset of epoch 1970-01-01).
+    // sint64 date_value = 15;
+
+    // NOTE
+    // third_party/mizugaki/third_party/yugawara/third_party/takatori/src/takatori/datetime/date_util.h
+    // @brief the max year.
+    // static constexpr difference_type max_days = +365'241'780'471LL;
+    // @brief the min year.
+    // static constexpr difference_type min_days = -365'243'219'162LL;
+    std::vector<std::int64_t> answers {0, 1, -1, 100, -1000,
+                                       std::numeric_limits<int>::max(),
+                                       std::numeric_limits<int>::min()};
+    for (auto answer : answers) {
+        for (auto is_key: {true, false}) {
+            tateyama::proto::kvs::data::Value v1{};
+            tateyama::proto::kvs::data::Value v2{};
+            v1.set_date_value(answer);
+            test(is_key, takatori::type::type_kind::date, v1, v2);
+            EXPECT_EQ(v2.date_value(), answer);
+        }
+    }
+}
+
+TEST_F(serializer_test, ser_time_of_day) {
+    // time of day (nano-seconds since 00:00:00).
+    // uint64 time_of_day_value = 16;
+    std::vector<std::uint64_t> answers {0, 100, 10000, 3 * 3600UL * 1'000'000'000UL};
+    for (auto answer : answers) {
+        for (auto is_key: {true, false}) {
+            tateyama::proto::kvs::data::Value v1{};
+            tateyama::proto::kvs::data::Value v2{};
+            v1.set_time_of_day_value(answer);
+            test(is_key, takatori::type::type_kind::time_of_day, v1, v2);
+            EXPECT_EQ(v2.time_of_day_value(), answer);
+        }
+    }
+}
+
+static tateyama::proto::kvs::data::TimePoint timepoint(const long sec, const uint32_t nano) noexcept {
+    tateyama::proto::kvs::data::TimePoint tp{};
+    tp.set_offset_seconds(sec);
+    tp.set_nano_adjustment(nano);
+    return tp;
+}
+
+TEST_F(serializer_test, ser_timepoint) {
+    // offset seconds from epoch (1970-01-01 00:00:00).
+    // sint64 offset_seconds = 1;
+    // nano-seconds adjustment [0, 10^9-1].
+    // uint32 nano_adjustment = 2;
+    std::vector<tateyama::proto::kvs::data::TimePoint> answers {
+        timepoint(0, 0), timepoint(1234, 567)};
+    for (auto answer : answers) {
+        for (auto is_key: {true, false}) {
+            tateyama::proto::kvs::data::Value v1{};
+            tateyama::proto::kvs::data::Value v2{};
+            auto *tp = new tateyama::proto::kvs::data::TimePoint;
+            tp->set_offset_seconds(answer.offset_seconds());
+            tp->set_nano_adjustment(answer.nano_adjustment());
+            v1.set_allocated_time_point_value(tp);
+            test(is_key, takatori::type::type_kind::time_point, v1, v2);
+            EXPECT_EQ(v2.time_point_value().offset_seconds(), answer.offset_seconds());
+            EXPECT_EQ(v2.time_point_value().nano_adjustment(), answer.nano_adjustment());
+        }
+    }
+}
+
 }

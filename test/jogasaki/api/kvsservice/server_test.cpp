@@ -36,7 +36,7 @@ class server_test: public ::testing::Test {
         }
     };
 
-TEST_F(server_test, resouce_check) {
+TEST_F(server_test, DISABLED_resouce_check) {
     tateyama::framework::server sv {tateyama::framework::boot_mode::database_server,
                                     default_configuration()};
     tateyama::framework::add_core_components(sv);

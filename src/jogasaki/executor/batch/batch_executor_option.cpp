@@ -53,4 +53,12 @@ batch_executor_option::release_file_callback_type batch_executor_option::release
 batch_executor_option::release_block_callback_type batch_executor_option::release_block_cb() const noexcept {
     return release_block_cb_;
 }
+
+batch_executor_option::batch_executor_option(
+    batch_executor_option::release_file_callback_type release_file_cb,
+    batch_executor_option::release_block_callback_type release_block_cb
+) noexcept:
+    release_file_cb_(std::move(release_file_cb)),
+    release_block_cb_(std::move(release_block_cb))
+{}
 }

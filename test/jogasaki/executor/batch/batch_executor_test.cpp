@@ -97,6 +97,9 @@ public:
 };
 
 TEST_F(batch_executor_test, simple) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     execute_statement("CREATE TABLE TT (C0 BIGINT)");
 
     boost::filesystem::path d{path()};
@@ -171,34 +174,58 @@ TEST_F(batch_executor_test, simple) {
 }
 
 TEST_F(batch_executor_test, bootstrap) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{1, 2}, {2, 1}});
 }
 
 TEST_F(batch_executor_test, variation1) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{1, 2, 3}, {1}, {1, 3}});
 }
 
 TEST_F(batch_executor_test, variation2) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{100}});
 }
 
 TEST_F(batch_executor_test, variation3) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{1}, {1}, {1}, {1}, {1}});
 }
 
 TEST_F(batch_executor_test, max_file_block_params) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, 1, 1);
 }
 
 TEST_F(batch_executor_test, files_with_empty_blocks) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{1, 0, 0}, {0}, {0, 0}, {1}, {0}});
 }
 
 TEST_F(batch_executor_test, files_with_empty_blocks_max_params) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{1, 0, 0}, {0}, {0, 0}, {1}, {0}}, 1, 1);
 }
 
 TEST_F(batch_executor_test, all_empty_files) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
     test_bootstrap({{0, 0, 0}, {0}, {0, 0}, {0}, {0}});
 }
 

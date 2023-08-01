@@ -20,6 +20,7 @@
 
 #include "convert.h"
 #include "mapped_record.h"
+#include "record_columns.h"
 #include "serializer.h"
 #include "transaction_utils.h"
 
@@ -70,13 +71,9 @@ status transaction::commit() {
     if (status_c != sharksfin::StatusCode::OK) {
         return convert(status_c);
     }
-    // NOTE sharksfin::transaction_check() blocks after transaction_commit() ???
-//    if (state().kind() == transaction_state::state_kind::durable) {
-        // FIXME
-        auto status_d = sharksfin::transaction_dispose(ctrl_handle_);
-        return convert(status_c, status_d);
-//    }
-//    return convert(status_c);
+    // FIXME
+    auto status_d = sharksfin::transaction_dispose(ctrl_handle_);
+    return convert(status_c, status_d);
 }
 
 status transaction::abort() {
@@ -84,12 +81,8 @@ status transaction::abort() {
     if (status_a != sharksfin::StatusCode::OK) {
         return convert(status_a);
     }
-//    if (state().kind() == transaction_state::state_kind::aborted) {
-        // FIXME
-        auto status_d = sharksfin::transaction_dispose(ctrl_handle_);
-        return convert(status_a, status_d);
-//    }
-//    return convert(status_a);
+    auto status_d = sharksfin::transaction_dispose(ctrl_handle_);
+    return convert(status_a, status_d);
 }
 
 status transaction::get_storage(std::string_view name, sharksfin::StorageHandle &storage) {
@@ -100,26 +93,27 @@ status transaction::get_storage(std::string_view name, sharksfin::StorageHandle 
 
 status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
+    if (!is_valid_record(record)) {
+        return status::err_invalid_argument;
+    }
     std::shared_ptr<yugawara::storage::table const> table{};
     if (auto s = get_table(db_, table_name, table); s != status::ok) {
         return s;
     }
-    std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
-    std::vector<tateyama::proto::kvs::data::Value const*> value_values{};
-    if (auto s = check_put_record(table, record, key_values, value_values);
-        s != status::ok) {
+    record_columns rec_cols{table, record, false};
+    if (auto s = check_put_record(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, key_values);
+    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys());
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(spec_primary_key, nullable_primary_key, key_values, key_stream); s != status::ok) {
+    if (auto s = serialize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys(), key_stream); s != status::ok) {
         return s;
     }
-    auto value_size = get_bufsize(spec_value, nullable_value, value_values);
+    auto value_size = get_bufsize(spec_value, nullable_value, rec_cols.values());
     jogasaki::data::aligned_buffer value_buffer{value_size};
     jogasaki::kvs::writable_stream value_stream{value_buffer.data(), value_buffer.capacity()};
-    if (auto s = serialize(spec_value, nullable_value, value_values, value_stream); s != status::ok) {
+    if (auto s = serialize(spec_value, nullable_value, rec_cols.values(), value_stream); s != status::ok) {
         return s;
     }
     sharksfin::Slice key_slice {key_stream.data(), key_stream.size()};
@@ -136,19 +130,22 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::get(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
-    std::shared_ptr<yugawara::storage::table const> table {};
+    if (!is_valid_record(primary_key)) {
+        return status::err_invalid_argument;
+    }
+    std::shared_ptr<yugawara::storage::table const> table{};
     if (auto s = get_table(db_, table_name, table); s != status::ok) {
         return s;
     }
-    std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
-    if (auto s = check_primary_key(table, primary_key, key_values);
-        s != status::ok) {
+    record_columns rec_cols{table, primary_key, true};
+    if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, key_values);
+    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys());
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(spec_primary_key, nullable_primary_key, key_values, key_stream); s != status::ok) {
+    if (auto s = serialize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys(), key_stream);
+        s != status::ok) {
         return s;
     }
     sharksfin::StorageHandle storage{};
@@ -167,19 +164,22 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::remove(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         remove_option opt) {
-    std::shared_ptr<yugawara::storage::table const> table {};
+    if (!is_valid_record(primary_key)) {
+        return status::err_invalid_argument;
+    }
+    std::shared_ptr<yugawara::storage::table const> table{};
     if (auto s = get_table(db_, table_name, table); s != status::ok) {
         return s;
     }
-    std::vector<tateyama::proto::kvs::data::Value const*> key_values{};
-    if (auto s = check_primary_key(table, primary_key, key_values);
-            s != status::ok) {
+    record_columns rec_cols{table, primary_key, true};
+    if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, key_values);
+    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys());
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(spec_primary_key, nullable_primary_key, key_values, key_stream); s != status::ok) {
+    if (auto s = serialize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys(), key_stream);
+        s != status::ok) {
         return s;
     }
     sharksfin::StorageHandle storage{};

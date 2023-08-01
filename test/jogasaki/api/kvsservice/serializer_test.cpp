@@ -17,6 +17,8 @@
 #include <gtest/gtest.h>
 
 #include <tateyama/proto/kvs/data.pb.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/primitive.h>
 #include <jogasaki/api/kvsservice/serializer.h>
 #include <jogasaki/api/kvsservice/transaction_utils.h>
 
@@ -30,22 +32,24 @@ public:
     void TearDown() override {
     }
 
-    void test(bool is_key, takatori::type::type_kind const kind,
+    void test(bool is_key, yugawara::storage::column const &column,
               tateyama::proto::kvs::data::Value &v1, tateyama::proto::kvs::data::Value &v2) {
         auto spec = is_key ? spec_primary_key : spec_value;
         auto nullable = is_key ? nullable_primary_key : nullable_value;
-        std::vector<tateyama::proto::kvs::data::Value const *> values{&v1};
-        auto size = get_bufsize(spec, nullable, values);
+        std::vector<column_data> list{};
+        list.emplace_back(&column, &v1);
+        auto size = get_bufsize(spec, nullable, list);
         ASSERT_GT(size, 0);
         jogasaki::data::aligned_buffer buffer{size};
         jogasaki::kvs::writable_stream out_stream{buffer.data(), buffer.capacity()};
-        auto s = serialize(spec, nullable, values, out_stream);
+        auto s = serialize(spec, nullable, list, out_stream);
         ASSERT_EQ(s, status::ok);
         //
         jogasaki::kvs::readable_stream in_stream{out_stream.data(), out_stream.size()};
-        s = deserialize(spec, nullable, kind, in_stream, &v2);
+        s = deserialize(spec, nullable, column, in_stream, &v2);
         ASSERT_EQ(s, status::ok);
     }
+
 };
 
 TEST_F(serializer_test, ser_int4) {
@@ -53,11 +57,13 @@ TEST_F(serializer_test, ser_int4) {
                                        std::numeric_limits<int>::max(),
                                        std::numeric_limits<int>::min()};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::int4>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_int4_value(answer);
-            test(is_key, takatori::type::type_kind::int4, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.int4_value(), answer);
         }
     }
@@ -68,11 +74,13 @@ TEST_F(serializer_test, ser_int8) {
                                        std::numeric_limits<long>::max(),
                                        std::numeric_limits<long>::min()};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::int8>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_int8_value(answer);
-            test(is_key, takatori::type::type_kind::int8, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.int8_value(), answer);
         }
     }
@@ -83,11 +91,13 @@ TEST_F(serializer_test, ser_float4) {
                                        std::numeric_limits<float>::max(),
                                        std::numeric_limits<float>::min()};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::float4>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_float4_value(answer);
-            test(is_key, takatori::type::type_kind::float4, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.float4_value(), answer);
         }
     }
@@ -98,11 +108,13 @@ TEST_F(serializer_test, ser_float8) {
                                 std::numeric_limits<double>::max(),
                                 std::numeric_limits<double>::min()};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::float8>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_float8_value(answer);
-            test(is_key, takatori::type::type_kind::float8, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.float8_value(), answer);
         }
     }
@@ -112,11 +124,13 @@ TEST_F(serializer_test, ser_string) {
     std::vector<std::string> answers {"", "a", "ab", "abc", "abc\0def", "\0\1\2",
                                       "12345678901234567890"};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::character>>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_character_value(answer);
-            test(is_key, takatori::type::type_kind::character, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.character_value(), answer);
         }
     }
@@ -125,38 +139,44 @@ TEST_F(serializer_test, ser_string) {
 TEST_F(serializer_test, ser_bool) {
     std::vector<bool> answers {true, false};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::boolean>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_boolean_value(answer);
-            test(is_key, takatori::type::type_kind::boolean, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.boolean_value(), answer);
         }
     }
 }
 
-static tateyama::proto::kvs::data::Decimal dec(const long hi, const long lo, const int exp) noexcept {
-    char data[16]{};
-    long v = lo;
+static tateyama::proto::kvs::data::Decimal dec(const std::uint64_t hi, const std::uint64_t lo, const int exp) noexcept {
+    std::string buf{};
+    buf.reserve(sizeof(lo) + sizeof(hi));
+    auto v = lo;
     for (int i = 0; i < 8; i++) {
-        data[15 - i] = v & 0x0ff;
-        v >>= 8;
+        buf[15 - i] = static_cast<std::uint8_t>(v & 0xffU);
+        v >>= 8U;
     }
     v = hi;
     for (int i = 0; i < 8; i++) {
-        data[7 - i] = v & 0x0ff;
-        v >>= 8;
+        buf[7 - i] = static_cast<std::uint8_t>(v & 0xffU);
+        v >>= 8U;
     }
     tateyama::proto::kvs::data::Decimal d{};
-    d.set_unscaled_value(data, sizeof(data));
+    d.set_unscaled_value(buf.data(), buf.size());
     d.set_exponent(exp);
     return d;
 }
 
 TEST_F(serializer_test, ser_decimal) {
     std::vector<tateyama::proto::kvs::data::Decimal> answers {
-        dec(0, 0, 0), dec(0, 1, 0), dec(1, 0, 0)};
+        dec(0, 0, 0), dec(0, 1, 0), dec(1, 0, 0), dec(0, 123456, -3)};
+    int precision = 5;
     for (auto answer : answers) {
+        auto type = std::make_shared<takatori::type::decimal>(precision, -answer.exponent());
+        yugawara::storage::column col{"col_name", std::move(type), {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
@@ -164,7 +184,7 @@ TEST_F(serializer_test, ser_decimal) {
             d->set_unscaled_value(answer.unscaled_value());
             d->set_exponent(answer.exponent());
             v1.set_allocated_decimal_value(d);
-            test(is_key, takatori::type::type_kind::decimal, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.decimal_value().unscaled_value(), answer.unscaled_value());
             EXPECT_EQ(v2.decimal_value().exponent(), answer.exponent());
         }
@@ -185,11 +205,13 @@ TEST_F(serializer_test, ser_date) {
                                        std::numeric_limits<int>::max(),
                                        std::numeric_limits<int>::min()};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::date>>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_date_value(answer);
-            test(is_key, takatori::type::type_kind::date, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.date_value(), answer);
         }
     }
@@ -200,11 +222,13 @@ TEST_F(serializer_test, ser_time_of_day) {
     // uint64 time_of_day_value = 16;
     std::vector<std::uint64_t> answers {0, 100, 10000, 3 * 3600UL * 1'000'000'000UL};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::time_of_day>>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_time_of_day_value(answer);
-            test(is_key, takatori::type::type_kind::time_of_day, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.time_of_day_value(), answer);
         }
     }
@@ -225,6 +249,8 @@ TEST_F(serializer_test, ser_timepoint) {
     std::vector<tateyama::proto::kvs::data::TimePoint> answers {
         timepoint(0, 0), timepoint(1234, 567)};
     for (auto answer : answers) {
+        auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::time_point>>() };
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
@@ -232,7 +258,7 @@ TEST_F(serializer_test, ser_timepoint) {
             tp->set_offset_seconds(answer.offset_seconds());
             tp->set_nano_adjustment(answer.nano_adjustment());
             v1.set_allocated_time_point_value(tp);
-            test(is_key, takatori::type::type_kind::time_point, v1, v2);
+            test(is_key, col, v1, v2);
             EXPECT_EQ(v2.time_point_value().offset_seconds(), answer.offset_seconds());
             EXPECT_EQ(v2.time_point_value().nano_adjustment(), answer.nano_adjustment());
         }

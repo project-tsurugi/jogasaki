@@ -17,6 +17,7 @@
 
 #include <takatori/util/exception.h>
 #include <jogasaki/api/impl/database.h>
+#include "record_columns.h"
 
 namespace jogasaki::api::kvsservice {
 
@@ -33,39 +34,35 @@ status get_table(jogasaki::api::impl::database* db,
                 std::shared_ptr<yugawara::storage::table const> &table);
 
 /**
- * @brief check the record is valid for put, and divide the values between primary key(s) and others
- * @param table the schema of the table
- * @param record the record data to be put
- * @param key_values [out]the value(s) of primary key(s)
- * @param value_values [out]the values of non primary key
+ * @brief check whether the record has valid data or not
+ * @param record the record
+ * @return true if valid, false otherwise
+ */
+bool is_valid_record(tateyama::proto::kvs::data::Record const &record);
+
+/**
+ * @brief check whether the record is valid for put
+ * @param rec_cols list of columns as a record
  * @return status::ok if succeeded
- * @return status::err_invalid_argument if length of names and values of the record is invalid
  * @return status::err_incomplete_columns if the record doesn't have enough columns for the primary key
  * @return status::err_invalid_argument if the record has too many columns for the specified table
  * @return status::err_column_not_found if the record has invalid name of the column
  * @return status::err_column_type_mismatch if the column data type is different from the table schema
  * @return otherwise if error was occurred
  */
-status check_put_record(std::shared_ptr<yugawara::storage::table const> &table,
-                       tateyama::proto::kvs::data::Record const &record,
-                       std::vector<tateyama::proto::kvs::data::Value const*> &key_values,
-                       std::vector<tateyama::proto::kvs::data::Value const*> &value_values);
+status check_put_record(record_columns &rec_cols);
 
 /**
- * @brief check the key is valid as primary key(s) of the table
- * @param table the schema of the table
- * @param primary_key the value(s) of the primary key(s)
- * @param key_values [out]the values of primary key(s)
+ * @brief check whether the key is valid as primary key(s) of the table
+ * @param rec_cols list of columns as a primary key
  * @return status::ok if succeeded
- * @return status::err_invalid_argument if length of names and values of the record is invalid
+ * @return status::err_incomplete_columns if the record doesn't have enough columns for the primary key
  * @return status::err_invalid_argument if the record has too many columns for the specified table
  * @return status::err_column_not_found if the record has invalid name of the column
  * @return status::err_column_type_mismatch if the column data type is different from the table schema
  * @return otherwise if error was occurred
  */
-status check_primary_key(std::shared_ptr<yugawara::storage::table const> &table,
-                        tateyama::proto::kvs::data::Record const &primary_key,
-                        std::vector<tateyama::proto::kvs::data::Value const*> &key_values);
+status check_valid_primary_key(record_columns &rec_cols);
 
 /**
  * @brief make a record with the primary key and values

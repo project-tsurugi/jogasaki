@@ -73,93 +73,78 @@ status get_table(jogasaki::api::impl::database* db,
     return status::err_table_not_found;
 }
 
-status make_primary_key_names(std::shared_ptr<yugawara::storage::table const> &table,
-                                     std::unordered_set<std::string_view> &primary_key_names) {
-    const auto primary = table->owner()->find_primary_index(*table);
-    if (primary == nullptr) {
-        return status::err_invalid_argument;
-    }
-    for (auto & key : primary->keys()) {
-        primary_key_names.emplace(key.column().simple_name());
-    }
-    return status::ok;
-}
-
 bool is_valid_record(tateyama::proto::kvs::data::Record const &record) {
     return record.names_size() >= 1 && record.names_size() == record.values_size();
 }
 
-status check_put_record(std::shared_ptr<yugawara::storage::table const> &table,
-                               tateyama::proto::kvs::data::Record const &record,
-                               std::vector<tateyama::proto::kvs::data::Value const*> &key_values,
-                               std::vector<tateyama::proto::kvs::data::Value const*> &value_values) {
-    if (!is_valid_record(record)) {
-        return status::err_invalid_argument;
+static status check_valid_column(column_data const &cd) {
+    if (cd.value() == nullptr) {
+        // TODO support default values (currently all columns' values are necessary)
+        return status::err_column_not_found;
     }
-    // TODO support default values (currently all columns' values are necessary)
-    const auto columns = table->columns();
-    auto col_size = columns.size();
-    auto rec_size = static_cast<decltype(col_size)>(record.names_size());
-    if (rec_size < col_size) {
-        return status::err_incomplete_columns;
+    if (!equal_type(cd.column()->type().kind(), cd.value()->value_case())) {
+        return status::err_column_type_mismatch;
     }
-    if (rec_size > col_size) {
-        return status::err_invalid_argument;
-    }
-    std::unordered_set<std::string_view> primary_key_names{};
-    if (auto s = make_primary_key_names(table, primary_key_names);
-            s != status::ok) {
-        return s;
-    }
-    mapped_record m_rec{record};
-    for (auto &col : columns) {
-        auto col_name = col.simple_name();
-        // TODO should be case-insensitive
-        auto value = m_rec.get_value(col_name);
-        if (value == nullptr) {
-            return status::err_column_not_found;
-        }
-        if (!equal_type(col.type().kind(), value->value_case())) {
-            return status::err_column_type_mismatch;
-        }
-        if (primary_key_names.find(col_name) != primary_key_names.cend()) {
-            key_values.emplace_back(value);
-        } else {
-            value_values.emplace_back(value);
+    return status::ok;
+}
+
+static status check_valid_columns(std::vector<column_data> const &cd_list) {
+    for (const auto &cd : cd_list) {
+        if (auto s = check_valid_column(cd); s != status::ok) {
+            return s;
         }
     }
     return status::ok;
 }
 
-status check_primary_key(std::shared_ptr<yugawara::storage::table const> &table,
-                                tateyama::proto::kvs::data::Record const &primary_key,
-                                std::vector<tateyama::proto::kvs::data::Value const*> &key_values) {
-    if (!is_valid_record(primary_key)) {
-        return status::err_invalid_argument;
-    }
+static status check_valid_key_size(record_columns &rec_cols) {
+    auto table = rec_cols.table();
     const auto primary = table->owner()->find_primary_index(*table);
     if (primary == nullptr) {
         return status::err_invalid_argument;
     }
     const auto keys = primary->keys();
     auto key_size = keys.size();
-    auto req_size = static_cast<decltype(key_size)>(primary_key.names_size());
+    auto req_size = rec_cols.primary_keys().size();
     if (key_size != req_size) {
         return status::err_mismatch_key;
     }
-    mapped_record m_key{primary_key};
-    for (const auto &key : keys) {
-        auto &col = key.column();
-        auto value = m_key.get_value(col.simple_name());
-        if (value == nullptr) {
-            return status::err_column_not_found;
-        }
-        if (!equal_type(col.type().kind(), value->value_case())) {
-            return status::err_column_type_mismatch;
-        }
-        key_values.emplace_back(value);
+    return status::ok;
+}
+
+static status check_valid_column_size(record_columns &rec_cols) {
+    const auto &columns = rec_cols.table()->columns();
+    auto col_size = columns.size();
+    auto rec_size = rec_cols.primary_keys().size() + rec_cols.values().size();
+    // TODO support default values (currently all columns' values are necessary)
+    if (rec_size < col_size) {
+        return status::err_incomplete_columns;
+    }
+    if (rec_size > col_size) {
+        return status::err_invalid_argument;
     }
     return status::ok;
+}
+
+status check_valid_primary_key(record_columns &rec_cols) {
+    if (auto s = check_valid_key_size(rec_cols); s != status::ok) {
+        return s;
+    }
+    return check_valid_columns(rec_cols.primary_keys());
+}
+
+static status check_valid_values(record_columns &rec_cols) {
+    if (auto s = check_valid_column_size(rec_cols); s != status::ok) {
+        return s;
+    }
+    return check_valid_columns(rec_cols.values());
+}
+
+status check_put_record(record_columns &rec_cols) {
+    if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
+        return s;
+    }
+    return check_valid_values(rec_cols);
 }
 
 void add_key_column(std::string_view col_name,
@@ -175,8 +160,7 @@ status add_value_column(yugawara::storage::column const &column,
                          tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
     auto new_value = new tateyama::proto::kvs::data::Value();
-    if (auto s = deserialize(spec_value, nullable_value,
-                             column.type().kind(), stream, new_value);
+    if (auto s = deserialize(spec_value, nullable_value, column, stream, new_value);
             s != status::ok) {
         delete new_value;
         return s;

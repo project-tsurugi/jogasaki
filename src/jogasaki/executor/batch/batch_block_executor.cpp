@@ -145,6 +145,9 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         reader_->close();
         reader_.reset();
 
+        if(state_->error_aborting()) {
+            return {false, false};
+        }
         if(auto res = tx_->commit_internal(); res != status::ok) {
             state_->error_info(res, "committing tx failed.");
             finish(info_, *state_);
@@ -169,12 +172,12 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
             if(state->error_aborting()) {
                 return;
             }
-            ++statements_executed_;
+            auto pos = statements_executed_++;
             if(st != status::ok) {
                 std::stringstream ss{};
                 ss << "Executing statement failed. file:" << file_ <<
                     " block index:" << block_index_ <<
-                    " statement position:" << statements_executed_ <<
+                    " statement position:" << pos <<
                     " status:" << st <<
                     " message:\"" << msg << "\"";
                 state->error_info(st, ss.str());

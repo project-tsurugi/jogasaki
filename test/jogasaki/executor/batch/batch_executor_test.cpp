@@ -63,7 +63,19 @@ public:
         std::size_t max_concurrent_files = batch_executor_option::undefined,
         std::size_t max_concurrent_blocks_per_file = batch_executor_option::undefined
     );
-    void create_test_file(boost::filesystem::path const& p, std::vector<std::size_t> record_counts, std::size_t initial) {
+    void test_error(
+        std::vector<std::vector<std::size_t>> block_def_list,
+        status expected,
+        std::function<void(std::size_t, std::size_t, std::size_t, std::size_t&)> customize_value = {},
+        std::size_t max_concurrent_files = batch_executor_option::undefined,
+        std::size_t max_concurrent_blocks_per_file = batch_executor_option::undefined
+    );
+    void create_test_file(
+        boost::filesystem::path const& p,
+        std::vector<std::size_t> record_counts,
+        std::size_t initial,
+        std::function<void(std::size_t block_index, std::size_t statement_index, std::size_t& value)> customize_value = {}
+    ) {
         auto rec = mock::create_nullable_record<kind::int8, kind::float8>();
         auto writer = file::parquet_writer::open(
             std::make_shared<meta::external_record_meta>(
@@ -73,14 +85,21 @@ public:
         ASSERT_TRUE(writer);
         std::size_t pos = 0;
         std::size_t ind = initial;
+        std::size_t block_index = 0;
         for(auto record_count : record_counts) {
+            std::size_t statement_index = 0;
             for(std::size_t i=0; i< record_count; ++i) {
+                if(customize_value) {
+                    customize_value(block_index, statement_index, ind);
+                }
                 auto rec = mock::create_nullable_record<kind::int8, kind::float8>(ind, ind);
                 writer->write(rec.ref());
                 ++ind;
+                ++statement_index;
             }
-            if(pos != record_counts.size()-1) { // skip if last
+            if(pos != record_counts.size()-1) { // skip if last block
                 writer->new_row_group();
+                ++block_index;
             }
             ++pos;
         }
@@ -322,12 +341,64 @@ TEST_F(batch_executor_test, DISABLED_many_files_and_blocks) {
     test_bootstrap(std::move(defs));
 }
 
+TEST_F(batch_executor_test, error_pk_violation) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+    test_error({{1}, {1}}, status::err_unique_constraint_violation,
+        [](std::size_t file_index, std::size_t block_index, std::size_t statement_index, std::size_t& value) {
+            value = 0;
+        }
+    );
+}
+
+TEST_F(batch_executor_test, error_on_last_block) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+
+    test_error({{1, 1, 1}, {1, 1, 1}}, status::err_unique_constraint_violation,
+        [](std::size_t file_index, std::size_t block_index, std::size_t statement_index, std::size_t& value) {
+        if(file_index == 1 && block_index == 2) {
+            value = 0;
+        }
+    });
+}
+
+TEST_F(batch_executor_test, error_on_last_statement) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+
+    test_error({{2}, {2}}, status::err_unique_constraint_violation,
+        [](std::size_t file_index, std::size_t block_index, std::size_t statement_index, std::size_t& value) {
+            if(file_index == 1 && block_index == 0 && statement_index == 1) {
+                value = 0;
+            }
+        }
+    );
+}
+
+TEST_F(batch_executor_test, error_on_last_statement_of_long_block) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory timed out the testcase";
+    }
+
+    test_error({{100}}, status::err_unique_constraint_violation,
+        [](std::size_t file_index, std::size_t block_index, std::size_t statement_index, std::size_t& value) {
+            if(file_index == 0 && block_index == 0 && statement_index == 99) {
+                value = 0;
+            }
+        }
+    );
+}
+
 void batch_executor_test::test_bootstrap(
     std::vector<std::vector<std::size_t>> block_def_list,
     std::size_t max_concurrent_files,
     std::size_t max_concurrent_blocks_per_file
 ) {
-    execute_statement("CREATE TABLE TT (C0 BIGINT)");
+    execute_statement("CREATE TABLE TT (C0 BIGINT NOT NULL PRIMARY KEY)");
 
     std::size_t file_count = block_def_list.size();
     boost::filesystem::path d{path()};
@@ -397,5 +468,83 @@ void batch_executor_test::test_bootstrap(
     EXPECT_EQ(block_count, block_release_count);
 }
 
+void batch_executor_test::test_error(
+    std::vector<std::vector<std::size_t>> block_def_list,
+    status expected,
+    std::function<void(std::size_t, std::size_t, std::size_t, std::size_t&)> customize_value,
+    std::size_t max_concurrent_files,
+    std::size_t max_concurrent_blocks_per_file
+) {
+    execute_statement("CREATE TABLE TT (C0 BIGINT NOT NULL PRIMARY KEY)");
+
+    std::size_t file_count = block_def_list.size();
+    boost::filesystem::path d{path()};
+    std::vector<std::string> files{};
+    std::size_t statement_count = 0;
+    std::size_t block_count = 0;
+    for(std::size_t i=0; i < file_count; ++i) {
+        auto file = d / ("simple"+std::to_string(i)+".parquet");
+        create_test_file(file, block_def_list[i], statement_count,
+            [&, i](std::size_t block_index, std::size_t statement_index, std::size_t& value) {
+                if (customize_value) {
+                    customize_value(i, block_index, statement_index, value);
+                }
+            }
+        );
+        for(auto&& e : block_def_list[i]) {
+            statement_count += e;
+        }
+        block_count += block_def_list[i].size();
+        files.emplace_back(file.string());
+    }
+
+    auto* impl = db_impl();
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int8},
+    };
+    ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)", variables, prepared));
+
+    auto ps = api::create_parameter_set();
+    ps->set_reference_column("p0", "C0");
+
+    std::atomic_bool called = false;
+    std::atomic_size_t file_release_count = 0;
+    std::atomic_size_t block_release_count = 0;
+    auto root = batch_executor::create_batch_executor(
+        files,
+        batch_execution_info{
+            prepared,
+            std::shared_ptr{std::move(ps)},
+            reinterpret_cast<api::impl::database*>(db_.get()),
+            [&](){
+                called = true;
+            },
+            batch_executor_option{
+                max_concurrent_files,
+                max_concurrent_blocks_per_file,
+                [&](batch_file_executor* arg) {
+//                std::cerr << "release file:" << arg << std::endl;
+                    ++file_release_count;
+                },
+                [&](batch_block_executor* arg) {
+//                std::cerr << "release block:" << arg << std::endl;
+                    ++block_release_count;
+                }
+            }
+        }
+    );
+    root->bootstrap();
+    impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
+    {
+        // just to check manually how long execution proceeded
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM TT ORDER BY C0", result);
+    }
+    EXPECT_TRUE(called);
+    auto [st, msg] = root->state()->error_info();
+    EXPECT_EQ(expected, st);
+    std::cerr << "msg: " << msg << std::endl;
+}
 }
 

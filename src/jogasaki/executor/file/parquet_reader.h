@@ -98,6 +98,11 @@ public:
      */
     ~parquet_reader() noexcept;
 
+    parquet_reader(parquet_reader const& other) = delete;
+    parquet_reader& operator=(parquet_reader const& other) = delete;
+    parquet_reader(parquet_reader&& other) noexcept = default;
+    parquet_reader& operator=(parquet_reader&& other) noexcept = default;
+
     /**
      * @brief read the parquet record
      * @param ref [out] the record reference filled with the parquet data

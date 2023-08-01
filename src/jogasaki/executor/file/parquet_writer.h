@@ -64,6 +64,16 @@ struct column_option {
 class parquet_writer {
 public:
     /**
+     * @brief create empty object
+     */
+    parquet_writer() = default;
+
+    parquet_writer(parquet_writer const& other) = delete;
+    parquet_writer& operator=(parquet_writer const& other) = delete;
+    parquet_writer(parquet_writer&& other) noexcept = default;
+    parquet_writer& operator=(parquet_writer&& other) noexcept = default;
+
+    /**
      * @brief create new object
      * @param meta record meta with column names
      * @details this function is intended to be called from open(). Use open() function because it can report error

@@ -581,7 +581,7 @@ std::size_t parquet_reader::row_group_count() const noexcept {
     return row_group_count_;
 }
 
-parquet_reader::~parquet_reader() {
+parquet_reader::~parquet_reader() noexcept {
     close();
 }
 

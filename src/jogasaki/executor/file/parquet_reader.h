@@ -93,6 +93,12 @@ public:
     parquet_reader() = default;
 
     /**
+     * @brief destruct object
+     * @details destruct the object closing the file if any opened
+     */
+    ~parquet_reader() noexcept;
+
+    /**
      * @brief read the parquet record
      * @param ref [out] the record reference filled with the parquet data
      * @return true when successful

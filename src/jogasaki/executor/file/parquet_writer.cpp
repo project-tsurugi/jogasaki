@@ -212,13 +212,16 @@ bool parquet_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_
 }
 
 bool parquet_writer::close() {
-    try {
-        file_writer_->Close();
-        // Write the bytes to file
-        DCHECK(fs_->Close().ok());
-    } catch (std::exception const& e) {
-        VLOG_LP(log_error) << "Parquet writer close error: " << e.what();
-        return false;
+    if(file_writer_) {
+        try {
+            file_writer_->Close();
+            // Write the bytes to file
+            DCHECK(fs_->Close().ok());
+        } catch (std::exception const& e) {
+            VLOG_LP(log_error) << "Parquet writer close error: " << e.what();
+            return false;
+        }
+        file_writer_.reset();
     }
     return true;
 }
@@ -303,6 +306,10 @@ std::string parquet_writer::path() const noexcept {
 
 std::size_t parquet_writer::write_count() const noexcept {
     return write_count_;
+}
+
+parquet_writer::~parquet_writer() noexcept {
+    close();
 }
 
 }

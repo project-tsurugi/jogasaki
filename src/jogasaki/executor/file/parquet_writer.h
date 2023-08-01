@@ -72,6 +72,12 @@ public:
     explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta);
 
     /**
+     * @brief destruct object
+     * @details destruct the object closing the file if any opened
+     */
+    ~parquet_writer() noexcept;
+
+    /**
      * @brief write the record
      * @param ref the record reference written by the writer
      * @return true when successful

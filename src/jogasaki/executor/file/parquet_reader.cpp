@@ -198,7 +198,15 @@ bool parquet_reader::next(accessor::record_ref& ref) {
 }
 
 bool parquet_reader::close() {
-    file_reader_->Close();
+    if(file_reader_) {
+        try {
+            file_reader_->Close();
+        } catch (std::exception const& e) {
+            VLOG_LP(log_error) << "Parquet close error: " << e.what();
+            return false;
+        }
+        file_reader_.reset();
+    }
     return true;
 }
 
@@ -572,4 +580,9 @@ bool parquet_reader::init(
 std::size_t parquet_reader::row_group_count() const noexcept {
     return row_group_count_;
 }
+
+parquet_reader::~parquet_reader() {
+    close();
+}
+
 }

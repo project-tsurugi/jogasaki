@@ -182,7 +182,8 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
                     " message:\"" << msg << "\"";
                 state->error_info(st, ss.str());
                 finish(info_, *state_);
-                VLOG_LP(log_error) << ss.str();  //NOLINT
+                constexpr auto lp = "/:jogasaki:executor:batch:batch_block_executor:next_statement ";
+                VLOG(log_error) << lp << ss.str();  //NOLINT
                 return;
             }
             end_of_statement();

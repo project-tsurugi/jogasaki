@@ -137,6 +137,47 @@ TEST_F(secondary_index_ddl_test, drop) {
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("CREATE INDEX I ON T (C1)");
     execute_statement("DROP INDEX I");
+    {
+        std::string plan{};
+        explain_statement("SELECT * FROM T WHERE C1=10", plan);
+        // verify index is not used (using same string as below)
+        EXPECT_FALSE(contains(plan,
+            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+        ));
+    }
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(1,10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM T WHERE C1=10", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1,10)), result[0]);
+    }
+    {
+        std::string plan{};
+        explain_statement("SELECT * FROM T WHERE C1=10", plan);
+        // verify 1. scan op exists 2. with target index I
+        EXPECT_TRUE(contains(plan,
+            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+        ));
+    }
+}
+
+TEST_F(secondary_index_ddl_test, cascading_drop_secondary) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("DROP TABLE T");
+
+    // recreate to verify no problem
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    {
+        std::string plan{};
+        explain_statement("SELECT * FROM T WHERE C1=10", plan);
+        // verify index is not used (using same string as below)
+        EXPECT_FALSE(contains(plan,
+            R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
+        ));
+    }
     execute_statement("CREATE INDEX I ON T (C1)");
     execute_statement("INSERT INTO T (C0, C1) VALUES(1,10)");
     {

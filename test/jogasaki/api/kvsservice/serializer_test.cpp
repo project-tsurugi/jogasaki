@@ -18,6 +18,8 @@
 
 #include <tateyama/proto/kvs/data.pb.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <takatori/type/primitive.h>
 #include <jogasaki/api/kvsservice/serializer.h>
 #include <jogasaki/api/kvsservice/transaction_utils.h>
@@ -176,17 +178,15 @@ TEST_F(serializer_test, ser_decimal) {
     int precision = 5;
     for (auto answer : answers) {
         auto type = std::make_shared<takatori::type::decimal>(precision, -answer.exponent());
-        yugawara::storage::column col{"col_name", std::move(type), {}, {}, {}};
+        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
-            auto *d = new tateyama::proto::kvs::data::Decimal;
-            d->set_unscaled_value(answer.unscaled_value());
-            d->set_exponent(answer.exponent());
-            v1.set_allocated_decimal_value(d);
+            v1.set_allocated_decimal_value(&answer);
             test(is_key, col, v1, v2);
             EXPECT_EQ(v2.decimal_value().unscaled_value(), answer.unscaled_value());
             EXPECT_EQ(v2.decimal_value().exponent(), answer.exponent());
+            v1.release_decimal_value();
         }
     }
 }
@@ -234,6 +234,34 @@ TEST_F(serializer_test, ser_time_of_day) {
     }
 }
 
+TEST_F(serializer_test, DISABLED_ser_time_of_day_timezone) {
+    // offset nano-seconds from epoch (00:00:00) in the time zone.
+    // uint64 offset_nanoseconds = 1;
+    // timezone offset in minute.
+    // sint32 time_zone_offset = 2;
+    std::vector<std::uint64_t> nanosecs {0, 100, 10000, 3 * 3600UL * 1'000'000'000UL};
+    std::vector<int> offsets {0, 1, -1, 60, -60, 12 * 60, -12 * 60};
+    for (auto nanosec : nanosecs) {
+        for (auto offset : offsets) {
+            takatori::type::with_time_zone_t with{true};
+            auto type = std::make_shared<takatori::type::time_of_day>(with);
+            yugawara::storage::column col{"col_name", type, {}, {}, {}};
+            for (auto is_key: {true, false}) {
+                tateyama::proto::kvs::data::Value v1{};
+                tateyama::proto::kvs::data::Value v2{};
+                tateyama::proto::kvs::data::TimeOfDayWithTimeZone td{};
+                td.set_offset_nanoseconds(nanosec);
+                td.set_time_zone_offset(offset);
+                v1.set_allocated_time_of_day_with_time_zone_value(&td);
+                test(is_key, col, v1, v2);
+                EXPECT_EQ(v2.time_of_day_with_time_zone_value().offset_nanoseconds(), nanosec);
+                EXPECT_EQ(v2.time_of_day_with_time_zone_value().time_zone_offset(), offset);
+                v1.release_time_of_day_with_time_zone_value();
+            }
+        }
+    }
+}
+
 static tateyama::proto::kvs::data::TimePoint timepoint(const long sec, const uint32_t nano) noexcept {
     tateyama::proto::kvs::data::TimePoint tp{};
     tp.set_offset_seconds(sec);
@@ -248,21 +276,54 @@ TEST_F(serializer_test, ser_timepoint) {
     // uint32 nano_adjustment = 2;
     std::vector<tateyama::proto::kvs::data::TimePoint> answers {
         timepoint(0, 0), timepoint(1234, 567)};
-    for (auto answer : answers) {
+    for (auto &answer : answers) {
         auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::time_point>>() };
         yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
-            auto *tp = new tateyama::proto::kvs::data::TimePoint;
-            tp->set_offset_seconds(answer.offset_seconds());
-            tp->set_nano_adjustment(answer.nano_adjustment());
-            v1.set_allocated_time_point_value(tp);
+            v1.set_allocated_time_point_value(&answer);
             test(is_key, col, v1, v2);
             EXPECT_EQ(v2.time_point_value().offset_seconds(), answer.offset_seconds());
             EXPECT_EQ(v2.time_point_value().nano_adjustment(), answer.nano_adjustment());
+            v1.release_time_point_value();
         }
     }
 }
 
+TEST_F(serializer_test, DISABLED_ser_timepoint_timezone) {
+    // offset seconds from epoch (1970-01-01 00:00:00) in the time zone.
+    // sint64 offset_seconds = 1;
+    // nano-seconds adjustment [0, 10^9-1].
+    // uint32 nano_adjustment = 2;
+    // timezone offset in minute.
+    // sint32 time_zone_offset = 3;
+    std::vector<tateyama::proto::kvs::data::TimePoint> answers {
+            timepoint(0, 0), timepoint(1234, 567)};
+    std::vector<int> offsets {0, 1, -1, 60, -60, 12 * 60, -12 * 60};
+    for (auto answer : answers) {
+        for (auto offset : offsets) {
+            for (auto has_tz: {true, false}) {
+                takatori::type::with_time_zone_t with{has_tz};
+                auto type = std::make_shared<takatori::type::time_point>(with);
+                yugawara::storage::column col{"col_name", type, {}, {}, {}};
+                for (auto is_key: {true, false}) {
+                    tateyama::proto::kvs::data::Value v1{};
+                    tateyama::proto::kvs::data::Value v2{};
+                    tateyama::proto::kvs::data::TimePointWithTimeZone tpz1{};
+                    tpz1.set_offset_seconds(answer.offset_seconds());
+                    tpz1.set_nano_adjustment(answer.nano_adjustment());
+                    tpz1.set_time_zone_offset(offset);
+                    v1.set_allocated_time_point_with_time_zone_value(&tpz1);
+                    test(is_key, col, v1, v2);
+                    const auto &tpz2 = v2.time_point_with_time_zone_value();
+                    EXPECT_EQ(tpz2.offset_seconds(), answer.offset_seconds());
+                    EXPECT_EQ(tpz2.nano_adjustment(), answer.nano_adjustment());
+                    EXPECT_EQ(tpz2.time_zone_offset(), offset);
+                    v1.release_time_point_with_time_zone_value();
+                }
+            }
+        }
+    }
+}
 }

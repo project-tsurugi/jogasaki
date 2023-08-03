@@ -7,16 +7,8 @@ file(GLOB SOURCES
         "jogasaki/utils/*.cpp"
 )
 
-set_source_files_properties(
-        ${GENERATED_SQL_PROTO_SRCS}
-        PROPERTIES
-        GENERATED TRUE
-        COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
-)
-
 add_library(common
         ${SOURCES}
-        ${GENERATED_SQL_PROTO_SRCS}
 )
 
 add_dependencies(common

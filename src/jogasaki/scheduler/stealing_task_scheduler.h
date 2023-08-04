@@ -19,7 +19,6 @@
 #include <tbb/concurrent_hash_map.h>
 
 #include <jogasaki/model/task.h>
-#include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
 #include <tateyama/api/task_scheduler/scheduler.h>
 #include <tateyama/api/task_scheduler/context.h>

@@ -38,8 +38,8 @@ public:
      * @param max_wait_ns the maximum wait duration
      */
     explicit backoff_waiter(
-        std::size_t initial_wait_ns = 100*1000,
-        std::size_t max_wait_ns = 100*1000*1000
+        std::size_t initial_wait_ns = 100UL * 1000UL,
+        std::size_t max_wait_ns = 100UL * 1000UL * 1000UL
     ) :
         initial_wait_ns_(initial_wait_ns),
         max_wait_ns_(max_wait_ns),

@@ -105,7 +105,7 @@ public:
      * @brief get shared ptr for `this`
      * @return the shared_ptr of this object
      */
-    [[nodiscard]] std::shared_ptr<batch_executor> shared() noexcept;
+    [[nodiscard]] std::shared_ptr<batch_executor> shared();
 
     /**
      * @brief callback function on ending file

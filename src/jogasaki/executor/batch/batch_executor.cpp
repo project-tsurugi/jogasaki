@@ -161,7 +161,7 @@ batch_executor::create_batch_executor(
     );
 }
 
-std::shared_ptr<batch_executor> batch_executor::shared() noexcept {
+std::shared_ptr<batch_executor> batch_executor::shared() {
     return shared_from_this();
 }
 

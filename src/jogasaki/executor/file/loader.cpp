@@ -124,7 +124,7 @@ void create_reader_option_and_maping(
     out = {std::move(locs), *vinfo->meta()};
 }
 
-loader_result loader::operator()() {
+loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-complexity)
     if (error_aborted_) {
         return loader_result::error;
     }

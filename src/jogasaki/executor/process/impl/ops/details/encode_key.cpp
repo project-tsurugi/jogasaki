@@ -24,7 +24,7 @@
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-status encode_key(
+status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     std::vector<details::search_key_field_info> const& keys,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,

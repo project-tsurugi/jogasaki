@@ -262,7 +262,7 @@ inline std::ostream& operator<<(std::ostream& out, parquet::Type::type value) {
     return out << to_string_view(value);
 }
 
-meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* parameter_type) {
+meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* parameter_type) { //NOLINT(readability-function-cognitive-complexity)
     switch(c->logical_type()->type()) {
         case parquet::LogicalType::Type::STRING:
             if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {

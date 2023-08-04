@@ -124,7 +124,7 @@ sharksfin::StorageHandle storage::handle() const noexcept {
 }
 
 sharksfin::EndPointKind storage::kind(end_point_kind k) {
-    return sharksfin::EndPointKind(static_cast<std::uint32_t>(k));
+    return static_cast<sharksfin::EndPointKind>(static_cast<std::uint32_t>(k));
 }
 
 status storage::set_options(sharksfin::StorageOptions const& options) {

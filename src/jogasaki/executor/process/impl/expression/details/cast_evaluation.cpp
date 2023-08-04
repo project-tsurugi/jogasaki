@@ -44,10 +44,10 @@ using takatori::decimal::triple;
 using takatori::util::string_builder;
 
 template <class T>
-inline decimal::Decimal int_max{std::numeric_limits<T>::max()};
+inline const decimal::Decimal int_max{std::numeric_limits<T>::max()};
 
 template <class T>
-inline decimal::Decimal int_min{std::numeric_limits<T>::min()};
+inline const decimal::Decimal int_min{std::numeric_limits<T>::min()};
 
 template <class T>
 T to(decimal::Decimal const& d) {

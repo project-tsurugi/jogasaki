@@ -609,7 +609,7 @@ bool storage_metadata_serializer::deserialize(
     bool overwrite
 ) {
     proto::metadata::storage::IndexDefinition idef{};
-    if (! idef.ParseFromArray(src.data(), src.size())) {
+    if (! idef.ParseFromArray(src.data(), static_cast<int>(src.size()))) {
         VLOG_LP(log_error) << "storage metadata deserialize: parse error";
         return false;
     }

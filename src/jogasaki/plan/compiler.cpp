@@ -394,10 +394,10 @@ executor::process::step create(
     for(std::size_t i=0, n=downstreams.size(); i < n; ++i) {
         outputs[bindings(downstreams[i])] = i;
     }
-    return executor::process::step(
+    return {
         std::move(pinfo),
         std::make_shared<executor::process::relation_io_map>(std::move(inputs), std::move(outputs))
-    );
+    };
 }
 
 executor::exchange::forward::step create(
@@ -524,7 +524,7 @@ executor::exchange::aggregate::step create(
             utils::type_for(info, e.destination())
         );
     }
-    return executor::exchange::aggregate::step(
+    return {
         std::make_shared<aggregate_info>(
             std::move(meta),
             std::move(key_indices),
@@ -532,7 +532,8 @@ executor::exchange::aggregate::step create(
             agg.mode() == takatori::plan::group_mode::equivalence_or_whole && agg.group_keys().empty()
         ),
         std::move(input_order),
-        std::move(output_order));
+        std::move(output_order)
+    };
 }
 
 std::shared_ptr<executor::process::impl::variable_table_info> create_host_variable_info(

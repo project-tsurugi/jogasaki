@@ -72,12 +72,9 @@ bool step_state_table::tasks_completed(const step_state_table::entity_type &stat
     if (status.size() != count) {
         return false; //NOLINT //bug of clang-tidy?
     }
-    for(auto& p : status) {
-        if (p.second != task_state_kind::completed) {
-            return false;
-        }
-    }
-    return true;
+    return std::all_of(status.begin(), status.end(), [](auto& p) {
+        return p.second == task_state_kind::completed;
+    });
 }
 
 void step_state_table::register_task(step_state_table::slots_type &slots, step_state_table::slot_index slot,

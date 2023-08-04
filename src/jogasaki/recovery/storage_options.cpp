@@ -57,7 +57,7 @@ bool create_storage_option(
 
 bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
     proto::metadata::storage::Storage st{};
-    if (! st.ParseFromArray(payload.data(), payload.size())) {
+    if (! st.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
         VLOG_LP(log_error) << "Invalid metadata data is detected in the storage.";
         return false;
     }

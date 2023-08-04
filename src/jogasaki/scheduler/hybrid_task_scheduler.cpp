@@ -21,7 +21,7 @@ hybrid_task_scheduler::hybrid_task_scheduler(thread_params params) :
     stealing_scheduler_(params)
 {}
 
-void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {
+void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {  //NOLINT(readability-function-cognitive-complexity)
     auto& mode = t.job()->hybrid_execution_mode();
     auto* rctx = t.req_context();
     while(true) {  // retry from here if modifying `mode` variable fails

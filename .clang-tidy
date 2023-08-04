@@ -46,5 +46,7 @@ readability-*,\
 CheckOptions:
   - key: readability-implicit-bool-conversion.AllowPointerConditions
     value: 1
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: true
 HeaderFilterRegex: '.*/(include|src|examples)/.*\.h$'
 ...

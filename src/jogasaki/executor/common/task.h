@@ -48,7 +48,7 @@ protected:
     std::ostream& write_to(std::ostream& out) const override;;
 
 private:
-    cache_align static inline std::atomic_size_t id_src = 10000;
+    cache_align static inline std::atomic_size_t id_src = 10000; //NOLINT
 
     identity_type id_{};
     request_context* context_{};

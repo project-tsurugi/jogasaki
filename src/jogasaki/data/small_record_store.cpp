@@ -51,7 +51,7 @@ small_record_store::operator bool() const noexcept {
 }
 
 accessor::record_ref small_record_store::ref() const noexcept {
-    return accessor::record_ref(buf_.data(), record_size_);
+    return {buf_.data(), record_size_};
 }
 
 bool operator==(small_record_store const& a, small_record_store const& b) noexcept {

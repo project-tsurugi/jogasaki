@@ -351,7 +351,7 @@ std::vector<parquet::ColumnDescriptor const*> create_columns_meta(parquet::FileM
     auto sz = static_cast<std::size_t>(pmeta.schema()->num_columns());
     ret.reserve(sz);
     for(std::size_t i=0; i < sz; ++i) {
-        ret.emplace_back(pmeta.schema()->Column(i));
+        ret.emplace_back(pmeta.schema()->Column(static_cast<int>(i)));
     }
     return ret;
 }
@@ -380,7 +380,7 @@ std::shared_ptr<meta::external_record_meta> create_meta(
     names.reserve(sz);
     types.reserve(sz);
     for(std::size_t i=0; i < sz; ++i) {
-        auto c = pmeta.schema()->Column(i);
+        auto c = pmeta.schema()->Column(static_cast<int>(i));
         names.emplace_back(c->name());
         if(parameter_meta != nullptr) {
             auto p = parameter_type(i, *parameter_meta, *parameter_to_field);
@@ -412,7 +412,7 @@ bool validate_option(parquet_reader_option const& opt, parquet::FileMetaData& pm
         if(! l.empty_  && l.index_ == npos) {
             bool found = false;
             for(std::size_t i=0, n=pmeta.schema()->num_columns(); i < n; ++i) {
-                if(pmeta.schema()->Column(i)->name() == l.name_) {
+                if(pmeta.schema()->Column(static_cast<int>(i))->name() == l.name_) {
                     found = true;
                     break;
                 }
@@ -443,7 +443,7 @@ std::vector<std::size_t> create_parameter_to_parquet_field(parquet_reader_option
     std::vector<std::string> names{};
     names.reserve(pmeta.num_columns());
     for(std::size_t i=0, n=pmeta.num_columns(); i < n; ++i) {
-        names.emplace_back(pmeta.schema()->Column(i)->name());
+        names.emplace_back(pmeta.schema()->Column(static_cast<int>(i))->name());
     }
 
     for(std::size_t i=0; i < sz; ++i) {
@@ -499,7 +499,7 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
 
     VLOG_LP(log_debug) << "num_row_groups:" << pmeta.num_row_groups();
     for(std::size_t i=0, n=pmeta.num_row_groups(); i<n; ++i) {
-        auto rg = pmeta.RowGroup(i);
+        auto rg = pmeta.RowGroup(static_cast<int>(i));
         VLOG_LP(log_debug) << "  RowGroup:" << i << " num_rows:" << rg->num_rows() <<
                 " total_byte_size:" << rg->total_byte_size() << " total_compressed_size:" << rg->total_compressed_size();
     }
@@ -508,8 +508,8 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
     // encodings can be different among row groups, but we don't use such format so often, so simply display fixed rg.
     auto rg = pmeta.RowGroup(0);
     for(std::size_t i=0, n=pmeta.schema()->num_columns(); i<n; ++i) {
-        auto&& c = pmeta.schema()->Column(i);
-        auto&& cm = rg->ColumnChunk(i);
+        auto&& c = pmeta.schema()->Column(static_cast<int>(i));
+        auto&& cm = rg->ColumnChunk(static_cast<int>(i));
         std::stringstream ss{};
         ss << "  column name:" << c->name() << " physical type:" << c->physical_type() << " logical type:" << c->logical_type()->ToString();
         ss << " encodings:[";
@@ -565,10 +565,10 @@ bool parquet_reader::init(
         columns_ = create_columns_meta(*file_metadata);
         buf_ = data::aligned_buffer{parameter_meta_->record_size(), parameter_meta_->record_alignment()};
         buf_.resize(parameter_meta_->record_size());
-        row_group_reader_ = file_reader_->RowGroup(row_group_index_);
+        row_group_reader_ = file_reader_->RowGroup(static_cast<int>(row_group_index_));
         column_readers_.reserve(meta_->field_count());
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-            column_readers_.emplace_back(row_group_reader_->Column(i));
+            column_readers_.emplace_back(row_group_reader_->Column(static_cast<int>(i)));
         }
     } catch (std::exception const& e) {
         VLOG_LP(log_error) << "Parquet reader init error: " << e.what();

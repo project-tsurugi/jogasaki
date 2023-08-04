@@ -70,7 +70,7 @@ iterable_record_store::value_type iterable_record_store::append(accessor::record
     }
     ranges_.back().e_ = static_cast<unsigned char*>(p) + record_size_; //NOLINT
     prev_ = p;
-    return accessor::record_ref(p, record_size_);
+    return {p, record_size_};
 }
 
 std::size_t iterable_record_store::count() const noexcept {

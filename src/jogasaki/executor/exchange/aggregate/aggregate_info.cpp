@@ -71,7 +71,7 @@ aggregate_info::aggregate_info(
 {}
 
 accessor::record_ref aggregate_info::extract_key(accessor::record_ref record) const noexcept {
-    return accessor::record_ref(record.data(), record_->record_size());
+    return {record.data(), record_->record_size()};
 }
 
 maybe_shared_ptr<meta::record_meta> const& aggregate_info::record_meta() const noexcept {
@@ -136,7 +136,7 @@ std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
         nullables.push_back(true);
     } else {
         // post key doesn't have internal pointer field, but the record length is same as mid
-        record_size = create_key_meta(output_kind::mid, key_indices, aggregate_input)->record_size();
+        record_size = create_key_meta(output_kind::mid, key_indices, aggregate_input)->record_size(); //NOLINT
     }
     return std::make_shared<meta::record_meta>(
         std::move(fields),
@@ -255,7 +255,7 @@ const maybe_shared_ptr<meta::record_meta> &aggregate_info::extracted_key_meta() 
 }
 
 accessor::record_ref aggregate_info::output_key(accessor::record_ref mid) const noexcept {
-    return accessor::record_ref(mid.data(), post_.group_meta()->key().record_size());
+    return {mid.data(), post_.group_meta()->key().record_size()};
 }
 
 std::vector<meta::field_type> types(meta::record_meta const& meta, std::vector<std::size_t> const& indices) {

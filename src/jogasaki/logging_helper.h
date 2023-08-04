@@ -37,7 +37,7 @@ constexpr std::string_view find_fullname(std::string_view prettyname, std::strin
     // search to left, but skip <...>
     size_t start_pos = std::string_view::npos;
     int tv_nest = 0;  // "<...>" nest level
-    for (int i = fn_pos; i >= 0; i--) {
+    for (int i = fn_pos; i >= 0; i--) { //NOLINT
         switch (prettyname[i]) {
             case '>': tv_nest++; continue;
             case '<': tv_nest--; continue;
@@ -50,7 +50,7 @@ constexpr std::string_view find_fullname(std::string_view prettyname, std::strin
     if (start_pos == std::string_view::npos) {  // no return type, such as constructors
         start_pos = 0;
     }
-    return std::string_view(prettyname.data() + start_pos, fn_pos + funcname.length() - start_pos);
+    return {prettyname.data() + start_pos, fn_pos + funcname.length() - start_pos};
 }
 
 template<size_t N>

@@ -25,13 +25,15 @@
 
 namespace jogasaki::executor::common {
 
-task::task() {
-    id_ = id_src++;
-}
+task::task() :
+    id_(id_src++)
+{}
 
-task::task(request_context* context, step_type* src) : context_(context), src_(src) {
-    id_ = id_src++;
-}
+task::task(request_context* context, step_type* src) :
+    id_(id_src++),
+    context_(context),
+    src_(src)
+{}
 
 task::identity_type task::id() const {
     return id_;

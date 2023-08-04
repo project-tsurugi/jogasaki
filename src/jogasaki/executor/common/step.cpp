@@ -72,7 +72,7 @@ step::port_index step::sub_input_port_index(step const* source) {
             return i;
         }
     }
-    return port_index(-1);
+    return static_cast<port_index>(-1);
 }
 
 void step::connect_to(step& downstream, port_index src, port_index target) {

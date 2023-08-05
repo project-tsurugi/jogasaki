@@ -550,6 +550,18 @@ inline std::string encode_get_search_path() {
     return s;
 }
 
+inline std::string encode_get_error_info(std::uint64_t handle) {
+    sql::request::Request r{};
+    r.mutable_get_error_info()->mutable_transaction_handle()->set_handle(handle);
+    return serialize(r);
+}
+
+inline std::string encode_dispose_transaction(std::uint64_t handle) {
+    sql::request::Request r{};
+    r.mutable_dispose_transaction()->mutable_transaction_handle()->set_handle(handle);
+    return serialize(r);
+}
+
 struct column_info {
     column_info(
         std::string_view name,
@@ -637,5 +649,19 @@ inline std::vector<std::string> decode_get_search_path(std::string_view res) {
         ret.emplace_back(n.identifiers().Get(0).label());
     }
     return ret;
+}
+inline bool decode_get_error_info(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_get_error_info())  {
+        LOG(ERROR) << "**** missing get_error_info **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return false;
+    }
+    auto& gei = resp.get_error_info();
+    if (gei.has_error_not_found()) {
+        return true;
+    }
+    return false;
 }
 }

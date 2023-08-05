@@ -385,6 +385,26 @@ inline void success<sql::response::GetSearchPath>(
     r.release_get_search_path();
 }
 
+
+template<>
+inline void success<sql::response::GetErrorInfo>(
+    tateyama::api::server::response& res,
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
+    sql::response::Response r{};
+    sql::response::GetErrorInfo gei{};
+    r.set_allocated_get_error_info(&gei);
+
+    //FIXME mock implementation
+    sql::response::Void v{};
+    gei.set_allocated_error_not_found(&v);
+
+    res.code(response_code::success);
+    reply(res, r, req_info);
+    gei.release_error_not_found();
+    r.release_get_error_info();
+}
+
 inline void send_body_head(
     tateyama::api::server::response& res,
     channel_info const& info,
@@ -522,6 +542,16 @@ private:
         details::request_info const& req_info
     );
     void command_get_search_path(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
+    );
+    void command_get_error_info(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        details::request_info const& req_info
+    );
+    void command_dispose_transaction(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::request_info const& req_info

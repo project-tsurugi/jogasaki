@@ -1600,4 +1600,33 @@ TEST_F(service_api_test, modifies_definitions) {
     test_commit(tx_handle);
 }
 
+TEST_F(service_api_test, get_error_info) {
+    auto s = encode_get_error_info(0);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::success, res->code_);
+
+    auto result = decode_get_error_info(res->body_);
+    ASSERT_TRUE(result);
+}
+
+TEST_F(service_api_test, dispose_transaction) {
+    auto s = encode_dispose_transaction(0);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    ASSERT_EQ(response_code::success, res->code_);
+
+    auto [success, error] = decode_result_only(res->body_);
+    ASSERT_TRUE(success);
+}
 }

@@ -193,6 +193,26 @@ void service::command_get_search_path(
     details::success<sql::response::GetSearchPath>(*res, req_info);
 }
 
+void service::command_get_error_info(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    details::request_info const& req_info
+) {
+    (void) proto_req;
+    // return empty for the time being
+    details::success<sql::response::GetErrorInfo>(*res, req_info);
+}
+
+void service::command_dispose_transaction(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    details::request_info const& req_info
+) {
+    (void) proto_req;
+    // return empty for the time being
+    details::success<sql::response::ResultOnly>(*res, req_info);
+}
+
 template<class T>
 jogasaki::api::transaction_handle validate_transaction_handle(
     T msg,
@@ -660,6 +680,16 @@ bool service::process(
         case sql::request::Request::RequestCase::kGetSearchPath: {
             trace_scope_name("cmd-get_search_path");  //NOLINT
             command_get_search_path(proto_req, res, req_info);
+            break;
+        }
+        case sql::request::Request::RequestCase::kGetErrorInfo: {
+            trace_scope_name("cmd-get_error_info");  //NOLINT
+            command_get_error_info(proto_req, res, req_info);
+            break;
+        }
+        case sql::request::Request::RequestCase::kDisposeTransaction: {
+            trace_scope_name("cmd-dispose_transaction");  //NOLINT
+            command_dispose_transaction(proto_req, res, req_info);
             break;
         }
         default:

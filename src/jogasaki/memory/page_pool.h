@@ -32,7 +32,7 @@ namespace jogasaki::memory {
 /*
  * @brief default page size used by page_pool
  */
-constexpr static std::size_t page_size = 2*1024*1024;
+constexpr static std::size_t page_size = 2UL * 1024UL * 1024UL;
 
 /**
  * @brief page pool
@@ -93,7 +93,7 @@ public:
     /**
      * @brief minimum alignment of a page
      */
-    constexpr static std::size_t min_alignment = 4*1024;
+    constexpr static std::size_t min_alignment = 4*1024UL;
     /**
      * @brief construct
      */

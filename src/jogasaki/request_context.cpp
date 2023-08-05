@@ -64,7 +64,7 @@ memory::lifo_paged_memory_resource* request_context::request_resource() const no
 }
 
 bool request_context::status_code(status val, std::string_view msg) noexcept {
-    status s;
+    status s{};
     do {
         s = status_code_.load();
         if (s != status::ok) {

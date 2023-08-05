@@ -30,7 +30,7 @@ namespace jogasaki::executor::common {
 using takatori::util::unsafe_downcast;
 
 takatori::util::sequence_view<std::unique_ptr<model::step> const> graph::steps() const noexcept {
-    return takatori::util::sequence_view(steps_);
+    return {steps_};
 }
 
 optional_ptr<model::step> graph::find_step(model::step::identity_type id) noexcept {

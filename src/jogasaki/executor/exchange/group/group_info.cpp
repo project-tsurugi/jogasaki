@@ -51,15 +51,15 @@ group_info::group_info(
 }
 
 accessor::record_ref group_info::extract_key(accessor::record_ref record) const noexcept {
-    return accessor::record_ref(record.data(), record_->record_size());
+    return {record.data(), record_->record_size()};
 }
 
 accessor::record_ref group_info::extract_value(accessor::record_ref record) const noexcept {
-    return accessor::record_ref(record.data(), record_->record_size());
+    return {record.data(), record_->record_size()};
 }
 
 accessor::record_ref group_info::extract_sort_key(accessor::record_ref record) const noexcept {
-    return accessor::record_ref(record.data(), record_->record_size());
+    return {record.data(), record_->record_size()};
 }
 
 sequence_view<ordering const> group_info::sort_key_ordering() const noexcept {

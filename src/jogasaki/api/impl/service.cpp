@@ -158,7 +158,7 @@ void service::command_prepare(
 
     std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
     for(std::size_t i=0, n=static_cast<std::size_t>(phs.size()); i < n ; ++i) {
-        auto& ph = phs.Get(i);
+        auto& ph = phs.Get(static_cast<int>(i));
         variables.emplace(ph.name(), jogasaki::utils::type_for(ph.atom_type()));
     }
     jogasaki::api::statement_handle statement{};
@@ -575,7 +575,7 @@ bool service::process(
     {
         trace_scope_name("parse_request");  //NOLINT
         auto s = req->payload();
-        if (!proto_req.ParseFromArray(s.data(), s.size())) {
+        if (!proto_req.ParseFromArray(s.data(), static_cast<int>(s.size()))) {
             VLOG(log_error) << log_location_prefix << "parse error";
             res->code(response_code::io_error);
             std::string msg{"parse error with request body"};
@@ -715,7 +715,7 @@ takatori::decimal::triple to_triple(::jogasaki::proto::sql::common::Decimal cons
 
 void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params) {
     for (std::size_t i=0, n=static_cast<std::size_t>(ps.size()); i < n; ++i) {
-        auto& p = ps.Get(i);
+        auto& p = ps.Get(static_cast<int>(i));
         switch (p.value_case()) {
             case sql::request::Parameter::ValueCase::kInt4Value:
                 params->set_int4(p.name(), p.int4_value());

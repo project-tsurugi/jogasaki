@@ -56,7 +56,7 @@ void parquet_writer::new_row_group() {
     row_group_writer_ = file_writer_->AppendBufferedRowGroup();
     column_writers_.reserve(meta_->field_count());
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-        column_writers_.emplace_back(row_group_writer_->column(i));
+        column_writers_.emplace_back(row_group_writer_->column(static_cast<int>(i)));
     }
 }
 
@@ -271,7 +271,12 @@ parquet_writer::create_schema() {
                 auto opt = meta_->at(i).option<meta::field_type_kind::decimal>();
                 std::size_t p = opt->precision_.has_value() ? *opt->precision_ : decimal_default_precision;
                 std::size_t s = opt->scale_.has_value() ? *opt->scale_: dumped_decimal_default_scale;
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Decimal(p, s), Type::BYTE_ARRAY));
+                fields.push_back(PrimitiveNode::Make(
+                    name,
+                    Repetition::OPTIONAL,
+                    LogicalType::Decimal(static_cast<std::int32_t>(p), static_cast<std::int32_t>(s)),
+                    Type::BYTE_ARRAY)
+                );
                 options[i].precision_ = p;
                 options[i].scale_ = s;
                 break;

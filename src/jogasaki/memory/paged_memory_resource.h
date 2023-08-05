@@ -37,7 +37,7 @@ public:
     /**
      * @brief unknown size constant
      */
-    constexpr static inline std::size_t unknown_size = std::size_t(-1);
+    constexpr static inline std::size_t unknown_size = static_cast<std::size_t>(-1);
 
     /**
      * @brief retrieve remaining bytes in the current page

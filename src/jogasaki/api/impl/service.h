@@ -433,13 +433,13 @@ private:
         std::shared_ptr<tateyama::api::server::response> response_{};  //NOLINT
         std::unique_ptr<details::channel_info> channel_info_{};  //NOLINT
 
-        static inline std::atomic_size_t id_src_{0};
+        static inline std::atomic_size_t id_src_{0};  //NOLINT
     };
 
     std::shared_ptr<tateyama::api::configuration::whole> cfg_{};
     jogasaki::api::database* db_{};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<callback_control>> callbacks_{};
-    static inline std::atomic_size_t request_id_src_{0};
+    static inline std::atomic_size_t request_id_src_{0};  //NOLINT
 
     bool process(
             std::shared_ptr<tateyama::api::server::request const> req,

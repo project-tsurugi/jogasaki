@@ -23,9 +23,7 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 
-namespace jogasaki {
-
-namespace scheduler {
+namespace jogasaki::scheduler {
 
 enum class request_detail_kind {
     unknown,
@@ -341,9 +339,7 @@ private:
     std::atomic_size_t sticky_task_worker_enforced_count_{};
     std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
 
-    static inline std::atomic_size_t id_src_{0};
+    static inline std::atomic_size_t id_src_{0}; //NOLINT
 };
 
-} // namespace scheduler
-
-} // namespace jogasaki
+} // namespace jogasaki::scheduler

@@ -25,9 +25,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/processor_info.h>
 
-namespace jogasaki::executor::process::impl::ops {
-
-namespace details {
+namespace jogasaki::executor::process::impl::ops::details {
 
 /**
  * @brief key field info of the join_find operation
@@ -98,8 +96,6 @@ std::vector<details::search_key_field_info> create_search_key_fields(
     return ret;
 }
 
-} // namespace details
-
-}
+} // namespace jogasaki::executor::process::impl::ops::details
 
 

@@ -120,7 +120,7 @@ void sorted_vector_reader::release() {
     partitions_.clear();
 }
 
-void sorted_vector_reader::init_aggregated_table() {
+void sorted_vector_reader::init_aggregated_table() {  //NOLINT(readability-function-cognitive-complexity)
     if(!aggregated_pointer_table_initialized) {
         utils::watch w{};
         w.set_point(0);

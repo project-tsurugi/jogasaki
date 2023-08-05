@@ -115,7 +115,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
                 case any::index<std::int64_t>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<float>: return any{std::in_place_type<double>, l.to<L>()}; // float v.s. float becomes double
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
-                case any::index<triple>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
+                case any::index<triple>: return any{std::in_place_type<double>, l.to<L>()};
                 default: return return_unsupported();
             }
             break;
@@ -127,7 +127,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
                 case any::index<std::int64_t>: return l;
                 case any::index<float>: return l;
                 case any::index<double>: return l;
-                case any::index<triple>: return any{std::in_place_type<double>, triple_to_double(l.to<L>())};
+                case any::index<triple>: return any{std::in_place_type<double>, l.to<L>()};
                 default: return return_unsupported();
             }
             break;

@@ -245,6 +245,11 @@ TEST_F(expression_evaluator_test, add_numeric) {
     test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::add, 10, 20, 30);
 }
 
+takatori::decimal::triple from_double(double x) {
+    decimal::Decimal d{std::to_string(x)};
+    return takatori::decimal::triple{d.as_uint128_triple()};
+}
+
 TEST_F(expression_evaluator_test, add_different_types) {
     test_two_arity_exp<t::int4, t::int8, t::int8>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::int4, t::float4, t::float8>(binary_operator::add, 10, 20, 30);
@@ -252,8 +257,8 @@ TEST_F(expression_evaluator_test, add_different_types) {
     test_two_arity_exp<t::int4, t::float8, t::float8>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::int4, t::decimal, t::decimal>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::int8, t::decimal, t::decimal>(binary_operator::add, 10, 20, 30);
-    test_two_arity_exp<t::float4, t::decimal, t::float8>(binary_operator::add, 10, 20, 30);
-    test_two_arity_exp<t::float8, t::decimal, t::float8>(binary_operator::add, 10, 20, 30);
+    test_two_arity_exp<t::float4, t::decimal, t::float8>(binary_operator::add, 10.5, from_double(20.5), 31);
+    test_two_arity_exp<t::float8, t::decimal, t::float8>(binary_operator::add, 10.5, from_double(20.5), 31);
 }
 
 TEST_F(expression_evaluator_test, subtract_numeric) {
@@ -567,11 +572,6 @@ TEST_F(expression_evaluator_test, to_triple) {
     EXPECT_EQ(i64max, details::triple_from_int(i64max));
     auto i64min = std::numeric_limits<std::int64_t>::min();
     EXPECT_EQ(i64min, details::triple_from_int(i64min));
-}
-
-takatori::decimal::triple from_double(double x) {
-    decimal::Decimal d{std::to_string(x)};
-    return takatori::decimal::triple{d.as_uint128_triple()};
 }
 
 TEST_F(expression_evaluator_test, triple_to_double) {

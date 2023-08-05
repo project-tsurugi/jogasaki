@@ -102,7 +102,7 @@ public:
      * @param ctx operator context object for the execution
      * @return status of the operation
      */
-    operation_status operator()(
+    operation_status operator()(  //NOLINT(readability-function-cognitive-complexity)
         join_context& ctx,
         cogroup<iterator>& cgrp,
         abstract::task_context* context = nullptr

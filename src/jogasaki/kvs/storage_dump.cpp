@@ -157,7 +157,7 @@ private:
 };
 
 template<class Step>
-static status process_step(database& db, Step& step) {
+status process_step(database& db, Step& step) {
     auto tx = db.create_transaction();
     auto res = step(*tx);
     if(auto res2 = tx->commit(); res2 != status::ok) {
@@ -197,8 +197,8 @@ void storage_dump::append(std::ostream& stream, std::string_view key, std::strin
     auto value_size = static_cast<size_type>(value.size());
     stream.write(reinterpret_cast<char*>(&value_size), sizeof(value_size));  // NOLINT
 
-    stream.write(key.data(), key.size());
-    stream.write(value.data(), value.size());
+    stream.write(key.data(), static_cast<std::streamsize>(key.size()));
+    stream.write(value.data(), static_cast<std::streamsize>(value.size()));
 }
 
 void storage_dump::append_eof(std::ostream& stream) {

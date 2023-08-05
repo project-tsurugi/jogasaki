@@ -32,10 +32,7 @@ set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
 PROTOBUF_GENERATE_CPP(SqlProtobufSources SqlProtobufHeaders ${SqlProtoFiles})
 PROTOBUF_GENERATE_CPP(MetadataProtobufSources MetadataProtobufHeaders ${MetadataProtoFiles})
 
-# needed in both current and parent scopes
-set(GENERATED_SQL_PROTO_SRCS ${SqlProtobufSources} PARENT_SCOPE)
 set(GENERATED_SQL_PROTO_SRCS ${SqlProtobufSources})
-
 set(GENERATED_METADATA_PROTO_SRCS ${MetadataProtobufSources})
 
 add_custom_target(build_protos

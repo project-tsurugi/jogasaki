@@ -27,7 +27,7 @@ namespace jogasaki::utils {
 
 using takatori::util::throw_exception;
 
-status encode_any(
+status encode_any(  //NOLINT(readability-function-cognitive-complexity)
     data::aligned_buffer& target,
     meta::field_type const& type,
     bool nullable,

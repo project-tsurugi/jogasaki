@@ -42,7 +42,7 @@ page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
     if (!brandnew) {
         auto& free_pages = get_free_pages(node);
         if(free_pages.try_pop(page)) {
-            return page_info(page, node);
+            return {page, node};
         }
     }
     page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
@@ -51,10 +51,10 @@ page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
         page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
             (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0); //NOLINT
         if (page == MAP_FAILED) { //NOLINT
-            return page_info(nullptr, node);
+            return {nullptr, node};
         }
     }
-    return page_info(page, node);
+    return {page, node};
 }
 
 void page_pool::release_page(page_info page) noexcept {

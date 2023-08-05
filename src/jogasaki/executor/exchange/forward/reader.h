@@ -33,7 +33,7 @@ public:
     }
 
     [[nodiscard]] accessor::record_ref get_record() const override {
-        return accessor::record_ref();
+        return {};
     }
 
     void release() override {

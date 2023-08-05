@@ -44,7 +44,7 @@ void *page_allocation_info::try_allocate_back(std::size_t bytes, std::size_t ali
         lower_bound_offset_ = next_lower_offset;
     }
     upper_bound_offset_ = static_cast<offset_type>(next_upper_offset);
-    return reinterpret_cast<void*>(next); //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    return reinterpret_cast<void*>(next); //NOLINT
 }
 
 bool page_allocation_info::try_deallocate_front(void *p, std::size_t bytes, std::size_t alignment) {

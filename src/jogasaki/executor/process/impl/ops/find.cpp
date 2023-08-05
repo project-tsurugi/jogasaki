@@ -135,7 +135,7 @@ operation_status find::call_downstream(
     return {};
 }
 
-operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {
+operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }

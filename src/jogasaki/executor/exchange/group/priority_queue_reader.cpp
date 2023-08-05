@@ -120,7 +120,7 @@ bool priority_queue_reader::next_member() {
 
 accessor::record_ref priority_queue_reader::get_member() const {
     if (state_ == reader_state::on_member) {
-        return info_->extract_value(accessor::record_ref(buf_.ref()));
+        return info_->extract_value(buf_.ref());
     }
     std::abort();
 }

@@ -147,7 +147,7 @@ private:
     std::shared_ptr<request_detail> request_detail_{};
     cache_align std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
 
-    static inline std::atomic_size_t id_src_{1UL << 32UL};
+    static inline std::atomic_size_t id_src_{1UL << 32UL};  //NOLINT
 };
 
 }

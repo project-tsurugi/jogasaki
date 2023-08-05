@@ -34,7 +34,7 @@ std::pair<status, std::string> batch_execution_state::error_info() const noexcep
 
 bool batch_execution_state::error_info(status val, std::string_view msg) noexcept {
     error_aborting_ = true;
-    status s;
+    status s{};
     do {
         s = status_code_.load();
         if (s != status::ok) {

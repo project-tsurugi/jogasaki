@@ -15,9 +15,7 @@
  */
 #pragma once
 
-#include <takatori/relation/expression.h>
 #include <takatori/util/fail.h>
-#include <takatori/relation/step/offer.h>
 #include <takatori/relation/graph.h>
 #include <takatori/relation/scan.h>
 #include <takatori/relation/emit.h>

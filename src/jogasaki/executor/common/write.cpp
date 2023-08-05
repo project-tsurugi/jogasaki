@@ -77,7 +77,7 @@ void abort_transaction(transaction_context& tx) {
     }
 }
 
-bool write::operator()(request_context& context) const {
+bool write::operator()(request_context& context) const {  //NOLINT(readability-function-cognitive-complexity)
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
@@ -156,7 +156,7 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
 }
 
 // encode tuple into buf, and return result data length
-status encode_tuple(
+status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
     write::tuple const& t,
     std::vector<details::write_field> const& fields,

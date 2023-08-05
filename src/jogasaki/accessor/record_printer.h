@@ -146,7 +146,7 @@ private:
  * @attention until returned value's operator<< is called, nothing happens or written to the stream
  */
 inline constexpr record_printer operator<<(std::ostream& os, record_ref rec) noexcept {
-    return record_printer(os, rec);
+    return {os, rec};
 }
 
 }

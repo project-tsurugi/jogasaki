@@ -27,7 +27,7 @@ using takatori::util::throw_exception;
 
 namespace details {
 
-status catch_domain_error(std::function<status(void)> const& fn) {  //NOLINT(readability-function-cognitive-complexity)
+status catch_domain_error(std::function<status(void)> const& fn) {
     try {
         return fn();
     } catch (std::domain_error const& e) {

@@ -87,6 +87,8 @@ find_package(likwid)
 set(re2Alt_FIND_QUIETLY TRUE)
 set(c-aresAlt_FIND_QUIETLY TRUE)
 set(lz4Alt_FIND_QUIETLY TRUE)
+set(ThriftAlt_FIND_QUIETLY TRUE)
+set(zstdAlt_FIND_QUIETLY TRUE)
 
 # Parquet dependencies
 find_package(Arrow REQUIRED)

@@ -27,6 +27,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/executor/executor.h>
 
 #include "batch_executor.h"
 #include "batch_file_executor.h"
@@ -128,7 +129,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
             return {false, false};
         }
 
-        if(auto res = api::impl::transaction::create_transaction(*info_.db(), tx_,
+        if(auto res = executor::create_transaction(*info_.db(), tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
             state_->error_info(res, "starting new tx failed.");
             reader_->close();
@@ -148,7 +149,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         if(state_->error_aborting()) {
             return {false, false};
         }
-        if(auto res = tx_->commit_internal(); res != status::ok) {
+        if(auto res = executor::commit_internal(*info_.db(), tx_); res != status::ok) {
             state_->error_info(res, "committing tx failed.");
             finish(info_, *state_);
             return {false, false};
@@ -163,7 +164,10 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
     }
     std::shared_ptr<batch_executor> r = root() ? root()->shared() : nullptr;
     ++state_->running_statements();
-    tx_->execute_async(info_.prepared(),
+    executor::execute_async(
+        *info_.db(),
+        tx_,
+        info_.prepared(),
         std::move(ps),
         nullptr,
         [&, state = state_, root = std::move(r)](status st, std::string_view msg){

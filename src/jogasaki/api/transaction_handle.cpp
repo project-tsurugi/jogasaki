@@ -19,8 +19,12 @@
 
 namespace jogasaki::api {
 
-transaction_handle::transaction_handle(std::uintptr_t arg) noexcept:
-    body_(arg)
+transaction_handle::transaction_handle(
+    std::uintptr_t arg,
+    std::uintptr_t db
+) noexcept:
+    body_(arg),
+    db_(db)
 {}
 
 std::uintptr_t transaction_handle::get() const noexcept {
@@ -85,8 +89,12 @@ bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> co
     );
 }
 
-transaction_handle::transaction_handle(void* arg) noexcept:
-    body_(reinterpret_cast<std::uintptr_t>(arg))  //NOLINT
+transaction_handle::transaction_handle(
+    void* arg,
+    void* db
+) noexcept:
+    body_(reinterpret_cast<std::uintptr_t>(arg)),  //NOLINT
+    db_(reinterpret_cast<std::uintptr_t>(db))  //NOLINT
 {}
 
 bool transaction_handle::is_ready() const {

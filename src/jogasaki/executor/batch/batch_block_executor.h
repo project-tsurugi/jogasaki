@@ -20,7 +20,7 @@
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/statement_handle.h>
-#include <jogasaki/api/impl/transaction.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/executor/file/parquet_reader.h>
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_execution_info.h>
@@ -108,7 +108,7 @@ private:
     std::shared_ptr<batch_execution_state> state_{};
     batch_file_executor* parent_{};
 
-    std::unique_ptr<api::impl::transaction> tx_{};
+    std::shared_ptr<transaction_context> tx_{};
     std::atomic_size_t statements_executed_{0};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::unordered_map<std::string, file::parameter> mapping_{};

@@ -34,6 +34,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/batch/batch_file_executor.h>
 #include <jogasaki/executor/batch/batch_block_executor.h>
@@ -435,11 +436,11 @@ status database::create_transaction_internal(transaction_handle& handle, transac
         return res;
     }
     {
-        std::unique_ptr<impl::transaction> tx{};
-        if(auto res = impl::transaction::create_transaction(*this, tx, from(option, *tables_)); res != status::ok) {
+        std::shared_ptr<transaction_context> tx{};
+        if(auto res = executor::create_transaction(*this, tx, from(option, *tables_)); res != status::ok) {
             return res;
         }
-        api::transaction_handle t{tx.get()};
+        api::transaction_handle t{tx.get(), this};
         {
             decltype(transactions_)::accessor acc{};
             if (transactions_.insert(acc, t)) {

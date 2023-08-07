@@ -216,6 +216,7 @@ void service::command_dispose_transaction(
 template<class T>
 jogasaki::api::transaction_handle validate_transaction_handle(
     T msg,
+    api::database* db,
     tateyama::api::server::response& res,
     details::request_info const& req_info
 ) {
@@ -224,7 +225,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
         details::error<sql::response::ResultOnly>(res, status::err_invalid_argument, "missing transaction_handle", req_info);
         return {};
     }
-    jogasaki::api::transaction_handle tx{msg.transaction_handle().handle()};
+    jogasaki::api::transaction_handle tx{msg.transaction_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT
     if(! tx) {
         details::error<sql::response::ResultOnly>(res, jogasaki::status::err_invalid_argument, "invalid transaction handle", req_info);
         return {};
@@ -244,7 +245,7 @@ void service::command_execute_statement(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_statement();
-    auto tx = validate_transaction_handle(eq, *res, req_info);
+    auto tx = validate_transaction_handle(eq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -271,7 +272,7 @@ void service::command_execute_query(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_query();
-    auto tx = validate_transaction_handle(eq, *res, req_info);
+    auto tx = validate_transaction_handle(eq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -316,7 +317,7 @@ void service::command_execute_prepared_statement(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_statement();
-    auto tx = validate_transaction_handle(pq, *res, req_info);
+    auto tx = validate_transaction_handle(pq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -344,7 +345,7 @@ void service::command_execute_prepared_query(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_query();
-    auto tx = validate_transaction_handle(pq, *res, req_info);
+    auto tx = validate_transaction_handle(pq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -365,7 +366,7 @@ void service::command_commit(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& cm = proto_req.commit();
-    auto tx = validate_transaction_handle(cm, *res, req_info);
+    auto tx = validate_transaction_handle(cm, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -391,7 +392,7 @@ void service::command_rollback(
     details::request_info const& req_info
 ) {
     auto& rb = proto_req.rollback();
-    auto tx = validate_transaction_handle(rb, *res, req_info);
+    auto tx = validate_transaction_handle(rb, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -483,7 +484,7 @@ void service::command_execute_dump(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& ed = proto_req.execute_dump();
-    auto tx = validate_transaction_handle(ed, *res, req_info);
+    auto tx = validate_transaction_handle(ed, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -512,7 +513,7 @@ void service::command_execute_load(
     auto& ed = proto_req.execute_load();
     jogasaki::api::transaction_handle tx{};
     if(ed.has_transaction_handle()) {
-        tx = validate_transaction_handle(ed, *res, req_info);
+        tx = validate_transaction_handle(ed, db_, *res, req_info);
         if (!tx) {
             return;
         }

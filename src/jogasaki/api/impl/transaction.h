@@ -211,19 +211,6 @@ private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};
 
-    bool execute_internal(
-        maybe_shared_ptr<api::executable_statement> const& statement,
-        maybe_shared_ptr<executor::io::record_channel> const& channel,
-        callback on_completion,  //NOLINT(performance-unnecessary-value-param)
-        bool sync
-    );
-
-    std::shared_ptr<request_context> create_request_context(
-        maybe_shared_ptr<executor::io::record_channel> const& channel,
-        std::shared_ptr<memory::lifo_paged_memory_resource> resource,
-        std::shared_ptr<scheduler::request_detail> request_detail
-    );
-
     status init(kvs::transaction_option const& options);
 };
 

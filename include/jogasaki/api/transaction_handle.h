@@ -48,7 +48,6 @@ public:
      */
     using callback = std::function<void(status, std::string_view)>;
 
-
     /**
      * @brief create empty handle - null reference
      */
@@ -67,14 +66,22 @@ public:
     /**
      * @brief create new object from integer
      * @param arg integer representing target object pointer
+     * @param db integer representing database object pointer
      */
-    explicit transaction_handle(std::uintptr_t arg) noexcept;
+    explicit transaction_handle(
+        std::uintptr_t arg,
+        std::uintptr_t db
+    ) noexcept;
 
     /**
      * @brief create new object from integer
      * @param arg integer representing target object pointer
+     * @param db integer representing database object pointer
      */
-    explicit transaction_handle(void* arg) noexcept;
+    explicit transaction_handle(
+        void* arg,
+        void* db
+    ) noexcept;
 
     /**
      * @brief accessor to the content of the handle
@@ -197,8 +204,10 @@ public:
      * @return empty string when it's not available
      */
     [[nodiscard]] std::string_view transaction_id() const noexcept;
+
 private:
     std::uintptr_t body_{};
+    std::uintptr_t db_{};
 };
 
 static_assert(std::is_trivially_copyable_v<transaction_handle>);

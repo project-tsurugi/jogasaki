@@ -25,6 +25,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/scheduler/flat_task.h>
@@ -56,48 +57,22 @@ using takatori::util::string_builder;
 constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:transaction ";
 
 status transaction::commit() {
-    status ret{};
-    auto jobid = commit_async([&](status st, std::string_view m){
-        ret = st;
-        if(st != status::ok) {
-            VLOG(log_error) << log_location_prefix << m;
-        }
-    });
-    database_->task_scheduler()->wait_for_progress(jobid);
-    return ret;
+    return executor::commit(*database_, tx_);
 }
 
 status transaction::commit_internal() {
-    return tx_->object()->commit();
+    return executor::commit_internal(*database_, tx_);
 }
 
 status transaction::abort() {
-    std::string txid{tx_->object()->transaction_id()};
-    auto ret = tx_->object()->abort();
-    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
-        << txid
-        << " status:"
-        << (ret == status::ok ? "aborted" : "error"); // though we do not expect abort fails
-    return ret;
+    return executor::abort(*database_, tx_);
 }
 
 status transaction::execute(
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result
 ) {
-    auto store = std::make_unique<data::result_store>();
-    auto ch = std::make_shared<result_store_channel>(maybe_shared_ptr{store.get()});
-    status ret{};
-    std::string msg{};
-    execute_internal(maybe_shared_ptr{std::addressof(statement)}, ch, [&](status st, std::string_view m){
-        ret = st;
-        msg = m;
-    }, true);
-    auto& s = unsafe_downcast<impl::executable_statement&>(statement);
-    if (s.body()->is_execute()) {
-        result = std::make_unique<impl::result_set>(std::move(store));
-    }
-    return ret;
+    return executor::execute(*database_, tx_, statement, result);
 }
 
 impl::database& transaction::database() {
@@ -115,16 +90,13 @@ status transaction::execute(
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<api::result_set>& result
 ) {
-    auto store = std::make_unique<data::result_store>();
-    auto ch = std::make_shared<result_store_channel>(maybe_shared_ptr{store.get()});
-    status ret{};
-    std::string msg{};
-    execute_async(prepared, std::move(parameters), ch, [&](status st, std::string_view m){
-        ret = st;
-        msg = m;
-    }, true);
-    result = std::make_unique<impl::result_set>(std::move(store));
-    return ret;
+    return executor::execute(
+        *database_,
+        tx_,
+        prepared,
+        std::move(parameters),
+        result
+    );
 }
 
 bool transaction::execute_async(
@@ -134,41 +106,15 @@ bool transaction::execute_async(
     callback on_completion,
     bool sync
 ) {
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
-    req->status(scheduler::request_detail_status::accepted);
-    auto const& stmt = reinterpret_cast<impl::prepared_statement*>(prepared.get())->body();  //NOLINT
-    req->statement_text(stmt->sql_text_shared());
-    log_request(*req);
-
-    auto request_ctx = create_request_context(
+    return executor::execute_async(
+        *database_,
+        tx_,
+        prepared,
+        std::move(parameters),
         channel,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
-        req
+        std::move(on_completion),
+        sync
     );
-    request_ctx->lightweight(
-            stmt->mirrors()->work_level().value() <= static_cast<std::int32_t>(request_ctx->configuration()->lightweight_job_level())
-    );
-    auto& ts = *database_->task_scheduler();
-    auto jobid = request_ctx->job()->id();
-
-    req->status(scheduler::request_detail_status::submitted);
-    log_request(*req);
-    ts.schedule_task(scheduler::flat_task{
-        scheduler::task_enum_tag<scheduler::flat_task_kind::resolve>,
-        request_ctx,
-        std::make_shared<scheduler::statement_context>(
-            prepared,
-            std::move(parameters),
-            database_,
-            this,
-            std::move(on_completion)
-        )
-    });
-    if(sync) {
-        ts.wait_for_progress(jobid);
-    }
-    return true;
-
 }
 
 bool transaction::execute_async(
@@ -176,13 +122,12 @@ bool transaction::execute_async(
     maybe_shared_ptr<api::data_channel> const& channel,
     callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
-    return execute_internal(
+    return executor::execute_async(
+        *database_,
+        tx_,
         statement,
-        channel ?
-            maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::record_channel_adapter>(channel)} :
-            maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::null_record_channel>()},
-        std::move(on_completion),
-        false
+        channel,
+        std::move(on_completion)
     );
 }
 
@@ -194,36 +139,26 @@ bool transaction::execute_dump(
     std::size_t max_records_per_file,
     bool keep_files_on_error
 ) {
-    executor::io::dump_cfg cfg{};
-    cfg.max_records_per_file_ = max_records_per_file;
-    cfg.keep_files_on_error_ = keep_files_on_error;
-    auto dump_ch = std::make_shared<executor::io::dump_channel>(
-        std::make_shared<executor::io::record_channel_adapter>(channel),
-        directory,
-        cfg
-    );
-    return execute_internal(
+    return executor::execute_dump(
+        *database_,
+        tx_,
         statement,
-        dump_ch,
-        [on_completion=std::move(on_completion), dump_ch, cfg](status st, std::string_view msg) {
-            if(st != status::ok) {
-                if (! cfg.keep_files_on_error_) {
-                    dump_ch->clean_output_files();
-                }
-            }
-            on_completion(st, msg);
-        },
-        false
+        channel,
+        directory,
+        std::move(on_completion),
+        max_records_per_file,
+        keep_files_on_error
     );
 }
 
+/*
 std::shared_ptr<request_context> transaction::create_request_context(
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
     std::shared_ptr<scheduler::request_detail> request_detail
 ) {
-    return impl::create_request_context(
-        database_,
+    return executor::create_request_context(
+        *database_,
         tx_,
         channel,
         std::move(resource),
@@ -231,50 +166,23 @@ std::shared_ptr<request_context> transaction::create_request_context(
     );
 }
 
+
 bool transaction::execute_internal(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
-    BOOST_ASSERT(channel);  //NOLINT
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
-    req->status(scheduler::request_detail_status::accepted);
-    req->transaction_id(transaction_id());
-    auto const& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body(); //NOLINT
-    req->statement_text(stmt->sql_text_shared());
-    log_request(*req);
-
-    auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
-    auto rctx = create_request_context(channel, s.resource(), std::move(req));
-    rctx->lightweight(
-        stmt->mirrors()->work_level().value() <=
-            static_cast<std::int32_t>(rctx->configuration()->lightweight_job_level())
-    );
-    return execute_async_on_context(
-        std::move(rctx),
+    return executor::execute_internal(
+        *database_,
+        tx_,
         statement,
+        channel,
         std::move(on_completion),
         sync
     );
 }
-
-bool validate_statement(
-    plan::executable_statement const& exec,
-    maybe_shared_ptr<executor::io::record_channel> const& ch,
-    transaction::callback on_completion //NOLINT(performance-unnecessary-value-param)
-) {
-    if(!exec.mirrors()->external_writer_meta() &&
-        dynamic_cast<executor::io::record_channel_adapter*>(ch.get())) {
-        // result_store_channel is for testing and error handling is not needed
-        // null_record_channel is to discard the results and is correct usage
-        auto msg = "statement has no result records, but called with API expecting result records";
-        VLOG_LP(log_error) << msg;
-        on_completion(status::err_illegal_operation, msg);
-        return false;
-    }
-    return true;
-}
+ */
 
 bool transaction::execute_async_on_context(
     std::shared_ptr<request_context> rctx,  //NOLINT
@@ -282,71 +190,14 @@ bool transaction::execute_async_on_context(
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
-    auto& s = unsafe_downcast<impl::executable_statement&>(*statement);
-    if(! validate_statement(*s.body(), rctx->record_channel(), on_completion)) {
-        return false;
-    }
-    auto& e = s.body();
-    auto job = rctx->job();
-    auto& ts = *rctx->scheduler();
-    if (e->is_execute()) {
-        auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
-        auto& g = stmt->operators();
-        job->callback([statement, on_completion, rctx](){  // callback is copy-based
-            // let lambda own the statement so that they live longer by the end of callback
-            (void)statement;
-            on_completion(rctx->status_code(), rctx->status_message());
-        });
-
-        auto jobid = job->id();
-        if(auto req = job->request()) {
-            req->status(scheduler::request_detail_status::submitted);
-            log_request(*req);
-        }
-        ts.schedule_task(scheduler::flat_task{
-            scheduler::task_enum_tag<scheduler::flat_task_kind::bootstrap>,
-            rctx.get(),
-            g
-        });
-        if(sync) {
-            ts.wait_for_progress(jobid);
-        }
-        return true;
-    }
-    if(!e->is_ddl() && rctx->configuration()->tasked_write()) {
-        // write on tasked mode
-        auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
-        job->callback([statement, on_completion, rctx](){  // callback is copy-based
-            // let lambda own the statement so that they live longer by the end of callback
-            (void)statement;
-            on_completion(rctx->status_code(), rctx->status_message());
-        });
-
-        auto jobid = job->id();
-        if(auto req = job->request()) {
-            req->status(scheduler::request_detail_status::submitted);
-            log_request(*req);
-        }
-        ts.schedule_task(scheduler::flat_task{
-            scheduler::task_enum_tag<scheduler::flat_task_kind::write>,
-            rctx.get(),
-            stmt,
-        });
-        if(sync) {
-            ts.wait_for_progress(jobid);
-        }
-        return true;
-    }
-    // write on non-tasked mode or DDL
-    scheduler::statement_scheduler sched{ database_->configuration(), *database_->task_scheduler()};
-    sched.schedule(*e->operators(), *rctx);
-    on_completion(rctx->status_code(), rctx->status_message());
-    if(auto req = job->request()) {
-        req->status(scheduler::request_detail_status::finishing);
-        log_request(*req, rctx->status_code() == status::ok);
-    }
-    ts.unregister_job(job->id());
-    return true;
+    return executor::execute_async_on_context(
+        *database_,
+        tx_,
+        std::move(rctx),
+        statement,
+        std::move(on_completion),
+        sync
+    );
 }
 
 bool transaction::execute_load(
@@ -355,125 +206,31 @@ bool transaction::execute_load(
     std::vector<std::string> files,
     transaction::callback on_completion
 ) {
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
-    req->status(scheduler::request_detail_status::accepted);
-    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
-    log_request(*req);
-
-    auto rctx = create_request_context(
-        nullptr,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
-        req
-    );
-    auto ldr = std::make_shared<executor::file::loader>(
-        std::move(files),
+    return executor::execute_load(
+        *database_,
+        tx_,
         prepared,
-        std::move(parameters),
-        this
+        parameters,
+        std::move(files),
+        std::move(on_completion)
     );
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, ldr](){  // callback is copy-based
-        (void)ldr; // to keep ownership
-        on_completion(rctx->status_code(), rctx->status_message());
-    });
-    auto& ts = *rctx->scheduler();
-    req->status(scheduler::request_detail_status::submitted);
-    log_request(*req);
-
-    ts.schedule_task(scheduler::flat_task{
-        scheduler::task_enum_tag<scheduler::flat_task_kind::load>,
-        rctx.get(),
-        std::move(ldr)
-    });
-    return true;
 }
 
-void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& body) {
-    // wait task does not need to be sticky because multiple commit operation for a transaction doesn't happen concurrently
-    auto t = scheduler::create_custom_task(rctx, std::move(body), false, true);
-    auto& ts = *rctx->scheduler();
-    ts.schedule_task(std::move(t));
-}
-
-scheduler::job_context::job_id_type transaction::commit_async(transaction::callback on_completion) {
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);
-    req->status(scheduler::request_detail_status::accepted);
-    req->transaction_id(transaction_id());
-    log_request(*req);
-
-    auto rctx = create_request_context(
-        nullptr,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
-        req
+scheduler::job_context::job_id_type transaction::commit_async(
+    transaction::callback on_completion
+) {
+    return executor::commit_async(
+        *database_,
+        tx_,
+        std::move(on_completion)
     );
-    auto timer = std::make_shared<utils::backoff_timer>();
-    auto jobid = rctx->job()->id();
-    std::string txid{tx_->object()->transaction_id()};
-    auto t = scheduler::create_custom_task(rctx.get(), [this, rctx, timer=std::move(timer), jobid, txid]() {
-        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
-            << txid
-            << " job_id:"
-            << utils::hex(jobid);
-        auto res = commit_internal();
-        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
-            << txid
-            << " job_id:"
-            << utils::hex(jobid);
-        if(res == status::waiting_for_other_transaction) {
-            timer->reset();
-            submit_task_commit_wait(rctx.get(), [rctx, this, timer]() {
-                if(! (*timer)()) return model::task_result::yield;
-                auto st = tx_->object()->check_state().state_kind();
-                switch(st) {
-                    case ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
-                        return model::task_result::yield;
-                    case ::sharksfin::TransactionState::StateKind::ABORTED: {
-                        // get result and return error info
-                        rctx->status_code(
-                            status::err_serialization_failure,
-                            utils::create_abort_message(*rctx, *tx_, *database_->tables()));
-                        break;
-                    }
-                    case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
-                        break;
-                    case ::sharksfin::TransactionState::StateKind::DURABLE:
-                        break;
-                    default: {
-                        scheduler::submit_teardown(*rctx); // try to recover as much as possible
-                        throw std::logic_error(string_builder{} << "wrong state:" << st << string_builder::to_string);
-                    }
-                }
-                scheduler::submit_teardown(*rctx);
-                return model::task_result::complete;
-            });
-            return model::task_result::complete;
-        }
-
-        auto msg = res != status::ok ? utils::create_abort_message(*rctx, *tx_, *database_->tables()) : "";
-        rctx->status_code(res, msg);
-        scheduler::submit_teardown(*rctx);
-        return model::task_result::complete;
-    }, true);
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid](){  // callback is copy-based
-        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committed "
-            << txid
-            << " job_id:"
-            << utils::hex(jobid);
-        VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
-            << txid
-            << " status:"
-            << (rctx->status_code() == status::ok ? "committed" : "aborted");
-        on_completion(rctx->status_code(), rctx->status_message());
-    });
-    auto& ts = *rctx->scheduler();
-    req->status(scheduler::request_detail_status::submitted);
-    log_request(*req);
-    ts.schedule_task(std::move(t));
-    return jobid;
 }
 
 bool transaction::transaction::is_ready() const {
-    auto st = tx_->object()->check_state().state_kind();
-    return st != ::sharksfin::TransactionState::StateKind::WAITING_START;
+    return executor::is_ready(
+        *database_,
+        tx_
+    );
 }
 
 status transaction::create_transaction(
@@ -499,7 +256,14 @@ status transaction::init(kvs::transaction_option const& options) {
 }
 
 std::string_view transaction::transaction_id() const noexcept {
-    return tx_->object()->transaction_id();
+    return executor::transaction_id(
+        *database_,
+        tx_
+    );
 }
+
+    std::shared_ptr<transaction_context> const &transaction::context() const noexcept {
+        return tx_;
+    }
 
 }

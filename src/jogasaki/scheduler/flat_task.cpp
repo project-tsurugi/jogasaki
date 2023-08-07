@@ -24,6 +24,7 @@
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/file/loader.h>
+#include <jogasaki/executor/executor.h>
 #include <jogasaki/utils/trace_log.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/request_logging.h>
@@ -260,12 +261,16 @@ void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
             maybe_shared_ptr{sctx_->parameters_}, e); res != status::ok) {
         req_context_->status_code(res);
     } else {
-        sctx_->tx_->execute_async_on_context(
-            req_context_.ownership(),
-            maybe_shared_ptr{e.get()},
-            [sctx=sctx_](status st, std::string_view msg){
-                sctx->callback_(st, msg);
-            }, false);
+        executor::execute_async_on_context(
+                *sctx_->database_,
+                sctx_->tx_,
+                req_context_.ownership(),
+                maybe_shared_ptr{e.get()},
+                [sctx=sctx_](status st, std::string_view msg){
+                    sctx->callback_(st, msg);
+                },
+                false
+        );
     }
     log_exit << *this;
 }

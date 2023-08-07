@@ -23,10 +23,11 @@
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/impl/transaction.h>
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/executor/executor.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::executor::file {
 
@@ -37,13 +38,15 @@ loader::loader(
     std::vector<std::string> files,
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
-    api::impl::transaction* tx,
+    std::shared_ptr<transaction_context> tx,
+    api::impl::database& db,
     std::size_t bulk_size
 ) noexcept:
     files_(std::move(files)),
     prepared_(prepared),
     parameters_(std::move(parameters)),
     tx_(tx),
+    db_(std::addressof(db)),
     next_file_(files_.begin()),
     bulk_size_(bulk_size)
 {}
@@ -134,7 +137,7 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
             // currently err_aborted should be used in order to report tx aborted. When abort can be reported
             // in different channel, original status code should be passed. TODO
             status_ = status::err_aborted;
-            tx_->abort();
+            executor::abort(*db_, tx_);
             VLOG_LP(log_info) << "transaction aborted";
             error_aborted_ = true;
             return loader_result::error;
@@ -181,7 +184,10 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
         set_parameter(*ps, ref, mapping_);
 
         ++running_statement_count_;
-        tx_->execute_async(prepared_,
+        executor::execute_async(
+            *db_,
+            tx_,
+            prepared_,
             std::move(ps),
             nullptr,
             [&](status st, std::string_view msg){

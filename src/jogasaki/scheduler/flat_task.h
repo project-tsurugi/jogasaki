@@ -94,20 +94,20 @@ struct statement_context {
         api::statement_handle prepared,
         std::shared_ptr<api::parameter_set const> parameters,
         api::impl::database* database,
-        api::impl::transaction* tx,
+        std::shared_ptr<transaction_context> tx,
         callback cb
     ) noexcept :
         prepared_(prepared),
         parameters_(std::move(parameters)),
         database_(database),
-        tx_(tx),
+        tx_(std::move(tx)),
         callback_(std::move(cb))
     {}
 
     api::statement_handle prepared_{};  //NOLINT
     std::shared_ptr<api::parameter_set const> parameters_{};  //NOLINT
     api::impl::database* database_{};  //NOLINT
-    api::impl::transaction* tx_{};  //NOLINT
+    std::shared_ptr<transaction_context> tx_{};  //NOLINT
     std::unique_ptr<api::executable_statement> executable_statement_{};  //NOLINT
     callback callback_{};  //NOLINT
 };

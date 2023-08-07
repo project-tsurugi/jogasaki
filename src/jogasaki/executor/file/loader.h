@@ -18,15 +18,18 @@
 #include <atomic>
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/api/database.h>
+#include <jogasaki/status.h>
+#include <jogasaki/utils/interference_size.h>
 #include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/parameter_set.h>
 #include <jogasaki/executor/file/parquet_reader.h>
 
 namespace jogasaki {
 class request_context;
+class transaction_context;
 
 namespace api::impl {
-class transaction;
+class database;
 }
 
 namespace executor::file {
@@ -107,7 +110,8 @@ public:
         std::vector<std::string> files,
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
-        api::impl::transaction* tx,
+        std::shared_ptr<transaction_context> tx,
+        api::impl::database& db,
         std::size_t bulk_size = default_bulk_size
     ) noexcept;
 
@@ -143,7 +147,8 @@ private:
     api::statement_handle prepared_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
     std::shared_ptr<parquet_reader> reader_{};
-    api::impl::transaction* tx_{};
+    std::shared_ptr<transaction_context> tx_{};
+    api::impl::database* db_{};
     std::atomic_size_t records_loaded_{0};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     decltype(files_)::const_iterator next_file_{};

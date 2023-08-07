@@ -206,6 +206,7 @@ public:
      */
     status commit_internal();
 
+    std::shared_ptr<transaction_context> const& context() const noexcept;
 private:
     impl::database* database_{};
     std::shared_ptr<transaction_context> tx_{};

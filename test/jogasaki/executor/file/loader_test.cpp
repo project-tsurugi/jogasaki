@@ -84,7 +84,8 @@ public:
             files,
             prepared,
             std::shared_ptr{std::move(ps)},
-            tx,
+            tx->context(),
+            *reinterpret_cast<api::impl::database*>(db_.get()),
             bulk_size
         );
 

@@ -68,7 +68,8 @@ void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readab
 }
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
-    return executor::abort(*db, tx);
+    (void) db;
+    return executor::abort(tx);
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)
@@ -126,12 +127,14 @@ transaction_handle::transaction_handle(
 
 bool transaction_handle::is_ready() const {
     auto [db, tx] = cast(db_, body_);
-    return executor::is_ready(*db, tx);
+    (void) db;
+    return executor::is_ready(tx);
 }
 
 std::string_view transaction_handle::transaction_id() const noexcept {
     auto [db, tx] = cast(db_, body_);
-    return executor::transaction_id(*db, tx);
+    (void) db;
+    return executor::transaction_id(tx);
 }
 
 }

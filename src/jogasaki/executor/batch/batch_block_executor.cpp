@@ -148,7 +148,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         if(state_->error_aborting()) {
             return {false, false};
         }
-        if(auto res = executor::commit_internal(*info_.db(), tx_); res != status::ok) {
+        if(auto res = executor::commit_internal(tx_); res != status::ok) {
             state_->error_info(res, "committing tx failed.");
             finish(info_, *state_);
             return {false, false};

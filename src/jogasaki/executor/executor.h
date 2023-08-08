@@ -70,7 +70,6 @@ status init(
  * @return false otherwise
  */
 [[nodiscard]] bool is_ready(
-    api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 );
 
@@ -104,7 +103,6 @@ scheduler::job_context::job_id_type commit_async(
  * @note this function is synchronous
  */
 status abort(
-    api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 );
 
@@ -221,7 +219,6 @@ bool execute_load(
  * @return empty string when it's not available
  */
 [[nodiscard]] std::string_view transaction_id(
-    api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 ) noexcept;
 
@@ -247,7 +244,6 @@ bool execute_load(
  * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
  */
 status commit_internal(
-    api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 );
 

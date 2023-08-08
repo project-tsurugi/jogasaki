@@ -59,7 +59,6 @@ status commit(
     api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 ) {
-    (void) tx;
     status ret{};
     auto jobid = commit_async(
             database,
@@ -76,18 +75,14 @@ status commit(
 }
 
 status commit_internal(
-    api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 ) {
-    (void) database;
     return tx->object()->commit();
 }
 
 status abort(
-    api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 ) {
-    (void) database;
     std::string txid{tx->object()->transaction_id()};
     auto ret = tx->object()->abort();
     VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
@@ -275,7 +270,7 @@ bool execute_internal(
     BOOST_ASSERT(channel);  //NOLINT
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
-    req->transaction_id(transaction_id(database, tx));
+    req->transaction_id(transaction_id(tx));
     auto const& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body(); //NOLINT
     req->statement_text(stmt->sql_text_shared());
     log_request(*req);
@@ -461,7 +456,7 @@ scheduler::job_context::job_id_type commit_async(
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);
     req->status(scheduler::request_detail_status::accepted);
-    req->transaction_id(transaction_id(database, tx));
+    req->transaction_id(transaction_id(tx));
     log_request(*req);
 
     auto rctx = details::create_request_context(
@@ -479,7 +474,7 @@ scheduler::job_context::job_id_type commit_async(
             << txid
             << " job_id:"
             << utils::hex(jobid);
-        auto res = commit_internal(database, tx);
+        auto res = commit_internal(tx);
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
             << txid
             << " job_id:"
@@ -538,10 +533,8 @@ scheduler::job_context::job_id_type commit_async(
 }
 
 bool is_ready(
-    api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
 ) {
-    (void) database;
     auto st = tx->object()->check_state().state_kind();
     return st != ::sharksfin::TransactionState::StateKind::WAITING_START;
 }
@@ -551,7 +544,6 @@ status create_transaction(
     std::shared_ptr<transaction_context>& out,
     kvs::transaction_option const& options
 ) {
-    (void) db;
     std::shared_ptr<transaction_context> ret{};
     if(auto res = details::init(db, options, ret); res != status::ok) {
         return res;
@@ -561,10 +553,8 @@ status create_transaction(
 }
 
 std::string_view transaction_id(
-        api::impl::database& database,
         std::shared_ptr<transaction_context> const& tx
 ) noexcept {
-    (void) database;
     return tx->object()->transaction_id();
 }
 

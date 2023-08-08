@@ -47,10 +47,6 @@ transaction_context* tx(std::uintptr_t arg) {
     return reinterpret_cast<transaction_context*>(arg);  //NOLINT
 }
 
-api::impl::database* db(std::uintptr_t arg) {
-    return reinterpret_cast<api::impl::database*>(arg);  //NOLINT
-}
-
 std::pair<api::impl::database*, std::shared_ptr<transaction_context>> cast(std::uintptr_t db, std::uintptr_t tx) {
     auto* dbp = reinterpret_cast<api::impl::database*>(db);  //NOLINT
     auto t = dbp->find_transaction(transaction_handle{tx, db});
@@ -126,15 +122,11 @@ transaction_handle::transaction_handle(
 {}
 
 bool transaction_handle::is_ready() const {
-    auto [db, tx] = cast(db_, body_);
-    (void) db;
-    return executor::is_ready(tx);
+    return tx(body_)->is_ready();
 }
 
 std::string_view transaction_handle::transaction_id() const noexcept {
-    auto [db, tx] = cast(db_, body_);
-    (void) db;
-    return executor::transaction_id(tx);
+    return tx(body_)->transaction_id();
 }
 
 }

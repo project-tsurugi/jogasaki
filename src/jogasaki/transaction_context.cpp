@@ -80,6 +80,15 @@ transaction_context::mutex_type &transaction_context::mutex() noexcept {
     return mutex_;
 }
 
+bool transaction_context::is_ready() {
+    auto st = transaction_->check_state().state_kind();
+    return st != ::sharksfin::TransactionState::StateKind::WAITING_START;
+}
+
+std::string_view transaction_context::transaction_id() noexcept {
+    return transaction_->transaction_id();
+}
+
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
 }

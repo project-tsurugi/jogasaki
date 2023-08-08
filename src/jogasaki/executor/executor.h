@@ -37,15 +37,6 @@ using takatori::util::maybe_shared_ptr;
 using callback = api::transaction_handle::callback;
 
 /**
- * @brief check if transaction is already assigned to epoch and ready for request
- * @return true when transaction is ready
- * @return false otherwise
- */
-[[nodiscard]] bool is_ready(
-    std::shared_ptr<transaction_context> const& tx
-);
-
-/**
  * @brief commit the transaction
  * @return status::ok when successful
  * @return error code otherwise
@@ -186,15 +177,6 @@ bool execute_load(
 );
 
 /**
- * @brief return the transaction id
- * @return transaction id string
- * @return empty string when it's not available
- */
-[[nodiscard]] std::string_view transaction_id(
-    std::shared_ptr<transaction_context> const& tx
-) noexcept;
-
-/**
  * @brief create and start new transaction
  * @param db the parent database that the transaction runs on
  * @param out [OUT] filled with newly created transaction object
@@ -206,17 +188,6 @@ bool execute_load(
     api::impl::database &db,
     std::shared_ptr<transaction_context>& out,
     kvs::transaction_option const& options
-);
-
-/**
- * @brief commit function for internal use
- * @details this is for internal use (esps, commit operation for loading), not intended for external caller.
- * @return status::ok when successful
- * @return error code otherwise
- * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
- */
-status commit_internal(
-    std::shared_ptr<transaction_context> const& tx
 );
 
 }

@@ -84,7 +84,7 @@ bool execute_internal(
     BOOST_ASSERT(channel);  //NOLINT
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
-    req->transaction_id(transaction_id(tx));
+    req->transaction_id(tx->transaction_id());
     auto const& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body(); //NOLINT
     req->statement_text(stmt->sql_text_shared());
     log_request(*req);
@@ -138,16 +138,10 @@ status commit(
     return ret;
 }
 
-status commit_internal(
-    std::shared_ptr<transaction_context> const& tx
-) {
-    return tx->object()->commit();
-}
-
 status abort(
     std::shared_ptr<transaction_context> const& tx
 ) {
-    std::string txid{tx->object()->transaction_id()};
+    std::string txid{tx->transaction_id()};
     auto ret = tx->object()->abort();
     VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
         << txid
@@ -456,7 +450,7 @@ scheduler::job_context::job_id_type commit_async(
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);
     req->status(scheduler::request_detail_status::accepted);
-    req->transaction_id(transaction_id(tx));
+    req->transaction_id(tx->transaction_id());
     log_request(*req);
 
     auto rctx = details::create_request_context(
@@ -468,13 +462,13 @@ scheduler::job_context::job_id_type commit_async(
     );
     auto timer = std::make_shared<utils::backoff_timer>();
     auto jobid = rctx->job()->id();
-    std::string txid{tx->object()->transaction_id()};
+    std::string txid{tx->transaction_id()};
     auto t = scheduler::create_custom_task(rctx.get(), [&database, tx, rctx, timer=std::move(timer), jobid, txid]() {
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
             << txid
             << " job_id:"
             << utils::hex(jobid);
-        auto res = commit_internal(tx);
+        auto res = tx->commit();
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
             << txid
             << " job_id:"
@@ -532,13 +526,6 @@ scheduler::job_context::job_id_type commit_async(
     return jobid;
 }
 
-bool is_ready(
-    std::shared_ptr<transaction_context> const& tx
-) {
-    auto st = tx->object()->check_state().state_kind();
-    return st != ::sharksfin::TransactionState::StateKind::WAITING_START;
-}
-
 status create_transaction(
     api::impl::database& db,
     std::shared_ptr<transaction_context>& out,
@@ -550,12 +537,6 @@ status create_transaction(
     }
     out = std::move(ret);
     return status::ok;
-}
-
-std::string_view transaction_id(
-        std::shared_ptr<transaction_context> const& tx
-) noexcept {
-    return tx->object()->transaction_id();
 }
 
 }

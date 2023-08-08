@@ -179,6 +179,20 @@ public:
      */
     mutex_type& mutex() noexcept;
 
+    /**
+     * @brief check if transaction is already assigned to epoch and ready for request
+     * @return true when transaction is ready
+     * @return false otherwise
+     */
+    bool is_ready();
+
+    /**
+     * @brief return the transaction id
+     * @return transaction id string
+     * @return empty string when it's not available
+     */
+    [[nodiscard]] std::string_view transaction_id() noexcept;
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};

@@ -971,6 +971,14 @@ bool database::execute_load(
     return true;
 }
 
+std::shared_ptr<transaction_context> database::find_transaction(api::transaction_handle handle) {
+    decltype(transactions_)::accessor acc{};
+    if (transactions_.find(acc, handle)) {
+        return acc->second;
+    }
+    return {};
+}
+
 }
 
 namespace jogasaki::api {

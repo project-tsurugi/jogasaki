@@ -79,13 +79,14 @@ public:
         }
         auto trans = utils::create_transaction(*db_);
 
-        auto* tx = reinterpret_cast<api::impl::transaction*>(trans->get());
+        auto d = dynamic_cast<api::impl::database*>(db_.get());
+        auto tx = d->find_transaction(*trans);
         ldr = std::make_shared<loader>(
             files,
             prepared,
             std::shared_ptr{std::move(ps)},
-            tx->context(),
-            *reinterpret_cast<api::impl::database*>(db_.get()),
+            tx,
+            *d,
             bulk_size
         );
 

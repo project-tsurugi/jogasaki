@@ -15,7 +15,11 @@
  */
 #include <jogasaki/api/transaction_handle.h>
 
-#include <jogasaki/api/impl/transaction.h>
+#include <utility>
+#include <memory>
+
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/executor/executor.h>
 
 namespace jogasaki::api {
 
@@ -39,28 +43,43 @@ transaction_handle::operator bool() const noexcept {
     return body_ != 0;
 }
 
-api::impl::transaction* tx(std::uintptr_t arg) {
-    return reinterpret_cast<api::impl::transaction*>(arg);  //NOLINT
+transaction_context* tx(std::uintptr_t arg) {
+    return reinterpret_cast<transaction_context*>(arg);  //NOLINT
+}
+
+api::impl::database* db(std::uintptr_t arg) {
+    return reinterpret_cast<api::impl::database*>(arg);  //NOLINT
+}
+
+std::pair<api::impl::database*, std::shared_ptr<transaction_context>> cast(std::uintptr_t db, std::uintptr_t tx) {
+    auto* dbp = reinterpret_cast<api::impl::database*>(db);  //NOLINT
+    auto t = dbp->find_transaction(transaction_handle{tx, db});
+    return {dbp, std::move(t)};
 }
 
 status transaction_handle::commit() {  //NOLINT(readability-make-member-function-const)
-    return tx(body_)->commit();
+    auto [db, tx] = cast(db_, body_);
+    return executor::commit(*db, tx);
 }
 
 void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readability-make-member-function-const)
-    tx(body_)->commit_async(std::move(on_completion));
+    auto [db, tx] = cast(db_, body_);
+    executor::commit_async(*db, tx, std::move(on_completion));
 }
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
-    return tx(body_)->abort();
+    auto [db, tx] = cast(db_, body_);
+    return executor::abort(*db, tx);
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)
+    auto [db, tx] = cast(db_, body_);
     std::unique_ptr<api::result_set> result{};
-    return tx(body_)->execute(statement, result);
+    return executor::execute(*db, tx, statement, result);
 }
 
 status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)
-    return tx(body_)->execute(statement, result);
+    auto [db, tx] = cast(db_, body_);
+    return executor::execute(*db, tx, statement, result);
 }
 
 status transaction_handle::execute( //NOLINT
@@ -68,12 +87,16 @@ status transaction_handle::execute( //NOLINT
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<result_set>& result
 ) {
-    return tx(body_)->execute(prepared, std::move(parameters), result);
+    auto [db, tx] = cast(db_, body_);
+    return executor::execute(*db, tx, prepared, std::move(parameters), result);
 }
 
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     transaction_handle::callback on_completion) {
-    return tx(body_)->execute_async(
+    auto [db, tx] = cast(db_, body_);
+    return executor::execute_async(
+        *db,
+        tx,
         statement,
         nullptr,
         std::move(on_completion)
@@ -82,7 +105,11 @@ bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> co
 
 bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<data_channel> const& channel, transaction_handle::callback on_completion) {
-    return tx(body_)->execute_async(
+
+    auto [db, tx] = cast(db_, body_);
+    return executor::execute_async(
+        *db,
+        tx,
         statement,
         channel,
         std::move(on_completion)
@@ -98,11 +125,13 @@ transaction_handle::transaction_handle(
 {}
 
 bool transaction_handle::is_ready() const {
-    return tx(body_)->is_ready();
+    auto [db, tx] = cast(db_, body_);
+    return executor::is_ready(*db, tx);
 }
 
 std::string_view transaction_handle::transaction_id() const noexcept {
-    return tx(body_)->transaction_id();
+    auto [db, tx] = cast(db_, body_);
+    return executor::transaction_id(*db, tx);
 }
 
 }

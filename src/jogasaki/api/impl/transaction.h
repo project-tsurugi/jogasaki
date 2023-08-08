@@ -184,20 +184,6 @@ public:
     [[nodiscard]] std::string_view transaction_id() const noexcept;
 
     /**
-     * @brief create and start new transaction
-     * @param db the parent database that the transaction runs on
-     * @param out [OUT] filled with newly created transaction object
-     * @param options transaction options
-     * @return status::ok when successful
-     * @return error otherwise
-     */
-    [[nodiscard]] static status create_transaction(
-        impl::database &db,
-        std::unique_ptr<transaction>& out,
-        kvs::transaction_option const& options
-    );
-
-    /**
      * @brief commit function for internal use
      * @details this is for internal use (esps, commit operation for loading), not intended for external caller.
      * @return status::ok when successful

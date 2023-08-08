@@ -233,28 +233,6 @@ bool transaction::transaction::is_ready() const {
     );
 }
 
-status transaction::create_transaction(
-    impl::database& db,
-    std::unique_ptr<impl::transaction>& out,
-    kvs::transaction_option const& options
-) {
-    auto ret = std::make_unique<transaction>(db);
-    if(auto res = ret->init(options); res != status::ok) {
-        return res;
-    }
-    out = std::move(ret);
-    return status::ok;
-}
-
-status transaction::init(kvs::transaction_option const& options) {
-    std::unique_ptr<kvs::transaction> kvs_tx{};
-    if(auto res = kvs::transaction::create_transaction(*database_->kvs_db(), kvs_tx, options); res != status::ok) {
-        return res;
-    }
-    tx_ = wrap(std::move(kvs_tx));
-    return status::ok;
-}
-
 std::string_view transaction::transaction_id() const noexcept {
     return executor::transaction_id(
         *database_,
@@ -262,8 +240,8 @@ std::string_view transaction::transaction_id() const noexcept {
     );
 }
 
-    std::shared_ptr<transaction_context> const &transaction::context() const noexcept {
-        return tx_;
-    }
+std::shared_ptr<transaction_context> const &transaction::context() const noexcept {
+    return tx_;
+}
 
 }

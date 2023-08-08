@@ -169,6 +169,9 @@ public:
         std::vector<std::string> files,
         callback on_completion
     );
+
+    [[nodiscard]] std::shared_ptr<transaction_context> find_transaction(api::transaction_handle handle);
+
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -260,5 +263,5 @@ inline api::impl::database& get_impl(api::database& db) {
     return unsafe_downcast<api::impl::database>(db);
 }
 
-}
+} // namespace jogasaki::api::impl
 

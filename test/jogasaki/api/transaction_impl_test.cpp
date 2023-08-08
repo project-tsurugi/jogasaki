@@ -22,8 +22,10 @@
 #include <jogasaki/test_utils.h>
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
@@ -38,6 +40,8 @@ namespace jogasaki::api {
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
+
+using impl::get_impl;
 
 /**
  * @brief test database api
@@ -75,15 +79,17 @@ TEST_F(transaction_impl_test, resolve_execute_stmt) {
     api::statement_handle prepared{};
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:p0, :p1)", variables, prepared));
 
-    auto hdl = utils::create_transaction(*db_);
-    auto tx = reinterpret_cast<api::impl::transaction*>(hdl->get());
+    auto transaction = utils::create_transaction(*db_);
+    auto tx = get_impl(*db_).find_transaction(*transaction);
 
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
     ps->set_float8("p1", 10.0);
 
     std::atomic_bool run0{false}, error_abort{false};
-    ASSERT_TRUE(tx->execute_async(
+    ASSERT_TRUE(executor::execute_async(
+        get_impl(*db_),
+        tx,
         prepared,
         std::shared_ptr{std::move(ps)},
         nullptr,
@@ -96,7 +102,7 @@ TEST_F(transaction_impl_test, resolve_execute_stmt) {
         }
     ));
     while(! error_abort.load() && !run0.load()) {}
-    ASSERT_EQ(status::ok, tx->commit());
+    ASSERT_EQ(status::ok, executor::commit(get_impl(*db_), tx));
     {
         using kind = meta::field_type_kind;
         std::vector<mock::basic_record> result{};

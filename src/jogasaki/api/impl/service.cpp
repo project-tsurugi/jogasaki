@@ -34,6 +34,7 @@
 #include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/proto_debug_string.h>
@@ -1031,8 +1032,10 @@ void service::execute_dump(
     auto* cbp = c.get();
     auto cid = c->id_;
     callbacks_.emplace(cid, std::move(c));
-
-    if(auto rc = reinterpret_cast<api::impl::transaction*>(tx.get())->execute_dump(  //NOLINT
+    auto t = get_impl(*db_).find_transaction(tx);
+    if(auto rc = executor::execute_dump(  //NOLINT
+            get_impl(*db_),
+            t,
             std::shared_ptr{std::move(e)},
             info->data_channel_,
             directory,
@@ -1078,7 +1081,10 @@ void service::execute_load(
         throw_exception(std::logic_error{"callback already exists"});
     }
     if(tx) {
-        if (auto rc = reinterpret_cast<api::impl::transaction *>(tx.get())->execute_load(  //NOLINT
+        auto t = get_impl(*db_).find_transaction(tx);
+        if (auto rc = executor::execute_load(  //NOLINT
+                get_impl(*db_),
+                t,
                 statement,
                 q.params(),
                 files,

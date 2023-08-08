@@ -28,12 +28,12 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
-#include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/executor/executor.h>
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 #include <jogasaki/mock/test_channel.h>
@@ -51,6 +51,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
+using jogasaki::api::impl::get_impl;
 
 inline std::shared_ptr<jogasaki::meta::external_record_meta> create_file_meta() {
     return std::make_shared<meta::external_record_meta>(
@@ -101,12 +102,14 @@ public:
     ) {
         explain(stmt);
         auto transaction = utils::create_transaction(*db_);
-        auto& tx = *reinterpret_cast<impl::transaction*>(transaction->get());
+        auto tx = get_impl(*db_).find_transaction(*transaction);
         status s{};
         std::string message{"message"};
         std::atomic_bool run{false};
         test_channel ch{};
-        ASSERT_TRUE(tx.execute_dump(
+        ASSERT_TRUE(executor::execute_dump(
+            get_impl(*db_),
+            tx,
             maybe_shared_ptr{&stmt},
             maybe_shared_ptr{&ch},
             path,
@@ -123,7 +126,7 @@ public:
         ASSERT_TRUE(message.empty());
         if (empty_output) {
             ASSERT_TRUE(ch.writers_.empty());
-            ASSERT_EQ(status::ok, tx.commit());
+            ASSERT_EQ(status::ok, executor::commit(get_impl(*db_), tx));
             return;
         }
         ASSERT_FALSE(ch.writers_.empty());
@@ -138,7 +141,7 @@ public:
             LOG(INFO) << x;
         }
         EXPECT_TRUE(ch.all_writers_released());
-        ASSERT_EQ(status::ok, tx.commit());
+        ASSERT_EQ(status::ok, executor::commit(get_impl(*db_), tx));
     }
     void test_dump(
         std::string_view sql,

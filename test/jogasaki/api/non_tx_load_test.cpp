@@ -35,6 +35,7 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/executor/executor.h>
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 #include <jogasaki/mock/basic_record.h>
@@ -100,12 +101,15 @@ public:
         ASSERT_EQ(status::ok, db_->create_executable(sql, stmt));
         explain(*stmt);
         auto transaction = utils::create_transaction(*db_);
-        auto& tx = *reinterpret_cast<impl::transaction*>(transaction->get());
+        auto d = dynamic_cast<api::impl::database*>(db_.get());
+        auto tx = d->find_transaction(*transaction);
         status s{};
         std::string message{"message"};
         std::atomic_bool run{false};
         test_channel ch{};
-        ASSERT_TRUE(tx.execute_dump(
+        ASSERT_TRUE(executor::execute_dump(
+            *d,
+            tx,
             maybe_shared_ptr{stmt.get()},
             maybe_shared_ptr{&ch},
             path(),
@@ -129,7 +133,7 @@ public:
             LOG(INFO) << x;
         }
         EXPECT_TRUE(ch.all_writers_released());
-        ASSERT_EQ(status::ok, tx.commit());
+        ASSERT_EQ(status::ok, executor::commit(*d, tx));
     }
 
     void test_load(
@@ -145,8 +149,8 @@ public:
 
         api::statement_handle prepared{};
         ASSERT_EQ(status::ok, db_->prepare(statement, variables, prepared));
-
-        ASSERT_TRUE(dynamic_cast<api::impl::database*>(db_.get())->execute_load(
+        auto d = dynamic_cast<api::impl::database*>(db_.get());
+        ASSERT_TRUE(d->execute_load(
             prepared,
             std::shared_ptr{std::move(ps)},
             files,

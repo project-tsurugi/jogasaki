@@ -31,6 +31,9 @@ namespace jogasaki::api::impl {
 class database;
 }
 
+/**
+ * @brief interface for SQL job execution
+ */
 namespace jogasaki::executor {
 
 using takatori::util::maybe_shared_ptr;
@@ -38,6 +41,8 @@ using callback = api::transaction_handle::callback;
 
 /**
  * @brief commit the transaction
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
  * @return status::ok when successful
  * @return error code otherwise
  * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
@@ -50,6 +55,9 @@ status commit(
 
 /**
  * @brief commit the transaction asynchronously
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
+ * @param on_completion callback on completion of commit
  * @return id of the job to execute commit
  * @note normal error such as SQL runtime processing failure will be reported by callback
  */
@@ -61,6 +69,7 @@ scheduler::job_context::job_id_type commit_async(
 
 /**
  * @brief abort the transaction
+ * @param tx the transaction to abort
  * @return status::ok when successful
  * @return error code otherwise
  * @note this function is synchronous
@@ -71,8 +80,10 @@ status abort(
 
 /**
  * @brief execute statement expecting result set
- * @param statement
- * @param result
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
+ * @param statement statement to execute
+ * @param result the result set to be filled on completion
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -86,9 +97,11 @@ status execute(
 
 /**
  * @brief execute statement expecting result set
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
  * @param prepared prepared statement to execute
  * @param parameters parameters to fill the place holders
- * @param result
+ * @param result the result set to be filled on completion
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -103,6 +116,8 @@ status execute(
 
 /**
  * @brief execute statement (or query) asynchronously
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
  * @param statement statement to execute
  * @param channel channel to receive statement result records, pass nullptr if no records are to be received
  * @param on_completion callback on completion of statement execution
@@ -119,6 +134,8 @@ bool execute_async(
 
 /**
  * @brief execute statement (or query) asynchronously
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
  * @param prepared prepared statement to execute
  * @param parameters parameters to fill place holders
  * @param channel channel to receive statement result records, pass nullptr if no records are to be received
@@ -139,6 +156,8 @@ bool execute_async(
 
 /**
  * @brief execute statement (or query) asynchronously on the given request context
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
  * @param rctx the request context to execute statement on
  * @param statement statement to execute
  * @param on_completion callback on completion of statement execution
@@ -155,7 +174,22 @@ bool execute_async_on_context(
     bool sync
 );
 
+//@brief indicates undefined for the execute dump arg
 constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
+
+/**
+ * @brief execute dump
+ * @param database the database to request dump execution
+ * @param tx the transaction used to execute the request
+ * @param statement statement to execute
+ * @param channel the channel to dump out result files list
+ * @param directory the directory where the dump result files will be created
+ * @param on_completion callback on completion of statement execution
+ * @param max_records_per_file max number of records written in a result file
+ * @param keep_files_on_error whether the results files are kept or removed when error occurs
+ * @return status::ok when successful
+ * @return error otherwise
+ */
 bool execute_dump(
     api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx,
@@ -167,6 +201,17 @@ bool execute_dump(
     bool keep_files_on_error = false
 );
 
+/**
+ * @brief execute (transactional) load
+ * @param database the database to request dump execution
+ * @param tx the transaction used to execute the request
+ * @param prepared statement used to execute load
+ * @param parameters the parameters prototype that will be filled for each loaded records
+ * @param files the list of file path to be loaded
+ * @param on_completion callback on completion of load
+ * @return status::ok when successful
+ * @return error otherwise
+ */
 bool execute_load(
     api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx,

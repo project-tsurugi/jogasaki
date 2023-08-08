@@ -55,6 +55,70 @@ using takatori::util::string_builder;
 
 constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:transaction ";
 
+namespace details {
+
+std::shared_ptr<request_context> create_request_context(
+    api::impl::database& database,
+    std::shared_ptr<transaction_context> const& tx,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    std::shared_ptr<memory::lifo_paged_memory_resource> resource,
+    std::shared_ptr<scheduler::request_detail> request_detail
+) {
+    return api::impl::create_request_context(
+        std::addressof(database),
+        tx,
+        channel,
+        std::move(resource),
+        std::move(request_detail)
+    );
+}
+
+bool execute_internal(
+    api::impl::database& database,
+    std::shared_ptr<transaction_context> const& tx,
+    maybe_shared_ptr<api::executable_statement> const& statement,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    bool sync
+) {
+    BOOST_ASSERT(channel);  //NOLINT
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
+    req->status(scheduler::request_detail_status::accepted);
+    req->transaction_id(transaction_id(tx));
+    auto const& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body(); //NOLINT
+    req->statement_text(stmt->sql_text_shared());
+    log_request(*req);
+
+    auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
+    auto rctx = details::create_request_context(database, tx, channel, s.resource(), std::move(req));
+    rctx->lightweight(
+        stmt->mirrors()->work_level().value() <=
+        static_cast<std::int32_t>(rctx->configuration()->lightweight_job_level())
+    );
+    return execute_async_on_context(
+        database,
+        tx,
+        std::move(rctx),
+        statement,
+        std::move(on_completion),
+        sync
+    );
+}
+
+status init(
+    api::impl::database& database,
+    kvs::transaction_option const& options,
+    std::shared_ptr<transaction_context>& out
+) {
+    std::unique_ptr<kvs::transaction> kvs_tx{};
+    if(auto res = kvs::transaction::create_transaction(*database.kvs_db(), kvs_tx, options); res != status::ok) {
+        return res;
+    }
+    out = wrap(std::move(kvs_tx));
+    return status::ok;
+}
+
+}
 status commit(
     api::impl::database& database,
     std::shared_ptr<transaction_context> const& tx
@@ -241,70 +305,6 @@ bool execute_dump(
     );
 }
 
-namespace details {
-
-std::shared_ptr<request_context> create_request_context(
-    api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
-    maybe_shared_ptr<executor::io::record_channel> const& channel,
-    std::shared_ptr<memory::lifo_paged_memory_resource> resource,
-    std::shared_ptr<scheduler::request_detail> request_detail
-) {
-    return api::impl::create_request_context(
-        std::addressof(database),
-        tx,
-        channel,
-        std::move(resource),
-        std::move(request_detail)
-    );
-}
-
-bool execute_internal(
-    api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
-    maybe_shared_ptr<api::executable_statement> const& statement,
-    maybe_shared_ptr<executor::io::record_channel> const& channel,
-    callback on_completion, //NOLINT(performance-unnecessary-value-param)
-    bool sync
-) {
-    BOOST_ASSERT(channel);  //NOLINT
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
-    req->status(scheduler::request_detail_status::accepted);
-    req->transaction_id(transaction_id(tx));
-    auto const& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body(); //NOLINT
-    req->statement_text(stmt->sql_text_shared());
-    log_request(*req);
-
-    auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
-    auto rctx = details::create_request_context(database, tx, channel, s.resource(), std::move(req));
-    rctx->lightweight(
-        stmt->mirrors()->work_level().value() <=
-            static_cast<std::int32_t>(rctx->configuration()->lightweight_job_level())
-    );
-    return execute_async_on_context(
-        database,
-        tx,
-        std::move(rctx),
-        statement,
-        std::move(on_completion),
-        sync
-    );
-}
-
-status init(
-        api::impl::database& database,
-        kvs::transaction_option const& options,
-        std::shared_ptr<transaction_context>& out
-) {
-    std::unique_ptr<kvs::transaction> kvs_tx{};
-    if(auto res = kvs::transaction::create_transaction(*database.kvs_db(), kvs_tx, options); res != status::ok) {
-        return res;
-    }
-    out = wrap(std::move(kvs_tx));
-    return status::ok;
-}
-
-}
 
 bool validate_statement(
     plan::executable_statement const& exec,

@@ -34,35 +34,7 @@ class database;
 namespace jogasaki::executor {
 
 using takatori::util::maybe_shared_ptr;
-
 using callback = api::transaction_handle::callback;
-
-namespace details {
-
-bool execute_internal(
-    api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
-    maybe_shared_ptr<api::executable_statement> const& statement,
-    maybe_shared_ptr<executor::io::record_channel> const& channel,
-    callback on_completion,  //NOLINT(performance-unnecessary-value-param)
-    bool sync
-);
-
-std::shared_ptr<request_context> create_request_context(
-    api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
-    maybe_shared_ptr<executor::io::record_channel> const& channel,
-    std::shared_ptr<memory::lifo_paged_memory_resource> resource,
-    std::shared_ptr<scheduler::request_detail> request_detail
-);
-
-status init(
-    api::impl::database& database,
-    kvs::transaction_option const& options,
-    std::shared_ptr<transaction_context>& out
-);
-
-}  //namespace details
 
 /**
  * @brief check if transaction is already assigned to epoch and ready for request

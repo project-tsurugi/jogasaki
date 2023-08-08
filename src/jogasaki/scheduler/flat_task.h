@@ -31,7 +31,6 @@
 
 namespace jogasaki::api::impl {
 class database;
-class transaction;
 }
 
 namespace jogasaki::scheduler {

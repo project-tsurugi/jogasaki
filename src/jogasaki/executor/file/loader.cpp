@@ -45,7 +45,7 @@ loader::loader(
     files_(std::move(files)),
     prepared_(prepared),
     parameters_(std::move(parameters)),
-    tx_(tx),
+    tx_(std::move(tx)),
     db_(std::addressof(db)),
     next_file_(files_.begin()),
     bulk_size_(bulk_size)

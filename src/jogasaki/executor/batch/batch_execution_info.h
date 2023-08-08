@@ -21,12 +21,13 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/api/database.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/statement_handle.h>
-#include <jogasaki/api/impl/transaction.h>
 #include "batch_executor_option.h"
 
 namespace jogasaki::executor::batch {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief static information on batch execution

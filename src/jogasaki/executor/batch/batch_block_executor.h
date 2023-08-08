@@ -24,6 +24,7 @@
 #include <jogasaki/executor/file/parquet_reader.h>
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_execution_info.h>
+#include <jogasaki/executor/file/loader.h>
 
 namespace jogasaki::executor::batch {
 

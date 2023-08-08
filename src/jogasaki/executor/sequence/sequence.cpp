@@ -24,9 +24,6 @@
 
 namespace jogasaki::executor::sequence {
 
-
-class manager;
-
 sequence::sequence(
     class info const& info,
     manager& parent,

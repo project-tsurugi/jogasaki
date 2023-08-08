@@ -24,6 +24,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/api_test_base.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::executor::file {
 

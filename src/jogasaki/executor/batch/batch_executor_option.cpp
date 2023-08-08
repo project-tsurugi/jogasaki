@@ -21,7 +21,6 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/statement_handle.h>
-#include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/executor/file/parquet_reader.h>
 
 namespace jogasaki::executor::batch {

@@ -34,9 +34,11 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/executable_statement.h>
-#include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 
 #include <tateyama/status.h>

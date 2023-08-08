@@ -20,7 +20,6 @@
 
 namespace jogasaki::executor::batch {
 
-
 batch_execution_info::batch_execution_info(
     api::statement_handle prepared,
     maybe_shared_ptr<const api::parameter_set> parameters,

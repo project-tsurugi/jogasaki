@@ -20,7 +20,6 @@
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/impl/transaction.h>
 #include <tateyama/api/task_scheduler/context.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/file/loader.h>

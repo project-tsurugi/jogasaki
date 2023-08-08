@@ -16,7 +16,9 @@
 #pragma once
 
 #include <cstddef>
-#include <takatori/util/enum_set.h>
+#include <cstdlib>
+#include <string_view>
+#include <ostream>
 
 namespace jogasaki {
 

@@ -23,8 +23,8 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/statement_handle.h>
-#include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/executor/file/loader.h>
 #include "batch_executor_option.h"
 #include "batch_execution_state.h"
 #include "batch_execution_info.h"

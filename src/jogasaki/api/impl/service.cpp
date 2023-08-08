@@ -31,7 +31,6 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/utils/proto_field_types.h>
 #include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/executor/executor.h>

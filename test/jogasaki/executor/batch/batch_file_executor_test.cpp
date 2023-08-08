@@ -26,6 +26,7 @@
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/executor/batch/batch_block_executor.h>
 #include <jogasaki/executor/batch/batch_executor.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/kvs/id.h>
 
 namespace jogasaki::executor::batch {

@@ -31,7 +31,6 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_logging.h>
 #include <jogasaki/api/impl/result_set.h>
-#include <jogasaki/api/impl/transaction.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/executor/executor.h>

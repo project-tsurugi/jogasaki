@@ -1,6 +1,7 @@
 # SQLサービスのエラーの構成
 
 2022-12-27 kurosawa
+
 2023-08-09 kurosawa - GAリリース用に更新
 
 ## 本文書について
@@ -54,17 +55,22 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
       - ScalarSubqueryException (SQL-01012: スカラサブクエリが期待されるステートメントにおいて評価結果がスカラでなかった)
 
     - TargetNotFound (SQL-01014: SQLステートメントの操作対象が存在しない)
-      例: クエリが使用している名前に対応するテーブルが存在しない
-      例: WPとして指定されたテーブルが存在しない
+    
+        (例: クエリが使用している名前に対応するテーブルが存在しない)
+      
+        (例: WPとして指定されたテーブルが存在しない)
 
     - TargetAlreadyExists (SQL-01016: 新規作成要求の対象が既に存在する)
 
     - InconsistentStatement (SQL-01018: 使用されたAPIに対して要求されたステートメントが不正)
-      例: クエリ/ダンプ用のAPIに結果セットを戻さないステートメントが渡された 
+      
+        (例: クエリ/ダンプ用のAPIに結果セットを戻さないステートメントが渡された)
 
     - RestrictedOperation (SQL-01020: 禁止された操作が実行された)
       - DependenciesViolation (SQL-01021: 依存するものがある対象に対して削除操作が要求された)
-        例: ビュー定義が存在したままで表定義を削除しようとした
+        
+          (例: ビュー定義が存在したままで表定義を削除しようとした)
+        
       - WriteOperationByRtx (SQL-01022: Rtxによって書き込み操作が実行された)
       - LtxWriteOperationWithoutWritePreserve (SQL-01023: LTXがWP指定した以外の領域へ書き込み操作を要求した)
       - ReadOperationOnRestrictedReadArea (SQL-01024: 禁止されているread areaをreadした)
@@ -114,26 +120,28 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
     - OccException (SQL-03001: Occ TXのアボート)
 
       - OccReadException (SQL-03010: Occ TXのreadを原因とするアボートが発生)
+    
+        (例 occがreadしたものがcommit時には上書きされていた(shirakami ERR_CC_OCC_READ_VERIFY))
+        
+        (例 occがreadしたmasstree nodeの状態がcommit時には変化していた(shirakami ERR_CC_OCC_PHANTOM_AVOIDANCE))
+        
+        (例 occがreadしたものがltxによってwrite preserveされていた(shirakami ERR_CC_OCC_WP_VERIFY))
 
         - ConflictOnWritePreserve (SQL-03015: occがreadしたものがltxによってwrite preserveされていてearly abort)
 
-        例: commit時verifyに下記が判明したことによるアボート
-        - occがreadしたものがcommit時には上書きされていた(shirakami ERR_CC_OCC_READ_VERIFY) 
-        - occがreadしたmasstree nodeの状態がcommit時には変化していた(shirakami ERR_CC_OCC_PHANTOM_AVOIDANCE) 
-        - occがreadしたものがltxによってwrite preserveされていた(shirakami ERR_CC_OCC_WP_VERIFY)
-
-      - OccWriteException (SQL-03011: Occ TXのwriteを原因とするアボートが発生) - 現状では発生ケースなし
+      - OccWriteException (SQL-03011: Occ TXのwriteを原因とするアボートが発生 - 現状では発生ケースなし)
 
     - LtxException (SQL-03003: LTXのアボート)
 
       - LtxReadException (SQL-03013: LTXのreadを原因とするアボートが発生) 
-        例: 
-        - ltxがreadしたものが、前置位置では読み出し可能でない(shirakami ERR_CC_LTX_READ_UPPER_BOUND_VIOLATION) 
+         
+        (例 ltxがreadしたものが、前置位置では読み出し可能でない(shirakami ERR_CC_LTX_READ_UPPER_BOUND_VIOLATION))
 
       - LtxWriteException (SQL-03014: LTXのwriteを原因とするアボートが発生)
-        例:
-        - ltxがwriteしたものがcommit済みのreadを壊してしまう(shirakami ERR_CC_LTX_WRITE_READ_PROTECTION) 
-        - ltxのwriteしたものがcommit済みのrange readを壊してしまう(shirakami ERR_CC_LTX_WRITE_PHANTOM_AVOIDANCE) 
+        
+        (例 ltxがwriteしたものがcommit済みのreadを壊してしまう(shirakami ERR_CC_LTX_WRITE_READ_PROTECTION))
+        
+        (例 ltxのwriteしたものがcommit済みのrange readを壊してしまう(shirakami ERR_CC_LTX_WRITE_PHANTOM_AVOIDANCE))
 
     - RtxException (SQL-03005: Read Only TXのアボートが発生)
 

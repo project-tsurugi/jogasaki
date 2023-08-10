@@ -138,4 +138,33 @@ TEST_F(transaction_test, readonly_option) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
+TEST_F(transaction_test, tx_destroyed_while_query_is_still_running) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true}); // use occ to finish insert quickly
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
+    for(std::size_t i=0; i < 100; ++i) {
+        execute_statement("INSERT INTO T VALUES ("+std::to_string(i)+")");
+    }
+
+    std::unique_ptr<api::executable_statement> stmt0{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T ORDER BY C0", stmt0));
+
+    test_channel ch0{};
+    std::atomic_bool run0{false};
+    api::transaction_handle tx{};
+    ASSERT_EQ(status::ok, db_->create_transaction(tx));
+    ASSERT_TRUE(tx.execute_async(
+        maybe_shared_ptr{stmt0.get()},
+        maybe_shared_ptr{&ch0},
+        [&](status st, std::string_view msg) {
+            VLOG(log_info) << "**** query completed ***";
+            if (st != status::ok) {
+                LOG(ERROR) << st;
+            }
+            run0 = true;
+        }
+    ));
+    ASSERT_EQ(status::ok, db_->destroy_transaction(tx));
+    VLOG(log_info) << "**** destroying tx completed ***";
+    while(! run0.load()) {}
+}
 }

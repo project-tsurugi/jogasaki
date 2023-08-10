@@ -234,6 +234,7 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
         }
     });
     while(! run0.load()) {}
+    // manually check most are destroyed by f2, and some are execute_rejected (invalid handle)
     std::cerr << "destroyed_f1:" << destroyed_f1 << std::endl;
     std::cerr << "destroyed_f2:" << destroyed_f2 << std::endl;
     std::cerr << "execute_rejected:" << execute_rejected << std::endl;

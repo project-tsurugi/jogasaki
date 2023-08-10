@@ -875,7 +875,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             timer->reset();
             submit_task_begin_wait(rctx.get(), [rctx, handle, timer]() {
                 if(! (*timer)()) return model::task_result::yield;
-                if(handle->is_ready()) {
+                if(handle->is_ready_unchecked()) {
                     scheduler::submit_teardown(*rctx);
                     return model::task_result::complete;
                 }
@@ -885,7 +885,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         }, false);  // create transaction is not sticky task
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:started "
-            << (*handle ? handle->transaction_id() : "<tx id not available>")
+            << (*handle ? handle->transaction_id_unchecked() : "<tx id not available>")
             << " job_id:"
             << utils::hex(jobid);
         on_completion(*handle, rctx->status_code(), rctx->status_message());

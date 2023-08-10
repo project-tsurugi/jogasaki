@@ -193,17 +193,28 @@ public:
 
     /**
      * @brief check if transaction is already assigned to epoch and ready for request
+     * @note this function doesn't check if this handle is valid, so use only when you are sure transaction_context is
+     * held by shared_ptr and it's not yet released (this condition is met by request_context if it's call in a job)
      * @return true when transaction is ready
      * @return false otherwise
      */
-    [[nodiscard]] bool is_ready() const;
+    [[nodiscard]] bool is_ready_unchecked() const;
 
     /**
      * @brief return the transaction id
      * @return transaction id string
-     * @return empty string when it's not available
+     * @return empty string when it's not available, or transaction handle is invalid
      */
     [[nodiscard]] std::string_view transaction_id() const noexcept;
+
+    /**
+     * @brief return the transaction id
+     * @note this function doesn't check if this handle is valid, so use only when you are sure transaction_context is
+     * held by shared_ptr and it's not yet released (this condition is met by request_context if it's call in a job)
+     * @return transaction id string
+     * @return empty string when it's not available
+     */
+    [[nodiscard]] std::string_view transaction_id_unchecked() const noexcept;
 
 private:
     std::uintptr_t body_{};

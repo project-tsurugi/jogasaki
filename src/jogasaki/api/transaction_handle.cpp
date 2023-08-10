@@ -139,12 +139,20 @@ transaction_handle::transaction_handle(
     db_(reinterpret_cast<std::uintptr_t>(db))  //NOLINT
 {}
 
-bool transaction_handle::is_ready() const {
+bool transaction_handle::is_ready_unchecked() const {
     return tx(body_)->is_ready();
 }
 
-std::string_view transaction_handle::transaction_id() const noexcept {
+std::string_view transaction_handle::transaction_id_unchecked() const noexcept {
     return tx(body_)->transaction_id();
 }
 
+std::string_view transaction_handle::transaction_id() const noexcept {
+    auto [db, tx] = cast(db_, body_);
+    (void) db;
+    if(! tx) {
+        return {};
+    }
+    return tx->transaction_id();
+}
 }

@@ -59,7 +59,7 @@ namespace details {
 
 std::shared_ptr<request_context> create_request_context(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
     std::shared_ptr<scheduler::request_detail> request_detail
@@ -75,7 +75,7 @@ std::shared_ptr<request_context> create_request_context(
 
 bool execute_internal(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
@@ -97,7 +97,6 @@ bool execute_internal(
     );
     return execute_async_on_context(
         database,
-        tx,
         std::move(rctx),
         statement,
         std::move(on_completion),
@@ -121,7 +120,7 @@ status init(
 }
 status commit(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx
+    std::shared_ptr<transaction_context> tx
 ) {
     status ret{};
     auto jobid = commit_async(
@@ -139,7 +138,7 @@ status commit(
 }
 
 status abort(
-    std::shared_ptr<transaction_context> const& tx
+    std::shared_ptr<transaction_context> tx
 ) {
     std::string txid{tx->transaction_id()};
     auto ret = tx->object()->abort();
@@ -152,7 +151,7 @@ status abort(
 
 status execute(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result
 ) {
@@ -180,7 +179,7 @@ status execute(
 
 status execute(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<api::result_set>& result
@@ -199,7 +198,7 @@ status execute(
 
 bool execute_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
@@ -247,7 +246,7 @@ bool execute_async(
 
 bool execute_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     callback on_completion  //NOLINT(performance-unnecessary-value-param)
@@ -266,7 +265,7 @@ bool execute_async(
 
 bool execute_dump(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
@@ -319,13 +318,11 @@ bool validate_statement(
 
 bool execute_async_on_context(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
-    (void) tx;
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
     if(! validate_statement(*s.body(), rctx->record_channel(), on_completion)) {
         return false;
@@ -395,7 +392,7 @@ bool execute_async_on_context(
 
 bool execute_load(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::vector<std::string> files,
@@ -445,7 +442,7 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
 
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     callback on_completion
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);

@@ -262,7 +262,6 @@ void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
     } else {
         executor::execute_async_on_context(
                 *sctx_->database_,
-                sctx_->tx_,
                 req_context_.ownership(),
                 maybe_shared_ptr{e.get()},
                 [sctx=sctx_](status st, std::string_view msg){

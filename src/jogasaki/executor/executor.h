@@ -50,7 +50,7 @@ using callback = api::transaction_handle::callback;
  */
 status commit(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx
+    std::shared_ptr<transaction_context> tx
 );
 
 /**
@@ -63,7 +63,7 @@ status commit(
  */
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     callback on_completion
 );
 
@@ -75,7 +75,7 @@ scheduler::job_context::job_id_type commit_async(
  * @note this function is synchronous
  */
 status abort(
-    std::shared_ptr<transaction_context> const& tx
+    std::shared_ptr<transaction_context> tx
 );
 
 /**
@@ -90,7 +90,7 @@ status abort(
  */
 status execute(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result
 );
@@ -108,7 +108,7 @@ status execute(
  */
 status execute(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<api::result_set>& result
@@ -126,7 +126,7 @@ status execute(
  */
 bool execute_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     callback on_completion
@@ -146,7 +146,7 @@ bool execute_async(
  */
 bool execute_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
@@ -157,7 +157,6 @@ bool execute_async(
 /**
  * @brief execute statement (or query) asynchronously on the given request context
  * @param database the database to request execution
- * @param tx the transaction used to execute the request
  * @param rctx the request context to execute statement on
  * @param statement statement to execute
  * @param on_completion callback on completion of statement execution
@@ -167,7 +166,6 @@ bool execute_async(
  */
 bool execute_async_on_context(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
     std::shared_ptr<request_context> rctx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     callback on_completion, //NOLINT(performance-unnecessary-value-param)
@@ -192,7 +190,7 @@ constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
  */
 bool execute_dump(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
@@ -214,7 +212,7 @@ bool execute_dump(
  */
 bool execute_load(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> const& tx,
+    std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::vector<std::string> files,

@@ -16,6 +16,7 @@
 #include <jogasaki/api.h>
 
 #include <thread>
+#include <future>
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
@@ -167,4 +168,66 @@ TEST_F(transaction_test, tx_destroyed_while_query_is_still_running) {
     VLOG(log_info) << "**** destroying tx completed ***";
     while(! run0.load()) {}
 }
+
+TEST_F(transaction_test, tx_destroyed_from_other_threads) {
+    // verify crash doesn't occur even tx handle is destroyed suddenly by the other threads
+    utils::set_global_tx_option(utils::create_tx_option{false, true}); // use occ to finish insert quickly
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
+    for(std::size_t i=0; i < 3; ++i) {
+        execute_statement("INSERT INTO T VALUES ("+std::to_string(i)+")");
+    }
+
+    std::unique_ptr<api::executable_statement> stmt0{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T ORDER BY C0", stmt0));
+
+    std::atomic_bool run0{false};
+    std::atomic_size_t destroyed_f1 = 0;
+    std::atomic_size_t destroyed_f2 = 0;
+    std::atomic_size_t execute_rejected = 0;
+    api::transaction_handle tx{};
+    std::size_t num_statements = 100;
+
+    auto f1 = std::async(std::launch::async, [&]() {
+        for(std::size_t i=0; i < num_statements; ++i) {
+            test_channel ch0{};
+            std::atomic_bool run0{false};
+            ASSERT_EQ(status::ok, db_->create_transaction(tx));
+            std::this_thread::sleep_for(10us);
+            ASSERT_TRUE(tx.execute_async(
+                maybe_shared_ptr{stmt0.get()},
+                maybe_shared_ptr{&ch0},
+                [&](status st, std::string_view msg) {
+                    if (st != status::ok) {
+                        if(st == status::err_invalid_argument) {
+                            ++execute_rejected;
+                            return;
+                        }
+                        LOG(ERROR) << st;
+                    }
+                }
+            ));
+            if(db_->destroy_transaction(tx) == status::ok) {
+                ++destroyed_f1;
+            }
+        }
+        run0 = true;
+    });
+    auto f2 = std::async(std::launch::async, [&]() {
+        while(! run0) {
+            std::this_thread::sleep_for(100us);
+            if(tx) {
+                if(db_->destroy_transaction(tx) == status::ok) {
+                    ++destroyed_f2;
+                }
+            }
+        }
+    });
+    while(! run0.load()) {}
+    std::cerr << "destroyed_f1:" << destroyed_f1 << std::endl;
+    std::cerr << "destroyed_f2:" << destroyed_f2 << std::endl;
+    std::cerr << "execute_rejected:" << execute_rejected << std::endl;
 }
+
+
+}
+

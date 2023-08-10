@@ -16,6 +16,7 @@
 #include <jogasaki/api.h>
 
 #include <thread>
+#include <atomic>
 #include <future>
 #include <gtest/gtest.h>
 #include <glog/logging.h>
@@ -186,17 +187,22 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     std::atomic_size_t execute_rejected = 0;
     api::transaction_handle tx{};
     std::size_t num_statements = 100;
+    std::vector<std::unique_ptr<std::atomic_bool>> finished{};
+    finished.reserve(num_statements);
+    for(std::size_t i=0; i < num_statements; ++i) {
+        finished.emplace_back(std::make_unique<std::atomic_bool>(false));
+    }
 
     auto f1 = std::async(std::launch::async, [&]() {
         for(std::size_t i=0; i < num_statements; ++i) {
-            test_channel ch0{};
-            std::atomic_bool run0{false};
             ASSERT_EQ(status::ok, db_->create_transaction(tx));
             std::this_thread::sleep_for(10us);
+            auto ch0 = std::make_shared<test_channel>();
             ASSERT_TRUE(tx.execute_async(
                 maybe_shared_ptr{stmt0.get()},
-                maybe_shared_ptr{&ch0},
-                [&](status st, std::string_view msg) {
+                ch0,
+                [&, ch0, i](status st, std::string_view msg) {
+                    *finished[i] = true;
                     if (st != status::ok) {
                         if(st == status::err_invalid_argument) {
                             ++execute_rejected;
@@ -206,19 +212,24 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
                     }
                 }
             ));
-            if(db_->destroy_transaction(tx) == status::ok) {
-                ++destroyed_f1;
+            if(tx) {
+                if(db_->destroy_transaction(tx) == status::ok) {
+                    ++destroyed_f1;
+                }
+                tx = {};
             }
         }
+        while(! std::all_of(finished.begin(), finished.end(), [](auto& arg) { return static_cast<bool>(*arg); })) {}
         run0 = true;
     });
     auto f2 = std::async(std::launch::async, [&]() {
         while(! run0) {
-            std::this_thread::sleep_for(100us);
+            std::this_thread::sleep_for(200us);
             if(tx) {
                 if(db_->destroy_transaction(tx) == status::ok) {
                     ++destroyed_f2;
                 }
+                tx = {};
             }
         }
     });

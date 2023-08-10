@@ -48,6 +48,7 @@ transaction_context* tx(std::uintptr_t arg) {
 }
 
 std::pair<api::impl::database*, std::shared_ptr<transaction_context>> cast(std::uintptr_t db, std::uintptr_t tx) {
+    if(! db) return {};
     auto* dbp = reinterpret_cast<api::impl::database*>(db);  //NOLINT
     auto t = dbp->find_transaction(transaction_handle{tx, db});
     return {dbp, std::move(t)};
@@ -55,27 +56,35 @@ std::pair<api::impl::database*, std::shared_ptr<transaction_context>> cast(std::
 
 status transaction_handle::commit() {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
+    if(! tx) return status::err_invalid_argument;
     return executor::commit(*db, tx);
 }
 
 void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
+    if(! tx) {
+        on_completion(status::err_invalid_argument, "invalid tx handle");
+        return;
+    }
     executor::commit_async(*db, tx, std::move(on_completion));
 }
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
+    if(! tx) return status::err_invalid_argument;
     (void) db;
     return executor::abort(tx);
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
+    if(! tx) return status::err_invalid_argument;
     std::unique_ptr<api::result_set> result{};
     return executor::execute(*db, tx, statement, result);
 }
 
 status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
+    if(! tx) return status::err_invalid_argument;
     return executor::execute(*db, tx, statement, result);
 }
 
@@ -85,11 +94,14 @@ status transaction_handle::execute( //NOLINT
     std::unique_ptr<result_set>& result
 ) {
     auto [db, tx] = cast(db_, body_);
+    if(! tx) return status::err_invalid_argument;
     return executor::execute(*db, tx, prepared, std::move(parameters), result);
 }
 
-bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
-    transaction_handle::callback on_completion) {
+bool transaction_handle::execute_async(
+    maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
+    transaction_handle::callback on_completion
+) {
     auto [db, tx] = cast(db_, body_);
     return executor::execute_async(
         *db,
@@ -100,10 +112,16 @@ bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> co
     );
 }
 
-bool transaction_handle::execute_async(maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
-    maybe_shared_ptr<data_channel> const& channel, transaction_handle::callback on_completion) {
-
+bool transaction_handle::execute_async(
+    maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
+    maybe_shared_ptr<data_channel> const& channel,
+    transaction_handle::callback on_completion
+) {
     auto [db, tx] = cast(db_, body_);
+    if(! tx) {
+        on_completion(status::err_invalid_argument, "invalid tx handle");
+        return true;
+    }
     return executor::execute_async(
         *db,
         tx,

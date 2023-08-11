@@ -48,7 +48,7 @@ transaction_context* tx(std::uintptr_t arg) {
 }
 
 std::pair<api::impl::database*, std::shared_ptr<transaction_context>> cast(std::uintptr_t db, std::uintptr_t tx) {
-    if(! db) return {};
+    if(db == 0) return {};
     auto* dbp = reinterpret_cast<api::impl::database*>(db);  //NOLINT
     auto t = dbp->find_transaction(transaction_handle{tx, db});
     return {dbp, std::move(t)};
@@ -98,8 +98,8 @@ status transaction_handle::execute( //NOLINT
     return executor::execute(*db, tx, prepared, std::move(parameters), result);
 }
 
-bool transaction_handle::execute_async(
-    maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
+bool transaction_handle::execute_async(   //NOLINT(readability-make-member-function-const)
+    maybe_shared_ptr<executable_statement> const& statement,
     transaction_handle::callback on_completion
 ) {
     auto [db, tx] = cast(db_, body_);
@@ -112,8 +112,8 @@ bool transaction_handle::execute_async(
     );
 }
 
-bool transaction_handle::execute_async(
-    maybe_shared_ptr<executable_statement> const& statement,  //NOLINT(readability-make-member-function-const)
+bool transaction_handle::execute_async(  //NOLINT(readability-make-member-function-const)
+    maybe_shared_ptr<executable_statement> const& statement,
     maybe_shared_ptr<data_channel> const& channel,
     transaction_handle::callback on_completion
 ) {

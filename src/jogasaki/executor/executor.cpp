@@ -66,7 +66,7 @@ std::shared_ptr<request_context> create_request_context(
 ) {
     return api::impl::create_request_context(
         std::addressof(database),
-        tx,
+        std::move(tx),
         channel,
         std::move(resource),
         std::move(request_detail)
@@ -90,7 +90,7 @@ bool execute_internal(
     log_request(*req);
 
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
-    auto rctx = details::create_request_context(database, tx, channel, s.resource(), std::move(req));
+    auto rctx = details::create_request_context(database, std::move(tx), channel, s.resource(), std::move(req));
     rctx->lightweight(
         stmt->mirrors()->work_level().value() <=
         static_cast<std::int32_t>(rctx->configuration()->lightweight_job_level())
@@ -125,7 +125,7 @@ status commit(
     status ret{};
     auto jobid = commit_async(
             database,
-            tx,
+            std::move(tx),
             [&](status st, std::string_view m){
                 ret = st;
                 if(st != status::ok) {
@@ -138,7 +138,7 @@ status commit(
 }
 
 status abort(
-    std::shared_ptr<transaction_context> tx
+    std::shared_ptr<transaction_context> tx  //NOLINT(performance-unnecessary-value-param)
 ) {
     std::string txid{tx->transaction_id()};
     auto ret = tx->object()->abort();
@@ -161,7 +161,7 @@ status execute(
     std::string msg{};
     details::execute_internal(
             database,
-            tx,
+            std::move(tx),
             maybe_shared_ptr{std::addressof(statement)},
             ch,
             [&](status st, std::string_view m) {
@@ -188,7 +188,7 @@ status execute(
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
     status ret{};
     std::string msg{};
-    execute_async(database, tx, prepared, std::move(parameters), ch, [&](status st, std::string_view m){
+    execute_async(database, std::move(tx), prepared, std::move(parameters), ch, [&](status st, std::string_view m){
         ret = st;
         msg = m;
     }, true);
@@ -198,7 +198,7 @@ status execute(
 
 bool execute_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> tx,
+    std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
@@ -253,7 +253,7 @@ bool execute_async(
 ) {
     return details::execute_internal(
         database,
-        tx,
+        std::move(tx),
         statement,
         channel ?
             maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::record_channel_adapter>(channel)} :
@@ -283,7 +283,7 @@ bool execute_dump(
     );
     return details::execute_internal(
         database,
-        tx,
+        std::move(tx),
         statement,
         dump_ch,
         [on_completion=std::move(on_completion), dump_ch, cfg](status st, std::string_view msg) {
@@ -392,7 +392,7 @@ bool execute_async_on_context(
 
 bool execute_load(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> tx,
+    std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::vector<std::string> files,
@@ -442,7 +442,7 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
 
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> tx,
+    std::shared_ptr<transaction_context> tx, //NOLINT(performance-unnecessary-value-param)
     callback on_completion
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);

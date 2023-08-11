@@ -978,6 +978,10 @@ std::shared_ptr<transaction_context> database::find_transaction(api::transaction
     return {};
 }
 
+std::size_t database::transaction_count() const {
+    return transactions_.size();
+}
+
 }
 
 namespace jogasaki::api {

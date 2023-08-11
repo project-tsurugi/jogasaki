@@ -114,6 +114,8 @@ public:
         api::transaction_handle handle
     ) override;
 
+    [[nodiscard]] std::size_t transaction_count() const;
+
     [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
 
     status dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) override;

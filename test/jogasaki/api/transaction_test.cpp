@@ -39,6 +39,8 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
 
+using impl::get_impl;
+
 /**
  * @brief test database api
  */
@@ -168,6 +170,7 @@ TEST_F(transaction_test, tx_destroyed_while_query_is_still_running) {
     ASSERT_EQ(status::ok, db_->destroy_transaction(tx));
     VLOG(log_info) << "**** destroying tx completed ***";
     while(! run0.load()) {}
+    ASSERT_EQ(0, get_impl(*db_).transaction_count());
 }
 
 TEST_F(transaction_test, tx_destroyed_from_other_threads) {
@@ -185,7 +188,7 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     std::atomic_size_t destroyed_f1 = 0;
     std::atomic_size_t destroyed_f2 = 0;
     std::atomic_size_t execute_rejected = 0;
-    api::transaction_handle tx{};
+    std::atomic<api::transaction_handle> tx{};
     std::size_t num_statements = 100;
     std::vector<std::unique_ptr<std::atomic_bool>> finished{};
     finished.reserve(num_statements);
@@ -195,10 +198,13 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
 
     auto f1 = std::async(std::launch::async, [&]() {
         for(std::size_t i=0; i < num_statements; ++i) {
-            ASSERT_EQ(status::ok, db_->create_transaction(tx));
+            api::transaction_handle t{};
+            ASSERT_EQ(status::ok, db_->create_transaction(t));
+            tx = t;
             std::this_thread::sleep_for(10us);
             auto ch0 = std::make_shared<test_channel>();
-            ASSERT_TRUE(tx.execute_async(
+            t = tx;
+            ASSERT_TRUE(t.execute_async(
                 maybe_shared_ptr{stmt0.get()},
                 ch0,
                 [&, ch0, i](status st, std::string_view msg) {
@@ -212,11 +218,12 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
                     }
                 }
             ));
-            if(tx) {
+            t = tx;
+            if(t) {
                 if(db_->destroy_transaction(tx) == status::ok) {
                     ++destroyed_f1;
                 }
-                tx = {};
+                tx = transaction_handle{};
             }
         }
         while(! std::all_of(finished.begin(), finished.end(), [](auto& arg) { return static_cast<bool>(*arg); })) {}
@@ -225,11 +232,12 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     auto f2 = std::async(std::launch::async, [&]() {
         while(! run0) {
             std::this_thread::sleep_for(200us);
-            if(tx) {
-                if(db_->destroy_transaction(tx) == status::ok) {
+            api::transaction_handle t{tx.load()};
+            if(t) {
+                if(db_->destroy_transaction(t) == status::ok) {
                     ++destroyed_f2;
                 }
-                tx = {};
+                tx = transaction_handle{};
             }
         }
     });
@@ -238,6 +246,7 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     std::cerr << "destroyed_f1:" << destroyed_f1 << std::endl;
     std::cerr << "destroyed_f2:" << destroyed_f2 << std::endl;
     std::cerr << "execute_rejected:" << execute_rejected << std::endl;
+    ASSERT_EQ(0, get_impl(*db_).transaction_count());
 }
 
 

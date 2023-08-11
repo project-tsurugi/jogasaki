@@ -520,7 +520,7 @@ status database::destroy_transaction(
     if (transactions_.find(acc, handle)) {
         transactions_.erase(acc);
     } else {
-        VLOG_LP(log_warning) << "destroy_statement for invalid handle";
+        VLOG_LP(log_warning) << "invalid handle";
         return status::not_found;
     }
     return status::ok;

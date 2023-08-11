@@ -173,6 +173,49 @@ TEST_F(transaction_test, tx_destroyed_while_query_is_still_running) {
     ASSERT_EQ(0, get_impl(*db_).transaction_count());
 }
 
+using callback_type = std::function<void(std::size_t)>;
+
+void execute_n(
+    std::function<void(std::size_t, callback_type)> f,
+    std::function<void(void)> finally,
+    std::size_t n
+) {
+    const auto cb = [f, finally, n](std::size_t i) {
+        auto cb_impl = [f, finally, n](std::size_t k, auto& cb_ref) -> void {
+            if(k+1 < n) {
+                f(k+1, [cb_ref](std::size_t j) {
+                    cb_ref(j, cb_ref);
+                });
+            } else {
+                finally();
+            }
+        };
+        cb_impl(i, cb_impl);
+    };
+    f(0, cb);
+}
+
+TEST_F(transaction_test, execute_n) {
+    // test execute_n utility function
+    std::vector<std::size_t> result{};
+    std::atomic_bool called = false;
+    execute_n(
+        [&](std::size_t i, callback_type cb) {
+            ASSERT_EQ(i, result.size());
+            result.emplace_back(i);
+            cb(i);
+        },
+        [&]() {
+            called = true;
+            ASSERT_EQ(10, result.size());
+            ASSERT_EQ(0, result[0]);
+            ASSERT_EQ(9, result[9]);
+        },
+        10
+    );
+    ASSERT_TRUE(called);
+}
+
 TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     // verify crash doesn't occur even tx handle is destroyed suddenly by the other threads
     utils::set_global_tx_option(utils::create_tx_option{false, true}); // use occ to finish insert quickly
@@ -185,56 +228,56 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T ORDER BY C0", stmt0));
 
     std::atomic_bool run0{false};
+    std::atomic_size_t statements_executed = 0;
     std::atomic_size_t destroyed_f1 = 0;
     std::atomic_size_t destroyed_f2 = 0;
     std::atomic_size_t execute_rejected = 0;
     std::atomic<api::transaction_handle> tx{};
     std::size_t num_statements = 100;
-    std::vector<std::unique_ptr<std::atomic_bool>> finished{};
-    finished.reserve(num_statements);
-    for(std::size_t i=0; i < num_statements; ++i) {
-        finished.emplace_back(std::make_unique<std::atomic_bool>(false));
-    }
 
     auto f1 = std::async(std::launch::async, [&]() {
-        for(std::size_t i=0; i < num_statements; ++i) {
-            api::transaction_handle t{};
-            ASSERT_EQ(status::ok, db_->create_transaction(t));
-            tx = t;
-            std::this_thread::sleep_for(10us);
-            auto ch0 = std::make_shared<test_channel>();
-            t = tx;
-            ASSERT_TRUE(t.execute_async(
-                maybe_shared_ptr{stmt0.get()},
-                ch0,
-                [&, ch0, i](status st, std::string_view msg) {
-                    *finished[i] = true;
-                    if (st != status::ok) {
-                        if(st == status::err_invalid_argument) {
-                            ++execute_rejected;
-                            return;
+        // repeat create tx, execute statement, destroy tx
+        execute_n(
+            [&](std::size_t i, callback_type cb) {
+                db_->create_transaction_async([&, cb, i](transaction_handle t, status st, std::string_view msg) {
+                    tx = t;
+                    std::this_thread::sleep_for(10us);
+                    auto ch0 = std::make_shared<test_channel>();
+                    t = tx;
+                    t.execute_async(
+                        maybe_shared_ptr{stmt0.get()},
+                        ch0,
+                        [&, ch0, i, cb](status st, std::string_view msg) {
+                            ++statements_executed;
+                            if (st != status::ok) {
+                                if(st == status::err_invalid_argument) {
+                                    ++execute_rejected;
+                                } else {
+                                    LOG(ERROR) << st;
+                                }
+                            }
+                            if(static_cast<transaction_handle>(tx)) {
+                                if(db_->destroy_transaction(tx) == status::ok) {
+                                    ++destroyed_f1;
+                                }
+                                tx = transaction_handle{};
+                            }
+                            cb(i);
                         }
-                        LOG(ERROR) << st;
-                    }
-                }
-            ));
-            t = tx;
-            if(t) {
-                if(db_->destroy_transaction(tx) == status::ok) {
-                    ++destroyed_f1;
-                }
-                tx = transaction_handle{};
-            }
-        }
-        while(! std::all_of(finished.begin(), finished.end(), [](auto& arg) { return static_cast<bool>(*arg); })) {}
-        run0 = true;
+                    );
+                });
+            },
+            [&]() {
+                run0 = true;
+            },
+            num_statements
+        );
     });
     auto f2 = std::async(std::launch::async, [&]() {
         while(! run0) {
-            std::this_thread::sleep_for(200us);
-            api::transaction_handle t{tx.load()};
-            if(t) {
-                if(db_->destroy_transaction(t) == status::ok) {
+            std::this_thread::sleep_for(5ms);
+            if(static_cast<api::transaction_handle>(tx)) {
+                if(db_->destroy_transaction(tx) == status::ok) {
                     ++destroyed_f2;
                 }
                 tx = transaction_handle{};
@@ -243,6 +286,7 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     });
     while(! run0.load()) {}
     // manually check most are destroyed by f2, and some are execute_rejected (invalid handle)
+    std::cerr << "statements_executed:" << statements_executed << std::endl;
     std::cerr << "destroyed_f1:" << destroyed_f1 << std::endl;
     std::cerr << "destroyed_f2:" << destroyed_f2 << std::endl;
     std::cerr << "execute_rejected:" << execute_rejected << std::endl;

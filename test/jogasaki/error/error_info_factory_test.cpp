@@ -34,7 +34,7 @@ using namespace boost::container::pmr;
 class error_info_factory_test : public test_root {};
 
 TEST_F(error_info_factory_test, basic) {
-    auto errinfo = create_error_info(error_code::none, "msg");
+    auto errinfo = create_error_info(error_code::sql_service_exception, "msg");
     LOG(INFO) << "error info:" << *errinfo;
 }
 

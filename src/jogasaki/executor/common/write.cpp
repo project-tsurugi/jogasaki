@@ -25,6 +25,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
@@ -115,7 +116,14 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     if(kind_ == write_kind::insert) {
                         // integrity violation should be handled in SQL layer and forces transaction abort
                         // status::already_exists is an internal code, raise it as constraint violation
+                        auto err = create_error_info(
+                            error::code::unique_constraint_violation_exception,
+                            ""
+                        );
                         res = status::err_unique_constraint_violation;
+                        err->status(res);
+                        tx->error_info(err);
+                        context.error_info(err);
                         abort_transaction(*tx);
                     } else {
                         // write_kind::insert_skip

@@ -22,9 +22,17 @@
 
 namespace jogasaki::error {
 
-std::shared_ptr<error_info> create_error_info(
+#define stringify1(x) #x
+#define stringify2(x) stringify1(x)
+#define line_number_string stringify2(__LINE__)
+
+#define create_error_info(code, msg) create_error_info_impl(code, msg, __FILE__, line_number_string)
+
+std::shared_ptr<error_info> create_error_info_impl(
     code error_code,
-    std::string_view message = {}
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view location
 );
 
 }

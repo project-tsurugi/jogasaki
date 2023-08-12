@@ -52,73 +52,79 @@ public:
      */
     explicit error_info(
         code error_code,
-        std::string_view message = {}
-    ) noexcept :
-        error_code_(error_code),
-        message_(message)
-    {}
-
-    /**
-     * @brief setter for the error_info information
-     * @param msg the error_info message string
-     */
-    void set(std::string_view msg) noexcept {
-        message_ = msg;
-    }
+        std::string_view message,
+        std::string_view filepath,
+        std::string_view location,
+        std::string_view stacks
+    ) noexcept;
 
     /**
      * @brief accessor to the error_info message
      * @return the message string
      */
-    [[nodiscard]] std::string_view message() const noexcept {
-        return message_;
-    }
+    [[nodiscard]] std::string_view message() const noexcept;
 
     /**
      * @brief accessor to the error_info message
      * @return the message string
      */
-    [[nodiscard]] code error_code() const noexcept {
-        return error_code_;
-    }
-
-    /**
-     * @brief returns whether the error_info contains non-empty information
-     * @return true if the error_info is not empty
-     * @return false otherwise
-     */
-    [[nodiscard]] explicit operator bool() const noexcept {
-        return ! message_.empty();
-    }
-
-    /**
-     * @brief clear and reset the error_info content
-     */
-    void clear() noexcept {
-        message_.clear();
-    }
+    [[nodiscard]] code error_code() const noexcept;
 
     /**
      * @brief set status
      * @deprecated left for compatibility
      */
-    void status(jogasaki::status st) noexcept {
-        status_ = st;
-    }
+    void status(jogasaki::status st) noexcept;
 
     /**
      * @brief accessor to the status
      * @return the status
      * @deprecated left for compatibility
      */
-    [[nodiscard]] jogasaki::status status() const noexcept {
-        return status_;
-    }
+    [[nodiscard]] jogasaki::status status() const noexcept;
+
+    /**
+     * @brief fetch source file path
+     * @return the source file path
+     */
+    [[nodiscard]] std::string_view source_file_path() const noexcept;
+
+    /**
+     * @brief fetch the position in the source file
+     * @return the position in the source file
+     */
+    [[nodiscard]] std::string_view source_file_position() const noexcept;
+
+    /**
+     * @brief fetch error supplemental message
+     * @return the supplemental text string
+     */
+    [[nodiscard]] std::string_view supplemental_text() const noexcept;
+
 private:
     code error_code_{};
     std::string message_{};
     jogasaki::status status_{};
+    std::string source_file_path_{};
+    std::string source_file_position_{};
+    std::string stacks_{};
+
 };
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, error_info const& value) {
+    return out << value.error_code() << " "
+        << value.status() << " "
+        << value.message() << " "
+        << value.source_file_path() << " "
+        << value.source_file_position() << " "
+        << value.supplemental_text();
+}
 
 }
 

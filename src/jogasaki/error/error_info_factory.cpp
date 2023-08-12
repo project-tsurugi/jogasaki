@@ -15,13 +15,20 @@
  */
 #include "error_info_factory.h"
 
+#include <sstream>
+#include <takatori/util/stacktrace.h>
+
 namespace jogasaki::error {
 
-std::shared_ptr<error_info> create_error_info(
+std::shared_ptr<error_info> create_error_info_impl(
     code error_code,
-    std::string_view message
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view location
 ) {
-    return std::make_shared<error_info>(error_code, message);
+    std::stringstream ss{};
+    ss << ::boost::stacktrace::stacktrace{};
+    return std::make_shared<error_info>(error_code, message, filepath, location, ss.str());
 }
 
 }

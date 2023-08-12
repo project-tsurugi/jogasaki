@@ -243,11 +243,10 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
                     tx = t;
                     std::this_thread::sleep_for(10us);
                     auto ch0 = std::make_shared<test_channel>();
-                    t = tx;
                     t.execute_async(
                         maybe_shared_ptr{stmt0.get()},
                         ch0,
-                        [&, ch0, i, cb](status st, std::string_view msg) {
+                        [&, ch0, i, cb, t](status st, std::string_view msg) {
                             ++statements_executed;
                             if (st != status::ok) {
                                 if(st == status::err_invalid_argument) {
@@ -256,12 +255,11 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
                                     LOG(ERROR) << st;
                                 }
                             }
-                            if(static_cast<transaction_handle>(tx)) {
-                                if(db_->destroy_transaction(tx) == status::ok) {
-                                    ++destroyed_f1;
-                                }
-                                tx = transaction_handle{};
+                            if(db_->destroy_transaction(t) == status::ok) {
+                                ++destroyed_f1;
                             }
+                            transaction_handle tmp = t;
+                            tx.compare_exchange_strong(tmp, transaction_handle{});
                             cb(i);
                         }
                     );
@@ -276,11 +274,11 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     auto f2 = std::async(std::launch::async, [&]() {
         while(! run0) {
             std::this_thread::sleep_for(5ms);
-            if(static_cast<api::transaction_handle>(tx)) {
-                if(db_->destroy_transaction(tx) == status::ok) {
+            if(auto t = static_cast<api::transaction_handle>(tx)) {
+                if(db_->destroy_transaction(t) == status::ok) {
                     ++destroyed_f2;
                 }
-                tx = transaction_handle{};
+                tx.compare_exchange_strong(t, transaction_handle{});
             }
         }
     });
@@ -290,6 +288,107 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
     std::cerr << "destroyed_f1:" << destroyed_f1 << std::endl;
     std::cerr << "destroyed_f2:" << destroyed_f2 << std::endl;
     std::cerr << "execute_rejected:" << execute_rejected << std::endl;
+    ASSERT_EQ(0, get_impl(*db_).transaction_count());
+}
+
+TEST_F(transaction_test, tx_aborted_from_other_threads) {
+    // verify crash doesn't occur even tx is aborted by operation on different thread
+    // and the error info is available then
+    utils::set_global_tx_option(utils::create_tx_option{false, true}); // use occ to finish insert quickly
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
+    for(std::size_t i=0; i < 5; ++i) {
+        execute_statement("INSERT INTO T VALUES ("+std::to_string(i)+")");
+    }
+
+    std::unique_ptr<api::executable_statement> stmt0{};
+    ASSERT_EQ(status::ok, db_->create_executable("SELECT * FROM T ORDER BY C0", stmt0));
+
+    // statement causing PK violation and tx abort
+    std::unique_ptr<api::executable_statement> stmt1{};
+    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T VALUES(0)", stmt1));
+
+    std::atomic_bool run0{false};
+    std::atomic_size_t statements_executed = 0;
+    std::atomic_size_t destroyed_f1 = 0;
+    std::atomic_size_t aborted_f2 = 0;
+    std::atomic_size_t execute_rejected = 0;
+    std::atomic_size_t inactive_tx = 0;
+    std::atomic<api::transaction_handle> tx{};
+    std::size_t num_statements = 100;
+
+    auto f1 = std::async(std::launch::async, [&]() {
+        // repeat create tx, execute statement, destroy tx
+        execute_n(
+            [&](std::size_t i, callback_type cb) {
+                db_->create_transaction_async([&, cb, i](transaction_handle t, status st, std::string_view msg) {
+                    tx = t;
+                    std::this_thread::sleep_for(10us);
+                    auto ch0 = std::make_shared<test_channel>();
+                    t.execute_async(
+                        maybe_shared_ptr{stmt0.get()},
+                        ch0,
+                        [&, ch0, i, cb, t](status st, std::string_view msg) {
+                            ++statements_executed;
+                            if (st != status::ok) {
+                                if(st == status::err_invalid_argument) {
+                                    ++execute_rejected;
+                                } else if(st == status::err_inactive_transaction) {
+                                    ++inactive_tx;
+                                    // use EXPECT_ macros in lamda, otherwise gtest failed to detect failure
+                                    EXPECT_TRUE(t.get());
+                                    auto info = reinterpret_cast<transaction_context*>(t.get())->error_info();
+                                    EXPECT_TRUE(info);
+                                    EXPECT_EQ(status::err_unique_constraint_violation, info->status());
+                                    EXPECT_EQ(error::code::unique_constraint_violation_exception, info->error_code());
+                                } else {
+                                    LOG(ERROR) << st;
+                                }
+                            }
+                            if(db_->destroy_transaction(t) == status::ok) {
+                                ++destroyed_f1;
+                                transaction_handle tmp = t;
+                                tx.compare_exchange_strong(tmp, transaction_handle{});
+                            }
+                            cb(i);
+                        }
+                    );
+                });
+            },
+            [&]() {
+                run0 = true;
+            },
+            num_statements
+        );
+    });
+    auto f2 = std::async(std::launch::async, [&]() {
+        while(! run0) {
+            std::this_thread::sleep_for(2ms);
+            if(auto t = static_cast<api::transaction_handle>(tx)) {
+                // calling abort directly is not thread safe (abort will not work on sticky worker yet)
+                t.execute_async(
+                    maybe_shared_ptr{stmt1.get()},
+                    [&](status st, std::string_view msg) {
+                        if (st == status::err_unique_constraint_violation) {
+                            ++aborted_f2;
+                        } else if (st == status::err_invalid_argument || st == status::err_inactive_transaction) {
+                            // tx already disposed or inactive - noop
+                        } else if (st != status::ok) {
+                            LOG(ERROR) << st;
+                        }
+                    }
+                );
+            }
+        }
+    });
+    while(! run0.load()) {}
+    // manually check most tx are aborted by f2, and f1 met some inactive tx
+    std::cerr << "statements_executed:" << statements_executed << std::endl;
+    std::cerr << "inactive_tx:" << inactive_tx << std::endl;
+    std::cerr << "destroyed_f1:" << destroyed_f1 << std::endl;
+    std::cerr << "aborted_f2:" << aborted_f2 << std::endl;
+    std::cerr << "execute_rejected:" << execute_rejected << std::endl;
+    ASSERT_LT(0, inactive_tx); // verify at least one inactive tx
+    ASSERT_LT(0, aborted_f2); // verify at least one inactive tx
     ASSERT_EQ(0, get_impl(*db_).transaction_count());
 }
 

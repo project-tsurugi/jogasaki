@@ -103,6 +103,10 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
     transaction_handle::callback on_completion
 ) {
     auto [db, tx] = cast(db_, body_);
+    if(! tx) {
+        on_completion(status::err_invalid_argument, "invalid tx handle");
+        return true;
+    }
     return executor::execute_async(
         *db,
         tx,

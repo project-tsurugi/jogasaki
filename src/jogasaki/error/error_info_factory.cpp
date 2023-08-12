@@ -21,14 +21,14 @@
 namespace jogasaki::error {
 
 std::shared_ptr<error_info> create_error_info_impl(
-    code error_code,
+    jogasaki::error_code code,
     std::string_view message,
     std::string_view filepath,
     std::string_view location
 ) {
     std::stringstream ss{};
     ss << ::boost::stacktrace::stacktrace{};
-    return std::make_shared<error_info>(error_code, message, filepath, location, ss.str());
+    return std::make_shared<error_info>(code, message, filepath, location, ss.str());
 }
 
 }

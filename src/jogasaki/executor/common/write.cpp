@@ -117,7 +117,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         // integrity violation should be handled in SQL layer and forces transaction abort
                         // status::already_exists is an internal code, raise it as constraint violation
                         auto err = create_error_info(
-                            error::code::unique_constraint_violation_exception,
+                            error_code::unique_constraint_violation_exception,
                             ""
                         );
                         res = status::err_unique_constraint_violation;

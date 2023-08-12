@@ -18,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#include <jogasaki/error/code.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::error {
@@ -34,7 +34,7 @@ using namespace boost::container::pmr;
 class error_info_factory_test : public test_root {};
 
 TEST_F(error_info_factory_test, basic) {
-    auto errinfo = create_error_info(code::none, "msg");
+    auto errinfo = create_error_info(error_code::none, "msg");
     LOG(INFO) << "error info:" << *errinfo;
 }
 

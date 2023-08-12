@@ -17,7 +17,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/error/code.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/error/error_info.h>
 
 namespace jogasaki::error {
@@ -26,10 +26,10 @@ namespace jogasaki::error {
 #define stringify2(x) stringify1(x)
 #define line_number_string stringify2(__LINE__)
 
-#define create_error_info(code, msg) create_error_info_impl(code, msg, __FILE__, line_number_string)
+#define create_error_info(code, msg) jogasaki::error::create_error_info_impl(code, msg, __FILE__, line_number_string)
 
 std::shared_ptr<error_info> create_error_info_impl(
-    code error_code,
+    jogasaki::error_code code,
     std::string_view message,
     std::string_view filepath,
     std::string_view location

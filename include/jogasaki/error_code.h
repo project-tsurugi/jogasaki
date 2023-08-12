@@ -20,12 +20,12 @@
 #include <string_view>
 #include <ostream>
 
-namespace jogasaki::error {
+namespace jogasaki {
 
 /**
  * @brief error code
  */
-enum class code : std::int64_t {
+enum class error_code : std::int64_t {
     none = 0,
     sql_service_exception = 1,
     sql_execution_exception = 2,
@@ -88,8 +88,9 @@ enum class code : std::int64_t {
  * @param value the target value
  * @return the corresponded string representation
  */
-[[nodiscard]] constexpr inline std::string_view to_string_view(code value) noexcept {
+[[nodiscard]] constexpr inline std::string_view to_string_view(error_code value) noexcept {
     using namespace std::string_view_literals;
+    using code = error_code;
     switch (value) {
         case code::none: return "none"sv;
         case code::sql_service_exception: return "sql_service_exception"sv;
@@ -156,7 +157,7 @@ enum class code : std::int64_t {
  * @param value the target value
  * @return the output
  */
-inline std::ostream& operator<<(std::ostream& out, code value) {
+inline std::ostream& operator<<(std::ostream& out, error_code value) {
     return out << to_string_view(value);
 }
 

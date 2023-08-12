@@ -18,8 +18,8 @@
 #include <string>
 #include <string_view>
 
+#include <jogasaki/error_code.h>
 #include <jogasaki/status.h>
-#include <jogasaki/error/code.h>
 
 namespace jogasaki::error {
 
@@ -51,7 +51,7 @@ public:
      * @brief create new object
      */
     explicit error_info(
-        code error_code,
+        error_code code,
         std::string_view message,
         std::string_view filepath,
         std::string_view location,
@@ -59,16 +59,16 @@ public:
     ) noexcept;
 
     /**
-     * @brief accessor to the error_info message
+     * @brief accessor to the error message
      * @return the message string
      */
     [[nodiscard]] std::string_view message() const noexcept;
 
     /**
-     * @brief accessor to the error_info message
-     * @return the message string
+     * @brief accessor to the error code
+     * @return the error code
      */
-    [[nodiscard]] code error_code() const noexcept;
+    [[nodiscard]] jogasaki::error_code code() const noexcept;
 
     /**
      * @brief set status
@@ -102,7 +102,7 @@ public:
     [[nodiscard]] std::string_view supplemental_text() const noexcept;
 
 private:
-    code error_code_{};
+    jogasaki::error_code error_code_{};
     std::string message_{};
     jogasaki::status status_{};
     std::string source_file_path_{};
@@ -118,7 +118,7 @@ private:
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, error_info const& value) {
-    return out << value.error_code() << " "
+    return out << value.code() << " "
         << value.status() << " "
         << value.message() << " "
         << value.source_file_path() << " "

@@ -19,18 +19,17 @@
 #include <string_view>
 
 #include <jogasaki/status.h>
-#include <jogasaki/error/code.h>
 
 namespace jogasaki::error {
 
 error_info::error_info(
-    code error_code,
+    error_code code,
     std::string_view message,
     std::string_view filepath,
     std::string_view position,
     std::string_view stacks
 ) noexcept :
-    error_code_(error_code),
+    error_code_(code),
     message_(message),
     source_file_path_(filepath),
     source_file_position_(position),
@@ -49,7 +48,7 @@ std::string_view error_info::message() const noexcept {
     return message_;
 }
 
-code error_info::error_code() const noexcept {
+jogasaki::error_code error_info::code() const noexcept {
     return error_code_;
 }
 

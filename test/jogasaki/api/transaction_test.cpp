@@ -339,7 +339,7 @@ TEST_F(transaction_test, tx_aborted_from_other_threads) {
                                     auto info = reinterpret_cast<transaction_context*>(t.get())->error_info();
                                     EXPECT_TRUE(info);
                                     EXPECT_EQ(status::err_unique_constraint_violation, info->status());
-                                    EXPECT_EQ(error::code::unique_constraint_violation_exception, info->error_code());
+                                    EXPECT_EQ(error_code::unique_constraint_violation_exception, info->code());
                                 } else {
                                     LOG(ERROR) << st;
                                 }

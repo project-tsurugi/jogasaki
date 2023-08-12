@@ -7,6 +7,7 @@ set(SqlProtoFiles
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/request.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/response.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/status.proto
+        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/error.proto
         )
 
 set(MetadataProtoFiles
@@ -22,6 +23,7 @@ add_custom_command(
         "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/request.proto"
         "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/response.proto"
         "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/status.proto"
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/error.proto"
         "${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql"
 )
 

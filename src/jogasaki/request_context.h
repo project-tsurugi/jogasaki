@@ -21,6 +21,7 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/transaction_context.h>
@@ -197,6 +198,18 @@ public:
      */
     [[nodiscard]] bool lightweight() const noexcept;
 
+    /**
+     * @brief setter for the error info
+     */
+    void error_info(std::shared_ptr<error::error_info> const& info) noexcept;
+
+    /**
+     * @brief accessor for the error info
+     * @return the error info for the request result
+     * @return nullptr if no error occurs
+     */
+    [[nodiscard]] std::shared_ptr<error::error_info> const& error_info() const noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -215,6 +228,7 @@ private:
     std::atomic<status> status_code_{status::ok};
     std::string status_message_{};
     bool lightweight_{};
+    std::shared_ptr<error::error_info> error_info_{};
 };
 
 /**

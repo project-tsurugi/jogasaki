@@ -18,6 +18,7 @@
 #include <atomic>
 #include <memory>
 
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/kvs/database.h>
 
 namespace jogasaki {
@@ -193,11 +194,23 @@ public:
      */
     [[nodiscard]] std::string_view transaction_id() noexcept;
 
+    /**
+     * @brief setter for the error info
+     */
+    void error_info(std::shared_ptr<error::error_info> const& info) noexcept;
+
+    /**
+     * @brief accessor for the error info
+     * @return the error info for the request result
+     * @return nullptr if no error occurs
+     */
+    [[nodiscard]] std::shared_ptr<error::error_info> const& error_info() const noexcept;
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
     details::worker_manager mgr_{};
     mutex_type mutex_{};
+    std::shared_ptr<error::error_info> error_info_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

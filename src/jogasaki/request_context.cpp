@@ -143,6 +143,14 @@ bool request_context::lightweight() const noexcept {
     return lightweight_;
 }
 
+void request_context::error_info(const std::shared_ptr<error::error_info> &info) noexcept {
+    error_info_ = std::move(info);
+}
+
+std::shared_ptr<error::error_info> const &request_context::error_info() const noexcept {
+    return error_info_;
+}
+
 void prepare_scheduler(request_context& rctx) {
     std::shared_ptr<scheduler::task_scheduler> sched{};
     if(rctx.configuration()->single_thread()) {

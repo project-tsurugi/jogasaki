@@ -89,6 +89,14 @@ std::string_view transaction_context::transaction_id() noexcept {
     return transaction_->transaction_id();
 }
 
+void transaction_context::error_info(const std::shared_ptr<error::error_info> &info) noexcept {
+    error_info_ = std::move(info);
+}
+
+std::shared_ptr<error::error_info> const &transaction_context::error_info() const noexcept {
+    return error_info_;
+}
+
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
 }
@@ -146,5 +154,6 @@ std::uint32_t details::worker_manager::use_count() const noexcept {
     std::size_t cur = use_count_and_worker_id_.load();
     return upper(cur);
 }
+
 }
 

@@ -22,11 +22,11 @@
 
 namespace jogasaki::error {
 
-#define stringify1(x) #x
-#define stringify2(x) stringify1(x)
+#define stringify1(x) #x //NOLINT
+#define stringify2(x) stringify1(x) //NOLINT
 #define line_number_string stringify2(__LINE__)
 
-#define create_error_info(code, msg) jogasaki::error::create_error_info_impl(code, msg, __FILE__, line_number_string)
+#define create_error_info(code, msg) jogasaki::error::create_error_info_impl(code, msg, __FILE__, line_number_string) //NOLINT
 
 std::shared_ptr<error_info> create_error_info_impl(
     jogasaki::error_code code,

@@ -54,7 +54,7 @@ public:
         error_code code,
         std::string_view message,
         std::string_view filepath,
-        std::string_view location,
+        std::string_view position,
         std::string_view stacks
     ) noexcept;
 

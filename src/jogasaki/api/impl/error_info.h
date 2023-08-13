@@ -93,7 +93,7 @@ private:
     std::shared_ptr<error::error_info> body_{};
 
 protected:
-    void write_to(std::ostream& os) const noexcept;
+    void write_to(std::ostream& os) const noexcept override;
 };
 
 }

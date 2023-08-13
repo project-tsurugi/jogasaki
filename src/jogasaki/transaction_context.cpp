@@ -89,8 +89,10 @@ std::string_view transaction_context::transaction_id() noexcept {
     return transaction_->transaction_id();
 }
 
-void transaction_context::error_info(const std::shared_ptr<error::error_info> &info) noexcept {
-    error_info_ = std::move(info);
+void transaction_context::error_info(
+    std::shared_ptr<error::error_info> const& info
+) noexcept {
+    error_info_ = info;
 }
 
 std::shared_ptr<error::error_info> const &transaction_context::error_info() const noexcept {

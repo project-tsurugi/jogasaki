@@ -24,6 +24,7 @@
 
 #include <jogasaki/status.h>
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/error_info.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/api/statement_handle.h>
@@ -215,6 +216,14 @@ public:
      * @return empty string when it's not available
      */
     [[nodiscard]] std::string_view transaction_id_unchecked() const noexcept;
+
+    /**
+     * @brief return the transaction error information
+     * @param out transaction error info (nullptr if the transaction error is not available)
+     * @return status::ok if successful
+     * @return status::err_invalid_argument if the transaction handle is invalid
+     */
+    [[nodiscard]] status error_info(std::shared_ptr<api::error_info>& out) const noexcept;
 
 private:
     std::uintptr_t body_{};

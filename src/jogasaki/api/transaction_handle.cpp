@@ -19,6 +19,7 @@
 #include <memory>
 
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/error_info.h>
 #include <jogasaki/executor/executor.h>
 
 namespace jogasaki::api {
@@ -158,5 +159,15 @@ std::string_view transaction_handle::transaction_id() const noexcept {
         return {};
     }
     return tx->transaction_id();
+}
+
+status transaction_handle::error_info(std::shared_ptr<api::error_info>& out) const noexcept {
+    out = {};
+    auto [db, tx] = cast(db_, body_);
+    if(! tx) return status::err_invalid_argument;
+    if(tx->error_info()) {
+        out = std::make_shared<api::impl::error_info>(tx->error_info());
+    }
+    return status::ok;
 }
 }

@@ -335,8 +335,8 @@ TEST_F(transaction_test, tx_aborted_from_other_threads) {
                                 } else if(st == status::err_inactive_transaction) {
                                     ++inactive_tx;
                                     // use EXPECT_ macros in lamda, otherwise gtest failed to detect failure
-                                    EXPECT_TRUE(t.get());
-                                    auto info = reinterpret_cast<transaction_context*>(t.get())->error_info();
+                                    std::shared_ptr<api::error_info> info{};
+                                    EXPECT_EQ(status::ok, t.error_info(info));
                                     EXPECT_TRUE(info);
                                     EXPECT_EQ(status::err_unique_constraint_violation, info->status());
                                     EXPECT_EQ(error_code::unique_constraint_violation_exception, info->code());

@@ -27,6 +27,7 @@
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error/set_error.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
@@ -125,8 +126,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         );
                         res = status::err_unique_constraint_violation;
                         err->status(res);
-                        tx->error_info(err);
-                        context.error_info(err);
+                        set_tx_error(context, std::move(err));
                         abort_transaction(*tx);
                     } else {
                         // write_kind::insert_skip

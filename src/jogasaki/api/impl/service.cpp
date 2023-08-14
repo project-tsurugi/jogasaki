@@ -84,13 +84,13 @@ private:
 
 }
 
-    template<class T>
-    jogasaki::api::transaction_handle validate_transaction_handle(
-            T msg,
-            api::database* db,
-            tateyama::api::server::response& res,
-            details::request_info const& req_info
-    );
+template<class T>
+jogasaki::api::transaction_handle validate_transaction_handle(
+    T msg,
+    api::database* db,
+    tateyama::api::server::response& res,
+    details::request_info const& req_info
+);
 
 void service::command_begin(
     sql::request::Request const& proto_req,

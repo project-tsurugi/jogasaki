@@ -15,18 +15,13 @@
  */
 #pragma once
 
-#include <string_view>
-#include <atomic>
-#include <memory>
+#include <cstddef>
 
 #include <jogasaki/error_code.h>
 
 #include "jogasaki/proto/sql/error.pb.h"
 
 namespace jogasaki::api::impl {
-
-using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 namespace sql = jogasaki::proto::sql;
 
@@ -155,5 +150,6 @@ inline jogasaki::error_code map_error(sql::error::Code s) {
     }
     std::abort();
 }
+
 }
 

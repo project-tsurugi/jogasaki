@@ -23,8 +23,8 @@
 namespace jogasaki::api::impl {
 
 /**
- * @brief record object in the result set
- * @details this interface represents a record in the query result and provides accessor to field values
+ * @brief error info object
+ * @details this object represents the error information of the API request
  */
 class error_info : public api::error_info {
 public:
@@ -60,19 +60,19 @@ public:
     ~error_info() override = default;
 
     /**
-     * @brief construct empty object
+     * @brief construct new object
      */
     explicit error_info(std::shared_ptr<error::error_info> body) noexcept;
 
     /**
-     * @brief accessor to the error_info message
+     * @brief accessor to the error message
      * @return the message string
      */
     [[nodiscard]] std::string_view message() const noexcept override;
 
     /**
-     * @brief accessor to the error_info message
-     * @return the message string
+     * @brief accessor to the error code
+     * @return the error code
      */
     [[nodiscard]] jogasaki::error_code code() const noexcept override;
 

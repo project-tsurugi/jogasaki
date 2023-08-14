@@ -15,8 +15,6 @@
  */
 #include "error_info.h"
 
-#include <jogasaki/api/error_info.h>
-
 namespace jogasaki::api::impl {
 
 error_info::error_info(std::shared_ptr<error::error_info> body) noexcept:

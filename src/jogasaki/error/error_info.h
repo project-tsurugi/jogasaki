@@ -24,11 +24,8 @@
 namespace jogasaki::error {
 
 /**
- * @brief diagnostics object
- * @details this object represents the result details of the API call.
- * If API supports additional diagnostics info, this object can be retrieved just after the API
- * call (e.g. by database::fetch_diagnostics)
- * @warning this api is still evolving and can change frequently in the future
+ * @brief error info object
+ * @details this object represents the error information of the API request
  */
 class error_info {
 public:

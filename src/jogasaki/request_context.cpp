@@ -143,12 +143,21 @@ bool request_context::lightweight() const noexcept {
     return lightweight_;
 }
 
-void request_context::error_info(const std::shared_ptr<error::error_info> &info) noexcept {
-    error_info_ = info;
+bool request_context::error_info(std::shared_ptr<error::error_info> const& info) noexcept {
+    std::shared_ptr<error::error_info> s{};
+    do {
+        s = std::atomic_load(std::addressof(error_info_));
+        if (s && (*s)) {
+            VLOG_LP(log_error) << "Error " << info->code() << "(\"" << info->message() << "\")"
+                                                                                          " is reported subsequently following the original error " << s->code() << ".";
+            return false;
+        }
+    } while (! std::atomic_compare_exchange_strong(std::addressof(error_info_), std::addressof(s), info));
+    return true;
 }
 
-std::shared_ptr<error::error_info> const &request_context::error_info() const noexcept {
-    return error_info_;
+std::shared_ptr<error::error_info> request_context::error_info() const noexcept {
+    return std::atomic_load(std::addressof(error_info_));
 }
 
 void prepare_scheduler(request_context& rctx) {

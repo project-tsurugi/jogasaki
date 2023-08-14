@@ -26,6 +26,7 @@ namespace jogasaki {
  * @brief error code
  */
 enum class error_code : std::int64_t {
+    none = 99999,
     sql_service_exception = 0,
     sql_execution_exception = 1000,
     constraint_violation_exception = 1001,
@@ -93,6 +94,7 @@ enum class error_code : std::int64_t {
     using namespace std::string_view_literals;
     using code = error_code;
     switch (value) {
+        case code::none: return "none"sv;
         case code::sql_service_exception: return "sql_service_exception"sv;
         case code::sql_execution_exception: return "sql_execution_exception"sv;
         case code::constraint_violation_exception: return "constraint_violation_exception"sv;

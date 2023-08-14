@@ -64,5 +64,9 @@ std::string_view error_info::source_file_position() const noexcept {
     return source_file_position_;
 }
 
+error_info::operator bool() const noexcept {
+    return error_code_ != jogasaki::error_code::none;
+}
+
 }
 

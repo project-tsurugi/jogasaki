@@ -98,8 +98,14 @@ public:
      */
     [[nodiscard]] std::string_view supplemental_text() const noexcept;
 
+    /**
+     * @brief returns whether object contains non-empty error information
+     * @return true if object contains any error
+     * @return false otherwise
+     */
+    [[nodiscard]] operator bool() const noexcept;
 private:
-    jogasaki::error_code error_code_{};
+    jogasaki::error_code error_code_{jogasaki::error_code::none};
     std::string message_{};
     jogasaki::status status_{};
     std::string source_file_path_{};

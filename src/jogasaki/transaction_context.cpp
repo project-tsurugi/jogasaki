@@ -15,7 +15,8 @@
  */
 #include "transaction_context.h"
 
-#include <jogasaki/kvs/database.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 
 namespace jogasaki {
 
@@ -89,13 +90,22 @@ std::string_view transaction_context::transaction_id() noexcept {
     return transaction_->transaction_id();
 }
 
-void transaction_context::error_info(
+bool transaction_context::error_info(
     std::shared_ptr<error::error_info> const& info
 ) noexcept {
-    error_info_ = info;
+    std::shared_ptr<error::error_info> s{};
+    do {
+        s = std::atomic_load(std::addressof(error_info_));
+        if (s && (*s)) {
+            VLOG_LP(log_error) << "Error " << info->code() << "(\"" << info->message() << "\")"
+                                                                                          " is reported subsequently following the original error " << s->code() << ".";
+            return false;
+        }
+    } while (! std::atomic_compare_exchange_strong(std::addressof(error_info_), std::addressof(s), info));
+    return true;
 }
 
-std::shared_ptr<error::error_info> const &transaction_context::error_info() const noexcept {
+std::shared_ptr<error::error_info> transaction_context::error_info() const noexcept {
     return error_info_;
 }
 

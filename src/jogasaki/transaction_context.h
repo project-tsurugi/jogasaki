@@ -197,14 +197,15 @@ public:
     /**
      * @brief setter for the error info
      */
-    void error_info(std::shared_ptr<error::error_info> const& info) noexcept;
+    bool error_info(std::shared_ptr<error::error_info> const& info) noexcept;
 
     /**
      * @brief accessor for the error info
      * @return the error info for the request result
      * @return nullptr if no error occurs
      */
-    [[nodiscard]] std::shared_ptr<error::error_info> const& error_info() const noexcept;
+    [[nodiscard]] std::shared_ptr<error::error_info> error_info() const noexcept;
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};

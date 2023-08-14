@@ -27,6 +27,7 @@ namespace sql = jogasaki::proto::sql;
 
 inline sql::error::Code map_error(jogasaki::error_code s) {
     switch (s) {
+        case jogasaki::error_code::none: return sql::error::CODE_UNSPECIFIED;
         case jogasaki::error_code::sql_service_exception: return sql::error::SQL_SERVICE_EXCEPTION;
         case jogasaki::error_code::sql_execution_exception: return sql::error::SQL_EXECUTION_EXCEPTION;
         case jogasaki::error_code::constraint_violation_exception: return sql::error::CONSTRAINT_VIOLATION_EXCEPTION;
@@ -146,7 +147,7 @@ inline jogasaki::error_code map_error(sql::error::Code s) {
         case sql::error::RTX_EXCEPTION: return jogasaki::error_code::rtx_exception;
         case sql::error::BLOCKED_BY_CONCURRENT_OPERATION_EXCEPTION: return jogasaki::error_code::blocked_by_concurrent_operation_exception;
 
-        default: return jogasaki::error_code::sql_service_exception;
+        default: return jogasaki::error_code::none;
     }
     std::abort();
 }

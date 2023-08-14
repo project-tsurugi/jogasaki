@@ -138,7 +138,23 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     // occ error or serialization error. Transaction has been aborted anyway.
                 }
                 // TODO error handling for secondary index, multiple tuples
-                context.status_code(res);
+                if(res == status::err_serialization_failure) {
+                    set_tx_error(
+                        context,
+                        error_code::cc_exception,
+                        string_builder{} <<
+                            "Serialization failed. " << e.storage_name_ << string_builder::to_string,
+                        res
+                    );
+                    return false;
+                }
+                set_tx_error(
+                    context,
+                    error_code::sql_service_exception,
+                    string_builder{} <<
+                        "Unexpected error occurred. " << e.storage_name_ << string_builder::to_string,
+                    res
+                );
                 return false;
             }
         }
@@ -221,14 +237,20 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                         break;
                 }
             } else {
-
                 evaluator eval{t.elements()[f.index_], info, host_variables};
                 process::impl::variable_table empty{};
                 process::impl::expression::evaluator_context c{};
                 auto res = eval(c, empty, &resource);
                 if (res.error()) {
-                    VLOG_LP(log_error) << "evaluation error: " << res.to<process::impl::expression::error>();
-                    return status::err_expression_evaluation_failure;
+                    auto rc = status::err_expression_evaluation_failure;
+                    set_tx_error(
+                        ctx,
+                        error_code::value_evaluation_exception,
+                        string_builder{} <<
+                            "An error occurred in evaluating values. error:" << res.to<process::impl::expression::error>() << string_builder::to_string,
+                        rc
+                    );
+                    return rc;
                 }
                 if(! utils::convert_any(res, f.type_)) {
                     VLOG_LP(log_error) << "type mismatch: expected " << f.type_ << ", value index is " << res.type_index();

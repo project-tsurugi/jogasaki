@@ -48,9 +48,9 @@ TEST_F(request_context_test, basic) {
 TEST_F(request_context_test, filling_error_info) {
     // verify original error will not be overwritten
     request_context c{};
-    c.error_info(create_error_info(error_code::unique_constraint_violation_exception, ""));
+    c.error_info(create_error_info(error_code::unique_constraint_violation_exception, "", status::err_unknown));
     ASSERT_EQ(error_code::unique_constraint_violation_exception, c.error_info()->code());
-    c.error_info(create_error_info(error_code::constraint_violation_exception, ""));
+    c.error_info(create_error_info(error_code::constraint_violation_exception, "", status::err_unknown));
     ASSERT_EQ(error_code::unique_constraint_violation_exception, c.error_info()->code());
 }
 
@@ -58,10 +58,10 @@ TEST_F(request_context_test, overwriting_error_info) {
     // verify nullptr or error_code::none are overwritten
     request_context c{};
     ASSERT_FALSE(c.error_info());
-    c.error_info(create_error_info(error_code::none, ""));
+    c.error_info(create_error_info(error_code::none, "", status::err_unknown));
     ASSERT_TRUE(c.error_info());
     ASSERT_EQ(error_code::none, c.error_info()->code());
-    c.error_info(create_error_info(error_code::constraint_violation_exception, ""));
+    c.error_info(create_error_info(error_code::constraint_violation_exception, "", status::err_unknown));
     ASSERT_EQ(error_code::constraint_violation_exception, c.error_info()->code());
 }
 }

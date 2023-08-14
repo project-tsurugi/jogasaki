@@ -49,6 +49,8 @@
 #include "jogasaki/proto/sql/common.pb.h"
 #include "jogasaki/proto/sql/status.pb.h"
 
+#include "map_error_code.h"
+
 namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
@@ -114,6 +116,8 @@ void set_allocated_object(sql::response::Response& r, T& p) {
         r.set_allocated_describe_table(&p);
     } else if constexpr (std::is_same_v<T, sql::response::ListTables>) {  //NOLINT
         r.set_allocated_list_tables(&p);
+    } else if constexpr (std::is_same_v<T, sql::response::GetErrorInfo>) {  //NOLINT
+        r.set_allocated_get_error_info(&p);
     } else {
         static_fail();
     }
@@ -135,6 +139,8 @@ void release_object(sql::response::Response& r, T&) {
         r.release_describe_table();
     } else if constexpr (std::is_same_v<T, sql::response::ListTables>) {  //NOLINT
         r.release_list_tables();
+    } else if constexpr (std::is_same_v<T, sql::response::GetErrorInfo>) {  //NOLINT
+        r.release_get_error_info();
     } else {
         static_fail();
     }
@@ -389,19 +395,33 @@ inline void success<sql::response::GetSearchPath>(
 template<>
 inline void success<sql::response::GetErrorInfo>(
     tateyama::api::server::response& res,
-    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+    request_info req_info,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<api::error_info> info
 ) {
     sql::response::Response r{};
     sql::response::GetErrorInfo gei{};
     r.set_allocated_get_error_info(&gei);
 
-    //FIXME mock implementation
     sql::response::Void v{};
-    gei.set_allocated_error_not_found(&v);
-
+    sql::response::Error error{};
+    if (! info) {
+        gei.set_allocated_error_not_found(&v);
+    } else {
+        gei.set_allocated_success(&error);
+        error.set_status(map_status(info->status()));
+        error.set_code(map_error(info->code()));
+        auto msg = info->message();
+        error.set_detail(msg.data(), msg.size());
+        auto text = info->supplemental_text();
+        error.set_supplemental_text(text.data(), text.size());
+    }
     res.code(response_code::success);
     reply(res, r, req_info);
-    gei.release_error_not_found();
+    if (! info) {
+        gei.release_error_not_found();
+    } else {
+        gei.release_success();
+    }
     r.release_get_error_info();
 }
 

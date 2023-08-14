@@ -84,6 +84,14 @@ private:
 
 }
 
+    template<class T>
+    jogasaki::api::transaction_handle validate_transaction_handle(
+            T msg,
+            api::database* db,
+            tateyama::api::server::response& res,
+            details::request_info const& req_info
+    );
+
 void service::command_begin(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
@@ -198,9 +206,18 @@ void service::command_get_error_info(
     std::shared_ptr<tateyama::api::server::response> const& res,
     details::request_info const& req_info
 ) {
-    (void) proto_req;
-    // return empty for the time being
-    details::success<sql::response::GetErrorInfo>(*res, req_info);
+    auto& gei = proto_req.get_error_info();
+    auto tx = validate_transaction_handle(gei, db_, *res, req_info);
+    if(! tx) {
+        return;
+    }
+
+    std::shared_ptr<api::error_info> info{};
+    if(auto rc = tx.error_info(info); rc != status::ok) {
+        // invalid handle
+        details::error<sql::response::GetErrorInfo>(*res, rc, "invalid transaction handle", req_info);
+    }
+    details::success<sql::response::GetErrorInfo>(*res, req_info, std::move(info));
 }
 
 void service::command_dispose_transaction(

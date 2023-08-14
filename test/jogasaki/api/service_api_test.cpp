@@ -125,9 +125,11 @@ public:
         bool modifies_definitions = false
     );
     void test_commit(std::uint64_t& handle, status expected = status::ok);
+    void test_dispose_transaction(std::uint64_t handle);
     void test_rollback(std::uint64_t& handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::uint64_t tx_handle);
+    void test_statement(std::string_view sql, std::uint64_t tx_handle, status exp);
     void test_query(std::string_view query = "select * from T0");
 
     void test_query(
@@ -162,6 +164,24 @@ public:
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::application_error, res->code_);
         EXPECT_EQ(-1, decode_prepare(res->body_));
+    }
+    void test_get_error_info(
+        std::uint64_t handle,
+        error_code expected
+    ) {
+        auto s = encode_get_error_info(handle);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+        ASSERT_EQ(response_code::success, res->code_);
+
+        auto [success, error] = decode_get_error_info(res->body_);
+        ASSERT_TRUE(success);
+        EXPECT_EQ(expected, error.code_);
     }
 
     void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);
@@ -338,7 +358,7 @@ TEST_F(service_api_test, error_on_dispose) {
     ASSERT_FALSE(error.message_.empty());
 }
 
-void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle) {
+void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle, status exp) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -346,11 +366,19 @@ void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_han
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
+    ASSERT_EQ(exp == status::ok ? response_code::success : response_code::application_error, res->code_);
     EXPECT_TRUE(res->all_released());
 
     auto [success, error] = decode_result_only(res->body_);
-    ASSERT_TRUE(success);
+    if(exp == status::ok) {
+        ASSERT_TRUE(success);
+    } else {
+        ASSERT_FALSE(success);
+        ASSERT_EQ(api::impl::details::map_status(exp), error.status_);
+    }
+}
+void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle) {
+    test_statement(sql, tx_handle, status::ok);
 }
 
 void service_api_test::test_statement(std::string_view sql) {
@@ -1592,7 +1620,6 @@ TEST_F(service_api_test, get_search_path) {
     ASSERT_EQ(0, result.size());
 }
 
-
 TEST_F(service_api_test, modifies_definitions) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle, false, true, {}, "modifies_definitions", true);
@@ -1601,22 +1628,21 @@ TEST_F(service_api_test, modifies_definitions) {
 }
 
 TEST_F(service_api_test, get_error_info) {
-    auto s = encode_get_error_info(0);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
-    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
-
-    auto st = (*service_)(req, res);
-    EXPECT_TRUE(res->wait_completion());
-    EXPECT_TRUE(res->completed());
-    ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
-
-    auto result = decode_get_error_info(res->body_);
-    ASSERT_TRUE(result);
+    test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
+    test_statement("INSERT INTO TT VALUES (0)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_statement("INSERT INTO TT VALUES (0)", tx_handle, status::err_unique_constraint_violation);
+    test_get_error_info(tx_handle, error_code::unique_constraint_violation_exception);
+    test_dispose_transaction(tx_handle);
 }
 
 TEST_F(service_api_test, dispose_transaction) {
-    auto s = encode_dispose_transaction(0);
+    test_dispose_transaction(0);
+}
+
+void service_api_test::test_dispose_transaction(std::uint64_t handle) {
+    auto s = encode_dispose_transaction(handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
@@ -1629,4 +1655,5 @@ TEST_F(service_api_test, dispose_transaction) {
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_TRUE(success);
 }
+
 }

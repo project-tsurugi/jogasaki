@@ -32,6 +32,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/decimal.h>
+#include <jogasaki/api/impl/map_error_code.h>
 
 namespace jogasaki::utils {
 
@@ -242,8 +243,27 @@ inline std::string encode_rollback(std::uint64_t handle) {
 }
 
 struct error {
+    error() = default;
+
+    error(sql::status::Status st, std::string_view msg) noexcept :
+        status_(st),
+        message_(msg)
+    {}
+
+    error(error_code code, std::string_view msg) noexcept :
+        message_(msg),
+        code_(code)
+    {}
+
+    error(sql::status::Status st, std::string_view msg, error_code code) noexcept :
+        status_(st),
+        message_(msg),
+        code_(code)
+    {}
+
     sql::status::Status status_;
     std::string message_;
+    error_code code_;
 };
 
 inline std::pair<bool, error> decode_result_only(std::string_view res) {
@@ -650,18 +670,23 @@ inline std::vector<std::string> decode_get_search_path(std::string_view res) {
     }
     return ret;
 }
-inline bool decode_get_error_info(std::string_view res) {
+
+inline std::pair<bool, error> decode_get_error_info(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
     if (! resp.has_get_error_info())  {
         LOG(ERROR) << "**** missing get_error_info **** ";
         if (utils_raise_exception_on_error) std::abort();
-        return false;
+        return {false, {}};
     }
     auto& gei = resp.get_error_info();
     if (gei.has_error_not_found()) {
-        return true;
+        return {false, {}};
     }
-    return false;
+    if(! gei.has_success()) {
+        return {false, {}};
+    }
+    auto& err = gei.success();
+    return {true, { err.status(), err.detail(), api::impl::map_error(err.code()) }};
 }
 }

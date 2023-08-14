@@ -18,6 +18,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/error_code.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/error/error_info.h>
 
 namespace jogasaki::error {
@@ -26,13 +27,44 @@ namespace jogasaki::error {
 #define stringify2(x) stringify1(x) //NOLINT
 #define line_number_string stringify2(__LINE__)
 
-#define create_error_info(code, msg) jogasaki::error::create_error_info_impl(code, msg, __FILE__, line_number_string) //NOLINT
+#define create_error_info(code, msg, st) jogasaki::error::create_error_info_impl(code, msg, __FILE__, line_number_string, st) //NOLINT
+#define set_error(rtcx, code, msg, st) jogasaki::error::set_error_impl(rctx, code, msg, __FILE__, line_number_string, st) //NOLINT
+#define set_tx_error(rctx, code, msg, st) jogasaki::error::set_tx_error_impl(rctx, code, msg, __FILE__, line_number_string, st) //NOLINT
 
 std::shared_ptr<error_info> create_error_info_impl(
     jogasaki::error_code code,
     std::string_view message,
     std::string_view filepath,
-    std::string_view location
+    std::string_view position,
+    status st
+);
+
+/**
+ * @brief set error info to the request context
+ * @param rctx request context to set error
+ * @param info error info to be set
+ */
+void set_error_impl(
+    request_context& rctx,
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st
+);
+
+/**
+ * @brief set error info to the request context and transaction context
+ * @param rctx request context to set error
+ * @param info error info to be set
+ */
+void set_tx_error_impl(
+    request_context& rctx,
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st
 );
 
 }

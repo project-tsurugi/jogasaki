@@ -24,11 +24,43 @@ std::shared_ptr<error_info> create_error_info_impl(
     jogasaki::error_code code,
     std::string_view message,
     std::string_view filepath,
-    std::string_view location
+    std::string_view position,
+    status st
 ) {
     std::stringstream ss{};
     ss << ::boost::stacktrace::stacktrace{};
-    return std::make_shared<error_info>(code, message, filepath, location, ss.str());
+    auto info = std::make_shared<error_info>(code, message, filepath, position, ss.str());
+    info->status(st);
+    return info;
+}
+
+void set_error_impl(
+    request_context& rctx,
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st
+) {
+    rctx.error_info(
+        create_error_info_impl(code, message, filepath, position, st)
+    );
+}
+
+void set_tx_error_impl(
+    request_context& rctx,
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st
+) {
+    auto info = create_error_info_impl(code, message, filepath, position, st);
+    if(rctx.error_info(info)) {
+        if(rctx.transaction()) {
+            rctx.transaction()->error_info(std::move(info));
+        }
+    }
 }
 
 }

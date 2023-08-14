@@ -27,7 +27,6 @@
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/error/set_error.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
@@ -119,14 +118,14 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     if(kind_ == write_kind::insert) {
                         // integrity violation should be handled in SQL layer and forces transaction abort
                         // status::already_exists is an internal code, raise it as constraint violation
-                        auto err = create_error_info(
+                        res = status::err_unique_constraint_violation;
+                        set_tx_error(
+                            context,
                             error_code::unique_constraint_violation_exception,
                             string_builder{} <<
-                                "Violated unique constraint. Table:" << e.storage_name_ << string_builder::to_string
+                                "Unique constraint violation occurred. Table:" << e.storage_name_ << string_builder::to_string,
+                            res
                         );
-                        res = status::err_unique_constraint_violation;
-                        err->status(res);
-                        set_tx_error(context, std::move(err));
                         abort_transaction(*tx);
                     } else {
                         // write_kind::insert_skip

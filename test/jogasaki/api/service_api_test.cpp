@@ -183,6 +183,7 @@ public:
         ASSERT_TRUE(success);
         EXPECT_EQ(expected, error.code_);
         LOG(INFO) << "error message: " << error.message_;
+//        LOG(INFO) << "error supplemental text : " << error.supplemental_text_;
     }
 
     void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);

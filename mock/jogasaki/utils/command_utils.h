@@ -261,9 +261,17 @@ struct error {
         code_(code)
     {}
 
+    error(sql::status::Status st, std::string_view msg, error_code code, std::string_view supplemental_text) noexcept :
+        status_(st),
+        message_(msg),
+        code_(code),
+        supplemental_text_(supplemental_text)
+    {}
+
     sql::status::Status status_;
     std::string message_;
     error_code code_;
+    std::string supplemental_text_;
 };
 
 inline std::pair<bool, error> decode_result_only(std::string_view res) {
@@ -687,6 +695,6 @@ inline std::pair<bool, error> decode_get_error_info(std::string_view res) {
         return {false, {}};
     }
     auto& err = gei.success();
-    return {true, { err.status(), err.detail(), api::impl::map_error(err.code()) }};
+    return {true, { err.status(), err.detail(), api::impl::map_error(err.code()), err.supplemental_text() }};
 }
 }

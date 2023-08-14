@@ -182,6 +182,7 @@ public:
         auto [success, error] = decode_get_error_info(res->body_);
         ASSERT_TRUE(success);
         EXPECT_EQ(expected, error.code_);
+        LOG(INFO) << "error message: " << error.message_;
     }
 
     void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);

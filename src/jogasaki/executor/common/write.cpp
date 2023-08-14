@@ -16,6 +16,7 @@
 #include "write.h"
 
 #include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/data/any.h>
@@ -50,6 +51,7 @@ using jogasaki::executor::process::impl::expression::evaluator;
 using yugawara::compiled_info;
 
 using takatori::util::throw_exception;
+using takatori::util::string_builder;
 using data::any;
 
 write::write(
@@ -118,7 +120,8 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         // status::already_exists is an internal code, raise it as constraint violation
                         auto err = create_error_info(
                             error_code::unique_constraint_violation_exception,
-                            ""
+                            string_builder{} <<
+                                "Violated unique constraint. Table:" << e.storage_name_ << string_builder::to_string
                         );
                         res = status::err_unique_constraint_violation;
                         err->status(res);

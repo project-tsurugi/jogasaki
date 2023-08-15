@@ -118,13 +118,12 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     if(kind_ == write_kind::insert) {
                         // integrity violation should be handled in SQL layer and forces transaction abort
                         // status::already_exists is an internal code, raise it as constraint violation
-                        res = status::err_unique_constraint_violation;
                         set_tx_error(
                             context,
                             error_code::unique_constraint_violation_exception,
                             string_builder{} <<
                                 "Unique constraint violation occurred. Table:" << e.storage_name_ << string_builder::to_string,
-                            res
+                            status::err_unique_constraint_violation
                         );
                         abort_transaction(*tx);
                         return false;
@@ -136,8 +135,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         // TODO skip tuples for secondary index and move to next tuple for primary
                         continue;
                     }
-                } else {
-                    // occ error or serialization error. Transaction has been aborted anyway.
                 }
                 // TODO error handling for secondary index, multiple tuples
                 if(res == status::err_serialization_failure) {

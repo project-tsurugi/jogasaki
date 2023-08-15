@@ -176,7 +176,7 @@ TEST_F(framework_test, send_request_with_header) {
         (void) id;
     }
     {
-        auto s = utils::encode_commit(handle);
+        auto s = utils::encode_commit(handle, true);
         std::string result = ep->send(s, 100, framework::service_id_sql);
         auto [success, error] = utils::decode_result_only(result);
         ASSERT_TRUE(success);

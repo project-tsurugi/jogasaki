@@ -655,7 +655,7 @@ private:
 
     bool commit_tx(std::uint64_t handle) {
         wait_for_statements();
-        auto s = jogasaki::utils::encode_commit(handle);
+        auto s = jogasaki::utils::encode_commit(handle, true);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);

@@ -458,7 +458,7 @@ private:
         if(for_autocommit) {
             wait_for_statements(); // just for cleanup
         }
-        auto s = jogasaki::utils::encode_commit(tx_handle_);
+        auto s = jogasaki::utils::encode_commit(tx_handle_, true);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);

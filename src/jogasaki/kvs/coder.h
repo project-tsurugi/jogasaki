@@ -214,6 +214,7 @@ static constexpr uint_t<N> SIGN_BIT = static_cast<uint_t<N>>(1) << (N - 1); // N
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
+ * @return status::err_expression_evaluation_failure if encoding requires inexact operation
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  *
@@ -234,6 +235,7 @@ status encode(accessor::record_ref src,
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
+ * @return status::err_expression_evaluation_failure if encoding requires inexact operation
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */
@@ -254,6 +256,7 @@ status encode_nullable(
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
+ * @return status::err_expression_evaluation_failure if encoding requires inexact operation
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */
@@ -270,6 +273,7 @@ status encode(data::any const& src,
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
+ * @return status::err_expression_evaluation_failure if encoding requires inexact operation
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
  */

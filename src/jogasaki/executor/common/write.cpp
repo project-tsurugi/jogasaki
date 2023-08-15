@@ -180,6 +180,38 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
     return status::ok;
 }
 
+void handle_encode_error(
+    request_context& ctx,
+    status st
+) {
+    if(st == status::err_data_corruption) {
+        set_tx_error(
+            ctx,
+            error_code::data_corruption_exception,
+            string_builder{} <<
+                "Data inconsistency detected." << string_builder::to_string,
+            st
+        );
+        return;
+    }
+    if(st == status::err_expression_evaluation_failure) {
+        set_tx_error(
+            ctx,
+            error_code::value_evaluation_exception,
+            string_builder{} <<
+                "An error occurred in evaluating values. Encoding failed." << string_builder::to_string,
+            st
+        );
+        return;
+    }
+    set_tx_error(
+        ctx,
+        error_code::sql_service_exception,
+        string_builder{} <<
+            "Unexpected error occurred." << string_builder::to_string,
+        st
+    );
+}
 // encode tuple into buf, and return result data length
 status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
@@ -203,10 +235,17 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                 switch(f.kind_) {
                     case process::impl::ops::default_value_kind::nothing:
                         if (! f.nullable_) {
-                            VLOG_LP(log_error) << "Null assigned for non-nullable field.";
+                            set_tx_error(
+                                ctx,
+                                error_code::not_null_constraint_violation_exception,
+                                string_builder{} <<
+                                    "Null assigned for non-nullable field." << string_builder::to_string,
+                                status::err_integrity_constraint_violation
+                            );
                             return status::err_integrity_constraint_violation;
                         }
                         if(auto res = kvs::encode_nullable({}, f.type_, f.spec_, s); res != status::ok) {
+                            handle_encode_error(ctx, res);
                             return res;
                         }
                         break;
@@ -226,10 +265,12 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                         any a{std::in_place_type<std::int64_t>, v};
                         if (f.nullable_) {
                             if(auto res = kvs::encode_nullable(a, f.type_, f.spec_, s); res != status::ok) {
+                                handle_encode_error(ctx, res);
                                 return res;
                             }
                         } else {
                             if(auto res = kvs::encode(a, f.type_, f.spec_, s); res != status::ok) {
+                                handle_encode_error(ctx, res);
                                 return res;
                             }
                         }
@@ -252,19 +293,35 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                     return rc;
                 }
                 if(! utils::convert_any(res, f.type_)) {
-                    VLOG_LP(log_error) << "type mismatch: expected " << f.type_ << ", value index is " << res.type_index();
-                    return status::err_expression_evaluation_failure;
+                    auto rc = status::err_expression_evaluation_failure;
+                    set_tx_error(
+                        ctx,
+                        error_code::value_evaluation_exception,
+                        string_builder{} <<
+                            "An error occurred in evaluating values. type mismatch: expected " << f.type_ << ", value index is " << res.type_index() << string_builder::to_string,
+                        rc
+                    );
+                    return rc;
                 }
                 if (f.nullable_) {
                     if(auto rc = kvs::encode_nullable(res, f.type_, f.spec_, s); rc != status::ok) {
+                        handle_encode_error(ctx, rc);
                         return rc;
                     }
                 } else {
                     if(! res) {
-                        VLOG_LP(log_error) << "Null assigned for non-nullable field.";
-                        return status::err_integrity_constraint_violation;
+                        auto rc = status::err_integrity_constraint_violation;
+                        set_tx_error(
+                            ctx,
+                            error_code::not_null_constraint_violation_exception,
+                            string_builder{} <<
+                                "Null assigned for non-nullable field." << string_builder::to_string,
+                            rc
+                        );
+                        return rc;
                     }
                     if(auto rc = kvs::encode(res, f.type_, f.spec_, s); rc != status::ok) {
+                        handle_encode_error(ctx, rc);
                         return rc;
                     }
                 }
@@ -274,6 +331,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
         if (primary_key_tuple != nullptr) {
             if(auto res = s.write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size());
                 res != status::ok) {
+                handle_encode_error(ctx, res);
                 return res;
             }
         }
@@ -460,11 +518,13 @@ status write::create_targets(
     std::vector<details::write_tuple> ks{};
     if (auto res = create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, true, ks);
         res != status::ok) {
+        handle_encode_error(ctx, res);
         return res;
     }
     std::vector<details::write_tuple> vs{};
     if (auto res = create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, false, vs);
         res != status::ok) {
+        handle_encode_error(ctx, res);
         return res;
     }
     // first entry is primary index
@@ -491,6 +551,9 @@ status write::create_targets(
             );
         }
     );
+    if(ret_status != status::ok) {
+        handle_encode_error(ctx, ret_status);
+    }
     return ret_status;
 }
 

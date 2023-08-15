@@ -1654,6 +1654,9 @@ TEST_F(service_api_test, dispose_transaction_invalid_handle) {
 }
 
 TEST_F(service_api_test, dispose_transaction) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot spwan multiple transactions";
+    }
     std::uint64_t tx_handle0{};
     test_begin(tx_handle0);
     std::uint64_t tx_handle1{};

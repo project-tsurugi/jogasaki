@@ -251,6 +251,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                     case process::impl::ops::default_value_kind::immediate: {
                         auto& d = f.default_value_;
                         if(auto res = s.write(static_cast<char const*>(d.data()), d.size()); res != status::ok) {
+                            handle_encode_error(ctx, res);
                             return res;
                         }
                         break;
@@ -259,6 +260,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                         // increment sequence - loop might increment the sequence twice
                         sequence_value v{};
                         if(auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
+                            handle_encode_error(ctx, res);
                             return res;
                         }
                         any a{std::in_place_type<std::int64_t>, v};

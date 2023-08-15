@@ -226,6 +226,7 @@ public:
      * After the success of this function, the handle becomes stale and it should not be used any more.
      * @param handle the handle for the transaction to be destroyed
      * @return status::ok when successful
+     * @return status::err_invalid_argument if the `handle` is invalid
      * @return other code when error
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      */

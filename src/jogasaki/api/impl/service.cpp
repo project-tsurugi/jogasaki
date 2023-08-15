@@ -225,8 +225,16 @@ void service::command_dispose_transaction(
     std::shared_ptr<tateyama::api::server::response> const& res,
     details::request_info const& req_info
 ) {
-    (void) proto_req;
-    // return empty for the time being
+    auto& dt = proto_req.dispose_transaction();
+    auto tx = validate_transaction_handle(dt, db_, *res, req_info);
+    if(! tx) {
+        return;
+    }
+    std::shared_ptr<api::error_info> info{};
+    if(auto rc = db_->destroy_transaction(tx); rc != status::ok) {
+        // invalid handle
+        details::error<sql::response::ResultOnly>(*res, rc, "invalid transaction handle", req_info);
+    }
     details::success<sql::response::ResultOnly>(*res, req_info);
 }
 

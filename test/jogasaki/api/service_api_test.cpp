@@ -125,7 +125,7 @@ public:
         bool modifies_definitions = false
     );
     void test_commit(std::uint64_t& handle, status expected = status::ok);
-    void test_dispose_transaction(std::uint64_t handle);
+    void test_dispose_transaction(std::uint64_t handle, status expected = status::ok);
     void test_rollback(std::uint64_t& handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::uint64_t tx_handle);
@@ -1640,10 +1640,13 @@ TEST_F(service_api_test, get_error_info) {
 }
 
 TEST_F(service_api_test, dispose_transaction) {
-    test_dispose_transaction(0);
+    test_dispose_transaction(0, status::err_invalid_argument);
 }
 
-void service_api_test::test_dispose_transaction(std::uint64_t handle) {
+void service_api_test::test_dispose_transaction(
+    std::uint64_t handle,
+    status expected
+) {
     auto s = encode_dispose_transaction(handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -1652,10 +1655,15 @@ void service_api_test::test_dispose_transaction(std::uint64_t handle) {
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
+    ASSERT_EQ(expected == status::ok ? response_code::success : response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
-    ASSERT_TRUE(success);
+    if(expected == status::ok) {
+        ASSERT_TRUE(success);
+    } else {
+        ASSERT_FALSE(success);
+        ASSERT_EQ(api::impl::details::map_status(expected), error.status_);
+    }
 }
 
 }

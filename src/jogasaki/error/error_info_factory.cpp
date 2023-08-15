@@ -58,9 +58,12 @@ void set_tx_error_impl(
     auto info = create_error_info_impl(code, message, filepath, position, st);
     if(rctx.error_info(info)) {
         if(rctx.transaction()) {
-            rctx.transaction()->error_info(std::move(info));
+            if(code != error_code::inactive_transaction_exception && st != status::err_inactive_transaction) {
+                rctx.transaction()->error_info(std::move(info));
+            }
         }
     }
+    rctx.status_code(st, message);
 }
 
 }

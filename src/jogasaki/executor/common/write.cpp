@@ -127,12 +127,14 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                             res
                         );
                         abort_transaction(*tx);
+                        return false;
                     } else {
                         // write_kind::insert_skip
                         // duplicated key is simply ignored
-                        res = status::ok;
+
                         // currently this is for Load operation and assuming single tuple insert
                         // TODO skip tuples for secondary index and move to next tuple for primary
+                        continue;
                     }
                 } else {
                     // occ error or serialization error. Transaction has been aborted anyway.
@@ -143,7 +145,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         context,
                         error_code::cc_exception,
                         string_builder{} <<
-                            "Serialization failed. " << e.storage_name_ << string_builder::to_string,
+                            "Serialization failed. " << string_builder::to_string,
                         res
                     );
                     return false;
@@ -152,7 +154,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     context,
                     error_code::sql_service_exception,
                     string_builder{} <<
-                        "Unexpected error occurred. " << e.storage_name_ << string_builder::to_string,
+                        "Unexpected error occurred. status:" << res << string_builder::to_string,
                     res
                 );
                 return false;

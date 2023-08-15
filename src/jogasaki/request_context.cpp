@@ -68,8 +68,11 @@ bool request_context::status_code(status val, std::string_view msg) noexcept {
     do {
         s = status_code_.load();
         if (s != status::ok) {
-            VLOG_LP(log_error) << "Status code " << val << "(\"" << msg << "\")"
-                    " is reported subsequently following the original error " << s << ".";
+            if(val != status::err_inactive_transaction) {
+                // Inactive tx occurs very frequentyly, so avoid logging here.
+                VLOG_LP(log_error) << "Status code " << val << "(\"" << msg << "\")"
+                                                                               " is reported subsequently following the original error " << s << ".";
+            }
             return false;
         }
     } while (!status_code_.compare_exchange_strong(s, val));
@@ -148,8 +151,12 @@ bool request_context::error_info(std::shared_ptr<error::error_info> const& info)
     do {
         s = std::atomic_load(std::addressof(error_info_));
         if (s && (*s)) {
-            VLOG_LP(log_error) << "Error " << info->code() << "(\"" << info->message() << "\")"
-                                                                                          " is reported subsequently following the original error " << s->code() << ".";
+            if(info->status() != status::err_inactive_transaction &&
+                info->code() != error_code::inactive_transaction_exception) {
+                // Inactive tx occurs very frequentyly, so avoid logging here.
+                VLOG_LP(log_error) << "Error " << info->code() << "(\"" << info->message() << "\")"
+                                                                                              " is reported subsequently following the original error " << s->code() << ".";
+            }
             return false;
         }
     } while (! std::atomic_compare_exchange_strong(std::addressof(error_info_), std::addressof(s), info));

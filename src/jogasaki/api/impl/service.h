@@ -396,7 +396,7 @@ template<>
 inline void success<sql::response::GetErrorInfo>(
     tateyama::api::server::response& res,
     request_info req_info,  //NOLINT(performance-unnecessary-value-param)
-    std::shared_ptr<api::error_info> info
+    std::shared_ptr<api::error_info> info  //NOLINT(performance-unnecessary-value-param)
 ) {
     sql::response::Response r{};
     sql::response::GetErrorInfo gei{};

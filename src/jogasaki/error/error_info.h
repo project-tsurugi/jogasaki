@@ -103,7 +103,7 @@ public:
      * @return true if object contains any error
      * @return false otherwise
      */
-    [[nodiscard]] operator bool() const noexcept;
+    [[nodiscard]] explicit operator bool() const noexcept;
 private:
     jogasaki::error_code error_code_{jogasaki::error_code::none};
     std::string message_{};

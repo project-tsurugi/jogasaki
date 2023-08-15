@@ -127,14 +127,13 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         );
                         abort_transaction(*tx);
                         return false;
-                    } else {
-                        // write_kind::insert_skip
-                        // duplicated key is simply ignored
-
-                        // currently this is for Load operation and assuming single tuple insert
-                        // TODO skip tuples for secondary index and move to next tuple for primary
-                        continue;
                     }
+                    // write_kind::insert_skip
+                    // duplicated key is simply ignored
+
+                    // currently this is for Load operation and assuming single tuple insert
+                    // TODO skip tuples for secondary index and move to next tuple for primary
+                    continue;
                 }
                 // TODO error handling for secondary index, multiple tuples
                 if(res == status::err_serialization_failure) {

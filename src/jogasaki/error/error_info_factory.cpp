@@ -59,7 +59,7 @@ void set_tx_error_impl(
     if(rctx.error_info(info)) {
         if(rctx.transaction()) {
             if(code != error_code::inactive_transaction_exception && st != status::err_inactive_transaction) {
-                rctx.transaction()->error_info(std::move(info));
+                rctx.transaction()->error_info(info);
             }
         }
     }

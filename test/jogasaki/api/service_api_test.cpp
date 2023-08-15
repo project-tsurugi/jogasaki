@@ -78,6 +78,8 @@ using time_point_v = takatori::datetime::time_point;
 using decimal_v = takatori::decimal::triple;
 using ft = meta::field_type_kind;
 
+using jogasaki::api::impl::get_impl;
+
 std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
 
@@ -93,7 +95,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->single_thread(false);
         cfg->prepare_test_tables(true);
         set_dbpath(*cfg);
 
@@ -124,7 +125,11 @@ public:
         std::string_view label = {},
         bool modifies_definitions = false
     );
-    void test_commit(std::uint64_t& handle, status expected = status::ok);
+    void test_commit(
+        std::uint64_t& handle,
+        bool auto_dispose_on_commit_success = true,
+        status expected = status::ok
+    );
     void test_dispose_transaction(std::uint64_t handle, status expected = status::ok);
     void test_rollback(std::uint64_t& handle);
     void test_statement(std::string_view sql);
@@ -210,6 +215,7 @@ void service_api_test::test_begin(std::uint64_t& handle,
     test_begin(result, readonly, is_long, write_preserves, label, modifies_definitions);
     handle = result.handle_;
 }
+
 void service_api_test::test_begin(
     begin_result& result,
     bool readonly,
@@ -228,8 +234,12 @@ void service_api_test::test_begin(
     result = decode_begin(res->body_);
 }
 
-void service_api_test::test_commit(std::uint64_t& handle, status expected) {
-    auto s = encode_commit(handle);
+void service_api_test::test_commit(
+    std::uint64_t& handle,
+    bool auto_dispose_on_commit_success,
+    status expected
+) {
+    auto s = encode_commit(handle, auto_dispose_on_commit_success);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -268,7 +278,7 @@ TEST_F(service_api_test, begin_and_commit) {
 
 TEST_F(service_api_test, error_on_commit) {
     std::uint64_t handle{0};
-    auto s = encode_commit(handle);
+    auto s = encode_commit(handle, true);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -965,7 +975,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         ASSERT_FALSE(success);
         ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
-        test_commit(tx_handle, status::err_inactive_transaction); // verify tx already aborted
+        test_commit(tx_handle, true, status::err_inactive_transaction); // verify tx already aborted
     }
     {
         test_begin(tx_handle);
@@ -1639,8 +1649,51 @@ TEST_F(service_api_test, get_error_info) {
     test_dispose_transaction(tx_handle);
 }
 
-TEST_F(service_api_test, dispose_transaction) {
+TEST_F(service_api_test, dispose_transaction_invalid_handle) {
     test_dispose_transaction(0, status::err_invalid_argument);
+}
+
+TEST_F(service_api_test, dispose_transaction) {
+    std::uint64_t tx_handle0{};
+    test_begin(tx_handle0);
+    std::uint64_t tx_handle1{};
+    test_begin(tx_handle1);
+
+    EXPECT_EQ(2, get_impl(*db_).transaction_count());
+    test_dispose_transaction(tx_handle0);
+    EXPECT_EQ(1, get_impl(*db_).transaction_count());
+    test_dispose_transaction(tx_handle1);
+    EXPECT_EQ(0, get_impl(*db_).transaction_count());
+}
+
+TEST_F(service_api_test, dispose_transaction_aborted) {
+    // verify aborted tx is left on db
+    test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
+    test_statement("INSERT INTO TT VALUES (0)");
+    {
+        std::uint64_t tx_handle{};
+        test_begin(tx_handle);
+        test_statement("INSERT INTO TT VALUES (0)", tx_handle, status::err_unique_constraint_violation);
+
+        EXPECT_EQ(1, get_impl(*db_).transaction_count());
+        test_dispose_transaction(tx_handle);
+        EXPECT_EQ(0, get_impl(*db_).transaction_count());
+    }
+}
+
+TEST_F(service_api_test, dispose_transaction_auto_dispose) {
+    // committed tx is automatically disposed
+    test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
+    test_statement("INSERT INTO TT VALUES (0)");
+    {
+        std::uint64_t tx_handle{};
+        test_begin(tx_handle);
+        test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::ok);
+        test_commit(tx_handle);
+
+        EXPECT_EQ(0, get_impl(*db_).transaction_count());
+        test_dispose_transaction(tx_handle, status::err_invalid_argument);
+    }
 }
 
 void service_api_test::test_dispose_transaction(

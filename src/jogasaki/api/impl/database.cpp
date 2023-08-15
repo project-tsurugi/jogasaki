@@ -521,7 +521,7 @@ status database::destroy_transaction(
         transactions_.erase(acc);
     } else {
         VLOG_LP(log_warning) << "invalid handle";
-        return status::not_found;
+        return status::err_invalid_argument;
     }
     return status::ok;
 }

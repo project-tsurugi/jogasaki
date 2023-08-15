@@ -234,6 +234,7 @@ void service::command_dispose_transaction(
     if(auto rc = db_->destroy_transaction(tx); rc != status::ok) {
         // invalid handle
         details::error<sql::response::ResultOnly>(*res, rc, "invalid transaction handle", req_info);
+        return;
     }
     details::success<sql::response::ResultOnly>(*res, req_info);
 }
@@ -395,18 +396,19 @@ void service::command_commit(
     if(! tx) {
         return;
     }
+    auto auto_dispose = cm.auto_dispose();
     tx.commit_async(
-        [this, res, tx, req_info](status st, std::string_view msg) {
+        [this, res, tx, req_info, auto_dispose](status st, std::string_view msg) {
             if(st == jogasaki::status::ok) {
                 details::success<sql::response::ResultOnly>(*res, req_info);
+                if(auto_dispose) {
+                    if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
+                        VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
+                    }
+                }
             } else {
                 VLOG(log_error) << log_location_prefix << msg;
                 details::error<sql::response::ResultOnly>(*res, st, msg, req_info);
-            }
-            // currently, commit failure is assumed to abort the transaction anyway.
-            // So let's proceed to destroy the transaction.
-            if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
-                VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
             }
         }
     );
@@ -421,7 +423,6 @@ void service::command_rollback(
     if(! tx) {
         return;
     }
-    // log rollback event here to include db_->destroy_transaction duration as well as tx.abort
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::rollback);
     req->transaction_id(tx.transaction_id());
     req->status(scheduler::request_detail_status::accepted);
@@ -434,9 +435,6 @@ void service::command_rollback(
         details::error<sql::response::ResultOnly>(*res, rc, "error in transaction_->abort()", req_info);
         // currently, we assume this won't happen or the transaction is aborted anyway.
         // So let's proceed to destroy the transaction.
-    }
-    if (auto st = db_->destroy_transaction(tx); st != jogasaki::status::ok) {
-        throw_exception(std::logic_error{"destroy_transaction failed"});
     }
     req->status(scheduler::request_detail_status::finishing);
     log_request(*req);

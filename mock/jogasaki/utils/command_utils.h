@@ -230,9 +230,14 @@ inline std::uint64_t decode_prepare(std::string_view res) {
     return stmt.handle();
 }
 
-inline std::string encode_commit(std::uint64_t handle) {
+inline std::string encode_commit(
+    std::uint64_t handle,
+    bool auto_dispose_on_commit_success
+) {
     sql::request::Request r{};
-    r.mutable_commit()->mutable_transaction_handle()->set_handle(handle);
+    auto cm = r.mutable_commit();
+    cm->mutable_transaction_handle()->set_handle(handle);
+    cm->set_auto_dispose(auto_dispose_on_commit_success);
     return serialize(r);
 }
 

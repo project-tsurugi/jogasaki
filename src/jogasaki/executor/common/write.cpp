@@ -118,7 +118,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     if(kind_ == write_kind::insert) {
                         // integrity violation should be handled in SQL layer and forces transaction abort
                         // status::already_exists is an internal code, raise it as constraint violation
-                        set_tx_error(
+                        set_error(
                             context,
                             error_code::unique_constraint_violation_exception,
                             string_builder{} <<
@@ -137,7 +137,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 }
                 // TODO error handling for secondary index, multiple tuples
                 if(res == status::err_serialization_failure) {
-                    set_tx_error(
+                    set_error(
                         context,
                         error_code::cc_exception,
                         string_builder{} <<
@@ -146,7 +146,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     );
                     return false;
                 }
-                set_tx_error(
+                set_error(
                     context,
                     error_code::sql_service_exception,
                     string_builder{} <<
@@ -184,7 +184,7 @@ void handle_encode_error(
     status st
 ) {
     if(st == status::err_data_corruption) {
-        set_tx_error(
+        set_error(
             ctx,
             error_code::data_corruption_exception,
             string_builder{} <<
@@ -194,7 +194,7 @@ void handle_encode_error(
         return;
     }
     if(st == status::err_expression_evaluation_failure) {
-        set_tx_error(
+        set_error(
             ctx,
             error_code::value_evaluation_exception,
             string_builder{} <<
@@ -203,7 +203,7 @@ void handle_encode_error(
         );
         return;
     }
-    set_tx_error(
+    set_error(
         ctx,
         error_code::sql_service_exception,
         string_builder{} <<
@@ -234,7 +234,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                 switch(f.kind_) {
                     case process::impl::ops::default_value_kind::nothing:
                         if (! f.nullable_) {
-                            set_tx_error(
+                            set_error(
                                 ctx,
                                 error_code::not_null_constraint_violation_exception,
                                 string_builder{} <<
@@ -282,7 +282,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                 auto res = eval(c, empty, &resource);
                 if (res.error()) {
                     auto rc = status::err_expression_evaluation_failure;
-                    set_tx_error(
+                    set_error(
                         ctx,
                         error_code::value_evaluation_exception,
                         string_builder{} <<
@@ -293,7 +293,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                 }
                 if(! utils::convert_any(res, f.type_)) {
                     auto rc = status::err_expression_evaluation_failure;
-                    set_tx_error(
+                    set_error(
                         ctx,
                         error_code::value_evaluation_exception,
                         string_builder{} <<
@@ -310,7 +310,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
                 } else {
                     if(! res) {
                         auto rc = status::err_integrity_constraint_violation;
-                        set_tx_error(
+                        set_error(
                             ctx,
                             error_code::not_null_constraint_violation_exception,
                             string_builder{} <<

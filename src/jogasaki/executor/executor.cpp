@@ -25,6 +25,7 @@
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/write.h>
@@ -480,9 +481,13 @@ scheduler::job_context::job_id_type commit_async(
                         return model::task_result::yield;
                     case ::sharksfin::TransactionState::StateKind::ABORTED: {
                         // get result and return error info
-                        rctx->status_code(
-                            status::err_serialization_failure,
-                            utils::create_abort_message(*rctx, *tx, *database.tables()));
+                        auto msg = utils::create_abort_message(*rctx, *tx, *database.tables());
+                        set_error(
+                            *rctx,
+                            error_code::cc_exception,
+                            msg,
+                            status::err_serialization_failure
+                        );
                         break;
                     }
                     case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
@@ -501,7 +506,12 @@ scheduler::job_context::job_id_type commit_async(
         }
 
         auto msg = res != status::ok ? utils::create_abort_message(*rctx, *tx, *database.tables()) : "";
-        rctx->status_code(res, msg);
+        set_error(
+            *rctx,
+            error_code::cc_exception,
+            msg,
+            res
+        );
         scheduler::submit_teardown(*rctx);
         return model::task_result::complete;
     }, true);

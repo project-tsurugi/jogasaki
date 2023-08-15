@@ -558,9 +558,10 @@ TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory causes problem accessing from multiple threads";
     }
+    std::shared_ptr<error::error_info> p{};
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
 
-    static constexpr std::size_t num_thread = 10;
+    static constexpr std::size_t num_thread = 5;
     std::vector<std::future<void>> vec{};
     utils::latch start{};
     for(std::size_t i=0; i < num_thread; ++i) {

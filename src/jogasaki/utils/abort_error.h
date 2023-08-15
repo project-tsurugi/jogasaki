@@ -22,7 +22,7 @@
 
 namespace jogasaki::utils {
 
-std::string create_abort_message(request_context& rctx, transaction_context& tx, yugawara::storage::configurable_provider const& tables);
+std::string create_abort_message(request_context const& rctx, transaction_context& tx, yugawara::storage::configurable_provider const& tables);
 
 std::shared_ptr<yugawara::storage::index const> find_storage(
     yugawara::storage::configurable_provider const& tables,

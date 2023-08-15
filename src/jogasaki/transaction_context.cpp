@@ -94,8 +94,8 @@ bool transaction_context::error_info(
     std::shared_ptr<error::error_info> const& info
 ) noexcept {
     std::shared_ptr<error::error_info> s{};
+    s = std::atomic_load(std::addressof(error_info_));
     do {
-        s = std::atomic_load(std::addressof(error_info_));
         if (s && (*s)) {
             VLOG_LP(log_error) << "Error " << info->code() << "(\"" << info->message() << "\")"
                                                                                           " is reported subsequently following the original error " << s->code() << ".";
@@ -106,7 +106,7 @@ bool transaction_context::error_info(
 }
 
 std::shared_ptr<error::error_info> transaction_context::error_info() const noexcept {
-    return error_info_;
+    return std::atomic_load(std::addressof(error_info_));
 }
 
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {

@@ -81,7 +81,7 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator 
     }
 }
 
-std::string create_abort_message(request_context &rctx, transaction_context &tx,
+std::string create_abort_message(request_context const& rctx, transaction_context &tx,
     const yugawara::storage::configurable_provider &tables) {
     auto result = tx.object()->recent_call_result();
     std::string_view desc{};

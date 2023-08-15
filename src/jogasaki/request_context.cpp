@@ -148,8 +148,8 @@ bool request_context::lightweight() const noexcept {
 
 bool request_context::error_info(std::shared_ptr<error::error_info> const& info) noexcept {
     std::shared_ptr<error::error_info> s{};
+    s = std::atomic_load(std::addressof(error_info_));
     do {
-        s = std::atomic_load(std::addressof(error_info_));
         if (s && (*s)) {
             if(info->status() != status::err_inactive_transaction &&
                 info->code() != error_code::inactive_transaction_exception) {

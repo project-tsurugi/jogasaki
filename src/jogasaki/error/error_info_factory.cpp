@@ -28,7 +28,8 @@ std::shared_ptr<error_info> create_error_info_impl(
     status st
 ) {
     std::stringstream ss{};
-    ss << ::boost::stacktrace::stacktrace{};
+    // stacktrace is expensive esp. on debug build
+//    ss << ::boost::stacktrace::stacktrace{};
     auto info = std::make_shared<error_info>(code, message, filepath, position, ss.str());
     info->status(st);
     return info;

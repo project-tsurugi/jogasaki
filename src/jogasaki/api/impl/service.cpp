@@ -231,11 +231,12 @@ void service::command_dispose_transaction(
         return;
     }
     std::shared_ptr<api::error_info> info{};
-    if(auto rc = db_->destroy_transaction(tx); rc != status::ok) {
-        // invalid handle
-        details::error<sql::response::ResultOnly>(*res, rc, "invalid transaction handle", req_info);
+    if(auto rc = db_->destroy_transaction(tx); rc != status::ok && rc != status::err_invalid_argument) {
+        // unexpected error
+        details::error<sql::response::ResultOnly>(*res, rc, "Unexpected error occurred in disposing transaction.", req_info);
         return;
     }
+    // err_invalid_argument means invalid tx handle, that is treated as no-op (no error)
     details::success<sql::response::ResultOnly>(*res, req_info);
 }
 

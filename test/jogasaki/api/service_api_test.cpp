@@ -1654,6 +1654,12 @@ TEST_F(service_api_test, get_error_info) {
 }
 
 TEST_F(service_api_test, dispose_transaction_invalid_handle) {
+    test_dispose_transaction(1);  // disposing invalid handle is no-op
+}
+
+TEST_F(service_api_test, dispose_transaction_missing_handle) {
+    // protobuf treats 0 as if not handle is specified
+    // this case is handled as an error because sending 0 is usage error anyway
     test_dispose_transaction(0, status::err_invalid_argument);
 }
 
@@ -1699,7 +1705,7 @@ TEST_F(service_api_test, dispose_transaction_auto_dispose) {
         test_commit(tx_handle);
 
         EXPECT_EQ(0, get_impl(*db_).transaction_count());
-        test_dispose_transaction(tx_handle, status::err_invalid_argument);
+        test_dispose_transaction(tx_handle); // this is no-op
     }
 }
 

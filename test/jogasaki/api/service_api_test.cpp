@@ -1641,11 +1641,14 @@ TEST_F(service_api_test, modifies_definitions) {
 }
 
 TEST_F(service_api_test, get_error_info) {
+    // verify get error info is not affected by err_inactive_transaction (request failure, not transaction failure)
     test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
     test_statement("INSERT INTO TT VALUES (0)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_statement("INSERT INTO TT VALUES (0)", tx_handle, status::err_unique_constraint_violation);
+    test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::err_inactive_transaction);
+    test_statement("INSERT INTO TT VALUES (2)", tx_handle, status::err_inactive_transaction);
     test_get_error_info(tx_handle, error_code::unique_constraint_violation_exception);
     test_dispose_transaction(tx_handle);
 }

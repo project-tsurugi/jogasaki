@@ -123,7 +123,11 @@ public:
         ));
         while(! run.load()) {}
         ASSERT_EQ(expected, s);
-        ASSERT_TRUE(message.empty());
+        if(expected == status::ok) {
+            ASSERT_TRUE(message.empty());
+        } else {
+            std::cerr << "error msg: " << message << std::endl;
+        }
         if (empty_output) {
             ASSERT_TRUE(ch.writers_.empty());
             ASSERT_EQ(status::ok, executor::commit(get_impl(*db_), tx));

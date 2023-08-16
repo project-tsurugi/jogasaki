@@ -19,6 +19,7 @@
 
 #include <takatori/relation/write.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/logging.h>
@@ -38,6 +39,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 using variable = takatori::descriptor::variable;
 using takatori::util::throw_exception;
+using takatori::util::string_builder;
 
 void write_partial::finish(abstract::task_context* context) {
     if (! context) return;
@@ -106,6 +108,12 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
             if (auto res2 = ctx.transaction()->abort(); res2 != status::ok) {
                 throw_exception(std::logic_error{"abort failed unexpectedly"});
             }
+            set_error(
+                *ctx.req_context(),
+                error_code::not_null_constraint_violation_exception,
+                string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                res
+            );
         }
         return details::error_abort(ctx, res);
     }

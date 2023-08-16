@@ -107,6 +107,7 @@ public:
      * @param end_kind endpoint of the end key
      * @param it[out] iterator for the scan result
      * @return status::ok if the operation is successful
+     * @return status::not_found if no entry is found for the given key range
      * @return otherwise, other status code
      */
     [[nodiscard]] status scan(

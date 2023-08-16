@@ -33,6 +33,7 @@
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/batch/batch_file_executor.h>
@@ -858,9 +859,22 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 << " options:{" << rctx->job()->request()->transaction_option_spec() << "}";
             auto res = create_transaction_internal(*handle, option);
             if(res != status::ok) {
-                rctx->status_code(res,
-                    string_builder{} << "creating transaction failed with error:" << res << string_builder::to_string
-                );
+                // possibly option args are invalid
+                if(res == status::err_invalid_argument) {
+                    set_error(
+                        *rctx,
+                        error_code::target_not_found_exception,
+                        string_builder{} << "Target specified in transaction option is not found. " << option  << string_builder::to_string,
+                        res
+                    );
+                } else {
+                    set_error(
+                        *rctx,
+                        error_code::sql_execution_exception,
+                        string_builder{} << "creating transaction failed with error:" << res << string_builder::to_string,
+                        res
+                    );
+                }
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;
             }

@@ -17,7 +17,9 @@
 
 #include <yugawara/binding/extract.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/string_builder.h>
 
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -32,6 +34,7 @@
 namespace jogasaki::executor::common {
 
 using takatori::util::fail;
+using takatori::util::string_builder;
 
 static std::string create_metadata(std::string_view sql_text) {
     proto::metadata::storage::Storage st{};
@@ -82,7 +85,12 @@ bool create_sequence_for_generated_pk(
         );
 //        provider.add_sequence(p);  // sequence definition is added in serializer, no need to add it here
     } catch (sequence::exception& e) {
-        context.status_code(e.get_status(), e.what());
+        set_error(
+            context,
+            error_code::sql_execution_exception,
+            string_builder{} << "creating sequence failed with status:" << e.get_status() << " error:" << e.what() << string_builder::to_string,
+            e.get_status()
+        );
         return false;
     }
     return true;
@@ -93,8 +101,12 @@ bool create_table::operator()(request_context& context) const {
     auto& provider = *context.storage_provider();
     auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
     if(provider.find_table(c->simple_name())) {
-        VLOG_LP(log_info) << "Table " << c->simple_name() << " already exists.";
-        context.status_code(status::err_already_exists);
+        set_error(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Table \"" << c->simple_name() << "\" already exists." << string_builder::to_string,
+            status::err_already_exists
+        );
         return false;
     }
 
@@ -113,13 +125,23 @@ bool create_table::operator()(request_context& context) const {
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
     if(! recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false})) {
         // error should not happen normally
-        context.status_code(status::err_already_exists);
+        set_error(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Table already exists." << string_builder::to_string,
+            status::err_already_exists
+        );
         return false;
     }
     if(! recovery::deserialize_storage_option_into_provider(storage, provider, provider, true)) {
         // error should not happen normally
         // validating version failure does not happen as serialization is just done above.
-        context.status_code(status::err_unknown);
+        set_error(
+            context,
+            error_code::sql_execution_exception,
+            "Unexpected error occurred.",
+            status::err_unknown
+        );
         return false;
     }
 
@@ -127,8 +149,12 @@ bool create_table::operator()(request_context& context) const {
     options.payload(std::move(storage));
     if(auto stg = context.database()->create_storage(c->simple_name(), options);! stg) {
         // should not happen normally
-        VLOG_LP(log_info) << "storage " << c->simple_name() << " already exists ";
-        context.status_code(status::err_already_exists);
+        set_error(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Storage \"" << c->simple_name() << "\" already exists " << string_builder::to_string,
+            status::err_already_exists
+        );
         return false;
     }
     return true;

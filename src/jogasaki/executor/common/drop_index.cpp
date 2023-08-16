@@ -15,13 +15,17 @@
  */
 #include "drop_index.h"
 
+#include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
 
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::executor::common {
+
+using takatori::util::string_builder;
 
 drop_index::drop_index(takatori::statement::drop_index& ct) noexcept:
     ct_(std::addressof(ct))
@@ -36,7 +40,12 @@ bool drop_index::operator()(request_context& context) const {
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->target());
     auto name = i->simple_name();
     if(! provider.find_index(name)) {
-        context.status_code(status::err_not_found);
+        set_error(
+            context,
+            error_code::target_not_found_exception,
+            string_builder{} << "Target index \"" << name << "\" is not found." << string_builder::to_string,
+            status::err_not_found
+        );
         return false;
     }
     // try to delete stroage on kvs.
@@ -44,8 +53,13 @@ bool drop_index::operator()(request_context& context) const {
     auto stg = context.database()->get_storage(name);
     if (stg) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-            VLOG_LP(log_error) << res << " error on deleting storage " << name;
-            context.status_code(status::err_unknown);
+            VLOG_LP(log_error) << res << "  " << name;
+            set_error(
+                context,
+                error_code::sql_execution_exception,
+                string_builder{} << "An error occurred in deleting storage. status:" << res << string_builder::to_string,
+                status::err_unknown
+            );
             return false;
         }
     } else {

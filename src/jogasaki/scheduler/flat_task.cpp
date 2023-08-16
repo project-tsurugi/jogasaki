@@ -15,12 +15,15 @@
  */
 #include "flat_task.h"
 
+#include <takatori/util/string_builder.h>
+
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/api/impl/database.h>
 #include <tateyama/api/task_scheduler/context.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/file/loader.h>
 #include <jogasaki/executor/executor.h>
@@ -29,6 +32,8 @@
 #include <jogasaki/request_logging.h>
 
 namespace jogasaki::scheduler {
+
+using takatori::util::string_builder;
 
 void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
     log_entry << *this;
@@ -258,7 +263,12 @@ void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
     auto& e = sctx_->executable_statement_;
     if(auto res = sctx_->database_->resolve(sctx_->prepared_,
             maybe_shared_ptr{sctx_->parameters_}, e); res != status::ok) {
-        req_context_->status_code(res);
+        set_error(
+            *req_context_,
+            error_code::sql_execution_exception,
+            string_builder{} << "creating parallel execution plan failed. status:" << res << string_builder::to_string,
+            res
+        );
     } else {
         executor::execute_async_on_context(
                 *sctx_->database_,
@@ -324,7 +334,12 @@ void flat_task::load() {
     } else {
         if(res == executor::file::loader_result::error) {
             auto [st, msg] = loader_->error_info();
-            req_context_->status_code(st, std::move(msg));
+            set_error(
+                *req_context_,
+                error_code::sql_execution_exception,
+                msg,
+                st
+            );
         }
         submit_teardown(*req_context_);
     }

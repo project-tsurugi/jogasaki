@@ -15,12 +15,14 @@
  */
 #include "create_index.h"
 
+#include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 
@@ -28,6 +30,8 @@
 #include <jogasaki/recovery/storage_options.h>
 
 namespace jogasaki::executor::common {
+
+using takatori::util::string_builder;
 
 create_index::create_index(
     takatori::statement::create_index& ct
@@ -45,19 +49,33 @@ bool create_index::operator()(request_context& context) const {
     auto& provider = *context.storage_provider();
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->definition());
     if(provider.find_index(i->simple_name())) {
-        VLOG_LP(log_error) << "Index " << i->simple_name() << " already exists.";
-        context.status_code(status::err_already_exists);
+        set_error(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Index \"" << i->simple_name() << "\" already exists." << string_builder::to_string,
+            status::err_already_exists
+        );
         return false;
     }
 
     std::string storage{};
     if(auto res = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false}); ! res) {
-        context.status_code(status::err_already_exists);
+        set_error(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Index already exists." << string_builder::to_string,
+            status::err_already_exists
+        );
         return res;
     }
     auto target = std::make_shared<yugawara::storage::configurable_provider>();
     if(auto res = recovery::deserialize_storage_option_into_provider(storage, provider, *target, false); ! res) {
-        context.status_code(status::err_unknown);
+        set_error(
+            context,
+            error_code::sql_execution_exception,
+            string_builder{} << "Unexpected error." << string_builder::to_string,
+            status::err_unknown
+        );
         return false;
     }
 
@@ -67,7 +85,12 @@ bool create_index::operator()(request_context& context) const {
         VLOG_LP(log_info) << "storage " << i->simple_name() << " already exists ";
         // something went wrong. Storage already exists. // TODO recreate storage with new storage option
         VLOG_LP(log_warning) << "storage " << i->simple_name() << " already exists ";
-        context.status_code(status::err_unknown);
+        set_error(
+            context,
+            error_code::sql_execution_exception,
+            string_builder{} << "Unexpected error." << string_builder::to_string,
+            status::err_unknown
+        );
         return false;
     }
     // only after successful update for kvs, merge metadata

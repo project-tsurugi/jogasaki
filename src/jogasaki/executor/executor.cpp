@@ -79,7 +79,7 @@ bool execute_internal(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    error_info_callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
     BOOST_ASSERT(channel);  //NOLINT
@@ -127,10 +127,10 @@ status commit(
     auto jobid = commit_async(
             database,
             std::move(tx),
-            [&](status st, std::string_view m){
+            [&](status st, std::shared_ptr<error::error_info> info){
                 ret = st;
                 if(st != status::ok) {
-                    VLOG(log_error) << log_location_prefix << m;
+                    VLOG(log_error) << log_location_prefix << (info ? info->message() : "");
                 }
             }
     );
@@ -165,9 +165,9 @@ status execute(
             std::move(tx),
             maybe_shared_ptr{std::addressof(statement)},
             ch,
-            [&](status st, std::string_view m) {
+            [&](status st, std::shared_ptr<error::error_info> info) {
                 ret = st;
-                msg = m;
+                msg = (info ? info->message() : "");
             },
             true
     );
@@ -189,9 +189,9 @@ status execute(
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
     status ret{};
     std::string msg{};
-    execute_async(database, std::move(tx), prepared, std::move(parameters), ch, [&](status st, std::string_view m){
+    execute_async(database, std::move(tx), prepared, std::move(parameters), ch, [&](status st, std::shared_ptr<error::error_info> info){
         ret = st;
-        msg = m;
+        msg = (info ? info->message() : "");
     }, true);
     result = std::make_unique<api::impl::result_set>(std::move(store));
     return ret;
@@ -203,7 +203,7 @@ bool execute_async(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    callback on_completion,
+    error_info_callback on_completion,
     bool sync
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
@@ -250,7 +250,7 @@ bool execute_async(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
-    callback on_completion  //NOLINT(performance-unnecessary-value-param)
+    error_info_callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
     return details::execute_internal(
         database,
@@ -270,7 +270,7 @@ bool execute_dump(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
-    callback on_completion,
+    error_info_callback on_completion,
     std::size_t max_records_per_file,
     bool keep_files_on_error
 ) {
@@ -287,13 +287,13 @@ bool execute_dump(
         std::move(tx),
         statement,
         dump_ch,
-        [on_completion=std::move(on_completion), dump_ch, cfg](status st, std::string_view msg) {
+        [on_completion=std::move(on_completion), dump_ch, cfg](status st, std::shared_ptr<error::error_info> info) {
             if(st != status::ok) {
                 if (! cfg.keep_files_on_error_) {
                     dump_ch->clean_output_files();
                 }
             }
-            on_completion(st, msg);
+            on_completion(st, std::move(info));
         },
         false
     );
@@ -303,7 +303,7 @@ bool execute_dump(
 bool validate_statement(
     plan::executable_statement const& exec,
     maybe_shared_ptr<executor::io::record_channel> const& ch,
-    callback on_completion //NOLINT(performance-unnecessary-value-param)
+    error_info_callback on_completion //NOLINT(performance-unnecessary-value-param)
 ) {
     if(!exec.mirrors()->external_writer_meta() &&
         dynamic_cast<executor::io::record_channel_adapter*>(ch.get())) {
@@ -311,7 +311,8 @@ bool validate_statement(
         // null_record_channel is to discard the results and is correct usage
         auto msg = "statement has no result records, but called with API expecting result records";
         VLOG_LP(log_error) << msg;
-        on_completion(status::err_illegal_operation, msg);
+        auto res = status::err_illegal_operation;
+        on_completion(res, create_error_info(error_code::inconsistent_statement_exception, msg, res));
         return false;
     }
     return true;
@@ -321,7 +322,7 @@ bool execute_async_on_context(
     api::impl::database& database,
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
-    callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    error_info_callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
@@ -337,7 +338,7 @@ bool execute_async_on_context(
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
-            on_completion(rctx->status_code(), rctx->status_message());
+            on_completion(rctx->status_code(), rctx->error_info());
         });
 
         auto jobid = job->id();
@@ -361,7 +362,7 @@ bool execute_async_on_context(
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
-            on_completion(rctx->status_code(), rctx->status_message());
+            on_completion(rctx->status_code(), rctx->error_info());
         });
 
         auto jobid = job->id();
@@ -382,7 +383,7 @@ bool execute_async_on_context(
     // write on non-tasked mode or DDL
     scheduler::statement_scheduler sched{ database.configuration(), *database.task_scheduler()};
     sched.schedule(*e->operators(), *rctx);
-    on_completion(rctx->status_code(), rctx->status_message());
+    on_completion(rctx->status_code(), rctx->error_info());
     if(auto req = job->request()) {
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, rctx->status_code() == status::ok);
@@ -397,7 +398,7 @@ bool execute_load(
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::vector<std::string> files,
-    callback on_completion
+    error_info_callback on_completion
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
     req->status(scheduler::request_detail_status::accepted);
@@ -420,7 +421,7 @@ bool execute_load(
     );
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, ldr](){  // callback is copy-based
         (void)ldr; // to keep ownership
-        on_completion(rctx->status_code(), rctx->status_message());
+        on_completion(rctx->status_code(), rctx->error_info());
     });
     auto& ts = *rctx->scheduler();
     req->status(scheduler::request_detail_status::submitted);
@@ -444,7 +445,7 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx, //NOLINT(performance-unnecessary-value-param)
-    callback on_completion
+    error_info_callback on_completion
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);
     req->status(scheduler::request_detail_status::accepted);
@@ -524,7 +525,7 @@ scheduler::job_context::job_id_type commit_async(
             << txid
             << " status:"
             << (rctx->status_code() == status::ok ? "committed" : "aborted");
-        on_completion(rctx->status_code(), rctx->status_message());
+        on_completion(rctx->status_code(), rctx->error_info());
     });
     auto& ts = *rctx->scheduler();
     req->status(scheduler::request_detail_status::submitted);

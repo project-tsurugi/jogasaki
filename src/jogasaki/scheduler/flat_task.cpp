@@ -274,8 +274,8 @@ void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
                 *sctx_->database_,
                 req_context_.ownership(),
                 maybe_shared_ptr{e.get()},
-                [sctx=sctx_](status st, std::string_view msg){
-                    sctx->callback_(st, msg);
+                [sctx=sctx_](status st, std::shared_ptr<error::error_info> info) { // pass sctx_ to live long enough
+                    sctx->callback_(st, std::move(info));
                 },
                 false
         );

@@ -21,6 +21,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/error_info.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/error/error_info_factory.h>
 
 namespace jogasaki::api {
 
@@ -62,12 +63,25 @@ status transaction_handle::commit() {  //NOLINT(readability-make-member-function
 }
 
 void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readability-make-member-function-const)
+    commit_async([on_completion](status st, std::shared_ptr<api::error_info> info) {
+        on_completion(st, (info ? info->message() : ""));
+    });
+}
+
+void transaction_handle::commit_async(error_info_callback on_completion) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
-        on_completion(status::err_invalid_argument, "invalid tx handle");
+        auto res = status::err_invalid_argument;
+        on_completion(res,
+            api::impl::error_info::create(
+                create_error_info(error_code::transaction_not_found_exception, "invalid tx handle", res)
+            )
+        );
         return;
     }
-    executor::commit_async(*db, tx, std::move(on_completion));
+    executor::commit_async(*db, tx, [on_completion](status st, std::shared_ptr<error::error_info> info) {
+        on_completion(st, api::impl::error_info::create(std::move(info)));
+    });
 }
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
@@ -103,9 +117,23 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
     maybe_shared_ptr<executable_statement> const& statement,
     transaction_handle::callback on_completion
 ) {
+    return execute_async(statement, [on_completion](status st, std::shared_ptr<api::error_info> info){
+        on_completion(st, (info ? info->message() : ""));
+    });
+}
+
+bool transaction_handle::execute_async(   //NOLINT(readability-make-member-function-const)
+    maybe_shared_ptr<executable_statement> const& statement,
+    transaction_handle::error_info_callback on_completion
+) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
-        on_completion(status::err_invalid_argument, "invalid tx handle");
+        auto res = status::err_invalid_argument;
+        on_completion(res,
+            api::impl::error_info::create(
+                create_error_info(error_code::transaction_not_found_exception, "invalid tx handle", res)
+            )
+        );
         return true;
     }
     return executor::execute_async(
@@ -113,7 +141,9 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
         tx,
         statement,
         nullptr,
-        std::move(on_completion)
+        [on_completion](status st, std::shared_ptr<error::error_info> info) {
+            on_completion(st, api::impl::error_info::create(std::move(info)));
+        }
     );
 }
 
@@ -122,9 +152,24 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
     maybe_shared_ptr<data_channel> const& channel,
     transaction_handle::callback on_completion
 ) {
+    return execute_async(statement, channel, [on_completion](status st, std::shared_ptr<api::error_info> info) {
+        on_completion(st, (info ? info->message() : ""));
+    });
+}
+
+bool transaction_handle::execute_async(  //NOLINT(readability-make-member-function-const)
+    maybe_shared_ptr<executable_statement> const& statement,
+    maybe_shared_ptr<data_channel> const& channel,
+    transaction_handle::error_info_callback on_completion
+) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
-        on_completion(status::err_invalid_argument, "invalid tx handle");
+        auto res = status::err_invalid_argument;
+        on_completion(res,
+            api::impl::error_info::create(
+                create_error_info(error_code::transaction_not_found_exception, "invalid tx handle", res)
+            )
+        );
         return true;
     }
     return executor::execute_async(
@@ -132,7 +177,9 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
         tx,
         statement,
         channel,
-        std::move(on_completion)
+        [on_completion](status st, std::shared_ptr<error::error_info> info) {
+            on_completion(st, api::impl::error_info::create(std::move(info)));
+        }
     );
 }
 
@@ -166,7 +213,7 @@ status transaction_handle::error_info(std::shared_ptr<api::error_info>& out) con
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     if(tx->error_info()) {
-        out = std::make_shared<api::impl::error_info>(tx->error_info());
+        out = api::impl::error_info::create(tx->error_info());
     }
     return status::ok;
 }

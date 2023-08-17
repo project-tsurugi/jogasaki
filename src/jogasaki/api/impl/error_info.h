@@ -60,11 +60,6 @@ public:
     ~error_info() override = default;
 
     /**
-     * @brief construct new object
-     */
-    explicit error_info(std::shared_ptr<error::error_info> body) noexcept;
-
-    /**
      * @brief accessor to the error message
      * @return the message string
      */
@@ -89,12 +84,25 @@ public:
      */
     [[nodiscard]] std::string_view supplemental_text() const noexcept override;
 
+    /**
+     * @brief factory function for api error info
+     * @param body base object
+     * @return newly constructed object or nullptr if `body` is nullptr
+     */
+    static std::shared_ptr<api::impl::error_info> create(std::shared_ptr<error::error_info> body) noexcept;
+
 private:
     std::shared_ptr<error::error_info> body_{};
+
+    /**
+     * @brief construct new object
+     */
+    explicit error_info(std::shared_ptr<error::error_info> body) noexcept;
 
 protected:
     void write_to(std::ostream& os) const noexcept override;
 };
+
 
 }
 

@@ -41,5 +41,12 @@ void error_info::write_to(std::ostream &os) const noexcept {
     os << *body_;
 }
 
+std::shared_ptr<api::impl::error_info> error_info::create(std::shared_ptr<error::error_info> body) noexcept {
+    if(! body) {
+        return {};
+    }
+    return std::shared_ptr<api::impl::error_info>(new api::impl::error_info(std::move(body)));  //NOLINT
+}
+
 }
 

@@ -93,7 +93,7 @@ TEST_F(transaction_impl_test, resolve_execute_stmt) {
         prepared,
         std::shared_ptr{std::move(ps)},
         nullptr,
-        [&](status st, std::string_view msg){
+        [&](status st, std::shared_ptr<error::error_info> info){
             if(st != status::ok) {
                 LOG(ERROR) << st;
                 error_abort.store(true);

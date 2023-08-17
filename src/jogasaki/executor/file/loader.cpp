@@ -190,11 +190,11 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
             prepared_,
             std::move(ps),
             nullptr,
-            [&](status st, std::string_view msg){
+            [&](status st, std::shared_ptr<error::error_info> info){
                 --running_statement_count_;
                 if(st != status::ok) {
                     std::stringstream ss{};
-                    ss << "load failed with the statement position:" << records_loaded_ << " status:" << st << " with message \"" << msg << "\"";
+                    ss << "load failed with the statement position:" << records_loaded_ << " status:" << st << " with message \"" << (info ? info->message() : "") << "\"";
                     status_ = st;
                     msg_ = ss.str();
                     VLOG_LP(log_error) << msg_;  //NOLINT

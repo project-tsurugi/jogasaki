@@ -169,7 +169,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         info_.prepared(),
         std::move(ps),
         nullptr,
-        [&, state = state_, root = std::move(r)](status st, std::string_view msg){
+        [&, state = state_, root = std::move(r)](status st, std::shared_ptr<error::error_info> info) {
             (void) root; // let callback own the tree root
             --state->running_statements();
             if(state->error_aborting()) {
@@ -182,7 +182,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
                     " block index:" << block_index_ <<
                     " statement position:" << pos <<
                     " status:" << st <<
-                    " message:\"" << msg << "\"";
+                    " message:\"" << (info ? info->message() : "") << "\"";
                 state->error_info(st, ss.str());
                 finish(info_, *state_);
                 constexpr auto lp = "/:jogasaki:executor:batch:batch_block_executor:next_statement ";

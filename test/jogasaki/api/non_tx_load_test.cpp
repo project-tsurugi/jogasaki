@@ -113,9 +113,9 @@ public:
             maybe_shared_ptr{stmt.get()},
             maybe_shared_ptr{&ch},
             path(),
-            [&](status st, std::string_view msg){
+            [&](status st, std::shared_ptr<error::error_info> info){
                 s = st;
-                message = msg;
+                message = (info ? info->message() : "");
                 run.store(true);
             },
             max_records_per_file

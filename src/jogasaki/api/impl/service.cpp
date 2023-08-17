@@ -230,7 +230,6 @@ void service::command_dispose_transaction(
     if(! tx) {
         return;
     }
-    std::shared_ptr<api::error_info> info{};
     if(auto rc = db_->destroy_transaction(tx); rc != status::ok && rc != status::err_invalid_argument) {
         // unexpected error
         details::error<sql::response::ResultOnly>(*res, rc, "Unexpected error occurred in disposing transaction.", req_info);

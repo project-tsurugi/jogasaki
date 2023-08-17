@@ -57,6 +57,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
@@ -81,6 +82,8 @@
 
 namespace jogasaki::plan {
 
+#define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st) //NOLINT
+
 ///@private
 namespace impl {
 
@@ -96,6 +99,23 @@ namespace statement = ::takatori::statement;
 namespace relation = takatori::relation;
 
 using takatori::util::unsafe_downcast;
+
+/**
+ * @brief set error info to the compiler context
+ * @param ctx compiler context to set error
+ * @param info error info to be set
+ */
+void set_compile_error_impl(
+    compiler_context& ctx,
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st
+) {
+    auto info = error::create_error_info_impl(code, message, filepath, position, st);
+    ctx.error_info(info);
+}
 
 void preprocess(
     takatori::plan::process const& process,
@@ -361,9 +381,16 @@ status prepare(
         for(auto&& e : errors) {
             msg << e.code() << " " << e.message();
         }
-        VLOG_LP(log_error) << status::err_compiler_error << ": " <<  msg.str();
+        auto res = status::err_compiler_error;
+        VLOG_LP(log_error) << res << ": " <<  msg.str();
         ctx.diag()->set(msg.str());
-        return status::err_compiler_error;
+        set_compile_error(
+            ctx,
+            error_code::compile_exception,
+            msg.str(),
+            res
+        );
+        return res;
     }
     return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, ctx, out);
 }

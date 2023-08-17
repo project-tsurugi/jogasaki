@@ -91,14 +91,33 @@ public:
 
     [[nodiscard]] status prepare(
         std::string_view sql,
+        api::statement_handle& statement,
+        std::shared_ptr<error::error_info>& out
+    );
+
+    [[nodiscard]] status prepare(
+        std::string_view sql,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::statement_handle& statement
     ) override;
+
+    [[nodiscard]] status prepare(
+        std::string_view sql,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        api::statement_handle& statement,
+        std::shared_ptr<error::error_info>& out
+    );
 
     [[nodiscard]] status create_executable(
         std::string_view sql,
         std::unique_ptr<api::executable_statement>& statement
     ) override;
+
+    [[nodiscard]] status create_executable(
+        std::string_view sql,
+        std::unique_ptr<api::executable_statement>& statement,
+        std::shared_ptr<error::error_info>& out
+    );
 
     [[nodiscard]] status resolve(
         api::statement_handle prepared,
@@ -241,13 +260,15 @@ private:
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
-        std::unique_ptr<impl::prepared_statement>& statement
+        std::unique_ptr<impl::prepared_statement>& statement,
+        std::shared_ptr<error::error_info>& out
     );
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
-        api::statement_handle& statement
+        api::statement_handle& statement,
+        std::shared_ptr<error::error_info>& out
     );
 
     [[nodiscard]] status resolve_common(

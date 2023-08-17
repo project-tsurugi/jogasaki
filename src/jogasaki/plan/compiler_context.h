@@ -118,6 +118,14 @@ public:
     [[nodiscard]] std::shared_ptr<std::string> sql_text_shared() const {
         return sql_text_;
     }
+
+    void error_info(std::shared_ptr<error::error_info> info) noexcept {
+        error_info_ = std::move(info);
+    }
+
+    [[nodiscard]] std::shared_ptr<error::error_info> const& error_info() const noexcept {
+        return error_info_;
+    }
 private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};
@@ -128,6 +136,8 @@ private:
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
     diagnostics* diag_{};
     std::shared_ptr<std::string> sql_text_{};
+    std::shared_ptr<error::error_info> error_info_{};
+
 };
 
 }

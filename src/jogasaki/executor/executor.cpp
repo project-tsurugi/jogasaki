@@ -127,7 +127,7 @@ status commit(
     auto jobid = commit_async(
             database,
             std::move(tx),
-            [&](status st, std::shared_ptr<error::error_info> info){
+            [&](status st, std::shared_ptr<error::error_info> info){  //NOLINT(performance-unnecessary-value-param)
                 ret = st;
                 if(st != status::ok) {
                     VLOG(log_error) << log_location_prefix << (info ? info->message() : "");
@@ -165,7 +165,7 @@ status execute(
             std::move(tx),
             maybe_shared_ptr{std::addressof(statement)},
             ch,
-            [&](status st, std::shared_ptr<error::error_info> info) {
+            [&](status st, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
                 ret = st;
                 msg = (info ? info->message() : "");
             },
@@ -189,7 +189,7 @@ status execute(
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
     status ret{};
     std::string msg{};
-    execute_async(database, std::move(tx), prepared, std::move(parameters), ch, [&](status st, std::shared_ptr<error::error_info> info){
+    execute_async(database, std::move(tx), prepared, std::move(parameters), ch, [&](status st, std::shared_ptr<error::error_info> info){  //NOLINT(performance-unnecessary-value-param)
         ret = st;
         msg = (info ? info->message() : "");
     }, true);

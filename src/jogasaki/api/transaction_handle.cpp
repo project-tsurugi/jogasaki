@@ -63,12 +63,12 @@ status transaction_handle::commit() {  //NOLINT(readability-make-member-function
 }
 
 void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readability-make-member-function-const)
-    commit_async([on_completion](status st, std::shared_ptr<api::error_info> info) {
+    commit_async([on_completion=std::move(on_completion)](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
         on_completion(st, (info ? info->message() : ""));
     });
 }
 
-void transaction_handle::commit_async(error_info_callback on_completion) {  //NOLINT(readability-make-member-function-const)
+void transaction_handle::commit_async(error_info_callback on_completion) {  //NOLINT(readability-make-member-function-const,performance-unnecessary-value-param)
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
         auto res = status::err_invalid_argument;
@@ -117,14 +117,14 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
     maybe_shared_ptr<executable_statement> const& statement,
     transaction_handle::callback on_completion
 ) {
-    return execute_async(statement, [on_completion](status st, std::shared_ptr<api::error_info> info){
+    return execute_async(statement, [on_completion=std::move(on_completion)](status st, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
         on_completion(st, (info ? info->message() : ""));
     });
 }
 
 bool transaction_handle::execute_async(   //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<executable_statement> const& statement,
-    transaction_handle::error_info_callback on_completion
+    transaction_handle::error_info_callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
@@ -152,7 +152,7 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
     maybe_shared_ptr<data_channel> const& channel,
     transaction_handle::callback on_completion
 ) {
-    return execute_async(statement, channel, [on_completion](status st, std::shared_ptr<api::error_info> info) {
+    return execute_async(statement, channel, [on_completion=std::move(on_completion)](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
         on_completion(st, (info ? info->message() : ""));
     });
 }
@@ -160,7 +160,7 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
 bool transaction_handle::execute_async(  //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<executable_statement> const& statement,
     maybe_shared_ptr<data_channel> const& channel,
-    transaction_handle::error_info_callback on_completion
+    transaction_handle::error_info_callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) {

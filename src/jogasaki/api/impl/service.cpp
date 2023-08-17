@@ -1062,7 +1062,7 @@ void service::execute_dump(
             std::shared_ptr{std::move(e)},
             info->data_channel_,
             directory,
-            [cbp, this, req_info](status s, std::shared_ptr<error::error_info> info) {
+            [cbp, this, req_info](status s, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
                 {
                     trace_scope_name("release_channel");  //NOLINT
                     cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
@@ -1084,7 +1084,7 @@ void service::execute_dump(
     }
 }
 
-void service::execute_load(
+void service::execute_load( //NOLINT
     std::shared_ptr<tateyama::api::server::response> const& res,
     details::query_info const& q,
     jogasaki::api::transaction_handle tx,
@@ -1111,7 +1111,7 @@ void service::execute_load(
                 statement,
                 q.params(),
                 files,
-                [cbp, this, req_info](status s, std::shared_ptr<error::error_info> info) {
+                [cbp, this, req_info](status s, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
                     if (s == jogasaki::status::ok) {
                         details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                     } else {

@@ -205,6 +205,29 @@ void error(
     p.release_error();
 }
 
+template<typename T>
+void error(
+    tateyama::api::server::response& res,
+    api::error_info* err_info,
+    request_info const& req_info
+) {
+    sql::response::Error e{};
+    T p{};
+    sql::response::Response r{};
+    e.set_status(map_status(err_info ? err_info->status() : status::ok));
+    e.set_code(map_error(err_info ? err_info->code() : error_code::none));
+    std::string detail{utils::sanitize_utf8(err_info ? err_info->message() : "")};
+    e.set_detail(detail);
+    std::string suptext{utils::sanitize_utf8(err_info ? err_info->supplemental_text() : "")};
+    e.set_supplemental_text(suptext);
+    p.set_allocated_error(&e);
+    set_allocated_object(r, p);
+    res.code(response_code::application_error);
+    reply(res, r, req_info);
+    release_object(r, p);
+    p.release_error();
+}
+
 template<typename T, typename... Args>
 void success(tateyama::api::server::response& res, Args...) = delete; //NOLINT(performance-unnecessary-value-param)
 

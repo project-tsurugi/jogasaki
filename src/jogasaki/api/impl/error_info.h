@@ -91,6 +91,11 @@ public:
      */
     static std::shared_ptr<api::impl::error_info> create(std::shared_ptr<error::error_info> body) noexcept;
 
+    /**
+     * @brief fetch body
+     * @return the body object
+     */
+    [[nodiscard]] std::shared_ptr<error::error_info> const& body() const noexcept;;
 private:
     std::shared_ptr<error::error_info> body_{};
 

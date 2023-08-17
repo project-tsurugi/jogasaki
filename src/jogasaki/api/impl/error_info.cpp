@@ -48,5 +48,9 @@ std::shared_ptr<api::impl::error_info> error_info::create(std::shared_ptr<error:
     return std::shared_ptr<api::impl::error_info>(new api::impl::error_info(std::move(body)));  //NOLINT
 }
 
+std::shared_ptr<error::error_info> const &error_info::body() const noexcept {
+    return body_;
+}
+
 }
 

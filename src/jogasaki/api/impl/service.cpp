@@ -746,11 +746,11 @@ void service::execute_statement(
     }
     if(auto success = tx.execute_async(
             std::move(stmt),
-            [cbp, this, req_info](status s, std::string_view message){
+            [cbp, this, req_info](status s, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                 } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, s, std::string{message}, req_info);
+                    details::error<sql::response::ResultOnly>(*cbp->response_, info.get(), req_info);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     throw_exception(std::logic_error{"missing callback"});
@@ -888,7 +888,7 @@ void service::execute_query(
     if(auto rc = tx.execute_async(
             std::shared_ptr{std::move(e)},
             info->data_channel_,
-            [cbp, this, req_info](status s, std::string_view message){
+            [cbp, this, req_info](status s, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
                 {
                     trace_scope_name("release_channel");  //NOLINT
                     cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
@@ -896,7 +896,7 @@ void service::execute_query(
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                 } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, s, message, req_info);
+                    details::error<sql::response::ResultOnly>(*cbp->response_, info.get(), req_info);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     throw_exception(std::logic_error{"missing callback"});
@@ -1070,7 +1070,7 @@ void service::execute_dump(
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                 } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, s, (info ? info->message() : ""), req_info);
+                    details::error<sql::response::ResultOnly>(*cbp->response_, info.get(), req_info);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     throw_exception(std::logic_error{"missing callback"});
@@ -1115,7 +1115,7 @@ void service::execute_load( //NOLINT
                     if (s == jogasaki::status::ok) {
                         details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                     } else {
-                        details::error<sql::response::ResultOnly>(*cbp->response_, s, (info ? info->message() : ""), req_info);
+                        details::error<sql::response::ResultOnly>(*cbp->response_, info.get(), req_info);
                     }
                     if (!callbacks_.erase(cbp->id_)) {
                         throw_exception(std::logic_error{"missing callback"});

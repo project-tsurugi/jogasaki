@@ -34,6 +34,8 @@
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/string_manipulation.h>
 #include <jogasaki/utils/sanitize_utf8.h>
+#include <jogasaki/api/impl/error_info.h>
+#include <jogasaki/error/error_info.h>
 
 #include <tateyama/status.h>
 
@@ -208,7 +210,7 @@ void error(
 template<typename T>
 void error(
     tateyama::api::server::response& res,
-    api::error_info* err_info,
+    error::error_info* err_info,
     request_info const& req_info
 ) {
     sql::response::Error e{};
@@ -226,6 +228,20 @@ void error(
     reply(res, r, req_info);
     release_object(r, p);
     p.release_error();
+}
+
+template<typename T>
+void error(
+    tateyama::api::server::response& res,
+    api::error_info* err_info,
+    request_info const& req_info
+) {
+    error::error_info* p{};
+    if (! err_info) {
+        return error<T>(res, p, req_info);
+    }
+    p = dynamic_cast<api::impl::error_info*>(err_info)->body().get();
+    return error<T>(res, p, req_info);
 }
 
 template<typename T, typename... Args>

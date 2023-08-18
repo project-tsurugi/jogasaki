@@ -120,7 +120,8 @@ TEST_F(batch_block_executor_test, simple) {
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 
-    ASSERT_EQ(status::ok, block->state()->error_info().first);
+    ASSERT_EQ(status::ok, block->state()->status_code());
+    ASSERT_FALSE(block->state()->error_info());
 
     {
         std::vector<mock::basic_record> result{};
@@ -166,8 +167,8 @@ TEST_F(batch_block_executor_test, multiple_row_groups) {
 
     impl->scheduler()->wait_for_progress(scheduler::job_context::undefined_id);
 
-    ASSERT_EQ(status::ok, block->state()->error_info().first);
-
+    ASSERT_EQ(status::ok, block->state()->status_code());
+    ASSERT_FALSE(block->state()->error_info());
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TT ORDER BY C0", result);

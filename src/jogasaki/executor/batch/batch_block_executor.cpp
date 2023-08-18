@@ -26,6 +26,7 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
 
 #include "batch_executor.h"
@@ -123,14 +124,20 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         create_reader_option_and_maping(*info_.parameters(), info_.prepared(), mapping_, opt);
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {
-            state_->error_info(status::err_io_error, "opening parquet file failed.");
+            state_->set_error_status(
+                status::err_io_error,
+                create_error_info(error_code::load_file_ioexception, "opening parquet file failed.", status::err_io_error)
+            );
             finish(info_, *state_);
             return {false, false};
         }
 
         if(auto res = executor::create_transaction(*info_.db(), tx_,
                 {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
-            state_->error_info(res, "starting new tx failed.");
+            state_->set_error_status(
+                res,
+                create_error_info(error_code::sql_execution_exception, "starting new tx failed.", res)
+            );
             reader_->close();
             reader_.reset();
             finish(info_, *state_);
@@ -149,7 +156,17 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
             return {false, false};
         }
         if(auto res = tx_->commit(); res != status::ok) {
-            state_->error_info(res, "committing tx failed.");
+            if(res == status::err_serialization_failure) {
+                state_->set_error_status(
+                    res,
+                    create_error_info(error_code::cc_exception, "Committing tx failed.", res)
+                );
+            } else {
+                state_->set_error_status(
+                    res,
+                    create_error_info(error_code::sql_service_exception, "Unexpected error occurred on commit.", res)
+                );
+            }
             finish(info_, *state_);
             return {false, false};
         }
@@ -169,7 +186,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         info_.prepared(),
         std::move(ps),
         nullptr,
-        [&, state = state_, root = std::move(r)](status st, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+        [&, state = state_, root = std::move(r)](status st, std::shared_ptr<error::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
             (void) root; // let callback own the tree root
             --state->running_statements();
             if(state->error_aborting()) {
@@ -177,13 +194,14 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
             }
             auto pos = statements_executed_++;
             if(st != status::ok) {
+                // add loaded file information as additional text
                 std::stringstream ss{};
-                ss << "Executing statement failed. file:" << file_ <<
+                ss << "file:" << file_ <<
                     " block index:" << block_index_ <<
                     " statement position:" << pos <<
-                    " status:" << st <<
-                    " message:\"" << (info ? info->message() : "") << "\"";
-                state->error_info(st, ss.str());
+                    " status:" << st;
+                err_info->additional_text(ss.str());
+                state_->set_error_status(st, std::move(err_info));
                 finish(info_, *state_);
                 constexpr auto lp = "/:jogasaki:executor:batch:batch_block_executor:next_statement ";
                 VLOG(log_error) << lp << ss.str();  //NOLINT

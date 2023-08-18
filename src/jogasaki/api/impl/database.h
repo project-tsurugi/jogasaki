@@ -57,7 +57,7 @@ using takatori::util::maybe_shared_ptr;
  */
 class database : public api::database {
 public:
-    using callback = std::function<void(status, std::string_view)>;
+    using callback = std::function<void(status, std::shared_ptr<error::error_info>)>;
 
     using create_transaction_callback = api::database::create_transaction_callback;
 

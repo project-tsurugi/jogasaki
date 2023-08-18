@@ -104,6 +104,18 @@ public:
      * @return false otherwise
      */
     [[nodiscard]] explicit operator bool() const noexcept;
+
+    /**
+     * @brief set additional information text
+     */
+    void additional_text(std::string_view arg) noexcept;
+
+    /**
+     * @brief fetch additional information text
+     * @return the additional info text
+     */
+    [[nodiscard]] std::string_view additional_text() const noexcept;
+
 private:
     jogasaki::error_code error_code_{jogasaki::error_code::none};
     std::string message_{};
@@ -111,7 +123,7 @@ private:
     std::string source_file_path_{};
     std::string source_file_position_{};
     std::string stacks_{};
-
+    std::string additional_text_{};
 };
 
 /**
@@ -126,6 +138,7 @@ inline std::ostream& operator<<(std::ostream& out, error_info const& value) {
         << value.message() << " "
         << value.source_file_path() << " "
         << value.source_file_position() << " "
+        << value.additional_text() << " "
         << value.supplemental_text();
 }
 

@@ -15,6 +15,7 @@
  */
 #include "database.h"
 
+#include <memory>
 #include <glog/logging.h>
 
 #include <takatori/util/fail.h>
@@ -1033,8 +1034,7 @@ bool database::execute_load(
     );
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, ldr](){  // callback is copy-based
         (void)ldr; // to keep ownership
-        auto [st, msg] = ldr->state()->error_info();
-        on_completion(st, msg);
+        on_completion(ldr->state()->status_code(), ldr->state()->error_info());
     });
 
     auto& ts = *rctx->scheduler();

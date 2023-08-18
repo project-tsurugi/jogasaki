@@ -18,8 +18,10 @@
 #include <cstddef>
 #include <atomic>
 #include <string>
+#include <memory>
 
 #include <jogasaki/status.h>
+#include <jogasaki/error/error_info.h>
 
 namespace jogasaki::executor::batch {
 
@@ -52,18 +54,24 @@ public:
     [[nodiscard]] bool error_aborting() const noexcept;
 
     /**
-     * @brief accessor to the error information
-     * @return the error status and message
+     * @brief accessor to the execution result status
+     * @return the status
      */
-    [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
+    [[nodiscard]] status status_code() const noexcept;
+
+    /**
+     * @brief accessor to the error information
+     * @return the error info
+     */
+    [[nodiscard]] std::shared_ptr<error::error_info> error_info() const noexcept;
 
     /**
      * @brief setter for the error information
      * @returns true if the passed status is set
-     * @returns false if the status is already set to a value other than status::ok, and setting to new value failed
+     * @returns false if the non-empty error info is already set
      * @note this function is thread safe
      */
-    bool error_info(status val, std::string_view msg) noexcept;
+    bool set_error_status(status st, std::shared_ptr<error::error_info> info) noexcept;
 
     /**
      * @brief accessor to the number of statements being scheduled/executed
@@ -87,10 +95,10 @@ public:
 
 private:
     std::atomic<status> status_code_{status::ok};
-    std::string status_message_{};
     std::atomic_bool error_aborting_{false};
     std::atomic_size_t running_statements_{0};
     std::atomic_bool finished_{false};
+    std::shared_ptr<error::error_info> error_info_{};
 };
 
 /**

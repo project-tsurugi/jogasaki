@@ -15,6 +15,8 @@
  */
 #include "batch_file_executor.h"
 
+#include <jogasaki/error/error_info_factory.h>
+
 #include "batch_executor.h"
 #include "batch_block_executor.h"
 
@@ -107,7 +109,10 @@ bool batch_file_executor::init() {
     // create reader and check file metadata
     auto reader = file::parquet_reader::open(file_, nullptr, file::parquet_reader::index_unspecified);
     if(! reader) {
-        state_->error_info(status::err_io_error, "opening parquet file failed.");
+        state_->set_error_status(
+            status::err_io_error,
+            create_error_info(error_code::load_file_ioexception, "opening parquet file failed.", status::err_io_error)
+        );
         finish(info_, *state_);
         return false;
     }

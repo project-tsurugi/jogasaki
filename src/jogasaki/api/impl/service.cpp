@@ -1211,15 +1211,15 @@ void service::execute_load( //NOLINT
         }
     } else {
         //non transactional load
-        if (auto rc = reinterpret_cast<api::impl::database*>(db_)->execute_load(  //NOLINT
+        if (auto rc = get_impl(*db_).execute_load(  //NOLINT
                 statement,
                 q.params(),
                 files,
-                [cbp, this, req_info](status s, std::string_view message) {
+                [cbp, this, req_info](status s, std::shared_ptr<error::error_info> err_info) {
                     if (s == jogasaki::status::ok) {
                         details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                     } else {
-                        details::error<sql::response::ResultOnly>(*cbp->response_, s, message, req_info);
+                        details::error<sql::response::ResultOnly>(*cbp->response_, err_info.get(), req_info);
                     }
                     if (!callbacks_.erase(cbp->id_)) {
                         throw_exception(std::logic_error{"missing callback"});

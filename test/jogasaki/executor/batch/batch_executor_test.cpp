@@ -544,9 +544,10 @@ void batch_executor_test::test_error(
         execute_query("SELECT * FROM TT ORDER BY C0", result);
     }
     EXPECT_TRUE(called);
-    auto [st, msg] = root->state()->error_info();
+    auto st = root->state()->status_code();
+    auto err_info = root->state()->error_info();
     EXPECT_EQ(expected, st);
-    std::cerr << "msg: " << msg << std::endl;
+    std::cerr << "msg: " << (err_info ? err_info->message() : "") << std::endl;
 }
 }
 

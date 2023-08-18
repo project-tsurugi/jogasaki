@@ -68,5 +68,13 @@ error_info::operator bool() const noexcept {
     return error_code_ != jogasaki::error_code::none;
 }
 
+std::string_view error_info::additional_text() const noexcept {
+    return additional_text_;
+}
+
+void error_info::additional_text(std::string_view arg) noexcept {
+    additional_text_ = arg;
+}
+
 }
 

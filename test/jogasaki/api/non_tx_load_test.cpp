@@ -154,9 +154,9 @@ public:
             prepared,
             std::shared_ptr{std::move(ps)},
             files,
-            [&](status st, std::string_view msg){
+            [&](status st, std::shared_ptr<error::error_info> info){
                 s = st;
-                message = msg;
+                message = (info ? info->message() : "");
                 run.store(true);
             }
         ));

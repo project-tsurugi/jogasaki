@@ -19,6 +19,9 @@
 #include <atomic>
 #include <string>
 
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+
 #include "batch_execution_info.h"
 
 namespace jogasaki::executor::batch {
@@ -28,23 +31,26 @@ bool batch_execution_state::error_aborting() const noexcept {
     return error_aborting_;
 }
 
-std::pair<status, std::string> batch_execution_state::error_info() const noexcept {
-    return {status_code_, status_message_};
+std::shared_ptr<error::error_info> batch_execution_state::error_info() const noexcept {
+    return std::atomic_load(std::addressof(error_info_));
 }
 
-bool batch_execution_state::error_info(status val, std::string_view msg) noexcept {
+bool batch_execution_state::set_error_status(status st, std::shared_ptr<error::error_info> info) noexcept {
     error_aborting_ = true;
-    status s{};
+    std::shared_ptr<error::error_info> s{};
+    s = std::atomic_load(std::addressof(error_info_));
     do {
-        s = status_code_.load();
-        if (s != status::ok) {
+        if (s && (*s)) {
+            if(info->status() != status::err_inactive_transaction &&
+                info->code() != error_code::inactive_transaction_exception) {
+                // Inactive tx occurs very frequentyly, so avoid logging here.
+                VLOG_LP(log_error) << "Error " << info->code() << "(\"" << info->message() << "\")"
+                                                                                              " is reported subsequently following the original error " << s->code() << ".";
+            }
             return false;
         }
-    } while (!status_code_.compare_exchange_strong(s, val));
-
-    if(val != status::ok) {  // to ensure status::ok has no error msg
-        status_message_.assign(msg);
-    }
+    } while (! std::atomic_compare_exchange_strong(std::addressof(error_info_), std::addressof(s), info));
+    status_code_ = st;
     return true;
 }
 
@@ -65,6 +71,10 @@ bool batch_execution_state::finish() noexcept {
 
 bool batch_execution_state::finished() const noexcept {
     return finished_;
+}
+
+status batch_execution_state::status_code() const noexcept {
+    return status_code_;
 }
 
 void finish(batch_execution_info const& info, batch_execution_state& state) {

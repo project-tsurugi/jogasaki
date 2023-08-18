@@ -290,7 +290,7 @@ inline std::pair<bool, error> decode_result_only(std::string_view res) {
     auto& ro = resp.result_only();
     if (ro.has_error()) {
         auto& er = ro.error();
-        return {false, {er.status(), er.detail()}};
+        return {false, {er.status(), er.detail(), api::impl::map_error(er.code()), er.supplemental_text()}};
     }
     return {true, {}};
 }

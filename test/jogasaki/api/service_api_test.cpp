@@ -128,7 +128,7 @@ public:
     void test_commit(
         std::uint64_t& handle,
         bool auto_dispose_on_commit_success = true,
-        status expected = status::ok
+        error_code expected = error_code::none
     );
     void test_dispose_transaction(std::uint64_t handle, status expected = status::ok);
     void test_rollback(std::uint64_t& handle);
@@ -237,7 +237,7 @@ void service_api_test::test_begin(
 void service_api_test::test_commit(
     std::uint64_t& handle,
     bool auto_dispose_on_commit_success,
-    status expected
+    error_code expected
 ) {
     auto s = encode_commit(handle, auto_dispose_on_commit_success);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -246,14 +246,14 @@ void service_api_test::test_commit(
     EXPECT_TRUE(res->wait_completion());
     ASSERT_TRUE(st);
 
-    ASSERT_EQ(expected == status::ok ? response_code::success : response_code::application_error, res->code_);
+    ASSERT_EQ(expected == error_code::none ? response_code::success : response_code::application_error, res->code_);
     {
         auto [success, error] = decode_result_only(res->body_);
-        if(expected == status::ok) {
+        if(expected == error_code::none) {
             ASSERT_TRUE(success);
         } else {
             ASSERT_FALSE(success);
-            ASSERT_EQ(api::impl::details::map_status(expected), error.status_);
+            ASSERT_EQ(expected, error.code_);
         }
     }
 }
@@ -976,7 +976,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         ASSERT_FALSE(success);
         ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
-        test_commit(tx_handle, true, status::err_inactive_transaction); // verify tx already aborted
+        test_commit(tx_handle, true, error_code::inactive_transaction_exception); // verify tx already aborted
     }
     {
         test_begin(tx_handle);

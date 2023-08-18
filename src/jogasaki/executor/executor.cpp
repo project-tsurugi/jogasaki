@@ -507,9 +507,10 @@ scheduler::job_context::job_id_type commit_async(
         }
 
         auto msg = res != status::ok ? utils::create_abort_message(*rctx, *tx, *database.tables()) : "";
+        auto code = res == status::err_inactive_transaction ? error_code::inactive_transaction_exception : error_code::cc_exception;
         set_error(
             *rctx,
-            error_code::cc_exception,
+            code,
             msg,
             res
         );

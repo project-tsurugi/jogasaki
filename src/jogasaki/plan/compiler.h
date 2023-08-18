@@ -78,7 +78,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
  * @param parameters parameters to resolve the place holder in the sql,
  * pass nullptr if place-holder resolution is not necessary.
  * @return status::ok when successful
- * @return any error and non-empty diagnostics is filled in ctx.diag() object
+ * @return any error and non-empty diagnostics is filled in ctx.error_info() object
  */
 [[nodiscard]] status compile(std::string_view sql, compiler_context& ctx, parameter_set const* parameters = nullptr);
 
@@ -88,7 +88,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
  * @param parameters parameters to resolve the place holder in the sql,
  * pass nullptr if place-holder resolution is not necessary.
  * @return status::ok when successful
- * @return any error and non-empty diagnostics is filled in ctx.diag() object
+ * @return any error and non-empty diagnostics is filled in ctx.error_info() object
  */
 [[nodiscard]] status compile(compiler_context &ctx, parameter_set const* parameters = nullptr);
 
@@ -97,7 +97,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
  * @param sql the sql statement to compile
  * @param ctx the compiler context filled with storage provider required to pre-compile the sql
  * @return status::ok when successful
- * @return any error and non-empty diagnostics is filled in ctx.diag() object
+ * @return any error and non-empty diagnostics is filled in ctx.error_info() object
  */
 [[nodiscard]] status prepare(std::string_view sql, compiler_context& ctx);
 

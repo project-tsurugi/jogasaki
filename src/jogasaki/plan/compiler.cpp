@@ -275,7 +275,14 @@ status create_prepared_statement(
         }
         VLOG_LP(log_error) << status::err_compiler_error << ": " <<  msg.str();
         ctx.diag()->set(msg.str());
-        return status::err_compiler_error;
+        auto res = status::err_compiler_error;
+        set_compile_error(
+            ctx,
+            error_code::compile_exception,
+            msg.str(),
+            res
+        );
+        return res;
     }
     auto stmt = result.release_statement();
     stmt->runtime_hint() = sp->result();
@@ -315,16 +322,30 @@ status parse_validate(
             }
             std::stringstream msg{};
             msg << "syntax validation failed: " << errs.str();
-            VLOG_LP(log_error) << status::err_parse_error << ": " << msg.str();
+            auto res = status::err_parse_error;
+            VLOG_LP(log_error) << res << ": " << msg.str();
             ctx.diag()->set(msg.str());
-            return status::err_parse_error;
+            set_compile_error(
+                ctx,
+                error_code::compile_exception, // TODO revisit after mizugaki upgrade
+                msg.str(),
+                res
+            );
+            return res;
         }
     } catch (shakujo::parser::Parser::Exception &e) {
         std::stringstream msg{};
         msg << "parsing statement failed: " << e.message() << " (" << e.region() << ")";
-        VLOG_LP(log_error) << status::err_parse_error << ": " <<  msg.str();
+        auto res = status::err_parse_error;
+        VLOG_LP(log_error) << res << ": " <<  msg.str();
         ctx.diag()->set(msg.str());
-        return status::err_parse_error;
+        set_compile_error(
+            ctx,
+            error_code::compile_exception, // TODO revisit after mizugaki upgrade
+            msg.str(),
+            res
+        );
+        return res;
     }
     return status::ok;
 }
@@ -607,9 +628,16 @@ status validate_host_variables(
         if(! parameters->find(name)) {
             std::stringstream ss{};
             ss << "Value is not assigned for host variable '" << name << "'";
-            VLOG_LP(log_error) << status::err_unresolved_host_variable << ": " << ss.str();
+            auto res = status::err_unresolved_host_variable;
+            VLOG_LP(log_error) << res << ": " << ss.str();
             ctx.diag()->set(ss.str());
-            return status::err_unresolved_host_variable;
+            set_compile_error(
+                ctx,
+                error_code::unresolved_placeholder_exception,
+                ss.str(),
+                res
+            );
+            return res;
         }
     }
     return status::ok;

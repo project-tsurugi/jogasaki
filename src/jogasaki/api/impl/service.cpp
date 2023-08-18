@@ -383,7 +383,7 @@ jogasaki::api::statement_handle validate_statement_handle(
     if (! handle) {
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
-            "Invalid request format - missing prepared_statement_handle",
+            "Invalid request format - invalid prepared_statement_handle",
             status::err_invalid_argument
         );
         details::error<Response>(res, err_info.get(), req_info);

@@ -129,7 +129,7 @@ TEST_F(database_test, simple) {
         ps->set_int8("p0", 1);
         ASSERT_EQ(status::ok,db_->resolve(prep, ps, exec));
         ASSERT_EQ(status::ok,db_->destroy_statement(prep));
-        ASSERT_EQ(status::not_found, db_->destroy_statement(prep));
+        ASSERT_EQ(status::err_invalid_argument, db_->destroy_statement(prep));
         ps.reset();
         f();
     }

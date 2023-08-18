@@ -79,7 +79,7 @@ TEST_F(database_test, simple) {
         tx->commit();
     }
     ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
-    ASSERT_EQ(status::not_found, db_->destroy_statement(prepared));
+    ASSERT_EQ(status::err_invalid_argument, db_->destroy_statement(prepared));
 
     {
         auto tx = utils::create_transaction(*db_);

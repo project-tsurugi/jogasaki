@@ -125,6 +125,13 @@ public:
         std::unique_ptr<api::executable_statement>& statement
     ) override;
 
+    [[nodiscard]] status resolve(
+        api::statement_handle prepared,
+        maybe_shared_ptr<api::parameter_set const> parameters,
+        std::unique_ptr<api::executable_statement>& statement,
+        std::shared_ptr<error::error_info>& out
+    );
+
     [[nodiscard]] status destroy_statement(
         api::statement_handle prepared
     ) override;
@@ -274,7 +281,8 @@ private:
     [[nodiscard]] status resolve_common(
         impl::prepared_statement const& prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,
-        std::unique_ptr<api::executable_statement>& statement
+        std::unique_ptr<api::executable_statement>& statement,
+        std::shared_ptr<error::error_info>& out
     );
 
     status validate_option(transaction_option const& option);

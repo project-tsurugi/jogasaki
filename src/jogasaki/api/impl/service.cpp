@@ -29,6 +29,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/utils/proto_field_types.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/impl/prepared_statement.h>
@@ -259,9 +260,18 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     return tx;
 }
 
-void abort_tx(jogasaki::api::transaction_handle tx) {
+void abort_tx(jogasaki::api::transaction_handle tx, std::shared_ptr<error::error_info> err_info = {}) {
     // expecting no error from abort
-    tx.abort();
+    if(tx.abort() == status::err_invalid_argument) {
+        return;
+    }
+    if(err_info) {
+        auto ctx = get_transaction_context(tx);
+        if(! ctx) {
+            return;
+        }
+        ctx->error_info(std::move(err_info));
+    }
 }
 
 void service::command_execute_statement(
@@ -283,9 +293,10 @@ void service::command_execute_statement(
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_->create_executable(sql, e); rc != jogasaki::status::ok) {
-        abort_tx(tx);
-        details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+    std::shared_ptr<error::error_info> err_info{};
+    if(auto rc = get_impl(*db_).create_executable(sql, e, err_info); rc != jogasaki::status::ok) {
+        abort_tx(tx, err_info);
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx, req_info);
@@ -356,9 +367,10 @@ void service::command_execute_prepared_statement(
     set_params(pq.parameters(), params);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e); rc != jogasaki::status::ok) {
-        abort_tx(tx);
-        details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+    std::shared_ptr<error::error_info> err_info{};
+    if(auto rc = get_impl(*db_).resolve(handle, std::shared_ptr{std::move(params)}, e, err_info); rc != jogasaki::status::ok) {
+        abort_tx(tx, err_info);
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx, req_info);

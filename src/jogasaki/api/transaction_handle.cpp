@@ -18,6 +18,7 @@
 #include <utility>
 #include <memory>
 
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/error_info.h>
 #include <jogasaki/executor/executor.h>
@@ -83,6 +84,7 @@ void transaction_handle::commit_async(error_info_callback on_completion) {  //NO
         on_completion(st, api::impl::error_info::create(std::move(info)));
     });
 }
+
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
@@ -217,4 +219,15 @@ status transaction_handle::error_info(std::shared_ptr<api::error_info>& out) con
     }
     return status::ok;
 }
+
+std::uintptr_t transaction_handle::db() const noexcept {
+    return db_;
+}
+
+std::shared_ptr<transaction_context> get_transaction_context(transaction_handle arg) {
+    auto [db, tx] = cast(arg.db(), arg.get());
+    (void) db;
+    return tx;
+}
+
 }

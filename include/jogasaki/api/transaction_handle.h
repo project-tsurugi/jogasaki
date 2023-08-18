@@ -97,6 +97,12 @@ public:
     [[nodiscard]] std::uintptr_t get() const noexcept;
 
     /**
+     * @brief accessor to the db handle
+     * @return the db handle value
+     */
+    [[nodiscard]] std::uintptr_t db() const noexcept;
+
+    /**
      * @brief conversion operator to std::size_t
      * @return the hash value that can be used for equality comparison
      */

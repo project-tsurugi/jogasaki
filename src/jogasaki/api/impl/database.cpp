@@ -333,7 +333,7 @@ status database::create_executable(
     }
     std::unique_ptr<api::executable_statement> exec{};
     auto parameters = std::make_shared<impl::parameter_set>();
-    if(auto rc = resolve_common(*prepared, parameters, exec); rc != status::ok) {
+    if(auto rc = resolve_common(*prepared, parameters, exec, out); rc != status::ok) {
         return rc;
     }
     statement = std::make_unique<impl::executable_statement>(
@@ -490,17 +490,29 @@ status database::resolve(
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::unique_ptr<api::executable_statement>& statement
 ) {
+    std::shared_ptr<error::error_info> info{};
+    return resolve(prepared, parameters, statement, info);
+}
+
+status database::resolve(
+    api::statement_handle prepared,
+    maybe_shared_ptr<api::parameter_set const> parameters,
+    std::unique_ptr<api::executable_statement>& statement,
+    std::shared_ptr<error::error_info>& out
+) {
     return resolve_common(
         *reinterpret_cast<impl::prepared_statement*>(prepared.get()),  //NOLINT
         std::move(parameters),
-        statement
+        statement,
+        out
     );
 }
 
 status database::resolve_common(
     impl::prepared_statement const& prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
-    std::unique_ptr<api::executable_statement>& statement
+    std::unique_ptr<api::executable_statement>& statement,
+    std::shared_ptr<error::error_info>& out
 ) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
     auto ctx = std::make_shared<plan::compiler_context>();
@@ -515,6 +527,7 @@ status database::resolve_common(
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
         VLOG_LP(log_error) << "compilation failed.";
+        out = ctx->error_info();
         return rc;
     }
     statement = std::make_unique<impl::executable_statement>(

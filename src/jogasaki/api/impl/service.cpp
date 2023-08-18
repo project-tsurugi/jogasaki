@@ -263,7 +263,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     return tx;
 }
 
-void abort_tx(jogasaki::api::transaction_handle tx, std::shared_ptr<error::error_info> err_info = {}) {
+void abort_tx(jogasaki::api::transaction_handle tx, std::shared_ptr<error::error_info> const& err_info = {}) {
     // expecting no error from abort
     if(tx.abort() == status::err_invalid_argument) {
         return;

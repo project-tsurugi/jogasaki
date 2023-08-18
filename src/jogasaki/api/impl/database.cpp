@@ -878,7 +878,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
 ) {
-    return do_create_transaction_async([on_completion=std::move(on_completion)](transaction_handle tx, status st, std::shared_ptr<api::error_info> info) {
+    return do_create_transaction_async([on_completion=std::move(on_completion)](transaction_handle tx, status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
         on_completion(tx, st, (info ? info->message() : ""));
     }, option);
 }

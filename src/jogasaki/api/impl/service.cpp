@@ -21,6 +21,7 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/status.h>
 #include <jogasaki/common.h>
@@ -48,6 +49,7 @@ namespace jogasaki::api::impl {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::throw_exception;
+using takatori::util::string_builder;
 using namespace tateyama::api::server;
 
 constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:service ";
@@ -140,12 +142,12 @@ void service::command_begin(
         std::move(rae),
         modifies_definitions
     };
-    db_->create_transaction_async(
-        [res, req_info](jogasaki::api::transaction_handle tx, status st, std::string_view msg) {
+    get_impl(*db_).do_create_transaction_async(
+        [res, req_info](jogasaki::api::transaction_handle tx, status st, std::shared_ptr<api::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
                 details::success<sql::response::Begin>(*res, tx, req_info);
             } else {
-                details::error<sql::response::Begin>(*res, st, msg, req_info);
+                details::error<sql::response::Begin>(*res, err_info.get(), req_info);
             }
         },
         opts
@@ -162,7 +164,12 @@ void service::command_prepare(
     auto& sql = pp.sql();
     if(sql.empty()) {
         VLOG(log_error) << log_location_prefix << "missing sql";
-        details::error<sql::response::Prepare>(*res, status::err_invalid_argument, "missing sql", req_info);
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - missing sql",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::Prepare>(*res, err_info.get(), req_info);
         return;
     }
 
@@ -219,7 +226,12 @@ void service::command_get_error_info(
     std::shared_ptr<api::error_info> info{};
     if(auto rc = tx.error_info(info); rc != status::ok) {
         // invalid handle
-        details::error<sql::response::GetErrorInfo>(*res, rc, "invalid transaction handle", req_info);
+        auto err_info = create_error_info(
+            error_code::transaction_not_found_exception,
+            "Transaction handle is invalid.",
+            rc
+        );
+        details::error<sql::response::GetErrorInfo>(*res, err_info.get(), req_info);
     }
     details::success<sql::response::GetErrorInfo>(*res, req_info, std::move(info));
 }
@@ -236,7 +248,12 @@ void service::command_dispose_transaction(
     }
     if(auto rc = db_->destroy_transaction(tx); rc != status::ok && rc != status::err_invalid_argument) {
         // unexpected error
-        details::error<sql::response::ResultOnly>(*res, rc, "Unexpected error occurred in disposing transaction.", req_info);
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Unexpected error occurred in disposing transaction.",
+            rc
+        );
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
     // err_invalid_argument means invalid tx handle, that is treated as no-op (no error)
@@ -252,12 +269,22 @@ jogasaki::api::transaction_handle validate_transaction_handle(
 ) {
     if(! msg.has_transaction_handle()) {
         VLOG(log_error) << log_location_prefix << "missing transaction_handle";
-        details::error<sql::response::ResultOnly>(res, status::err_invalid_argument, "missing transaction_handle", req_info);
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - missing transaction_handle",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::ResultOnly>(res, err_info.get(), req_info);
         return {};
     }
     jogasaki::api::transaction_handle tx{msg.transaction_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT
     if(! tx) {
-        details::error<sql::response::ResultOnly>(res, jogasaki::status::err_invalid_argument, "invalid transaction handle", req_info);
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - invalid transaction handle",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::ResultOnly>(res, err_info.get(), req_info);
         return {};
     }
     return tx;
@@ -291,8 +318,13 @@ void service::command_execute_statement(
     auto& sql = eq.sql();
     if(sql.empty()) {
         VLOG(log_error) << log_location_prefix << "missing sql";
-        abort_tx(tx);
-        details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql", req_info);
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - missing sql",
+            status::err_invalid_argument
+        );
+        abort_tx(tx, err_info);
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
@@ -319,8 +351,13 @@ void service::command_execute_query(
     auto& sql = eq.sql();
     if(sql.empty()) {
         VLOG(log_error) << log_location_prefix << "missing sql";
-        details::error<sql::response::ResultOnly>(*res, status::err_invalid_argument, "missing sql", req_info);
-        abort_tx(tx);
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - missing sql",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+        abort_tx(tx, err_info);
         return;
     }
     execute_query(res, details::query_info{sql}, tx, req_info);
@@ -334,17 +371,22 @@ jogasaki::api::statement_handle validate_statement_handle(
 ) {
     if(! msg.has_prepared_statement_handle()) {
         VLOG(log_error) << log_location_prefix << "missing prepared_statement_handle";
-        details::error<Response>(res, status::err_invalid_argument, "missing prepared_statement_handle", req_info);
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - missing prepared_statement_handle",
+            status::err_invalid_argument
+        );
+        details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
     jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle()};
     if (! handle) {
-        details::error<Response>(
-            res,
-            jogasaki::status::err_invalid_argument,
-            "invalid statement handle",
-            req_info
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - missing prepared_statement_handle",
+            status::err_invalid_argument
         );
+        details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
     return handle;
@@ -413,7 +455,7 @@ void service::command_commit(
     }
     auto auto_dispose = cm.auto_dispose();
     tx.commit_async(
-        [this, res, tx, req_info, auto_dispose](status st, std::string_view msg) {
+        [this, res, tx, req_info, auto_dispose](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
                 details::success<sql::response::ResultOnly>(*res, req_info);
                 if(auto_dispose) {
@@ -422,8 +464,8 @@ void service::command_commit(
                     }
                 }
             } else {
-                VLOG(log_error) << log_location_prefix << msg;
-                details::error<sql::response::ResultOnly>(*res, st, msg, req_info);
+                VLOG(log_error) << log_location_prefix << info->message();
+                details::error<sql::response::ResultOnly>(*res, info.get(), req_info);
             }
         }
     );
@@ -446,10 +488,24 @@ void service::command_rollback(
     if(auto rc = tx.abort(); rc == jogasaki::status::ok) {
         details::success<sql::response::ResultOnly>(*res, req_info);
     } else {
-        VLOG(log_error) << log_location_prefix << "error in transaction_->abort()";
-        details::error<sql::response::ResultOnly>(*res, rc, "error in transaction_->abort()", req_info);
-        // currently, we assume this won't happen or the transaction is aborted anyway.
-        // So let's proceed to destroy the transaction.
+        std::shared_ptr<error::error_info> err_info{};
+        if(rc == status::err_invalid_argument) {
+            err_info = create_error_info(
+                error_code::transaction_not_found_exception,
+                "Transaction handle is invalid.",
+                rc
+            );
+        } else {
+            VLOG(log_error) << log_location_prefix << "error in transaction_->abort()";
+            err_info = create_error_info(
+                error_code::sql_execution_exception,
+                "Unexpected error in aborting transaction.",
+                rc
+            );
+            // currently, we assume this won't happen or the transaction is aborted anyway.
+            // So let's proceed to destroy the transaction.
+        }
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
     }
     req->status(scheduler::request_detail_status::finishing);
     log_request(*req);
@@ -466,12 +522,16 @@ void service::command_dispose_prepared_statement(
     if(! handle) {
         return;
     }
-    if(auto st = db_->destroy_statement(handle);
-        st == jogasaki::status::ok) {
+    if(auto st = db_->destroy_statement(handle); st == jogasaki::status::ok) {
         details::success<sql::response::ResultOnly>(*res, req_info);
     } else {
         VLOG(log_error) << log_location_prefix << "error destroying statement";
-        details::error<sql::response::ResultOnly>(*res, st, "error destroying statement", req_info);
+        auto err_info = create_error_info(
+            error_code::statement_not_found_exception,
+            string_builder{} << "Invalid statement handle." << string_builder::to_string,
+            st
+        );
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
     }
 }
 void service::command_explain(
@@ -589,7 +649,13 @@ void service::command_describe_table(
     auto table = db_->find_table(dt.name());
     if(! table) {
         VLOG(log_error) << log_location_prefix << "table not found : " << dt.name();
-        details::error<sql::response::DescribeTable>(*res, status::err_not_found, "table not found", req_info);
+        auto st = status::err_not_found;
+        auto err_info = create_error_info(
+            error_code::target_not_found_exception,
+            string_builder{} << "Target table \"" << dt.name() << "\" is not found." << string_builder::to_string,
+            st
+        );
+        details::error<sql::response::DescribeTable>(*res, err_info.get(), req_info);
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, false);
         return;

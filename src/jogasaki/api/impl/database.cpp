@@ -33,6 +33,7 @@
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/impl/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/batch/batch_executor.h>
@@ -551,7 +552,7 @@ status database::destroy_statement(
         VLOG_LP(log_warning) << "destroy_statement for invalid handle";
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, false);
-        return status::not_found;
+        return status::err_invalid_argument;
     }
     req->status(scheduler::request_detail_status::finishing);
     log_request(*req);
@@ -877,6 +878,15 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
 ) {
+    return do_create_transaction_async([on_completion=std::move(on_completion)](transaction_handle tx, status st, std::shared_ptr<api::error_info> info) {
+        on_completion(tx, st, (info ? info->message() : ""));
+    }, option);
+}
+
+scheduler::job_context::job_id_type database::do_create_transaction_async(
+    create_transaction_callback_error_info on_completion,
+    transaction_option const& option
+) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::begin);
     req->status(scheduler::request_detail_status::accepted);
     std::stringstream ss{};
@@ -946,7 +956,11 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             << (*handle ? handle->transaction_id_unchecked() : "<tx id not available>")
             << " job_id:"
             << utils::hex(jobid);
-        on_completion(*handle, rctx->status_code(), rctx->status_message());
+        on_completion(
+            *handle,
+            rctx->status_code(),
+            api::impl::error_info::create(rctx->error_info())
+        );
     });
     auto& ts = *rctx->scheduler();
     req->status(scheduler::request_detail_status::submitted);

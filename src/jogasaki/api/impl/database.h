@@ -61,6 +61,11 @@ public:
 
     using create_transaction_callback = api::database::create_transaction_callback;
 
+    /**
+     * @brief callback type for create transaction passing error information
+     */
+    using create_transaction_callback_error_info = std::function<void(transaction_handle, status, std::shared_ptr<api::error_info>)>;
+
     database();
 
     /**
@@ -154,6 +159,11 @@ public:
         create_transaction_callback on_completion,
         transaction_option const& option
     ) override;
+
+    scheduler::job_context::job_id_type do_create_transaction_async(
+        create_transaction_callback_error_info on_completion,
+        transaction_option const& option
+    );
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;
 

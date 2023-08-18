@@ -1215,7 +1215,7 @@ void service::execute_load( //NOLINT
                 statement,
                 q.params(),
                 files,
-                [cbp, this, req_info](status s, std::shared_ptr<error::error_info> err_info) {
+                [cbp, this, req_info](status s, std::shared_ptr<error::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
                     if (s == jogasaki::status::ok) {
                         details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                     } else {

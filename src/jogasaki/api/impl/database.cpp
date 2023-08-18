@@ -15,6 +15,7 @@
  */
 #include "database.h"
 
+#include <string_view>
 #include <memory>
 #include <glog/logging.h>
 
@@ -61,8 +62,6 @@
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/constants.h>
 
-#include <string_view>
-#include <memory>
 #include <takatori/serializer/json_printer.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/index.h>

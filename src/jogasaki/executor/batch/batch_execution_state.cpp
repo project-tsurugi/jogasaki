@@ -35,7 +35,7 @@ std::shared_ptr<error::error_info> batch_execution_state::error_info() const noe
     return std::atomic_load(std::addressof(error_info_));
 }
 
-bool batch_execution_state::set_error_status(status st, std::shared_ptr<error::error_info> info) noexcept {
+bool batch_execution_state::set_error_status(status st, std::shared_ptr<error::error_info> info) noexcept {  //NOLINT(performance-unnecessary-value-param)
     error_aborting_ = true;
     std::shared_ptr<error::error_info> s{};
     s = std::atomic_load(std::addressof(error_info_));

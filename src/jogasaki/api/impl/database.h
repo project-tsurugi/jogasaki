@@ -193,6 +193,11 @@ public:
 
     status list_tables(std::vector<std::string>& out) override;
 
+    status list_tables(
+        std::vector<std::string>& out,
+        std::shared_ptr<error::error_info>& err_info
+    );
+
     bool execute_load(
         api::statement_handle prepared,
         maybe_shared_ptr<api::parameter_set const> parameters,

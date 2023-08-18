@@ -969,7 +969,18 @@ std::string database::diagnostic_string() {
     return ss.str();
 }
 
-jogasaki::status jogasaki::api::impl::database::list_tables(std::vector<std::string>& out) {
+jogasaki::status jogasaki::api::impl::database::list_tables(
+    std::vector<std::string>& out
+) {
+    std::shared_ptr<error::error_info> err_info{};
+    return list_tables(out, err_info);
+}
+
+jogasaki::status jogasaki::api::impl::database::list_tables(
+    std::vector<std::string>& out,
+    std::shared_ptr<error::error_info>& err_info
+) {
+    err_info = {};
     tables_->each_relation([&](std::string_view, std::shared_ptr<yugawara::storage::relation const> const& t) {
         out.emplace_back(t->simple_name());
     });

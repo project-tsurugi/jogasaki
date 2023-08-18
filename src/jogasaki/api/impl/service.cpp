@@ -34,6 +34,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/utils/decimal.h>
@@ -171,10 +172,11 @@ void service::command_prepare(
         variables.emplace(ph.name(), jogasaki::utils::type_for(ph.atom_type()));
     }
     jogasaki::api::statement_handle statement{};
-    if(auto rc = db_->prepare(sql, variables, statement); rc == jogasaki::status::ok) {
+    std::shared_ptr<error::error_info> err_info{};
+    if(auto rc = get_impl(*db_).prepare(sql, variables, statement, err_info); rc == jogasaki::status::ok) {
         details::success<sql::response::Prepare>(*res, statement, req_info);
     } else {
-        details::error<sql::response::Prepare>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+        details::error<sql::response::Prepare>(*res, err_info.get(), req_info);
     }
 }
 
@@ -185,10 +187,11 @@ void service::command_list_tables(
 ) {
     (void) proto_req;
     std::vector<std::string> simple_names{};
-    if(auto rc = db_->list_tables(simple_names); rc == jogasaki::status::ok) {
+    std::shared_ptr<error::error_info> err_info{};
+    if(auto rc = get_impl(*db_).list_tables(simple_names, err_info); rc == jogasaki::status::ok) {
         details::success<sql::response::ListTables>(*res, simple_names, req_info);
     } else {
-        details::error<sql::response::ListTables>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+        details::error<sql::response::ListTables>(*res, err_info.get(), req_info);
     }
 }
 
@@ -491,9 +494,10 @@ void service::command_explain(
     log_request(*req);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
-    if(auto rc = db_->resolve(handle, std::shared_ptr{std::move(params)}, e);
+    std::shared_ptr<error::error_info> err_info{};
+    if(auto rc = get_impl(*db_).resolve(handle, std::shared_ptr{std::move(params)}, e, err_info);
         rc != jogasaki::status::ok) {
-        details::error<sql::response::Explain>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+        details::error<sql::response::Explain>(*res, err_info.get(), req_info);
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, false);
         return;
@@ -861,17 +865,18 @@ void service::execute_query(
 
     bool has_result_records = false;
     std::unique_ptr<jogasaki::api::executable_statement> e{};
+    std::shared_ptr<error::error_info> err_info{};
     if(q.has_sql()) {
-        if(auto rc = db_->create_executable(q.sql(), e); rc != jogasaki::status::ok) {
+        if(auto rc = get_impl(*db_).create_executable(q.sql(), e, err_info); rc != jogasaki::status::ok) {
             VLOG(log_error) << log_location_prefix << "error in db_->create_executable() : " << rc;
-            details::error<sql::response::ResultOnly>(*res, rc, "error in db_->create_executable()", req_info);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
         has_result_records = e->meta() != nullptr;
     } else {
         jogasaki::api::statement_handle statement{q.sid()};
-        if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
-            details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+        if(auto rc = get_impl(*db_).resolve(statement, q.params(), e, err_info); rc != jogasaki::status::ok) {
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
         has_result_records = statement.has_result_records();
@@ -879,7 +884,8 @@ void service::execute_query(
     if(! has_result_records) {
         auto msg = "statement has no result records, but called with API expecting result records";
         VLOG(log_error) << log_location_prefix << msg;
-        details::error<sql::response::ResultOnly>(*res, status::err_illegal_operation, msg, req_info);
+        auto err_info = create_error_info(error_code::inconsistent_statement_exception, msg, status::err_illegal_operation);
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
 
@@ -1036,8 +1042,9 @@ void service::execute_dump(
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     BOOST_ASSERT(! q.has_sql());  //NOLINT
     jogasaki::api::statement_handle statement{q.sid()};
-    if(auto rc = db_->resolve(statement, q.params(), e); rc != jogasaki::status::ok) {
-        details::error<sql::response::ResultOnly>(*res, rc, db_->fetch_diagnostics()->message(), req_info);
+    std::shared_ptr<error::error_info> err_info{};
+    if(auto rc = get_impl(*db_).resolve(statement, q.params(), e, err_info); rc != jogasaki::status::ok) {
+        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
 

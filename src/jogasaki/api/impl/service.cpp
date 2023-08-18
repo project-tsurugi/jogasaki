@@ -273,7 +273,7 @@ void abort_tx(jogasaki::api::transaction_handle tx, std::shared_ptr<error::error
         if(! ctx) {
             return;
         }
-        ctx->error_info(std::move(err_info));
+        ctx->error_info(err_info);
     }
 }
 

@@ -274,7 +274,6 @@ status create_prepared_statement(
             msg << e.code() << " " << e.message() << " ";
         }
         VLOG_LP(log_error) << status::err_compiler_error << ": " <<  msg.str();
-        ctx.diag()->set(msg.str());
         auto res = status::err_compiler_error;
         set_compile_error(
             ctx,
@@ -324,7 +323,6 @@ status parse_validate(
             msg << "syntax validation failed: " << errs.str();
             auto res = status::err_parse_error;
             VLOG_LP(log_error) << res << ": " << msg.str();
-            ctx.diag()->set(msg.str());
             set_compile_error(
                 ctx,
                 error_code::compile_exception, // TODO revisit after mizugaki upgrade
@@ -338,7 +336,6 @@ status parse_validate(
         msg << "parsing statement failed: " << e.message() << " (" << e.region() << ")";
         auto res = status::err_parse_error;
         VLOG_LP(log_error) << res << ": " <<  msg.str();
-        ctx.diag()->set(msg.str());
         set_compile_error(
             ctx,
             error_code::compile_exception, // TODO revisit after mizugaki upgrade
@@ -404,7 +401,6 @@ status prepare(
         }
         auto res = status::err_compiler_error;
         VLOG_LP(log_error) << res << ": " <<  msg.str();
-        ctx.diag()->set(msg.str());
         set_compile_error(
             ctx,
             error_code::compile_exception,
@@ -630,7 +626,6 @@ status validate_host_variables(
             ss << "Value is not assigned for host variable '" << name << "'";
             auto res = status::err_unresolved_host_variable;
             VLOG_LP(log_error) << res << ": " << ss.str();
-            ctx.diag()->set(ss.str());
             set_compile_error(
                 ctx,
                 error_code::unresolved_placeholder_exception,

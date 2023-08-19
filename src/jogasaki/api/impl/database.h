@@ -26,7 +26,6 @@
 #include <yugawara/variable/configurable_provider.h>
 
 #include <jogasaki/status.h>
-#include <jogasaki/diagnostics.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/api/statement_handle.h>
@@ -187,8 +186,6 @@ public:
     void init();
     void deinit();
 
-    [[nodiscard]] std::shared_ptr<diagnostics> fetch_diagnostics() noexcept override;
-
     status recover_metadata();
     status recover_table(proto::metadata::storage::IndexDefinition const& idef);
     status recover_index_metadata(
@@ -277,7 +274,6 @@ private:
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::shared_ptr<transaction_context>> transactions_{};
     bool initialized_{false};
-    inline thread_local static std::shared_ptr<diagnostics> diagnostics_{std::make_shared<diagnostics>()};  //NOLINT
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

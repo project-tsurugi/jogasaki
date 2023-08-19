@@ -24,7 +24,6 @@
 #include <yugawara/function/configurable_provider.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
-#include <jogasaki/diagnostics.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/graph.h>
 #include <jogasaki/utils/interference_size.h>
@@ -98,14 +97,6 @@ public:
         return resource_.get();
     }
 
-    void diag(diagnostics& diag) noexcept {
-        diag_ = std::addressof(diag);
-    }
-
-    [[nodiscard]] diagnostics* diag() const {
-        return diag_;
-    }
-
     void sql_text(std::shared_ptr<std::string> sql) noexcept {
         sql_text_ = std::move(sql);
     }
@@ -134,7 +125,6 @@ private:
     std::shared_ptr<::yugawara::function::configurable_provider> function_provider_{};
     std::shared_ptr<::yugawara::aggregate::configurable_provider> aggregate_provider_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
-    diagnostics* diag_{};
     std::shared_ptr<std::string> sql_text_{};
     std::shared_ptr<error::error_info> error_info_{};
 

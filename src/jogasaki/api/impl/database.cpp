@@ -248,8 +248,6 @@ status database::prepare_common(
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     ctx->variable_provider(std::move(provider));
-    diagnostics_->clear();
-    ctx->diag(*diagnostics_);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, false);
@@ -523,8 +521,6 @@ status database::resolve_common(
     auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);
-    diagnostics_->clear();
-    ctx->diag(*diagnostics_);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
     if(auto rc = plan::compile(*ctx, params.get()); rc != status::ok) {
         VLOG_LP(log_error) << "compilation failed.";
@@ -859,13 +855,6 @@ database::database(std::shared_ptr<class configuration> cfg, sharksfin::Database
     cfg_(std::move(cfg)),
     kvs_db_(std::make_unique<kvs::database>(db))
 {}
-
-std::shared_ptr<diagnostics> database::fetch_diagnostics() noexcept {
-    if (! diagnostics_) {
-        diagnostics_ = std::make_shared<diagnostics>();
-    }
-    return diagnostics_;
-}
 
 void submit_task_begin_wait(request_context* rctx, scheduler::task_body_type&& body) {
     // wait task does not need to be sticky because multiple begin operation for a transaction doesn't happen concurrently

@@ -35,7 +35,11 @@ public:
         bool lazy_worker = false,
         bool use_preferred_worker_for_current_thread = false,
         std::size_t stealing_wait = 1,
-        std::size_t task_polling_wait = 0
+        std::size_t task_polling_wait = 0,
+        bool busy_worker = true,
+        std::size_t watcher_interval = 1000,
+        std::size_t worker_try_count = 100000,
+        std::size_t worker_suspend_timeout = 1000000
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),
@@ -47,7 +51,11 @@ public:
         lazy_worker_(lazy_worker),
         use_preferred_worker_for_current_thread_(use_preferred_worker_for_current_thread),
         stealing_wait_(stealing_wait),
-        task_polling_wait_(task_polling_wait)
+        task_polling_wait_(task_polling_wait),
+        busy_worker_(busy_worker),
+        watcher_interval_(watcher_interval),
+        worker_try_count_(worker_try_count),
+        worker_suspend_timeout_(worker_suspend_timeout)
     {}
 
     explicit thread_params(std::shared_ptr<configuration> const& cfg) :
@@ -62,7 +70,11 @@ public:
             cfg->lazy_worker(),
             cfg->use_preferred_worker_for_current_thread(),
             cfg->stealing_wait(),
-            cfg->task_polling_wait()
+            cfg->task_polling_wait(),
+            cfg->busy_worker(),
+            cfg->watcher_interval(),
+            cfg->worker_try_count(),
+            cfg->worker_suspend_timeout()
         )
     {}
 
@@ -109,6 +121,38 @@ public:
     [[nodiscard]] std::size_t task_polling_wait() const noexcept {
         return task_polling_wait_;
     }
+
+    [[nodiscard]] bool busy_worker() const noexcept {
+        return busy_worker_;
+    }
+
+    void busy_worker(bool arg) noexcept {
+        busy_worker_ = arg;
+    }
+
+    [[nodiscard]] std::size_t watcher_interval() const noexcept {
+        return watcher_interval_;
+    }
+
+    void watcher_interval(std::size_t arg) noexcept {
+        watcher_interval_ = arg;
+    }
+
+    [[nodiscard]] std::size_t worker_try_count() const noexcept {
+        return worker_try_count_;
+    }
+
+    void worker_try_count(std::size_t arg) noexcept {
+        worker_try_count_ = arg;
+    }
+
+    [[nodiscard]] std::size_t worker_suspend_timeout() const noexcept {
+        return worker_suspend_timeout_;
+    }
+
+    void worker_suspend_timeout(std::size_t arg) noexcept {
+        worker_suspend_timeout_ = arg;
+    }
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
@@ -121,6 +165,10 @@ private:
     bool use_preferred_worker_for_current_thread_{};
     std::size_t stealing_wait_{};
     std::size_t task_polling_wait_{};
+    bool busy_worker_ = true;
+    std::size_t watcher_interval_ = 1000;
+    std::size_t worker_try_count_ = 100000;
+    std::size_t worker_suspend_timeout_ = 1000000;
 };
 
 } // namespace

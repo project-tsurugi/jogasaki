@@ -123,6 +123,10 @@ tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::creat
     ret.use_preferred_worker_for_current_thread(params.use_preferred_worker_for_current_thread());
     ret.stealing_wait(params.stealing_wait());
     ret.task_polling_wait(params.task_polling_wait());
+    ret.busy_worker(params.busy_worker());
+    ret.watcher_interval(params.watcher_interval());
+    ret.worker_try_count(params.worker_try_count());
+    ret.worker_suspend_timeout(params.worker_suspend_timeout());
     return ret;
 }
 

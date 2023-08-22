@@ -147,6 +147,18 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<std::size_t>("lightweight_job_level")) {
         ret->lightweight_job_level(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("busy_worker")) {
+        ret->busy_worker(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::size_t>("watcher_interval")) {
+        ret->watcher_interval(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::size_t>("worker_try_count")) {
+        ret->worker_try_count(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::size_t>("worker_suspend_timeout")) {
+        ret->worker_suspend_timeout(v.value());
+    }
 
     // datastore
     auto datastore_config = cfg.get_section("datastore");

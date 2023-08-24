@@ -177,7 +177,7 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
         error_commit(status::err_invalid_argument, res);
         return;
     }
-    status status_tx;
+    status status_tx{};
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status_tx = tx->commit();
@@ -227,7 +227,7 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
         error_rollback(status::err_invalid_argument, res);
         return;
     }
-    status status_tx;
+    status status_tx{};
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status_tx = tx->abort();
@@ -338,7 +338,7 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
     auto &table = put.index().table_name();
     put_option opt = convert(put.type());
     auto &record = put.records(0);
-    status status;
+    status status{};
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status = tx->put(table, record, opt);
@@ -401,8 +401,8 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
     auto &table = get.index().table_name();
     tateyama::proto::kvs::response::Get_Success success { };
     auto &key = get.keys(0);
-    tateyama::proto::kvs::data::Record record;
-    status status;
+    tateyama::proto::kvs::data::Record record{};
+    status status{};
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status = tx->get(table, key, record);
@@ -474,7 +474,7 @@ void service::command_remove(tateyama::proto::kvs::request::Request const &proto
     auto &table = remove.index().table_name();
     auto opt = convert(remove.type());
     auto &key = remove.keys(0);
-    status status;
+    status status{};
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status = tx->remove(table, key, opt);

@@ -24,13 +24,12 @@ using takatori::util::throw_exception;
 namespace jogasaki::api::kvsservice {
 
 store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
-    db_(bridge->database()) {
-    db_handle_ = dynamic_cast<jogasaki::api::impl::database*>(db_)->kvs_db()->handle();
+    db_(bridge->database()), db_handle_(dynamic_cast<jogasaki::api::impl::database*>(db_)->kvs_db()->handle()) {
 }
 
 store::~store() {
-    for (auto it = transactions_.begin(); it != transactions_.end(); it++) {
-        auto s = it->second->abort();
+    for (const auto & pair : transactions_) {
+        auto s = pair.second->abort();
         if (s != status::ok) {
             LOG(ERROR) << "failed dispose kvs transaction";
         }
@@ -54,7 +53,7 @@ static sharksfin::TransactionOptions::TransactionType convert(transaction_type t
 static sharksfin::TransactionOptions convert(transaction_option const &option) {
     auto type = convert(option.type());
     sharksfin::TransactionOptions::WritePreserves wps{}; // FIXME
-    return sharksfin::TransactionOptions(type, wps);
+    return {type, wps};
 }
 
 status store::begin_transaction(transaction_option const &option, std::shared_ptr<transaction>& tx) {

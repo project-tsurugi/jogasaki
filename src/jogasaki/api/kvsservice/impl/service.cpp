@@ -500,7 +500,7 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
     tateyama::proto::kvs::request::Request proto_req { };
     res->session_id(req->session_id());
     auto s = req->payload();
-    if (!proto_req.ParseFromArray(s.data(), s.size())) {
+    if (!proto_req.ParseFromArray(s.data(), static_cast<int>(s.size()))) {
         reply(tateyama::api::server::response_code::io_error,
               "parse error with request body", res);
         return true;

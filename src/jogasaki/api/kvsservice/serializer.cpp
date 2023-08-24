@@ -285,12 +285,12 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, yugawa
             buf.reserve(sizeof(lo) + sizeof(hi));
             auto v = lo;
             for (int i = 0; i < 8; i++) {
-                buf[15 - i] = static_cast<std::uint8_t>(v & 0xffU);
+                buf[15 - i] = static_cast<char>(v & 0xffU);
                 v >>= 8U;
             }
             v = hi;
             for (int i = 0; i < 8; i++) {
-                buf[7 - i] = static_cast<std::uint8_t>(v & 0xffU);
+                buf[7 - i] = static_cast<char>(v & 0xffU);
                 v >>= 8U;
             }
             auto *decimal = new tateyama::proto::kvs::data::Decimal();

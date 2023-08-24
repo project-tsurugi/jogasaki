@@ -18,8 +18,6 @@
 #include "serializer.h"
 #include "transaction_utils.h"
 
-using takatori::util::throw_exception;
-
 namespace jogasaki::api::kvsservice {
 
 bool equal_type(takatori::type::type_kind kind,

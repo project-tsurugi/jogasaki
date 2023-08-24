@@ -51,7 +51,7 @@ std::uint64_t transaction::system_id() const noexcept {
 }
 
 transaction_state transaction::state() const {
-    transaction_state::state_kind kind;
+    transaction_state::state_kind kind{};
     sharksfin::TransactionState state;
     auto status = sharksfin::transaction_check(ctrl_handle_, state);
     if (status == sharksfin::StatusCode::OK) {

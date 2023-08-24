@@ -442,6 +442,38 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
     ts.schedule_task(std::move(t));
 }
 
+bool check_tx_state_for_wait(
+    api::impl::database& database,
+    transaction_context& tx, //NOLINT(performance-unnecessary-value-param)
+    request_context& rctx
+) {
+    auto st = tx.object()->check_state().state_kind();
+    switch(st) {
+        case ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
+            return false;
+        case ::sharksfin::TransactionState::StateKind::ABORTED: {
+            // get result and return error info
+            auto msg = utils::create_abort_message(rctx, tx, *database.tables());
+            set_error(
+                rctx,
+                error_code::cc_exception,
+                msg,
+                status::err_serialization_failure
+            );
+            break;
+        }
+        case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
+            break;
+        case ::sharksfin::TransactionState::StateKind::DURABLE:
+            break;
+        default: {
+            scheduler::submit_teardown(rctx); // try to recover as much as possible
+            throw std::logic_error(string_builder{} << "wrong state:" << st << string_builder::to_string);
+        }
+    }
+    return true;
+}
+
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx, //NOLINT(performance-unnecessary-value-param)
@@ -473,36 +505,33 @@ scheduler::job_context::job_id_type commit_async(
             << " job_id:"
             << utils::hex(jobid);
         if(res == status::waiting_for_other_transaction) {
-            timer->reset();
-            submit_task_commit_wait(rctx.get(), [rctx, timer, tx, &database]() {
-                if(! (*timer)()) return model::task_result::yield;
-                auto st = tx->object()->check_state().state_kind();
-                switch(st) {
-                    case ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
-                        return model::task_result::yield;
-                    case ::sharksfin::TransactionState::StateKind::ABORTED: {
-                        // get result and return error info
-                        auto msg = utils::create_abort_message(*rctx, *tx, *database.tables());
-                        set_error(
-                            *rctx,
-                            error_code::cc_exception,
-                            msg,
-                            status::err_serialization_failure
-                        );
-                        break;
+            if(! database.config() || database.config()->busy_worker()) {
+                timer->reset();
+                submit_task_commit_wait(rctx.get(), [rctx, timer, tx, &database]() {
+                    if(! (*timer)()) return model::task_result::yield;
+                    if(check_tx_state_for_wait(database, *tx, *rctx)) {
+                        scheduler::submit_teardown(*rctx);
+                        return model::task_result::complete;
                     }
-                    case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
-                        break;
-                    case ::sharksfin::TransactionState::StateKind::DURABLE:
-                        break;
-                    default: {
-                        scheduler::submit_teardown(*rctx); // try to recover as much as possible
-                        throw std::logic_error(string_builder{} << "wrong state:" << st << string_builder::to_string);
-                    }
-                }
-                scheduler::submit_teardown(*rctx);
+                    return model::task_result::yield;
+                });
                 return model::task_result::complete;
-            });
+            }
+
+            // busy_worker = false
+            auto& ts = *rctx->scheduler();
+            ts.schedule_conditional_task(
+                scheduler::conditional_task{
+                    rctx.get(),
+                    [&database, tx, rctx]() {
+                        return check_tx_state_for_wait(database, *tx, *rctx);
+                    },
+                    [rctx]() {
+                        scheduler::submit_teardown(*rctx);
+                    },
+                }
+            );
+
             return model::task_result::complete;
         }
 

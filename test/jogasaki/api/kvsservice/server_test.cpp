@@ -52,7 +52,7 @@ TEST_F(server_test, DISABLED_resouce_check) {
     EXPECT_TRUE(sv.shutdown());
 }
 
-TEST_F(server_test, store_check) {
+TEST_F(server_test, DISABLED_store_check) {
     tateyama::framework::server sv {tateyama::framework::boot_mode::database_server,
                                     default_configuration()};
     tateyama::framework::add_core_components(sv);

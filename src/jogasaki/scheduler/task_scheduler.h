@@ -19,6 +19,7 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/conditional_task.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -62,6 +63,19 @@ public:
      * @pre scheduler is started
      */
     void schedule_task(flat_task&& t);
+
+    /**
+     * @brief schedule the condition task, the subclass needs to implement
+     * @param t the conditional task to schedule
+     */
+    virtual void do_schedule_conditional_task(conditional_task&& t) = 0;
+
+    /**
+     * @brief schedule the conditional task
+     * @param t the conditional task to schedule
+     * @pre scheduler is started
+     */
+    void schedule_conditional_task(conditional_task&& t);
 
     /**
      * @brief wait for the scheduler to proceed

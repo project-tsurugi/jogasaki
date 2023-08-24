@@ -51,6 +51,13 @@ public:
     void do_schedule_task(flat_task&& t) override;
 
     /**
+     * @brief schedule the conditional task
+     * @param task the conditional task to schedule
+     * @pre scheduler is started
+     */
+    void do_schedule_conditional_task(conditional_task&& t) override;
+
+    /**
      * @brief wait for the scheduler to proceed
      * @details this is no-op for multi-thread scheduler
      */

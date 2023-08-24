@@ -39,6 +39,11 @@ std::size_t determine_worker(transaction_context const& tx, std::size_t worker_c
     return tx.id() % worker_count;  //NOLINT
 }
 
+void stealing_task_scheduler::do_schedule_conditional_task(conditional_task &&t) {
+    trace_scope_name("do_schedule_conditional_task");  //NOLINT
+    scheduler_.schedule_conditional(std::move(t));
+}
+
 void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
     trace_scope_name("do_schedule_task");  //NOLINT
     auto& rctx = *t.req_context();

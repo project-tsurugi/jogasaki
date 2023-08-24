@@ -26,6 +26,7 @@
 #include "task_scheduler.h"
 #include "thread_params.h"
 #include "flat_task.h"
+#include "conditional_task.h"
 
 namespace jogasaki::scheduler {
 
@@ -60,6 +61,13 @@ public:
      * @pre scheduler is started
      */
     void do_schedule_task(flat_task&& t) override;
+
+    /**
+     * @brief schedule the conditional task
+     * @param task the conditional task to schedule
+     * @pre scheduler is started
+     */
+    void do_schedule_conditional_task(conditional_task&& t) override;
 
     /**
      * @brief wait for the scheduler to proceed
@@ -100,7 +108,7 @@ public:
 
 private:
     tateyama::api::task_scheduler::task_scheduler_cfg scheduler_cfg_{};
-    tateyama::api::task_scheduler::scheduler<flat_task> scheduler_;
+    tateyama::api::task_scheduler::scheduler<flat_task, conditional_task> scheduler_;
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<job_context>> job_contexts_{};
 
     tateyama::api::task_scheduler::task_scheduler_cfg create_scheduler_cfg(thread_params params);

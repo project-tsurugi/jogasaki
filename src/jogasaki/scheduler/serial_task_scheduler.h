@@ -34,12 +34,20 @@ class cache_align serial_task_scheduler : public task_scheduler {
 public:
     using entity_type = std::deque<flat_task>;
 
+    using conditional_entity_type = std::deque<conditional_task>;
     /**
      * @brief schedule the task
      * @param task the task to schedule
      * @pre scheduler is started
      */
     void do_schedule_task(flat_task&& task) override;
+
+    /**
+     * @brief schedule the task
+     * @param task the task to schedule
+     * @pre scheduler is started
+     */
+    void do_schedule_conditional_task(conditional_task&& task) override;
 
     /**
      * @brief wait for the scheduler to proceed
@@ -79,6 +87,7 @@ public:
 private:
 
     static thread_local entity_type tasks_;  //NOLINT
+    static thread_local conditional_entity_type conditional_tasks_;  //NOLINT
     static thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> job_contexts_;  //NOLINT
 };
 

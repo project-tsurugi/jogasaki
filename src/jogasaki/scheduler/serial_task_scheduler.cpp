@@ -24,6 +24,7 @@
 namespace jogasaki::scheduler {
 
 thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};  //NOLINT
+thread_local serial_task_scheduler::conditional_entity_type serial_task_scheduler::conditional_tasks_;  //NOLINT
 thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> serial_task_scheduler::job_contexts_{};  //NOLINT
 
 void serial_task_scheduler::do_schedule_task(
@@ -32,12 +33,32 @@ void serial_task_scheduler::do_schedule_task(
     tasks_.emplace_back(std::move(task));
 }
 
+void serial_task_scheduler::do_schedule_conditional_task(
+    conditional_task&& task
+) {
+    conditional_tasks_.emplace_back(std::move(task));
+}
+
 void serial_task_scheduler::wait_for_progress(std::size_t) {
     tateyama::api::task_scheduler::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
-    while(! tasks_.empty()) {
-        auto s = std::move(tasks_.front());
-        tasks_.pop_front();
-        s(ctx);
+    while(true) {
+        if(! tasks_.empty()) {
+            auto s = std::move(tasks_.front());
+            tasks_.pop_front();
+            s(ctx);
+            continue;
+        }
+        if(! conditional_tasks_.empty()) {
+            auto s = std::move(conditional_tasks_.front());
+            conditional_tasks_.pop_front();
+            if(s.check()) {
+                s();
+                continue;
+            }
+            conditional_tasks_.push_back(std::move(s));
+            continue;
+        }
+        break;
     }
 }
 

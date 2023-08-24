@@ -47,7 +47,7 @@ public:
     /**
      * @brief destructor the object
      */
-    ~store() = default;
+    ~store();
 
     /**
      * @brief begin the new transaction

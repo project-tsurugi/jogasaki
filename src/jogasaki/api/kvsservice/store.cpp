@@ -28,6 +28,15 @@ store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
     db_handle_ = dynamic_cast<jogasaki::api::impl::database*>(db_)->kvs_db()->handle();
 }
 
+store::~store() {
+    for (auto it = transactions_.begin(); it != transactions_.end(); it++) {
+        auto s = it->second->abort();
+        if (s != status::ok) {
+            LOG(ERROR) << "failed dispose kvs transaction";
+        }
+    }
+}
+
 static sharksfin::TransactionOptions::TransactionType convert(transaction_type type) {
     switch (type) {
         case transaction_type::unspecified:

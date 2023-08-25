@@ -28,10 +28,6 @@
 
 #include <jogasaki/api/database.h>
 
-namespace jogasaki::api::impl {
-class service;
-}
-
 namespace jogasaki::api::resource {
 
 using tateyama::api::server::request;

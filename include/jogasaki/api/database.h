@@ -24,7 +24,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <sharksfin/api.h>
-#include <tateyama/api/task_scheduler/scheduler.h>
+#include <tateyama/task_scheduler/scheduler.h>
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/status.h>

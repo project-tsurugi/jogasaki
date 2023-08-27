@@ -22,7 +22,7 @@
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
 #include <jogasaki/api/impl/database.h>
-#include <tateyama/api/task_scheduler/context.h>
+#include <tateyama/task_scheduler/context.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/file/loader.h>
@@ -35,7 +35,7 @@ namespace jogasaki::scheduler {
 
 using takatori::util::string_builder;
 
-void flat_task::bootstrap(tateyama::api::task_scheduler::context& ctx) {
+void flat_task::bootstrap(tateyama::task_scheduler::context& ctx) {
     log_entry << *this;
     trace_scope_name("bootstrap");  //NOLINT
     job()->preferred_worker_index().store(ctx.index());
@@ -107,7 +107,7 @@ void flat_task::write() {
     log_exit << *this;
 }
 
-bool flat_task::execute(tateyama::api::task_scheduler::context& ctx) {
+bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
     // The variables begin and end are needed only for timing event log.
     // Avoid calling clock::now() if log level is low. In case its cost is unexpectedly high.
     std::chrono::time_point<clock> begin{};
@@ -183,7 +183,7 @@ void flat_task::finish_job() {
     // here job context is released and objects held by job callback such as request_context are also released
 }
 
-void flat_task::operator()(tateyama::api::task_scheduler::context& ctx) {
+void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
     auto started = job()->started().load();
     if(! started) {
         if(job()->started().compare_exchange_strong(started, true)) {
@@ -262,7 +262,7 @@ job_context* flat_task::job() const {
     return req_context_->job().get();
 }
 
-void flat_task::resolve(tateyama::api::task_scheduler::context& ctx) {
+void flat_task::resolve(tateyama::task_scheduler::context& ctx) {
     log_entry << *this;
     (void)ctx;
     auto& e = sctx_->executable_statement_;

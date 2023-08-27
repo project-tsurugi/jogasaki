@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <iomanip>
 
-#include <tateyama/api/task_scheduler/schedule_option.h>
+#include <tateyama/task_scheduler/schedule_option.h>
 
 namespace jogasaki::scheduler {
 
@@ -100,13 +100,13 @@ private:
     schedule_policy_kind policy_{};
 };
 
-inline tateyama::api::task_scheduler::schedule_option convert(schedule_option opt) {
-    tateyama::api::task_scheduler::schedule_policy_kind policy{};
+inline tateyama::task_scheduler::schedule_option convert(schedule_option opt) {
+    tateyama::task_scheduler::schedule_policy_kind policy{};
     switch(opt.policy()) {
-        case schedule_policy_kind::undefined: policy = tateyama::api::task_scheduler::schedule_policy_kind::undefined; break;
-        case schedule_policy_kind::suspended_worker: policy = tateyama::api::task_scheduler::schedule_policy_kind::suspended_worker; break;
+        case schedule_policy_kind::undefined: policy = tateyama::task_scheduler::schedule_policy_kind::undefined; break;
+        case schedule_policy_kind::suspended_worker: policy = tateyama::task_scheduler::schedule_policy_kind::suspended_worker; break;
     }
-    return tateyama::api::task_scheduler::schedule_option{policy};
+    return tateyama::task_scheduler::schedule_option{policy};
 }
 
 

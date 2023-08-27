@@ -42,7 +42,7 @@ void serial_task_scheduler::do_schedule_conditional_task(
 }
 
 void serial_task_scheduler::wait_for_progress(std::size_t) {
-    tateyama::api::task_scheduler::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
+    tateyama::task_scheduler::context ctx{std::hash<std::thread::id>{}(std::this_thread::get_id())};
     while(true) {
         if(! tasks_.empty()) {
             auto s = std::move(tasks_.front());

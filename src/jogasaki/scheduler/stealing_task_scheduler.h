@@ -20,9 +20,9 @@
 
 #include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
-#include <tateyama/api/task_scheduler/scheduler.h>
-#include <tateyama/api/task_scheduler/context.h>
-#include <tateyama/api/task_scheduler/task_scheduler_cfg.h>
+#include <tateyama/task_scheduler/scheduler.h>
+#include <tateyama/task_scheduler/context.h>
+#include <tateyama/task_scheduler/task_scheduler_cfg.h>
 #include "task_scheduler.h"
 #include "thread_params.h"
 #include "flat_task.h"
@@ -108,11 +108,11 @@ public:
     void print_diagnostic(std::ostream& os) override;
 
 private:
-    tateyama::api::task_scheduler::task_scheduler_cfg scheduler_cfg_{};
-    tateyama::api::task_scheduler::scheduler<flat_task, conditional_task> scheduler_;
+    tateyama::task_scheduler::task_scheduler_cfg scheduler_cfg_{};
+    tateyama::task_scheduler::scheduler<flat_task, conditional_task> scheduler_;
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<job_context>> job_contexts_{};
 
-    tateyama::api::task_scheduler::task_scheduler_cfg create_scheduler_cfg(thread_params params);
+    tateyama::task_scheduler::task_scheduler_cfg create_scheduler_cfg(thread_params params);
 };
 
 }

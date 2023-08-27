@@ -121,8 +121,8 @@ task_scheduler_kind stealing_task_scheduler::kind() const noexcept {
     return task_scheduler_kind::stealing;
 }
 
-tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::create_scheduler_cfg(thread_params params) {
-    tateyama::api::task_scheduler::task_scheduler_cfg ret{};
+tateyama::task_scheduler::task_scheduler_cfg stealing_task_scheduler::create_scheduler_cfg(thread_params params) {
+    tateyama::task_scheduler::task_scheduler_cfg ret{};
     ret.thread_count(params.threads());
     ret.force_numa_node(params.force_numa_node());
     ret.core_affinity(params.is_set_core_affinity());

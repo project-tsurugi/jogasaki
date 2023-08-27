@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <tateyama/api/task_scheduler/basic_conditional_task.h>
+#include <tateyama/task_scheduler/basic_conditional_task.h>
 
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/hex.h>

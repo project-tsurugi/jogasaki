@@ -21,7 +21,7 @@
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/executor/common/write.h>
-#include <tateyama/api/task_scheduler/context.h>
+#include <tateyama/task_scheduler/context.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/common.h>
@@ -231,7 +231,7 @@ public:
      * @brief execute the task
      * @param ctx the tateyama task context, which provides info. about thread/worker running the task
      */
-    void operator()(tateyama::api::task_scheduler::context& ctx);
+    void operator()(tateyama::task_scheduler::context& ctx);
 
     /**
      * @brief returns task id that uniquely identifies the task
@@ -284,9 +284,9 @@ private:
      * @return true if job completes together with the task
      * @return false if only task completes
      */
-    bool execute(tateyama::api::task_scheduler::context& ctx);
+    bool execute(tateyama::task_scheduler::context& ctx);
 
-    void bootstrap(tateyama::api::task_scheduler::context& ctx);
+    void bootstrap(tateyama::task_scheduler::context& ctx);
     void dag_schedule();
 
     /**
@@ -294,7 +294,7 @@ private:
      * @return false if the teardown task is rescheduled
      */
     bool teardown();
-    void resolve(tateyama::api::task_scheduler::context& ctx);
+    void resolve(tateyama::task_scheduler::context& ctx);
 
     void write();
     void load();

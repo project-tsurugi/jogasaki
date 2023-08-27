@@ -37,6 +37,7 @@ public:
         std::size_t stealing_wait = 1,
         std::size_t task_polling_wait = 0,
         bool busy_worker = true,
+        bool enable_watcher = false,
         std::size_t watcher_interval = 1000,
         std::size_t worker_try_count = 100000,
         std::size_t worker_suspend_timeout = 1000000
@@ -53,6 +54,7 @@ public:
         stealing_wait_(stealing_wait),
         task_polling_wait_(task_polling_wait),
         busy_worker_(busy_worker),
+        enable_watcher_(enable_watcher),
         watcher_interval_(watcher_interval),
         worker_try_count_(worker_try_count),
         worker_suspend_timeout_(worker_suspend_timeout)
@@ -72,6 +74,7 @@ public:
             cfg->stealing_wait(),
             cfg->task_polling_wait(),
             cfg->busy_worker(),
+            cfg->enable_watcher(),
             cfg->watcher_interval(),
             cfg->worker_try_count(),
             cfg->worker_suspend_timeout()
@@ -130,6 +133,14 @@ public:
         busy_worker_ = arg;
     }
 
+    void enable_watcher(bool arg) noexcept {
+        enable_watcher_ = arg;
+    }
+
+    [[nodiscard]] bool enable_watcher() const noexcept {
+        return enable_watcher_;
+    }
+
     [[nodiscard]] std::size_t watcher_interval() const noexcept {
         return watcher_interval_;
     }
@@ -153,6 +164,7 @@ public:
     void worker_suspend_timeout(std::size_t arg) noexcept {
         worker_suspend_timeout_ = arg;
     }
+
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
@@ -165,10 +177,11 @@ private:
     bool use_preferred_worker_for_current_thread_{};
     std::size_t stealing_wait_{};
     std::size_t task_polling_wait_{};
-    bool busy_worker_ = true;
-    std::size_t watcher_interval_ = 1000;
-    std::size_t worker_try_count_ = 100000;
-    std::size_t worker_suspend_timeout_ = 1000000;
+    bool busy_worker_{};
+    bool enable_watcher_{};
+    std::size_t watcher_interval_{};
+    std::size_t worker_try_count_{};
+    std::size_t worker_suspend_timeout_{};
 };
 
 } // namespace

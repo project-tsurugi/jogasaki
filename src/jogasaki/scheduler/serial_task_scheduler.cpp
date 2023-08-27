@@ -28,8 +28,10 @@ thread_local serial_task_scheduler::conditional_entity_type serial_task_schedule
 thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> serial_task_scheduler::job_contexts_{};  //NOLINT
 
 void serial_task_scheduler::do_schedule_task(
-    flat_task&& task
+    flat_task&& task,
+    schedule_option opt
 ) {
+    (void) opt;
     tasks_.emplace_back(std::move(task));
 }
 

@@ -930,7 +930,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;
             }
-            if(! cfg_ || cfg_->busy_worker()) {
+            if(! cfg_ || ! cfg_->enable_watcher()) {
                 timer->reset();
                 submit_task_begin_wait(rctx.get(), [rctx, handle, timer]() {
                     if(! (*timer)()) return model::task_result::yield;
@@ -941,7 +941,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                     return model::task_result::yield;
                 });
             } else {
-                // busy_worker = false
+                // enable_watcher = true
                 auto& ts = *rctx->scheduler();
                 ts.schedule_conditional_task(
                     scheduler::conditional_task{
@@ -950,7 +950,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                             return handle->is_ready_unchecked();
                         },
                         [rctx]() {
-                            scheduler::submit_teardown(*rctx);
+                            scheduler::submit_teardown(*rctx, false, true);
                         },
                     }
                 );

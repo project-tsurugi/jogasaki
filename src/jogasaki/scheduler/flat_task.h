@@ -114,7 +114,7 @@ struct statement_context {
     error_info_callback callback_{};  //NOLINT
 };
 
-void submit_teardown(request_context& req_context, bool force = false);
+void submit_teardown(request_context& req_context, bool force = false, bool try_on_suspended_worker = false);
 
 /**
  * @brief common task object

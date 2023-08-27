@@ -25,17 +25,17 @@ void hybrid_task_scheduler::do_schedule_conditional_task(conditional_task&& t) {
     stealing_scheduler_.do_schedule_conditional_task(std::move(t));
 }
 
-void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {  //NOLINT(readability-function-cognitive-complexity)
+void hybrid_task_scheduler::do_schedule_task(flat_task&& t, schedule_option opt) {  //NOLINT(readability-function-cognitive-complexity)
     auto& mode = t.job()->hybrid_execution_mode();
     auto* rctx = t.req_context();
     while(true) {  // retry from here if modifying `mode` variable fails
         auto cur = mode.load();
         if(cur == hybrid_execution_mode_kind::serial) {
-            serial_scheduler_.do_schedule_task(std::move(t));
+            serial_scheduler_.do_schedule_task(std::move(t), opt);
             return;
         }
         if(cur == hybrid_execution_mode_kind::stealing) {
-            stealing_scheduler_.do_schedule_task(std::move(t));
+            stealing_scheduler_.do_schedule_task(std::move(t), opt);
             return;
         }
 
@@ -60,7 +60,7 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {  //NOLINT(readabil
                 if(auto d = t.job()->request()) {
                     d->hybrid_execution_mode(hybrid_execution_mode_kind::stealing);
                 }
-                stealing_scheduler_.do_schedule_task(std::move(t));
+                stealing_scheduler_.do_schedule_task(std::move(t), opt);
                 return;
             }
 
@@ -72,7 +72,7 @@ void hybrid_task_scheduler::do_schedule_task(flat_task&& t) {  //NOLINT(readabil
                 d->hybrid_execution_mode(hybrid_execution_mode_kind::serial);
             }
             auto jobid = t.job()->id();
-            serial_scheduler_.do_schedule_task(std::move(t));
+            serial_scheduler_.do_schedule_task(std::move(t), opt);
             serial_scheduler_.wait_for_progress(jobid);
         }
         break;

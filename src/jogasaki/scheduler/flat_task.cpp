@@ -55,13 +55,18 @@ void flat_task::dag_schedule() {
     log_exit << *this;
 }
 
-void submit_teardown(request_context& req_context, bool force) {
+void submit_teardown(request_context& req_context, bool force, bool try_on_suspended_worker) {
     // make sure teardown task is submitted only once
     auto& ts = *req_context.scheduler();
     auto& job = *req_context.job();
     auto completing = job.completing().load();
     if (force || (!completing && job.completing().compare_exchange_strong(completing, true))) {
-        ts.schedule_task(flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(req_context)});
+        ts.schedule_task(
+            flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(req_context)},
+            schedule_option{
+                try_on_suspended_worker ? schedule_policy_kind::suspended_worker : schedule_policy_kind::undefined
+            }
+        );
     }
 }
 

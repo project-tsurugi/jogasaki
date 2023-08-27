@@ -48,7 +48,7 @@ public:
      * @param task the task to schedule
      * @pre scheduler is started
      */
-    void do_schedule_task(flat_task&& t) override;
+    void do_schedule_task(flat_task&& t, schedule_option opt) override;
 
     /**
      * @brief schedule the conditional task

@@ -505,7 +505,7 @@ scheduler::job_context::job_id_type commit_async(
             << " job_id:"
             << utils::hex(jobid);
         if(res == status::waiting_for_other_transaction) {
-            if(! database.config() || database.config()->busy_worker()) {
+            if(! database.config() || ! database.config()->enable_watcher()) {
                 timer->reset();
                 submit_task_commit_wait(rctx.get(), [rctx, timer, tx, &database]() {
                     if(! (*timer)()) return model::task_result::yield;
@@ -518,7 +518,7 @@ scheduler::job_context::job_id_type commit_async(
                 return model::task_result::complete;
             }
 
-            // busy_worker = false
+            // enable_watcher = true
             auto& ts = *rctx->scheduler();
             ts.schedule_conditional_task(
                 scheduler::conditional_task{
@@ -527,7 +527,7 @@ scheduler::job_context::job_id_type commit_async(
                         return check_tx_state_for_wait(database, *tx, *rctx);
                     },
                     [rctx]() {
-                        scheduler::submit_teardown(*rctx);
+                        scheduler::submit_teardown(*rctx, false, true);
                     },
                 }
             );

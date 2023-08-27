@@ -29,6 +29,7 @@
 #include <tateyama/framework/transactional_kvs_resource.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/api/impl/service.h>
 
 namespace jogasaki::api::resource {
@@ -51,10 +52,13 @@ bool bridge::setup(framework::environment& env) {
     if (db_) return true;
     auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();
     if(! kvs) {
-        LOG(ERROR) << "failed to find transactional kvs";
+        LOG_LP(ERROR) << "failed to find transactional kvs";
         return false;
     }
     auto cfg = convert_config(*env.configuration());
+    if(! cfg) {
+        return false;
+    }
     db_ = jogasaki::api::create_database(cfg, kvs->core_object());
     return true;
 }
@@ -101,7 +105,7 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
 
     auto jogasaki_config = cfg.get_section("sql");
     if (jogasaki_config == nullptr) {
-        LOG(ERROR) << "cannot find sql section in the configuration";
+        LOG_LP(ERROR) << "cannot find sql section in the configuration";
         return ret;
     }
 
@@ -150,6 +154,9 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto v = jogasaki_config->get<bool>("busy_worker")) {
         ret->busy_worker(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("enable_watcher")) {
+        ret->enable_watcher(v.value());
+    }
     if (auto v = jogasaki_config->get<std::size_t>("watcher_interval")) {
         ret->watcher_interval(v.value());
     }
@@ -160,10 +167,15 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
         ret->worker_suspend_timeout(v.value());
     }
 
+    if(! ret->busy_worker() && ! ret->enable_watcher()) {
+        LOG_LP(ERROR) << "invalid configuration - busy_worker=false and enable_watcher=false";
+        return {};
+    }
+
     // datastore
     auto datastore_config = cfg.get_section("datastore");
     if (datastore_config == nullptr) {
-        LOG(ERROR) << "cannot find datastore section in the configuration";
+        LOG_LP(ERROR) << "cannot find datastore section in the configuration";
         return ret;
     }
     if (auto log_location = datastore_config->get<std::string>("log_location")) {

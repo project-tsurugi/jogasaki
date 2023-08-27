@@ -21,6 +21,7 @@
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/conditional_task.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/schedule_option.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
@@ -55,14 +56,14 @@ public:
      * @brief schedule the task, the subclass needs to implement
      * @param t the task to schedule
      */
-    virtual void do_schedule_task(flat_task&& t) = 0;
+    virtual void do_schedule_task(flat_task&& t, schedule_option opt) = 0;
 
     /**
      * @brief schedule the task
      * @param t the task to schedule
      * @pre scheduler is started
      */
-    void schedule_task(flat_task&& t);
+    void schedule_task(flat_task&& t, schedule_option opt = {});
 
     /**
      * @brief schedule the condition task, the subclass needs to implement

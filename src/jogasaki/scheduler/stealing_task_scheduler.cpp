@@ -44,7 +44,7 @@ void stealing_task_scheduler::do_schedule_conditional_task(conditional_task &&t)
     scheduler_.schedule_conditional(std::move(t));
 }
 
-void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
+void stealing_task_scheduler::do_schedule_task(flat_task&& t, schedule_option opt) {
     trace_scope_name("do_schedule_task");  //NOLINT
     auto& rctx = *t.req_context();
     auto& jctx = *rctx.job();
@@ -73,11 +73,16 @@ void stealing_task_scheduler::do_schedule_task(flat_task&& t) {
             // Continue loop and schedule at the same worker as existing task.
         }
     }
+    if (opt.policy() == schedule_policy_kind::suspended_worker) {
+        // scheduling policy is effective only for non-sticky task
+        scheduler_.schedule(std::move(t), convert(opt));
+        return;
+    }
     if (idx != job_context::undefined_index) {
         scheduler_.schedule_at(std::move(t), idx);
         return;
     }
-    scheduler_.schedule(std::move(t));
+    scheduler_.schedule(std::move(t), convert(opt));
 }
 
 void stealing_task_scheduler::wait_for_progress(std::size_t id) {
@@ -129,6 +134,7 @@ tateyama::api::task_scheduler::task_scheduler_cfg stealing_task_scheduler::creat
     ret.stealing_wait(params.stealing_wait());
     ret.task_polling_wait(params.task_polling_wait());
     ret.busy_worker(params.busy_worker());
+    ret.enable_watcher(params.enable_watcher());
     ret.watcher_interval(params.watcher_interval());
     ret.worker_try_count(params.worker_try_count());
     ret.worker_suspend_timeout(params.worker_suspend_timeout());

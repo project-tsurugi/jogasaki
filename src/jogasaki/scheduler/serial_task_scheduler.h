@@ -38,9 +38,10 @@ public:
     /**
      * @brief schedule the task
      * @param task the task to schedule
+     * @param opt schedule option
      * @pre scheduler is started
      */
-    void do_schedule_task(flat_task&& task) override;
+    void do_schedule_task(flat_task&& task, schedule_option opt) override;
 
     /**
      * @brief schedule the task

@@ -25,11 +25,11 @@
 
 namespace jogasaki::scheduler {
 
-void task_scheduler::schedule_task(flat_task&& t) {
+void task_scheduler::schedule_task(flat_task&& t, schedule_option opt) {
     auto cnt = ++t.job()->task_count();
     (void)cnt;
     //VLOG(log_debug) << "incremended job " << t.job()->id() << " task count to " << cnt;
-    do_schedule_task(std::move(t));
+    do_schedule_task(std::move(t), opt);
 }
 
 void task_scheduler::schedule_conditional_task(conditional_task&& t) {

@@ -457,12 +457,12 @@ void service::command_commit(
     tx.commit_async(
         [this, res, tx, req_info, auto_dispose](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
-                details::success<sql::response::ResultOnly>(*res, req_info);
                 if(auto_dispose) {
                     if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
                         VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
                     }
                 }
+                details::success<sql::response::ResultOnly>(*res, req_info);
             } else {
                 VLOG(log_error) << log_location_prefix << info->message();
                 details::error<sql::response::ResultOnly>(*res, info.get(), req_info);

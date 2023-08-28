@@ -150,7 +150,7 @@ void add_key_column(std::string_view col_name,
                        tateyama::proto::kvs::data::Record &record) {
     record.add_names(col_name.data());
     auto new_value = record.mutable_values()->Add();
-    *new_value = *value;
+    new_value->CopyFrom(*value);
 }
 
 status add_value_column(yugawara::storage::column const &column,

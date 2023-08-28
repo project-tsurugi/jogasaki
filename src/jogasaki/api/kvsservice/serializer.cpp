@@ -171,10 +171,9 @@ static inline void set_decimal(data::any &dest, tateyama::proto::kvs::data::Valu
         buf[7 - i] = static_cast<char>(v & 0xffU);
         v >>= 8U;
     }
-    auto *decimal = new tateyama::proto::kvs::data::Decimal();
+    auto *decimal = value->mutable_decimal_value();
     decimal->set_unscaled_value(buf.data(), buf.size());
     decimal->set_exponent(triple.exponent());
-    value->set_allocated_decimal_value(decimal);
 }
 
 status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, yugawara::storage::column const &column,
@@ -272,10 +271,9 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, bool nullable, yugawa
             s = decode(nullable, stream, type, spec, dest);
             if (s == jogasaki::status::ok) {
                 auto tp = dest.to<takatori::datetime::time_point>();
-                auto timepoint = new tateyama::proto::kvs::data::TimePoint();
+                auto timepoint = value->mutable_time_point_value();
                 timepoint->set_offset_seconds(tp.seconds_since_epoch().count());
                 timepoint->set_nano_adjustment(tp.subsecond().count());
-                value->set_allocated_time_point_value(timepoint);
             }
             break;
         }

@@ -149,7 +149,7 @@ void add_key_column(std::string_view col_name,
                        tateyama::proto::kvs::data::Value const*value,
                        tateyama::proto::kvs::data::Record &record) {
     record.add_names(col_name.data());
-    auto new_value = record.mutable_values()->Add();
+    auto new_value = record.add_values();
     new_value->CopyFrom(*value);
 }
 
@@ -157,7 +157,7 @@ status add_value_column(yugawara::storage::column const &column,
                          jogasaki::kvs::readable_stream &stream,
                          tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
-    auto new_value = record.mutable_values()->Add();
+    auto new_value = record.add_values();
     if (auto s = deserialize(spec_value, nullable_value, column, stream, new_value);
             s != status::ok) {
         return s;

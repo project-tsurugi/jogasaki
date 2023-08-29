@@ -126,7 +126,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         if(! reader_) {
             state_->set_error_status(
                 status::err_io_error,
-                create_error_info(error_code::load_file_ioexception, "opening parquet file failed.", status::err_io_error)
+                create_error_info(error_code::load_file_exception, "opening parquet file failed.", status::err_io_error)
             );
             finish(info_, *state_);
             return {false, false};

@@ -48,14 +48,14 @@ enum class error_code : std::int64_t {
     inactive_transaction_exception = 2025,
     parameter_exception = 2027,
     unresolved_placeholder_exception = 2028,
-    load_file_ioexception = 2030,
+    load_file_exception = 2030,
     load_file_not_found_exception = 2031,
     load_file_format_exception = 2032,
-    dump_file_ioexception = 2033,
+    dump_file_exception = 2033,
     dump_directory_inaccessible_exception = 2034,
     sql_limit_reached_exception = 2036,
     transaction_exceeded_limit_exception = 2037,
-    sql_request_timed_out_exception = 2039,
+    sql_request_timeout_exception = 2039,
     data_corruption_exception = 2041,
     secondary_index_corruption_exception = 2042,
     request_failure_exception = 2044,
@@ -116,14 +116,14 @@ enum class error_code : std::int64_t {
         case code::inactive_transaction_exception: return "inactive_transaction_exception"sv;
         case code::parameter_exception: return "parameter_exception"sv;
         case code::unresolved_placeholder_exception: return "unresolved_placeholder_exception"sv;
-        case code::load_file_ioexception: return "load_file_ioexception"sv;
+        case code::load_file_exception: return "load_file_exception"sv;
         case code::load_file_not_found_exception: return "load_file_not_found_exception"sv;
         case code::load_file_format_exception: return "load_file_format_exception"sv;
-        case code::dump_file_ioexception: return "dump_file_ioexception"sv;
+        case code::dump_file_exception: return "dump_file_exception"sv;
         case code::dump_directory_inaccessible_exception: return "dump_directory_inaccessible_exception"sv;
         case code::sql_limit_reached_exception: return "sql_limit_reached_exception"sv;
         case code::transaction_exceeded_limit_exception: return "transaction_exceeded_limit_exception"sv;
-        case code::sql_request_timed_out_exception: return "sql_request_timed_out_exception"sv;
+        case code::sql_request_timeout_exception: return "sql_request_timeout_exception"sv;
         case code::data_corruption_exception: return "data_corruption_exception"sv;
         case code::secondary_index_corruption_exception: return "secondary_index_corruption_exception"sv;
         case code::request_failure_exception: return "request_failure_exception"sv;

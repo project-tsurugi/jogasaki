@@ -110,7 +110,9 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     }
 
     if (auto v = jogasaki_config->get<std::size_t>("thread_pool_size")) {
-        ret->thread_pool_size(v.value());
+        if(v.has_value()) {
+            ret->thread_pool_size(v.value());
+        }
     }
     if (auto v = jogasaki_config->get<bool>("lazy_worker")) {
         ret->lazy_worker(v.value());

@@ -100,7 +100,7 @@ std::string_view bridge::label() const noexcept {
     return component_label;
 }
 
-std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg) {
+std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     auto ret = std::make_shared<jogasaki::configuration>();
 
     auto jogasaki_config = cfg.get_section("sql");

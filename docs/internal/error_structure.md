@@ -90,7 +90,7 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
     - SqlLimitReachedException (SQL-02036: 許可されたSQL操作の制限に達した)
       - TransactionExceededLimitException (SQL-02037: 許同時作成可能なトランザクション数の制限を越えたためトランザクション開始に失敗した)
 
-    - SqlRequestTimeOutException (SQL-02039: SQL操作要求がタイムアウトした)
+    - SqlRequestTimeoutException (SQL-02039: SQL操作要求がタイムアウトした)
 
     - DataCorruptionException (SQL-02041: データ破損の検知)
       - SecondaryIndexCorruptionException (SQL-02042: セカンダリインデックスの破損) 

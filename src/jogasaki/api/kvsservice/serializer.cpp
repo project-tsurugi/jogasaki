@@ -160,7 +160,8 @@ static inline void set_decimal(data::any &dest, tateyama::proto::kvs::data::Valu
     const auto lo = triple.coefficient_low();
     const auto hi = triple.coefficient_high();
     std::string buf{};
-    buf.reserve(sizeof(lo) + sizeof(hi));
+    const auto buflen = sizeof(lo) + sizeof(hi);
+    buf.reserve(buflen);
     auto v = lo;
     for (int i = 0; i < 8; i++) {
         buf[15 - i] = static_cast<char>(v & 0xffU);
@@ -172,7 +173,8 @@ static inline void set_decimal(data::any &dest, tateyama::proto::kvs::data::Valu
         v >>= 8U;
     }
     auto *decimal = value->mutable_decimal_value();
-    decimal->set_unscaled_value(buf.data(), buf.size());
+    // NOTE: buf.size() returns 0, not 16
+    decimal->set_unscaled_value(buf.data(), buflen);
     decimal->set_exponent(triple.exponent());
 }
 

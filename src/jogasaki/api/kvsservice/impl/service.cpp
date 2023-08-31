@@ -399,7 +399,6 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
         return;
     }
     auto &table = get.index().table_name();
-    tateyama::proto::kvs::response::Get_Success success { };
     auto &key = get.keys(0);
     tateyama::proto::kvs::data::Record record{};
     status status{};
@@ -407,11 +406,14 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status = tx->get(table, key, record);
     }
-    if (status != status::ok) {
+    if (status != status::ok && status != status::not_found) {
         error_get(status, res);
         return;
     }
-    success.mutable_records()->AddAllocated(&record);
+    tateyama::proto::kvs::response::Get_Success success{};
+    if (status == status::ok) {
+        success.mutable_records()->AddAllocated(&record);
+    }
     success_get(success, res);
     while (success.records_size() > 0) {
         success.mutable_records()->ReleaseLast();

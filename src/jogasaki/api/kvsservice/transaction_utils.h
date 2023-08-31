@@ -42,7 +42,8 @@ bool is_valid_record(tateyama::proto::kvs::data::Record const &record);
 
 /**
  * @brief check whether the record is valid for put
- * @param rec_cols list of columns as a record
+ * @param record requested record
+ * @param rec_cols list of columns
  * @return status::ok if succeeded
  * @return status::err_incomplete_columns if the record doesn't have enough columns for the primary key
  * @return status::err_invalid_argument if the record has too many columns for the specified table
@@ -50,7 +51,7 @@ bool is_valid_record(tateyama::proto::kvs::data::Record const &record);
  * @return status::err_column_type_mismatch if the column data type is different from the table schema
  * @return otherwise if error was occurred
  */
-status check_put_record(record_columns &rec_cols);
+status check_put_record(tateyama::proto::kvs::data::Record const &record, record_columns &rec_cols);
 
 /**
  * @brief check whether the key is valid as primary key(s) of the table

@@ -101,7 +101,7 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
         return s;
     }
     record_columns rec_cols{table, record, false};
-    if (auto s = check_put_record(rec_cols); s != status::ok) {
+    if (auto s = check_put_record(record, rec_cols); s != status::ok) {
         return s;
     }
     auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys());

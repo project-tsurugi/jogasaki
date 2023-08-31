@@ -138,7 +138,14 @@ static status check_valid_values(record_columns &rec_cols) {
     return check_valid_columns(rec_cols.values());
 }
 
-status check_put_record(record_columns &rec_cols) {
+status check_put_record(tateyama::proto::kvs::data::Record const &record, record_columns &rec_cols) {
+    if (static_cast<std::size_t>(record.values_size()) > rec_cols.table()->columns().size()) {
+        // too many columns
+        // NOTE: status::err_incomplete_columns will be checked
+        // in check_valid_column_size().
+        // record_columns object has schema defined columns only.
+        return status::err_invalid_argument;
+    }
     if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
         return s;
     }

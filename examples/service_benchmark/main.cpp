@@ -51,7 +51,7 @@ DEFINE_bool(core_affinity, false, "Whether threads are assigned to cores");  //N
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
-DEFINE_int32(partitions, 10, "Number of partitions per process");  //NOLINT
+DEFINE_int32(partitions, 5, "Number of partitions per process");  //NOLINT
 DEFINE_bool(steal, true, "Enable stealing for task scheduling");  //NOLINT
 DEFINE_int32(prepare_data, 0, "Whether to prepare records in the storages. Specify 0 to disable.");  //NOLINT
 DEFINE_bool(verify, false, "Whether to deserialize the query result records. Requires clients=1");  //NOLINT
@@ -77,7 +77,7 @@ DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLIN
 DEFINE_bool(ltx, false, "use ltx instead of occ for benchmark. Use exclusively with --rtx.");  //NOLINT
 DEFINE_bool(rtx, false, "use ltx instead of occ for benchmark. Use exclusively with --ltx.");  //NOLINT
 DEFINE_int64(client_idle, 0, "clients take idle spin loop n times");  //NOLINT
-DEFINE_bool(enable_hybrid_scheduler, false, "enable serial-stealing hybrid scheduler");  //NOLINT
+DEFINE_bool(enable_hybrid_scheduler, true, "enable serial-stealing hybrid scheduler");  //NOLINT
 DEFINE_int32(lightweight_job_level, 0, "Specify job level regarded as lightweight");  //NOLINT
 DEFINE_bool(busy_worker, true, "whether task scheduler workers suspend when they have no task. Specify true to stop suspend.");  //NOLINT
 DEFINE_bool(enable_watcher, false, "whether task scheduler uses watcher thread and conditional tasks.");  //NOLINT

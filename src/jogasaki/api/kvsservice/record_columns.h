@@ -41,11 +41,24 @@ public:
     [[nodiscard]] tateyama::proto::kvs::data::Record const &record() const noexcept {
         return record_;
     }
+
+    [[nodiscard]] std::size_t table_keys_size() const noexcept {
+        return table_keys_size_;
+    }
+    [[nodiscard]] std::size_t table_values_size() const noexcept {
+        return table_values_size_;
+    }
+
+    [[nodiscard]] bool has_unknown_column() const noexcept;
+    [[nodiscard]] bool has_duplicate_column() const noexcept;
+
 private:
     tateyama::proto::kvs::data::Record const &record_;
     std::shared_ptr<yugawara::storage::table const> &table_;
     std::vector<column_data> primary_keys_{};
     std::vector<column_data> values_{};
+    std::size_t table_keys_size_{};
+    std::size_t table_values_size_{};
 };
 
 }

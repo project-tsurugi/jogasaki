@@ -75,6 +75,16 @@ bool is_valid_record(tateyama::proto::kvs::data::Record const &record) {
     return record.names_size() >= 1 && record.names_size() == record.values_size();
 }
 
+static status check_valid_reccols(record_columns &rec_cols) {
+    if (rec_cols.has_unknown_column()) {
+        return status::err_column_not_found;
+    }
+    if (rec_cols.has_duplicate_column()) {
+        return status::err_invalid_argument;
+    }
+    return status::ok;
+}
+
 static status check_valid_column(column_data const &cd) {
     if (cd.value() == nullptr) {
         // TODO support default values (currently all columns' values are necessary)
@@ -96,28 +106,21 @@ static status check_valid_columns(std::vector<column_data> const &cd_list) {
 }
 
 static status check_valid_key_size(record_columns &rec_cols, std::size_t key_size) {
-    auto table = rec_cols.table();
-    const auto primary = table->owner()->find_primary_index(*table);
-    if (primary == nullptr) {
-        return status::err_invalid_argument;
-    }
-    if (primary->keys().size() != key_size) {
+    if (rec_cols.table_keys_size() != key_size) {
+        // TODO multi-key support
         return status::err_mismatch_key;
     }
     return status::ok;
 }
 
-static status check_valid_column_size(record_columns &rec_cols) {
-    const auto &columns = rec_cols.table()->columns();
-    auto col_size = columns.size();
-    auto rec_size = static_cast<std::size_t>(rec_cols.record().names_size());
+static status check_valid_values_size(record_columns &rec_cols) {
+    auto col_size = rec_cols.table_values_size();
+    auto rec_size = static_cast<std::size_t>(rec_cols.values().size());
     // TODO support default values (currently all columns' values are necessary)
     if (rec_size < col_size) {
         return status::err_incomplete_columns;
     }
-    if (rec_size > col_size) {
-        return status::err_invalid_argument;
-    }
+    // duplicate and unknown columns were already checked at check_valid_reccols() at first
     return status::ok;
 }
 
@@ -129,22 +132,23 @@ static status check_valid_primary_key(record_columns &rec_cols, std::size_t key_
 }
 
 status check_valid_primary_key(record_columns &rec_cols) {
-    std::size_t key_size = rec_cols.record().names_size();
-    if (key_size > rec_cols.primary_keys().size()) {
-        // invalid key name is specified
-        return status::err_column_not_found;
+    if (auto s = check_valid_reccols(rec_cols); s != status::ok) {
+        return s;
     }
     return check_valid_primary_key(rec_cols, rec_cols.primary_keys().size());
 }
 
 static status check_valid_values(record_columns &rec_cols) {
-    if (auto s = check_valid_column_size(rec_cols); s != status::ok) {
+    if (auto s = check_valid_values_size(rec_cols); s != status::ok) {
         return s;
     }
     return check_valid_columns(rec_cols.values());
 }
 
 status check_put_record(record_columns &rec_cols) {
+    if (auto s = check_valid_reccols(rec_cols); s != status::ok) {
+        return s;
+    }
     if (auto s = check_valid_primary_key(rec_cols, rec_cols.primary_keys().size());
         s != status::ok) {
         return s;

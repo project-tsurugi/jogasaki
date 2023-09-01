@@ -78,7 +78,7 @@ bool is_valid_record(tateyama::proto::kvs::data::Record const &record) {
 static status check_valid_column(column_data const &cd) {
     if (cd.value() == nullptr) {
         // TODO support default values (currently all columns' values are necessary)
-        return status::err_column_not_found;
+        return status::err_incomplete_columns;
     }
     if (!equal_type(cd.column()->type().kind(), cd.value()->value_case())) {
         return status::err_column_type_mismatch;
@@ -95,16 +95,13 @@ static status check_valid_columns(std::vector<column_data> const &cd_list) {
     return status::ok;
 }
 
-static status check_valid_key_size(record_columns &rec_cols) {
+static status check_valid_key_size(record_columns &rec_cols, std::size_t key_size) {
     auto table = rec_cols.table();
     const auto primary = table->owner()->find_primary_index(*table);
     if (primary == nullptr) {
         return status::err_invalid_argument;
     }
-    const auto keys = primary->keys();
-    auto key_size = keys.size();
-    auto req_size = rec_cols.primary_keys().size();
-    if (key_size != req_size) {
+    if (primary->keys().size() != key_size) {
         return status::err_mismatch_key;
     }
     return status::ok;
@@ -113,7 +110,7 @@ static status check_valid_key_size(record_columns &rec_cols) {
 static status check_valid_column_size(record_columns &rec_cols) {
     const auto &columns = rec_cols.table()->columns();
     auto col_size = columns.size();
-    auto rec_size = rec_cols.primary_keys().size() + rec_cols.values().size();
+    auto rec_size = static_cast<std::size_t>(rec_cols.record().names_size());
     // TODO support default values (currently all columns' values are necessary)
     if (rec_size < col_size) {
         return status::err_incomplete_columns;
@@ -124,11 +121,20 @@ static status check_valid_column_size(record_columns &rec_cols) {
     return status::ok;
 }
 
-status check_valid_primary_key(record_columns &rec_cols) {
-    if (auto s = check_valid_key_size(rec_cols); s != status::ok) {
+static status check_valid_primary_key(record_columns &rec_cols, std::size_t key_size) {
+    if (auto s = check_valid_key_size(rec_cols, key_size); s != status::ok) {
         return s;
     }
     return check_valid_columns(rec_cols.primary_keys());
+}
+
+status check_valid_primary_key(record_columns &rec_cols) {
+    std::size_t key_size = rec_cols.record().names_size();
+    if (key_size > rec_cols.primary_keys().size()) {
+        // invalid key name is specified
+        return status::err_column_not_found;
+    }
+    return check_valid_primary_key(rec_cols, rec_cols.primary_keys().size());
 }
 
 static status check_valid_values(record_columns &rec_cols) {
@@ -138,15 +144,9 @@ static status check_valid_values(record_columns &rec_cols) {
     return check_valid_columns(rec_cols.values());
 }
 
-status check_put_record(tateyama::proto::kvs::data::Record const &record, record_columns &rec_cols) {
-    if (static_cast<std::size_t>(record.values_size()) > rec_cols.table()->columns().size()) {
-        // too many columns
-        // NOTE: status::err_incomplete_columns will be checked
-        // in check_valid_column_size().
-        // record_columns object has schema defined columns only.
-        return status::err_invalid_argument;
-    }
-    if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
+status check_put_record(record_columns &rec_cols) {
+    if (auto s = check_valid_primary_key(rec_cols, rec_cols.primary_keys().size());
+        s != status::ok) {
         return s;
     }
     return check_valid_values(rec_cols);

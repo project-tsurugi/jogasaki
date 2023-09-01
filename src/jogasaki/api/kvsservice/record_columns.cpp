@@ -20,23 +20,27 @@ namespace jogasaki::api::kvsservice {
 
 record_columns::record_columns(std::shared_ptr<yugawara::storage::table const> &table,
         tateyama::proto::kvs::data::Record const &record,
-        bool only_keys) : table_(table) {
+        bool only_keys) : record_(record), table_(table) {
     mapped_record m_rec{record};
     const auto primary = table->owner()->find_primary_index(*table);
     for (const auto &key_col: primary->keys()) {
         const auto &column = key_col.column();
-        // TODO should be case-insensitive
+        // TODO should be case-insensitive, NULL value
         const auto value = m_rec.get_value(column.simple_name());
-        primary_keys_.emplace_back(&column, value);
+        if (value != nullptr) {
+            primary_keys_.emplace_back(&column, value);
+        }
     }
     if (only_keys) {
         return;
     }
     for (const auto &value_col: primary->values()) {
         const auto &column = value_col.get();
-        // TODO should be case-insensitive
+        // TODO should be case-insensitive, NULL value
         const auto value = m_rec.get_value(column.simple_name());
-        values_.emplace_back(&column, value);
+        if (value != nullptr) {
+            values_.emplace_back(&column, value);
+        }
     }
 }
 

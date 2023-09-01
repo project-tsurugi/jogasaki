@@ -38,7 +38,11 @@ public:
     [[nodiscard]] std::vector<column_data> const &values() const noexcept {
         return values_;
     }
+    [[nodiscard]] tateyama::proto::kvs::data::Record const &record() const noexcept {
+        return record_;
+    }
 private:
+    tateyama::proto::kvs::data::Record const &record_;
     std::shared_ptr<yugawara::storage::table const> &table_;
     std::vector<column_data> primary_keys_{};
     std::vector<column_data> values_{};

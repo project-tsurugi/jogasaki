@@ -42,12 +42,12 @@ enum class put_option : std::uint32_t {
     create_or_update = 0U,
 
     /**
-     * @brief to create new entry. status::err_already_exists is returned from put operation if the entry already exist.
+     * @brief to create new entry. status::already_exists is returned from put operation if the entry already exist.
      */
     create,
 
     /**
-     * @brief to update existing entry. status::err_not_found is returned from put operation if the entry doesn't exist.
+     * @brief to update existing entry. status::not_found is returned from put operation if the entry doesn't exist.
      */
     update,
 };
@@ -141,8 +141,8 @@ public:
      * @param value the value for the entry
      * @param option option to set put mode
      * @return status::ok if the operation is successful
-     * @return status::err_already_exists if the option is `create` and record already exists for the key
-     * @return status::err_not_found if the option is `update` and the record doesn't exist for the key
+     * @return status::already_exists if the option is `create` and record already exists for the key
+     * @return status::not_found if the option is `update` and the record doesn't exist for the key
      * @return status::abort_retryable on occ error
      * @return otherwise, other status code
      * @note status::not_found is not returned even if the record doesn't exist for the key

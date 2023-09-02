@@ -34,6 +34,7 @@
 #include "operator_base.h"
 #include "context_helper.h"
 #include "details/error_abort.h"
+#include "jogasaki/logging_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -71,6 +72,12 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
     }
 }
 
+void abort_transaction(transaction_context& tx) {
+    if (auto res = tx.abort(); res != status::ok) {
+        throw_exception(std::logic_error{"abort failed unexpectedly"});
+    }
+}
+
 operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
     // find update target and fill ctx.key_store_ and ctx.value_store_
@@ -80,6 +87,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
             ctx.input_variables().store().ref(),
             ctx.varlen_resource()
         ); res != status::ok) {
+        abort_transaction(*ctx.transaction());
         return details::error_abort(ctx, res);
     }
 
@@ -91,6 +99,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
             context.extracted_value(),
             context.encoded_key()
         ); res != status::ok) {
+            abort_transaction(*ctx.transaction());
             return details::error_abort(ctx, res);
         }
     }
@@ -104,16 +113,9 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 
     // encode values from key_store_/value_store_ and send to kvs
     if(auto res = primary_.encode_and_put(context, *ctx.transaction()); res != status::ok) {
-        if (res == status::err_integrity_constraint_violation) { // i.e. null to non-nullable column
-            if (auto res2 = ctx.transaction()->abort(); res2 != status::ok) {
-                throw_exception(std::logic_error{"abort failed unexpectedly"});
-            }
-            set_error(
-                *ctx.req_context(),
-                error_code::not_null_constraint_violation_exception,
-                string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                res
-            );
+        abort_transaction(*ctx.transaction());
+        if(res == status::already_exists) {
+            res = status::err_unique_constraint_violation;
         }
         return details::error_abort(ctx, res);
     }
@@ -126,6 +128,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
                 context.extracted_value(),
                 context.encoded_key()
             ); res != status::ok) {
+            abort_transaction(*ctx.transaction());
             return details::error_abort(ctx, res);
         }
     }

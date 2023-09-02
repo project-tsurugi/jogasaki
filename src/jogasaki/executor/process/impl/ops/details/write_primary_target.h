@@ -145,6 +145,9 @@ public:
 
     /**
      * @brief encode key, find the record, fill variables, and remove
+     * @returns status::ok when successful
+     * @returns status::not_found if record is not found
+     * @returns any other error otherwise
      */
     status find_record_and_remove(
         write_primary_context& ctx,
@@ -183,6 +186,9 @@ public:
 
     /**
      * @brief gather the extracted (possibly updated) variables, encode key/value and put them to index
+     * @returns status::ok when successful
+     * @returns status::already_exist if record already exists
+     * @returns any other error otherwise
      */
     status encode_and_put(write_primary_context& ctx, transaction_context& tx) const;
 

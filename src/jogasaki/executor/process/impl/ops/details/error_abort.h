@@ -30,6 +30,23 @@ template <class T>
 operation_status error_abort(T& ctx, status res) {
     ctx.abort();
     switch(res) {
+        case status::err_unique_constraint_violation:
+            set_error(
+                *ctx.req_context(),
+                error_code::unique_constraint_violation_exception,
+                string_builder{} <<
+                    "Unique constraint violation occurred." << string_builder::to_string,
+                res
+            );
+            break;
+        case status::err_integrity_constraint_violation:
+            set_error(
+                *ctx.req_context(),
+                error_code::not_null_constraint_violation_exception,
+                string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                res
+            );
+            break;
         case status::err_expression_evaluation_failure:
             set_error(
                 *ctx.req_context(),

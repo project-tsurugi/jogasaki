@@ -70,7 +70,7 @@ status storage::put(
     );
     if (res == StatusCode::NOT_FOUND) {
         if (option == put_option::update) {
-            return status::err_not_found;
+            return status::not_found;
         }
         return status::ok;
     }

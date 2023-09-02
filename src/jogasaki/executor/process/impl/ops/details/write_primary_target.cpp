@@ -200,7 +200,7 @@ status write_primary_target::encode_and_put(write_primary_context& ctx, transact
     if(auto res = do_encode(ctx.value_buf_, extracted_values_, ctx.value_store_.ref(), v); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->put(tx, k, v); res != status::ok) {
+    if(auto res = ctx.stg_->put(tx, k, v, kvs::put_option::create); res != status::ok) {
         return res;
     }
     return status::ok;

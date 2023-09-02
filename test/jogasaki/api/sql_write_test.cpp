@@ -71,8 +71,7 @@ public:
 
 using namespace std::string_view_literals;
 
-// TODO fix update
-TEST_F(sql_write_test, DISABLED_expression_error_handling_with_update) {
+TEST_F(sql_write_test, expression_error_handling_with_update) {
     // verify transaction is aborted and rollbacked any changes on expression error
     execute_statement("CREATE TABLE T(C0 DECIMAL(5,3) NOT NULL)");
     auto v10 = decimal_v{1, 0, 10, 0}; // 10
@@ -124,8 +123,7 @@ TEST_F(sql_write_test, expression_error_handling_with_insert) {
     ASSERT_EQ(0, result.size());
 }
 
-// TODO fix update
-TEST_F(sql_write_test, DISABLED_pk_update_failure) {
+TEST_F(sql_write_test, pk_update_failure) {
     // verify updating pk record by record and hits unique constraint violation
     execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T VALUES (0, 0)");

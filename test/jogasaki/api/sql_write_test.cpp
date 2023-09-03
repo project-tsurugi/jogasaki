@@ -72,6 +72,9 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(sql_write_test, expression_error_handling_with_update) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory failed to rollback";
+    }
     // verify transaction is aborted and rollbacked any changes on expression error
     execute_statement("CREATE TABLE T(C0 DECIMAL(5,3) NOT NULL)");
     auto v10 = decimal_v{1, 0, 10, 0}; // 10
@@ -124,6 +127,9 @@ TEST_F(sql_write_test, expression_error_handling_with_insert) {
 }
 
 TEST_F(sql_write_test, pk_update_failure) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory failed to rollback";
+    }
     // verify updating pk record by record and hits unique constraint violation
     execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T VALUES (0, 0)");

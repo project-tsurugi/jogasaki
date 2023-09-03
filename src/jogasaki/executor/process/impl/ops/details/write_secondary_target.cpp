@@ -24,7 +24,6 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/logging_helper.h>
 #include "write_secondary_context.h"
 
 namespace jogasaki::executor::process::impl::ops::details {

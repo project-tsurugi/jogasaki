@@ -19,7 +19,6 @@
 
 #include <takatori/relation/write.h>
 #include <takatori/util/exception.h>
-#include <takatori/util/string_builder.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/logging.h>
@@ -40,7 +39,6 @@ namespace jogasaki::executor::process::impl::ops {
 
 using variable = takatori::descriptor::variable;
 using takatori::util::throw_exception;
-using takatori::util::string_builder;
 
 void write_partial::finish(abstract::task_context* context) {
     if (! context) return;

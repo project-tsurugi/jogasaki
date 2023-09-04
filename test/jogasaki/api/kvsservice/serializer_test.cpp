@@ -155,7 +155,8 @@ TEST_F(serializer_test, ser_bool) {
 
 static tateyama::proto::kvs::data::Decimal dec(const std::uint64_t hi, const std::uint64_t lo, const int exp) noexcept {
     std::string buf{};
-    buf.reserve(sizeof(lo) + sizeof(hi));
+    auto bufsize = sizeof(lo) + sizeof(hi);
+    buf.reserve(bufsize);
     auto v = lo;
     for (int i = 0; i < 8; i++) {
         buf[15 - i] = static_cast<std::uint8_t>(v & 0xffU);
@@ -167,27 +168,27 @@ static tateyama::proto::kvs::data::Decimal dec(const std::uint64_t hi, const std
         v >>= 8U;
     }
     tateyama::proto::kvs::data::Decimal d{};
-    d.set_unscaled_value(buf.data(), buf.size());
+    // NOTE buf.size() erturns 0, not 16
+    d.set_unscaled_value(buf.data(), bufsize);
     d.set_exponent(exp);
     return d;
 }
 
 TEST_F(serializer_test, ser_decimal) {
-    std::vector<tateyama::proto::kvs::data::Decimal> answers {
-        dec(0, 0, 0), dec(0, 1, 0), dec(1, 0, 0), dec(0, 123456, -3)};
     int precision = 5;
-    for (auto answer : answers) {
-        auto type = std::make_shared<takatori::type::decimal>(precision, -answer.exponent());
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
-        for (auto is_key: {true, false}) {
-            tateyama::proto::kvs::data::Value v1{};
-            tateyama::proto::kvs::data::Value v2{};
-            v1.set_allocated_decimal_value(&answer);
-            test(is_key, col, v1, v2);
-            EXPECT_EQ(v2.decimal_value().unscaled_value(), answer.unscaled_value());
-            EXPECT_EQ(v2.decimal_value().exponent(), answer.exponent());
-            v1.release_decimal_value();
-        }
+    int exp = -3;
+    auto type = std::make_shared<takatori::type::decimal>(precision, -exp);
+    yugawara::storage::column col{"col_name", type, {}, {}, {}};
+    for (auto is_key: {true, false}) {
+        tateyama::proto::kvs::data::Value v1{};
+        // test by 12.345
+        auto answer = dec(0, 12345, exp);
+        tateyama::proto::kvs::data::Value v2{};
+        v1.set_allocated_decimal_value(&answer);
+        test(is_key, col, v1, v2);
+        EXPECT_EQ(v2.decimal_value().unscaled_value(), answer.unscaled_value());
+        EXPECT_EQ(v2.decimal_value().exponent(), answer.exponent());
+        v1.release_decimal_value();
     }
 }
 

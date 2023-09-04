@@ -167,6 +167,17 @@ public:
     );
 
     /**
+     * @brief same as `find_record`, except returning encoded key for recycle.
+     */
+    status find_record(
+        write_primary_context& ctx,
+        transaction_context& tx,
+        accessor::record_ref variables,
+        memory_resource* varlen_resource,
+        std::string_view& key
+    );
+
+    /**
      * @brief encode key, and remove the record
      */
     status remove_record(
@@ -246,14 +257,6 @@ private:
     ) const;
 
     status prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const;
-
-    status find_record_internal(
-        write_primary_context& ctx,
-        transaction_context& tx,
-        accessor::record_ref variables,
-        memory_resource* varlen_resource,
-        std::string_view& key
-    );
 
 };
 

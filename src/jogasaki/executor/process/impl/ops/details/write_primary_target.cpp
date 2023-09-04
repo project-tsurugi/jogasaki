@@ -94,13 +94,10 @@ status write_primary_target::find_record_and_remove(
     memory_resource* varlen_resource
 ) {
     std::string_view k{};
-    if(auto res = find_record_internal(ctx, tx, variables, varlen_resource, k); res != status::ok) {
+    if(auto res = find_record(ctx, tx, variables, varlen_resource, k); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->remove(tx, k); res != status::ok) {
-        return res;
-    }
-    return status::ok;
+    return remove_record_by_encoded_key(ctx, tx, k);
 }
 
 status write_primary_target::find_record(
@@ -110,10 +107,10 @@ status write_primary_target::find_record(
     memory_resource* varlen_resource
 ) {
     std::string_view k{};
-    return find_record_internal(ctx, tx, variables, varlen_resource, k);
+    return find_record(ctx, tx, variables, varlen_resource, k);
 }
 
-status write_primary_target::find_record_internal(
+status write_primary_target::find_record(
     write_primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref variables,

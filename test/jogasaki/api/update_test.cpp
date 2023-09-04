@@ -167,7 +167,27 @@ TEST_F(update_test, update_by_null) {
     }
 }
 
+TEST_F(update_test, hitting_existing_pk) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on abort";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T VALUES (0, 0)");
+    execute_statement("INSERT INTO T VALUES (1, 1)");
+    execute_statement("UPDATE T SET C0=C0+1 WHERE C0=0", status::err_unique_constraint_violation);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM T ORDER BY C0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(0, 0)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 1)), result[1]);
+    }
+}
+
 TEST_F(update_test, multiple_rows_hitting_existing_pk) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on abort";
+    }
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T VALUES (0, 0)");
     execute_statement("INSERT INTO T VALUES (1, 1)");
@@ -184,6 +204,9 @@ TEST_F(update_test, multiple_rows_hitting_existing_pk) {
 }
 
 TEST_F(update_test, multiple_rows_wo_hitting_existing_pk) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory behaves differently on conflicting pk";
+    }
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T VALUES (0, 0)");
     execute_statement("INSERT INTO T VALUES (2, 2)");

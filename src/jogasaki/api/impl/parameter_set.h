@@ -21,8 +21,6 @@
 
 namespace jogasaki::api::impl {
 
-using kind = field_type_kind;
-
 /**
  * @brief parameter_set implementation
  */
@@ -32,15 +30,15 @@ public:
 
     explicit parameter_set(std::shared_ptr<plan::parameter_set> body) noexcept;
 
-    void set_int4(std::string_view name, field_type_traits<kind::int4>::runtime_type value) override;
-    void set_int8(std::string_view name, field_type_traits<kind::int8>::runtime_type value) override;
-    void set_float4(std::string_view name, field_type_traits<kind::float4>::runtime_type value) override;
-    void set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) override;
-    void set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) override;
-    void set_decimal(std::string_view name, field_type_traits<kind::decimal>::runtime_type value) override;
-    void set_date(std::string_view name, field_type_traits<kind::date>::runtime_type value) override;
-    void set_time_of_day(std::string_view name, field_type_traits<kind::time_of_day>::runtime_type value) override;
-    void set_time_point(std::string_view name, field_type_traits<kind::time_point>::runtime_type value) override;
+    void set_int4(std::string_view name, field_type_traits<field_type_kind::int4>::runtime_type value) override;
+    void set_int8(std::string_view name, field_type_traits<field_type_kind::int8>::runtime_type value) override;
+    void set_float4(std::string_view name, field_type_traits<field_type_kind::float4>::runtime_type value) override;
+    void set_float8(std::string_view name, field_type_traits<field_type_kind::float8>::runtime_type value) override;
+    void set_character(std::string_view name, field_type_traits<field_type_kind::character>::runtime_type value) override;
+    void set_decimal(std::string_view name, field_type_traits<field_type_kind::decimal>::runtime_type value) override;
+    void set_date(std::string_view name, field_type_traits<field_type_kind::date>::runtime_type value) override;
+    void set_time_of_day(std::string_view name, field_type_traits<field_type_kind::time_of_day>::runtime_type value) override;
+    void set_time_point(std::string_view name, field_type_traits<field_type_kind::time_point>::runtime_type value) override;
 
     void set_reference_column(std::string_view name, std::size_t position) override;
     void set_reference_column(std::string_view name, std::string_view column_name) override;

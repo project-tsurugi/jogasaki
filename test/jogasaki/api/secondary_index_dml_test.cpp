@@ -57,6 +57,7 @@ using takatori::util::unsafe_downcast;
 
 using meta::field_enum_tag_t;
 using kvs::end_point_kind;
+using kind = meta::field_type_kind;
 
 class secondary_index_dml_test :
     public ::testing::Test,
@@ -78,7 +79,7 @@ public:
         db_teardown();
     }
 
-    std::unordered_map<std::int32_t, std::int32_t> get_secondary_entries(std::string_view index_name, std::optional<std::int32_t> c1);
+    std::unordered_set<std::int32_t> get_secondary_entries(std::string_view index_name, std::optional<std::int32_t> c1);
 };
 
 
@@ -89,47 +90,225 @@ bool contains(std::string_view whole, std::string_view part) {
 using k = meta::field_type_kind;
 
 TEST_F(secondary_index_dml_test, basic) {
-    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
     execute_statement("CREATE INDEX I ON T (C1)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(1,10)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    {
+        auto m = get_secondary_entries("I", 10);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+}
+
+TEST_F(secondary_index_dml_test, insert_multiple_recs) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("INSERT INTO T VALUES(2,20,200)");
+    execute_statement("INSERT INTO T VALUES(3,30,300)");
+    auto m = get_secondary_entries("I", 20);
+    ASSERT_EQ(1, m.size());
+    EXPECT_EQ(1, m.count(2));
+}
+
+TEST_F(secondary_index_dml_test, insert_multiple_recs_for_same_index_key) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T VALUES(0,0,0)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("INSERT INTO T VALUES(2,10,200)");
+    execute_statement("INSERT INTO T VALUES(3,10,300)");
+    execute_statement("INSERT INTO T VALUES(4,20,400)");
     auto m = get_secondary_entries("I", 10);
-    ASSERT_EQ(1, m.size());
-    EXPECT_EQ(10, m.at(1));
-}
-
-TEST_F(secondary_index_dml_test, multiple_recs) {
-    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
-    execute_statement("CREATE INDEX I ON T (C1)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(1,10)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(2,20)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(3,30)");
-    auto m = get_secondary_entries("I", 20);
-    ASSERT_EQ(1, m.size());
-    EXPECT_EQ(20, m.at(2));
-}
-
-TEST_F(secondary_index_dml_test, multiple_recs_for_same_index_key) {
-    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
-    execute_statement("CREATE INDEX I ON T (C1)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(0,10)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(1,20)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(2,20)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(3,20)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES(4,30)");
-    auto m = get_secondary_entries("I", 20);
     ASSERT_EQ(3, m.size());
-    EXPECT_EQ(20, m.at(1));
-    EXPECT_EQ(20, m.at(2));
-    EXPECT_EQ(20, m.at(3));
+    EXPECT_EQ(1, m.count(1));
+    EXPECT_EQ(1, m.count(2));
+    EXPECT_EQ(1, m.count(3));
 }
 
-std::unordered_map<std::int32_t, std::int32_t> secondary_index_dml_test::get_secondary_entries(std::string_view index_name, std::optional<std::int32_t> c1) {
+TEST_F(secondary_index_dml_test, insert_null_in_secondary_index_key) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T (C0) VALUES(0)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES(1, 10)");
+    execute_statement("INSERT INTO T (C0) VALUES(2)");
+    auto m = get_secondary_entries("I", {});
+    ASSERT_EQ(2, m.size());
+    EXPECT_EQ(1, m.count(0));
+    EXPECT_EQ(1, m.count(2));
+}
+
+TEST_F(secondary_index_dml_test, delete) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("INSERT INTO T VALUES(2,20,200)");
+    {
+        auto m = get_secondary_entries("I", 10);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+    {
+        auto m = get_secondary_entries("I", 20);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(2));
+    }
+    execute_statement("DELETE FROM T WHERE C0=2");
+    {
+        auto m = get_secondary_entries("I", 10);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+    {
+        auto m = get_secondary_entries("I", 20);
+        ASSERT_TRUE(m.empty());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T WHERE C1=20", result);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(secondary_index_dml_test, update_pk) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("INSERT INTO T VALUES(2,20,200)");
+    execute_statement("UPDATE T SET C0=3 WHERE C0=1");
+    {
+        auto m = get_secondary_entries("I", 10);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(3));
+    }
+    {
+        auto m = get_secondary_entries("I", 20);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(2));
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0, C1 FROM T WHERE C1=10", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(3,10)), result[0]);
+}
+
+TEST_F(secondary_index_dml_test, update_index_key) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("INSERT INTO T VALUES(2,20,200)");
+    execute_statement("UPDATE T SET C1=30 WHERE C0=1");
+    {
+        auto m = get_secondary_entries("I", 30);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+    {
+        auto m = get_secondary_entries("I", 20);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(2));
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0, C1 FROM T WHERE C1=30", result);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>({1,30})), result[0]);
+}
+
+TEST_F(secondary_index_dml_test, update_nonpk_non_index_key_column) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("INSERT INTO T VALUES(2,20,200)");
+    execute_statement("UPDATE T SET C2=300 WHERE C0=1");
+    {
+        auto m = get_secondary_entries("I", 10);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+    {
+        auto m = get_secondary_entries("I", 20);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(2));
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0, C1, C2 FROM T WHERE C1=10", result);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>({1,10,300})), result[0]);
+}
+
+TEST_F(secondary_index_dml_test, insert_multi_secondaries) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I1 ON T (C1)");
+    execute_statement("CREATE INDEX I2 ON T (C2)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    {
+        auto m = get_secondary_entries("I1", 10);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+    {
+        auto m = get_secondary_entries("I2", 100);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+}
+
+TEST_F(secondary_index_dml_test, delete_multi_secondaries) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I1 ON T (C1)");
+    execute_statement("CREATE INDEX I2 ON T (C2)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("DELETE FROM T WHERE C0=1");
+    {
+        auto m = get_secondary_entries("I1", 10);
+        ASSERT_TRUE(m.empty());
+    }
+    {
+        auto m = get_secondary_entries("I2", 100);
+        ASSERT_TRUE(m.empty());
+    }
+}
+
+TEST_F(secondary_index_dml_test, update_pk_multi_secondaries) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I1 ON T (C1)");
+    execute_statement("CREATE INDEX I2 ON T (C2)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("UPDATE T SET C0=2 WHERE C0=1");
+    {
+        auto m = get_secondary_entries("I1", 10);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(2));
+    }
+    {
+        auto m = get_secondary_entries("I2", 100);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(2));
+    }
+}
+
+TEST_F(secondary_index_dml_test, update_index_key_multi_secondaries) {
+    // update only I1 key, not affecting I2
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I1 ON T (C1)");
+    execute_statement("CREATE INDEX I2 ON T (C2)");
+    execute_statement("INSERT INTO T VALUES(1,10,100)");
+    execute_statement("UPDATE T SET C1=20 WHERE C0=1");
+    {
+        auto m = get_secondary_entries("I1", 20);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+    {
+        auto m = get_secondary_entries("I2", 100);
+        ASSERT_EQ(1, m.size());
+        EXPECT_EQ(1, m.count(1));
+    }
+}
+
+std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries(std::string_view index_name, std::optional<std::int32_t> secondary_key) {
     auto table = get_impl(*db_).kvs_db()->get_storage("T");
     auto index = get_impl(*db_).kvs_db()->get_storage(index_name);
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     {
-        basic_record result{create_nullable_record<k::int4, k::int4>(0, 0)};
+        basic_record result{create_nullable_record<k::int4, k::int4, k::int4>(0, 0, 0)};
         index_field_mapper mapper{
             {
                 {
@@ -150,6 +329,14 @@ std::unordered_map<std::int32_t, std::int32_t> secondary_index_dml_test::get_sec
                     true,
                     kvs::spec_value
                 },
+                {
+                    meta::field_type{field_enum_tag_t<k::int4>{}},
+                    true,
+                    result.record_meta()->value_offset(2),
+                    result.record_meta()->nullity_offset(2),
+                    true,
+                    kvs::spec_value
+                },
             },
             {
                 {
@@ -159,18 +346,17 @@ std::unordered_map<std::int32_t, std::int32_t> secondary_index_dml_test::get_sec
                 },
             },
         };
-        std::unordered_map<std::int32_t, std::int32_t> map{};
+        std::unordered_set<std::int32_t> ret{};
         {
-
             data::aligned_buffer buf{};
+            auto v = secondary_key.has_value() ? data::any{std::in_place_type<std::int32_t>, *secondary_key} : data::any{};
+
             if(auto res = utils::encode_any(
                     buf,
                     meta::field_type{field_enum_tag_t<k::int4>{}},
                     true,
                     kvs::spec_key_ascending,
-                    {
-                        data::any{std::in_place_type<std::int32_t>, *c1}
-                    }
+                    {v}
                 ); res != status::ok) {
                 fail();
             }
@@ -192,9 +378,8 @@ std::unordered_map<std::int32_t, std::int32_t> secondary_index_dml_test::get_sec
                 if(status::ok != mapper(key, value, result.ref(), *table, *tx, &resource)) {
                     fail();
                 }
-                map.emplace(
-                    result.ref().get_value<std::int32_t>(result.record_meta()->value_offset(0)),
-                    result.ref().get_value<std::int32_t>(result.record_meta()->value_offset(1))
+                ret.emplace(
+                    result.ref().get_value<std::int32_t>(result.record_meta()->value_offset(0))
                 );
             }
             it.reset();
@@ -202,7 +387,7 @@ std::unordered_map<std::int32_t, std::int32_t> secondary_index_dml_test::get_sec
                 fail();
             }
         }
-        return map;
+        return ret;
     }
 }
 

@@ -44,27 +44,29 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
 
 (エラーコードはメンテナンスの手間を考慮して連番を避け、飛び飛びの値を使用している。SQL-00000は「エラー未発生 or エラーコード未設定」であることを表現するために予約。)
 
-- SqlServiceException (SQL-01000)
-  - SqlExecutionException (SQL-02000: SQL実行時のエラー)
+(将来的に使用予定だが未実装のものも含む。下記で※印は実装済であることを示す)
+
+- SqlServiceException (SQL-01000) ※
+  - SqlExecutionException (SQL-02000: SQL実行時のエラー) ※
     - ConstraintViolationException (SQL-02001: 制約違反)
-      - UniqueConstraintViolationException (SQL-02002: 一意制約違反)
-      - NotNullConstraintViolationException (SQL-02003: Not Null 制約違反)
+      - UniqueConstraintViolationException (SQL-02002: 一意制約違反) ※
+      - NotNullConstraintViolationException (SQL-02003: Not Null 制約違反) ※
       - ReferentialIntegrityConstraintViolationException (SQL-02004: 参照制約違反)
       - CheckConstraintViolationException (SQL-02005: 検査制約違反)
 
     - EvaluationException (SQL-02010: SQL文の評価に関するエラー)
-      - ValueEvaluationException (SQL-02011: 式の値の評価に関するエラー)
+      - ValueEvaluationException (SQL-02011: 式の値の評価に関するエラー) ※
       - ScalarSubqueryEvaluationException (SQL-02012: スカラサブクエリが期待されるステートメントにおいて評価結果がスカラでなかった)
 
-    - TargetNotFoundException (SQL-02014: SQLステートメントの操作対象が存在しない)
+    - TargetNotFoundException (SQL-02014: SQLステートメントの操作対象が存在しない) ※
     
         (例: クエリが使用している名前に対応するテーブルが存在しない)
       
         (例: WPとして指定されたテーブルが存在しない)
 
-    - TargetAlreadyExistsException (SQL-02016: 新規作成要求の対象が既に存在する)
+    - TargetAlreadyExistsException (SQL-02016: 新規作成要求の対象が既に存在する) ※
 
-    - InconsistentStatementException (SQL-02018: 使用されたAPIに対して要求されたステートメントが不正)
+    - InconsistentStatementException (SQL-02018: 使用されたAPIに対して要求されたステートメントが不正) ※
       
         (例: クエリ/ダンプ用のAPIに結果セットを戻さないステートメントが渡された)
 
@@ -76,12 +78,12 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
       - WriteOperationByRtxException (SQL-02022: Rtxによって書き込み操作が実行された)
       - LtxWriteOperationWithoutWritePreserveException (SQL-02023: LTXがWP指定した以外の領域へ書き込み操作を要求した)
       - ReadOperationOnRestrictedReadAreaException (SQL-02024: 禁止されているread areaをreadした)
-      - InactiveTransactionException (SQL-02025: commit/abort済のトランザクションに対する操作が要求された)
+      - InactiveTransactionException (SQL-02025: commit/abort済のトランザクションに対する操作が要求された) ※
 
     - ParameterException (SQL-02027: プレースホルダーやパラメーターに関するエラー)
-      - UnresolvedPlaceholderException (SQL-02028:実行要求されたステートメントが未解決のplaceholderを含む)
+      - UnresolvedPlaceholderException (SQL-02028:実行要求されたステートメントが未解決のplaceholderを含む) ※
 
-    - LoadFileException (SQL-02030: ロードファイルに関するエラー)
+    - LoadFileException (SQL-02030: ロードファイルに関するエラー) ※
       - LoadFileNotFoundException (SQL-02031: ロードファイルが存在しない)
       - LoadFileFormatException (SQL-02032: 予期しないファイルフォーマット)
     - DumpFileException (SQL-02033: ダンプファイルに関するエラー)
@@ -92,20 +94,20 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
 
     - SqlRequestTimeoutException (SQL-02039: SQL操作要求がタイムアウトした)
 
-    - DataCorruptionException (SQL-02041: データ破損の検知)
+    - DataCorruptionException (SQL-02041: データ破損の検知) ※
       - SecondaryIndexCorruptionException (SQL-02042: セカンダリインデックスの破損) 
 
     - RequestFailureException (SQL-02044: リクエストの処理の開始前に前提条件違反等により失敗した)
-      - TransactionNotFoundException (SQL-02045: リクエストされたトランザクションハンドルに対応するトランザクションが存在しない or 解放済み)
-      - StatementNotFoundException (SQL-02046: リクエストされたステートメントハンドルに対応するトランザクションが存在しない or 解放済み)
+      - TransactionNotFoundException (SQL-02045: リクエストされたトランザクションハンドルに対応するトランザクションが存在しない or 解放済み) ※
+      - StatementNotFoundException (SQL-02046: リクエストされたステートメントハンドルに対応するトランザクションが存在しない or 解放済み) ※
 
     - InternalException (SQL-02048: 内部エラーの検知)
 
-    - UnsupportedRuntimeFeatureException (SQL-02050: 未サポート機能の実行)
+    - UnsupportedRuntimeFeatureException (SQL-02050: 未サポート機能の実行) ※
 
     - BlockedByHighPriorityTransactionException (SQL-02052: 高優先度のトランザクションより優先させる要求を行った)
 
-  - CompileException (SQL-03000: コンパイル時のエラー)
+  - CompileException (SQL-03000: コンパイル時のエラー) ※
 
     - SyntaxException (SQL-03001: 構文エラー)
      
@@ -119,7 +121,7 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
         
     - UnsupportedCompilerFeatureException (SQL-03010: 未サポート機能/構文等のコンパイル)
 
-  - CcException (SQL-04000: CCで直列化失敗によるエラー)
+  - CcException (SQL-04000: CCで直列化失敗によるエラー) ※
 
     - OccException (SQL-04001: Occ TXのアボート)
 
@@ -131,7 +133,7 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
         
         (例 occがreadしたものがltxによってwrite preserveされていた(shirakami ERR_CC_OCC_WP_VERIFY))
 
-        - ConflictOnWritePreserveException (SQL-04015: occがreadしたものがltxによってwrite preserveされていてearly abort)
+        - ConflictOnWritePreserveException (SQL-04015: occがreadしたものがltxによってwrite preserveされていてearly abort) ※
 
       - OccWriteException (SQL-04011: Occ TXのwriteを原因とするアボートが発生 - 現状では発生ケースなし)
 

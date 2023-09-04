@@ -195,7 +195,11 @@ status do_encode(
     out = static_cast<std::string_view>(buf);
     return status::ok;
 }
-status write_primary_target::encode_and_put(write_primary_context& ctx, transaction_context& tx) const {
+status write_primary_target::encode_and_put(
+    write_primary_context& ctx,
+    transaction_context& tx,
+    kvs::put_option opt
+) const {
     std::string_view k{};
     std::string_view v{};
     if(auto res = do_encode(ctx.key_buf_, extracted_keys_, ctx.key_store_.ref(), k); res != status::ok) {
@@ -205,7 +209,7 @@ status write_primary_target::encode_and_put(write_primary_context& ctx, transact
     if(auto res = do_encode(ctx.value_buf_, extracted_values_, ctx.value_store_.ref(), v); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->put(tx, k, v, kvs::put_option::create); res != status::ok) {
+    if(auto res = ctx.stg_->put(tx, k, v, opt); res != status::ok) {
         return res;
     }
     return status::ok;

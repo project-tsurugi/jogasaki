@@ -210,7 +210,11 @@ public:
      * @returns status::already_exist if record already exists
      * @returns any other error otherwise
      */
-    status encode_and_put(write_primary_context& ctx, transaction_context& tx) const;
+    status encode_and_put(
+        write_primary_context& ctx,
+        transaction_context& tx,
+        kvs::put_option opt = kvs::put_option::create_or_update
+    ) const;
 
     /**
      * @brief accessor to key metadata

@@ -105,4 +105,13 @@ status details::write_secondary_target::encode_and_remove(
     return status::ok;
 }
 
+bool details::write_secondary_target::updates_key() const noexcept {
+    for(auto&& f : secondary_key_fields_) {
+        if(f.key_) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }

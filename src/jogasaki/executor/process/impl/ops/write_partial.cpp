@@ -272,4 +272,5 @@ std::vector<details::write_secondary_target> write_partial::create_secondary_tar
     );
     return ret;
 }
+
 }

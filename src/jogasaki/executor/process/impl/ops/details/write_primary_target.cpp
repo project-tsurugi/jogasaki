@@ -381,4 +381,13 @@ std::string_view write_primary_target::storage_name() const noexcept {
     return storage_name_;
 }
 
+bool write_primary_target::updates_key() const noexcept {
+    for(auto&& f : updates_) {
+        if(f.key_) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }

@@ -207,6 +207,11 @@ public:
      */
     [[nodiscard]] std::string_view storage_name() const noexcept;
 
+    /**
+     * @brief return whether one of the primary key columns is updated
+     */
+    [[nodiscard]] bool updates_key() const noexcept;
+
 private:
     std::string storage_name_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
@@ -240,6 +245,7 @@ private:
         memory_resource* varlen_resource,
         std::string_view& key
     );
+
 };
 
 }

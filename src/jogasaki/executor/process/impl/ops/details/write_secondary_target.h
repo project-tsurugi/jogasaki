@@ -145,14 +145,10 @@ public:
         return storage_name_;
     }
 
-    /**
-     * @brief return whether one of the secondary index key columns is updated
-     */
-    bool updates_key() const noexcept;
-
 private:
     std::string storage_name_{};
     std::vector<details::secondary_key_field> secondary_key_fields_{};
+    bool updates_key_{};
 
     status encode_key(
         write_secondary_context& ctx,

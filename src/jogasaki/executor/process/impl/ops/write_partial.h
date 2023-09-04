@@ -40,6 +40,8 @@ public:
     using key = takatori::relation::write::key;
     using column = takatori::relation::write::column;
     using memory_resource = memory::lifo_paged_memory_resource;
+    using bool_list_type = std::basic_string<bool>; // to utilize sso
+
     /**
      * @brief create empty object
      */
@@ -52,6 +54,8 @@ public:
      * @param block_index the index of the block that this operation belongs to
      * @param kind write operation kind
      * @param primary the primary target of this write operation
+     * @param secondaries the secondary targets of this write operation
+     * @param secondary_key_updated list of flags indicating if one of index keys of secondary targets are updated
      * @param input_variable_info input variable information
      */
     write_partial(
@@ -61,6 +65,7 @@ public:
         write_kind kind,
         details::write_primary_target primary,
         std::vector<details::write_secondary_target> secondaries,
+        bool_list_type secondary_key_updated,
         variable_table_info const* input_variable_info = nullptr
     );
 
@@ -126,8 +131,9 @@ private:
     write_kind kind_{};
     details::write_primary_target primary_{};
     std::vector<details::write_secondary_target> secondaries_{};
+    bool primary_key_updated_{};
+    bool_list_type secondary_key_updated_{};
 
-    std::vector<details::write_secondary_target> create_secondary_targets(yugawara::storage::index const& idx);
     operation_status do_update(write_partial_context& ctx);
     operation_status do_delete(write_partial_context& ctx);
 };

@@ -79,17 +79,34 @@ void abort_transaction(transaction_context& tx) {
 operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
     // find update target and fill ctx.key_store_ and ctx.value_store_
-    if(auto res = primary_.find_record_and_remove(
+    std::string_view encoded{};
+    if(auto res = primary_.find_record(
             context,
             *ctx.transaction(),
             ctx.input_variables().store().ref(),
-            ctx.varlen_resource()
+            ctx.varlen_resource(),
+            encoded
         ); res != status::ok) {
         abort_transaction(*ctx.transaction());
         return details::error_abort(ctx, res);
     }
 
+    if(primary_key_updated_) {
+        // remove and recreate records
+        if(auto res = primary_.remove_record_by_encoded_key(
+                context,
+                *ctx.transaction(),
+                encoded
+            ); res != status::ok) {
+            abort_transaction(*ctx.transaction());
+            return details::error_abort(ctx, res);
+        }
+    }
+
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        if(! primary_key_updated_ && ! secondary_key_updated_[i]) {
+            continue;
+        }
         if(auto res = secondaries_[i].encode_and_remove(
             ctx.secondary_contexts_[i],
             *ctx.transaction(),
@@ -110,7 +127,8 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     );
 
     // encode values from key_store_/value_store_ and send to kvs
-    if(auto res = primary_.encode_and_put(context, *ctx.transaction()); res != status::ok) {
+    kvs::put_option opt = primary_key_updated_ ? kvs::put_option::create : kvs::put_option::create_or_update;
+    if(auto res = primary_.encode_and_put(context, *ctx.transaction(), opt); res != status::ok) {
         abort_transaction(*ctx.transaction());
         if(res == status::already_exists) {
             res = status::err_unique_constraint_violation;
@@ -119,6 +137,9 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        if(! primary_key_updated_ && ! secondary_key_updated_[i]) {
+            continue;
+        }
         if(auto res = secondaries_[i].encode_and_put(
                 ctx.secondary_contexts_[i],
                 *ctx.transaction(),
@@ -194,6 +215,16 @@ operation_status write_partial::process_record(abstract::task_context* context) 
     return (*this)(*p);
 }
 
+// fwd declarations
+std::vector<details::write_secondary_target> create_secondary_targets(
+    yugawara::storage::index const& idx,
+    sequence_view<write_partial::column const> columns
+);
+write_partial::bool_list_type create_secondary_key_updated(
+    yugawara::storage::index const& idx,
+    sequence_view<write_partial::column const> columns
+);
+
 write_partial::write_partial(
     operator_base::operator_index_type index,
     processor_info const& info,
@@ -216,7 +247,8 @@ write_partial::write_partial(
             input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
             info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr
         },
-        create_secondary_targets(idx),
+        create_secondary_targets(idx, columns),
+        create_secondary_key_updated(idx, columns),
         input_variable_info
     )
 {}
@@ -228,26 +260,49 @@ write_partial::write_partial(
     write_kind kind,
     details::write_primary_target primary,
     std::vector<details::write_secondary_target> secondaries,
+    bool_list_type secondary_key_updated,
     variable_table_info const* input_variable_info
 ) :
     record_operator(index, info, block_index, input_variable_info),
     kind_(kind),
     primary_(std::move(primary)),
-    secondaries_(std::move(secondaries))
+    secondaries_(std::move(secondaries)),
+    primary_key_updated_(primary_.updates_key()),
+    secondary_key_updated_(std::move(secondary_key_updated))
 {}
 
 details::write_primary_target const& write_partial::primary() const noexcept {
     return primary_;
 }
 
-std::vector<details::write_secondary_target> write_partial::create_secondary_targets(
-    yugawara::storage::index const& idx
+bool overwraps(
+    std::vector<yugawara::storage::index::key> const& keys,
+    sequence_view<write_partial::column const> columns
 ) {
+    yugawara::binding::factory bindings{};
+    for(auto&& k : keys) {
+        auto kc = bindings(k.column());
+        for(auto&& c : columns) {
+            if(c.destination() == kc) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+std::pair<std::vector<details::write_secondary_target>, write_partial::bool_list_type>
+create_secondary_targets_and_key_update_list(
+    yugawara::storage::index const& idx,
+    sequence_view<write_partial::column const> columns
+) {
+
     auto& table = idx.table();
     auto& primary = *table.owner()->find_primary_index(table);
     auto key_meta = index::create_meta(primary, true);
     auto value_meta = index::create_meta(primary, false);
-    std::vector<details::write_secondary_target> ret{};
+    std::vector<details::write_secondary_target> ret_l{};
+    write_partial::bool_list_type ret_r{};
     std::size_t count{};
     table.owner()->each_table_index(table,
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
@@ -257,20 +312,42 @@ std::vector<details::write_secondary_target> write_partial::create_secondary_tar
             ++count;
         }
     );
-    ret.reserve(count);
+    ret_l.reserve(count);
+    ret_r.resize(count);
+    std::size_t i = 0;
     table.owner()->each_table_index(table,
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
             if (*entry == idx) {
                 return;
             }
-            ret.emplace_back(
+            ret_l.emplace_back(
                 *entry,
                 key_meta,
                 value_meta
             );
+            ret_r[i] = overwraps(entry->keys(), columns);
+            ++i;
         }
     );
-    return ret;
+    return {ret_l, ret_r};
+}
+
+std::vector<details::write_secondary_target> create_secondary_targets(
+    yugawara::storage::index const& idx,
+    sequence_view<write_partial::column const> columns
+) {
+    auto [tgts, updates] = create_secondary_targets_and_key_update_list(idx, columns);
+    (void) updates;
+    return tgts;
+}
+
+write_partial::bool_list_type create_secondary_key_updated(
+    yugawara::storage::index const& idx,
+    sequence_view<write_partial::column const> columns
+) {
+    auto [tgts, updates] = create_secondary_targets_and_key_update_list(idx, columns);
+    (void) tgts;
+    return updates;
 }
 
 }

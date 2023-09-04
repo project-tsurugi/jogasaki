@@ -176,6 +176,15 @@ public:
     );
 
     /**
+     * @brief remove the record by finding entry with encoded key
+     */
+    status remove_record_by_encoded_key(
+        write_primary_context& ctx,
+        transaction_context& tx,
+        std::string_view key
+    );
+
+    /**
      * @brief do update by copying values from source variable(or host variables) to target.
      */
     void update_record(

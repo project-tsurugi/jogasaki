@@ -147,7 +147,15 @@ status write_primary_target::remove_record(
     if(auto res = prepare_encoded_key(ctx, variables, k); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->remove(tx, k); res != status::ok) {
+    return remove_record_by_encoded_key(ctx, tx, k);
+}
+
+status write_primary_target::remove_record_by_encoded_key(
+    write_primary_context& ctx,
+    transaction_context& tx,
+    std::string_view key
+) {
+    if(auto res = ctx.stg_->remove(tx, key); res != status::ok) {
         return res;
     }
     return status::ok;

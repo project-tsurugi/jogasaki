@@ -262,4 +262,29 @@ TEST_F(update_test, multiple_rows_by_minus_11) {
     }
 }
 
+TEST_F(update_test, verify_error_abort_tx) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on abort";
+    }
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 DECIMAL(5,2))");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+    };
+    auto ps = api::create_parameter_set();
+    auto v1 = decimal_v{1, 0, 1, 0}; // 1
+    ps->set_decimal("p0", v1);
+    execute_statement("INSERT INTO T VALUES (1, :p0)", variables, *ps);
+    execute_statement("UPDATE T SET C1=C1 / 3 WHERE C0=1", status::err_expression_evaluation_failure);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM T ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 2)};
+        auto i4 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::decimal>(std::tuple{i4, dec}, {1, v1})), result[0]);
+    }
+}
+
+
 }

@@ -158,6 +158,9 @@ public:
 
     /**
      * @brief encode key, find the record, and fill variables
+     * @returns status::ok when successful
+     * @returns status::not_found if record is not found
+     * @returns any other error otherwise
      */
     status find_record(
         write_primary_context& ctx,
@@ -179,6 +182,9 @@ public:
 
     /**
      * @brief encode key, and remove the record
+     * @returns status::ok when successful
+     * @returns status::not_found if record is not found
+     * @returns any other error otherwise
      */
     status remove_record(
         write_primary_context& ctx,
@@ -188,6 +194,9 @@ public:
 
     /**
      * @brief remove the record by finding entry with encoded key
+     * @returns status::ok when successful
+     * @returns status::not_found if record is not found
+     * @returns any other error otherwise
      */
     status remove_record_by_encoded_key(
         write_primary_context& ctx,
@@ -207,7 +216,8 @@ public:
     /**
      * @brief gather the extracted (possibly updated) variables, encode key/value and put them to index
      * @returns status::ok when successful
-     * @returns status::already_exist if record already exists
+     * @returns status::already_exist if record already exists and `opt` is `create`
+     * @returns status::not_found if record not found and `opt` is `update`
      * @returns any other error otherwise
      */
     status encode_and_put(

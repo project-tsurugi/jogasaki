@@ -122,6 +122,12 @@ public:
         )
     {}
 
+    /**
+     * @brief encode key/value and put them to index
+     * @returns status::ok when successful
+     * @returns any other error otherwise
+     * @note this uses `upsert` so status::already_exist is not expected to be returned
+     */
     status encode_and_put(
         write_secondary_context& ctx,
         transaction_context& tx,
@@ -130,6 +136,12 @@ public:
         std::string_view primary_key
     ) const;
 
+    /**
+     * @brief encode key and remove the corresponding entry in the index
+     * @returns status::ok when successful
+     * @returns status::not_found when target entry is not found
+     * @returns any other error otherwise
+     */
     status encode_and_remove(
         write_secondary_context& ctx,
         transaction_context& tx,
@@ -161,56 +173,7 @@ private:
         yugawara::storage::index const& idx,
         maybe_shared_ptr<meta::record_meta> primary_key_meta, //NOLINT
         maybe_shared_ptr<meta::record_meta> primary_value_meta //NOLINT
-    ) {
-        auto& table = idx.table();
-        auto primary = table.owner()->find_primary_index(table);
-        if(!(primary != nullptr)) throw_exception(std::logic_error{""});
-        std::vector<details::secondary_key_field> ret{};
-        ret.reserve(table.columns().size());
-        for(auto&& k : idx.keys()) {
-            bool found = false;
-            for(std::size_t i=0, n=primary->keys().size(); i<n; ++i) {
-                if(primary->keys().at(i) == k) {
-                    auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
-                        kvs::spec_key_ascending : kvs::spec_key_descending;
-                    // pass storage spec with fields for write
-                    spec.storage(index::extract_storage_spec(k.column().type()));
-                    ret.emplace_back(
-                        primary_key_meta->at(i),
-                        primary_key_meta->value_offset(i),
-                        primary_key_meta->nullity_offset(i),
-                        k.column().criteria().nullity().nullable(),
-                        spec,
-                        true
-                    );
-                    found = true;
-                    break;
-                }
-            }
-            if(found) continue;
-            for(std::size_t i=0, n=primary->values().size(); i<n; ++i) {
-                if(primary->values().at(i) == k.column()) {
-                    auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
-                        kvs::spec_key_ascending : kvs::spec_key_descending;
-                    // pass storage spec with fields for write
-                    spec.storage(index::extract_storage_spec(k.column().type()));
-                    ret.emplace_back(
-                        primary_value_meta->at(i),
-                        primary_value_meta->value_offset(i),
-                        primary_value_meta->nullity_offset(i),
-                        k.column().criteria().nullity().nullable(),
-                        spec,
-                        false
-                    );
-                    found = true;
-                    break;
-                }
-            }
-            if(found) continue;
-            throw_exception(std::logic_error{""});
-        }
-        return ret;
-    }
+    );
 };
 
 }

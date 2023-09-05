@@ -118,7 +118,6 @@ file(GLOB SOURCES
         "jogasaki/index/*.cpp"
         "jogasaki/kvs/*.cpp"
         "jogasaki/kvsservice/*.cpp"
-        "jogasaki/logship/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"

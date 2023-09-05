@@ -171,8 +171,8 @@ private:
 
     std::vector<details::secondary_key_field> create_fields(
         yugawara::storage::index const& idx,
-        maybe_shared_ptr<meta::record_meta> primary_key_meta, //NOLINT
-        maybe_shared_ptr<meta::record_meta> primary_value_meta //NOLINT
+        maybe_shared_ptr<meta::record_meta> const& primary_key_meta, //NOLINT
+        maybe_shared_ptr<meta::record_meta> const& primary_value_meta //NOLINT
     );
 };
 

@@ -107,8 +107,8 @@ status details::write_secondary_target::encode_and_remove(
 
 std::vector<details::secondary_key_field> write_secondary_target::create_fields(
     yugawara::storage::index const& idx,
-    maybe_shared_ptr<meta::record_meta> primary_key_meta,
-    maybe_shared_ptr<meta::record_meta> primary_value_meta
+    maybe_shared_ptr<meta::record_meta> const& primary_key_meta,
+    maybe_shared_ptr<meta::record_meta> const& primary_value_meta
 ) {
     auto& table = idx.table();
     auto primary = table.owner()->find_primary_index(table);

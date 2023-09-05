@@ -15,9 +15,11 @@
  */
 #include "stealing_task_scheduler.h"
 
+#include <glog/logging.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/dag_controller_impl.h>
@@ -115,6 +117,9 @@ void stealing_task_scheduler::start() {
 
 void stealing_task_scheduler::stop() {
     scheduler_.stop();
+    scheduler_.print_worker_stats(
+        LOG(INFO) << "/:jogasaki:scheduler:stealing_task_scheduler:stop Task scheduler statistics "
+    );
 }
 
 task_scheduler_kind stealing_task_scheduler::kind() const noexcept {

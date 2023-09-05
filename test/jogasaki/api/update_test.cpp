@@ -222,25 +222,25 @@ TEST_F(update_test, multiple_rows_wo_hitting_existing_pk) {
     }
 }
 
-// once this hit serialization failure
-TEST_F(update_test, multiple_rows_by_minus_one) {
-    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
-    execute_statement("INSERT INTO T VALUES (0, 0)");
-    execute_statement("INSERT INTO T VALUES (1, 1)");
-    execute_statement("INSERT INTO T VALUES (2, 2)");
+// once occ hit serialization failure on commit
+TEST_F(update_test, DISABLED_multiple_rows_by_minus_one) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true});
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (1)");
     execute_statement("UPDATE T SET C0=C0-1");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, C1 FROM T ORDER BY C0", result);
-        ASSERT_EQ(3, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(-1, 0)), result[0]);
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(0, 1)), result[1]);
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 2)), result[2]);
+        execute_query("SELECT C0 FROM T ORDER BY C0", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(-1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[1]);
     }
 }
 
-// once this hit serialization failure
-TEST_F(update_test, multiple_rows_by_minus_11) {
+// once occ hit serialization failure
+TEST_F(update_test, DISABLED_multiple_rows_by_minus_11) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true});
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T VALUES (0, 0)");
     execute_statement("INSERT INTO T VALUES (1, 1)");

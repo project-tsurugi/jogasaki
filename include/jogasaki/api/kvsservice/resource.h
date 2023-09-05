@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 tsurugi project.
+ * Copyright 2018-2023 tsurugi project.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,6 @@
  */
 #pragma once
 
-#include <functional>
-#include <memory>
-#include <type_traits>
-
 #include <tateyama/framework/service.h>
 #include <tateyama/framework/repository.h>
 #include <tateyama/api/server/request.h>
@@ -26,35 +22,37 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/component_ids.h>
 
-#include <jogasaki/api/database.h>
+#include <jogasaki/api/kvsservice/store.h>
 
-namespace jogasaki::api::resource {
+namespace jogasaki::api::kvsservice {
 
 using tateyama::api::server::request;
 using tateyama::api::server::response;
 namespace framework = tateyama::framework;
 
 /**
- * @brief sql resource bridge for tateyama framework
- * @details This object bridges sql engine as a resource component in tateyama framework.
+ * @brief kvs resource bridge for tateyama framework
+ * @details This object bridges kvs engine as a resource component in tateyama framework.
  * This object should be responsible only for life-cycle management.
  */
-class bridge : public framework::resource {
+class resource : public framework::resource {
 public:
-    static constexpr id_type tag = framework::resource_id_sql;
+    static constexpr id_type tag = framework::resource_id_remote_kvs;
 
-    //@brief human readable label of this component
-    static constexpr std::string_view component_label = "sql_resource";
+    /**
+     * @brief human readable label of this component
+     */
+    static constexpr std::string_view component_label = "remote_kvs_resource";
 
     /**
      * @brief create new object
      */
-    bridge();
+    resource();
 
-    bridge(bridge const& other) = delete;
-    bridge& operator=(bridge const& other) = delete;
-    bridge(bridge&& other) noexcept = delete;
-    bridge& operator=(bridge&& other) noexcept = delete;
+    resource(resource const& other) = delete;
+    resource& operator=(resource const& other) = delete;
+    resource(resource&& other) noexcept = delete;
+    resource& operator=(resource&& other) noexcept = delete;
 
     /**
      * @brief accessor to the resource id
@@ -74,29 +72,25 @@ public:
     /**
      * @brief shutdown the component (the state will be `deactivated`)
      */
-    bool shutdown(framework::environment&) override;
+    bool shutdown(framework::environment& env) override;
 
     /**
      * @brief destructor the object
      */
-    ~bridge() override;
+    ~resource() override;
 
     /**
      * @brief accessor to the database
      */
-    [[nodiscard]] jogasaki::api::database* database() const noexcept;
+    [[nodiscard]] jogasaki::api::kvsservice::store* store() const noexcept;
 
     /**
-     * @see `tateyama::framework::component::label()`
+     * @see tateyama::framework::component::label()
      */
     [[nodiscard]] std::string_view label() const noexcept override;
-private:
-    std::unique_ptr<jogasaki::api::database> db_;  // to use incomplete object, do not add {} after var. name.
-    bool started_{false};
 
+private:
+    std::unique_ptr<jogasaki::api::kvsservice::store> store_;  // to use incomplete object, do not add {} after var. name.
 };
 
-[[nodiscard]] std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg);
-
 }
-

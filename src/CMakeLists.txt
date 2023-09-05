@@ -27,15 +27,36 @@ add_custom_command(
         "${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql"
 )
 
+set(KvsserviceProtoFiles
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/data.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/request.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/response.proto
+        ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/transaction.proto
+        )
+
+add_custom_command(
+        OUTPUT ${KvsserviceProtoFiles}
+        COMMAND ${CMAKE_COMMAND}
+        ARGS -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/data.proto"
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/request.proto"
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/response.proto"
+        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/transaction.proto"
+        "${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs"
+)
+
 # By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.
 # Work-around this with PROTOBUF_GENERATE_CPP_APPEND_PATH
 set(PROTOBUF_GENERATE_CPP_APPEND_PATH OFF)
 
 PROTOBUF_GENERATE_CPP(SqlProtobufSources SqlProtobufHeaders ${SqlProtoFiles})
 PROTOBUF_GENERATE_CPP(MetadataProtobufSources MetadataProtobufHeaders ${MetadataProtoFiles})
+PROTOBUF_GENERATE_CPP(KvsserviceProtobufSources KvsserviceProtobufHeaders ${KvsserviceProtoFiles})
 
 set(GENERATED_SQL_PROTO_SRCS ${SqlProtobufSources})
 set(GENERATED_METADATA_PROTO_SRCS ${MetadataProtobufSources})
+
+set(GENERATED_KVSSERVICE_PROTO_SRCS ${KvsserviceProtobufSources})
 
 add_custom_target(build_protos
         DEPENDS
@@ -43,6 +64,8 @@ add_custom_target(build_protos
         ${SqlProtoFiles}
         ${MetadataProtobufSources}
         ${SqlProtoFiles}
+        ${KvsserviceProtoFiles}
+        ${KvsserviceProtobufSources}
         )
 
 install(DIRECTORY
@@ -52,11 +75,20 @@ install(DIRECTORY
         PATTERN "proto/sql/*.pb.h"
         )
 
+install(DIRECTORY
+        ${CMAKE_BINARY_DIR}/src/tateyama
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/tateyama
+        FILES_MATCHING
+        PATTERN "proto/kvs/*.pb.h"
+        )
+
 file(GLOB SOURCES
         "jogasaki/*.cpp"
         "jogasaki/accessor/*.cpp"
         "jogasaki/api/*.cpp"
         "jogasaki/api/impl/*.cpp"
+        "jogasaki/api/kvsservice/*.cpp"
+        "jogasaki/api/kvsservice/impl/*.cpp"
         "jogasaki/api/service/*.cpp"
         "jogasaki/api/resource/*.cpp"
         "jogasaki/data/*.cpp"
@@ -100,6 +132,7 @@ file(GLOB SOURCES
 set_source_files_properties(
         ${GENERATED_SQL_PROTO_SRCS}
         ${GENERATED_METADATA_PROTO_SRCS}
+        ${GENERATED_KVSSERVICE_PROTO_SRCS}
         PROPERTIES
         GENERATED TRUE
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
@@ -109,6 +142,7 @@ add_library(${ENGINE}
         ${SOURCES}
         ${GENERATED_SQL_PROTO_SRCS}
         ${GENERATED_METADATA_PROTO_SRCS}
+        ${GENERATED_KVSSERVICE_PROTO_SRCS}
 )
 
 add_dependencies(${ENGINE}

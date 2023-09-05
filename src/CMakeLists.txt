@@ -117,7 +117,6 @@ file(GLOB SOURCES
         "jogasaki/executor/sequence/*.cpp"
         "jogasaki/index/*.cpp"
         "jogasaki/kvs/*.cpp"
-        "jogasaki/kvsservice/*.cpp"
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"

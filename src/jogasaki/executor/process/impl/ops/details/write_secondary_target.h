@@ -113,12 +113,12 @@ public:
      */
     write_secondary_target(
         yugawara::storage::index const& idx,
-        maybe_shared_ptr<meta::record_meta> primary_key_meta,
-        maybe_shared_ptr<meta::record_meta> primary_value_meta
+        maybe_shared_ptr<meta::record_meta> const& primary_key_meta,
+        maybe_shared_ptr<meta::record_meta> const& primary_value_meta
     ) :
         write_secondary_target(
             idx.simple_name(),
-            create_fields(idx, std::move(primary_key_meta), std::move(primary_value_meta))
+            create_fields(idx, primary_key_meta, primary_value_meta)
         )
     {}
 

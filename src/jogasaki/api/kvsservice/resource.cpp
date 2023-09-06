@@ -26,6 +26,13 @@ framework::component::id_type resource::id() const noexcept {
 }
 
 bool resource::setup(framework::environment &env) {
+    // on maintenance/quiescent mode, sql resource exists, but does nothing.
+    // see setup() in src/jogasaki/api/resource/bridge.cpp
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+       env.mode() == framework::boot_mode::maintenance_server ||
+       env.mode() == framework::boot_mode::quiescent_server) {
+        return true;
+    }
     if (store_) return true;
     auto bridge = env.resource_repository().find<jogasaki::api::resource::bridge>();
     if(! bridge) {

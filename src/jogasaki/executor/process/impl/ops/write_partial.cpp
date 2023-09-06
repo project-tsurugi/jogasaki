@@ -91,22 +91,17 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
         return details::error_abort(ctx, res);
     }
 
-    if(primary_key_updated_) {
-        // remove and recreate records
-        if(auto res = primary_.remove_record_by_encoded_key(
-                context,
-                *ctx.transaction(),
-                encoded
-            ); res != status::ok) {
-            abort_transaction(*ctx.transaction());
-            return details::error_abort(ctx, res);
-        }
+    // remove and recreate records
+    if(auto res = primary_.remove_record_by_encoded_key(
+            context,
+            *ctx.transaction(),
+            encoded
+        ); res != status::ok) {
+        abort_transaction(*ctx.transaction());
+        return details::error_abort(ctx, res);
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        if(! primary_key_updated_ && ! secondary_key_updated_[i]) {
-            continue;
-        }
         if(auto res = secondaries_[i].encode_and_remove(
             ctx.secondary_contexts_[i],
             *ctx.transaction(),
@@ -137,9 +132,6 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        if(! primary_key_updated_ && ! secondary_key_updated_[i]) {
-            continue;
-        }
         if(auto res = secondaries_[i].encode_and_put(
                 ctx.secondary_contexts_[i],
                 *ctx.transaction(),

@@ -47,6 +47,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
+using jogasaki::api::impl::get_impl;
 
 class api_test :
     public ::testing::Test,
@@ -73,27 +74,42 @@ using namespace std::string_view_literals;
 
 TEST_F(api_test, syntax_error) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::err_parse_error, db_->create_executable("AAA", stmt));
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_parse_error, get_impl(*db_).create_executable("AAA", stmt, info));
+    EXPECT_EQ(error_code::syntax_exception, info->code());
+    std::cerr << info->message() << std::endl;
 }
 
 TEST_F(api_test, missing_table) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::err_compiler_error, db_->create_executable("select * from dummy", stmt));
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).create_executable("select * from dummy", stmt, info));
+    EXPECT_EQ(error_code::symbol_analyze_exception, info->code());
+    std::cerr << info->message() << std::endl;
 }
 
 TEST_F(api_test, invalid_column_name) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::err_compiler_error, db_->create_executable("INSERT INTO T0(dummy) VALUES(1)", stmt));
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).create_executable("INSERT INTO T0(dummy) VALUES(1)", stmt, info));
+    EXPECT_EQ(error_code::compile_exception, info->code()); // generic error TODO revisit with new mizugaki
+    std::cerr << info->message() << std::endl;
 }
 
 TEST_F(api_test, inconsistent_type_in_write) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::err_compiler_error, db_->create_executable("INSERT INTO T0(C0) VALUES('X')", stmt));
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).create_executable("INSERT INTO T0(C0) VALUES('X')", stmt, info));
+    EXPECT_EQ(error_code::type_analyze_exception, info->code());
+    std::cerr << info->message() << std::endl;
 }
 
 TEST_F(api_test, inconsistent_type_in_query) {
     std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::err_compiler_error, db_->create_executable("select C1 from T0 where C1='X'", stmt));
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).create_executable("select C1 from T0 where C1='X'", stmt, info));
+    EXPECT_EQ(error_code::type_analyze_exception, info->code());
+    std::cerr << info->message() << std::endl;
 }
 
 TEST_F(api_test, primary_key_violation) {
@@ -483,9 +499,22 @@ TEST_F(api_test, extra_parameter_not_used_by_stmt) {
 TEST_F(api_test, undefined_host_variables) {
     std::unordered_map<std::string, api::field_type_kind> variables{};
     api::statement_handle prepared{};
-    ASSERT_EQ(status::err_compiler_error, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:undefined0, 0)", variables, prepared));
-    api::statement_handle query{};
-    ASSERT_EQ(status::err_compiler_error, db_->prepare("SELECT C0, C1 FROM T0 WHERE C0=:undefined0", variables, query));
+
+    std::unique_ptr<api::executable_statement> stmt{};
+
+    {
+        std::shared_ptr<error::error_info> info{};
+        ASSERT_EQ(status::err_compiler_error, get_impl(*db_).prepare("INSERT INTO T0 (C0, C1) VALUES(:undefined0, 0)", variables, prepared, info));
+        EXPECT_EQ(error_code::symbol_analyze_exception, info->code());
+        std::cerr << info->message() << std::endl;
+    }
+    {
+        std::shared_ptr<error::error_info> info{};
+        api::statement_handle query{};
+        ASSERT_EQ(status::err_compiler_error, get_impl(*db_).prepare("SELECT C0, C1 FROM T0 WHERE C0=:undefined0", variables, query, info));
+        EXPECT_EQ(error_code::symbol_analyze_exception, info->code());
+        std::cerr << info->message() << std::endl;
+    }
 }
 
 TEST_F(api_test, unresolved_parameters) {
@@ -494,17 +523,23 @@ TEST_F(api_test, unresolved_parameters) {
     api::statement_handle prepared{};
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0 (C0, C1) VALUES(:unresolved0, 0)", variables, prepared));
     {
+        std::shared_ptr<error::error_info> info{};
         auto ps = api::create_parameter_set();
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::err_unresolved_host_variable,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+        ASSERT_EQ(status::err_unresolved_host_variable, get_impl(*db_).resolve(prepared, std::shared_ptr{std::move(ps)}, exec, info));
+        EXPECT_EQ(error_code::unresolved_placeholder_exception, info->code());
+        std::cerr << info->message() << std::endl;
         ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
     }
     api::statement_handle query{};
     ASSERT_EQ(status::ok, db_->prepare("SELECT C0, C1 FROM T0 WHERE C0=:unresolved0", variables, query));
     {
+        std::shared_ptr<error::error_info> info{};
         auto ps = api::create_parameter_set();
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::err_unresolved_host_variable,db_->resolve(query, std::shared_ptr{std::move(ps)}, exec));
+        ASSERT_EQ(status::err_unresolved_host_variable, get_impl(*db_).resolve(query, std::shared_ptr{std::move(ps)}, exec, info));
+        EXPECT_EQ(error_code::unresolved_placeholder_exception, info->code());
+        std::cerr << info->message() << std::endl;
         ASSERT_EQ(status::ok,db_->destroy_statement(query));
     }
 }
@@ -600,7 +635,10 @@ TEST_F(api_test, err_querying_generated_rowid) {
     execute_statement("create table T (C0 int)");
     execute_statement("INSERT INTO T (C0) VALUES (1)");
     api::statement_handle handle{};
-    ASSERT_EQ(status::err_compiler_error, db_->prepare("SELECT __generated_rowid___T as rowid, C0 FROM T ORDER BY C0", handle));
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).prepare("SELECT __generated_rowid___T as rowid, C0 FROM T ORDER BY C0", handle, info));
+    EXPECT_EQ(error_code::symbol_analyze_exception, info->code());
+    std::cerr << info->message() << std::endl;
 }
 
 TEST_F(api_test, err_insert_lack_of_values) {

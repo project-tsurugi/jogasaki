@@ -99,7 +99,7 @@ public:
      * @param sql the sql text string to prepare
      * @param statement [out] the handle to be filled with one for the created prepared statement
      * @return status::ok when successful
-     * @return other code when error occurs, and additional diagnostics may be available via fetch_diagnostics()
+     * @return other code when error occurs
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned prepared statement can be shared by multiple threads.
      */
@@ -117,7 +117,7 @@ public:
      * @param variables the placeholder variable name/type mapping
      * @param statement [out] the handle to be filled with one for the created prepared statement
      * @return status::ok when successful
-     * @return other code when error occurs, and additional diagnostics may be available via fetch_diagnostics()
+     * @return other code when error occurs
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned prepared statement can be shared by multiple threads.
      */
@@ -148,7 +148,7 @@ public:
      * @param parameters the parameters to assign value for each placeholder
      * @param statement [out] the unique ptr to be filled with the created executable statement
      * @return status::ok when successful
-     * @return other code when error occurs, and additional diagnostics may be available via fetch_diagnostics()
+     * @return other code when error occurs
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned executable statement should be used from single thread/transaction at a point in time.
      */
@@ -164,7 +164,7 @@ public:
      * @param sql the sql text string to prepare
      * @param statement [out] the unique ptr to be filled with the created executable statement
      * @return status::ok when successful
-     * @return other code when error occurs, and additional diagnostics may be available via fetch_diagnostics()
+     * @return other code when error occurs
      * @note this function is thread-safe. Multiple client threads sharing this database object can call simultaneously.
      * @note the returned executable statement should be used from single thread/transaction at a point in time.
      */

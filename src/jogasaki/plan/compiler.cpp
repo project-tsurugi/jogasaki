@@ -246,6 +246,78 @@ yugawara::compiler_result compile_internal(
     return yugawara::compiler()(c_options, std::move(*ptr));
 }
 
+error_code map_compiler_error(shakujo_translator_code code) {
+    using stc = shakujo_translator_code;
+    using ec = error_code;
+    switch(code) {
+        case stc::table_not_found: return ec::symbol_analyze_exception;
+        case stc::index_not_found: return ec::symbol_analyze_exception;
+        case stc::column_not_found: return ec::symbol_analyze_exception;
+        case stc::variable_not_found: return ec::symbol_analyze_exception;
+        case stc::function_not_found: return ec::symbol_analyze_exception;
+        case stc::unresolved_variable: return ec::symbol_analyze_exception;
+
+        case stc::inconsistent_type: return ec::type_analyze_exception;
+        case stc::ambiguous_type: return ec::type_analyze_exception;
+
+        case stc::unsupported_type: return ec::unsupported_compiler_feature_exception;
+        case stc::unsupported_value: return ec::unsupported_compiler_feature_exception;
+        case stc::unsupported_statement: return ec::unsupported_compiler_feature_exception;
+        case stc::unsupported_scalar_expression: return ec::unsupported_compiler_feature_exception;
+        case stc::unsupported_relational_operator: return ec::unsupported_compiler_feature_exception;
+
+        default: return ec::compile_exception;
+    }
+    std::abort();
+}
+
+error_code map_compiler_error(yugawara::compiler_code code) {
+    using ycc = yugawara::compiler_code;
+    using ec = error_code;
+    switch(code) {
+        case ycc::ambiguous_type: return ec::type_analyze_exception;
+        case ycc::inconsistent_type: return ec::type_analyze_exception;
+        case ycc::unsupported_type: return ec::unsupported_compiler_feature_exception;
+        case ycc::unresolved_variable: return ec::symbol_analyze_exception;
+        default: return ec::compile_exception;
+    }
+    std::abort();
+}
+
+template <class T>
+void handle_compile_error(
+    T&& errors,
+    status res,
+    compiler_context &ctx
+) {
+    {
+        // logging internal message
+        std::stringstream msg{};
+        msg << "compile failed. ";
+        for(auto&& e : errors) {
+            msg << "error:" << e.code() << " message:\"" << e.message() << "\" location:" << e.location() <<" ";
+        }
+        VLOG_LP(log_error) << msg.str();
+    }
+    if(errors.empty()) {
+        set_compile_error(
+            ctx,
+            error_code::compile_exception,
+            "unknown compile error occurred.",
+            res
+        );
+        return;
+    }
+
+    // only the primary error is returned to caller
+    auto& err = errors.at(0);
+    auto code = map_compiler_error(err.code());
+    auto msg =
+        string_builder{} << "compile failed with error:" << err.code() << " message:\"" <<
+            err.message() << "\" location:" << err.location() << string_builder::to_string;
+    set_compile_error(ctx, code, msg, res);
+}
+
 status create_prepared_statement(
     shakujo_translator::result_type& r,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
@@ -267,20 +339,10 @@ status create_prepared_statement(
         default:
             fail();
     }
+
     if(!result.success()) {
-        std::stringstream msg{};
-        msg << "compile failed: ";
-        for(auto&& e : result.diagnostics()) {
-            msg << e.code() << " " << e.message() << " ";
-        }
-        VLOG_LP(log_error) << status::err_compiler_error << ": " <<  msg.str();
         auto res = status::err_compiler_error;
-        set_compile_error(
-            ctx,
-            error_code::compile_exception,
-            msg.str(),
-            res
-        );
+        handle_compile_error(result.diagnostics(), res, ctx);
         return res;
     }
     auto stmt = result.release_statement();
@@ -325,7 +387,7 @@ status parse_validate(
             VLOG_LP(log_error) << res << ": " << msg.str();
             set_compile_error(
                 ctx,
-                error_code::compile_exception, // TODO revisit after mizugaki upgrade
+                error_code::syntax_exception, // TODO revisit after mizugaki upgrade
                 msg.str(),
                 res
             );
@@ -338,7 +400,7 @@ status parse_validate(
         VLOG_LP(log_error) << res << ": " <<  msg.str();
         set_compile_error(
             ctx,
-            error_code::compile_exception, // TODO revisit after mizugaki upgrade
+            error_code::syntax_exception, // TODO revisit after mizugaki upgrade
             msg.str(),
             res
         );
@@ -346,6 +408,7 @@ status parse_validate(
     }
     return status::ok;
 }
+
 
 status prepare(
     std::string_view sql,
@@ -393,20 +456,9 @@ status prepare(
     ::takatori::document::document_map documents;
     auto r = translator(options, *program->main(), documents);
     if (! r) {
-        auto errors = r.release<result_kind::diagnostics>();
-        std::stringstream msg{};
-        msg << "translating statement failed: ";
-        for(auto&& e : errors) {
-            msg << e.code() << " " << e.message();
-        }
         auto res = status::err_compiler_error;
-        VLOG_LP(log_error) << res << ": " <<  msg.str();
-        set_compile_error(
-            ctx,
-            error_code::compile_exception,
-            msg.str(),
-            res
-        );
+        auto errors = r.release<result_kind::diagnostics>();
+        handle_compile_error(errors, res, ctx);
         return res;
     }
     return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, ctx, out);

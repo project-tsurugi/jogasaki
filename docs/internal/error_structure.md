@@ -109,17 +109,17 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
 
   - CompileException (SQL-03000: コンパイル時のエラー) ※
 
-    - SyntaxException (SQL-03001: 構文エラー)
+    - SyntaxException (SQL-03001: 構文エラー) ※
      
     - AnalyzeException (SQL-03002: 解析エラー)
      
-      - TypeAnalyzeException (SQL-03003: 型に関するエラー)
+      - TypeAnalyzeException (SQL-03003: 型に関するエラー) ※
        
-      - SymbolAnalyzeException (SQL-03004: シンボルに関するエラー)
+      - SymbolAnalyzeException (SQL-03004: シンボルに関するエラー) ※
 
       - ValueAnalyzeException (SQL-03005: リテラルが範囲外など)
         
-    - UnsupportedCompilerFeatureException (SQL-03010: 未サポート機能/構文等のコンパイル)
+    - UnsupportedCompilerFeatureException (SQL-03010: 未サポート機能/構文等のコンパイル) ※
 
   - CcException (SQL-04000: CCで直列化失敗によるエラー) ※
 

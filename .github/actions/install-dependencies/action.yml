@@ -1,0 +1,198 @@
+name: Jogasaki-Install-Dependencies
+
+inputs:
+  token:
+    description: token for checkout private repo
+    required: true
+  sharksfin-implementation:
+    description: sharksfin implementation (memory or shirakami)
+    required: true
+
+runs:
+  using: "composite"
+
+  steps:
+    - name: Checkout_Takatori
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/takatori
+        path: build-deps/takatori
+        ref: master
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Yugawara
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/yugawara
+        path: build-deps/yugawara
+        ref: master
+        submodules: true
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Shakujo
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/shakujo
+        path: build-deps/shakujo
+        ref: master
+        submodules: recursive
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Mizugaki
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/mizugaki
+        path: build-deps/mizugaki
+        ref: master
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Limestone
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/limestone
+        path: build-deps/limestone
+        ref: master
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Yakushima
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/yakushima
+        path: build-deps/yakushima
+        ref: master
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Shirakami
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/shirakami
+        path: build-deps/shirakami
+        ref: master
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Sharksfin
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/sharksfin
+        path: build-deps/sharksfin
+        ref: master
+        token: ${{ inputs.token }}
+
+    - name: Checkout_Tateyama
+      uses: actions/checkout@v3
+      with:
+        repository: project-tsurugi/tateyama
+        path: build-deps/tateyama
+        ref: master
+        submodules: true
+        token: ${{ inputs.token }}
+
+    - name: Install_Takatori
+      run: |
+        cd build-deps/takatori
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_hopscotch-map
+      run: |
+        cd build-deps/yugawara/third_party/hopscotch-map
+        rm -fr ../../build-hopscotch-map
+        mkdir ../../build-hopscotch-map
+        cd ../../build-hopscotch-map
+        cmake -G Ninja -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ../third_party/hopscotch-map
+        cmake --build . --target install
+      shell: bash
+
+    - name: Install_Yugawara
+      run: |
+        cd build-deps/yugawara
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Shakujo
+      run: |
+        cd build-deps/shakujo
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Mizugaki
+      run: |
+        cd build-deps/mizugaki
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Limestone
+      run: |
+        cd build-deps/limestone
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Yakushima
+      run: |
+        cd build-deps/yakushima
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_BENCHMARK=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Shirakami
+      run: |
+        cd build-deps/shirakami
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_BENCHMARK=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Sharksfin
+      run: |
+        cd build-deps/sharksfin
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_moodycamel_Concurrentqueue
+      run: |
+        cd build-deps/tateyama/third_party/concurrentqueue
+        rm -fr build_debug
+        mkdir build_debug
+        cd build_debug
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Tateyama
+      run: |
+        cd build-deps/tateyama
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin-implementation }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake --build . --target install --clean-first
+      shell: bash

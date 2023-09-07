@@ -1740,7 +1740,7 @@ TEST_F(service_api_test, get_error_info_on_compile_error) {
     test_begin(tx_handle);
     test_statement("INSERT INTO dummy VALUES (0)", tx_handle, status::err_compiler_error);
     test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::err_inactive_transaction);
-    test_get_error_info(tx_handle, error_code::compile_exception);
+    test_get_error_info(tx_handle, error_code::symbol_analyze_exception);
     test_dispose_transaction(tx_handle);
 }
 

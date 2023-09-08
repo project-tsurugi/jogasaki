@@ -423,7 +423,8 @@ kvs::transaction_option from(transaction_option const& option, yugawara::storage
     // add system tables to wp if modifies_definitions=true
     auto* wps = std::addressof(option.write_preserves());
     std::vector<std::string> with_system_tables{};
-    if(option.modifies_definitions()) {
+    if(option.modifies_definitions() && type == kvs::transaction_option::transaction_type::ltx) {
+        // this is done only for ltx, otherwise passing wps will be an error on cc engine
         with_system_tables = option.write_preserves();
         add_system_tables(with_system_tables);
         wps = std::addressof(with_system_tables);

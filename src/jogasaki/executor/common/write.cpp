@@ -38,6 +38,7 @@
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/handle_errors.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/coder.h>
@@ -136,23 +137,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     continue;
                 }
                 // TODO error handling for secondary index, multiple tuples
-                if(res == status::err_serialization_failure) {
-                    set_error(
-                        context,
-                        error_code::cc_exception,
-                        string_builder{} <<
-                            "Serialization failed. " << string_builder::to_string,
-                        res
-                    );
-                    return false;
-                }
-                set_error(
-                    context,
-                    error_code::sql_service_exception,
-                    string_builder{} <<
-                        "Unexpected error occurred. status:" << res << string_builder::to_string,
-                    res
-                );
+                handle_errors(context, res);
                 return false;
             }
         }

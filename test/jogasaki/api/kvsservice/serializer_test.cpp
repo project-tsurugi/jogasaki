@@ -177,8 +177,8 @@ static tateyama::proto::kvs::data::Decimal dec(const std::uint64_t hi, const std
         start++;
     }
     tateyama::proto::kvs::data::Decimal d{};
-    // NOTE buf.size() erturns 0, not 16
-    d.set_unscaled_value(buf.data() + start, bufsize - start);
+    // NOTE buf.size() returns 0, not 16
+    d.set_unscaled_value(std::addressof(buf[start]), bufsize - start);
     d.set_exponent(exp);
     return d;
 }

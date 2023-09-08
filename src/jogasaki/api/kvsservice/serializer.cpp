@@ -182,7 +182,7 @@ static inline void set_decimal(data::any &dest, tateyama::proto::kvs::data::Valu
     }
     auto *decimal = value->mutable_decimal_value();
     // NOTE: buf.size() returns 0, not 16
-    decimal->set_unscaled_value(buf.data() + start, buflen - start);
+    decimal->set_unscaled_value(std::addressof(buf[start]), buflen - start);
     decimal->set_exponent(triple.exponent());
 }
 

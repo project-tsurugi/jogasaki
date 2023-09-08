@@ -153,6 +153,7 @@ TEST_F(serializer_test, ser_bool) {
     }
 }
 
+// NOTE see set_decimal() in src/jogasaki/api/kvsservice/serializer.cpp
 static tateyama::proto::kvs::data::Decimal dec(const std::uint64_t hi, const std::uint64_t lo, const int exp) noexcept {
     std::string buf{};
     auto bufsize = sizeof(lo) + sizeof(hi);
@@ -167,9 +168,17 @@ static tateyama::proto::kvs::data::Decimal dec(const std::uint64_t hi, const std
         buf[7 - i] = static_cast<std::uint8_t>(v & 0xffU);
         v >>= 8U;
     }
+    // skip zero-padding
+    std::size_t start = 0;
+    while (start < bufsize - 1) {
+        if (buf[start] != 0) {
+            break;
+        }
+        start++;
+    }
     tateyama::proto::kvs::data::Decimal d{};
     // NOTE buf.size() erturns 0, not 16
-    d.set_unscaled_value(buf.data(), bufsize);
+    d.set_unscaled_value(buf.data() + start, bufsize - start);
     d.set_exponent(exp);
     return d;
 }

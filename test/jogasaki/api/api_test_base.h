@@ -34,6 +34,8 @@ using namespace jogasaki::scheduler;
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
 
+class runner;
+
 class api_test_base : public test_base {
 
 protected:
@@ -212,7 +214,7 @@ private:
         api::transaction_handle& tx,
         std::vector<mock::basic_record>& out
     );
-
+    runner builder();
 };
 
 }

@@ -35,6 +35,8 @@
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/utils/create_tx.h>
 
+#include "runner.h"
+
 namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
@@ -76,15 +78,28 @@ void api_test_base::explain(api::executable_statement& stmt) {
     }
 }
 
+runner api_test_base::builder() {
+    return runner{}
+        .db(*db_)
+        .show_plan(to_explain())
+        .show_recs(true);
+}
+
 void api_test_base::execute_query(
     std::string_view query,
     api::parameter_set const& params,
     api::transaction_handle& tx,
     std::vector<mock::basic_record>& out
 ) {
-    api::statement_handle prepared{};
-    ASSERT_EQ(status::ok,db_->prepare(query, prepared));
-    return execute_query(prepared, params, tx, out);
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .params(params)
+            .tx(tx)
+            .output_records(out)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::execute_query(
@@ -94,36 +109,33 @@ void api_test_base::execute_query(
     api::transaction_handle& tx,
     std::vector<mock::basic_record>& out
 ) {
-    api::statement_handle prepared{};
-    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    return execute_query(prepared, params, tx, out);
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .params(params)
+            .vars(variables)
+            .tx(tx)
+            .output_records(out)
+            .run()
+            .report()
+    );
 }
 
-void api_test_base::execute_query(api::statement_handle& prepared, api::parameter_set const& params, api::transaction_handle& tx,
-    std::vector<mock::basic_record>& out) {
-    std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
-    explain(*stmt);
-    std::unique_ptr<api::result_set> rs{};
-    if(auto res = tx.execute(*stmt, rs);res != status::ok) {
-        LOG(ERROR) << "execute failed with rc : " << res;
-        FAIL();
-        return;
-    }
-    ASSERT_TRUE(rs);
-    auto it = rs->iterator();
-    LOG(INFO) << "query result : ";
-    while(it->has_next()) {
-        auto* record = it->next();
-        std::stringstream ss{};
-        ss << *record;
-        auto* rec_impl = unsafe_downcast<api::impl::record>(record);
-        auto* meta_impl = unsafe_downcast<api::impl::record_meta>(rs->meta());
-        out.emplace_back(rec_impl->ref(), meta_impl->meta());
-        LOG(INFO) << ss.str();
-    }
-    rs->close();
-    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+void api_test_base::execute_query(
+    api::statement_handle& prepared,
+    api::parameter_set const& params,
+    api::transaction_handle& tx,
+    std::vector<mock::basic_record>& out
+) {
+    ASSERT_EQ("",
+        builder()
+            .prepared(prepared)
+            .params(params)
+            .tx(tx)
+            .output_records(out)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::execute_query(
@@ -132,11 +144,15 @@ void api_test_base::execute_query(
     api::parameter_set const& params,
     std::vector<mock::basic_record>& out
 ) {
-    auto tx = utils::create_transaction(*db_);
-    execute_query(query, variables, params, *tx, out);
-    if(! ::testing::Test::HasFailure()) {
-        tx->commit();
-    }
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .params(params)
+            .vars(variables)
+            .output_records(out)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::execute_query(
@@ -144,21 +160,35 @@ void api_test_base::execute_query(
     api::parameter_set const& params,
     std::vector<mock::basic_record>& out
 ) {
-    auto tx = utils::create_transaction(*db_);
-    execute_query(query, params, *tx, out);
-    if(! ::testing::Test::HasFailure()) {
-        tx->commit();
-    }
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .params(params)
+            .output_records(out)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::execute_query(std::string_view query, std::vector<mock::basic_record>& out) {
-    api::impl::parameter_set params{};
-    execute_query(query, params, out);
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .output_records(out)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::execute_query(std::string_view query, api::transaction_handle& tx, std::vector<mock::basic_record>& out) {
-    api::impl::parameter_set params{};
-    execute_query(query, params, tx, out);
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .tx(tx)
+            .output_records(out)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::execute_statement(
@@ -168,10 +198,18 @@ void api_test_base::execute_statement(
     api::transaction_handle& tx,
     status expected
 ) {
-    api::statement_handle prepared{};
-    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    execute_statement(prepared, variables, params, tx, expected);
-    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .tx(tx)
+            .params(params)
+            .vars(variables)
+            .st(result)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result);
 }
 
 void api_test_base::execute_statement(
@@ -181,10 +219,19 @@ void api_test_base::execute_statement(
     status expected,
     bool no_abort
 ) {
-    api::statement_handle prepared{};
-    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    execute_statement(prepared, variables, params, expected, no_abort);
-    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .params(params)
+            .vars(variables)
+            .st(result)
+            .expect_error(expected != status::ok)
+            .no_abort(no_abort)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result);
 }
 
 void api_test_base::execute_statement(
@@ -192,11 +239,17 @@ void api_test_base::execute_statement(
     api::transaction_handle& tx,
     status expected
 ) {
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    execute_statement(prepared, tx, expected);
-    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .tx(tx)
+            .st(result)
+            .expect_error(expected != status::ok)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result);
 }
 
 void api_test_base::execute_statement(
@@ -204,11 +257,17 @@ void api_test_base::execute_statement(
     status expected,
     bool no_abort
 ) {
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    execute_statement(prepared, expected, no_abort);
-    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .st(result)
+            .expect_error(expected != status::ok)
+            .no_abort(no_abort)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result);
 }
 
 void api_test_base::explain_statement(
@@ -216,8 +275,15 @@ void api_test_base::explain_statement(
     std::string& out,
     std::unordered_map<std::string, api::field_type_kind> const& variables
 ) {
-    api::impl::parameter_set params{};
-    return explain_statement(query, out, params, variables);
+    ASSERT_EQ("",
+        builder()
+            .db(*db_)
+            .text(query)
+            .explain(out)
+            .vars(variables)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::explain_statement(
@@ -226,16 +292,15 @@ void api_test_base::explain_statement(
     api::parameter_set const& params,
     std::unordered_map<std::string, api::field_type_kind> const& variables
 ) {
-    api::statement_handle prepared{};
-    ASSERT_EQ(status::ok,db_->prepare(query, variables, prepared));
-    std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
-
-    explain(*stmt);
-    std::stringstream ss{};
-    ASSERT_EQ(status::ok, db_->explain(*stmt, ss));
-    out = ss.str();
-    ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
+    ASSERT_EQ("",
+        builder()
+            .text(query)
+            .explain(out)
+            .params(params)
+            .vars(variables)
+            .run()
+            .report()
+    );
 }
 
 void api_test_base::execute_statement(
@@ -245,10 +310,18 @@ void api_test_base::execute_statement(
     api::transaction_handle& tx,
     status expected
 ) {
-    std::unique_ptr<api::executable_statement> stmt{};
-    ASSERT_EQ(status::ok, db_->resolve(prepared, maybe_shared_ptr{&params}, stmt));
-    explain(*stmt);
-    ASSERT_EQ(expected, tx.execute(*stmt));
+    (void) variables; //TODO delete from input args
+    status out{};
+    ASSERT_EQ("",
+        builder()
+            .prepared(prepared)
+            .params(params)
+            .tx(tx)
+            .st(out)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, out);
 }
 
 void api_test_base::execute_statement(
@@ -258,15 +331,19 @@ void api_test_base::execute_statement(
     status expected,
     bool no_abort
 ) {
-    auto tx = utils::create_transaction(*db_);
-    execute_statement(prepared, variables, params, *tx, expected);
-    if (expected == status::ok) {
-        ASSERT_EQ(status::ok, tx->commit());
-    } else {
-        if(! no_abort) {
-            ASSERT_EQ(status::ok, tx->abort());
-        }
-    }
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .prepared(prepared)
+            .params(params)
+            .vars(variables)
+            .expect_error(expected != status::ok)
+            .no_abort(no_abort)
+            .st(result)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result);
 }
 
 void api_test_base::execute_statement(
@@ -274,9 +351,17 @@ void api_test_base::execute_statement(
     api::transaction_handle& tx,
     status expected
 ) {
-    api::impl::parameter_set params{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    execute_statement(prepared, variables, params, tx, expected);
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .prepared(prepared)
+            .expect_error(expected != status::ok)
+            .tx(tx)
+            .st(result)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result);
 }
 
 void api_test_base::execute_statement(
@@ -284,9 +369,17 @@ void api_test_base::execute_statement(
     status expected,
     bool no_abort
 ) {
-    api::impl::parameter_set params{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    execute_statement(prepared, variables, params, expected, no_abort);
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .prepared(prepared)
+            .expect_error(expected != status::ok)
+            .no_abort(no_abort)
+            .st(result)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result);
 }
 
 void api_test_base::resolve(std::string& query, std::string_view place_holder, std::string value) {

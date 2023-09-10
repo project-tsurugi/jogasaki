@@ -201,6 +201,8 @@ public:
         }
     }
 
+    runner builder();
+
     [[nodiscard]] std::string path() const;
 
     test::temporary_folder temporary_{};  //NOLINT
@@ -214,7 +216,6 @@ private:
         api::transaction_handle& tx,
         std::vector<mock::basic_record>& out
     );
-    runner builder();
 };
 
 }

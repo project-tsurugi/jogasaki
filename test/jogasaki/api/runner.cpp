@@ -21,6 +21,8 @@
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/transaction_handle_internal.h>
+#include <jogasaki/executor/executor.h>
 
 #include <jogasaki/utils/create_tx.h>
 
@@ -30,6 +32,7 @@
 namespace jogasaki::testing {
 
 using takatori::util::unsafe_downcast;
+using jogasaki::api::impl::get_impl;
 
 runner& runner::run() {
     notnull(db_);
@@ -71,11 +74,14 @@ runner& runner::run() {
         tx = *holder;
     }
 
+    std::shared_ptr<error::error_info> temp{};
+    auto* out = output_error_info_ ? output_error_info_ : &temp;
     status res{};
+    auto tc = api::get_transaction_context(tx);
     if(output_records_) {
         std::unique_ptr<api::result_set> rs{};
-        if(auto res = tx.execute(*stmt, rs);res != status::ok) {
-            exec_fail("execution failed. tx.execute()");
+        if(res = executor::execute(get_impl(*db_), tc, *stmt, rs, *out);res != status::ok && ! expect_error_) {
+            exec_fail("execution failed. executor::execute()");
         }
         auto it = rs->iterator();
         if(show_recs_) {
@@ -94,7 +100,10 @@ runner& runner::run() {
         }
         rs->close();
     } else {
-        res = tx.execute(*stmt);
+        std::unique_ptr<api::result_set> result{};
+        if(res = executor::execute(get_impl(*db_), tc, *stmt, result, *out);res != status::ok && ! expect_error_) {
+            exec_fail("execution failed. executor::execute()");
+        }
     }
 
     if(! tx_) {

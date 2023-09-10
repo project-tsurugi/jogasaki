@@ -32,6 +32,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include "../api/api_test_base.h"
+#include "../api/runner.h"
 
 namespace jogasaki::testing {
 
@@ -63,6 +64,26 @@ public:
 
     void TearDown() override {
         db_teardown();
+    }
+
+    void test_stmt_err(
+        std::string_view query,
+        api::transaction_handle& tx,
+        error_code expected
+    ) {
+        std::shared_ptr<error::error_info> result{};
+        ASSERT_EQ("",
+            builder()
+                .text(query)
+                .tx(tx)
+                .error(result)
+                .expect_error(true)
+                .run()
+                .report()
+        );
+        ASSERT_EQ(expected, result->code());
+        std::cerr << result->message() << std::endl;
+        std::cerr << result->supplemental_text() << std::endl;
     }
 };
 
@@ -532,7 +553,7 @@ TEST_F(long_tx_test, occ_accessing_wp) {
     }
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2, status::err_conflict_on_write_preserve);
+        test_stmt_err("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2, error_code::conflict_on_write_preserve_exception);
         ASSERT_EQ(status::ok, tx2->abort());
     }
     {

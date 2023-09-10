@@ -88,7 +88,8 @@ status abort(
  * @param database the database to request execution
  * @param tx the transaction used to execute the request
  * @param statement statement to execute
- * @param result the result set to be filled on completion
+ * @param result [out] the result set to be filled on completion
+ * @param error [out] the info object to be filled on error
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -97,7 +98,8 @@ status execute(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,
     api::executable_statement& statement,
-    std::unique_ptr<api::result_set>& result
+    std::unique_ptr<api::result_set>& result,
+    std::shared_ptr<error::error_info>& error
 );
 
 /**
@@ -106,7 +108,8 @@ status execute(
  * @param tx the transaction used to execute the request
  * @param prepared prepared statement to execute
  * @param parameters parameters to fill the place holders
- * @param result the result set to be filled on completion
+ * @param result [out] the result set to be filled on completion
+ * @param error [out] the info object to be filled on error
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -116,7 +119,8 @@ status execute(
     std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
-    std::unique_ptr<api::result_set>& result
+    std::unique_ptr<api::result_set>& result,
+    std::shared_ptr<error::error_info>& error
 );
 
 /**

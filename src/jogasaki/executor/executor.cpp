@@ -154,12 +154,12 @@ status execute(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,
     api::executable_statement& statement,
-    std::unique_ptr<api::result_set>& result
+    std::unique_ptr<api::result_set>& result,
+    std::shared_ptr<error::error_info>& error
 ) {
     auto store = std::make_unique<data::result_store>();
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
     status ret{};
-    std::string msg{};
     details::execute_internal(
             database,
             std::move(tx),
@@ -167,7 +167,7 @@ status execute(
             ch,
             [&](status st, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
                 ret = st;
-                msg = (info ? info->message() : "");
+                error = std::move(info);
             },
             true
     );
@@ -183,15 +183,15 @@ status execute(
     std::shared_ptr<transaction_context> tx,
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
-    std::unique_ptr<api::result_set>& result
+    std::unique_ptr<api::result_set>& result,
+    std::shared_ptr<error::error_info>& error
 ) {
     auto store = std::make_unique<data::result_store>();
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
     status ret{};
-    std::string msg{};
     execute_async(database, std::move(tx), prepared, std::move(parameters), ch, [&](status st, std::shared_ptr<error::error_info> info){  //NOLINT(performance-unnecessary-value-param)
         ret = st;
-        msg = (info ? info->message() : "");
+        error = std::move(info);
     }, true);
     result = std::make_unique<api::impl::result_set>(std::move(store));
     return ret;

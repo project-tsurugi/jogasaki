@@ -96,13 +96,15 @@ status transaction_handle::execute(executable_statement& statement) {  //NOLINT(
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     std::unique_ptr<api::result_set> result{};
-    return executor::execute(*db, tx, statement, result);
+    std::shared_ptr<error::error_info> info{};
+    return executor::execute(*db, tx, statement, result, info);
 }
 
 status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
-    return executor::execute(*db, tx, statement, result);
+    std::shared_ptr<error::error_info> info{};
+    return executor::execute(*db, tx, statement, result, info);
 }
 
 status transaction_handle::execute( //NOLINT
@@ -112,7 +114,8 @@ status transaction_handle::execute( //NOLINT
 ) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
-    return executor::execute(*db, tx, prepared, std::move(parameters), result);
+    std::shared_ptr<error::error_info> info{};
+    return executor::execute(*db, tx, prepared, std::move(parameters), result, info);
 }
 
 bool transaction_handle::execute_async(   //NOLINT(readability-make-member-function-const)

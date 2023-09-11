@@ -67,14 +67,14 @@ public:
     }
 
     void test_stmt_err(
-        std::string_view query,
+        std::string_view stmt,
         api::transaction_handle& tx,
         error_code expected
     ) {
         std::shared_ptr<error::error_info> result{};
         ASSERT_EQ("",
             builder()
-                .text(query)
+                .text(stmt)
                 .tx(tx)
                 .error(result)
                 .expect_error(true)
@@ -82,8 +82,7 @@ public:
                 .report()
         );
         ASSERT_EQ(expected, result->code());
-        std::cerr << result->message() << std::endl;
-        std::cerr << result->supplemental_text() << std::endl;
+        std::cerr << *result << std::endl;
     }
 };
 
@@ -543,12 +542,12 @@ TEST_F(long_tx_test, occ_accessing_wp) {
     auto tx1 = utils::create_transaction(*db_, false, true, {"T0"});
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        execute_statement("SELECT * FROM T0 WHERE C0=1", *tx2, status::err_serialization_failure);
+        test_stmt_err("SELECT * FROM T0 WHERE C0=1", *tx2, error_code::cc_exception);
         ASSERT_EQ(status::ok, tx2->abort());
     }
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        execute_statement("DELETE FROM T0 WHERE C0=1", *tx2, status::err_serialization_failure);
+        test_stmt_err("DELETE FROM T0 WHERE C0=1", *tx2, error_code::cc_exception);
         ASSERT_EQ(status::ok, tx2->abort());
     }
     {
@@ -558,7 +557,7 @@ TEST_F(long_tx_test, occ_accessing_wp) {
     }
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        execute_statement("UPDATE T0 SET C1=3.0 WHERE C1=1", *tx2, status::err_serialization_failure);
+        test_stmt_err("UPDATE T0 SET C1=3.0 WHERE C1=1", *tx2, error_code::cc_exception);
         ASSERT_EQ(status::ok, tx2->abort());
     }
 }

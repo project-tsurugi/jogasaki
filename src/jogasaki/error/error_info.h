@@ -133,13 +133,13 @@ private:
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, error_info const& value) {
-    return out << value.code() << " "
-        << value.status() << " "
-        << value.message() << " "
-        << value.source_file_path() << " "
-        << value.source_file_position() << " "
-        << value.additional_text() << " "
-        << value.supplemental_text();
+    return out << "error_info "
+        << "code:" << value.code() << " "
+        << "status:" << value.status() << " "
+        << "message:\"" << value.message() << "\" "
+        << "source_file:\"" << value.source_file_path() << ":" << value.source_file_position() << "\" "
+        << "additional_text:\"" << value.additional_text() << "\" "
+        << "supplemental_text:\"" << value.supplemental_text() << "\"";
 }
 
 }

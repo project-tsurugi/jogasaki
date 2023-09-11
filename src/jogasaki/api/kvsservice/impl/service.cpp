@@ -94,10 +94,32 @@ static table_areas convert(google::protobuf::RepeatedPtrField<tateyama::proto::k
     return areas;
 }
 
+static transaction_priority convert(tateyama::proto::kvs::transaction::Priority const priority) {
+    switch (priority) {
+        case tateyama::proto::kvs::transaction::Priority::PRIORITY_UNSPECIFIED:
+            return transaction_priority::priority_unspecified;
+        case tateyama::proto::kvs::transaction::Priority::INTERRUPT:
+            return transaction_priority::interrupt;
+        case tateyama::proto::kvs::transaction::Priority::WAIT:
+            return transaction_priority::wait;
+        case tateyama::proto::kvs::transaction::Priority::INTERRUPT_EXCLUDE:
+            return transaction_priority::interrupt_exclude;
+        case tateyama::proto::kvs::transaction::Priority::WAIT_EXCLUDE:
+            return transaction_priority::wait_exclude;
+        default:
+            throw_exception(std::logic_error{"unknown transaction::Priority"});
+    }
+
+}
 static transaction_option convert(tateyama::proto::kvs::transaction::Option const &proto_opt) {
     auto type = convert(proto_opt.type());
     auto write_preserves = convert(proto_opt.write_preserves());
     transaction_option opt (type, std::move(write_preserves));
+    opt.label(proto_opt.label());
+    opt.priority(convert(proto_opt.priority()));
+    opt.modifies_definitions(proto_opt.modifies_definitions());
+    opt.inclusive_read_areas(convert(proto_opt.inclusive_read_areas()));
+    opt.exclusive_read_areas(convert(proto_opt.exclusive_read_areas()));
     return opt;
 }
 
@@ -128,10 +150,40 @@ static void error_begin(status status, std::shared_ptr<tateyama::api::server::re
     proto_res.release_begin();
 }
 
+static status check_supported(transaction_option &opt) {
+    // TODO LTX, RTX doesn't support officially
+    if (opt.type() != transaction_type::occ) {
+        return status::err_not_implemented;
+    }
+    if (!opt.write_preserves().empty()) {
+        return status::err_not_implemented;
+    }
+    if (opt.priority() != transaction_priority::priority_unspecified) {
+        return status::err_not_implemented;
+    }
+    if (!opt.label().empty()) {
+        return status::err_not_implemented;
+    }
+    if (opt.modifies_definitions()) {
+        return status::err_not_implemented;
+    }
+    if (!opt.inclusive_read_areas().empty()) {
+        return status::err_not_implemented;
+    }
+    if (!opt.exclusive_read_areas().empty()) {
+        return status::err_not_implemented;
+    }
+    return status::ok;
+}
+
 void service::command_begin(tateyama::proto::kvs::request::Request const &proto_req,
                                  std::shared_ptr<tateyama::api::server::response> &res) {
     auto &begin = proto_req.begin();
     auto option = convert(begin.transaction_option());
+    if (auto s = check_supported(option); s != status::ok) {
+        error_begin(s, res);
+        return;
+    }
     std::shared_ptr<transaction> tx{};
     auto status = store_->begin_transaction(option, tx);
     if (status == status::ok) {
@@ -167,11 +219,22 @@ static void error_commit(status status, std::shared_ptr<tateyama::api::server::r
     proto_res.release_commit();
 }
 
+static status check_supported(tateyama::proto::kvs::request::Commit::Type const type) {
+    if (type == tateyama::proto::kvs::request::Commit::Type::Commit_Type_COMMIT_TYPE_UNSPECIFIED) {
+        return status::ok;
+    }
+    return status::err_not_implemented;
+}
+
 void service::command_commit(tateyama::proto::kvs::request::Request const&proto_req,
                                   std::shared_ptr<tateyama::api::server::response> &res) {
     auto &commit = proto_req.commit();
     auto &proto_handle = commit.transaction_handle();
-    // TODO proto_type = commit.type();
+    if (auto s = check_supported(commit.type()); s != status::ok) {
+        error_commit(s, res);
+        return;
+    }
+    // TODO support commit type
     auto tx = store_->find_transaction(proto_handle.system_id());
     if (tx == nullptr) {
         error_commit(status::err_invalid_argument, res);

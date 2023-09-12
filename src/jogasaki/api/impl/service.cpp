@@ -232,6 +232,7 @@ void service::command_get_error_info(
             rc
         );
         details::error<sql::response::GetErrorInfo>(*res, err_info.get(), req_info);
+        return;
     }
     details::success<sql::response::GetErrorInfo>(*res, req_info, std::move(info));
 }

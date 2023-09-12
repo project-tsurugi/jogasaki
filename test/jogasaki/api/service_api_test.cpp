@@ -172,6 +172,7 @@ public:
     }
     void test_get_error_info(
         std::uint64_t handle,
+        bool expect_error,
         error_code expected
     ) {
         auto s = encode_get_error_info(handle);
@@ -182,13 +183,19 @@ public:
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
+        ASSERT_EQ((! expect_error) ? response_code::success : response_code::application_error, res->code_);
 
         auto [success, error] = decode_get_error_info(res->body_);
-        ASSERT_TRUE(success);
-        EXPECT_EQ(expected, error.code_);
-        LOG(INFO) << "error message: " << error.message_;
+        EXPECT_TRUE(res->all_released());
+
+        if(expected == error_code::none || !expect_error) {
+            ASSERT_TRUE(success);
+        } else {
+            ASSERT_FALSE(success);
+            EXPECT_EQ(expected, error.code_);
+            LOG(INFO) << "error message: " << error.message_;
 //        LOG(INFO) << "error supplemental text : " << error.supplemental_text_;
+        }
     }
 
     void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);
@@ -1649,7 +1656,7 @@ TEST_F(service_api_test, get_error_info) {
     test_statement("INSERT INTO TT VALUES (0)", tx_handle, status::err_unique_constraint_violation);
     test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::err_inactive_transaction);
     test_statement("INSERT INTO TT VALUES (2)", tx_handle, status::err_inactive_transaction);
-    test_get_error_info(tx_handle, error_code::unique_constraint_violation_exception);
+    test_get_error_info(tx_handle, false, error_code::unique_constraint_violation_exception);
     test_dispose_transaction(tx_handle);
 }
 
@@ -1740,8 +1747,15 @@ TEST_F(service_api_test, get_error_info_on_compile_error) {
     test_begin(tx_handle);
     test_statement("INSERT INTO dummy VALUES (0)", tx_handle, status::err_compiler_error);
     test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::err_inactive_transaction);
-    test_get_error_info(tx_handle, error_code::symbol_analyze_exception);
+    test_get_error_info(tx_handle, false, error_code::symbol_analyze_exception);
     test_dispose_transaction(tx_handle);
 }
 
+TEST_F(service_api_test, get_error_info_on_empty_commit) {
+    // verify get error info sees tx not found after successful commit (auto disposed)
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_commit(tx_handle);
+    test_get_error_info(tx_handle, true, error_code::transaction_not_found_exception);
+}
 }

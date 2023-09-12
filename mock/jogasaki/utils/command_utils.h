@@ -697,7 +697,8 @@ inline std::pair<bool, error> decode_get_error_info(std::string_view res) {
         return {false, {}};
     }
     if(! gei.has_success()) {
-        return {false, {}};
+        auto& err = gei.error();
+        return {false, { err.status(), err.detail(), api::impl::map_error(err.code()), err.supplemental_text() }};
     }
     auto& err = gei.success();
     return {true, { err.status(), err.detail(), api::impl::map_error(err.code()), err.supplemental_text() }};

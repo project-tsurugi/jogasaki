@@ -534,15 +534,16 @@ scheduler::job_context::job_id_type commit_async(
 
             return model::task_result::complete;
         }
-
-        auto msg = res != status::ok ? utils::create_abort_message(*rctx, *tx, *database.tables()) : "";
-        auto code = res == status::err_inactive_transaction ? error_code::inactive_transaction_exception : error_code::cc_exception;
-        set_error(
-            *rctx,
-            code,
-            msg,
-            res
-        );
+        if(res != status::ok) {
+            auto msg = utils::create_abort_message(*rctx, *tx, *database.tables());
+            auto code = res == status::err_inactive_transaction ? error_code::inactive_transaction_exception : error_code::cc_exception;
+            set_error(
+                *rctx,
+                code,
+                msg,
+                res
+            );
+        }
         scheduler::submit_teardown(*rctx);
         return model::task_result::complete;
     }, true);

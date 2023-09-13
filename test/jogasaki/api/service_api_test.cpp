@@ -172,8 +172,8 @@ public:
     }
     void test_get_error_info(
         std::uint64_t handle,
-        bool expect_error,
-        error_code expected
+        bool expect_error, // expecting error occuring in GetErrorInfo
+        error_code expected // common for both error occuring in GetErrorInfo and already executed request
     ) {
         auto s = encode_get_error_info(handle);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -188,14 +188,14 @@ public:
         auto [success, error] = decode_get_error_info(res->body_);
         EXPECT_TRUE(res->all_released());
 
-        if(expected == error_code::none || !expect_error) {
+        if(!expect_error) {
             ASSERT_TRUE(success);
         } else {
             ASSERT_FALSE(success);
-            EXPECT_EQ(expected, error.code_);
-            LOG(INFO) << "error message: " << error.message_;
-//        LOG(INFO) << "error supplemental text : " << error.supplemental_text_;
         }
+        EXPECT_EQ(expected, error.code_);
+        LOG(INFO) << "error message: " << error.message_;
+        LOG(INFO) << "error supplemental text : " << error.supplemental_text_;
     }
 
     void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);
@@ -1757,5 +1757,13 @@ TEST_F(service_api_test, get_error_info_on_empty_commit) {
     test_begin(tx_handle);
     test_commit(tx_handle);
     test_get_error_info(tx_handle, true, error_code::transaction_not_found_exception);
+}
+
+TEST_F(service_api_test, get_error_info_on_empty_commit_auto_dispose_off) {
+    // verify get error info sees error not found (requires auto dispose off to avoid getting disposed very soon)
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_commit(tx_handle, false);
+    test_get_error_info(tx_handle, false, error_code::none);
 }
 }

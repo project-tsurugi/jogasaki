@@ -26,11 +26,13 @@ namespace jogasaki::executor::process::impl::ops::details {
 write_primary_context::write_primary_context(
     std::unique_ptr<kvs::storage> stg,
     maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta
+    maybe_shared_ptr<meta::record_meta> value_meta,
+    request_context* rctx
 ) :
     stg_(std::move(stg)),
     key_store_(std::move(key_meta)),
-    value_store_(std::move(value_meta))
+    value_store_(std::move(value_meta)),
+    rctx_(rctx)
 {}
 
 std::string_view write_primary_context::encoded_key() const noexcept {
@@ -43,6 +45,10 @@ accessor::record_ref write_primary_context::extracted_key() const noexcept {
 
 accessor::record_ref write_primary_context::extracted_value() const noexcept {
     return value_store_.ref();
+}
+
+request_context* write_primary_context::req_context() const noexcept {
+    return rctx_;
 }
 
 }

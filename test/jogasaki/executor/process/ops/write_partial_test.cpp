@@ -407,7 +407,10 @@ TEST_F(write_partial_test , update_secondary) {
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
 
     std::vector<details::write_secondary_context> secondaries{};
-    secondaries.emplace_back(db_->get_or_create_storage(i100_secondary_->simple_name()));
+    secondaries.emplace_back(
+        db_->get_or_create_storage(i100_secondary_->simple_name()),
+        nullptr
+    );
 
     write_partial_context ctx{
         &task_ctx,

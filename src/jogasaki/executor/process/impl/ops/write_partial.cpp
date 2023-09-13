@@ -190,7 +190,10 @@ operation_status write_partial::process_record(abstract::task_context* context) 
         std::vector<details::write_secondary_context> contexts{};
         contexts.reserve(secondaries_.size());
         for(auto&& s : secondaries_) {
-            contexts.emplace_back(ctx.database()->get_or_create_storage(s.storage_name()));
+            contexts.emplace_back(
+                ctx.database()->get_or_create_storage(s.storage_name()),
+                ctx.req_context()
+            );
         }
         p = ctx.make_context<write_partial_context>(
             index(),

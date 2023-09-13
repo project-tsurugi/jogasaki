@@ -18,16 +18,15 @@
 #include <vector>
 #include <memory>
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
 /**
- * @brief partial write operator context
+ * @brief secondary target context
  */
 class write_secondary_context {
 public:
@@ -42,15 +41,21 @@ public:
     /**
      * @brief create new object
      */
-    explicit write_secondary_context(
-        std::unique_ptr<kvs::storage> stg
-    ) :
-        stg_(std::move(stg))
-    {}
+    write_secondary_context(
+        std::unique_ptr<kvs::storage> stg,
+        request_context* rctx
+    );
+
+    /**
+     * @brief accessor to the request context
+     * @return request context
+     */
+    [[nodiscard]] request_context* req_context() const noexcept;
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
     data::aligned_buffer key_buf_{};
+    request_context* rctx_{};
 };
 
 }

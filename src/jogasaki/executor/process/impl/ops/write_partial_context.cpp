@@ -40,7 +40,8 @@ write_partial_context::write_partial_context(
     primary_context_(
         std::move(stg),
         std::move(key_meta),
-        std::move(value_meta)
+        std::move(value_meta),
+        req_context()
     ),
     secondary_contexts_(std::move(secondary_contexts))
 {}

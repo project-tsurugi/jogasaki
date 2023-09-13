@@ -20,6 +20,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
@@ -48,7 +49,8 @@ public:
     write_primary_context(
         std::unique_ptr<kvs::storage> stg,
         maybe_shared_ptr<meta::record_meta> key_meta,
-        maybe_shared_ptr<meta::record_meta> value_meta
+        maybe_shared_ptr<meta::record_meta> value_meta,
+        request_context* rctx
     );
 
     /**
@@ -72,6 +74,12 @@ public:
      */
     [[nodiscard]] accessor::record_ref extracted_value() const noexcept;
 
+    /**
+     * @brief accessor to the request context
+     * @return request context
+     */
+    [[nodiscard]] request_context* req_context() const noexcept;
+
 private:
     std::unique_ptr<kvs::storage> stg_{};
     data::aligned_buffer key_buf_{};
@@ -79,6 +87,7 @@ private:
     data::small_record_store key_store_{};
     data::small_record_store value_store_{};
     std::size_t key_len_{};
+    request_context* rctx_{};
 };
 
 }

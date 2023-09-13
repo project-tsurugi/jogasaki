@@ -16,11 +16,14 @@
 #include <jogasaki/logging_helper.h>
 #include <takatori/util/exception.h>
 #include "service.h"
+#include "jogasaki/logging.h"
 #include "jogasaki/api/kvsservice/convert.h"
 
 using takatori::util::throw_exception;
 
 namespace jogasaki::api::kvsservice::impl {
+
+constexpr static std::string_view log_location_prefix = "/:jogasaki:api:kvsservice:impl:service ";
 
 service::service(std::shared_ptr<tateyama::api::configuration::whole> const&,
                  jogasaki::api::kvsservice::store* store) : store_(store) {
@@ -66,6 +69,14 @@ static void set_error(status status, tateyama::proto::kvs::response::Error &erro
 
 static void set_error(status status, tateyama::proto::kvs::response::Error &error) {
     set_error(status, error, nullptr);
+}
+
+static void set_error(std::shared_ptr<transaction> &tx,
+                      status status, tateyama::proto::kvs::response::Error &error) {
+    set_error(status, error);
+    if (tx) {
+        tx->set_error_info(error);
+    }
 }
 
 /*
@@ -207,11 +218,12 @@ static void success_commit(std::shared_ptr<tateyama::api::server::response> &res
     proto_res.release_commit();
 }
 
-static void error_commit(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_commit(std::shared_ptr<transaction> &tx,
+                         status status, std::shared_ptr<tateyama::api::server::response> &res) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Commit commit { };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(status, error);
+    set_error(tx, status, error);
     commit.set_allocated_error(&error);
     proto_res.set_allocated_commit(&commit);
     reply(proto_res, res);
@@ -219,8 +231,8 @@ static void error_commit(status status, std::shared_ptr<tateyama::api::server::r
     proto_res.release_commit();
 }
 
-static status check_supported(tateyama::proto::kvs::request::Commit::Type const type) {
-    if (type == tateyama::proto::kvs::request::Commit::Type::Commit_Type_COMMIT_TYPE_UNSPECIFIED) {
+static status check_supported(tateyama::proto::kvs::request::CommitStatus const status) {
+    if (status == tateyama::proto::kvs::request::CommitStatus::COMMIT_STATUS_UNSPECIFIED) {
         return status::ok;
     }
     return status::err_not_implemented;
@@ -230,14 +242,14 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
                                   std::shared_ptr<tateyama::api::server::response> &res) {
     auto &commit = proto_req.commit();
     auto &proto_handle = commit.transaction_handle();
-    if (auto s = check_supported(commit.type()); s != status::ok) {
-        error_commit(s, res);
-        return;
-    }
     // TODO support commit type
     auto tx = store_->find_transaction(proto_handle.system_id());
     if (tx == nullptr) {
-        error_commit(status::err_invalid_argument, res);
+        error_commit(tx, status::err_invalid_argument, res);
+        return;
+    }
+    if (auto s = check_supported(commit.notification_type()); s != status::ok) {
+        error_commit(tx, s, res);
         return;
     }
     status status_tx{};
@@ -245,13 +257,16 @@ void service::command_commit(tateyama::proto::kvs::request::Request const&proto_
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
         status_tx = tx->commit();
     }
-    // TODO check transaction status before dispose
-    status status_store = store_->dispose_transaction(tx->system_id());
-    status status = convert(status_tx, status_store);
-    if (status == status::ok) {
+    if (status_tx == status::ok && commit.auto_dispose()) {
+        auto s = store_->dispose_transaction(proto_handle.system_id());
+        if (s != status::ok) {
+            VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << s;
+        }
+    }
+    if (status_tx == status::ok) {
         success_commit(res);
     } else {
-        error_commit(status, res);
+        error_commit(tx, status_tx, res);
     }
 }
 
@@ -269,11 +284,12 @@ static void success_rollback(std::shared_ptr<tateyama::api::server::response> &r
     proto_res.release_rollback();
 }
 
-static void error_rollback(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_rollback(std::shared_ptr<transaction> &tx,
+                           status status, std::shared_ptr<tateyama::api::server::response> &res) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Rollback rollback { };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(status, error);
+    set_error(tx, status, error);
     rollback.set_allocated_error(&error);
     proto_res.set_allocated_rollback(&rollback);
     reply(proto_res, res);
@@ -287,7 +303,7 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
     auto &proto_handle = rollback.transaction_handle();
     auto tx = store_->find_transaction(proto_handle.system_id());
     if (tx == nullptr) {
-        error_rollback(status::err_invalid_argument, res);
+        error_rollback(tx, status::err_invalid_argument, res);
         return;
     }
     status status_tx{};
@@ -301,45 +317,7 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
     if (status == status::ok) {
         success_rollback(res);
     } else {
-        error_rollback(status, res);
-    }
-}
-
-/*
- * close_transaction
- */
-static void success_close_transaction(std::shared_ptr<tateyama::api::server::response> &res) {
-    tateyama::proto::kvs::response::CloseTransaction close { };
-    tateyama::proto::kvs::response::Void v { };
-    tateyama::proto::kvs::response::Response proto_res { };
-    close.set_allocated_success(&v);
-    proto_res.set_allocated_close_transaction(&close);
-    reply(proto_res, res);
-    close.release_success();
-    proto_res.release_close_transaction();
-}
-
-static void error_close_transaction(status status, std::shared_ptr<tateyama::api::server::response> &res) {
-    tateyama::proto::kvs::response::Error error { };
-    tateyama::proto::kvs::response::CloseTransaction close { };
-    tateyama::proto::kvs::response::Response proto_res { };
-    set_error(status, error);
-    close.set_allocated_error(&error);
-    proto_res.set_allocated_close_transaction(&close);
-    reply(proto_res, res);
-    close.release_error();
-    proto_res.release_close_transaction();
-}
-
-void service::command_close_transaction(tateyama::proto::kvs::request::Request const &proto_req,
-                               std::shared_ptr<tateyama::api::server::response> &res) {
-    auto &close = proto_req.close_transaction();
-    auto &proto_handle = close.transaction_handle();
-    auto status = store_->dispose_transaction(proto_handle.system_id());
-    if (status == status::ok) {
-        success_close_transaction(res);
-    } else {
-        error_close_transaction(status, res);
+        error_rollback(tx, status, res);
     }
 }
 
@@ -558,6 +536,103 @@ void service::command_remove(tateyama::proto::kvs::request::Request const &proto
 }
 
 /*
+ * get_error_info
+ */
+static void has_error_get_error_info(tateyama::proto::kvs::response::Error &error,
+                                     std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::GetErrorInfo getinfo{ };
+    tateyama::proto::kvs::response::Response proto_res { };
+    getinfo.set_allocated_error(&error);
+    proto_res.set_allocated_get_error_info(&getinfo);
+    reply(proto_res, res);
+    getinfo.release_error();
+    proto_res.release_get_error_info();
+}
+
+static void no_error_get_error_info(std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::GetErrorInfo getinfo{ };
+    tateyama::proto::kvs::response::Void v { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    getinfo.set_allocated_error_not_found(&v);
+    proto_res.set_allocated_get_error_info(&getinfo);
+    reply(proto_res, res);
+    getinfo.release_error_not_found();
+    proto_res.release_get_error_info();
+}
+
+static void error_get_error_info(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::Error error { };
+    tateyama::proto::kvs::response::GetErrorInfo getinfo{ };
+    tateyama::proto::kvs::response::Response proto_res { };
+    set_error(status, error);
+    getinfo.set_allocated_error(&error);
+    proto_res.set_allocated_get_error_info(&getinfo);
+    reply(proto_res, res);
+    getinfo.release_error();
+    proto_res.release_get_error_info();
+}
+
+void service::command_get_error_info(tateyama::proto::kvs::request::Request const &proto_req,
+                                          std::shared_ptr<tateyama::api::server::response> &res) {
+    auto &get_info = proto_req.get_error_info();
+    auto &proto_handle = get_info.transaction_handle();
+    auto tx = store_->find_transaction(proto_handle.system_id());
+    if (tx == nullptr) {
+        error_get_error_info(status::err_invalid_argument, res);
+        return;
+    }
+    auto tx_error = tx->get_error_info();
+    if (tx_error.code() != 0) {
+        has_error_get_error_info(tx_error, res);
+    } else {
+        no_error_get_error_info(res);
+    }
+}
+
+/*
+ * dispose_transaction
+ */
+static void success_dispose_transaction(std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::DisposeTransaction dispose { };
+    tateyama::proto::kvs::response::Void v { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    dispose.set_allocated_success(&v);
+    proto_res.set_allocated_dispose_transaction(&dispose);
+    reply(proto_res, res);
+    dispose.release_success();
+    proto_res.release_dispose_transaction();
+}
+
+static void error_dispose_transaction(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+    tateyama::proto::kvs::response::Error error { };
+    tateyama::proto::kvs::response::DisposeTransaction dispose { };
+    tateyama::proto::kvs::response::Response proto_res { };
+    set_error(status, error);
+    dispose.set_allocated_error(&error);
+    proto_res.set_allocated_dispose_transaction(&dispose);
+    reply(proto_res, res);
+    dispose.release_error();
+    proto_res.release_dispose_transaction();
+}
+
+void service::command_dispose_transaction(tateyama::proto::kvs::request::Request const &proto_req,
+                                          std::shared_ptr<tateyama::api::server::response> &res) {
+    auto &dispose = proto_req.dispose_transaction();
+    auto &proto_handle = dispose.transaction_handle();
+    auto tx = store_->find_transaction(proto_handle.system_id());
+    if (tx == nullptr) {
+        error_dispose_transaction(status::err_invalid_argument, res);
+        return;
+    }
+    auto status = store_->dispose_transaction(proto_handle.system_id());
+    if (status == status::ok) {
+        success_dispose_transaction(res);
+    } else {
+        error_dispose_transaction(status, res);
+    }
+}
+
+/*
  * service protocol handling
  */
 bool service::operator()(std::shared_ptr<tateyama::api::server::request const> req, // NOLINT
@@ -583,10 +658,6 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
             command_rollback(proto_req, res);
             break;
         }
-        case tateyama::proto::kvs::request::Request::kCloseTransaction: {
-            command_close_transaction(proto_req, res);
-            break;
-        }
         case tateyama::proto::kvs::request::Request::kGet: {
             command_get(proto_req, res);
             break;
@@ -607,6 +678,14 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
         case tateyama::proto::kvs::request::Request::kBatch: {
             reply(tateyama::api::server::response_code::application_error,
                   "not supported yet", res);
+            break;
+        }
+        case tateyama::proto::kvs::request::Request::kGetErrorInfo: {
+            command_get_error_info(proto_req, res);
+            break;
+        }
+        case tateyama::proto::kvs::request::Request::kDisposeTransaction: {
+            command_dispose_transaction(proto_req, res);
             break;
         }
         case tateyama::proto::kvs::request::Request::COMMAND_NOT_SET: {

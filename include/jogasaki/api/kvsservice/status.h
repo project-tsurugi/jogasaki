@@ -191,4 +191,61 @@ enum class status : std::int32_t {
     err_integrity_constraint_violation = 30'001,
 
 };
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(status value) noexcept {
+    using namespace std::string_view_literals;
+    switch (value) {
+        case status::ok: return "ok"sv;
+
+        case status::not_found: return "not_found"sv;
+        case status::already_exists: return "already_exists"sv;
+        case status::user_rollback: return "user_rollback"sv;
+        case status::waiting_for_other_transaction: return "waiting_for_other_transaction"sv;
+
+        case status::err_unknown: return "err_unknown"sv;
+        case status::err_io_error: return "err_io_error"sv;
+        case status::err_invalid_argument: return "err_invalid_argument"sv;
+        case status::err_invalid_state: return "err_invalid_state"sv;
+        case status::err_unsupported: return "err_unsupported"sv;
+        case status::err_user_error: return "err_user_error"sv;
+        case status::err_aborted: return "err_aborted"sv;
+        case status::err_aborted_retryable: return "err_aborted_retryable"sv;
+        case status::err_time_out: return "err_time_out"sv;
+        case status::err_not_implemented: return "err_not_implemented"sv;
+        case status::err_illegal_operation: return "err_illegal_operation"sv;
+        case status::err_conflict_on_write_preserve: return "err_conflict_on_write_preserve"sv;
+        case status::err_write_without_write_preserve: return "err_write_without_write_preserve"sv;
+        case status::err_inactive_transaction: return "err_inactive_transaction"sv;
+        case status::err_blocked_by_concurrent_operation: return "err_blocked_by_concurrent_operation"sv;
+        case status::err_resource_limit_reached: return "err_resource_limit_reached"sv;
+        case status::err_invalid_key_length: return "err_invalid_key_length"sv;
+        case status::err_result_too_large: return "err_result_too_large"sv;
+        case status::err_not_authorized: return "err_not_authorized"sv;
+        case status::err_transaction_inactive: return "err_transaction_inactive"sv;
+        case status::err_write_protected: return "err_write_protected"sv;
+        case status::err_table_not_found: return "err_table_not_found"sv;
+        case status::err_column_not_found: return "err_column_not_found"sv;
+        case status::err_column_type_mismatch: return "err_column_type_mismatch"sv;
+        case status::err_mismatch_key: return "err_mismatch_key"sv;
+        case status::err_incomplete_columns: return "err_incomplete_columns"sv;
+        case status::err_integrity_constraint_violation: return "err_integrity_constraint_violation"sv;
+    }
+    std::abort();
+}
+
+/**
+* @brief appends string representation of the given value.
+* @param out the target output
+* @param value the target value
+* @return the output
+*/
+inline std::ostream& operator<<(std::ostream& out, status value) {
+    return out << to_string_view(value);
+}
+
 }

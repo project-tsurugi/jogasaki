@@ -21,6 +21,7 @@
 
 #include <sharksfin/api.h>
 #include <tateyama/proto/kvs/data.pb.h>
+#include <tateyama/proto/kvs/response.pb.h>
 #include <jogasaki/api/database.h>
 
 #include "index.h"
@@ -85,6 +86,7 @@ public:
      * After calling this method, the state of this transaction will be
      * transaction_state::state_kind::waiting_cc_commit, waiting_durable, or
      * durable.
+     * You should call dispose() after commit().
      * This method doesn't wait until the state is what you wanted.
      * You can use state() method to check the state of this transaction.
      * @return status::ok if the operation is successful
@@ -97,6 +99,7 @@ public:
      * @brief abort the transaction
      * @details abort the current transaction. When successful,
      * the object gets invalidated and should not be used any more.
+     * You should call dispose() after abort().
      * @return status::ok if the operation is successful
      * @return other status code when error occurs
      */
@@ -160,6 +163,29 @@ public:
                                 tateyama::proto::kvs::data::Record const &primary_key,
                                 remove_option opt = remove_option::counting);
 
+    /**
+     * @brief set commit/abort error information
+     * @see get_error_info()
+     */
+    void set_error_info(tateyama::proto::kvs::response::Error const &error) noexcept;
+
+    /**
+     * @brief retrieves commit/abort error information
+     * @return commit/abort error information after commit/abort called
+     * @return cleared error object before commit/abort called
+     * @see set_error_info()
+     */
+    [[nodiscard]] tateyama::proto::kvs::response::Error const &get_error_info() const noexcept;
+
+    /**
+     * @brief dispose the transaction
+     * @details dispose the transaction.
+     * You should call this after commit/abort.
+     * @return status::ok if the operation is successful
+     * @return other status code when error occurs
+     */
+    [[nodiscard]] status dispose();
+
 private:
     jogasaki::api::impl::database *db_{};
     sharksfin::DatabaseHandle db_handle_{};
@@ -167,6 +193,9 @@ private:
     sharksfin::TransactionHandle tx_handle_{};
     std::uint64_t system_id_ {};
     std::mutex mtx_tx_{};
+
+    // save commit/abort error information for GetErrorInfo
+    tateyama::proto::kvs::response::Error error_{};
 
     status get_storage(std::string_view name, sharksfin::StorageHandle &storage);
 };

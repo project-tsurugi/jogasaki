@@ -54,7 +54,10 @@ bool resource::shutdown(framework::environment&) {
 resource::~resource() = default;
 
 store* resource::store() const noexcept {
-    return store_.get();
+    if (store_ != nullptr) {
+        return store_.get();
+    }
+    return nullptr;
 }
 
 std::string_view resource::label() const noexcept {

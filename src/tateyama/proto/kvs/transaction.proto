@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package tateyama.proto.kvs.transaction;
+
+option java_multiple_files = false;
+option java_package = "com.tsurugidb.kvs.proto";
+option java_outer_classname = "KvsTransaction";
+
+// the transaction type.
+enum Type {
+    // use default transaction type.
+    TYPE_UNSPECIFIED = 0;
+    // short transactions (optimistic concurrency control).
+    SHORT = 1;
+    // long transactions (pessimistic concurrency control).
+    LONG = 2;
+    // read only transactions (may be abort-free).
+    READ_ONLY = 3;
+}
+
+// the transaction priority.
+enum Priority {
+    // use default transaction priority.
+    PRIORITY_UNSPECIFIED = 0;
+    // halts the running transactions immediately.
+    INTERRUPT = 1;
+    // prevents new transactions and waits for the running transactions will end.
+    WAIT = 2;
+    // halts the running transactions immediately, and keep lock-out until its end.
+    INTERRUPT_EXCLUDE = 3;
+    // prevents new transactions and waits for the running transactions will end, and keep lock-out until its end.
+    WAIT_EXCLUDE = 4;
+}
+
+// individual table areas.
+message TableArea {
+    // the target table name.
+    string table_name = 1;
+}
+
+// options for beginning transactions
+message Option {
+    // the transaction type.
+    Type type = 1;
+
+    // the transaction priority.
+    Priority priority = 2;
+
+    // the transaction label.
+    string label = 3;
+
+    // flag indicating whether the operation will change the table definition or not.
+    bool modifies_definitions = 4;
+
+    reserved 5 to 10;
+
+    // write preservations for long transactions.
+    repeated TableArea write_preserves = 11;
+
+    // inclusive read areas for long transactions.
+    repeated TableArea inclusive_read_areas = 12;
+
+    // exclusive read areas for long transactions.
+    repeated TableArea exclusive_read_areas = 13;
+
+    reserved 14 to 20;
+}
+
+// the transaction commit status.
+enum CommitStatus {
+    // the default commit status (rely on the database settings).
+    COMMIT_STATUS_UNSPECIFIED = 0;
+    // commit operation has accepted, and the transaction will never abort except system errors.
+    ACCEPTED = 10;
+    // commit data has been visible for others.
+    AVAILABLE = 20;
+    // commit data has been saved on the local disk.
+    STORED = 30;
+    // commit data has been propagated to the all suitable nodes.
+    PROPAGATED = 40;
+}
+
+// the transaction handle.
+message Handle {
+
+    // the system ID of the handle.
+    uint64 system_id = 1;
+
+    // or external transaction information.
+}

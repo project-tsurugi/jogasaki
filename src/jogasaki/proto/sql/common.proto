@@ -1,0 +1,231 @@
+syntax = "proto3";
+
+package jogasaki.proto.sql.common;
+
+option java_multiple_files = false;
+option java_package = "com.tsurugidb.sql.proto";
+option java_outer_classname = "SqlCommon";
+
+/*
+ * Common.
+ */
+
+/* For session handle. */
+message Session {
+  uint64 handle = 1;
+}
+
+/* For transaction handle. */
+message Transaction {
+  uint64 handle = 1;
+}
+
+/* For transaction referenceable id. */
+message TransactionId {
+  string id = 1;
+}
+
+/* For prepared statement handle. */
+message PreparedStatement {
+  uint64 handle = 1;
+  bool has_result_records = 2;
+}
+
+enum AtomType {
+    // unspecified type.
+    TYPE_UNSPECIFIED = 0;
+
+    // boolean type.
+    BOOLEAN = 1;
+
+    reserved 2, 3;
+
+    // 32-bit signed integer.
+    INT4 = 4;
+
+    // 64-bit signed integer.
+    INT8 = 5;
+
+    // 32-bit floating point number.
+    FLOAT4 = 6;
+
+    // 64-bit floating point number.
+    FLOAT8 = 7;
+
+    // multi precision decimal number.
+    DECIMAL = 8;
+
+    // character sequence.
+    CHARACTER = 9;
+
+    reserved 10;
+
+    // octet sequence.
+    OCTET = 11;
+
+    reserved 12;
+
+    // bit sequence.
+    BIT = 13;
+
+    reserved 14;
+
+    // date.
+    DATE = 15;
+
+    // time of day.
+    TIME_OF_DAY = 16;
+
+    // time point.
+    TIME_POINT = 17;
+
+    // date-time interval.
+    DATETIME_INTERVAL = 18;
+
+    // time of day with time zone.
+    TIME_OF_DAY_WITH_TIME_ZONE = 19;
+
+    // time point with time zone.
+    TIME_POINT_WITH_TIME_ZONE = 20;
+
+    // character large objects.
+    CLOB = 21;
+
+    // binary large objects.
+    BLOB = 22;
+
+    reserved 23 to 30;
+
+    // unknown type.
+    UNKNOWN = 31;
+
+    reserved 32 to 99;
+}
+
+// the user defined type.
+message UserType {
+    // the type name.
+    string name = 1;
+}
+
+// the column of relation or row type.
+message Column {
+    // the optional column name.
+    string name = 1;
+
+    // the column type.
+    oneof type_info {
+        // the atom type.
+        AtomType atom_type = 2;
+        // the row type.
+        RowType row_type = 3;
+        // the user defined type.
+        UserType user_type = 4;
+    }
+    reserved 5 to 10;
+
+    // the type dimension for array types.
+    uint32 dimension = 11;
+
+    // FIXME type details (e.g. decimal precisions)
+}
+
+// the row type.
+message RowType {
+    // the columns of the row.
+    repeated Column columns = 1;
+}
+
+// pseudo type structure to represent types.
+message TypeInfo {
+    // the column type.
+    oneof type_info {
+        // the atom type.
+        AtomType atom_type = 1;
+        // the row type.
+        RowType row_type = 2;
+        // the user defined type.
+        UserType user_type = 3;
+    }
+    reserved 4 to 10;
+
+    // the type dimension for array types.
+    uint32 dimension = 11;
+}
+
+// the multi precision decimal number value.
+message Decimal {
+    // the signed unscaled value (2's complement, big endian).
+    bytes unscaled_value = 1;
+
+    // the exponent of the value (value = unscaled_value * 10^exponent).
+    int32 exponent = 2;
+}
+
+// the bit value.
+message Bit {
+    // packed bit sequence (little-endian, from LST to MSB).
+    bytes packed = 1;
+    // the number of bits.
+    uint64 size = 2;
+}
+
+// the time-of-day-with-time-zone value.
+message TimeOfDayWithTimeZone {
+    // offset nano-seconds from epoch (00:00:00) in the time zone.
+    uint64 offset_nanoseconds = 1;
+    // timezone offset in minute.
+    sint32 time_zone_offset = 2;
+}
+
+// the time-point value.
+message TimePoint {
+    // offset seconds from epoch (1970-01-01 00:00:00).
+    sint64 offset_seconds = 1;
+    // nano-seconds adjustment [0, 10^9-1].
+    uint32 nano_adjustment = 2;
+}
+
+// the time-point-with-time-zone value.
+message TimePointWithTimeZone {
+    // offset seconds from epoch (1970-01-01 00:00:00) in the time zone.
+    sint64 offset_seconds = 1;
+    // nano-seconds adjustment [0, 10^9-1].
+    uint32 nano_adjustment = 2;
+    // timezone offset in minute.
+    sint32 time_zone_offset = 3;
+}
+
+// the date-time interval value.
+message DateTimeInterval {
+    // years offset.
+    sint32 year = 1;
+    // months offset.
+    sint32 month = 2;
+    // days offset.
+    sint32 day = 3;
+    // nano-seconds offset.
+    sint32 time = 4;
+}
+
+// the character large object value.
+message Clob {
+    // FIXME impl
+}
+
+// the binary large object value.
+message Blob {
+    // FIXME impl
+}
+
+// unit for time and timestamp value
+enum TimeUnit {
+    // unit unspecified.
+    TIME_UNIT_UNSPECIFIED = 0;
+    // unit nano-second.
+    NANOSECOND = 1;
+    // unit micro-second.
+    MICROSECOND = 2;
+    // unit milli-second.
+    MILLISECOND = 3;
+}

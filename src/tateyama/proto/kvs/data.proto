@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package tateyama.proto.kvs.data;
+
+option java_multiple_files = false;
+option java_package = "com.tsurugidb.kvs.proto";
+option java_outer_classname = "KvsData";
+
+// represents a value.
+message Value {
+
+    // the replacement values (unset describes NULL).
+    oneof value {
+
+        // boolean type.
+        bool boolean_value = 1;
+
+        // 32-bit signed integer.
+        sint32 int4_value = 4;
+
+        // 64-bit signed integer.
+        sint64 int8_value = 5;
+
+        // 32-bit floating point number.
+        float float4_value = 6;
+
+        // 64-bit floating point number.
+        double float8_value = 7;
+
+        // multi precision decimal number.
+        Decimal decimal_value = 8;
+
+        // character sequence.
+        string character_value = 9;
+
+        // octet sequence.
+        bytes octet_value = 11;
+
+        // date (number of days offset of epoch 1970-01-01).
+        sint64 date_value = 15;
+
+        // time of day (nano-seconds since 00:00:00).
+        uint64 time_of_day_value = 16;
+
+        // time point.
+        TimePoint time_point_value = 17;
+
+        // date-time interval.
+        DateTimeInterval datetime_interval_value = 18;
+
+        // time of day with time zone.
+        TimeOfDayWithTimeZone time_of_day_with_time_zone_value = 19;
+
+        // time point with time zone.
+        TimePointWithTimeZone time_point_with_time_zone_value = 20;
+
+        // a value list.
+        List list_value = 31;
+
+        // a record.
+        Record record_value = 32;
+    }
+}
+
+// represents a list of values.
+message List {
+    // entry values.
+    repeated Value values = 2;
+}
+
+// represents a record of values.
+message Record {
+    // entry names.
+    repeated string names = 1;
+
+    // entry values.
+    repeated Value values = 2;
+}
+
+// the multi precision decimal number value.
+message Decimal {
+    // the signed unscaled value (2's complement, big endian).
+    bytes unscaled_value = 1;
+
+    // the exponent of the value (value = unscaled_value * 10^exponent).
+    int32 exponent = 2;
+}
+
+
+// the time-of-day-with-time-zone value.
+message TimeOfDayWithTimeZone {
+    // offset nano-seconds from epoch (00:00:00) in the time zone.
+    uint64 offset_nanoseconds = 1;
+    // timezone offset in minute.
+    sint32 time_zone_offset = 2;
+}
+
+// the time-point value.
+message TimePoint {
+    // offset seconds from epoch (1970-01-01 00:00:00).
+    sint64 offset_seconds = 1;
+    // nano-seconds adjustment [0, 10^9-1].
+    uint32 nano_adjustment = 2;
+}
+
+// the time-point-with-time-zone value.
+message TimePointWithTimeZone {
+    // offset seconds from epoch (1970-01-01 00:00:00) in the time zone.
+    sint64 offset_seconds = 1;
+    // nano-seconds adjustment [0, 10^9-1].
+    uint32 nano_adjustment = 2;
+    // timezone offset in minute.
+    sint32 time_zone_offset = 3;
+}
+
+// the date-time interval value.
+message DateTimeInterval {
+    // years offset.
+    sint32 year = 1;
+    // months offset.
+    sint32 month = 2;
+    // days offset.
+    sint32 day = 3;
+    // nano-seconds offset.
+    sint32 time = 4;
+}
+
+// the character large object value.
+message Clob {
+    // FIXME impl
+}
+
+// the binary large object value.
+message Blob {
+    // FIXME impl
+}

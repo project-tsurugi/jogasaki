@@ -26,8 +26,7 @@ namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::string_builder;
 
-#define error_abort(ctx, res) \
-    ::jogasaki::executor::process::impl::ops::details::error_abort_impl(ctx, res, __FILE__, line_number_string) //NOLINT
+#define error_abort(ctx, res) ::jogasaki::executor::process::impl::ops::details::error_abort_impl(ctx, res, __FILE__, line_number_string) //NOLINT
 
 template <class T>
 operation_status error_abort_impl(

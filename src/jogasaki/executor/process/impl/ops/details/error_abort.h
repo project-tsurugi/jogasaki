@@ -29,6 +29,9 @@ using takatori::util::string_builder;
 template <class T>
 operation_status error_abort(T& ctx, status res) {
     ctx.abort();
+    if(ctx.req_context()->error_info()) {
+        return {operation_status_kind::aborted};
+    }
     switch(res) {
         case status::err_unique_constraint_violation:
             set_error(

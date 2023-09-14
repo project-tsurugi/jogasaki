@@ -125,7 +125,7 @@ public:
      * The data pointed by the returned value gets invalidated after any other api call.
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry for the key is not found
-     * @return status::abort_retryable on occ error
+     * @return status::err_serialization_failure on early abort
      * @return otherwise, other status code
      */
     [[nodiscard]] status get(
@@ -143,9 +143,8 @@ public:
      * @return status::ok if the operation is successful
      * @return status::already_exists if the option is `create` and record already exists for the key
      * @return status::not_found if the option is `update` and the record doesn't exist for the key
-     * @return status::abort_retryable on occ error
+     * @return status::err_serialization_failure on early abort
      * @return otherwise, other status code
-     * @note status::not_found is not returned even if the record doesn't exist for the key
      */
     [[nodiscard]] status put(
         transaction& tx,
@@ -160,7 +159,7 @@ public:
      * @param key the key for searching
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry for the key is not found
-     * @return status::abort_retryable on occ error
+     * @return status::err_serialization_failure on early abort
      * @return otherwise, other status code
      */
     [[nodiscard]] status remove(

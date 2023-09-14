@@ -26,6 +26,7 @@
 #include <jogasaki/error.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/handle_errors.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
@@ -122,6 +123,7 @@ status write_primary_target::find_record(
     }
     std::string_view v{};
     if(auto res = ctx.stg_->get(tx, key, v); res != status::ok) {
+        handle_errors(*ctx.req_context(), res);
         return res;
     }
     kvs::readable_stream keys{key.data(), key.size()};
@@ -153,6 +155,7 @@ status write_primary_target::remove_record_by_encoded_key(
     std::string_view key
 ) {
     if(auto res = ctx.stg_->remove(tx, key); res != status::ok) {
+        handle_errors(*ctx.req_context(), res);
         return res;
     }
     return status::ok;
@@ -210,6 +213,7 @@ status write_primary_target::encode_and_put(
         return res;
     }
     if(auto res = ctx.stg_->put(tx, k, v, opt); res != status::ok) {
+        handle_errors(*ctx.req_context(), res);
         return res;
     }
     return status::ok;

@@ -21,6 +21,7 @@
 
 #include <jogasaki/status.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/error/error_info_factory.h>
 
 namespace jogasaki::utils {
 
@@ -32,6 +33,7 @@ namespace jogasaki::utils {
  * frequently occurring in manipulating kvs, e.g. serialization failure (early abort).
  * @note this is generic error handling and is not applicable to all error situation. Depending on the
  * function requirement, it should manually handle and make action for the specific errors.
+ * @note this function doesn't handle warnings such as status::not_found, status::already_exists.
  */
 void handle_errors_impl(
     request_context& context,

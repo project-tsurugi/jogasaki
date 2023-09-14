@@ -30,6 +30,13 @@ void handle_errors_impl(
     std::string_view position
 ) noexcept {
     if(res == status::ok) return;
+
+    // warnings are context dependent and must be handled by the caller
+    if(res == status::already_exists) return;
+    if(res == status::not_found) return;
+    if(res == status::user_rollback) return;
+    if(res == status::waiting_for_other_transaction) return;
+
     if(res == status::err_serialization_failure) {
         error::set_error_impl(
             context,

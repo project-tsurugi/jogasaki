@@ -24,6 +24,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/utils/handle_errors.h>
 #include "write_secondary_context.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -81,7 +82,7 @@ status details::write_secondary_target::encode_and_put(
         return res;
     }
     if(auto res = ctx.stg_->put(tx, k, {}, kvs::put_option::create_or_update); res != status::ok) {
-        VLOG_LP(log_error) << "upserting to secondary index failed: " << res;
+        handle_errors(*ctx.req_context(), res);
         return res;
     }
     return status::ok;
@@ -99,7 +100,7 @@ status details::write_secondary_target::encode_and_remove(
         return res;
     }
     if(auto res = ctx.stg_->remove(tx, k); ! is_ok(res)) {
-        VLOG_LP(log_error) << "removing from secondary index failed: " << res;
+        handle_errors(*ctx.req_context(), res);
         return res;
     }
     return status::ok;

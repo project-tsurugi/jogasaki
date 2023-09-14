@@ -151,11 +151,6 @@ enum class status : std::int32_t {
     err_not_authorized = 2'001,
 
     /**
-     * @brief Transaction is not active.
-     */
-    err_transaction_inactive = 10'001,
-
-    /**
      * @brief Transaction is aborted by writing out of write preservation, or writing in read only transaction.
      */
     err_write_protected = 12'002,

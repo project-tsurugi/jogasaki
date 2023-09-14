@@ -61,6 +61,7 @@ DEFINE_string(load_from, "", "specify the generated db file directory. Use to pr
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT
 DEFINE_bool(insert, false, "run on insert mode");  //NOLINT
+DEFINE_bool(upsert, false, "run on upsert mode");  //NOLINT
 DEFINE_bool(update, false, "run on update mode");  //NOLINT
 DEFINE_bool(query, false, "run on query mode (point query)");  //NOLINT
 DEFINE_bool(query2, false, "run on query mode with multiple records");  //NOLINT
@@ -109,7 +110,7 @@ struct result_info {
 };
 
 enum class mode {
-    undefined, insert, update, query, query2
+    undefined, insert, update, query, query2, upsert
 };
 
 [[nodiscard]] constexpr inline std::string_view to_string_view(mode value) noexcept {
@@ -120,6 +121,7 @@ enum class mode {
         case mode::update: return "update"sv;
         case mode::query: return "query"sv;
         case mode::query2: return "query2"sv;
+        case mode::upsert: return "upsert"sv;
     }
     std::abort();
 }
@@ -317,6 +319,9 @@ public:
         if (FLAGS_insert) {
             mode_ = mode::insert;
         }
+        if (FLAGS_upsert) {
+            mode_ = mode::upsert;
+        }
         if (ltx_ && rtx_) {
             LOG(ERROR) << "Both --ltx and --rtx are specified.";
             return false;
@@ -329,7 +334,7 @@ public:
             clients_ = 1;
         }
         if (mode_ == mode::undefined) {
-            LOG(ERROR) << "Specify one of --insert/--update/--query options.";
+            LOG(ERROR) << "Specify one of --insert/--update/--query/--upsert options.";
             return false;
         }
 
@@ -359,9 +364,13 @@ public:
 
     void prepare_statement() {
         bool res;
+        std::string insert_clause("INSERT ");
         switch(mode_) {
+            case mode::upsert:
+                insert_clause = "INSERT OR REPLACE ";
+                // fall-thru
             case mode::insert:
-                res = prepare_sql("INSERT INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)",
+                res = prepare_sql(insert_clause+"INTO NEW_ORDER (no_o_id, no_d_id, no_w_id) VALUES (:no_o_id, :no_d_id, :no_w_id)",
                     {
                         {"no_o_id", sql::common::AtomType::INT8},
                         {"no_d_id", sql::common::AtomType::INT8},
@@ -409,6 +418,7 @@ public:
     ) {
         bool res{};
         switch(mode_) {
+            case mode::upsert: // fall-thru
             case mode::insert: {
                 result_count = 0;
                 std::int64_t id = profile_.new_order_max_ + (seed.seq_++);

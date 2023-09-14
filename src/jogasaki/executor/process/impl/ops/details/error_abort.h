@@ -26,83 +26,109 @@ namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::string_builder;
 
+#define error_abort(ctx, res) \
+    ::jogasaki::executor::process::impl::ops::details::error_abort_impl(ctx, res, __FILE__, line_number_string) //NOLINT
+
 template <class T>
-operation_status error_abort(T& ctx, status res) {
+operation_status error_abort_impl(
+    T& ctx,
+    status res,
+    std::string_view filepath,
+    std::string_view position
+) {
     ctx.abort();
     if(ctx.req_context()->error_info()) {
         return {operation_status_kind::aborted};
     }
     switch(res) {
         case status::err_unique_constraint_violation:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::unique_constraint_violation_exception,
                 string_builder{} <<
                     "Unique constraint violation occurred." << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         case status::err_integrity_constraint_violation:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::not_null_constraint_violation_exception,
                 string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         case status::err_expression_evaluation_failure:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::value_evaluation_exception,
                 string_builder{} << "An error occurred in evaluating values." << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         case status::err_serialization_failure:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::cc_exception,
                 string_builder{} << "Serialization failed." << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         case status::err_conflict_on_write_preserve:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::conflict_on_write_preserve_exception,
                 string_builder{} << "Occ read conflicted on some write preserve and aborted." << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         case status::err_inactive_transaction:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::inactive_transaction_exception,
                 string_builder{} << "Current transaction is inactive (maybe aborted already.)" << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         case status::err_data_corruption:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::data_corruption_exception,
                 string_builder{} << "Data inconsistency detected." << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         case status::err_unsupported:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::unsupported_runtime_feature_exception,
                 string_builder{} << "Executed an unsupported feature." << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;
         default:
-            set_error(
+            error::set_error_impl(
                 *ctx.req_context(),
                 error_code::sql_execution_exception,
                 string_builder{} << "creating transaction failed with error:" << res << string_builder::to_string,
+                filepath,
+                position,
                 res
             );
             break;

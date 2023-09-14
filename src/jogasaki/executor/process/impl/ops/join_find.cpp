@@ -218,7 +218,7 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
             // match condition saw null. No record should match.
             return {};
         }
-        return details::error_abort(ctx, res);
+        return error_abort(ctx, res);
     }
     return {};
 }

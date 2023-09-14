@@ -80,7 +80,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
                                                            // by take/scan operator
         if (result.error()) {
             VLOG_LP(log_error) << "evaluation error: " << result.to<expression::error>();
-            return details::error_abort(ctx, status::err_expression_evaluation_failure);
+            return error_abort(ctx, status::err_expression_evaluation_failure);
         }
         using t = takatori::type::type_kind;
         bool is_null = result.empty();
@@ -99,7 +99,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
                 case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;
                 default:
                     VLOG_LP(log_error) << "Unsupported type in project operator result:" << cinfo.type_of(v).kind();
-                    return details::error_abort(ctx, status::err_unsupported);
+                    return error_abort(ctx, status::err_unsupported);
             }
         }
     }

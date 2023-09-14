@@ -81,7 +81,7 @@ operation_status emit::operator()(emit_context &ctx) {
         ctx.writer_ = ctx.task_context().external_writer();
     }
     if(! ctx.writer_->write(target)) {
-        return details::error_abort(ctx, status::err_io_error);
+        return error_abort(ctx, status::err_io_error);
     }
     return {};
 }

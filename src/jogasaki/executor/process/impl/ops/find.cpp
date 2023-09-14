@@ -124,7 +124,7 @@ operation_status find::call_downstream(
     abstract::task_context* context
 ) {
     if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
-        return details::error_abort(ctx, res);
+        return error_abort(ctx, res);
     }
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
@@ -151,7 +151,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             finish(context);
             return {};
         }
-        return details::error_abort(ctx, res);
+        return error_abort(ctx, res);
     }
     std::string_view k{static_cast<char*>(ctx.key_.data()), len};
     if (! use_secondary_) {
@@ -161,7 +161,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
-            return details::error_abort(ctx, res);
+            return error_abort(ctx, res);
         }
         auto ret = call_downstream(ctx, k, v, target, resource, context);
         finish(context);
@@ -178,7 +178,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         if (res == status::not_found) {
             return {};
         }
-        return details::error_abort(ctx, res);
+        return error_abort(ctx, res);
     }
     while(true) {
         if(auto res = it->next(); res != status::ok) {
@@ -186,7 +186,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
-            return details::error_abort(ctx, res);
+            return error_abort(ctx, res);
         }
         if(auto res = it->key(k); res != status::ok) {
             // shirakami returns not_found here even if next() above returns ok (e.g. concurrently deleted entry)
@@ -195,7 +195,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
                 continue;
             }
             finish(context);
-            return details::error_abort(ctx, res);
+            return error_abort(ctx, res);
         }
         if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {
             finish(context);

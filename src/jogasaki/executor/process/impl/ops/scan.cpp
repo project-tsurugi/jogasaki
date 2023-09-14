@@ -125,7 +125,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
             return {};
         }
         finish(context);
-        return details::error_abort(ctx, res);
+        return error_abort(ctx, res);
     }
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
@@ -159,7 +159,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
     }
     finish(context);
     if (st != status::not_found) {
-        return details::error_abort(ctx, st);
+        return error_abort(ctx, st);
     }
     return {};
 }

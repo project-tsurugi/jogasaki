@@ -52,6 +52,13 @@ std::uint64_t transaction::system_id() const noexcept {
     return system_id_;
 }
 
+status transaction::is_inactive() const noexcept {
+    if (commit_abort_called_) {
+        return status::err_inactive_transaction;
+    }
+    return status::ok;
+}
+
 transaction_state transaction::state() const {
     transaction_state::state_kind kind{};
     sharksfin::TransactionState state;
@@ -69,11 +76,19 @@ std::mutex &transaction::transaction_mutex() {
 }
 
 status transaction::commit() {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
+    commit_abort_called_ = true;
     auto code = sharksfin::transaction_commit(ctrl_handle_);
     return convert(code);
 }
 
 status transaction::abort() {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
+    commit_abort_called_ = true;
     auto code = sharksfin::transaction_abort(ctrl_handle_);
     return convert(code);
 }
@@ -86,6 +101,9 @@ status transaction::get_storage(std::string_view name, sharksfin::StorageHandle 
 
 status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
     if (!is_valid_record(record)) {
         return status::err_invalid_argument;
     }
@@ -123,6 +141,9 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::get(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
     if (!is_valid_record(primary_key)) {
         return status::err_invalid_argument;
     }
@@ -157,6 +178,9 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::remove(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         remove_option opt) {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
     if (!is_valid_record(primary_key)) {
         return status::err_invalid_argument;
     }

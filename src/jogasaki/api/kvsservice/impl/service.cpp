@@ -71,14 +71,6 @@ static void set_error(status status, tateyama::proto::kvs::response::Error &erro
     set_error(status, error, nullptr);
 }
 
-static void set_error(std::shared_ptr<transaction> &tx,
-                      status status, tateyama::proto::kvs::response::Error &error) {
-    set_error(status, error);
-    if (tx) {
-        tx->set_error_info(error);
-    }
-}
-
 /*
  * begin
  */
@@ -218,12 +210,11 @@ static void success_commit(std::shared_ptr<tateyama::api::server::response> &res
     proto_res.release_commit();
 }
 
-static void error_commit(std::shared_ptr<transaction> &tx,
-                         status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_commit(status status, std::shared_ptr<tateyama::api::server::response> &res) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Commit commit { };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(tx, status, error);
+    set_error(status, error);
     commit.set_allocated_error(&error);
     proto_res.set_allocated_commit(&commit);
     reply(proto_res, res);
@@ -241,32 +232,32 @@ static status check_supported(tateyama::proto::kvs::request::CommitStatus const 
 void service::command_commit(tateyama::proto::kvs::request::Request const&proto_req,
                                   std::shared_ptr<tateyama::api::server::response> &res) {
     auto &commit = proto_req.commit();
-    auto &proto_handle = commit.transaction_handle();
+    if (auto s = check_supported(commit.notification_type()); s != status::ok) {
+        error_commit(s, res);
+        return;
+    }
     // TODO support commit type
+    auto &proto_handle = commit.transaction_handle();
     auto tx = store_->find_transaction(proto_handle.system_id());
     if (tx == nullptr) {
-        error_commit(tx, status::err_invalid_argument, res);
+        error_commit(status::err_invalid_argument, res);
         return;
     }
-    if (auto s = check_supported(commit.notification_type()); s != status::ok) {
-        error_commit(tx, s, res);
-        return;
-    }
-    status status_tx{};
+    status status{};
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
-        status_tx = tx->commit();
+        status = tx->commit();
     }
-    if (status_tx == status::ok && commit.auto_dispose()) {
+    if (status == status::ok && commit.auto_dispose()) {
         auto s = store_->dispose_transaction(proto_handle.system_id());
         if (s != status::ok) {
             VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << s;
         }
     }
-    if (status_tx == status::ok) {
+    if (status == status::ok) {
         success_commit(res);
     } else {
-        error_commit(tx, status_tx, res);
+        error_commit(status, res);
     }
 }
 
@@ -284,12 +275,11 @@ static void success_rollback(std::shared_ptr<tateyama::api::server::response> &r
     proto_res.release_rollback();
 }
 
-static void error_rollback(std::shared_ptr<transaction> &tx,
-                           status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_rollback(status status, std::shared_ptr<tateyama::api::server::response> &res) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Rollback rollback { };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(tx, status, error);
+    set_error(status, error);
     rollback.set_allocated_error(&error);
     proto_res.set_allocated_rollback(&rollback);
     reply(proto_res, res);
@@ -303,21 +293,19 @@ void service::command_rollback(tateyama::proto::kvs::request::Request const &pro
     auto &proto_handle = rollback.transaction_handle();
     auto tx = store_->find_transaction(proto_handle.system_id());
     if (tx == nullptr) {
-        error_rollback(tx, status::err_invalid_argument, res);
+        error_rollback(status::err_invalid_argument, res);
         return;
     }
-    status status_tx{};
+    status status{};
     {
         std::unique_lock<std::mutex> lock{tx->transaction_mutex()};
-        status_tx = tx->abort();
+        status = tx->abort();
     }
     // TODO check transaction status before dispose
-    status status_store = store_->dispose_transaction(tx->system_id());
-    status status = convert(status_tx, status_store);
     if (status == status::ok) {
         success_rollback(res);
     } else {
-        error_rollback(tx, status, res);
+        error_rollback(status, res);
     }
 }
 
@@ -550,8 +538,8 @@ static void has_error_get_error_info(tateyama::proto::kvs::response::Error &erro
 }
 
 static void no_error_get_error_info(std::shared_ptr<tateyama::api::server::response> &res) {
-    tateyama::proto::kvs::response::GetErrorInfo getinfo{ };
     tateyama::proto::kvs::response::Void v { };
+    tateyama::proto::kvs::response::GetErrorInfo getinfo{ };
     tateyama::proto::kvs::response::Response proto_res { };
     getinfo.set_allocated_error_not_found(&v);
     proto_res.set_allocated_get_error_info(&getinfo);
@@ -593,8 +581,8 @@ void service::command_get_error_info(tateyama::proto::kvs::request::Request cons
  * dispose_transaction
  */
 static void success_dispose_transaction(std::shared_ptr<tateyama::api::server::response> &res) {
-    tateyama::proto::kvs::response::DisposeTransaction dispose { };
     tateyama::proto::kvs::response::Void v { };
+    tateyama::proto::kvs::response::DisposeTransaction dispose { };
     tateyama::proto::kvs::response::Response proto_res { };
     dispose.set_allocated_success(&v);
     proto_res.set_allocated_dispose_transaction(&dispose);

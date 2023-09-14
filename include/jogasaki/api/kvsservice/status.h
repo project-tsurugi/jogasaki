@@ -221,7 +221,6 @@ enum class status : std::int32_t {
         case status::err_invalid_key_length: return "err_invalid_key_length"sv;
         case status::err_result_too_large: return "err_result_too_large"sv;
         case status::err_not_authorized: return "err_not_authorized"sv;
-        case status::err_transaction_inactive: return "err_transaction_inactive"sv;
         case status::err_write_protected: return "err_write_protected"sv;
         case status::err_table_not_found: return "err_table_not_found"sv;
         case status::err_column_not_found: return "err_column_not_found"sv;

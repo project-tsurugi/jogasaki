@@ -32,7 +32,7 @@ store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
 
 store::~store() {
     for (const auto & pair : transactions_) {
-        auto s = pair.second->abort();
+        auto s = pair.second->dispose();
         if (s != status::ok) {
             LOG(ERROR) << "failed dispose kvs transaction";
         }

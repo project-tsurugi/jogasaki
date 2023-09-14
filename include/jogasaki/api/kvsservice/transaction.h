@@ -196,7 +196,10 @@ private:
 
     // save commit/abort error information for GetErrorInfo
     tateyama::proto::kvs::response::Error error_{};
+    // commit/abort called flag, locked by mtx_tx_
+    bool commit_abort_called_{};
 
+    status is_inactive() const noexcept;
     status get_storage(std::string_view name, sharksfin::StorageHandle &storage);
 };
 }

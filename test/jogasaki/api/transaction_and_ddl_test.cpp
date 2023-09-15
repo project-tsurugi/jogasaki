@@ -109,7 +109,7 @@ TEST_F(transaction_and_ddl_test, create_with_rtx) {
     opts.readonly(true).modifies_definitions(false);
     {
         auto tx = utils::create_transaction(*db_, opts);
-        execute_statement("CREATE TABLE TT (C1 INT)", *tx, status::err_unsupported); //TODO fix
+        execute_statement("CREATE TABLE TT (C1 INT)", *tx, status::err_illegal_operation);
     }
 }
 }

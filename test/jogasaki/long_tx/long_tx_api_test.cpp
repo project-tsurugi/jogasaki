@@ -94,17 +94,17 @@ TEST_F(long_tx_api_test, reading_outside_read_area) {
     execute_statement("INSERT INTO T (C0, C1) VALUES (1, 1)");
     {
         auto tx = utils::create_transaction(*db_, false, true, {"W"}, {}, {"T"}, "TEST");
-        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_read_area_violation);
         ASSERT_EQ(status::err_inactive_transaction, tx->commit());
     }
     {
         auto tx = utils::create_transaction(*db_, false, true, {"W"}, {"S"}, {}, "TEST");
-        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_read_area_violation);
         ASSERT_EQ(status::err_inactive_transaction, tx->commit());
     }
     {
         auto tx = utils::create_transaction(*db_, false, true, {"W"}, {"S"}, {"T"}, "TEST");
-        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM T WHERE C0=1", *tx, status::err_read_area_violation);
         ASSERT_EQ(status::err_inactive_transaction, tx->commit());
     }
 }
@@ -191,7 +191,7 @@ TEST_F(long_tx_api_test, wps_added_to_rai) {
     {
         // exclusive wins if specified
         auto tx = utils::create_transaction(*db_, false, true, {"T"}, {"R"}, {"T"});
-        execute_statement("SELECT * FROM T", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM T", *tx, status::err_read_area_violation);
     }
 }
 
@@ -208,7 +208,7 @@ TEST_F(long_tx_api_test, multiple_read_areas_variations) {
             execute_query("SELECT * FROM R", *tx, result);
             ASSERT_EQ(1, result.size());
         }
-        execute_statement("SELECT * FROM T", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM T", *tx, status::err_read_area_violation);
         ASSERT_EQ(status::err_inactive_transaction, tx->commit());
     }
     {
@@ -219,7 +219,7 @@ TEST_F(long_tx_api_test, multiple_read_areas_variations) {
             execute_query("SELECT * FROM T", *tx, result);
             ASSERT_EQ(1, result.size());
         }
-        execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM R", *tx, status::err_read_area_violation);
     }
     {
         // inclusive and exclusive specified
@@ -229,7 +229,7 @@ TEST_F(long_tx_api_test, multiple_read_areas_variations) {
             execute_query("SELECT * FROM T", *tx, result);
             ASSERT_EQ(1, result.size());
         }
-        execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM R", *tx, status::err_read_area_violation);
         ASSERT_EQ(status::err_inactive_transaction, tx->commit());
     }
     {
@@ -240,18 +240,18 @@ TEST_F(long_tx_api_test, multiple_read_areas_variations) {
             execute_query("SELECT * FROM T", *tx, result);
             ASSERT_EQ(1, result.size());
         }
-        execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+        execute_statement("SELECT * FROM R", *tx, status::err_read_area_violation);
         ASSERT_EQ(status::err_inactive_transaction, tx->commit());
     }
     {
         // same table in inclusive and exclusive
         {
             auto tx = utils::create_transaction(*db_, false, true, {}, {"T", "R"}, {"R", "T"});
-            execute_statement("SELECT * FROM T", *tx, status::err_illegal_operation);
+            execute_statement("SELECT * FROM T", *tx, status::err_read_area_violation);
         }
         {
             auto tx = utils::create_transaction(*db_, false, true, {}, {"T", "R"}, {"R", "T"});
-            execute_statement("SELECT * FROM R", *tx, status::err_illegal_operation);
+            execute_statement("SELECT * FROM R", *tx, status::err_read_area_violation);
         }
     }
 }

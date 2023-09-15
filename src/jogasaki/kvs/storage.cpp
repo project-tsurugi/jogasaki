@@ -80,6 +80,9 @@ status storage::put(
         }
         return status::ok;
     }
+    if (res == StatusCode::ERR_ILLEGAL_OPERATION) {
+        return status::err_write_operation_by_rtx;
+    }
     return resolve(res);
 }
 
@@ -91,6 +94,9 @@ status storage::remove(
         tx.handle(),
         handle_,
         key);
+    if (res == StatusCode::ERR_ILLEGAL_OPERATION) {
+        return status::err_write_operation_by_rtx;
+    }
     return resolve(res);
 }
 

@@ -184,6 +184,7 @@ inline sql::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::waiting_for_other_transaction: return sql::status::Status::ERR_UNKNOWN;  // wait_for_transaction is internal, should not be exposed
         case jogasaki::status::err_write_without_write_preserve: return sql::status::Status::ERR_ILLEGAL_OPERATION;
         case jogasaki::status::err_read_area_violation: return sql::status::Status::ERR_ILLEGAL_OPERATION;
+        case jogasaki::status::err_write_operation_by_rtx: return sql::status::Status::ERR_ILLEGAL_OPERATION;
     }
     fail();
 }

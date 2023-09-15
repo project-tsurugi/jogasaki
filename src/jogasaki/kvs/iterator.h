@@ -50,7 +50,7 @@ public:
      * @brief move the iterator to next entry
      * @return status::ok if the operation is successful
      * @return status::not_found if the next entry is not found
-     * @return status::abort_retryable on occ error
+     * @return status::err_serialization_failure on early abort
      * @return any other error that occurs on lower layer (sharksfin)
      */
     [[nodiscard]] status next();

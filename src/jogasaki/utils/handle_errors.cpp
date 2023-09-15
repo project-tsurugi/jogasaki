@@ -61,6 +61,42 @@ void handle_errors_impl(
         );
         return;
     }
+    if(res == status::err_read_area_violation) {
+        error::set_error_impl(
+            context,
+            error_code::read_operation_on_restricted_read_area_exception,
+            string_builder{} <<
+                "Read operation outside read area." << string_builder::to_string,
+            filepath,
+            position,
+            res
+        );
+        return;
+    }
+    if(res == status::err_write_without_write_preserve) {
+        error::set_error_impl(
+            context,
+            error_code::ltx_write_operation_without_write_preserve_exception,
+            string_builder{} <<
+                "Ltx write operation outside write preserve." << string_builder::to_string,
+            filepath,
+            position,
+            res
+        );
+        return;
+    }
+    if(res == status::err_write_operation_by_rtx) {
+        error::set_error_impl(
+            context,
+            error_code::write_operation_by_rtx_exception,
+            string_builder{} <<
+                "Write operation by rtx." << string_builder::to_string,
+            filepath,
+            position,
+            res
+        );
+        return;
+    }
     error::set_error_impl(
         context,
         error_code::sql_service_exception,

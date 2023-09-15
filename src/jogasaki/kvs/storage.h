@@ -144,6 +144,7 @@ public:
      * @return status::already_exists if the option is `create` and record already exists for the key
      * @return status::not_found if the option is `update` and the record doesn't exist for the key
      * @return status::err_serialization_failure on early abort
+     * @return status::err_write_operation_by_rtx if transaction is read-only
      * @return otherwise, other status code
      */
     [[nodiscard]] status put(
@@ -160,6 +161,7 @@ public:
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry for the key is not found
      * @return status::err_serialization_failure on early abort
+     * @return status::err_write_operation_by_rtx if transaction is read-only
      * @return otherwise, other status code
      */
     [[nodiscard]] status remove(

@@ -19,9 +19,12 @@
 #include <sharksfin/api.h>
 
 #include "convert.h"
+
 using takatori::util::throw_exception;
 
 namespace jogasaki::api::kvsservice {
+
+constexpr static std::string_view log_location_prefix = "/:jogasaki:api:kvsservice:store ";
 
 store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
     db_(bridge->database()), db_handle_(dynamic_cast<jogasaki::api::impl::database*>(db_)->kvs_db()->handle()) {
@@ -29,7 +32,7 @@ store::store(std::shared_ptr<jogasaki::api::resource::bridge> const& bridge) :
 
 store::~store() {
     for (const auto & pair : transactions_) {
-        auto s = pair.second->abort();
+        auto s = pair.second->dispose();
         if (s != status::ok) {
             LOG(ERROR) << "failed dispose kvs transaction";
         }
@@ -83,6 +86,10 @@ std::shared_ptr<transaction> store::find_transaction(std::uint64_t system_id) {
 status store::dispose_transaction(std::uint64_t system_id) {
     decltype(transactions_)::accessor acc{};
     if (transactions_.find(acc, system_id)) {
+        auto s = acc->second->dispose();
+        if (s != status::ok) {
+            LOG(ERROR) << log_location_prefix << "transaction::dispose() failed: "<< s;
+        }
         transactions_.erase(acc);
     }
     return status::ok;

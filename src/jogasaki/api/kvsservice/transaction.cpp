@@ -44,10 +44,19 @@ transaction::transaction(jogasaki::api::database *db,
         throw_exception(std::logic_error{"transaction_borrow_owner failed"});
     }
     system_id_ = (std::uint64_t)(this); // NOLINT
+    error_.set_code(static_cast<google::protobuf::int32>(status::ok));
+    error_.clear_detail();
 }
 
 std::uint64_t transaction::system_id() const noexcept {
     return system_id_;
+}
+
+status transaction::is_inactive() const noexcept {
+    if (commit_abort_called_) {
+        return status::err_inactive_transaction;
+    }
+    return status::ok;
 }
 
 transaction_state transaction::state() const {
@@ -67,22 +76,21 @@ std::mutex &transaction::transaction_mutex() {
 }
 
 status transaction::commit() {
-    auto status_c = sharksfin::transaction_commit(ctrl_handle_);
-    if (status_c != sharksfin::StatusCode::OK) {
-        return convert(status_c);
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
     }
-    // FIXME
-    auto status_d = sharksfin::transaction_dispose(ctrl_handle_);
-    return convert(status_c, status_d);
+    commit_abort_called_ = true;
+    auto code = sharksfin::transaction_commit(ctrl_handle_);
+    return convert(code);
 }
 
 status transaction::abort() {
-    auto status_a = sharksfin::transaction_abort(ctrl_handle_);
-    if (status_a != sharksfin::StatusCode::OK) {
-        return convert(status_a);
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
     }
-    auto status_d = sharksfin::transaction_dispose(ctrl_handle_);
-    return convert(status_a, status_d);
+    commit_abort_called_ = true;
+    auto code = sharksfin::transaction_abort(ctrl_handle_);
+    return convert(code);
 }
 
 status transaction::get_storage(std::string_view name, sharksfin::StorageHandle &storage) {
@@ -93,6 +101,9 @@ status transaction::get_storage(std::string_view name, sharksfin::StorageHandle 
 
 status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
     if (!is_valid_record(record)) {
         return status::err_invalid_argument;
     }
@@ -130,6 +141,9 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::get(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
     if (!is_valid_record(primary_key)) {
         return status::err_invalid_argument;
     }
@@ -164,6 +178,9 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::remove(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         remove_option opt) {
+    if (auto s = is_inactive(); s != status::ok) {
+        return s;
+    }
     if (!is_valid_record(primary_key)) {
         return status::err_invalid_argument;
     }
@@ -201,6 +218,19 @@ status transaction::remove(std::string_view table_name, tateyama::proto::kvs::da
     }
     auto code2 = sharksfin::storage_dispose(storage);
     return convert(code, code2);
+}
+
+void transaction::set_error_info(tateyama::proto::kvs::response::Error const &error) noexcept {
+    error_.CopyFrom(error);
+}
+
+tateyama::proto::kvs::response::Error const &transaction::get_error_info() const noexcept {
+    return error_;
+}
+
+status transaction::dispose() {
+    auto code = sharksfin::transaction_dispose(ctrl_handle_);
+    return convert(code);
 }
 
 }

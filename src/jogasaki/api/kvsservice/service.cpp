@@ -32,6 +32,13 @@ framework::component::id_type service::id() const noexcept {
 }
 
 bool service::setup(framework::environment& env) {
+    // on maintenance/quiescent mode, sql resource exists, but does nothing.
+    // see setup() in src/jogasaki/api/resource/bridge.cpp
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+       env.mode() == framework::boot_mode::maintenance_server ||
+       env.mode() == framework::boot_mode::quiescent_server) {
+        return true;
+    }
     if (core_) return true;
     auto rsc = env.resource_repository().find<jogasaki::api::kvsservice::resource>();
     core_ = std::make_unique<jogasaki::api::kvsservice::impl::service>(env.configuration(), rsc->store());
@@ -39,7 +46,10 @@ bool service::setup(framework::environment& env) {
 }
 
 bool service::start(framework::environment&) {
-    return core_->start();
+    if (core_) {
+        return core_->start();
+    }
+    return true;
 }
 
 bool service::shutdown(framework::environment&) {
@@ -52,7 +62,11 @@ bool service::shutdown(framework::environment&) {
 }
 
 bool service::operator()(std::shared_ptr<request> req, std::shared_ptr<response> res) {
-    return (*core_)(std::move(req), std::move(res));
+    if (core_) {
+        return (*core_)(std::move(req), std::move(res));
+    }
+    LOG(ERROR) << "service is running on quiescent or maintenance mode - no request is allowed";
+    return false;
 }
 
 service::~service() {

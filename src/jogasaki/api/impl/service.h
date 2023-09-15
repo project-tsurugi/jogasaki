@@ -182,6 +182,8 @@ inline sql::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_resource_limit_reached: return sql::status::Status::ERR_RESOURCE_LIMIT_REACHED;
         case jogasaki::status::err_unique_constraint_violation: return sql::status::Status::ERR_UNIQUE_CONSTRAINT_VIOLATION;
         case jogasaki::status::waiting_for_other_transaction: return sql::status::Status::ERR_UNKNOWN;  // wait_for_transaction is internal, should not be exposed
+        case jogasaki::status::err_write_without_write_preserve: return sql::status::Status::ERR_ILLEGAL_OPERATION;
+        case jogasaki::status::err_read_area_violation: return sql::status::Status::ERR_ILLEGAL_OPERATION;
     }
     fail();
 }

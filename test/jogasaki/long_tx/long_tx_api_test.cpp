@@ -67,7 +67,7 @@ using namespace std::string_view_literals;
 
 TEST_F(long_tx_api_test, insert_to_non_preserved) {
     auto tx = utils::create_transaction(*db_, false, true, {});
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx, status::err_illegal_operation);
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)", *tx, status::err_write_without_write_preserve);
     ASSERT_EQ(status::err_inactive_transaction, tx->commit());
 }
 
@@ -75,7 +75,7 @@ TEST_F(long_tx_api_test, update_to_non_preserved) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
     auto tx = utils::create_transaction(*db_, false, true, {});
-    execute_statement("UPDATE T0 SET C1=10.0 WHERE C0=1", *tx, status::err_illegal_operation);
+    execute_statement("UPDATE T0 SET C1=10.0 WHERE C0=1", *tx, status::err_write_without_write_preserve);
     ASSERT_EQ(status::err_inactive_transaction, tx->commit());
 }
 
@@ -83,7 +83,7 @@ TEST_F(long_tx_api_test, delete_to_non_preserved) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)");
     auto tx = utils::create_transaction(*db_, false, true, {});
-    execute_statement("DELETE FROM T0 WHERE C0=1", *tx, status::err_illegal_operation);
+    execute_statement("DELETE FROM T0 WHERE C0=1", *tx, status::err_write_without_write_preserve);
     ASSERT_EQ(status::err_inactive_transaction, tx->commit());
 }
 

@@ -33,6 +33,7 @@ status resolve(sharksfin::StatusCode code) noexcept {
         case sharksfin::StatusCode::NOT_FOUND: return status::not_found;
         case sharksfin::StatusCode::ALREADY_EXISTS: return status::already_exists;
         case sharksfin::StatusCode::USER_ROLLBACK: return status::user_rollback;
+        case sharksfin::StatusCode::PREMATURE: return status::err_invalid_state;
         case sharksfin::StatusCode::ERR_UNKNOWN: return status::err_unknown;
         case sharksfin::StatusCode::ERR_IO_ERROR: return status::err_io_error;
         case sharksfin::StatusCode::ERR_INVALID_ARGUMENT: return status::err_invalid_argument;
@@ -46,11 +47,12 @@ status resolve(sharksfin::StatusCode code) noexcept {
         case sharksfin::StatusCode::ERR_ILLEGAL_OPERATION: return status::err_illegal_operation;
         case sharksfin::StatusCode::ERR_CONFLICT_ON_WRITE_PRESERVE: return status::err_conflict_on_write_preserve;
         case sharksfin::StatusCode::WAITING_FOR_OTHER_TRANSACTION: return status::waiting_for_other_transaction;
-        case sharksfin::StatusCode::ERR_WRITE_WITHOUT_WRITE_PRESERVE: return status::err_illegal_operation;
+        case sharksfin::StatusCode::ERR_WRITE_WITHOUT_WRITE_PRESERVE: return status::err_write_without_write_preserve;
         case sharksfin::StatusCode::ERR_INACTIVE_TRANSACTION: return status::err_inactive_transaction;
         case sharksfin::StatusCode::ERR_BLOCKED_BY_CONCURRENT_OPERATION: return status::err_unknown; // should not be handled by this function
         case sharksfin::StatusCode::ERR_RESOURCE_LIMIT_REACHED: return status::err_resource_limit_reached;
         case sharksfin::StatusCode::ERR_INVALID_KEY_LENGTH: return status::err_invalid_argument;
+        case sharksfin::StatusCode::ERR_READ_AREA_VIOLATION: return status::err_read_area_violation;
     }
     std::abort();
 }

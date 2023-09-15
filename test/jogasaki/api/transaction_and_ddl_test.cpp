@@ -100,7 +100,7 @@ TEST_F(transaction_and_ddl_test, create_with_ltx_wo_modifies_definitions) {
     opts.is_long(true).modifies_definitions(false);
     {
         auto tx = utils::create_transaction(*db_, opts);
-        execute_statement("CREATE TABLE TT (C1 INT)", *tx, status::err_write_without_write_preserve);
+        test_stmt_err("CREATE TABLE TT (C1 INT)", *tx, error_code::ltx_write_operation_without_write_preserve_exception);
     }
 }
 
@@ -109,7 +109,7 @@ TEST_F(transaction_and_ddl_test, create_with_rtx) {
     opts.readonly(true).modifies_definitions(false);
     {
         auto tx = utils::create_transaction(*db_, opts);
-        execute_statement("CREATE TABLE TT (C1 INT)", *tx, status::err_write_operation_by_rtx);
+        test_stmt_err("CREATE TABLE TT (C1 INT)", *tx, error_code::write_operation_by_rtx_exception);
     }
 }
 }

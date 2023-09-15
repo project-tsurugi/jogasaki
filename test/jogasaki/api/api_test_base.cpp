@@ -271,6 +271,25 @@ void api_test_base::execute_statement(
     ASSERT_EQ(expected, result);
 }
 
+void api_test_base::test_stmt_err(
+    std::string_view stmt,
+    api::transaction_handle& tx,
+    error_code expected
+) {
+    std::shared_ptr<error::error_info> result{};
+    ASSERT_EQ("",
+        builder()
+            .text(stmt)
+            .tx(tx)
+            .error(result)
+            .expect_error(true)
+            .run()
+            .report()
+    );
+    ASSERT_EQ(expected, result->code());
+    std::cerr << *result << std::endl;
+}
+
 void api_test_base::explain_statement(
     std::string_view query,
     std::string& out,

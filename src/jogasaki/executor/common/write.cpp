@@ -38,7 +38,7 @@
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/handle_errors.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/coder.h>
@@ -137,7 +137,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     continue;
                 }
                 // TODO error handling for secondary index, multiple tuples
-                handle_errors(context, res);
+                handle_kvs_errors(context, res);
                 if(! context.error_info()) {
                     set_error(
                         context,

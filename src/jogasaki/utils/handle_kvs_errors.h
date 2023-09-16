@@ -25,7 +25,7 @@
 
 namespace jogasaki::utils {
 
-#define handle_errors(rctx, st) jogasaki::utils::handle_errors_impl(rctx, st, __FILE__, line_number_string) //NOLINT
+#define handle_kvs_errors(rctx, st) jogasaki::utils::handle_kvs_errors_impl(rctx, st, __FILE__, line_number_string) //NOLINT
 
 /**
  * @brief handle generic kvs errors
@@ -36,7 +36,7 @@ namespace jogasaki::utils {
  * @note this function doesn't handle warnings such as status::not_found, status::already_exists.
  * @note this function handle only known kvs errors, so generic unknown errors should be caught outside
  */
-void handle_errors_impl(
+void handle_kvs_errors_impl(
     request_context& context,
     status res,
     std::string_view filepath,

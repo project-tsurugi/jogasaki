@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "handle_errors.h"
-
-#include <jogasaki/error/error_info_factory.h>
+#include "handle_kvs_errors.h"
 
 namespace jogasaki::utils {
 
-void handle_errors_impl(
+void handle_kvs_errors_impl(
     request_context& context,
     status res,
     std::string_view filepath,

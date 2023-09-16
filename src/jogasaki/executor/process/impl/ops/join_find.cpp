@@ -28,7 +28,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/handle_errors.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -214,7 +214,7 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
             // match condition saw null. No record should match.
             return {};
         }
-        handle_errors(*ctx.req_context(), res);
+        handle_kvs_errors(*ctx.req_context(), res);
         return error_abort(ctx, res);
     }
     return {};

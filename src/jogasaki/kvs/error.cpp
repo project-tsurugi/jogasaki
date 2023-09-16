@@ -20,13 +20,14 @@
 #include <sharksfin/StatusCode.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::kvs {
 
 status resolve(sharksfin::StatusCode code) noexcept {
     if(code != sharksfin::StatusCode::OK) {
-        DVLOG(log_debug) << "error: " << code << std::endl << ::boost::stacktrace::stacktrace {};
+        VLOG_LP(log_debug) << "error: " << code << std::endl << ::boost::stacktrace::stacktrace {};
     }
     switch(code) {
         case sharksfin::StatusCode::OK: return status::ok;

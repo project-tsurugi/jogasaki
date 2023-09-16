@@ -15,13 +15,9 @@
  */
 #include "handle_errors.h"
 
-#include <takatori/util/string_builder.h>
-
 #include <jogasaki/error/error_info_factory.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::string_builder;
 
 void handle_errors_impl(
     request_context& context,

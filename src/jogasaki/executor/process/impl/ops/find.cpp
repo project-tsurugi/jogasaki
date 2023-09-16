@@ -30,6 +30,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/utils/handle_errors.h>
 #include "operator_base.h"
 #include "context_helper.h"
 #include "find_context.h"
@@ -161,6 +162,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
+            handle_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
         auto ret = call_downstream(ctx, k, v, target, resource, context);
@@ -178,6 +180,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         if (res == status::not_found) {
             return {};
         }
+        handle_errors(*ctx.req_context(), res);
         return error_abort(ctx, res);
     }
     while(true) {
@@ -186,6 +189,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
+            handle_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
         if(auto res = it->key(k); res != status::ok) {
@@ -195,6 +199,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
                 continue;
             }
             finish(context);
+            handle_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
         if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {

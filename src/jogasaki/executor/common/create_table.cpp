@@ -27,6 +27,7 @@
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/handle_errors.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
@@ -85,12 +86,15 @@ bool create_sequence_for_generated_pk(
         );
 //        provider.add_sequence(p);  // sequence definition is added in serializer, no need to add it here
     } catch (sequence::exception& e) {
-        set_error(
-            context,
-            error_code::sql_execution_exception,
-            string_builder{} << "creating sequence failed with status:" << e.get_status() << " error:" << e.what() << string_builder::to_string,
-            e.get_status()
-        );
+        handle_errors(context, e.get_status());
+        if(! context.error_info()) {
+            set_error(
+                context,
+                error_code::sql_execution_exception,
+                string_builder{} << "creating sequence failed with status:" << e.get_status() << " error:" << e.what() << string_builder::to_string,
+                e.get_status()
+            );
+        }
         return false;
     }
     return true;

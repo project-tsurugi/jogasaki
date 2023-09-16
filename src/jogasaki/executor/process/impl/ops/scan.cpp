@@ -30,6 +30,7 @@
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/handle_errors.h>
 #include <jogasaki/kvs/coder.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -159,6 +160,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
     }
     finish(context);
     if (st != status::not_found) {
+        handle_errors(*ctx.req_context(), st);  // for kvs error
         return error_abort(ctx, st);
     }
     return {};
@@ -226,6 +228,7 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
             ee,
             ctx.it_
         ); res != status::ok) {
+        handle_errors(*ctx.req_context(), res);
         return res;
     }
     return status::ok;

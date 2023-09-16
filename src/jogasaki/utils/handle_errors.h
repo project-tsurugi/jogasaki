@@ -34,6 +34,7 @@ namespace jogasaki::utils {
  * @note this is generic error handling and is not applicable to all error situation. Depending on the
  * function requirement, it should manually handle and make action for the specific errors.
  * @note this function doesn't handle warnings such as status::not_found, status::already_exists.
+ * @note this function handle only known kvs errors, so generic unknown errors should be caught outside
  */
 void handle_errors_impl(
     request_context& context,

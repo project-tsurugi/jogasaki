@@ -71,36 +71,6 @@ operation_status error_abort_impl(
                 res
             );
             break;
-        case status::err_serialization_failure:
-            error::set_error_impl(
-                *ctx.req_context(),
-                error_code::cc_exception,
-                string_builder{} << "Serialization failed." << string_builder::to_string,
-                filepath,
-                position,
-                res
-            );
-            break;
-        case status::err_conflict_on_write_preserve:
-            error::set_error_impl(
-                *ctx.req_context(),
-                error_code::conflict_on_write_preserve_exception,
-                string_builder{} << "Occ read conflicted on some write preserve and aborted." << string_builder::to_string,
-                filepath,
-                position,
-                res
-            );
-            break;
-        case status::err_inactive_transaction:
-            error::set_error_impl(
-                *ctx.req_context(),
-                error_code::inactive_transaction_exception,
-                string_builder{} << "Current transaction is inactive (maybe aborted already.)" << string_builder::to_string,
-                filepath,
-                position,
-                res
-            );
-            break;
         case status::err_data_corruption:
             error::set_error_impl(
                 *ctx.req_context(),

@@ -138,6 +138,15 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 }
                 // TODO error handling for secondary index, multiple tuples
                 handle_errors(context, res);
+                if(! context.error_info()) {
+                    set_error(
+                        context,
+                        error_code::sql_service_exception,
+                        string_builder{} <<
+                            "Unexpected error occurred. status:" << res << string_builder::to_string,
+                        res
+                    );
+                }
                 return false;
             }
         }

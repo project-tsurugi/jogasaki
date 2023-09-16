@@ -18,7 +18,6 @@
 #include <vector>
 
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 
 #include <takatori/relation/join_find.h>
 #include <yugawara/binding/factory.h>
@@ -29,6 +28,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/handle_errors.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -39,7 +39,6 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 namespace details {
 
@@ -104,11 +103,8 @@ bool matcher::operator()(
             key, kvs::end_point_kind::prefixed_inclusive,
             it_
         ); res != status::ok) {
-        if (res == status::not_found || res == status::err_inactive_transaction) {
             status_ = res;
             return false;
-        }
-        fail();
     }
 
     // remember parameters for current scan
@@ -218,6 +214,7 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
             // match condition saw null. No record should match.
             return {};
         }
+        handle_errors(*ctx.req_context(), res);
         return error_abort(ctx, res);
     }
     return {};

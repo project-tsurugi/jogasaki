@@ -31,81 +31,83 @@ void handle_errors_impl(
 ) noexcept {
     if(res == status::ok) return;
 
-    // warnings are context dependent and must be handled by the caller
-    if(res == status::already_exists) return;
-    if(res == status::not_found) return;
-    if(res == status::user_rollback) return;
-    if(res == status::waiting_for_other_transaction) return;
+    switch(res) {
+        // warnings are context dependent and must be handled by the caller
+        case status::already_exists: return;
+        case status::not_found: return;
+        case status::user_rollback: return;
+        case status::waiting_for_other_transaction: return;
 
-    if(res == status::err_serialization_failure) {
-        error::set_error_impl(
-            context,
-            error_code::cc_exception,
-            string_builder{} <<
-                "Serialization failed. " << string_builder::to_string,
-            filepath,
-            position,
-            res
-        );
-        return;
+        case status::err_serialization_failure: {
+            error::set_error_impl(
+                context,
+                error_code::cc_exception,
+                "Serialization failed. ",
+                filepath,
+                position,
+                res
+            );
+            return;
+        }
+        case status::err_conflict_on_write_preserve: {
+            error::set_error_impl(
+                context,
+                error_code::conflict_on_write_preserve_exception,
+                "Serialization failed due to conflict on write preserve. ",
+                filepath,
+                position,
+                res
+            );
+            return;
+        }
+        case status::err_read_area_violation: {
+            error::set_error_impl(
+                context,
+                error_code::read_operation_on_restricted_read_area_exception,
+                "Read operation outside read area.",
+                filepath,
+                position,
+                res
+            );
+            return;
+        }
+        case status::err_write_without_write_preserve: {
+            error::set_error_impl(
+                context,
+                error_code::ltx_write_operation_without_write_preserve_exception,
+                "Ltx write operation outside write preserve.",
+                filepath,
+                position,
+                res
+            );
+            return;
+        }
+        case status::err_write_operation_by_rtx: {
+            error::set_error_impl(
+                context,
+                error_code::write_operation_by_rtx_exception,
+                "Write operation by rtx.",
+                filepath,
+                position,
+                res
+            );
+            return;
+        }
+        case status::err_inactive_transaction: {
+            error::set_error_impl(
+                context,
+                error_code::inactive_transaction_exception,
+                "Current transaction is inactive (maybe aborted already.)",
+                filepath,
+                position,
+                res
+            );
+            return;
+        }
+        default:
+            // no-op - only known error is handled
+            break;
     }
-    if(res == status::err_conflict_on_write_preserve) {
-        error::set_error_impl(
-            context,
-            error_code::conflict_on_write_preserve_exception,
-            string_builder{} <<
-                "Serialization failed due to conflict on write preserve. " << string_builder::to_string,
-            filepath,
-            position,
-            res
-        );
-        return;
-    }
-    if(res == status::err_read_area_violation) {
-        error::set_error_impl(
-            context,
-            error_code::read_operation_on_restricted_read_area_exception,
-            string_builder{} <<
-                "Read operation outside read area." << string_builder::to_string,
-            filepath,
-            position,
-            res
-        );
-        return;
-    }
-    if(res == status::err_write_without_write_preserve) {
-        error::set_error_impl(
-            context,
-            error_code::ltx_write_operation_without_write_preserve_exception,
-            string_builder{} <<
-                "Ltx write operation outside write preserve." << string_builder::to_string,
-            filepath,
-            position,
-            res
-        );
-        return;
-    }
-    if(res == status::err_write_operation_by_rtx) {
-        error::set_error_impl(
-            context,
-            error_code::write_operation_by_rtx_exception,
-            string_builder{} <<
-                "Write operation by rtx." << string_builder::to_string,
-            filepath,
-            position,
-            res
-        );
-        return;
-    }
-    error::set_error_impl(
-        context,
-        error_code::sql_service_exception,
-        string_builder{} <<
-            "Unexpected error occurred. status:" << res << string_builder::to_string,
-        filepath,
-        position,
-        res
-    );
 }
 }
 

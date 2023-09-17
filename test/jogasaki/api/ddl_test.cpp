@@ -48,10 +48,9 @@ using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
 using decimal_v = takatori::decimal::triple;
-
 using takatori::util::unsafe_downcast;
-
 using kind = meta::field_type_kind;
+using api::impl::get_impl;
 
 class ddl_test:
     public ::testing::Test,
@@ -70,6 +69,16 @@ public:
 
     void TearDown() override {
         db_teardown();
+    }
+
+    void test_prepare_err(std::string_view stmt, error_code expected) {
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{};
+        std::shared_ptr<error::error_info> error{};
+        auto st = get_impl(*db_).prepare(stmt, variables, prepared, error);
+        ASSERT_TRUE(error);
+        std::cerr << *error << std::endl;
+        ASSERT_EQ(expected, error->code());
     }
 };
 
@@ -224,29 +233,25 @@ TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
 }
 
 TEST_F(ddl_test, existing_table) {
-    execute_statement( "CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)");
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::err_compiler_error,db_->prepare("CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", variables, prepared));
+    execute_statement("CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)");
+    test_prepare_err("CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", error_code::compile_exception);
 }
 
 TEST_F(ddl_test, duplicate_table_name) {
     // test compile time error and runtime error with existing table
-    api::statement_handle prepared0{}, prepared1{}, prepared2{};
+    api::statement_handle prepared0{}, prepared1{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared0));
     ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared1));
     execute_statement( "CREATE TABLE TTT (C0 INT PRIMARY KEY)");
-    ASSERT_EQ(status::err_compiler_error, db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared2));
+    test_prepare_err("CREATE TABLE TTT (C0 INT PRIMARY KEY)", error_code::compile_exception);
     test_stmt_err(prepared1, error_code::target_already_exists_exception);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared0));
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared1));
 }
 
 TEST_F(ddl_test, drop_missing_table) {
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    ASSERT_EQ(status::err_compiler_error,db_->prepare("DROP TABLE DUMMY111", variables, prepared));
+    test_prepare_err("DROP TABLE DUMMY111", error_code::symbol_analyze_exception);
 }
 
 TEST_F(ddl_test, drop_missing_table_runtime) {
@@ -400,12 +405,10 @@ TEST_F(ddl_test, type_name_variants) {
 }
 
 TEST_F(ddl_test, unsupported_types) {
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 BOOLEAN PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 TINYINT PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 SMALLINT PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 BINARY VARYING(4) PRIMARY KEY)", variables, prepared));
+    test_prepare_err("CREATE TABLE T (C0 BOOLEAN PRIMARY KEY)", error_code::syntax_exception);
+    test_prepare_err("CREATE TABLE T (C0 TINYINT PRIMARY KEY)", error_code::syntax_exception);
+    test_prepare_err("CREATE TABLE T (C0 SMALLINT PRIMARY KEY)", error_code::syntax_exception);
+    test_prepare_err("CREATE TABLE T (C0 BINARY VARYING(4) PRIMARY KEY)", error_code::syntax_exception);
 }
 
 TEST_F(ddl_test, decimal_args) {
@@ -421,16 +424,16 @@ TEST_F(ddl_test, string_args) {
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT0 (C0 CHAR PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE TT1 (C0 CHAR(*) PRIMARY KEY)", variables, prepared));
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE TT2 (C0 VARCHAR PRIMARY KEY)", variables, prepared));
-//    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE TT2 (C0 VARCHAR(0) PRIMARY KEY)", variables, prepared));  // varchar(0) should be error  //TODO
+
+    test_prepare_err("CREATE TABLE TT1 (C0 CHAR(*) PRIMARY KEY)", error_code::syntax_exception);
+    test_prepare_err("CREATE TABLE TT2 (C0 VARCHAR PRIMARY KEY)", error_code::syntax_exception);
+//    test_prepare_err("CREATE TABLE TT2 (C0 VARCHAR(0) PRIMARY KEY)", error_code::syntax_exception);  // varchar(0) should be error  //TODO
+
     EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT3 (C0 VARCHAR(*) PRIMARY KEY)", variables, prepared));
 }
 
 TEST_F(ddl_test, default_value) {
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    EXPECT_EQ(status::err_parse_error, db_->prepare("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT NOT NULL DEFAULT 100)", variables, prepared));
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT NOT NULL DEFAULT 100)", error_code::syntax_exception);
 }
 
 TEST_F(ddl_test, drop_indices_cascade) {

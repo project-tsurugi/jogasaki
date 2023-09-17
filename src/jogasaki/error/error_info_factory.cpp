@@ -25,11 +25,14 @@ std::shared_ptr<error_info> create_error_info_impl(
     std::string_view message,
     std::string_view filepath,
     std::string_view position,
-    status st
+    status st,
+    bool append_stacktrace
 ) {
     std::stringstream ss{};
-    // stacktrace is expensive esp. on debug build
-//    ss << ::boost::stacktrace::stacktrace{};
+    if(append_stacktrace) {
+        // be careful - stacktrace is expensive esp. on debug build
+        ss << ::boost::stacktrace::stacktrace{};
+    }
     auto info = std::make_shared<error_info>(code, message, filepath, position, ss.str());
     info->status(st);
     return info;
@@ -41,17 +44,25 @@ void set_error_impl(
     std::string_view message,
     std::string_view filepath,
     std::string_view position,
-    status st
+    status st,
+    bool append_stacktrace
 ) {
-    auto info = create_error_info_impl(code, message, filepath, position, st);
+    auto info = create_error_info_impl(code, message, filepath, position, st, append_stacktrace);
+    rctx.status_code(st, message);
     if(rctx.error_info(info)) {
         if(rctx.transaction()) {
-            if(code != error_code::inactive_transaction_exception && st != status::err_inactive_transaction) {
-                rctx.transaction()->error_info(info);
+            if(code == error_code::inactive_transaction_exception || st == status::err_inactive_transaction) {
+                // inactive transaction response is statement error, not tx error
+                return;
             }
+            if(static_cast<std::underlying_type_t<status>>(st) > 0 || st == status::waiting_for_other_transaction) {
+                // Warnings should not be passed to this function.
+                // Even in that case, they should not be set as transaction error because they don't abort tx.
+                return;
+            }
+            rctx.transaction()->error_info(info);
         }
     }
-    rctx.status_code(st, message);
 }
 
 }

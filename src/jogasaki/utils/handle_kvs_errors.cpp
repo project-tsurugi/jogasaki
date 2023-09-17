@@ -25,6 +25,7 @@ void handle_kvs_errors_impl(
 ) noexcept {
     if(res == status::ok) return;
 
+    bool append_stacktrace = false;
     switch(res) {
         // warnings are context dependent and must be handled by the caller
         case status::already_exists: return;
@@ -39,7 +40,8 @@ void handle_kvs_errors_impl(
                 "Serialization failed. ",
                 filepath,
                 position,
-                res
+                res,
+                append_stacktrace
             );
             return;
         }
@@ -50,7 +52,8 @@ void handle_kvs_errors_impl(
                 "Serialization failed due to conflict on write preserve. ",
                 filepath,
                 position,
-                res
+                res,
+                append_stacktrace
             );
             return;
         }
@@ -61,7 +64,8 @@ void handle_kvs_errors_impl(
                 "Read operation outside read area.",
                 filepath,
                 position,
-                res
+                res,
+                append_stacktrace
             );
             return;
         }
@@ -72,7 +76,8 @@ void handle_kvs_errors_impl(
                 "Ltx write operation outside write preserve.",
                 filepath,
                 position,
-                res
+                res,
+                append_stacktrace
             );
             return;
         }
@@ -83,7 +88,8 @@ void handle_kvs_errors_impl(
                 "Write operation by rtx.",
                 filepath,
                 position,
-                res
+                res,
+                append_stacktrace
             );
             return;
         }
@@ -94,7 +100,8 @@ void handle_kvs_errors_impl(
                 "Current transaction is inactive (maybe aborted already.)",
                 filepath,
                 position,
-                res
+                res,
+                append_stacktrace
             );
             return;
         }

@@ -113,7 +113,7 @@ void set_compile_error_impl(
     std::string_view position,
     status st
 ) {
-    auto info = error::create_error_info_impl(code, message, filepath, position, st);
+    auto info = error::create_error_info_impl(code, message, filepath, position, st, false);
     ctx.error_info(info);
 }
 

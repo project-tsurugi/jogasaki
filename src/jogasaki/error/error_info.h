@@ -124,6 +124,9 @@ private:
     std::string source_file_position_{};
     std::string stacks_{};
     std::string additional_text_{};
+    std::string supplemental_text_{};
+
+    std::string create_supplemental_text();
 };
 
 /**
@@ -137,8 +140,6 @@ inline std::ostream& operator<<(std::ostream& out, error_info const& value) {
         << "code:" << value.code() << " "
         << "status:" << value.status() << " "
         << "message:\"" << value.message() << "\" "
-        << "source_file:\"" << value.source_file_path() << ":" << value.source_file_position() << "\" "
-        << "additional_text:\"" << value.additional_text() << "\" "
         << "supplemental_text:\"" << value.supplemental_text() << "\"";
 }
 

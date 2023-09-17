@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/error_code.h>
+#include <jogasaki/error/json.hpp>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::error {
@@ -37,8 +38,20 @@ TEST_F(error_info_factory_test, basic) {
     request_context rctx{};
     set_error(rctx, error_code::sql_service_exception, "msg", status::ok);
     auto errinfo = rctx.error_info();
-    LOG(INFO) << "error info:" << *errinfo;
+    ASSERT_TRUE(errinfo);
+    LOG(INFO) << *errinfo;
 }
 
+TEST_F(error_info_factory_test, stacktrace) {
+    request_context rctx{};
+    jogasaki::error::set_error_impl(rctx, error_code::sql_service_exception, "msg", __FILE__, line_number_string, status::ok, true);
+    auto errinfo = rctx.error_info();
+    ASSERT_TRUE(errinfo);
+    LOG(INFO) << *errinfo;
+
+    // manually check if stacktrace is readable with correct line breaks
+    auto j = nlohmann::json::parse(errinfo->supplemental_text());
+    std::cerr << j["stacktrace"].get<std::string>();
+}
 }
 

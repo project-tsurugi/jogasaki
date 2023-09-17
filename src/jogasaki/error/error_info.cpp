@@ -15,6 +15,8 @@
  */
 #include "error_info.h"
 
+#include "json.hpp"
+
 #include <string>
 #include <string_view>
 
@@ -33,8 +35,22 @@ error_info::error_info(
     message_(message),
     source_file_path_(filepath),
     source_file_position_(position),
-    stacks_(stacks)
+    stacks_(stacks),
+    supplemental_text_(create_supplemental_text())
 {}
+
+std::string error_info::create_supplemental_text() {
+    using json = nlohmann::json;
+    json j{};
+    j["source_file"] = source_file_path_ + ":" + source_file_position_;
+    if(! additional_text_.empty()) {
+        j["additional_text"] = additional_text_;
+    }
+    if(! stacks_.empty()) {
+        j["stacktrace"] = stacks_;
+    }
+    return j.dump();
+}
 
 void error_info::status(jogasaki::status st) noexcept {
     status_ = st;
@@ -53,7 +69,7 @@ jogasaki::error_code error_info::code() const noexcept {
 }
 
 std::string_view error_info::supplemental_text() const noexcept {
-    return stacks_;  //FIXME
+    return supplemental_text_;
 }
 
 std::string_view error_info::source_file_path() const noexcept {

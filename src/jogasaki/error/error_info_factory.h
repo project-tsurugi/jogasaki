@@ -27,15 +27,16 @@ namespace jogasaki::error {
 #define stringify2(x) stringify1(x) //NOLINT
 #define line_number_string stringify2(__LINE__)
 
-#define create_error_info(code, msg, st) jogasaki::error::create_error_info_impl(code, msg, __FILE__, line_number_string, st) //NOLINT
-#define set_error(rctx, code, msg, st) jogasaki::error::set_error_impl(rctx, code, msg, __FILE__, line_number_string, st) //NOLINT
+#define create_error_info(code, msg, st) jogasaki::error::create_error_info_impl(code, msg, __FILE__, line_number_string, st, false) //NOLINT
+#define set_error(rctx, code, msg, st) jogasaki::error::set_error_impl(rctx, code, msg, __FILE__, line_number_string, st, false) //NOLINT
 
 std::shared_ptr<error_info> create_error_info_impl(
     jogasaki::error_code code,
     std::string_view message,
     std::string_view filepath,
     std::string_view position,
-    status st
+    status st,
+    bool append_stacktrace
 );
 
 /**
@@ -49,7 +50,8 @@ void set_error_impl(
     std::string_view message,
     std::string_view filepath,
     std::string_view position,
-    status st
+    status st,
+    bool append_stacktrace
 );
 
 }

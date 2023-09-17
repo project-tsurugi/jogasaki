@@ -48,7 +48,8 @@ operation_status error_abort_impl(
                     "Unique constraint violation occurred." << string_builder::to_string,
                 filepath,
                 position,
-                res
+                res,
+                false
             );
             break;
         case status::err_integrity_constraint_violation:
@@ -58,7 +59,8 @@ operation_status error_abort_impl(
                 string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
                 filepath,
                 position,
-                res
+                res,
+                false
             );
             break;
         case status::err_expression_evaluation_failure:
@@ -68,7 +70,8 @@ operation_status error_abort_impl(
                 string_builder{} << "An error occurred in evaluating values." << string_builder::to_string,
                 filepath,
                 position,
-                res
+                res,
+                false
             );
             break;
         case status::err_data_corruption:
@@ -78,7 +81,8 @@ operation_status error_abort_impl(
                 string_builder{} << "Data inconsistency detected." << string_builder::to_string,
                 filepath,
                 position,
-                res
+                res,
+                true // this is high severity
             );
             break;
         case status::err_unsupported:
@@ -88,17 +92,19 @@ operation_status error_abort_impl(
                 string_builder{} << "Executed an unsupported feature." << string_builder::to_string,
                 filepath,
                 position,
-                res
+                res,
+                true
             );
             break;
         default:
             error::set_error_impl(
                 *ctx.req_context(),
                 error_code::sql_execution_exception,
-                string_builder{} << "creating transaction failed with error:" << res << string_builder::to_string,
+                string_builder{} << "Unexpected error occurred. status:" << res << string_builder::to_string,
                 filepath,
                 position,
-                res
+                res,
+                true
             );
             break;
     }

@@ -440,13 +440,19 @@ kvs::transaction_option from(transaction_option const& option, yugawara::storage
 }
 
 status database::do_create_transaction(transaction_handle& handle, transaction_option const& option) {
+    std::shared_ptr<api::error_info> out{};
+    return do_create_transaction(handle, option, out);
+}
+
+status database::do_create_transaction(transaction_handle& handle, transaction_option const& option, std::shared_ptr<api::error_info>& out) {
     std::atomic_bool completed = false;
     status ret{status::ok};
-    auto jobid = do_create_transaction_async([&handle, &completed, &ret](transaction_handle h, status st, std::string_view msg){
+    auto jobid = do_create_transaction_async([&handle, &completed, &ret, &out](transaction_handle h, status st, std::shared_ptr<api::error_info> info){
         completed = true;
+        out = info;
         if(st != status::ok) {
             ret = st;
-            VLOG(log_error) << log_location_prefix << "do_create_transaction failed with error : " << st << " " << msg;
+            VLOG(log_error) << log_location_prefix << "do_create_transaction failed with error : " << info->code() << " " << info->message();
             return;
         }
         handle = h;

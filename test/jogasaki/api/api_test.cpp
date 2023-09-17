@@ -565,7 +565,7 @@ TEST_F(api_test, unresolved_parameters) {
     }
 }
 
-TEST_F(api_test, char_data_too_long) {
+TEST_F(api_test, char_data_too_long_insert) {
     execute_statement("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (0,'00000', '11111')");
     {
         std::unique_ptr<api::executable_statement> stmt{};
@@ -585,9 +585,42 @@ TEST_F(api_test, char_data_too_long) {
     }
 }
 
+TEST_F(api_test, char_data_too_long_update) {
+    execute_statement("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (0,'00000', '11111')");
+    {
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("UPDATE CHAR_TAB SET VC='00000X' WHERE C0=0", stmt));
+        auto tx = utils::create_transaction(*db_);
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+    {
+        std::unique_ptr<api::executable_statement> stmt{};
+        ASSERT_EQ(status::ok, db_->create_executable("UPDATE CHAR_TAB SET CH='111111' WHERE C0=0", stmt));
+        auto tx = utils::create_transaction(*db_);
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
+        ASSERT_EQ(status::ok, tx->abort());
+    }
+}
+
 TEST_F(api_test, bad_wp_storage_name) {
     api::transaction_handle tx{};
-    ASSERT_NE(status::ok, db_->create_transaction(tx, api::transaction_option{false, true, {"DUMMY_STORAGE"}}));
+    std::shared_ptr<api::error_info> info{};
+    auto res = get_impl(*db_).do_create_transaction(tx, api::transaction_option{false, true, {"DUMMY_STORAGE"}}, info);
+    ASSERT_TRUE(info);
+    std::cerr << *info;
+    ASSERT_EQ(error_code::target_not_found_exception, info->code());
+}
+
+TEST_F(api_test, bad_ra_storage_name) {
+    api::transaction_handle tx{};
+    std::shared_ptr<api::error_info> info{};
+    auto res = get_impl(*db_).do_create_transaction(tx, api::transaction_option{false, true, {""}, "", {"DUMMY_STORAGE"}}, info);
+    ASSERT_TRUE(info);
+    std::cerr << *info;
+    ASSERT_EQ(error_code::target_not_found_exception, info->code());
 }
 
 TEST_F(api_test, empty_result) {

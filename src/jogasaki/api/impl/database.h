@@ -154,6 +154,8 @@ public:
 
     status do_create_transaction(transaction_handle& handle, transaction_option const& option) override;
 
+    status do_create_transaction(transaction_handle& handle, transaction_option const& option, std::shared_ptr<api::error_info>& out);
+
     scheduler::job_context::job_id_type do_create_transaction_async(
         create_transaction_callback on_completion,
         transaction_option const& option

@@ -96,6 +96,17 @@ operation_status error_abort_impl(
                 true
             );
             break;
+        case status::err_insufficient_field_storage:
+            error::set_error_impl(
+                *ctx.req_context(),
+                error_code::sql_limit_reached_exception,
+                "Insufficient storage to store field data.",
+                filepath,
+                position,
+                res,
+                false
+            );
+            break;
         default:
             error::set_error_impl(
                 *ctx.req_context(),

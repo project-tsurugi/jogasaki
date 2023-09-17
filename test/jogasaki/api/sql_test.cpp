@@ -361,7 +361,7 @@ TEST_F(sql_test, cast) {
 
 TEST_F(sql_test, cast_failure) {
     execute_statement("create table TT (C0 int primary key)");
-    execute_statement("INSERT INTO TT (C0) VALUES (CAST('BADVALUE' AS INT))", status::err_expression_evaluation_failure);
+    test_stmt_err("INSERT INTO TT (C0) VALUES (CAST('BADVALUE' AS INT))", error_code::value_evaluation_exception);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0 FROM TT", result);

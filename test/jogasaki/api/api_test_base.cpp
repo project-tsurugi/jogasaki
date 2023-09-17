@@ -286,8 +286,26 @@ void api_test_base::test_stmt_err(
             .run()
             .report()
     );
-    ASSERT_EQ(expected, result->code());
     std::cerr << *result << std::endl;
+    ASSERT_EQ(expected, result->code());
+}
+
+void api_test_base::test_stmt_err(
+    std::string_view stmt,
+    error_code expected
+) {
+    std::shared_ptr<error::error_info> result{};
+    ASSERT_EQ("",
+        builder()
+            .text(stmt)
+            .expect_error(true)
+            .error(result)
+            .run()
+            .report()
+    );
+    ASSERT_TRUE(result);
+    std::cerr << *result << std::endl;
+    ASSERT_EQ(expected, result->code());
 }
 
 void api_test_base::test_stmt_err(
@@ -304,8 +322,8 @@ void api_test_base::test_stmt_err(
             .report()
     );
     ASSERT_TRUE(result);
-    ASSERT_EQ(expected, result->code());
     std::cerr << *result << std::endl;
+    ASSERT_EQ(expected, result->code());
 }
 
 void api_test_base::explain_statement(

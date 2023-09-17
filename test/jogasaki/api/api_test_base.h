@@ -153,6 +153,10 @@ public:
         error_code expected
     );
 
+    void test_stmt_err(
+        std::string_view stmt,
+        error_code expected
+    );
     void resolve(std::string& query, std::string_view place_holder, std::string value);
 
     void explain_statement(

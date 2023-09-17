@@ -185,6 +185,7 @@ inline sql::status::Status map_status(jogasaki::status s) {
         case jogasaki::status::err_write_without_write_preserve: return sql::status::Status::ERR_ILLEGAL_OPERATION;
         case jogasaki::status::err_read_area_violation: return sql::status::Status::ERR_ILLEGAL_OPERATION;
         case jogasaki::status::err_write_operation_by_rtx: return sql::status::Status::ERR_ILLEGAL_OPERATION;
+        case jogasaki::status::err_invalid_key_length: return sql::status::Status::ERR_INVALID_ARGUMENT;
     }
     fail();
 }

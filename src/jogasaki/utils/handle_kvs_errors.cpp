@@ -105,6 +105,18 @@ void handle_kvs_errors_impl(
             );
             return;
         }
+        case status::err_invalid_key_length: {
+            error::set_error_impl(
+                context,
+                error_code::sql_limit_reached_exception,
+                "The key length to manipulate the kvs entry is invalid (e.g. too long.)",
+                filepath,
+                position,
+                res,
+                append_stacktrace
+            );
+            return;
+        }
         default:
             // no-op - only known error is handled
             break;

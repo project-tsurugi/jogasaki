@@ -75,9 +75,9 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
         
           (例: ビュー定義が存在したままで表定義を削除しようとした)
         
-      - WriteOperationByRtxException (SQL-02022: Rtxによって書き込み操作が実行された)
-      - LtxWriteOperationWithoutWritePreserveException (SQL-02023: LTXがWP指定した以外の領域へ書き込み操作を要求した)
-      - ReadOperationOnRestrictedReadAreaException (SQL-02024: 禁止されているread areaをreadした)
+      - WriteOperationByRtxException (SQL-02022: Rtxによって書き込み操作が実行された) ※
+      - LtxWriteOperationWithoutWritePreserveException (SQL-02023: LTXがWP指定した以外の領域へ書き込み操作を要求した) ※
+      - ReadOperationOnRestrictedReadAreaException (SQL-02024: 禁止されているread areaをreadした) ※
       - InactiveTransactionException (SQL-02025: commit/abort済のトランザクションに対する操作が要求された) ※
 
     - ParameterException (SQL-02027: プレースホルダーやパラメーターに関するエラー)
@@ -89,7 +89,7 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
     - DumpFileException (SQL-02033: ダンプファイルに関するエラー)
       - DumpDirectoryInaccessibleException (SQL-02034: ダンプに指定されたディレクトリがアクセス可能でない)
 
-    - SqlLimitReachedException (SQL-02036: 許可されたSQL操作の制限に達した)
+    - SqlLimitReachedException (SQL-02036: 許可されたSQL操作の制限に達した) ※
       - TransactionExceededLimitException (SQL-02037: 許同時作成可能なトランザクション数の制限を越えたためトランザクション開始に失敗した)
 
     - SqlRequestTimeoutException (SQL-02039: SQL操作要求がタイムアウトした)

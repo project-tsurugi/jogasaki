@@ -107,6 +107,7 @@ public:
      * @param end_kind endpoint of the end key
      * @param it[out] iterator for the scan result
      * @return status::ok if the operation is successful
+     * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
      * @note this function just prepares iterator without starting scan, so status::not_found is not returned.
      */
@@ -126,6 +127,7 @@ public:
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry for the key is not found
      * @return status::err_serialization_failure on early abort
+     * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
      */
     [[nodiscard]] status get(
@@ -145,6 +147,7 @@ public:
      * @return status::not_found if the option is `update` and the record doesn't exist for the key
      * @return status::err_serialization_failure on early abort
      * @return status::err_write_operation_by_rtx if transaction is read-only
+     * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
      */
     [[nodiscard]] status put(
@@ -162,6 +165,7 @@ public:
      * @return status::not_found if the entry for the key is not found
      * @return status::err_serialization_failure on early abort
      * @return status::err_write_operation_by_rtx if transaction is read-only
+     * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
      */
     [[nodiscard]] status remove(

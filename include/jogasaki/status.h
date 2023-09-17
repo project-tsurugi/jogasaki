@@ -64,6 +64,7 @@ enum class status : std::int64_t {
     err_write_without_write_preserve = -28,
     err_read_area_violation = -29,
     err_write_operation_by_rtx = -30,
+    err_invalid_key_length = -31,
 
     // internal status
     waiting_for_other_transaction = -10001,
@@ -113,6 +114,7 @@ enum class status : std::int64_t {
         case status::err_write_without_write_preserve: return "err_write_without_write_preserve"sv;
         case status::err_read_area_violation: return "err_read_area_violation"sv;
         case status::err_write_operation_by_rtx: return "err_write_operation_by_rtx"sv;
+        case status::err_invalid_key_length: return "err_invalid_key_length"sv;
 
         case status::waiting_for_other_transaction: return "waiting_for_other_transaction"sv;
     }

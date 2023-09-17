@@ -15,12 +15,15 @@
  */
 #include "error_info.h"
 
+#include <glog/logging.h>
 #include "json.hpp"
 
 #include <string>
 #include <string_view>
 
 #include <jogasaki/status.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 
 namespace jogasaki::error {
 
@@ -39,17 +42,22 @@ error_info::error_info(
     supplemental_text_(create_supplemental_text())
 {}
 
-std::string error_info::create_supplemental_text() {
+std::string error_info::create_supplemental_text() noexcept {
     using json = nlohmann::json;
-    json j{};
-    j["source_file"] = source_file_path_ + ":" + source_file_position_;
-    if(! additional_text_.empty()) {
-        j["additional_text"] = additional_text_;
+    try {
+        json j{};
+        j["source_file"] = source_file_path_ + ":" + source_file_position_;
+        if(! additional_text_.empty()) {
+            j["additional_text"] = additional_text_;
+        }
+        if(! stacks_.empty()) {
+            j["stacktrace"] = stacks_;
+        }
+        return j.dump();
+    } catch (json::exception const& e) {
+        VLOG_LP(log_error) << "json exception " << e.what();
     }
-    if(! stacks_.empty()) {
-        j["stacktrace"] = stacks_;
-    }
-    return j.dump();
+    return {};
 }
 
 void error_info::status(jogasaki::status st) noexcept {

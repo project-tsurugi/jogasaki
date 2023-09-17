@@ -126,7 +126,7 @@ private:
     std::string additional_text_{};
     std::string supplemental_text_{};
 
-    std::string create_supplemental_text();
+    std::string create_supplemental_text() noexcept;
 };
 
 /**

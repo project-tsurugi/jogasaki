@@ -112,7 +112,7 @@ public:
         auto sz = sv.length();
         if(max_len < sz) {
             VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
-            return status::err_type_mismatch;
+            return status::err_insufficient_field_storage;
         }
         do_write(sv.data(), sz, odr);
         if(add_padding) {
@@ -140,7 +140,7 @@ public:
         auto sz = sv.length();
         if(max_len < sz) {
             VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
-            return status::err_type_mismatch;
+            return status::err_insufficient_field_storage;
         }
         auto len = static_cast<details::binary_encoding_prefix_type>(sz);
         do_write<details::binary_encoding_prefix_type_bits>(details::key_encode<details::binary_encoding_prefix_type_bits>(len, odr));

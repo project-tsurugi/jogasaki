@@ -32,7 +32,9 @@
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/executor/executor.h>
 #include "api_test_base.h"
 #include "../test_utils/temporary_folder.h"
 #include <jogasaki/utils/create_tx.h>
@@ -68,6 +70,7 @@ public:
         db_teardown();
     }
 
+    std::shared_ptr<error::error_info> execute(api::transaction_handle tx, api::executable_statement& stmt);
 };
 
 using namespace std::string_view_literals;
@@ -112,12 +115,21 @@ TEST_F(api_test, inconsistent_type_in_query) {
     std::cerr << info->message() << std::endl;
 }
 
+std::shared_ptr<error::error_info> api_test::execute(api::transaction_handle tx, api::executable_statement& stmt) {
+    std::shared_ptr<error::error_info> err{};
+    std::unique_ptr<api::result_set> result{};
+    executor::execute(get_impl(*db_), get_transaction_context(tx), stmt, result, err);
+    std::cerr << *err << std::endl;
+    return err;
+}
+
 TEST_F(api_test, primary_key_violation) {
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     std::unique_ptr<api::executable_statement> stmt{};
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt));
     auto tx = utils::create_transaction(*db_);
-    ASSERT_EQ(status::err_unique_constraint_violation, tx->execute(*stmt));
+    auto err = execute(*tx, *stmt);
+    ASSERT_EQ(error_code::unique_constraint_violation_exception, err->code());
     ASSERT_EQ(status::ok, tx->abort());
 
     std::vector<mock::basic_record> result{};
@@ -135,7 +147,8 @@ TEST_F(api_test, primary_key_violation_in_same_tx) {
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt1));
     auto tx = utils::create_transaction(*db_);
     ASSERT_EQ(status::ok, tx->execute(*stmt0));
-    ASSERT_EQ(status::err_unique_constraint_violation, tx->execute(*stmt1));
+    auto err = execute(*tx, *stmt1);
+    ASSERT_EQ(error_code::unique_constraint_violation_exception, err->code());
     ASSERT_EQ(status::ok, tx->abort());
 
     std::vector<mock::basic_record> result{};
@@ -154,7 +167,8 @@ TEST_F(api_test, violate_not_null_constraint_by_insert) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO NON_NULLABLES (K0, C1, C2, C3, C4) VALUES (1, 100, 1000.0, 10000.0, '111')", stmt));
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
     {
@@ -162,7 +176,8 @@ TEST_F(api_test, violate_not_null_constraint_by_insert) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO NON_NULLABLES (C0, C1, C2, C3, C4) VALUES (10, 100, 1000.0, 10000.0, '111')", stmt));
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
 
@@ -179,7 +194,8 @@ TEST_F(api_test, violate_not_null_constraint_by_update) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable("UPDATE NON_NULLABLES SET C0=NULL WHERE K0=1", stmt));
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
 
@@ -199,7 +215,8 @@ TEST_F(api_test, violate_not_null_pk_constraint_by_update) {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable("UPDATE NON_NULLABLES SET K0=NULL WHERE K0=1", stmt));
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*stmt));
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
     if (jogasaki::kvs::implementation_id() != "memory") {
@@ -225,7 +242,8 @@ TEST_F(api_test, violate_not_null_constraint_by_insert_host_variable) {
         ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
 
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
         ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
     }
@@ -243,7 +261,8 @@ TEST_F(api_test, violate_not_null_constraint_by_insert_host_variable) {
         ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
 
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
         ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
     }
@@ -269,7 +288,8 @@ TEST_F(api_test, violate_not_null_constraint_by_update_host_variable_non_pkey) {
         ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
 
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
         ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
     }
@@ -291,7 +311,8 @@ TEST_F(api_test, violate_not_null_constraint_by_update_host_variable_pkey) {
         ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
 
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_integrity_constraint_violation, tx->execute(*exec));
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(error_code::not_null_constraint_violation_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
         ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
     }
@@ -358,9 +379,9 @@ TEST_F(api_test, resolve_host_variable) {
     std::unordered_map<std::string, api::field_type_kind> variables{};
     variables.emplace("p0", api::field_type_kind::int8);
 
-    execute_statement( "DELETE FROM T0");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
+    execute_statement("DELETE FROM T0");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
     {
         auto ps = api::create_parameter_set();
         ps->set_int8("p0", 1);
@@ -392,9 +413,9 @@ TEST_F(api_test, scan_with_host_variable) {
     variables.emplace("p0", api::field_type_kind::int8);
     variables.emplace("p1", api::field_type_kind::int8);
 
-    execute_statement( "DELETE FROM T0");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (20,20.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (10,10.0)");
+    execute_statement("DELETE FROM T0");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (20,20.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (10,10.0)");
     {
         auto ps = api::create_parameter_set();
         ps->set_int8("p0", 15);
@@ -425,11 +446,11 @@ TEST_F(api_test, scan_with_host_variable) {
 
 TEST_F(api_test, join_find_with_key_null) {
     // test join_find op, key contains null TODO move to join_find op UT rather than using SQL
-    execute_statement( "DELETE FROM T0");
-    execute_statement( "DELETE FROM T1");
-    execute_statement( "INSERT INTO T1 (C0) VALUES (1)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (20,20.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (10,10.0)");
+    execute_statement("DELETE FROM T0");
+    execute_statement("DELETE FROM T1");
+    execute_statement("INSERT INTO T1 (C0) VALUES (1)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (20,20.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (10,10.0)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T0 JOIN T1 ON T0.C0 = T1.C1", result);
@@ -441,9 +462,9 @@ TEST_F(api_test, host_variable_same_name_different_type) {
     std::unordered_map<std::string, api::field_type_kind> variables1{{"p0", api::field_type_kind::int8}};
     std::unordered_map<std::string, api::field_type_kind> variables2{{"p0", api::field_type_kind::float8}};
 
-    execute_statement( "DELETE FROM T0");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
+    execute_statement("DELETE FROM T0");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2,20.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1,10.0)");
     {
         auto ps = api::create_parameter_set();
         ps->set_int8("p0", 1);
@@ -545,19 +566,21 @@ TEST_F(api_test, unresolved_parameters) {
 }
 
 TEST_F(api_test, char_data_too_long) {
-    execute_statement( "INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (0,'00000', '11111')");
+    execute_statement("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (0,'00000', '11111')");
     {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (1,'00000X', '11111')", stmt));
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_type_mismatch, tx->execute(*stmt));
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
     {
         std::unique_ptr<api::executable_statement> stmt{};
         ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (2,'00000', '111111')", stmt));
         auto tx = utils::create_transaction(*db_);
-        ASSERT_EQ(status::err_type_mismatch, tx->execute(*stmt));
+        auto err = execute(*tx, *stmt);
+        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
 }
@@ -622,8 +645,14 @@ TEST_F(api_test, err_inactive_tx) {
     ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 (C0, C1) VALUES (1, 20.0)", stmt1));
     auto tx = utils::create_transaction(*db_);
     ASSERT_EQ(status::ok, tx->execute(*stmt0));
-    ASSERT_EQ(status::err_unique_constraint_violation, tx->execute(*stmt1));
-    ASSERT_EQ(status::err_inactive_transaction, tx->execute(*stmt0));
+    {
+        auto err = execute(*tx, *stmt1);
+        ASSERT_EQ(error_code::unique_constraint_violation_exception, err->code());
+    }
+    {
+        auto err = execute(*tx, *stmt0);
+        ASSERT_EQ(error_code::inactive_transaction_exception, err->code());
+    }
     ASSERT_EQ(status::ok, tx->abort());
 }
 

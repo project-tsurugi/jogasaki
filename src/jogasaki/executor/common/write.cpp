@@ -174,8 +174,7 @@ void handle_encode_error(
         set_error(
             ctx,
             error_code::data_corruption_exception,
-            string_builder{} <<
-                "Data inconsistency detected." << string_builder::to_string,
+            "Data inconsistency detected.",
             st
         );
         return;
@@ -184,8 +183,16 @@ void handle_encode_error(
         set_error(
             ctx,
             error_code::value_evaluation_exception,
-            string_builder{} <<
-                "An error occurred in evaluating values. Encoding failed." << string_builder::to_string,
+            "An error occurred in evaluating values. Encoding failed.",
+            st
+        );
+        return;
+    }
+    if(st == status::err_insufficient_field_storage) {
+        set_error(
+            ctx,
+            error_code::sql_limit_reached_exception,
+            "Insufficient storage to store field data.",
             st
         );
         return;

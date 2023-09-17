@@ -238,7 +238,7 @@ TEST_F(ddl_test, duplicate_table_name) {
     ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared1));
     execute_statement( "CREATE TABLE TTT (C0 INT PRIMARY KEY)");
     ASSERT_EQ(status::err_compiler_error, db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared2));
-    execute_statement(prepared1, status::err_already_exists);
+    test_stmt_err(prepared1, error_code::target_already_exists_exception);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared0));
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared1));
 }
@@ -251,12 +251,12 @@ TEST_F(ddl_test, drop_missing_table) {
 
 TEST_F(ddl_test, drop_missing_table_runtime) {
     // test runtime error with missing table
-    execute_statement( "CREATE TABLE TTT (C0 INT PRIMARY KEY)");
+    execute_statement("CREATE TABLE TTT (C0 INT PRIMARY KEY)");
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     ASSERT_EQ(status::ok,db_->prepare("DROP TABLE TTT", variables, prepared));
-    execute_statement( "DROP TABLE TTT");
-    execute_statement(prepared, status::err_not_found);
+    execute_statement("DROP TABLE TTT");
+    test_stmt_err(prepared, error_code::target_not_found_exception);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared));
 }
 

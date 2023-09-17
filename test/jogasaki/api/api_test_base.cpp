@@ -290,6 +290,24 @@ void api_test_base::test_stmt_err(
     std::cerr << *result << std::endl;
 }
 
+void api_test_base::test_stmt_err(
+    api::statement_handle stmt,
+    error_code expected
+) {
+    std::shared_ptr<error::error_info> result{};
+    ASSERT_EQ("",
+        builder()
+            .prepared(stmt)
+            .expect_error(true)
+            .error(result)
+            .run()
+            .report()
+    );
+    ASSERT_TRUE(result);
+    ASSERT_EQ(expected, result->code());
+    std::cerr << *result << std::endl;
+}
+
 void api_test_base::explain_statement(
     std::string_view query,
     std::string& out,

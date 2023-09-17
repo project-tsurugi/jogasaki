@@ -15,14 +15,18 @@
  */
 #include "drop_table.h"
 
+#include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/executor/sequence/exception.h>
 
 namespace jogasaki::executor::common {
+
+using takatori::util::string_builder;
 
 drop_table::drop_table(takatori::statement::drop_table& ct) noexcept:
     ct_(std::addressof(ct))
@@ -68,8 +72,12 @@ bool drop_table::operator()(request_context& context) const {
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
     auto t = provider.find_table(c.simple_name());
     if(t == nullptr) {
-        VLOG_LP(log_error) << "table '" << c.simple_name() << "' not found";
-        context.status_code(status::err_not_found);
+        set_error(
+            context,
+            error_code::target_not_found_exception,
+            string_builder{} << "Table \"" << c.simple_name() << "\" not found." << string_builder::to_string,
+            status::err_not_found
+        );
         return false;
     }
 
@@ -92,8 +100,7 @@ bool drop_table::operator()(request_context& context) const {
     for(auto&& n : indices) {
         if(auto stg = context.database()->get_storage(n)) {
             if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-                VLOG_LP(log_error) << "deleting storage '" << n << "' failed: " << res;
-                context.status_code(status::err_unknown);
+                handle_generic_error(context, status::err_unknown, error_code::sql_execution_exception);
                 return false;
             }
         }
@@ -101,8 +108,7 @@ bool drop_table::operator()(request_context& context) const {
 
     if(auto stg = context.database()->get_storage(c.simple_name())) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
-            VLOG_LP(log_error) << "deleting storage '" << c.simple_name() << "' failed: " << res;
-            context.status_code(status::err_unknown);
+            handle_generic_error(context, status::err_unknown, error_code::sql_execution_exception);
             return false;
         }
     }

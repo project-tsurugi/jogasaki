@@ -148,6 +148,10 @@ public:
         api::transaction_handle& tx,
         error_code expected
     );
+    void test_stmt_err(
+        api::statement_handle stmt,
+        error_code expected
+    );
 
     void resolve(std::string& query, std::string_view place_holder, std::string value);
 

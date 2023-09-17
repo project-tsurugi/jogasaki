@@ -447,7 +447,7 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
 status database::do_create_transaction(transaction_handle& handle, transaction_option const& option, std::shared_ptr<api::error_info>& out) {
     std::atomic_bool completed = false;
     status ret{status::ok};
-    auto jobid = do_create_transaction_async([&handle, &completed, &ret, &out](transaction_handle h, status st, std::shared_ptr<api::error_info> info){
+    auto jobid = do_create_transaction_async([&handle, &completed, &ret, &out](transaction_handle h, status st, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
         completed = true;
         out = info;
         if(st != status::ok) {

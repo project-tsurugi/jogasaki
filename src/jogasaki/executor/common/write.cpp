@@ -39,6 +39,7 @@
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/coder.h>
@@ -138,15 +139,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 }
                 // TODO error handling for secondary index, multiple tuples
                 handle_kvs_errors(context, res);
-                if(! context.error_info()) {
-                    set_error(
-                        context,
-                        error_code::sql_service_exception,
-                        string_builder{} <<
-                            "Unexpected error occurred. status:" << res << string_builder::to_string,
-                        res
-                    );
-                }
+                handle_generic_error(context, res, error_code::sql_service_exception);
                 return false;
             }
         }

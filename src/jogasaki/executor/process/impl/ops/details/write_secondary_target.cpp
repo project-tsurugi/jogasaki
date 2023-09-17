@@ -25,6 +25,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
 #include "write_secondary_context.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -83,6 +84,7 @@ status details::write_secondary_target::encode_and_put(
     }
     if(auto res = ctx.stg_->put(tx, k, {}, kvs::put_option::create_or_update); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
+        handle_generic_error(*ctx.req_context(), res, error_code::sql_execution_exception);
         return res;
     }
     return status::ok;
@@ -101,6 +103,7 @@ status details::write_secondary_target::encode_and_remove(
     }
     if(auto res = ctx.stg_->remove(tx, k); ! is_ok(res)) {
         handle_kvs_errors(*ctx.req_context(), res);
+        handle_generic_error(*ctx.req_context(), res, error_code::sql_execution_exception);
         return res;
     }
     return status::ok;

@@ -27,6 +27,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>

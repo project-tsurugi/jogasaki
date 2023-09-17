@@ -107,8 +107,8 @@ public:
      * @param end_kind endpoint of the end key
      * @param it[out] iterator for the scan result
      * @return status::ok if the operation is successful
-     * @return status::not_found if no entry is found for the given key range
      * @return otherwise, other status code
+     * @note this function just prepares iterator without starting scan, so status::not_found is not returned.
      */
     [[nodiscard]] status scan(
         transaction& tx,

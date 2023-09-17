@@ -31,6 +31,7 @@
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/kvs/coder.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -131,7 +132,11 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
     status st{};
-    while((st = ctx.it_->next()) == status::ok) {
+    while(true) {
+        if((st = ctx.it_->next()) != status::ok) {
+            handle_kvs_errors(*ctx.req_context(), st);
+            break;
+        }
         utils::checkpoint_holder cp{resource};
         std::string_view k{};
         std::string_view v{};
@@ -139,12 +144,14 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
             if (st == status::not_found) {
                 continue;
             }
+            handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
         if((st = ctx.it_->value(v)) != status::ok) {
             if (st == status::not_found) {
                 continue;
             }
+            handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
         if (st = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); st != status::ok) {
@@ -160,7 +167,6 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
     }
     finish(context);
     if (st != status::not_found) {
-        handle_kvs_errors(*ctx.req_context(), st);  // for kvs error
         return error_abort(ctx, st);
     }
     return {};
@@ -229,6 +235,7 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
             ctx.it_
         ); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
+        handle_generic_error(*ctx.req_context(), res, error_code::sql_execution_exception);
         return res;
     }
     return status::ok;

@@ -177,9 +177,6 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             it
         ); res != status::ok) {
         finish(context);
-        if (res == status::not_found) {
-            return {};
-        }
         handle_kvs_errors(*ctx.req_context(), res);
         return error_abort(ctx, res);
     }

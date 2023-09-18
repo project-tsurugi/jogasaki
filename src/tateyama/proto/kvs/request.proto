@@ -1,0 +1,284 @@
+syntax = "proto3";
+
+package tateyama.proto.kvs.request;
+
+option java_multiple_files = false;
+option java_package = "com.tsurugidb.kvs.proto";
+option java_outer_classname = "KvsRequest";
+
+import "tateyama/proto/kvs/transaction.proto";
+import "tateyama/proto/kvs/data.proto";
+
+// request message for RPC.
+message Request {
+    // the request message version.
+    uint64 message_version = 1;
+    reserved 2 to 10;
+    reserved 15 to 20;
+    reserved 25 to 30;
+    reserved 32 to 40;
+
+    // the request command.
+    oneof command {
+
+        // begin transaction command.
+        Begin begin = 11;
+
+        // commit transaction command.
+        Commit commit = 12;
+
+        // rollback transaction command.
+        Rollback rollback = 13;
+
+        // GET record command.
+        Get get = 21;
+
+        // PUT record command.
+        Put put = 22;
+
+        // REMOVE record command.
+        Remove remove = 23;
+
+        // SCAN records command.
+        Scan scan = 24;
+
+        // batch command.
+        Batch batch = 31;
+       
+        // GetErrorInfo command. 
+        GetErrorInfo get_error_info = 41;
+       
+        // DisposeTransaction command.
+        DisposeTransaction dispose_transaction = 42;
+    }
+}
+
+// the target index specification.
+message Index {
+
+    // the index specifier.
+    oneof specifier {
+        
+        // the target table name.
+        string table_name = 1;
+    }
+}
+
+// represents a begin transaction command.
+message Begin {
+    // the transaction option.
+    transaction.Option transaction_option = 1;
+}
+
+// the transaction commit status.
+enum CommitStatus {
+    // the default commit status (rely on the database settings).
+    COMMIT_STATUS_UNSPECIFIED = 0;
+    // commit operation has accepted, and the transaction will never abort except system errors.
+    ACCEPTED = 10;
+    // commit data has been visible for others.
+    AVAILABLE = 20;
+    // commit data has been saved on the local disk.
+    STORED = 30;
+    // commit data has been propagated to the all suitable nodes.
+    PROPAGATED = 40;
+}
+
+// represents a commit transaction command.
+message Commit {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+
+    // response will be returned after reaching the commit status.
+    CommitStatus notification_type = 2;
+
+    // dispose the target transaction handle only if notifies a successfully commit to the client.
+    bool auto_dispose = 3;
+}
+
+// represents a rollback transaction command.
+message Rollback {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+}
+
+// occurred when the client side transaction handle is disposed.
+message CloseTransaction {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+}
+
+// represents a GET record command.
+message Get {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+
+    // the source index.
+    Index index = 2;
+
+    // the search key.
+    repeated data.Record keys = 3;
+}
+
+// represents a PUT record command.
+message Put {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+
+    // the destination index.
+    Index index = 2;
+
+    // the record.
+    repeated data.Record records = 3;
+
+    // operation behavior.
+    Type type = 4;
+
+    // PUT operation behavior.
+    enum Type {
+
+        // = OVERWRITE (default behavior).
+        PUT_TYPE_UNSPECIFIED = 0;
+    
+        // Puts a table entry in any case.
+        OVERWRITE = 1;
+    
+        // Puts a table entry only if it is absent.
+        IF_ABSENT = 2;
+    
+        // Puts a table entry only if it is already exists.
+        IF_PRESENT = 3;
+    }
+}
+
+// represents a REMOVE record command.
+message Remove {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+
+    // the destination index.
+    Index index = 2;
+
+    // the search key.
+    repeated data.Record keys = 3;
+
+    // operation behavior.
+    Type type = 4;
+
+    // REMOVE operation behavior.
+    enum Type {
+
+        // = COUNTING (default behavior).
+        REMOVE_TYPE_UNSPECIFIED = 0;
+    
+        // Remove table entries with counting the actually removed entries.
+        COUNTING = 1;
+    
+        // Remove table entries without counting the actually removed entries.
+        INSTANT = 2;
+    }
+}
+
+// represents a SCAN records command.
+message Scan {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+
+    // the source index.
+    Index index = 2;
+
+    // the lower search key.
+    data.Record lower_key = 3;
+
+    // the lower scan bound.
+    Bound lower_bound = 4;
+
+    // the lower search key.
+    data.Record upper_key = 5;
+
+    // the lower scan bound.
+    Bound upper_bound = 6;
+
+    // the scan result channel name.
+    string channel_name = 7;
+
+    // operation behavior.
+    Type type = 8;
+
+    // the scan bound.
+    enum Bound {
+
+        // unbound scan (the endpoint key will be ignored).
+        SCAN_BOUND_UNSPECIFIED = 0;
+
+        // contains records on the key.
+        INCLUSIVE = 1;
+
+        // does not contain records on the key.
+        EXCLUSIVE = 2;
+    }
+
+    // SCAN operation behavior.
+    enum Type {
+
+        // = FORWARD (default behavior).
+        SCAN_TYPE_UNSPECIFIED = 0;
+    
+        // Scans over the table from head to tail.
+        FORWARD = 1;
+    
+        // Scans over the table from tail to head.
+        BACKWARD = 2;
+    }
+}
+
+// represents a batch command.
+message Batch {
+
+    // transaction setting.
+    oneof transaction {
+        // the existing transaction handle.
+        transaction.Handle transaction_handle = 1;
+
+        // starts a new transaction at the beginning.
+        Begin begin = 2;
+    }
+
+    // optional commit operation (explicitly set even if begin a new tx).
+    oneof commit_optional {
+        // the commit operation (transaction handle will be ommitted).
+        Commit commit = 3;
+    }
+
+    // sub-commands in the batch.
+    repeated ScriptElement elements = 4;
+
+    // represents individual operations in batch script (each transaction handle will be ommitted).
+    message ScriptElement {
+
+        // the sub-command.
+        oneof command {
+
+            // GET sub-command.
+            Get get = 1;
+
+            // PUT sub-command.
+            Put put = 2;
+
+            // REMOVE sub-command.
+            Remove remove = 3;
+        }
+    }
+}
+
+// retrieves error information of the transaction.
+message GetErrorInfo {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+}
+
+// occurred when the client side transaction handle is disposed.
+message DisposeTransaction {
+    // the target transaction handle.
+    transaction.Handle transaction_handle = 1;
+}

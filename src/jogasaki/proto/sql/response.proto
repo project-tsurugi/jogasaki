@@ -1,0 +1,264 @@
+syntax = "proto3";
+
+package jogasaki.proto.sql.response;
+
+option java_multiple_files = false;
+option java_package = "com.tsurugidb.sql.proto";
+option java_outer_classname = "SqlResponse";
+
+import "jogasaki/proto/sql/common.proto";
+import "jogasaki/proto/sql/status.proto";
+import "jogasaki/proto/sql/error.proto";
+
+/*
+ * Definition of sub fields for Response.
+ */
+
+/* For response of success when there is no data to return. */
+message Success {
+}
+
+/* For response of error containing a error message. */
+message Error {
+
+  // result status code (to be deprecated)
+  status.Status status = 1;
+
+  // error message text
+  string detail = 2;
+
+  // error code
+  error.Code code = 3;
+
+  // supplemental text for debug purpose
+  string supplemental_text = 4;
+}
+
+
+/*
+ * Each response message
+ */
+
+/* For response to ExecuteStatement, ExecutePreparedStatement, Commit, and/or Rollback. */
+message ResultOnly {
+  oneof result {
+    Success success = 1;
+    Error error = 2;
+  }
+}
+
+/* For response to Begin. */
+message Begin {
+
+  // request is successfully completed.
+  message Success {
+
+    // the transaction handle.
+    common.Transaction transaction_handle = 1;
+
+    // the transaction id for reference.
+    common.TransactionId transaction_id = 2;
+  }
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 1;
+
+    // engine error occurred.
+    Error error = 2;
+  }
+}
+
+/* For response to Prepare. */
+message Prepare {
+  oneof result {
+    common.PreparedStatement prepared_statement_handle = 1;
+    Error error = 2;
+  }
+}
+
+/* For response to ExecuteQuery and/or ExecutePreparedQuery. */
+message ExecuteQuery {
+  string name = 1;  /* The name of the channel to which the ResultSet set will be sent. */
+  ResultSetMetadata record_meta = 2;
+}
+
+/* For response to Explain. */
+message Explain {
+
+  // request is successfully completed.
+  message Success {
+
+    // the content format ID.
+    string format_id = 1;
+
+    // the content format version.
+    uint64 format_version = 2;
+
+    // the explain result contents.
+    string contents = 3;
+
+    // the result set column information, or empty if it does not provided.
+    repeated common.Column columns = 4;
+  }
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 11;
+
+    // deprecated: The result output string of the explain.
+    string output = 1;
+
+    Error error = 2;
+  }
+}
+
+// describe about a table.
+message DescribeTable {
+  reserved 1 to 10;
+
+  // request is successfully completed.
+  message Success {
+
+    // the database name.
+    string database_name = 1;
+
+    // the schema name.
+    string schema_name = 2;
+
+    // the table name.
+    string table_name = 3;
+
+    // the table column information.
+    repeated common.Column columns = 4;
+  }
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 11;
+
+    // engine error was occurred.
+    Error error = 12;
+  }
+}
+
+// execute a statement with 2-D parameter table.
+message Batch {
+  reserved 1 to 10;
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 11;
+
+    // engine error was occurred.
+    Error error = 12;
+  }
+}
+
+message Identifier {
+  // the label.
+  string label = 1;
+}
+
+message Name {
+  // the identfiers.
+  repeated Identifier identifiers = 1;
+}
+
+// execute a list tables.
+message ListTables {
+  reserved 2 to 10;
+
+  // request is successfully completed.
+  message Success {
+    // the table path names.
+    repeated Name table_path_names = 1;
+  }
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 11;
+
+    // engine error was occurred.
+    Error error = 12;
+  }
+}
+
+// execute a getSearchPath.
+message GetSearchPath {
+  reserved 2 to 10;
+  // request is successfully completed.
+
+  message Success {
+    // the search path.
+    repeated Name search_paths = 1;
+  }
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 11;
+
+    // engine error was occurred.
+    Error error = 12;
+  }
+}
+
+// empty message.
+message Void {}
+
+// retrieves error information of the transaction.
+message GetErrorInfo {
+  // the response body.
+  oneof result {
+    // operation was successfully completed and error information was found.
+    Error success = 1;
+
+    // operation was successfully completed but error information was absent.
+    Void error_not_found = 2;
+
+    // engine error occurred while the retrieving existing error information.
+    Error error = 3;
+  }
+}
+
+// execute a DisposeTransaction.
+message DisposeTransaction {
+  // the response body.
+  oneof result {
+    // operation was successfully completed and error information was found.
+    Void success = 1;
+
+    // engine error occurred while the retrieving existing error information.
+    Error error = 2;
+  }
+}
+
+/* For response message from the SQL service. */
+message Response {
+  oneof response {
+    ResultOnly result_only = 1;
+    Begin begin = 2;
+    Prepare prepare = 3;
+    ExecuteQuery execute_query = 4;
+    Explain explain = 5;
+    DescribeTable describe_table = 6;
+    Batch batch = 7;
+    ListTables list_tables = 8;
+    GetSearchPath get_search_path = 9;
+    GetErrorInfo get_error_info = 10;
+    DisposeTransaction dispose_transaction = 11;
+  }
+}
+
+// metadata of result sets.
+message ResultSetMetadata {
+
+  // the column information.
+  repeated common.Column columns = 1;
+}

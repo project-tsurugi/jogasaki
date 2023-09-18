@@ -1,0 +1,373 @@
+syntax = "proto3";
+
+package jogasaki.proto.sql.request;
+
+option java_multiple_files = false;
+option java_package = "com.tsurugidb.sql.proto";
+option java_outer_classname = "SqlRequest";
+
+import "jogasaki/proto/sql/common.proto";
+
+/*
+ * Definition of sub fields for Request.
+ */
+
+// the placeholder for the prepared statements.
+message Placeholder {
+    // the placeholder location.
+    oneof placement {
+        // the placeholder name.
+        string name = 2;
+    }
+    reserved 3 to 10;
+
+    // the placeholder type.
+    oneof type_info {
+        // the atom type.
+        common.AtomType atom_type = 11;
+        // the row type.
+        common.RowType row_type = 12;
+        // the user defined type.
+        common.UserType user_type = 13;
+    }
+    reserved 14 to 19;
+
+    // the type dimension for array types.
+    uint32 dimension = 20;
+}
+
+// the placeholder replacements.
+message Parameter {
+    // the placeholder location.
+    oneof placement {
+        // the placeholder name.
+        string name = 2;
+    }
+    reserved 3 to 10;
+
+    // the replacement values (unset describes NULL).
+    oneof value {
+        // boolean type.
+        bool boolean_value = 11;
+
+        // 32-bit signed integer.
+        sint32 int4_value = 14;
+
+        // 64-bit signed integer.
+        sint64 int8_value = 15;
+
+        // 32-bit floating point number.
+        float float4_value = 16;
+
+        // 64-bit floating point number.
+        double float8_value = 17;
+
+        // multi precision decimal number.
+        common.Decimal decimal_value = 18;
+
+        // character sequence.
+        string character_value = 19;
+
+        // octet sequence.
+        bytes octet_value = 21;
+
+        // bit sequence.
+        common.Bit bit_value = 23;
+
+        // date (number of days offset of epoch 1970-01-01).
+        sint64 date_value = 25;
+
+        // time of day (nano-seconds since 00:00:00).
+        uint64 time_of_day_value = 26;
+
+        // time point.
+        common.TimePoint time_point_value = 27;
+
+        // date-time interval.
+        common.DateTimeInterval datetime_interval_value = 28;
+
+        // time of day with time zone.
+        common.TimeOfDayWithTimeZone time_of_day_with_time_zone_value = 29;
+
+        // time point with time zone.
+        common.TimePointWithTimeZone time_point_with_time_zone_value = 30;
+
+        // reference column position (for load action).
+        uint64 reference_column_position = 51;
+
+        // reference column name (for load action).
+        string reference_column_name = 52;
+    }
+
+    reserved 12, 13, 20, 22, 24, 31 to 40, 41 to 50, 53 to 99;
+}
+
+// the parameter set for the statement.
+message ParameterSet {
+    // a list of parameters.
+    repeated Parameter elements = 1;
+}
+
+// the transaction type.
+enum TransactionType {
+    // use default transaction type.
+    TRANSACTION_TYPE_UNSPECIFIED = 0;
+    // short transactions (optimistic concurrency control).
+    SHORT = 1;
+    // long transactions (pessimistic concurrency control).
+    LONG = 2;
+    // read only transactions (may be abort-free).
+    READ_ONLY = 3;
+}
+
+// the transaction priority.
+enum TransactionPriority {
+    // use default transaction priority.
+    TRANSACTION_PRIORITY_UNSPECIFIED = 0;
+    // halts the running transactions immediately.
+    INTERRUPT = 1;
+    // prevents new transactions and waits for the running transactions will end.
+    WAIT = 2;
+    // halts the running transactions immediately, and keep lock-out until its end.
+    INTERRUPT_EXCLUDE = 3;
+    // prevents new transactions and waits for the running transactions will end, and keep lock-out until its end.
+    WAIT_EXCLUDE = 4;
+}
+
+// individual write preservation entry.
+message WritePreserve {
+    // the target table name to preserve for writes.
+    string table_name = 1;
+}
+
+// individual read area entry.
+message ReadArea {
+    // the target table name of read area, used by inclusive_read_areas and exclusive_read_areas.
+    string table_name = 1;
+}
+
+// options for beginning transactions
+message TransactionOption {
+    // the transaction type.
+    TransactionType type = 1;
+
+    // the transaction priority.
+    TransactionPriority priority = 2;
+
+    // the transaction label.
+    string label = 3;
+
+    // flag indicating whether the operation will change the table definition or not.
+    bool modifies_definitions = 4;
+
+    reserved 5 to 10;
+
+    // write preservations for long transactions.
+    repeated WritePreserve write_preserves = 11;
+
+    // inclusive read areas for long transactions.
+    repeated ReadArea inclusive_read_areas = 12;
+
+    // exclusive read areas for long transactions.
+    repeated ReadArea exclusive_read_areas = 13;
+
+    reserved 14 to 20;
+}
+
+// the transaction commit status.
+enum CommitStatus {
+    // the default commit status (rely on the database settings).
+    COMMIT_STATUS_UNSPECIFIED = 0;
+    // commit operation has accepted, and the transaction will never abort except system errors.
+    ACCEPTED = 10;
+    // commit data has been visible for others.
+    AVAILABLE = 20;
+    // commit data has been saved on the local disk.
+    STORED = 30;
+    // commit data has been propagated to the all suitable nodes.
+    PROPAGATED = 40;
+}
+
+/*
+ * Each request message
+ */
+
+/* For begin request. */
+message Begin {
+  TransactionOption option = 1;
+}
+
+/* For prepare request. */
+message Prepare {
+  string sql = 1;
+  repeated Placeholder placeholders = 2;
+}
+
+/* For execute statement request. */
+message ExecuteStatement {
+  common.Transaction transaction_handle = 1;
+  string sql = 2;
+}
+
+/* For execute query request. */
+message ExecuteQuery {
+  common.Transaction transaction_handle = 1;
+  string sql = 2;
+}
+
+/* For execute prepared statement request. */
+message ExecutePreparedStatement {
+  common.Transaction transaction_handle = 1;
+  common.PreparedStatement prepared_statement_handle = 2;
+  repeated Parameter parameters = 3;
+}
+
+/* For execute prepared query request. */
+message ExecutePreparedQuery {
+  common.Transaction transaction_handle = 1;
+  common.PreparedStatement prepared_statement_handle = 2;
+  repeated Parameter parameters = 3;
+}
+
+// execute a statement with 2-D parameter table.
+message Batch {
+    reserved 1 to 10;
+
+    // the transaction ID.
+    common.Transaction transaction_handle = 11;
+
+    // the statement ID.
+    common.PreparedStatement prepared_statement_handle = 12;
+
+    // the 2-D parameter table.
+    repeated ParameterSet parameter_sets = 13;
+}
+
+// Option for output files on dump failure
+enum DumpFailBehavior {
+    // use default behavior
+    DUMP_FAIL_BEHAVIOR_UNSPECIFIED = 0;
+
+    // delete output files for the failed execution
+    DELETE_FILES = 1;
+
+    // keep output files even if the dump execution fails
+    KEEP_FILES = 2;
+}
+
+// options for dump request
+message DumpOption {
+    reserved 1 to 10;
+
+    // Behavior on failure
+    DumpFailBehavior fail_behavior = 11;
+
+    // record count limit for dump output file
+    uint64 max_record_count_per_file = 12;
+
+    // time unit used for timestamp columns
+    common.TimeUnit timestamp_unit = 13;
+}
+
+/* For execute dump request. */
+message ExecuteDump {
+  common.Transaction transaction_handle = 1;
+  common.PreparedStatement prepared_statement_handle = 2;
+  repeated Parameter parameters = 3;
+  string directory = 4;
+  DumpOption option = 5;
+}
+
+/* For execute load request. */
+message ExecuteLoad {
+  // optional transaction handle (empty for non-transactional load).
+  oneof transaction_handle_opt {
+    common.Transaction transaction_handle = 1;
+  }
+  common.PreparedStatement prepared_statement_handle = 2;
+  repeated Parameter parameters = 3;
+  repeated string file = 4;
+}
+
+/* For commit request. */
+message Commit {
+    common.Transaction transaction_handle = 1;
+
+    // response will be returned after reaching the commit status.
+    CommitStatus notification_type = 2;
+
+    // dispose the target transaction handle only if notifies a successfully commit to the client.
+    bool auto_dispose = 3;
+}
+
+/* For rollback request. */
+message Rollback {
+  common.Transaction transaction_handle = 1;
+}
+
+/* For dispose prepared sql. */
+message DisposePreparedStatement {
+  common.PreparedStatement prepared_statement_handle = 1;
+}
+
+/* For explain prepared sql. */
+message Explain {
+  common.PreparedStatement prepared_statement_handle = 1;
+  repeated Parameter parameters = 2;
+}
+
+// describe about the table.
+message DescribeTable {
+    reserved 1 to 10;
+
+    // the table name to describe.
+    string name = 11;
+}
+
+// describe available table names in the database.
+message ListTables {
+    reserved 1 to 10;
+}
+
+// describe the current search path.
+message GetSearchPath {
+    reserved 1 to 10;
+}
+
+// retrieves error information of the transaction.
+message GetErrorInfo {
+  // the target transaction handle.
+  common.Transaction transaction_handle = 1;
+}
+
+// occurred when the client side transaction handle is disposed.
+message DisposeTransaction {
+  // the target transaction handle.
+  common.Transaction transaction_handle = 1;
+}
+
+/* For request message to the SQL service. */
+message Request {
+  common.Session session_handle = 1;
+  oneof request {
+    Begin begin = 2;
+    Prepare prepare = 3;
+    ExecuteStatement execute_statement = 4;
+    ExecuteQuery execute_query = 5;
+    ExecutePreparedStatement execute_prepared_statement = 6;
+    ExecutePreparedQuery execute_prepared_query = 7;
+    Commit commit = 8;
+    Rollback rollback = 9;
+    DisposePreparedStatement dispose_prepared_statement = 10;
+    // Disconnect disconnect = 11;
+    Explain explain = 12;
+    ExecuteDump execute_dump = 13;
+    ExecuteLoad execute_load = 14;
+    DescribeTable describe_table = 15;
+    Batch batch = 16;
+    ListTables listTables = 17;
+    GetSearchPath getSearchPath = 18;
+    GetErrorInfo get_error_info = 19;
+    DisposeTransaction dispose_transaction = 20;
+  }
+}

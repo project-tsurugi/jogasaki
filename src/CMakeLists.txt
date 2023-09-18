@@ -15,35 +15,12 @@ set(MetadataProtoFiles
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/metadata/storage.proto
         )
 
-add_custom_command(
-        OUTPUT ${SqlProtoFiles}
-        COMMAND ${CMAKE_COMMAND}
-        ARGS -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/common.proto"
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/request.proto"
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/response.proto"
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/status.proto"
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/proto/src/main/protos/jogasaki/proto/sql/error.proto"
-        "${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql"
-)
-
 set(KvsserviceProtoFiles
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/data.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/request.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/response.proto
         ${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs/transaction.proto
         )
-
-add_custom_command(
-        OUTPUT ${KvsserviceProtoFiles}
-        COMMAND ${CMAKE_COMMAND}
-        ARGS -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/data.proto"
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/request.proto"
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/response.proto"
-        "${CMAKE_SOURCE_DIR}/third_party/tsubakuro/modules/kvs/src/main/proto/tateyama/proto/kvs/transaction.proto"
-        "${CMAKE_SOURCE_DIR}/src/tateyama/proto/kvs"
-)
 
 # By default, PROTOBUF_GENERATE_CPP generates file path for .pb.cc as if they are in the same directory.
 # Work-around this with PROTOBUF_GENERATE_CPP_APPEND_PATH

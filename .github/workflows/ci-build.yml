@@ -7,11 +7,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container-tag: [ubuntu-20.04, ubuntu-22.04]
+        os: [ubuntu-20.04, ubuntu-22.04]
+        sharksfin-implementation: [memory, shirakami]
     runs-on: [self-hosted, docker]
+    permissions:
+      checks: write
     timeout-minutes: 30
     container:
-      image:  ghcr.io/project-tsurugi/oltp-sandbox:${{ matrix.container-tag }}
+      image: ghcr.io/project-tsurugi/oltp-sandbox:${{ matrix.os }}
       credentials:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GHCR_PAT }}
@@ -21,203 +24,93 @@ jobs:
       run:
         shell: bash
     env:
-      CCACHE_DIR: ${{ vars.ccache_dir }}
+      CCACHE_CONFIGPATH: ${{ vars.ccache_dir }}/ccache.conf
+      CCACHE_DIR: ${{ vars.ccache_dir }}/${{ matrix.os }}
 
     steps:
-      - id: Checkout
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v3
         with:
-          submodules: recursive
+          submodules: true
           token: ${{ secrets.GHA_PAT }}
 
-      - id: Checkout_Actions
-        name: Checkout_Actions
-        uses: actions/checkout@v3
+      - name: Install_Dependencies
+        uses: ./.github/actions/install-dependencies
         with:
-          repository: project-tsurugi/tsurugi-github-actions
-          path: .github/actions
-          ref: master
-          submodules: recursive
           token: ${{ secrets.GHA_PAT }}
+          sharksfin-implementation: ${{ matrix.sharksfin-implementation }}
 
-      - id: Install_limestone
-        name: Install_limestone
+      - name: CMake_Build_Jogasaki_${{ matrix.sharksfin-implementation }}
         run: |
-          cd third_party/tateyama/third_party/sharksfin/third_party/shirakami/third_party/limestone
           rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_shirakami
-        name: Install_shirakami
-        run: |
-          cd third_party/tateyama/third_party/sharksfin/third_party/shirakami
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_BENCHMARK=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_sharksfin
-        name: Install_sharksfin
-        run: |
-          cd third_party/tateyama/third_party/sharksfin
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_takatori
-        name: Install_takatori
-        run: |
-          cd third_party/mizugaki/third_party/yugawara/third_party/takatori
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_hopscotch-map
-        name: Install_hopscotch-map
-        run: |
-          cd third_party/mizugaki/third_party/hopscotch-map
-          rm -rf ../../build-hopscotch-map
-          mkdir -p ../../build-hopscotch-map
-          cd ../../build-hopscotch-map
-          cmake -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ../third_party/hopscotch-map
-          cmake --build . --target install -- -j
-
-      - id: Install_yugawara
-        name: Install_yugawara
-        run: |
-          cd third_party/mizugaki/third_party/yugawara
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_shakujo
-        name: Install_shakujo
-        run: |
-          cd third_party/mizugaki/third_party/shakujo
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_mizugaki
-        name: Install_mizugaki
-        run: |
-          cd third_party/mizugaki
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_moodycamel_concurrentqueue
-        name: Install_moodycamel_concurrentqueue
-        run: |
-          cd third_party/concurrentqueue
-          rm -rf build_debug
-          mkdir -p build_debug
-          cd build_debug
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_tateyama_memory
-        name: Install_tateyama_memory
-        run: |
-          cd third_party/tateyama
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DSHARKSFIN_IMPLEMENTATION=memory -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Install_tateyama_shirakami
-        name: Install_tateyama_shirakami
-        run: |
-          cd third_party/tateyama
-          rm -rf build
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DSHARKSFIN_IMPLEMENTATION=shirakami -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DFORCE_INSTALL_RPATH=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH="${{ matrix.additional_prefix_path }};${GITHUB_WORKSPACE}/.local" ..
-          cmake --build . --target install --clean-first -- -j
-
-      - id: Build_jogasaki_memory
-        name: Build_jogasaki_memory
-        run: |
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target all --clean-first -- -j
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ matrix.sharksfin-implementation }} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake --build . --target all --clean-first
 
-      - id: Test_jogasaki_memory
-        name: Test_jogasaki_memory
-        continue-on-error: false
+      - name: CTest_Jogasaki_${{ matrix.sharksfin-implementation }}
         env:
           GTEST_OUTPUT: xml
           ASAN_OPTIONS: detect_stack_use_after_return=true
         run: |
           cd build
-          ctest --verbose -j 100 --timeout 120
+          ctest --verbose --timeout 120 -j 20
 
-      - id: Build_jogasaki_shirakami
-        name: Build_jogasaki_shirakami
-        run: |
-          mkdir build-shirakami
-          cd build-shirakami
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=${{ vars.compiler_launcher }} -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local ..
-          cmake --build . --target all --clean-first -- -j
-
-      - id: Test_jogasaki_shirakami
-        name: Test_jogasaki_shirakami
-        continue-on-error: false
-        env:
-          GTEST_OUTPUT: xml
-          ASAN_OPTIONS: detect_stack_use_after_return=true
-        run: |
-          cd build-shirakami
-          ctest --verbose -j 100 --timeout 120
-
-      - id: Clang-Tidy
-        name: Clang-Tidy
-        run: |
-          python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(include|src)/.*\.h$' $(pwd)'/src/.*' 2>&1 | awk '!a[$0]++{print > "build/clang-tidy.log"}'
-        if: matrix.container-tag == 'ubuntu-22.04'
-
-      - id: Doxygen
-        name: Doxygen
-        run: |
-          cd build
-          make doxygen 2> >(tee doxygen-error.log)
-        if: matrix.container-tag == 'ubuntu-22.04'
-
-      - id: Generate_Annotations
-        name: Generate_Annotations
-        uses: ./.github/actions/tsurugi-annotations-action
+      - name: Verify
+        uses: project-tsurugi/tsurugi-annotations-action@v1
         if: always()
         with:
           matrix: ${{ toJson(matrix) }}
-          ctest_input: 'build*/**/*_gtest_result.xml'
 
-      - id: Notify_Slack
-        name: Notify_Slack
-        uses: ./.github/actions/tsurugi-slack-action
-        if: always() && (github.event.pull_request.draft == false) && (contains(github.ref, '/tags/') || contains(github.ref, '/pull/') || contains(github.ref, '/heads/master'))
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+  Analysis:
+    runs-on: [self-hosted, docker]
+    permissions:
+      checks: write
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/project-tsurugi/oltp-sandbox:ubuntu-22.04
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GHCR_PAT }}
+      volumes:
+        - ${{ vars.ccache_dir }}:${{ vars.ccache_dir }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      CCACHE_CONFIGPATH: ${{ vars.ccache_dir }}/ccache.conf
+      CCACHE_DIR: ${{ vars.ccache_dir }}/ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
-          kind: 'job-result'
-          channel: 'tsurugi-build'
-          status: ${{ job.status }}
-          step_context: ${{ toJson(steps) }}
-          username: ${{ github.workflow }}
+          submodules: recursive
+          token: ${{ secrets.GHA_PAT }}
+
+      - name: Install_Dependencies
+        uses: ./.github/actions/install-dependencies
+        with:
+          token: ${{ secrets.GHA_PAT }}
+          sharksfin-implementation: memory
+
+      - name: CMake_Build_Jogasaki_memory
+        run: |
+          rm -rf build
+          mkdir build
+          cd build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake --build . --target all --clean-first
+
+      - name: Clang-Tidy
+        run: |
+          python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(include|src)/.*\.h$' $(pwd)'/src/.*' 2>&1 | awk '!a[$0]++{print > "build/clang-tidy.log"}'
+
+      - name: Doxygen
+        run: |
+          cd build
+          ninja doxygen 2> >(tee doxygen-error.log)
+
+      - name: Verify
+        uses: project-tsurugi/tsurugi-annotations-action@v1
+        if: always()

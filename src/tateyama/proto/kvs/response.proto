@@ -1,0 +1,247 @@
+syntax = "proto3";
+
+package tateyama.proto.kvs.response;
+
+option java_multiple_files = false;
+option java_package = "com.tsurugidb.kvs.proto";
+option java_outer_classname = "KvsResponse";
+
+import "tateyama/proto/kvs/transaction.proto";
+import "tateyama/proto/kvs/data.proto";
+
+// empty message
+message Void {}
+
+/* For response of error containing a error message. */
+message Error {
+	sint32 code = 1;
+	string detail = 2;
+}
+
+// response message for RPC.
+message Response {
+    // the response message version.
+    uint64 message_version = 1;
+    reserved 2 to 10;
+    reserved 15 to 20;
+    reserved 25 to 30;
+    reserved 32 to 40;
+
+    // the response command.
+    oneof command {
+
+        // begin transaction command.
+        Begin begin = 11;
+
+        // commit transaction command.
+        Commit commit = 12;
+
+        // rollback transaction command.
+        Rollback rollback = 13;
+
+        // GET record command.
+        Get get = 21;
+
+        // PUT record command.
+        Put put = 22;
+
+        // REMOVE record command.
+        Remove remove = 23;
+
+        // SCAN records command.
+        Scan scan = 24;
+
+        // batch command.
+        Batch batch = 31;
+       
+        // GetErrorInfo command. 
+        GetErrorInfo get_error_info = 41;
+       
+        // DisposeTransaction command.
+        DisposeTransaction dispose_transaction = 42;
+    }
+}
+
+// begin transaction
+message Begin {
+    reserved 1 to 10;
+
+    // request is successfully completed.
+    message Success {
+	    // the target transaction handle.
+	    transaction.Handle transaction_handle = 1;
+    }
+    
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Success success = 11;
+
+        // error was occurred.
+        Error error = 12;
+    }
+}
+
+// commit transaction
+message Commit {
+    reserved 1 to 10;
+
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Void success = 12;
+
+        // error was occurred.
+        Error error = 11;
+    }
+}
+
+// rollback transaction
+message Rollback {
+    reserved 1 to 10;
+
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Void success = 12;
+
+        // error was occurred.
+        Error error = 11;
+    }
+}
+
+// GET record(s)
+message Get {
+    reserved 1 to 10;
+
+    // request is successfully completed.
+    message Success {
+	    // the record.
+	    repeated data.Record records = 1;
+    }
+    
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Success success = 11;
+
+        // error was occurred.
+        Error error = 12;
+    }
+}
+
+// PUT record(s)
+message Put {
+    reserved 1 to 10;
+
+    // request is successfully completed.
+    message Success {
+        // the number of records which the operation actually written 
+        sint32 written = 1;
+    }
+    
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Success success = 11;
+
+        // error was occurred.
+        Error error = 12;
+    }
+}
+
+// REMOVE record(s)
+message Remove {
+    reserved 1 to 10;
+
+    // request is successfully completed.
+    message Success {
+        // the number of records which the operation actually removed 
+        sint32 removed = 1;
+    }
+    
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Success success = 11;
+
+        // error was occurred.
+        Error error = 12;
+    }
+}
+
+// BATCH operation
+message Batch {
+    reserved 1 to 10;
+
+    message Opresult {
+    	oneof opresult {
+	    	// result of begin 
+	    	Begin begin = 21;
+	
+	    	// result of commit 
+	    	Commit commit = 22;
+	    	
+	    	// result of put 
+			Put put = 23;
+	
+	    	// result of get 
+			Get get = 24;
+	
+	    	// result of remove 
+			Remove remove = 25;
+		}
+    }
+
+    // request is successfully completed.
+    message Success {
+    	repeated Opresult results = 1;
+    }
+    
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Success success = 11;
+
+        // error was occurred.
+        Error error = 12;
+    }
+}
+
+// SCAN operation
+message Scan {
+    reserved 1 to 10;
+
+    // FIXME
+}
+
+// GetErrorInfo operation
+message GetErrorInfo {
+    reserved 1 to 10;
+
+    // the response body.
+    oneof result {
+      // operation was successfully completed and error information was found.
+      Error success = 11;
+
+      // operation was successfully completed but error information was absent.
+      Void error_not_found = 12;
+
+      // engine error occurred while the retrieving existing error information.
+      Error error = 13;
+  }
+}
+
+// DisposeTransaction operation
+message DisposeTransaction {
+    reserved 1 to 10;
+
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Void success = 12;
+
+        // error was occurred.
+        Error error = 11;
+    }
+}

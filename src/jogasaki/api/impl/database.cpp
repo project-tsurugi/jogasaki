@@ -918,6 +918,13 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                         string_builder{} << "Target specified in transaction option is not found. " << option  << string_builder::to_string,
                         res
                     );
+                } else if(res == status::err_resource_limit_reached) {
+                        set_error(
+                            *rctx,
+                            error_code::transaction_exceeded_limit_exception,
+                            "The number of transactions exceeded the limit.",
+                            res
+                        );
                 } else {
                     set_error(
                         *rctx,

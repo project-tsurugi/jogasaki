@@ -129,6 +129,8 @@ public:
      * @param out [OUT] filled with newly created transaction object
      * @param options transaction options
      * @return status::ok when successful
+     * @return status::err_resource_limit_reached if transaction count exceeds its limit
+     * @return status::err_invalid_argument if option value is invalid
      * @return error otherwise
      */
     [[nodiscard]] static status create_transaction(

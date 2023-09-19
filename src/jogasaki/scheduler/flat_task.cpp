@@ -90,7 +90,7 @@ bool flat_task::teardown() {
     log_entry << *this;
     trace_scope_name("teardown");  //NOLINT
     bool ret = true;
-    if (auto cnt = job()->task_count().load(); cnt > 1) {
+    if (auto cnt = job()->task_count().load(); cnt > 0) {
         DVLOG_LP(log_debug) << *this << " other " << cnt << " tasks remain and teardown is rescheduled.";
         submit_teardown(*req_context_, true);
         ret = false;
@@ -205,9 +205,11 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
         }
     }
     auto jobid = job()->id();
-    auto cnt = --job()->task_count();
-    // Be careful and don't touch job or request contexts after decrementing the counter which makes teardown job to finish.
-    (void)cnt;
+    if(kind_ != flat_task_kind::teardown) {
+        auto cnt = --job()->task_count();
+        // Be careful and don't touch job or request contexts after decrementing the counter which makes teardown job to finish.
+        (void)cnt;
+    }
     (void)jobid;
     //VLOG_LP(log_debug) << "decremented job " << jobid << " task count to " << cnt;
     if(! job_completes) {

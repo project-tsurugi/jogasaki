@@ -72,8 +72,8 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(update_test, update_by_part_of_primary_key) {
-    execute_statement( "INSERT INTO T20 (C0, C2, C4) VALUES (1, 100.0, '111')");
-    execute_statement( "UPDATE T20 SET C2=200.0 WHERE C0=1");
+    execute_statement("INSERT INTO T20 (C0, C2, C4) VALUES (1, 100.0, '111')");
+    execute_statement("UPDATE T20 SET C2=200.0 WHERE C0=1");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1, C2 FROM T20", result);
     ASSERT_EQ(1, result.size());
@@ -85,9 +85,9 @@ TEST_F(update_test, update_by_part_of_primary_key) {
 }
 
 TEST_F(update_test, update_primary_key) {
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
-    execute_statement( "UPDATE T0 SET C0=3, C1=30.0 WHERE C1=10.0");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement("UPDATE T0 SET C0=3, C1=30.0 WHERE C1=10.0");
     wait_epochs(2);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
@@ -174,7 +174,7 @@ TEST_F(update_test, hitting_existing_pk) {
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T VALUES (0, 0)");
     execute_statement("INSERT INTO T VALUES (1, 1)");
-    execute_statement("UPDATE T SET C0=C0+1 WHERE C0=0", status::err_unique_constraint_violation);
+    test_stmt_err("UPDATE T SET C0=C0+1 WHERE C0=0", error_code::unique_constraint_violation_exception);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T ORDER BY C0", result);
@@ -192,7 +192,7 @@ TEST_F(update_test, multiple_rows_hitting_existing_pk) {
     execute_statement("INSERT INTO T VALUES (0, 0)");
     execute_statement("INSERT INTO T VALUES (1, 1)");
     execute_statement("INSERT INTO T VALUES (2, 2)");
-    execute_statement("UPDATE T SET C0=C0+1", status::err_unique_constraint_violation);
+    test_stmt_err("UPDATE T SET C0=C0+1", error_code::unique_constraint_violation_exception);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T ORDER BY C0", result);
@@ -275,7 +275,7 @@ TEST_F(update_test, verify_error_abort_tx) {
     auto v1 = decimal_v{1, 0, 1, 0}; // 1
     ps->set_decimal("p0", v1);
     execute_statement("INSERT INTO T VALUES (1, :p0)", variables, *ps);
-    execute_statement("UPDATE T SET C1=C1 / 3 WHERE C0=1", status::err_expression_evaluation_failure);
+    test_stmt_err("UPDATE T SET C1=C1 / 3 WHERE C0=1", error_code::value_evaluation_exception);
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T ORDER BY C0", result);

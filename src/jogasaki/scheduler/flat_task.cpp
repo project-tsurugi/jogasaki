@@ -86,13 +86,14 @@ void flat_task::resubmit(request_context& req_context) {
     ts.schedule_task(flat_task{*this});
 }
 
-bool flat_task::teardown() {
+bool flat_task::teardown() {  //NOLINT(readability-make-member-function-const)
     log_entry << *this;
     trace_scope_name("teardown");  //NOLINT
     bool ret = true;
     if (auto cnt = job()->task_count().load(); cnt > 0) {
         DVLOG_LP(log_debug) << *this << " other " << cnt << " tasks remain and teardown is rescheduled.";
-        submit_teardown(*req_context_, true);
+        // Another teardown task will be scheduled at the end of this task.
+        // It's not done here because newly scheduled task quickly completes and destroy job context.
         ret = false;
     }
     log_exit << *this << " ret:" << ret;
@@ -204,15 +205,20 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
             tctx->decrement_worker_count();
         }
     }
-    auto jobid = job()->id();
     if(kind_ != flat_task_kind::teardown) {
+        // teardown tasks should not be counted
+        auto jobid = job()->id();
         auto cnt = --job()->task_count();
-        // Be careful and don't touch job or request contexts after decrementing the counter which makes teardown job to finish.
+        // Be careful and don't touch job or request contexts after decrementing the counter which makes teardown to finish job.
         (void)cnt;
+        (void)jobid;
+        //VLOG_LP(log_debug) << "decremented job " << jobid << " task count to " << cnt;
+        return;
     }
-    (void)jobid;
-    //VLOG_LP(log_debug) << "decremented job " << jobid << " task count to " << cnt;
+
+    // teardown task
     if(! job_completes) {
+        submit_teardown(*req_context_, true);
         return;
     }
     finish_job();

@@ -54,7 +54,9 @@ public:
     /**
      * @brief construct new object wrapping jogasaki task
      * @param rctx the request context where the task belongs
-     * @param origin the jogasaki executor task
+     * @param condition the check logic to be run to determine if task body is ready to execute
+     * @param body the task body to be executed if the condition is met. The body is expected to be non-blocking and
+     * light-weight such as scheduling another task.
      */
     conditional_task(
         request_context* rctx,
@@ -68,7 +70,6 @@ public:
 
     /**
      * @brief execute the task
-     * @param ctx the tateyama task context, which provides info. about thread/worker running the task
      */
     bool check() {
         return condition_();
@@ -76,7 +77,6 @@ public:
 
     /**
      * @brief execute the task
-     * @param ctx the tateyama task context, which provides info. about thread/worker running the task
      */
     void operator()() {
         body_();

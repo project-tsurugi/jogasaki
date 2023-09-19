@@ -218,6 +218,8 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
 
     // teardown task
     if(! job_completes) {
+        // Submitting teardown should be done at the end of the task since otherwise new teardown finish fast
+        // and start destroying job context, which can be touched by this task.
         submit_teardown(*req_context_, true);
         return;
     }

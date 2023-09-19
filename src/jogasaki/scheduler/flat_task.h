@@ -175,6 +175,9 @@ public:
 
     /**
      * @brief construct new object to teardown (finish processing) the job
+     * @details job context has the counter for the non-teardown tasks and teardown waits for them to finish by
+     * duplicating teardown task and re-scheduling it. Finally the teardown task makes job completion callback and
+     * erases the globally stored job context.
      * @param rctx the request context where the task belongs
      */
     flat_task(

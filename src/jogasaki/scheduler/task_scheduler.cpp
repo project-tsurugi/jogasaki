@@ -27,17 +27,18 @@ namespace jogasaki::scheduler {
 
 void task_scheduler::schedule_task(flat_task&& t, schedule_option opt) {
     if(t.kind() != flat_task_kind::teardown) {
+        // teardown task is not counted as its existence is checked by job_context::completing()
         auto cnt = ++t.job()->task_count();
         (void)cnt;
+        //VLOG(log_debug) << "incremented job " << t.job()->id() << " task count to " << cnt;
     }
-    //VLOG(log_debug) << "incremended job " << t.job()->id() << " task count to " << cnt;
     do_schedule_task(std::move(t), opt);
 }
 
 void task_scheduler::schedule_conditional_task(conditional_task&& t) {
     auto cnt = ++t.job()->task_count();
     (void)cnt;
-    //VLOG(log_debug) << "incremended job " << t.job()->id() << " task count to " << cnt;
+    //VLOG(log_debug) << "incremented job " << t.job()->id() << " task count to " << cnt;
     do_schedule_conditional_task(std::move(t));
 }
 

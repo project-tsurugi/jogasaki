@@ -19,8 +19,8 @@
 #include <memory>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/string_builder.h>
+#include <takatori/util/exception.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
@@ -72,8 +72,8 @@
 
 namespace jogasaki::api::impl {
 
-using takatori::util::fail;
 using takatori::util::string_builder;
+using takatori::util::throw_exception;
 
 constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:database ";
 
@@ -229,7 +229,8 @@ void add_variable(
         case field_type_kind::time_of_day: provider.add({name, takatori::type::time_of_day{}}, true); break;
         case field_type_kind::time_point: provider.add({name, takatori::type::time_point{}}, true); break;
         case field_type_kind::decimal: provider.add({name, takatori::type::decimal{}}, true); break;
-        default: fail();
+        default:
+            throw_exception(std::logic_error{""});
     }
 }
 
@@ -276,7 +277,7 @@ status database::prepare_common(
             acc->second = std::move(ptr);
             statement = handle;
         } else {
-            fail();
+            throw_exception(std::logic_error{""});
         }
     }
     return st;
@@ -485,7 +486,7 @@ status database::create_transaction_internal(transaction_handle& handle, transac
                 acc->second = std::move(tx);
                 handle = t;
             } else {
-                fail();
+                throw_exception(std::logic_error{""});
             }
         }
     }

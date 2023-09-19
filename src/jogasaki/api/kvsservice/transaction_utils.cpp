@@ -169,7 +169,7 @@ status add_value_column(yugawara::storage::column const &column,
                          tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
     auto new_value = record.add_values();
-    if (auto s = deserialize(spec_value, nullable_value, column, stream, new_value);
+    if (auto s = deserialize(spec_value, column, stream, new_value);
             s != status::ok) {
         return s;
     }

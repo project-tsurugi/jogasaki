@@ -115,16 +115,16 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
     if (auto s = check_put_record(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys());
+    auto key_size = get_bufsize(spec_primary_key, rec_cols.primary_keys());
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys(), key_stream); s != status::ok) {
+    if (auto s = serialize(spec_primary_key, rec_cols.primary_keys(), key_stream); s != status::ok) {
         return s;
     }
-    auto value_size = get_bufsize(spec_value, nullable_value, rec_cols.values());
+    auto value_size = get_bufsize(spec_value, rec_cols.values());
     jogasaki::data::aligned_buffer value_buffer{value_size};
     jogasaki::kvs::writable_stream value_stream{value_buffer.data(), value_buffer.capacity()};
-    if (auto s = serialize(spec_value, nullable_value, rec_cols.values(), value_stream); s != status::ok) {
+    if (auto s = serialize(spec_value, rec_cols.values(), value_stream); s != status::ok) {
         return s;
     }
     sharksfin::Slice key_slice {key_stream.data(), key_stream.size()};
@@ -155,10 +155,10 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
     if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys());
+    auto key_size = get_bufsize(spec_primary_key, rec_cols.primary_keys());
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys(), key_stream);
+    if (auto s = serialize(spec_primary_key, rec_cols.primary_keys(), key_stream);
         s != status::ok) {
         return s;
     }
@@ -192,10 +192,10 @@ status transaction::remove(std::string_view table_name, tateyama::proto::kvs::da
     if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys());
+    auto key_size = get_bufsize(spec_primary_key, rec_cols.primary_keys());
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
-    if (auto s = serialize(spec_primary_key, nullable_primary_key, rec_cols.primary_keys(), key_stream);
+    if (auto s = serialize(spec_primary_key, rec_cols.primary_keys(), key_stream);
         s != status::ok) {
         return s;
     }

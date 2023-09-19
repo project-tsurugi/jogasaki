@@ -37,18 +37,17 @@ public:
     void test(bool is_key, yugawara::storage::column const &column,
               tateyama::proto::kvs::data::Value &v1, tateyama::proto::kvs::data::Value &v2) {
         auto spec = is_key ? spec_primary_key : spec_value;
-        auto nullable = is_key ? nullable_primary_key : nullable_value;
         std::vector<column_data> list{};
         list.emplace_back(&column, &v1);
-        auto size = get_bufsize(spec, nullable, list);
+        auto size = get_bufsize(spec, list);
         ASSERT_GT(size, 0);
         jogasaki::data::aligned_buffer buffer{size};
         jogasaki::kvs::writable_stream out_stream{buffer.data(), buffer.capacity()};
-        auto s = serialize(spec, nullable, list, out_stream);
+        auto s = serialize(spec, list, out_stream);
         ASSERT_EQ(s, status::ok);
         //
         jogasaki::kvs::readable_stream in_stream{out_stream.data(), out_stream.size()};
-        s = deserialize(spec, nullable, column, in_stream, &v2);
+        s = deserialize(spec, column, in_stream, &v2);
         ASSERT_EQ(s, status::ok);
     }
 
@@ -60,8 +59,8 @@ TEST_F(serializer_test, ser_int4) {
                                        std::numeric_limits<int>::min()};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::int4>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_int4_value(answer);
@@ -77,8 +76,8 @@ TEST_F(serializer_test, ser_int8) {
                                        std::numeric_limits<long>::min()};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::int8>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_int8_value(answer);
@@ -94,8 +93,8 @@ TEST_F(serializer_test, ser_float4) {
                                        std::numeric_limits<float>::min()};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::float4>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_float4_value(answer);
@@ -111,8 +110,8 @@ TEST_F(serializer_test, ser_float8) {
                                 std::numeric_limits<double>::min()};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::float8>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_float8_value(answer);
@@ -127,8 +126,8 @@ TEST_F(serializer_test, ser_string) {
                                       "12345678901234567890"};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::character>>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_character_value(answer);
@@ -142,8 +141,8 @@ TEST_F(serializer_test, ser_bool) {
     std::vector<bool> answers {true, false};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::boolean>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_boolean_value(answer);
@@ -187,8 +186,8 @@ TEST_F(serializer_test, ser_decimal) {
     int precision = 5;
     int exp = -3;
     auto type = std::make_shared<takatori::type::decimal>(precision, -exp);
-    yugawara::storage::column col{"col_name", type, {}, {}, {}};
     for (auto is_key: {true, false}) {
+        yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
         tateyama::proto::kvs::data::Value v1{};
         // test by 12.345
         auto answer = dec(0, 12345, exp);
@@ -216,8 +215,8 @@ TEST_F(serializer_test, ser_date) {
                                        std::numeric_limits<int>::min()};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::date>>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_date_value(answer);
@@ -233,8 +232,8 @@ TEST_F(serializer_test, ser_time_of_day) {
     std::vector<std::uint64_t> answers {0, 100, 10000, 3 * 3600UL * 1'000'000'000UL};
     for (auto answer : answers) {
         auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::time_of_day>>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_time_of_day_value(answer);
@@ -255,8 +254,8 @@ TEST_F(serializer_test, DISABLED_ser_time_of_day_timezone) {
         for (auto offset : offsets) {
             takatori::type::with_time_zone_t with{true};
             auto type = std::make_shared<takatori::type::time_of_day>(with);
-            yugawara::storage::column col{"col_name", type, {}, {}, {}};
             for (auto is_key: {true, false}) {
+                yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
                 tateyama::proto::kvs::data::Value v1{};
                 tateyama::proto::kvs::data::Value v2{};
                 tateyama::proto::kvs::data::TimeOfDayWithTimeZone td{};
@@ -288,8 +287,8 @@ TEST_F(serializer_test, ser_timepoint) {
         timepoint(0, 0), timepoint(1234, 567)};
     for (auto &answer : answers) {
         auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::time_point>>() };
-        yugawara::storage::column col{"col_name", type, {}, {}, {}};
         for (auto is_key: {true, false}) {
+            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
             tateyama::proto::kvs::data::Value v1{};
             tateyama::proto::kvs::data::Value v2{};
             v1.set_allocated_time_point_value(&answer);
@@ -316,8 +315,8 @@ TEST_F(serializer_test, DISABLED_ser_timepoint_timezone) {
             for (auto has_tz: {true, false}) {
                 takatori::type::with_time_zone_t with{has_tz};
                 auto type = std::make_shared<takatori::type::time_point>(with);
-                yugawara::storage::column col{"col_name", type, {}, {}, {}};
                 for (auto is_key: {true, false}) {
+                    yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
                     tateyama::proto::kvs::data::Value v1{};
                     tateyama::proto::kvs::data::Value v2{};
                     tateyama::proto::kvs::data::TimePointWithTimeZone tpz1{};

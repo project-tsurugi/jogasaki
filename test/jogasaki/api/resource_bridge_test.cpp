@@ -83,6 +83,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "tasked_write=true\n"
         "lightweight_job_level=0\n"
         "enable_hybrid_scheduler=true\n"
+        "commit_response=PROPAGATED\n"
     "[datastore]\n"
         "log_location=\n"
 };
@@ -115,6 +116,48 @@ TEST_F(resource_bridge_test, cfg_default_value) {
     tateyama::api::configuration::whole cfg{ss, default_configuration};
     auto c = api::resource::convert_config(cfg);
     EXPECT_EQ(50, c->thread_pool_size());
+}
+
+TEST_F(resource_bridge_test, enum_cfg) {
+    {
+        std::stringstream ss{
+            "[sql]\n"
+        };
+        tateyama::api::configuration::whole cfg{ss, default_configuration};
+        auto c = api::resource::convert_config(cfg);
+        ASSERT_TRUE(c);
+        EXPECT_EQ(commit_response_kind::propagated, c->default_commit_response());
+    }
+    {
+        std::stringstream ss{
+            "[sql]\n"
+            "commit_response=AVAILABLE\n"
+        };
+        tateyama::api::configuration::whole cfg{ss, default_configuration};
+        auto c = api::resource::convert_config(cfg);
+        ASSERT_TRUE(c);
+        EXPECT_EQ(commit_response_kind::available, c->default_commit_response());
+    }
+    {
+        std::stringstream ss{
+            "[sql]\n"
+            "commit_response=bad_value\n"
+        };
+        tateyama::api::configuration::whole cfg{ss, default_configuration};
+        auto c = api::resource::convert_config(cfg);
+        EXPECT_FALSE(c);
+    }
+}
+
+TEST_F(resource_bridge_test, invalid_entry) {
+    // verify detect invalid value and exception caught
+    std::stringstream ss{
+        "[sql]\n"
+        "thread_pool_size=bad_string_value\n"
+    };
+    tateyama::api::configuration::whole cfg{ss, default_configuration};
+    auto c = api::resource::convert_config(cfg);
+    EXPECT_FALSE(c);
 }
 
 }

@@ -100,12 +100,31 @@ std::string_view bridge::label() const noexcept {
     return component_label;
 }
 
-std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+template <class ...Args>
+bool validate_enum_strings(std::string_view name, std::string_view value, std::int32_t& out, Args...args) {
+    std::vector<std::string> allowed{args...};
+    std::int32_t idx = 0;
+    for(auto&& e : allowed) {
+        if(e == value) {
+            out = idx;
+            return true;
+        }
+        ++idx;
+    }
+    std::stringstream ss{};
+    for(auto&& e : allowed) {
+        ss << e << " ";
+    }
+    LOG_LP(ERROR) << "invalid configuration - enum value \"" << value << "\" specified for parameter \"" <<
+            name << "\". Acceptable values are " << ss.str();
+    return false;
+}
+
+std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     auto ret = std::make_shared<jogasaki::configuration>();
 
     auto jogasaki_config = cfg.get_section("sql");
     if (jogasaki_config == nullptr) {
-        LOG_LP(ERROR) << "cannot find sql section in the configuration";
         return ret;
     }
 
@@ -174,7 +193,25 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
         return {};
     }
 
+    constexpr std::string_view KEY_COMMIT_RESPONSE{"commit_response"};
+    if (auto v = jogasaki_config->get<std::string>(KEY_COMMIT_RESPONSE)) {
+        std::int32_t idx{};
+        if(! validate_enum_strings(KEY_COMMIT_RESPONSE, v.value(), idx, "ACCEPTED", "AVAILABLE", "STORED", "PROPAGATED")) {
+            return {};
+        }
+        ret->default_commit_response(static_cast<commit_response_kind>(idx));
+    }
     return ret;
 }
+
+std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+    try {
+        return convert_config_internal(cfg);
+    } catch (std::exception const& e) {
+        // error should have been logged already
+        return {};
+    }
+}
+
 }
 

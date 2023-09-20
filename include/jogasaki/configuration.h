@@ -17,8 +17,44 @@
 
 #include <iomanip>
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 
 namespace jogasaki {
+
+enum class commit_response_kind : std::int32_t {
+    accepted = 0,
+    available,
+    stored,
+    propagated
+};
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(commit_response_kind value) noexcept {
+    using namespace std::string_view_literals;
+    using kind = commit_response_kind;
+    switch (value) {
+        case kind::accepted: return "accepted"sv;
+        case kind::available: return "available"sv;
+        case kind::stored: return "stored"sv;
+        case kind::propagated: return "propagated"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, commit_response_kind value) {
+    return out << to_string_view(value);
+}
 
 /**
  * @brief database environment global configuration
@@ -342,6 +378,15 @@ public:
     void worker_suspend_timeout(std::size_t arg) noexcept {
         worker_suspend_timeout_ = arg;
     }
+
+    [[nodiscard]] commit_response_kind default_commit_response() const noexcept {
+        return default_commit_response_;
+    }
+
+    void default_commit_response(commit_response_kind arg) noexcept {
+        default_commit_response_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -370,6 +415,7 @@ public:
             "watcher_interval:" << cfg.watcher_interval() << " " <<
             "worker_try_count:" << cfg.worker_try_count() << " " <<
             "worker_suspend_timeout:" << cfg.worker_suspend_timeout() << " " <<
+            "default_commit_response:" << cfg.default_commit_response() << " " <<
             "";
     }
 
@@ -404,6 +450,7 @@ private:
     std::size_t watcher_interval_ = 1000;
     std::size_t worker_try_count_ = 1000;
     std::size_t worker_suspend_timeout_ = 1000000;
+    commit_response_kind default_commit_response_{commit_response_kind::propagated};
 };
 
 }

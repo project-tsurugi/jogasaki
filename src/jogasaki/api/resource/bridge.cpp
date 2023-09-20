@@ -174,15 +174,6 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
         return {};
     }
 
-    // datastore
-    auto datastore_config = cfg.get_section("datastore");
-    if (datastore_config == nullptr) {
-        LOG_LP(ERROR) << "cannot find datastore section in the configuration";
-        return ret;
-    }
-    if (auto log_location = datastore_config->get<std::string>("log_location")) {
-        ret->db_location(log_location.value());
-    }
     return ret;
 }
 }

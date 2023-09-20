@@ -101,8 +101,10 @@ TEST_F(resource_bridge_test, resource_cfg) {
     auto c = api::resource::convert_config(cfg);
     EXPECT_EQ(99, c->thread_pool_size());
     EXPECT_TRUE(c->lazy_worker());
-    EXPECT_EQ("LOCATION", c->db_location());
     EXPECT_TRUE(c->enable_index_join());
+
+    // convert_config handles config entries necessary for jogasaki db initialization
+    EXPECT_EQ("", c->db_location());
 }
 
 TEST_F(resource_bridge_test, cfg_default_value) {

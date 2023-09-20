@@ -94,6 +94,7 @@ status database::start() {
     // this function is not called on maintenance/quiescent mode
     init();
     if (! kvs_db_) {
+        // This is for dev/test. In production, kvs db is created outside.
         std::map<std::string, std::string> opts{};
         {
             static constexpr std::string_view KEY_LOCATION{"location"};

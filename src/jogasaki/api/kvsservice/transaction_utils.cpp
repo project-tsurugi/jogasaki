@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <jogasaki/utils/storage_utils.h>
+
 #include "mapped_record.h"
 #include "serializer.h"
 #include "transaction_utils.h"
@@ -71,11 +73,16 @@ status get_table(jogasaki::api::impl::database* db,
     return status::err_table_not_found;
 }
 
-bool is_valid_record(tateyama::proto::kvs::data::Record const &record) {
+bool has_secondary_index(std::shared_ptr<yugawara::storage::table const> &table) {
+    auto size = jogasaki::utils::index_count(*table.get());
+    return size > 1;
+}
+
+bool is_valid_record(tateyama::proto::kvs::data::Record const &record) noexcept {
     return record.names_size() >= 1 && record.names_size() == record.values_size();
 }
 
-static status check_valid_reccols(record_columns &rec_cols) {
+static status check_valid_reccols(record_columns &rec_cols) noexcept {
     if (rec_cols.has_unknown_column()) {
         return status::err_column_not_found;
     }

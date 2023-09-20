@@ -34,11 +34,18 @@ status get_table(jogasaki::api::impl::database* db,
                 std::shared_ptr<yugawara::storage::table const> &table);
 
 /**
+ * @brief check whether the table has secondary index
+ * @param table the table
+ * @return true if the table has secondary index, false otherwise
+ */
+bool has_secondary_index(std::shared_ptr<yugawara::storage::table const> &table);
+
+/**
  * @brief check whether the record has valid data or not
  * @param record the record
  * @return true if valid, false otherwise
  */
-bool is_valid_record(tateyama::proto::kvs::data::Record const &record);
+bool is_valid_record(tateyama::proto::kvs::data::Record const &record) noexcept;
 
 /**
  * @brief check whether the record is valid for put

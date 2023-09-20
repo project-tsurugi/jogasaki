@@ -111,6 +111,9 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
     if (auto s = get_table(db_, table_name, table); s != status::ok) {
         return s;
     }
+    if (has_secondary_index(table)) {
+        return status::err_not_implemented;
+    }
     record_columns rec_cols{table, record, false};
     if (auto s = check_put_record(rec_cols); s != status::ok) {
         return s;
@@ -187,6 +190,9 @@ status transaction::remove(std::string_view table_name, tateyama::proto::kvs::da
     std::shared_ptr<yugawara::storage::table const> table{};
     if (auto s = get_table(db_, table_name, table); s != status::ok) {
         return s;
+    }
+    if (has_secondary_index(table)) {
+        return status::err_not_implemented;
     }
     record_columns rec_cols{table, primary_key, true};
     if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {

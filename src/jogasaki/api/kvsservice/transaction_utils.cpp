@@ -90,6 +90,13 @@ static status check_valid_column(column_data const &cd) {
         // TODO support default values (currently all columns' values are necessary)
         return status::err_incomplete_columns;
     }
+    if (cd.value()->value_case() == tateyama::proto::kvs::data::Value::VALUE_NOT_SET) {
+        if (cd.column()->criteria().nullity().nullable()) {
+            return status::ok;
+        } else {
+            return status::err_invalid_argument;
+        }
+    }
     if (!equal_type(cd.column()->type().kind(), cd.value()->value_case())) {
         return status::err_column_type_mismatch;
     }

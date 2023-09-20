@@ -196,21 +196,6 @@ public:
     }
 
     /**
-     * @brief accessor for max logging parallelism
-     * @return the number of parallel workers for logging
-     */
-    [[nodiscard]] std::size_t max_logging_parallelism() const noexcept {
-        return max_logging_parallelism_;
-    }
-
-    /**
-     * @brief setter for max logging parallelism
-     */
-    void max_logging_parallelism(std::size_t arg) noexcept {
-        max_logging_parallelism_ = arg;
-    }
-
-    /**
      * @brief setter for enable index join flag
      */
     void enable_index_join(bool arg) noexcept {
@@ -374,7 +359,6 @@ public:
             "tasked_write:" << cfg.tasked_write() << " " <<
             "lazy_worker:" << cfg.lazy_worker() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
-            "max_logging_parallelism:" << cfg.max_logging_parallelism() << " " <<
             "enable_index_join:" << cfg.enable_index_join() << " " <<
             "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
             "stealing_wait:" << cfg.stealing_wait() << " " <<
@@ -409,7 +393,6 @@ private:
     bool scheduler_rr_workers_ = false;
     bool lazy_worker_ = false;
     bool activate_scheduler_ = true;
-    std::size_t max_logging_parallelism_ = 1;
     bool enable_index_join_ = false;
     bool use_preferred_worker_for_current_thread_ = true;
     std::size_t stealing_wait_ = 1;

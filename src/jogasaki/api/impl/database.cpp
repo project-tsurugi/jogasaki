@@ -102,13 +102,6 @@ status database::start() {
                 opts.emplace(KEY_LOCATION, loc);
             }
         }
-        {
-            static constexpr std::string_view KEY_LOGGING_MAX_PARALLELISM{"logging_max_parallelism"};
-            auto sz = cfg_->max_logging_parallelism();
-            if (sz > 0) {
-                opts.emplace(KEY_LOGGING_MAX_PARALLELISM, std::to_string(sz));
-            }
-        }
         kvs_db_ = kvs::database::open(opts);
     }
     if (! kvs_db_) {

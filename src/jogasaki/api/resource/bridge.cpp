@@ -183,9 +183,6 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     if (auto log_location = datastore_config->get<std::string>("log_location")) {
         ret->db_location(log_location.value());
     }
-    if (auto sz = datastore_config->get<std::size_t>("logging_max_parallelism")) {
-        ret->max_logging_parallelism(*sz);
-    }
     return ret;
 }
 }

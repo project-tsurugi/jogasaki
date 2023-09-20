@@ -73,7 +73,7 @@ using namespace std::string_view_literals;
 
 static constexpr std::string_view default_configuration {  // NOLINT
     "[sql]\n"
-        "thread_pool_size=5\n"
+        "thread_pool_size=50\n"
         "lazy_worker=false\n"
         "enable_index_join=false\n"
         "stealing_enabled=true\n"
@@ -85,7 +85,6 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "enable_hybrid_scheduler=true\n"
     "[datastore]\n"
         "log_location=\n"
-        "logging_max_parallelism=112\n"
 };
 
 TEST_F(resource_bridge_test, resource_cfg) {
@@ -96,7 +95,6 @@ TEST_F(resource_bridge_test, resource_cfg) {
         "enable_index_join=true\n"
         "[datastore]\n"
         "log_location=LOCATION\n"
-        "logging_max_parallelism=111\n"
     };
     tateyama::api::configuration::whole cfg{ss, default_configuration};
 
@@ -104,19 +102,17 @@ TEST_F(resource_bridge_test, resource_cfg) {
     EXPECT_EQ(99, c->thread_pool_size());
     EXPECT_TRUE(c->lazy_worker());
     EXPECT_EQ("LOCATION", c->db_location());
-    EXPECT_EQ(111, c->max_logging_parallelism());
     EXPECT_TRUE(c->enable_index_join());
 }
 
 TEST_F(resource_bridge_test, cfg_default_value) {
-    // tateyama cfg has default value, which precedes default of jogasaki::configuration
+    // verify default configuration is applied if input config stream has no entry
     std::stringstream ss{
-        "[datastore]\n"
+        "[sql]\n"
     };
     tateyama::api::configuration::whole cfg{ss, default_configuration};
     auto c = api::resource::convert_config(cfg);
-    jogasaki::configuration jc{};
-    EXPECT_NE(jc.max_logging_parallelism(), c->max_logging_parallelism());
+    EXPECT_EQ(50, c->thread_pool_size());
 }
 
 }

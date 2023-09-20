@@ -104,6 +104,10 @@ static constexpr std::string_view default_configuration {  // NOLINT
     "[datastore]\n"
         "log_location=\n"
         "logging_max_parallelism=112\n"
+
+    "[cc]\n"
+        "epoch_duration=40000\n"
+        "waiting_resolver_threads=2\n"
 };
 
 TEST_F(framework_test, server_to_start_sql_engine) {

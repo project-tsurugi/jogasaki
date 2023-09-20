@@ -17,7 +17,7 @@
 #include <takatori/util/exception.h>
 #include "service.h"
 #include "jogasaki/logging.h"
-#include "jogasaki/api/kvsservice/convert.h"
+#include "jogasaki/api/kvsservice/status_message.h"
 
 using takatori::util::throw_exception;
 
@@ -59,16 +59,17 @@ static void reply(tateyama::proto::kvs::response::Response &proto_res, std::shar
     reply(proto_res, tateyama::api::server::response_code::success, res);
 }
 
-static void set_error(status status, tateyama::proto::kvs::response::Error &error, std::string *message) {
-    // TODO status (from sharksfin) is 64bit, code (from Java impl) is 32bit
+static void set_error(status status, tateyama::proto::kvs::response::Error &error) {
     error.set_code(static_cast<google::protobuf::int32>(status));
-    if (message != nullptr && !message->empty()) {
-        error.set_allocated_detail(message);
-    }
 }
 
-static void set_error(status status, tateyama::proto::kvs::response::Error &error) {
-    set_error(status, error, nullptr);
+static bool set_error(status status, std::string *message, tateyama::proto::kvs::response::Error &error) {
+    set_error(status, error);
+    if (message != nullptr) {
+        error.set_allocated_detail(message);
+        return true;
+    }
+    return false;
 }
 
 /*
@@ -141,50 +142,61 @@ static void success_begin(std::shared_ptr<transaction> const &tx, std::shared_pt
     proto_res.release_begin();
 }
 
-static void error_begin(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_begin(status status, std::shared_ptr<tateyama::api::server::response> &res,
+                        std::string *message = nullptr) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Begin begin { };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(status, error);
+    auto alloc_detail = set_error(status, message, error);
     begin.set_allocated_error(&error);
     proto_res.set_allocated_begin(&begin);
     reply(proto_res, res);
+    if (alloc_detail) {
+        error.release_detail();
+    }
     begin.release_error();
     proto_res.release_begin();
 }
 
-static status check_supported(transaction_option &opt) {
-    // TODO LTX, RTX doesn't support officially
+static status_message check_supported(transaction_option &opt) {
+    // TODO support various options
     if (opt.type() != transaction_type::occ) {
-        return status::err_not_implemented;
+        return {status::err_not_implemented,
+                "only supported OCC (short) transaction type, others not implemented yet"};
     }
     if (!opt.write_preserves().empty()) {
-        return status::err_not_implemented;
+        return {status::err_not_implemented,
+                "'write_preserve' option not implemented yet"};
     }
     if (opt.priority() != transaction_priority::priority_unspecified) {
-        return status::err_not_implemented;
+        return {status::err_not_implemented,
+                "'priority' option not implemented yet"};
     }
     if (!opt.label().empty()) {
-        return status::err_not_implemented;
+        return {status::err_not_implemented,
+                "'label' option not implemented yet"};
     }
     if (opt.modifies_definitions()) {
-        return status::err_not_implemented;
+        return {status::err_not_implemented,
+                "'modify_definitions' option not implemented yet"};
     }
     if (!opt.inclusive_read_areas().empty()) {
-        return status::err_not_implemented;
+        return {status::err_not_implemented,
+                "'inclusive_read_area' option not implemented yet"};
     }
     if (!opt.exclusive_read_areas().empty()) {
-        return status::err_not_implemented;
+        return {status::err_not_implemented,
+                "'exclusive_read_area' option not implemented yet"};
     }
-    return status::ok;
+    return status_message{status::ok};
 }
 
 void service::command_begin(tateyama::proto::kvs::request::Request const &proto_req,
                                  std::shared_ptr<tateyama::api::server::response> &res) {
     auto &begin = proto_req.begin();
     auto option = convert(begin.transaction_option());
-    if (auto s = check_supported(option); s != status::ok) {
-        error_begin(s, res);
+    if (auto sm = check_supported(option); sm.status_code() != status::ok) {
+        error_begin(sm.status_code(), res, sm.message());
         return;
     }
     std::shared_ptr<transaction> tx{};
@@ -210,30 +222,44 @@ static void success_commit(std::shared_ptr<tateyama::api::server::response> &res
     proto_res.release_commit();
 }
 
-static void error_commit(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_commit(status status, std::shared_ptr<tateyama::api::server::response> &res,
+                         std::string *message = nullptr) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Commit commit { };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(status, error);
+    auto alloc_detail = set_error(status, message, error);
     commit.set_allocated_error(&error);
     proto_res.set_allocated_commit(&commit);
     reply(proto_res, res);
+    if (alloc_detail) {
+        error.release_detail();
+    }
     commit.release_error();
     proto_res.release_commit();
 }
 
-static status check_supported(tateyama::proto::kvs::request::CommitStatus const status) {
-    if (status == tateyama::proto::kvs::request::CommitStatus::COMMIT_STATUS_UNSPECIFIED) {
-        return status::ok;
+static status_message check_supported(tateyama::proto::kvs::request::CommitStatus const status) {
+    switch (status) {
+    case tateyama::proto::kvs::request::CommitStatus::COMMIT_STATUS_UNSPECIFIED:
+        return status_message{status::ok};
+    case tateyama::proto::kvs::request::CommitStatus::ACCEPTED:
+        return {status::err_not_implemented, "'ACCEPTED' option not implemented yet"};
+    case tateyama::proto::kvs::request::CommitStatus::AVAILABLE:
+        return {status::err_not_implemented, "'AVAILABLE' option not implemented yet"};
+    case tateyama::proto::kvs::request::CommitStatus::STORED:
+        return {status::err_not_implemented, "'STORED' option not implemented yet"};
+    case tateyama::proto::kvs::request::CommitStatus::PROPAGATED:
+        return {status::err_not_implemented, "'PROPAGATED' option not implemented yet"};
+    default:
+        throw_exception(std::logic_error{"unknown CommitStatus"});
     }
-    return status::err_not_implemented;
 }
 
 void service::command_commit(tateyama::proto::kvs::request::Request const&proto_req,
                                   std::shared_ptr<tateyama::api::server::response> &res) {
     auto &commit = proto_req.commit();
-    if (auto s = check_supported(commit.notification_type()); s != status::ok) {
-        error_commit(s, res);
+    if (auto sm = check_supported(commit.notification_type()); sm.status_code() != status::ok) {
+        error_commit(sm.status_code(), res, sm.message());
         return;
     }
     // TODO support commit type

@@ -26,40 +26,33 @@ namespace jogasaki {
 using takatori::util::throw_exception;
 
 durability_manager::durability_marker_type durability_manager::current_durability_marker() const {
-    if(! marker_set_) {
+    if(! current_set_) {
         throw_exception(std::logic_error{""});
     }
     return current_;
-}
-
-void update_if_larger(
-    std::atomic<durability_manager::durability_marker_type>& target,
-    durability_manager::durability_marker_type new_value
-) {
-    auto cur = target.load();
-    do {
-        if(new_value <= cur) {
-            return;
-        }
-    } while(! target.compare_exchange_strong(cur, new_value));
 }
 
 bool durability_manager::update_durability_marker(
     durability_manager::durability_marker_type marker,
     durability_manager::callback cb
 ) {
-    update_if_larger(current_, marker);
+    if(heap_in_use_) {
+        return false;
+    }
+    heap_in_use_ = true;
     element_type top{};
     while(heap_.try_pop(top)) {
-        // Note that current_ can be larger than marker at this point
-        // because of other threads calling this function concurrently.
-        if(top->durability_marker() > current_) {
+        if(top->durability_marker() > marker) {
             heap_.push(std::move(top));
             break;
         }
         cb(top);
     }
-    marker_set_ = true;
+    if(! current_set_ || current_ < marker) {
+        current_ = marker;
+    }
+    current_set_ = true;
+    heap_in_use_ = false;
     return true;
 }
 

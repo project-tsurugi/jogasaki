@@ -66,8 +66,9 @@ public:
 
 private:
     tbb::concurrent_priority_queue<element_type, details::less> heap_{details::less{}};
-    std::atomic_bool marker_set_{false};
+    std::atomic_bool current_set_{false};
     std::atomic<durability_marker_type> current_{};
+    std::atomic_bool heap_in_use_{false};
 };
 
 }

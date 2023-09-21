@@ -109,6 +109,22 @@ std::shared_ptr<error::error_info> transaction_context::error_info() const noexc
     return std::atomic_load(std::addressof(error_info_));
 }
 
+std::optional<durability_marker_type> transaction_context::durability_marker() const noexcept {
+    return durability_marker_;
+}
+
+void transaction_context::durability_marker(std::optional<durability_marker_type> arg) noexcept {
+    durability_marker_ = arg;
+}
+
+commit_response_kind transaction_context::commit_response() const noexcept {
+    return commit_response_;
+}
+
+void transaction_context::commit_response(commit_response_kind arg) noexcept {
+    commit_response_ = arg;
+}
+
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
 }

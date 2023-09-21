@@ -18,6 +18,7 @@
 #include <atomic>
 #include <memory>
 
+#include <jogasaki/commit_response.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/kvs/database.h>
 
@@ -87,6 +88,8 @@ private:
 class transaction_context {
 public:
     using mutex_type = std::recursive_mutex;
+
+    using durability_marker_type = ::sharksfin::durability_marker_type;
 
     /**
      * @brief create empty object
@@ -206,12 +209,39 @@ public:
      */
     [[nodiscard]] std::shared_ptr<error::error_info> error_info() const noexcept;
 
+    /**
+     * @brief accessor for the commit_response value
+     * @return the commit response kind indicating the timing when commit completion is notified
+     */
+    [[nodiscard]] commit_response_kind commit_response() const noexcept;
+
+    /**
+     * @brief setter for the commit_response value
+     * @param arg the commit_response value to be set
+     */
+    void commit_response(commit_response_kind arg) noexcept;
+
+    /**
+     * @brief accessor for the durability marker value
+     * @return the durability marker set for this transaction
+     * @return nullopt if marker is not set (e.g. pre-commit not yet completed)
+     */
+    [[nodiscard]] std::optional<durability_marker_type> durability_marker() const noexcept;
+
+    /**
+     * @brief setter for the durability marker value
+     * @param arg the durability marker value to be set
+     */
+    void durability_marker(std::optional<durability_marker_type> arg) noexcept;
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
     details::worker_manager mgr_{};
     mutex_type mutex_{};
     std::shared_ptr<error::error_info> error_info_{};
+    commit_response_kind commit_response_{};
+    std::optional<durability_marker_type> durability_marker_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

@@ -20,41 +20,9 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "commit_response.h"
+
 namespace jogasaki {
-
-enum class commit_response_kind : std::int32_t {
-    accepted = 0,
-    available,
-    stored,
-    propagated
-};
-
-/**
- * @brief returns string representation of the value.
- * @param value the target value
- * @return the corresponded string representation
- */
-[[nodiscard]] constexpr inline std::string_view to_string_view(commit_response_kind value) noexcept {
-    using namespace std::string_view_literals;
-    using kind = commit_response_kind;
-    switch (value) {
-        case kind::accepted: return "accepted"sv;
-        case kind::available: return "available"sv;
-        case kind::stored: return "stored"sv;
-        case kind::propagated: return "propagated"sv;
-    }
-    std::abort();
-}
-
-/**
- * @brief appends string representation of the given value.
- * @param out the target output
- * @param value the target value
- * @return the output
- */
-inline std::ostream& operator<<(std::ostream& out, commit_response_kind value) {
-    return out << to_string_view(value);
-}
 
 /**
  * @brief database environment global configuration

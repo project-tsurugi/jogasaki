@@ -109,11 +109,11 @@ std::shared_ptr<error::error_info> transaction_context::error_info() const noexc
     return std::atomic_load(std::addressof(error_info_));
 }
 
-std::optional<durability_marker_type> transaction_context::durability_marker() const noexcept {
+std::optional<transaction_context::durability_marker_type> transaction_context::durability_marker() const noexcept {
     return durability_marker_;
 }
 
-void transaction_context::durability_marker(std::optional<durability_marker_type> arg) noexcept {
+void transaction_context::durability_marker(std::optional<transaction_context::durability_marker_type> arg) noexcept {
     durability_marker_ = arg;
 }
 

@@ -20,49 +20,63 @@
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/character.h>
 #include <takatori/util/exception.h>
 #include "serializer.h"
 
 using buffer = takatori::util::buffer_view;
-using takatori::util::throw_exception;
 using kind = jogasaki::meta::field_type_kind;
-
-using takatori::util::throw_exception;
 
 namespace jogasaki::api::kvsservice {
 
-std::size_t get_bufsize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data> const &list) {
+status get_bufsize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data> const &list,
+                   std::size_t &size) {
     // NOTE empty_stream is created just for getting enough buffer size
     jogasaki::kvs::writable_stream empty_stream{nullptr, 0, true};
     auto s = serialize(spec, list, empty_stream);
-    if (s != status::ok) {
-        throw_exception(std::logic_error{"serialize with empty buffer failed"});
+    if (s == status::ok) {
+        size = empty_stream.size();
     }
-    return empty_stream.size();
+    return s;
 }
 
-static inline jogasaki::status encode(bool nullable, data::any const& data,
+static inline status encode(bool nullable, data::any const& data,
     meta::field_type const& type, jogasaki::kvs::coding_spec const & spec, jogasaki::kvs::writable_stream & results) {
+    jogasaki::status s{};
     if (nullable) {
-        return jogasaki::kvs::encode_nullable(data, type, spec, results);
+        s = jogasaki::kvs::encode_nullable(data, type, spec, results);
+    } else {
+        s = jogasaki::kvs::encode(data, type, spec, results);
     }
-    return jogasaki::kvs::encode(data, type, spec, results);
+    return s == jogasaki::status::ok ? status::ok : status::err_invalid_argument;
+}
+
+static status check_character(column_data const &cd, std::string_view view) {
+    auto ctype = cd.column()->optional_type();
+    if (ctype.empty()) {
+        return status::err_invalid_argument;
+    }
+    auto char_type = dynamic_cast<takatori::type::character const *>(ctype.get());
+    if (char_type->length().has_value() && view.size() > char_type->length().value()) {
+        return status::err_resource_limit_reached;
+    }
+    return status::ok;
 }
 
 status serialize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data> const &list,
                  jogasaki::kvs::writable_stream &results) {
-    for (auto cd : list) {
+    for (auto &cd : list) {
         const auto value = cd.value();
         const auto nullable = cd.column()->criteria().nullity().nullable();
         const auto is_null = value->value_case() == tateyama::proto::kvs::data::Value::VALUE_NOT_SET;
-        jogasaki::status s{};
+        status s{};
         if (is_null) {
             // TODO check
             data::any data{};
             auto type = meta::field_type{};
             s = encode(nullable, data, type, spec, results);
-            if (s != jogasaki::status::ok) {
-                return status::err_invalid_argument;
+            if (s != status::ok) {
+                return s;
             }
             continue;
         }
@@ -93,9 +107,13 @@ status serialize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data
             }
             case takatori::type::type_kind::character: {
                 std::string_view view = value->character_value();
+                if (s = check_character(cd, view); s != status::ok) {
+                    return s;
+                }
                 accessor::text txt {view.data(), view.size()};
                 data::any data{std::in_place_type<accessor::text>, txt};
                 auto type = meta::field_type{meta::field_enum_tag<kind::character>};
+                // TODO spec should have storage_spec(padding, length)
                 s = encode(nullable, data, type, spec, results);
                 break;
             }
@@ -113,7 +131,7 @@ status serialize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data
                 if (ctype.empty()) {
                     return status::err_invalid_argument;
                 }
-                auto decimal_type = dynamic_cast<const takatori::type::decimal *>(ctype.get());
+                auto decimal_type = dynamic_cast<takatori::type::decimal const *>(ctype.get());
                 auto type{meta::field_type{std::make_shared<meta::decimal_field_option>(
                         decimal_type->precision(), decimal_type->scale())}};
                 data::any data{std::in_place_type<takatori::decimal::triple>, triple};
@@ -146,22 +164,47 @@ status serialize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data
                 break;
             }
             default:
-                takatori::util::throw_exception(std::logic_error{"not implemented: unknown value_case"});
-                break;
+                return status::err_not_implemented;
         }
-        if (s != jogasaki::status::ok) {
-            return status::err_invalid_argument;
+        if (s != status::ok) {
+            return s;
         }
     }
     return status::ok;
 }
 
-static inline jogasaki::status decode(bool nullable, jogasaki::kvs::readable_stream &stream,
+static inline status decode(bool nullable, jogasaki::kvs::readable_stream &stream,
     meta::field_type const& type, jogasaki::kvs::coding_spec const &spec, data::any& dest) {
+    jogasaki::status s{};
     if (nullable) {
-        return jogasaki::kvs::decode_nullable(stream, type, spec, dest);
+        s = jogasaki::kvs::decode_nullable(stream, type, spec, dest);
+    } else {
+        s = jogasaki::kvs::decode(stream, type, spec, dest);
     }
-    return jogasaki::kvs::decode(stream, type, spec, dest);
+    return s == jogasaki::status::ok ? status::ok : status::err_invalid_argument;
+}
+
+static status decode_character(jogasaki::kvs::coding_spec const &spec, bool nullable,
+                               jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
+    data::any dest{};
+    auto type = meta::field_type{meta::field_enum_tag<kind::character>};
+    jogasaki::memory::page_pool pool{};
+    jogasaki::memory::lifo_paged_memory_resource mem{&pool};
+    jogasaki::status st{};
+    if (nullable) {
+        st = jogasaki::kvs::decode_nullable(stream, type, spec, dest, &mem);
+    } else {
+        st = jogasaki::kvs::decode(stream, type, spec, dest, &mem);
+    }
+    if (st != jogasaki::status::ok) {
+        return status::err_invalid_argument;
+    }
+    if (!dest.empty()) {
+        auto txt = dest.to<accessor::text>();
+        auto sv = static_cast<std::string_view>(txt);
+        value->set_character_value(sv.data(), sv.size());
+    }
+    return status::ok;
 }
 
 static inline void set_decimal(data::any &dest, tateyama::proto::kvs::data::Value *value) {
@@ -195,16 +238,68 @@ static inline void set_decimal(data::any &dest, tateyama::proto::kvs::data::Valu
     decimal->set_exponent(triple.exponent());
 }
 
+static status decode_decimal(jogasaki::kvs::coding_spec const &spec, yugawara::storage::column const &column,
+                             bool nullable, jogasaki::kvs::readable_stream &stream,
+                             tateyama::proto::kvs::data::Value *value) {
+    data::any dest{};
+    auto decimal_type = dynamic_cast<const takatori::type::decimal *>(&column.type());
+    auto type{meta::field_type{std::make_shared<meta::decimal_field_option>(
+            decimal_type->precision(), decimal_type->scale())}};
+    auto s = decode(nullable, stream, type, spec, dest);
+    if (s == status::ok && !dest.empty()) {
+        set_decimal(dest, value);
+    }
+    return s;
+}
+
+static status decode_date(jogasaki::kvs::coding_spec const &spec, bool nullable,
+                               jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
+    data::any dest{};
+    auto type = meta::field_type{meta::field_enum_tag<kind::date>};
+    auto s = decode(nullable, stream, type, spec, dest);
+    if (s == status::ok && !dest.empty()) {
+        auto date = dest.to<takatori::datetime::date>();
+        value->set_date_value(date.days_since_epoch());
+    }
+    return s;
+}
+
+static status decode_time_of_day(jogasaki::kvs::coding_spec const &spec, bool nullable,
+                          jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
+    data::any dest{};
+    auto type = meta::field_type{std::make_shared<meta::time_of_day_field_option>()};
+    auto s = decode(nullable, stream, type, spec, dest);
+    if (s == status::ok && !dest.empty()) {
+        auto time = dest.to<takatori::datetime::time_of_day>();
+        value->set_time_of_day_value(time.time_since_epoch().count());
+    }
+    return s;
+}
+
+static status decode_time_point(jogasaki::kvs::coding_spec const &spec, bool nullable,
+                                 jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
+    data::any dest{};
+    auto type = meta::field_type{std::make_shared<meta::time_point_field_option>()};
+    auto s = decode(nullable, stream, type, spec, dest);
+    if (s == status::ok && !dest.empty()) {
+        auto tp = dest.to<takatori::datetime::time_point>();
+        auto timepoint = value->mutable_time_point_value();
+        timepoint->set_offset_seconds(tp.seconds_since_epoch().count());
+        timepoint->set_nano_adjustment(tp.subsecond().count());
+    }
+    return s;
+}
+
 status deserialize(jogasaki::kvs::coding_spec const &spec, yugawara::storage::column const &column,
                    jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
     const auto nullable = column.criteria().nullity().nullable();
     data::any dest{};
-    jogasaki::status s{};
+    status s{};
     switch (column.type().kind()) {
         case takatori::type::type_kind::int4: {
             auto type = meta::field_type{meta::field_enum_tag<kind::int4>};
             s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
+            if (s == status::ok && !dest.empty()) {
                 value->set_int4_value(dest.to<std::int32_t>());
             }
             break;
@@ -212,7 +307,7 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, yugawara::storage::co
         case takatori::type::type_kind::int8: {
             auto type = meta::field_type{meta::field_enum_tag<kind::int8>};
             s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
+            if (s == status::ok && !dest.empty()) {
                 value->set_int8_value(dest.to<std::int64_t>());
             }
             break;
@@ -220,7 +315,7 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, yugawara::storage::co
         case takatori::type::type_kind::float4: {
             auto type = meta::field_type{meta::field_enum_tag<kind::float4>};
             s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
+            if (s == status::ok && !dest.empty()) {
                 value->set_float4_value(dest.to<std::float_t>());
             }
             break;
@@ -228,81 +323,43 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, yugawara::storage::co
         case takatori::type::type_kind::float8: {
             auto type = meta::field_type{meta::field_enum_tag<kind::float8>};
             s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
+            if (s == status::ok && !dest.empty()) {
                 value->set_float8_value(dest.to<std::double_t>());
             }
             break;
         }
         case takatori::type::type_kind::character: {
-            auto type = meta::field_type{meta::field_enum_tag<kind::character>};
-            jogasaki::memory::page_pool pool{};
-            jogasaki::memory::lifo_paged_memory_resource mem{&pool};
-            if (nullable) {
-                s = jogasaki::kvs::decode_nullable(stream, type, spec, dest, &mem);
-            } else {
-                s = jogasaki::kvs::decode(stream, type, spec, dest, &mem);
-            }
-            if (s != jogasaki::status::ok) {
-                return status::err_invalid_argument;
-            }
-            if (!dest.empty()) {
-                auto txt = dest.to<accessor::text>();
-                auto sv = static_cast<std::string_view>(txt);
-                value->set_character_value(sv.data(), sv.size());
-            }
+            s = decode_character(spec, nullable, stream, value);
             break;
         }
         case takatori::type::type_kind::boolean: {
             auto type = meta::field_type{meta::field_enum_tag<kind::boolean>};
             s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok) {
+            if (s == status::ok) {
                 value->set_boolean_value(dest.to<bool>());
             }
             break;
         }
         case takatori::type::type_kind::decimal: {
-            auto decimal_type = dynamic_cast<const takatori::type::decimal *>(&column.type());
-            auto type{meta::field_type{std::make_shared<meta::decimal_field_option>(
-                    decimal_type->precision(), decimal_type->scale())}};
-            s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
-                set_decimal(dest, value);
-            }
+            s = decode_decimal(spec, column, nullable, stream, value);
             break;
         }
         case takatori::type::type_kind::date: {
-            auto type = meta::field_type{meta::field_enum_tag<kind::date>};
-            s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
-                auto date = dest.to<takatori::datetime::date>();
-                value->set_date_value(date.days_since_epoch());
-            }
+            s = decode_date(spec, nullable, stream, value);
             break;
         }
         case takatori::type::type_kind::time_of_day: {
-            auto type = meta::field_type{std::make_shared<meta::time_of_day_field_option>()};
-            s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
-                auto time = dest.to<takatori::datetime::time_of_day>();
-                value->set_time_of_day_value(time.time_since_epoch().count());
-            }
+            s = decode_time_of_day(spec, nullable, stream, value);
             break;
         }
         case takatori::type::type_kind::time_point: {
-            auto type = meta::field_type{std::make_shared<meta::time_point_field_option>()};
-            s = decode(nullable, stream, type, spec, dest);
-            if (s == jogasaki::status::ok && !dest.empty()) {
-                auto tp = dest.to<takatori::datetime::time_point>();
-                auto timepoint = value->mutable_time_point_value();
-                timepoint->set_offset_seconds(tp.seconds_since_epoch().count());
-                timepoint->set_nano_adjustment(tp.subsecond().count());
-            }
+            s = decode_time_point(spec, nullable, stream, value);
             break;
         }
         default:
-            takatori::util::throw_exception(std::logic_error{"not implemented: unknown value_case"});
+            return status::err_not_implemented;
     }
-    if (s != jogasaki::status::ok) {
+    if (s != status::ok) {
         return status::err_invalid_argument;
     }
     return status::ok;

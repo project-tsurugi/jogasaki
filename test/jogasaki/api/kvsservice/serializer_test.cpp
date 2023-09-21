@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <tateyama/proto/kvs/data.pb.h>
+#include <takatori/type/character.h>
 #include <takatori/type/decimal.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
@@ -39,11 +40,13 @@ public:
         auto spec = is_key ? spec_primary_key : spec_value;
         std::vector<column_data> list{};
         list.emplace_back(&column, &v1);
-        auto size = get_bufsize(spec, list);
+        std::size_t size{};
+        status s = get_bufsize(spec, list, size);
+        ASSERT_EQ(s, status::ok);
         ASSERT_GT(size, 0);
         jogasaki::data::aligned_buffer buffer{size};
         jogasaki::kvs::writable_stream out_stream{buffer.data(), buffer.capacity()};
-        auto s = serialize(spec, list, out_stream);
+        s = serialize(spec, list, out_stream);
         ASSERT_EQ(s, status::ok);
         //
         jogasaki::kvs::readable_stream in_stream{out_stream.data(), out_stream.size()};
@@ -124,15 +127,21 @@ TEST_F(serializer_test, ser_float8) {
 TEST_F(serializer_test, ser_string) {
     std::vector<std::string> answers {"", "a", "ab", "abc", "abc\0def", "\0\1\2",
                                       "12345678901234567890"};
+    std::size_t length = 256;
     for (auto answer : answers) {
-        auto type { std::make_shared<takatori::type::simple_type<takatori::type::type_kind::character>>() };
-        for (auto is_key: {true, false}) {
-            yugawara::storage::column col{"col_name", type, {yugawara::variable::nullity(!is_key)}, {}, {}};
-            tateyama::proto::kvs::data::Value v1{};
-            tateyama::proto::kvs::data::Value v2{};
-            v1.set_character_value(answer);
-            test(is_key, col, v1, v2);
-            EXPECT_EQ(v2.character_value(), answer);
+        for (auto is_vary: {true, false}) {
+            auto type{std::make_shared<takatori::type::character>(
+                    takatori::type::varying_t(is_vary), length)};
+            for (auto is_key: {true, false}) {
+                yugawara::storage::column col{"col_name", type,
+                                              {yugawara::variable::nullity(!is_key)},
+                                              {}, {}};
+                tateyama::proto::kvs::data::Value v1{};
+                tateyama::proto::kvs::data::Value v2{};
+                v1.set_character_value(answer);
+                test(is_key, col, v1, v2);
+                EXPECT_EQ(v2.character_value(), answer);
+            }
         }
     }
 }

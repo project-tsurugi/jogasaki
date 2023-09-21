@@ -36,9 +36,11 @@ namespace jogasaki::api::kvsservice {
  * doesn't really serialize the values. Use serialize() to serialize really.
  * @param spec the coding_spec to serialize the values
  * @param list the list of values to be serialized
- * @return the buffer length required to serialize the values
+ * @param size [out] the buffer length required to serialize the values
+ * @return status::ok if succeeded
+ * @return otherwise if error was occurred
  */
-std::size_t get_bufsize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data> const &list);
+status get_bufsize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data> const &list, std::size_t &size);
 
 /**
  * @brief serialize the values

@@ -74,7 +74,7 @@ status get_table(jogasaki::api::impl::database* db,
 }
 
 bool has_secondary_index(std::shared_ptr<yugawara::storage::table const> &table) {
-    auto size = jogasaki::utils::index_count(*table.get());
+    auto size = jogasaki::utils::index_count(*table);
     return size > 1;
 }
 
@@ -100,9 +100,8 @@ static status check_valid_column(column_data const &cd) {
     if (cd.value()->value_case() == tateyama::proto::kvs::data::Value::VALUE_NOT_SET) {
         if (cd.column()->criteria().nullity().nullable()) {
             return status::ok;
-        } else {
-            return status::err_invalid_argument;
         }
+        return status::err_invalid_argument;
     }
     if (!equal_type(cd.column()->type().kind(), cd.value()->value_case())) {
         return status::err_column_type_mismatch;

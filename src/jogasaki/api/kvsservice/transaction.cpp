@@ -118,13 +118,21 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
     if (auto s = check_put_record(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, rec_cols.primary_keys());
+    std::size_t key_size{};
+    if (auto s = get_bufsize(spec_primary_key, rec_cols.primary_keys(), key_size);
+            s != status::ok) {
+        return s;
+    }
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
     if (auto s = serialize(spec_primary_key, rec_cols.primary_keys(), key_stream); s != status::ok) {
         return s;
     }
-    auto value_size = get_bufsize(spec_value, rec_cols.values());
+    std::size_t value_size{};
+    if (auto s = get_bufsize(spec_value, rec_cols.values(), value_size);
+            s != status::ok) {
+        return s;
+    }
     jogasaki::data::aligned_buffer value_buffer{value_size};
     jogasaki::kvs::writable_stream value_stream{value_buffer.data(), value_buffer.capacity()};
     if (auto s = serialize(spec_value, rec_cols.values(), value_stream); s != status::ok) {
@@ -158,7 +166,11 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
     if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, rec_cols.primary_keys());
+    std::size_t key_size{};
+    if (auto s = get_bufsize(spec_primary_key, rec_cols.primary_keys(), key_size);
+        s != status::ok) {
+        return s;
+    }
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
     if (auto s = serialize(spec_primary_key, rec_cols.primary_keys(), key_stream);
@@ -198,7 +210,11 @@ status transaction::remove(std::string_view table_name, tateyama::proto::kvs::da
     if (auto s = check_valid_primary_key(rec_cols); s != status::ok) {
         return s;
     }
-    auto key_size = get_bufsize(spec_primary_key, rec_cols.primary_keys());
+    std::size_t key_size{};
+    if (auto s = get_bufsize(spec_primary_key, rec_cols.primary_keys(), key_size);
+            s != status::ok) {
+        return s;
+    }
     jogasaki::data::aligned_buffer key_buffer{key_size};
     jogasaki::kvs::writable_stream key_stream{key_buffer.data(), key_buffer.capacity()};
     if (auto s = serialize(spec_primary_key, rec_cols.primary_keys(), key_stream);

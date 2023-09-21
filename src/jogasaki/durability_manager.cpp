@@ -25,16 +25,16 @@ namespace jogasaki {
 
 using takatori::util::throw_exception;
 
-durability_manager::durability_marker_type durability_manager::current_durability_marker() const {
+durability_manager::durability_marker_type durability_manager::current_marker() const {
     if(! current_set_) {
         throw_exception(std::logic_error{""});
     }
     return current_;
 }
 
-bool durability_manager::update_durability_marker(
-    durability_manager::durability_marker_type marker,
-    durability_manager::callback cb
+bool durability_manager::update_current_marker(
+    durability_marker_type marker,
+    callback cb
 ) {
     if(heap_in_use_) {
         return false;
@@ -56,7 +56,7 @@ bool durability_manager::update_durability_marker(
     return true;
 }
 
-void durability_manager::add(durability_manager::element_type arg) {
+void durability_manager::add_to_waitlist(durability_manager::element_type arg) {
     heap_.push(std::move(arg));
 }
 }

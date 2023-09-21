@@ -55,14 +55,14 @@ public:
     durability_manager(durability_manager&& other) noexcept = default;
     durability_manager& operator=(durability_manager&& other) noexcept = default;
 
-    durability_marker_type current_durability_marker() const;
+    durability_marker_type current_marker() const;
 
-    bool update_durability_marker(
+    bool update_current_marker(
         durability_marker_type marker,
         callback cb
     );
 
-    void add(element_type arg);
+    void add_to_waitlist(durability_manager::element_type arg);
 
 private:
     tbb::concurrent_priority_queue<element_type, details::less> heap_{details::less{}};

@@ -31,26 +31,26 @@ TEST_F(durability_manager_test, basic) {
     tx1->durability_marker(1);
     auto tx2 = std::make_shared<transaction_context>();
     tx2->durability_marker(2);
-    mgr.add(tx0);
-    mgr.add(tx1);
-    mgr.add(tx2);
+    mgr.add_to_waitlist(tx0);
+    mgr.add_to_waitlist(tx1);
+    mgr.add_to_waitlist(tx2);
     std::atomic_bool called = false;
     std::shared_ptr<transaction_context> tx{};
     auto cb = [&](std::shared_ptr<transaction_context> const& t) {
         called = true;
         tx = t;
     };
-    mgr.update_durability_marker(0, cb);
+    mgr.update_current_marker(0, cb);
     ASSERT_TRUE(called);
     EXPECT_EQ(tx0, tx);
     called = false;
     tx = {};
-    mgr.update_durability_marker(1, cb);
+    mgr.update_current_marker(1, cb);
     ASSERT_TRUE(called);
     EXPECT_EQ(tx1, tx);
     called = false;
     tx = {};
-    mgr.update_durability_marker(2, cb);
+    mgr.update_current_marker(2, cb);
     ASSERT_TRUE(called);
     EXPECT_EQ(tx2, tx);
 }

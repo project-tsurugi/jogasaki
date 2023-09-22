@@ -24,14 +24,18 @@
 
 namespace jogasaki {
 
+class request_context;
+
 namespace details {
+
+using durability_manager_element_type = std::pair<std::shared_ptr<transaction_context>, std::shared_ptr<request_context>>;
 
 struct less {
     bool operator()(
-        std::shared_ptr<transaction_context> const& a,
-        std::shared_ptr<transaction_context> const& b
+        durability_manager_element_type const& a,
+        durability_manager_element_type const& b
     ) {
-        return a->durability_marker() > b->durability_marker();
+        return a.first->durability_marker() > b.first->durability_marker();
     }
 };
 
@@ -42,11 +46,15 @@ struct less {
  */
 class durability_manager {
 public:
-    using element_type = std::shared_ptr<transaction_context>;
+    using element_type = details::durability_manager_element_type;
 
-    using durability_marker_type = transaction_context::durability_marker_type;
+    using element_reference_type = std::pair<
+        std::reference_wrapper<std::shared_ptr<transaction_context> const>,
+        std::reference_wrapper<std::shared_ptr<request_context> const>
+    >;
+    using marker_type = transaction_context::durability_marker_type;
 
-    using callback = std::function<void(element_type const&)>;
+    using callback = std::function<void(element_reference_type)>;
 
     durability_manager() = default;
     ~durability_manager() = default;
@@ -55,19 +63,19 @@ public:
     durability_manager(durability_manager&& other) noexcept = delete;
     durability_manager& operator=(durability_manager&& other) noexcept = delete;
 
-    [[nodiscard]] durability_marker_type current_marker() const;
+    [[nodiscard]] marker_type current_marker() const;
 
     bool update_current_marker(
-        durability_marker_type marker,
+        marker_type marker,
         callback cb
     );
 
-    void add_to_waitlist(durability_manager::element_type arg);
+    void add_to_waitlist(element_type arg);
 
 private:
     tbb::concurrent_priority_queue<element_type, details::less> heap_{details::less{}};
     std::atomic_bool current_set_{false};
-    std::atomic<durability_marker_type> current_{};
+    std::atomic<marker_type> current_{};
     std::atomic_bool heap_in_use_{false};
 };
 

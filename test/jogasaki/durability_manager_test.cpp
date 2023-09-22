@@ -31,14 +31,15 @@ TEST_F(durability_manager_test, basic) {
     tx1->durability_marker(1);
     auto tx2 = std::make_shared<transaction_context>();
     tx2->durability_marker(2);
-    mgr.add_to_waitlist(tx0);
-    mgr.add_to_waitlist(tx1);
-    mgr.add_to_waitlist(tx2);
+    std::shared_ptr<request_context> rctx{};
+    mgr.add_to_waitlist({std::cref(tx0), std::cref(rctx)});
+    mgr.add_to_waitlist({std::cref(tx1), std::cref(rctx)});
+    mgr.add_to_waitlist({std::cref(tx2), std::cref(rctx)});
     std::atomic_bool called = false;
     std::shared_ptr<transaction_context> tx{};
-    auto cb = [&](std::shared_ptr<transaction_context> const& t) {
+    auto cb = [&](durability_manager::element_reference_type t) {
         called = true;
-        tx = t;
+        tx = t.first;
     };
     mgr.update_current_marker(0, cb);
     ASSERT_TRUE(called);

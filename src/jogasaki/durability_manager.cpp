@@ -25,7 +25,7 @@ namespace jogasaki {
 
 using takatori::util::throw_exception;
 
-durability_manager::durability_marker_type durability_manager::current_marker() const {
+durability_manager::marker_type durability_manager::current_marker() const {
     if(! current_set_) {
         throw_exception(std::logic_error{""});
     }
@@ -33,7 +33,7 @@ durability_manager::durability_marker_type durability_manager::current_marker() 
 }
 
 bool durability_manager::update_current_marker(
-    durability_marker_type marker,
+    marker_type marker,
     callback cb  //NOLINT(performance-unnecessary-value-param)
 ) {
     if(heap_in_use_) {
@@ -42,11 +42,11 @@ bool durability_manager::update_current_marker(
     heap_in_use_ = true;
     element_type top{};
     while(heap_.try_pop(top)) {
-        if(top->durability_marker() > marker) {
+        if(top.first->durability_marker() > marker) {
             heap_.push(std::move(top));
             break;
         }
-        cb(top);
+        cb({std::cref(top.first), std::cref(top.second)});
     }
     if(! current_set_ || current_ < marker) {
         current_ = marker;

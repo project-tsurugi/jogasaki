@@ -189,6 +189,14 @@ public:
      */
     [[nodiscard]] status delete_sequence(sequence_id id);
 
+
+    /**
+     * @brief register durability callback
+     * @param the callback to be invoked when durability event (i.e. updates on durability marker) occurrs
+     * @return status::ok if successful
+     * @return any other error
+     */
+    status register_durability_callback(::sharksfin::durability_callback_type cb);
 private:
     sharksfin::DatabaseHandle handle_{};
     bool handle_borrowed_{true};

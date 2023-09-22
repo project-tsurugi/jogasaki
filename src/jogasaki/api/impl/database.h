@@ -28,6 +28,8 @@
 #include <jogasaki/status.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/durability_callback.h>
+#include <jogasaki/durability_manager.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/impl/parameter_set.h>
@@ -276,6 +278,7 @@ private:
     tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::shared_ptr<transaction_context>> transactions_{};
     bool initialized_{false};
+    std::shared_ptr<durability_manager> durability_manager_{std::make_shared<durability_manager>()};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

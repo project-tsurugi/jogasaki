@@ -173,6 +173,11 @@ status database::list_storages(std::vector<std::string>& out) const noexcept {
     return resolve(sharksfin::storage_list(handle_, out));
 }
 
+status database::register_durability_callback(::sharksfin::durability_callback_type cb) {
+    ::sharksfin::database_register_durability_callback(handle_, std::move(cb));
+    return status::ok;
+}
+
 database::database() = default;
 
 }

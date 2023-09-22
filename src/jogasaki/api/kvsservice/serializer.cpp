@@ -132,12 +132,6 @@ status serialize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data
                     return status::err_invalid_argument;
                 }
                 auto decimal_type = dynamic_cast<takatori::type::decimal const *>(ctype.get());
-                if (decimal_type->scale().has_value() && -dec.exponent() < decimal_type->scale()) {
-                    // expected "12.34" (prec=4, scale=2) format, but the value is "12.3" (prec=3, scale=1) etc.
-                    // TODO should be accepted ?
-                    // too long precision value will be checked in encode() below...
-                    return status::err_invalid_argument;
-                }
                 auto type{meta::field_type{std::make_shared<meta::decimal_field_option>(
                         decimal_type->precision(), decimal_type->scale())}};
                 data::any data{std::in_place_type<takatori::decimal::triple>, triple};

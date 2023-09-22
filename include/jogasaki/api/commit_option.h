@@ -31,6 +31,7 @@ public:
     commit_option& operator=(commit_option const& other) = default;
     commit_option(commit_option&& other) noexcept = default;
     commit_option& operator=(commit_option&& other) noexcept = default;
+    ~commit_option() = default;
 
     explicit commit_option(
         bool auto_dispose_on_success = false,

@@ -50,12 +50,12 @@ public:
 
     durability_manager() = default;
     ~durability_manager() = default;
-    durability_manager(durability_manager const& other) = default;
-    durability_manager& operator=(durability_manager const& other) = default;
-    durability_manager(durability_manager&& other) noexcept = default;
-    durability_manager& operator=(durability_manager&& other) noexcept = default;
+    durability_manager(durability_manager const& other) = delete;
+    durability_manager& operator=(durability_manager const& other) = delete;
+    durability_manager(durability_manager&& other) noexcept = delete;
+    durability_manager& operator=(durability_manager&& other) noexcept = delete;
 
-    durability_marker_type current_marker() const;
+    [[nodiscard]] durability_marker_type current_marker() const;
 
     bool update_current_marker(
         durability_marker_type marker,

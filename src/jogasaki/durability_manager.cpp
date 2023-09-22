@@ -34,7 +34,7 @@ durability_manager::durability_marker_type durability_manager::current_marker() 
 
 bool durability_manager::update_current_marker(
     durability_marker_type marker,
-    callback cb
+    callback cb  //NOLINT(performance-unnecessary-value-param)
 ) {
     if(heap_in_use_) {
         return false;

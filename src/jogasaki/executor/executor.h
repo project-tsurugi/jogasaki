@@ -63,13 +63,15 @@ status commit(
  * @param database the database to request execution
  * @param tx the transaction used to execute the request
  * @param on_completion callback on completion of commit
+ * @param option commit options
  * @return id of the job to execute commit
  * @note normal error such as SQL runtime processing failure will be reported by callback
  */
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,
-    error_info_callback on_completion
+    error_info_callback on_completion,
+    api::commit_option option
 );
 
 /**

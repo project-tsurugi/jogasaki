@@ -23,6 +23,7 @@
 namespace jogasaki {
 
 enum class commit_response_kind : std::int32_t {
+    undefined = -1,
     accepted = 0,
     available,
     stored,
@@ -38,6 +39,7 @@ enum class commit_response_kind : std::int32_t {
     using namespace std::string_view_literals;
     using kind = commit_response_kind;
     switch (value) {
+        case kind::undefined: return "undefined"sv;
         case kind::accepted: return "accepted"sv;
         case kind::available: return "available"sv;
         case kind::stored: return "stored"sv;

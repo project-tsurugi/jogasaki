@@ -443,6 +443,18 @@ void service::command_execute_prepared_query(
     execute_query(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, req_info);
 }
 
+commit_response_kind from(::jogasaki::proto::sql::request::CommitStatus st) {
+    using cs = ::jogasaki::proto::sql::request::CommitStatus;
+    switch(st) {
+        case cs::ACCEPTED: return commit_response_kind::accepted;
+        case cs::AVAILABLE: return commit_response_kind::available;
+        case cs::STORED: return commit_response_kind::stored;
+        case cs::PROPAGATED: return commit_response_kind::propagated;
+        default: return commit_response_kind::undefined;
+    }
+    std::abort();
+}
+
 void service::command_commit(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
@@ -455,10 +467,13 @@ void service::command_commit(
         return;
     }
     auto auto_dispose = cm.auto_dispose();
+    commit_option opt{};
+    opt.auto_dispose_on_success(cm.auto_dispose())
+        .commit_response(from(cm.notification_type()));
     tx.commit_async(
         [this, res, tx, req_info, auto_dispose](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
-                if(auto_dispose) {
+                if(auto_dispose) { //FIXME move to executor
                     if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
                         VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
                     }
@@ -468,7 +483,8 @@ void service::command_commit(
                 VLOG(log_error) << log_location_prefix << info->message();
                 details::error<sql::response::ResultOnly>(*res, info.get(), req_info);
             }
-        }
+        },
+        opt
     );
 }
 void service::command_rollback(

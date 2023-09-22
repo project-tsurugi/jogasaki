@@ -240,7 +240,7 @@ private:
     details::worker_manager mgr_{};
     mutex_type mutex_{};
     std::shared_ptr<error::error_info> error_info_{};
-    commit_response_kind commit_response_{};
+    commit_response_kind commit_response_{commit_response_kind::undefined};
     std::optional<durability_marker_type> durability_marker_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT

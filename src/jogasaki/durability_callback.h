@@ -20,6 +20,9 @@
 
 #include <tbb/concurrent_priority_queue.h>
 
+#include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/task_factory.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/durability_manager.h>
 
 namespace jogasaki {
@@ -31,6 +34,8 @@ class durability_callback {
 public:
     using marker_type = ::sharksfin::durability_marker_type;
 
+    using element_reference_type = durability_manager::element_reference_type;
+
     durability_callback() = default;
     ~durability_callback() = default;
     durability_callback(durability_callback const& other) = default;
@@ -38,17 +43,42 @@ public:
     durability_callback(durability_callback&& other) noexcept = default;
     durability_callback& operator=(durability_callback&& other) noexcept = default;
 
-    explicit durability_callback(durability_manager& mgr) :
-        manager_(std::addressof(mgr))
+    durability_callback(
+        durability_manager& mgr,
+        scheduler::task_scheduler& scheduler
+    ) :
+        manager_(std::addressof(mgr)),
+        scheduler_(std::addressof(scheduler))
     {}
 
     void operator()(marker_type marker) {
-        (void) marker;
-
+        create_request_context();
+        scheduler_->schedule_task(
+            scheduler::create_custom_task(
+                nullptr,
+                [mgr=manager_, marker](){
+                    if(mgr->update_current_marker(
+                        marker,
+                        [](element_reference_type e){
+                            auto& tx = e.first;
+                            (void) tx;
+                            auto& rctx = e.second;
+                            scheduler::submit_teardown(*rctx.get(), false, true);
+                        })) {
+                        return model::task_result::complete;
+                    }
+                    return model::task_result::yield;
+                },
+                false,
+                false
+            ),
+            scheduler::schedule_option{scheduler::schedule_policy_kind::suspended_worker}
+        );
     }
 
 private:
     durability_manager* manager_{};
+    scheduler::task_scheduler* scheduler_{};
 
 };
 

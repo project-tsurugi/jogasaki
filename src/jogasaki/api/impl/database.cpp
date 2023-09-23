@@ -110,8 +110,6 @@ status database::start() {
         return status::err_io_error;
     }
 
-    kvs_db_->register_durability_callback(durability_callback{*durability_manager_});
-
     if(auto res = recover_metadata(); res != status::ok) {
         (void) kvs_db_->close();
         kvs_db_.reset();
@@ -137,6 +135,9 @@ status database::start() {
         }
         task_scheduler_->start();
     }
+
+    kvs_db_->register_durability_callback(durability_callback{*durability_manager_, *task_scheduler_});
+
     return status::ok;
 }
 

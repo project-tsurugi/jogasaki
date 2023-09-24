@@ -136,12 +136,13 @@ status database::start() {
         task_scheduler_->start();
     }
 
-    kvs_db_->register_durability_callback(durability_callback{*durability_manager_, *task_scheduler_});
+    kvs_db_->register_durability_callback(durability_callback{*this, *durability_manager_, *task_scheduler_});
 
     return status::ok;
 }
 
 status database::stop() {
+    stop_requested_ = true;
     // this function is not called on maintenance/quiescent mode
     if (cfg_->activate_scheduler()) {
         task_scheduler_->stop();
@@ -1068,6 +1069,10 @@ std::shared_ptr<transaction_context> database::find_transaction(api::transaction
 
 std::size_t database::transaction_count() const {
     return transactions_.size();
+}
+
+bool database::stop_requested() const noexcept {
+    return stop_requested_;
 }
 
 }

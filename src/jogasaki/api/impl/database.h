@@ -218,6 +218,7 @@ public:
 
     [[nodiscard]] std::shared_ptr<transaction_context> find_transaction(api::transaction_handle handle);
 
+    [[nodiscard]] bool stop_requested() const noexcept;
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -279,6 +280,7 @@ private:
     tbb::concurrent_hash_map<api::transaction_handle, std::shared_ptr<transaction_context>> transactions_{};
     bool initialized_{false};
     std::shared_ptr<durability_manager> durability_manager_{std::make_shared<durability_manager>()};
+    std::atomic_bool stop_requested_{false};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

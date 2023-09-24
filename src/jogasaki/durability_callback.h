@@ -18,14 +18,14 @@
 #include <atomic>
 #include <memory>
 
-#include <tbb/concurrent_priority_queue.h>
-
-#include <jogasaki/scheduler/flat_task.h>
-#include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/durability_manager.h>
 
 namespace jogasaki {
+
+namespace api::impl {
+class database;
+}
 
 /**
  * @brief durability callback
@@ -44,39 +44,19 @@ public:
     durability_callback& operator=(durability_callback&& other) noexcept = default;
 
     durability_callback(
+        api::impl::database& db,
         durability_manager& mgr,
         scheduler::task_scheduler& scheduler
     ) :
+        db_(std::addressof(db)),
         manager_(std::addressof(mgr)),
         scheduler_(std::addressof(scheduler))
     {}
 
-    void operator()(marker_type marker) {
-        create_request_context();
-        scheduler_->schedule_task(
-            scheduler::create_custom_task(
-                nullptr,
-                [mgr=manager_, marker](){
-                    if(mgr->update_current_marker(
-                        marker,
-                        [](element_reference_type e){
-                            auto& tx = e.first;
-                            (void) tx;
-                            auto& rctx = e.second;
-                            scheduler::submit_teardown(*rctx.get(), false, true);
-                        })) {
-                        return model::task_result::complete;
-                    }
-                    return model::task_result::yield;
-                },
-                false,
-                false
-            ),
-            scheduler::schedule_option{scheduler::schedule_policy_kind::suspended_worker}
-        );
-    }
+    void operator()(marker_type marker);
 
 private:
+    api::impl::database* db_{};
     durability_manager* manager_{};
     scheduler::task_scheduler* scheduler_{};
 

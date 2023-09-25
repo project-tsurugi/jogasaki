@@ -200,23 +200,6 @@ public:
     }
 
     /**
-     * @brief accessor for lazy worker flag
-     * @return whether lazy worker is enabled to sleep frequently for less cpu consumption
-     * @note this is experimental feature and will be dropped soon
-     */
-    [[nodiscard]] bool lazy_worker() const noexcept {
-        return lazy_worker_;
-    }
-
-    /**
-     * @brief setter for lazy worker flag
-     * @note this is experimental feature and will be dropped soon
-     */
-    void lazy_worker(bool arg) noexcept {
-        lazy_worker_ = arg;
-    }
-
-    /**
      * @brief setter for activate scheduler flag
      */
     void activate_scheduler(bool arg) noexcept {
@@ -338,23 +321,6 @@ public:
         busy_worker_ = arg;
     }
 
-    /**
-     * @brief setter for enable_watcher flag
-     * @note this is experimental feature and will be dropped soon
-     */
-    void enable_watcher(bool arg) noexcept {
-        enable_watcher_ = arg;
-    }
-
-    /**
-     * @brief accessor for enable_watcher flag
-     * @return whether condition watcher is enabled
-     * @note this is experimental feature and will be dropped soon
-     */
-    [[nodiscard]] bool enable_watcher() const noexcept {
-        return enable_watcher_;
-    }
-
     [[nodiscard]] std::size_t watcher_interval() const noexcept {
         return watcher_interval_;
     }
@@ -402,7 +368,6 @@ public:
             "stealing_enabled:" << cfg.stealing_enabled() << " " <<
             "db_location:" << cfg.db_location() << " " <<
             "tasked_write:" << cfg.tasked_write() << " " <<
-            "lazy_worker:" << cfg.lazy_worker() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
             "enable_index_join:" << cfg.enable_index_join() << " " <<
             "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
@@ -411,7 +376,6 @@ public:
             "lightweight_job_level:" << cfg.lightweight_job_level() << " " <<
             "enable_hybrid_scheduler:" << cfg.enable_hybrid_scheduler() << " " <<
             "busy_worker:" << cfg.busy_worker() << " " <<
-            "enable_watcher:" << cfg.enable_watcher() << " " <<
             "watcher_interval:" << cfg.watcher_interval() << " " <<
             "worker_try_count:" << cfg.worker_try_count() << " " <<
             "worker_suspend_timeout:" << cfg.worker_suspend_timeout() << " " <<
@@ -437,7 +401,6 @@ private:
     std::string db_location_{};
     bool tasked_write_ = true;
     bool scheduler_rr_workers_ = false;
-    bool lazy_worker_ = false;
     bool activate_scheduler_ = true;
     bool enable_index_join_ = false;
     bool use_preferred_worker_for_current_thread_ = true;
@@ -446,7 +409,6 @@ private:
     std::size_t lightweight_job_level_ = 0;
     bool enable_hybrid_scheduler_ = true;
     bool busy_worker_ = true;
-    bool enable_watcher_ = false;
     std::size_t watcher_interval_ = 1000;
     std::size_t worker_try_count_ = 1000;
     std::size_t worker_suspend_timeout_ = 1000000;

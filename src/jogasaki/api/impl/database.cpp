@@ -939,31 +939,19 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;
             }
-            if(! cfg_ || ! cfg_->enable_watcher()) {
-                timer->reset();
-                submit_task_begin_wait(rctx.get(), [rctx, handle, timer]() {
-                    if(! (*timer)()) return model::task_result::yield;
-                    if(handle->is_ready_unchecked()) {
-                        scheduler::submit_teardown(*rctx);
-                        return model::task_result::complete;
-                    }
-                    return model::task_result::yield;
-                });
-            } else {
-                // enable_watcher = true
-                auto& ts = *rctx->scheduler();
-                ts.schedule_conditional_task(
-                    scheduler::conditional_task{
-                        rctx.get(),
-                        [handle]() {
-                            return handle->is_ready_unchecked();
-                        },
-                        [rctx]() {
-                            scheduler::submit_teardown(*rctx, false, true);
-                        },
-                    }
-                );
-            }
+
+            auto& ts = *rctx->scheduler();
+            ts.schedule_conditional_task(
+                scheduler::conditional_task{
+                    rctx.get(),
+                    [handle]() {
+                        return handle->is_ready_unchecked();
+                    },
+                    [rctx]() {
+                        scheduler::submit_teardown(*rctx, false, true);
+                    },
+                }
+            );
             return model::task_result::complete;
         }, false);  // create transaction is not sticky task
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){

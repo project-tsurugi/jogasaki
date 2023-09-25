@@ -74,14 +74,12 @@ DEFINE_bool(tasked_insert, true, "run insert as task");  //NOLINT
 DEFINE_int32(stealing_wait, -1, "Coefficient for the number of times checking local queue before stealing. Specify -1 to use jogasaki default.");  //NOLINT
 DEFINE_int32(task_polling_wait, 0, "wait method/duration parameter in the worker's busy loop");  //NOLINT
 DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is selected depending on the current thread requesting schedule");  //NOLINT
-DEFINE_bool(lazy_worker, false, "whether the worker sleeps when idle");  //NOLINT
 DEFINE_bool(ltx, false, "use ltx instead of occ for benchmark. Use exclusively with --rtx.");  //NOLINT
 DEFINE_bool(rtx, false, "use ltx instead of occ for benchmark. Use exclusively with --ltx.");  //NOLINT
 DEFINE_int64(client_idle, 0, "clients take idle spin loop n times");  //NOLINT
 DEFINE_bool(enable_hybrid_scheduler, true, "enable serial-stealing hybrid scheduler");  //NOLINT
 DEFINE_int32(lightweight_job_level, 0, "Specify job level regarded as lightweight");  //NOLINT
 DEFINE_bool(busy_worker, true, "whether task scheduler workers suspend when they have no task. Specify true to stop suspend.");  //NOLINT
-DEFINE_bool(enable_watcher, false, "whether task scheduler uses watcher thread and conditional tasks.");  //NOLINT
 DEFINE_int64(watcher_interval, 1000, "duration in us before watcher thread wakes up in order to try next check");  //NOLINT
 DEFINE_int64(worker_try_count, 1000, "how many times worker checks the task queues before suspend");  //NOLINT
 DEFINE_int64(worker_suspend_timeout, 1000000, "duration in us before worker wakes up from suspend");  //NOLINT
@@ -266,11 +264,9 @@ public:
         cfg.stealing_enabled(FLAGS_steal);
         cfg.task_polling_wait(FLAGS_task_polling_wait);
         cfg.use_preferred_worker_for_current_thread(FLAGS_use_preferred_worker_for_current_thread);
-        cfg.lazy_worker(FLAGS_lazy_worker);
         cfg.enable_hybrid_scheduler(FLAGS_enable_hybrid_scheduler);
         cfg.lightweight_job_level(FLAGS_lightweight_job_level);
         cfg.busy_worker(FLAGS_busy_worker);
-        cfg.enable_watcher(FLAGS_enable_watcher);
         cfg.watcher_interval(FLAGS_watcher_interval);
         cfg.worker_suspend_timeout(FLAGS_worker_suspend_timeout);
 

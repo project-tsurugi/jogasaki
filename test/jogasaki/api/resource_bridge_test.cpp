@@ -74,7 +74,6 @@ using namespace std::string_view_literals;
 static constexpr std::string_view default_configuration {  // NOLINT
     "[sql]\n"
         "thread_pool_size=50\n"
-        "lazy_worker=false\n"
         "enable_index_join=false\n"
         "stealing_enabled=true\n"
         "default_partitions=5\n"
@@ -92,7 +91,7 @@ TEST_F(resource_bridge_test, resource_cfg) {
     std::stringstream ss{
         "[sql]\n"
         "thread_pool_size=99\n"
-        "lazy_worker=true\n"
+        "busy_worker=true\n"
         "enable_index_join=true\n"
         "[datastore]\n"
         "log_location=LOCATION\n"
@@ -101,7 +100,7 @@ TEST_F(resource_bridge_test, resource_cfg) {
 
     auto c = api::resource::convert_config(cfg);
     EXPECT_EQ(99, c->thread_pool_size());
-    EXPECT_TRUE(c->lazy_worker());
+    EXPECT_TRUE(c->busy_worker());
     EXPECT_TRUE(c->enable_index_join());
 
     // convert_config handles config entries necessary for jogasaki db initialization

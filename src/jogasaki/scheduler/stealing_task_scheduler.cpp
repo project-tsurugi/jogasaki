@@ -134,12 +134,10 @@ tateyama::task_scheduler::task_scheduler_cfg stealing_task_scheduler::create_sch
     ret.assign_numa_nodes_uniformly(params.assign_numa_nodes_uniformly());
     ret.initial_core(params.inititial_core());
     ret.stealing_enabled(params.stealing_enabled());
-    ret.lazy_worker(params.lazy_worker());
     ret.use_preferred_worker_for_current_thread(params.use_preferred_worker_for_current_thread());
     ret.stealing_wait(params.stealing_wait());
     ret.task_polling_wait(params.task_polling_wait());
     ret.busy_worker(params.busy_worker());
-    ret.enable_watcher(params.enable_watcher());
     ret.watcher_interval(params.watcher_interval());
     ret.worker_try_count(params.worker_try_count());
     ret.worker_suspend_timeout(params.worker_suspend_timeout());

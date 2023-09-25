@@ -133,9 +133,6 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
             ret->thread_pool_size(v.value());
         }
     }
-    if (auto v = jogasaki_config->get<bool>("lazy_worker")) {
-        ret->lazy_worker(v.value());
-    }
     if (auto v = jogasaki_config->get<bool>("prepare_test_tables")) {
         ret->prepare_test_tables(v.value());
     }
@@ -175,9 +172,6 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<bool>("busy_worker")) {
         ret->busy_worker(v.value());
     }
-    if (auto v = jogasaki_config->get<bool>("enable_watcher")) {
-        ret->enable_watcher(v.value());
-    }
     if (auto v = jogasaki_config->get<std::size_t>("watcher_interval")) {
         ret->watcher_interval(v.value());
     }
@@ -186,11 +180,6 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     }
     if (auto v = jogasaki_config->get<std::size_t>("worker_suspend_timeout")) {
         ret->worker_suspend_timeout(v.value());
-    }
-
-    if(! ret->busy_worker() && ! ret->enable_watcher()) {
-        LOG_LP(ERROR) << "invalid configuration - busy_worker=false and enable_watcher=false";
-        return {};
     }
 
     constexpr std::string_view KEY_COMMIT_RESPONSE{"commit_response"};

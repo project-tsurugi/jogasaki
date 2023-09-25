@@ -62,6 +62,7 @@ status transaction::commit(bool async) {
 }
 
 bool transaction::commit(transaction::commit_callback_type cb) {
+    active_ = false;
     return sharksfin::transaction_commit_with_callback(tx_, std::move(cb));
 }
 

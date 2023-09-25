@@ -61,6 +61,10 @@ status transaction::commit(bool async) {
     return resolve(rc);
 }
 
+bool transaction::commit(transaction::commit_callback_type cb) {
+    return sharksfin::transaction_commit_with_callback(tx_, std::move(cb));
+}
+
 status transaction::abort() {
     auto rc = sharksfin::transaction_abort(tx_);
     if(rc == sharksfin::StatusCode::OK) {

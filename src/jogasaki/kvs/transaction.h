@@ -35,6 +35,7 @@ class database;
  */
 class transaction {
 public:
+    using commit_callback_type = ::sharksfin::commit_callback_type;
     /**
      * @brief create empty object
      */
@@ -64,6 +65,15 @@ public:
      * @return other status code when error occurs
      */
     [[nodiscard]] status commit(bool async = false);
+
+    /**
+     * @brief commit the transaction
+     * @details commit the current transaction. When successful,
+     * the object gets invalidated and should not be used any more.
+     * @return true if callback is already invoked when control is returned to caller
+     * @return false otherwise
+     */
+    [[nodiscard]] bool commit(commit_callback_type cb);
 
     /**
      * @brief wait for commit

@@ -1087,6 +1087,10 @@ utils::use_counter const& database::requests_inprocess() const noexcept {
     return requests_inprocess_;
 }
 
+std::shared_ptr<durability_manager> const& database::durable_manager() const noexcept {
+    return durability_manager_;
+}
+
 }
 
 namespace jogasaki::api {

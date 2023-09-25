@@ -223,6 +223,7 @@ public:
 
     [[nodiscard]] utils::use_counter const& requests_inprocess() const noexcept;
 
+    [[nodiscard]] std::shared_ptr<durability_manager> const& durable_manager() const noexcept;
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

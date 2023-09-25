@@ -493,7 +493,6 @@ scheduler::job_context::job_id_type commit_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req
     );
-    auto timer = std::make_shared<utils::backoff_timer>();
     auto jobid = rctx->job()->id();
     std::string txid{tx->transaction_id()};
 
@@ -505,7 +504,7 @@ scheduler::job_context::job_id_type commit_async(
         tx->commit_response(cr);
     }
 
-    auto t = scheduler::create_custom_task(rctx.get(), [&database, tx, rctx, timer=std::move(timer), jobid, txid]() {
+    auto t = scheduler::create_custom_task(rctx.get(), [&database, tx, rctx, jobid, txid]() {
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
             << txid
             << " job_id:"

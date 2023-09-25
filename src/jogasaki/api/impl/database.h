@@ -40,6 +40,7 @@
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/utils/use_counter.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 
 #include <tateyama/status.h>
@@ -219,6 +220,9 @@ public:
     [[nodiscard]] std::shared_ptr<transaction_context> find_transaction(api::transaction_handle handle);
 
     [[nodiscard]] bool stop_requested() const noexcept;
+
+    [[nodiscard]] utils::use_counter const& requests_inprocess() const noexcept;
+
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -281,7 +285,7 @@ private:
     bool initialized_{false};
     std::shared_ptr<durability_manager> durability_manager_{std::make_shared<durability_manager>()};
     std::atomic_bool stop_requested_{false};
-
+    utils::use_counter requests_inprocess_{};
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,

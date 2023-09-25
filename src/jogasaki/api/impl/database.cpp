@@ -143,6 +143,14 @@ status database::start() {
 
 status database::stop() {
     stop_requested_ = true;
+    std::size_t cnt = 0;
+    while(requests_inprocess_.count() != 1) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{1});
+        if(++cnt > 1000) {
+            LOG_LP(ERROR) << "Request to stop engine timed out.";
+            return status::err_time_out;
+        }
+    }
     // this function is not called on maintenance/quiescent mode
     if (cfg_->activate_scheduler()) {
         task_scheduler_->stop();
@@ -1073,6 +1081,10 @@ std::size_t database::transaction_count() const {
 
 bool database::stop_requested() const noexcept {
     return stop_requested_;
+}
+
+utils::use_counter const& database::requests_inprocess() const noexcept {
+    return requests_inprocess_;
 }
 
 }

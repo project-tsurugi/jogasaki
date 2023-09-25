@@ -22,10 +22,12 @@
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/utils/use_counter.h>
 
 namespace jogasaki {
 
 void durability_callback::operator()(durability_callback::marker_type marker) {
+    [[maybe_unused]] auto cnt = db_->requests_inprocess();
     if(db_->stop_requested()) return;
     auto request_ctx = api::impl::create_request_context(db_, nullptr, nullptr, nullptr);
     request_ctx->job()->callback([request_ctx](){

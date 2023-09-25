@@ -91,6 +91,8 @@ public:
 
     using durability_marker_type = ::sharksfin::durability_marker_type;
 
+    using commit_callback_type = kvs::transaction::commit_callback_type;
+
     /**
      * @brief create empty object
      */
@@ -129,6 +131,11 @@ public:
      * @see kvs::transaction::commit()
      */
     [[nodiscard]] status commit(bool async = false);
+
+    /**
+     * @see kvs::transaction::commit()
+     */
+    [[nodiscard]] bool commit(commit_callback_type cb);
 
     /**
      * @see kvs::transaction::wait_for_commit()

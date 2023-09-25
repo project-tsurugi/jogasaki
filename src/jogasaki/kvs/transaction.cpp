@@ -88,8 +88,8 @@ kvs::database* transaction::database() const noexcept {
 }
 
 status transaction::wait_for_commit(std::size_t timeout_ns) {
-    auto rc = sharksfin::transaction_wait_commit(tx_, timeout_ns);
-    return resolve(rc);
+    (void) timeout_ns;
+    return status::ok;
 }
 
 sharksfin::TransactionState transaction::check_state() noexcept {

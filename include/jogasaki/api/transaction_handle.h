@@ -117,12 +117,13 @@ public:
 
     /**
      * @brief commit the transaction
+     * @param option commit options
      * @return status::ok when successful
      * @return error code otherwise
      * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
      * @deprecated Use `commit_async`. This function is left for testing.
      */
-    status commit();
+    status commit(commit_option option = commit_option{});
 
     /**
      * @brief commit the transaction asynchronously

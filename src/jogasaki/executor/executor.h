@@ -48,6 +48,7 @@ using error_info_callback = std::function<void(status, std::shared_ptr<error::er
  * @brief commit the transaction
  * @param database the database to request execution
  * @param tx the transaction used to execute the request
+ * @param option commit options
  * @return status::ok when successful
  * @return error code otherwise
  * @note this function is synchronous and committing transaction may require indefinite length of wait for other tx.
@@ -55,7 +56,8 @@ using error_info_callback = std::function<void(status, std::shared_ptr<error::er
  */
 status commit(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> tx
+    std::shared_ptr<transaction_context> tx,
+    api::commit_option option = api::commit_option{}
 );
 
 /**

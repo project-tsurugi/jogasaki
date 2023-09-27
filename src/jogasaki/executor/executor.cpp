@@ -54,7 +54,7 @@ namespace jogasaki::executor {
 using takatori::util::unsafe_downcast;
 using takatori::util::string_builder;
 
-constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:transaction ";
+constexpr static std::string_view log_location_prefix = "/:jogasaki:executor ";
 
 namespace details {
 
@@ -121,7 +121,8 @@ status init(
 }
 status commit(
     api::impl::database& database,
-    std::shared_ptr<transaction_context> tx
+    std::shared_ptr<transaction_context> tx,
+    api::commit_option option  //NOLINT(performance-unnecessary-value-param)
 ) {
     status ret{};
     auto jobid = commit_async(
@@ -133,7 +134,7 @@ status commit(
                     VLOG(log_error) << log_location_prefix << (info ? info->message() : "");
                 }
             },
-            api::commit_option{}
+            option
     );
     database.task_scheduler()->wait_for_progress(jobid);
     return ret;

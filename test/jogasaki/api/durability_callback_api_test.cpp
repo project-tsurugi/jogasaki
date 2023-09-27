@@ -32,6 +32,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
+#include <jogasaki/utils/create_commit_option.h>
 
 namespace jogasaki::testing {
 
@@ -47,6 +48,9 @@ using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
 
+/**
+ * @brief testing durability callback using api
+ */
 class durability_callback_api_test :
     public ::testing::Test,
     public api_test_base {
@@ -70,16 +74,25 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(durability_callback_api_test, basic) {
+    utils::set_global_commit_option(api::commit_option{}.commit_response(commit_response_kind::stored));
     execute_statement("create table T (C0 int primary key)");
     constexpr std::size_t num_rows = 10;
+    std::vector<std::chrono::nanoseconds> took(num_rows);
+    using clock = std::chrono::system_clock;
+    auto begin = clock::now();
     for(std::size_t i=0; i < num_rows; ++i) {
         execute_statement("INSERT INTO T VALUES ("+std::to_string(i)+")");
-        wait_epochs();
+        auto end = clock::now();
+        took[i] = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+        begin = end;
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("select * from T", result);
         ASSERT_EQ(num_rows, result.size());
+    }
+    for(std::size_t i=0; i < num_rows; ++i) {
+        std::cerr << i << ":" << (took[i].count() / 1000) << " (us)" << std::endl;
     }
 }
 

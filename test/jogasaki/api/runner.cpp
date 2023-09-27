@@ -25,6 +25,7 @@
 #include <jogasaki/executor/executor.h>
 
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/create_commit_option.h>
 
 #define notnull(arg) if (! (arg)) { execution_message_ = "execution failed. " #arg " is null"; return *this; }
 #define exec_fail(msg) { execution_message_ = msg; return *this; }
@@ -109,7 +110,8 @@ runner& runner::run() {
     if(! tx_) {
         // commit if tx is generated
         if(! expect_error_) {
-            if(auto res = tx.commit(); res != status::ok) {
+            auto* copt = utils::get_global_commit_option();
+            if(auto res = tx.commit(*copt); res != status::ok) {
                 exec_fail("execution failed. tx.commit()");
             }
         } else {

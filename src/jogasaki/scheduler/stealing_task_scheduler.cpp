@@ -120,6 +120,11 @@ void stealing_task_scheduler::stop() {
     scheduler_.print_worker_stats(
         LOG(INFO) << "/:jogasaki:scheduler:stealing_task_scheduler:stop Task scheduler statistics "
     );
+
+    // Following shared_ptr cycle can exist and un-finished job causes memory leak after stopping database:
+    // request_context -> task_scheduler -> job_context -> job completion callback -> request_context
+    // To avoid this clear job contexts even if they are unfinished.
+    job_contexts_.clear(); // to avoid memory leak
 }
 
 task_scheduler_kind stealing_task_scheduler::kind() const noexcept {

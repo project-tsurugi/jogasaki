@@ -502,42 +502,59 @@ scheduler::job_context::job_id_type commit_async(
         database.config()->default_commit_response();
     tx->commit_response(cr);
 
-    auto t = scheduler::create_custom_task(rctx.get(), [&database, tx, rctx, jobid, txid]() {
+    auto t = scheduler::create_custom_task(rctx.get(), [&database, rctx, jobid, txid]() {
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
             << txid
             << " job_id:"
             << utils::hex(jobid);
-        auto res = tx->commit();
-        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
-            << txid
-            << " job_id:"
-            << utils::hex(jobid);
-        if(res == status::waiting_for_other_transaction) {
-            auto& ts = *rctx->scheduler();
-            ts.schedule_conditional_task(
-                scheduler::conditional_task{
-                    rctx.get(),
-                    [&database, tx, rctx]() {
-                        return check_tx_state_for_wait(database, *tx, *rctx);
-                    },
-                    [rctx]() {
-                        scheduler::submit_teardown(*rctx, false, true);
-                    },
+        [[maybe_unused]] auto b = rctx->transaction()->commit(
+            [jobid, rctx, txid, &database](
+                ::sharksfin::StatusCode st,
+                ::sharksfin::ErrorCode ec,
+                ::sharksfin::durability_marker_type marker
+            ){
+                [[maybe_unused]] auto inprocess_requests = database.requests_inprocess();
+                if(database.stop_requested()) return;
+                (void) ec;
+                VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
+                    << txid
+                    << " job_id:"
+                    << utils::hex(jobid);
+                auto res = kvs::resolve(st);
+                if(res != status::ok) {
+                    auto& ts = *rctx->scheduler();
+                    ts.schedule_task(
+                        scheduler::create_custom_task(rctx.get(), [rctx, &database, res]() {
+                            auto msg = utils::create_abort_message(*rctx, *rctx->transaction(), *database.tables());
+                            auto code = res == status::err_inactive_transaction ?
+                                error_code::inactive_transaction_exception :
+                                error_code::cc_exception;
+                            set_error(
+                                *rctx,
+                                code,
+                                msg,
+                                res
+                            );
+                            scheduler::submit_teardown(*rctx);
+                            return model::task_result::complete;
+                        }, false, false)
+                    );
+                    return;
                 }
-            );
-            return model::task_result::complete;
-        }
-        if(res != status::ok) {
-            auto msg = utils::create_abort_message(*rctx, *tx, *database.tables());
-            auto code = res == status::err_inactive_transaction ? error_code::inactive_transaction_exception : error_code::cc_exception;
-            set_error(
-                *rctx,
-                code,
-                msg,
-                res
-            );
-        }
-        scheduler::submit_teardown(*rctx);
+                rctx->transaction()->durability_marker(marker);
+                auto cr = rctx->transaction()->commit_response();
+                if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
+                    scheduler::submit_teardown(*rctx);
+                    return;
+                }
+                // commit_response = stored, propagated, or undefined
+                // current marker should have been set at least once on callback registration
+                if(marker <= database.durable_manager()->current_marker()) {
+                    scheduler::submit_teardown(*rctx);
+                    return;
+                }
+                database.durable_manager()->add_to_waitlist(rctx);
+            });
         return model::task_result::complete;
     }, true);
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid](){  // callback is copy-based

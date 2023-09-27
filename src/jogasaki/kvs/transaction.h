@@ -76,15 +76,6 @@ public:
     [[nodiscard]] bool commit(commit_callback_type cb);
 
     /**
-     * @brief wait for commit
-     * @details wait for async commit
-     * @return status::ok if the operation is successful
-     * @return status::err_time_out if waiting timed out
-     * @return other status code when error occurs
-     */
-    [[nodiscard]] status wait_for_commit(std::size_t timeout_ns = 0UL);
-
-    /**
      * @brief abort the transaction
      * @details abort the current transaction. When successful,
      * the object gets invalidated and should not be used any more.

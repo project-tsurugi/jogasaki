@@ -49,10 +49,6 @@ bool transaction_context::commit(transaction_context::commit_callback_type cb) {
     return transaction_->commit(std::move(cb));
 }
 
-status transaction_context::wait_for_commit(std::size_t timeout_ns) {
-    return transaction_->wait_for_commit(timeout_ns);
-}
-
 status transaction_context::abort() {
     return transaction_->abort();
 }

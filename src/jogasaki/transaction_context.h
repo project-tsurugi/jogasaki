@@ -138,11 +138,6 @@ public:
     [[nodiscard]] bool commit(commit_callback_type cb);
 
     /**
-     * @see kvs::transaction::wait_for_commit()
-     */
-    [[nodiscard]] status wait_for_commit(std::size_t timeout_ns = 0UL);
-
-    /**
      * @see kvs::transaction::abort()
      */
     [[nodiscard]] status abort();

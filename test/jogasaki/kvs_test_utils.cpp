@@ -88,10 +88,6 @@ std::string kvs_test_utils::put(
         LOG(ERROR) << "commit returned: " << res;
         fail();
     }
-    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) {
-        LOG(ERROR) << "wait_for_commit returned: " << res;
-        fail();
-    }
     return std::string{key_buf.data(), key_stream.size()};
 }
 
@@ -128,10 +124,6 @@ void kvs_test_utils::put_secondary(
     }
     if(auto res = tx->commit(true); res != status::ok) {
         LOG(ERROR) << "commit returned: " << res;
-        fail();
-    }
-    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) {
-        LOG(ERROR) << "wait_for_commit returned: " << res;
         fail();
     }
 }
@@ -221,10 +213,6 @@ void kvs_test_utils::get(
     }
     if(auto res = tx->commit(true); res != status::ok) {
         LOG(ERROR) << "commit returned: " << res;
-        fail();
-    }
-    if(auto res = tx->wait_for_commit(2000*1000*1000); res != status::ok) {
-        LOG(ERROR) << "wait_for_commit returned: " << res;
         fail();
     }
 }

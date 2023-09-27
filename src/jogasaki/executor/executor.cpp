@@ -476,6 +476,67 @@ bool check_tx_state_for_wait(
     return true;
 }
 
+void process_commit_callback(
+    ::sharksfin::StatusCode st,
+    ::sharksfin::ErrorCode ec,
+    ::sharksfin::durability_marker_type marker,
+    std::size_t const& jobid,
+    std::shared_ptr<request_context> const& rctx,
+    std::string const& txid,
+    api::impl::database& database,
+    api::commit_option const& option
+) {
+    [[maybe_unused]] auto inprocess_requests = database.requests_inprocess();
+    if(database.stop_requested()) return;
+    (void) ec;
+    VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
+        << txid
+        << " job_id:"
+        << utils::hex(jobid);
+    auto res = kvs::resolve(st);
+    if(res != status::ok) {
+        auto& ts = *rctx->scheduler();
+        ts.schedule_task(
+            scheduler::create_custom_task(rctx.get(), [rctx, &database, res]() {
+                auto msg = utils::create_abort_message(*rctx, *rctx->transaction(), *database.tables());
+                auto code = res == status::err_inactive_transaction ?
+                    error_code::inactive_transaction_exception :
+                    error_code::cc_exception;
+                set_error(
+                    *rctx,
+                    code,
+                    msg,
+                    res
+                );
+                scheduler::submit_teardown(*rctx);
+                return model::task_result::complete;
+            }, false, false)
+        );
+        return;
+    }
+    rctx->transaction()->durability_marker(marker);
+
+    // if auto dispose
+    if (option.auto_dispose_on_success()) {
+        api::transaction_handle handle{rctx->transaction().get(), std::addressof(database)};
+        if (auto rc = database.destroy_transaction(handle); rc != jogasaki::status::ok) {
+            VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
+        }
+    }
+    auto cr = rctx->transaction()->commit_response();
+    if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
+        scheduler::submit_teardown(*rctx);
+        return;
+    }
+    // commit_response = stored, propagated, or undefined
+    // current marker should have been set at least once on callback registration
+    if(marker <= database.durable_manager()->current_marker()) {
+        scheduler::submit_teardown(*rctx);
+        return;
+    }
+    database.durable_manager()->add_to_waitlist(rctx);
+}
+
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx, //NOLINT(performance-unnecessary-value-param)
@@ -513,55 +574,7 @@ scheduler::job_context::job_id_type commit_async(
                 ::sharksfin::ErrorCode ec,
                 ::sharksfin::durability_marker_type marker
             ){
-                [[maybe_unused]] auto inprocess_requests = database.requests_inprocess();
-                if(database.stop_requested()) return;
-                (void) ec;
-                VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing_end "
-                    << txid
-                    << " job_id:"
-                    << utils::hex(jobid);
-                auto res = kvs::resolve(st);
-                if(res != status::ok) {
-                    auto& ts = *rctx->scheduler();
-                    ts.schedule_task(
-                        scheduler::create_custom_task(rctx.get(), [rctx, &database, res]() {
-                            auto msg = utils::create_abort_message(*rctx, *rctx->transaction(), *database.tables());
-                            auto code = res == status::err_inactive_transaction ?
-                                error_code::inactive_transaction_exception :
-                                error_code::cc_exception;
-                            set_error(
-                                *rctx,
-                                code,
-                                msg,
-                                res
-                            );
-                            scheduler::submit_teardown(*rctx);
-                            return model::task_result::complete;
-                        }, false, false)
-                    );
-                    return;
-                }
-                rctx->transaction()->durability_marker(marker);
-
-                // if auto dispose
-                if (option.auto_dispose_on_success()) {
-                    api::transaction_handle handle{rctx->transaction().get(), std::addressof(database)};
-                    if (auto rc = database.destroy_transaction(handle); rc != jogasaki::status::ok) {
-                        VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
-                    }
-                }
-                auto cr = rctx->transaction()->commit_response();
-                if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
-                    scheduler::submit_teardown(*rctx);
-                    return;
-                }
-                // commit_response = stored, propagated, or undefined
-                // current marker should have been set at least once on callback registration
-                if(marker <= database.durable_manager()->current_marker()) {
-                    scheduler::submit_teardown(*rctx);
-                    return;
-                }
-                database.durable_manager()->add_to_waitlist(rctx);
+                process_commit_callback(st, ec, marker, jobid, rctx, txid, database, option);
             });
         return model::task_result::complete;
     }, true);

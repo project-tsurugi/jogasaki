@@ -466,18 +466,12 @@ void service::command_commit(
     if(! tx) {
         return;
     }
-    auto auto_dispose = cm.auto_dispose();
     commit_option opt{};
     opt.auto_dispose_on_success(cm.auto_dispose())
         .commit_response(from(cm.notification_type()));
     tx.commit_async(
-        [this, res, tx, req_info, auto_dispose](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+        [res, req_info](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
-                if(auto_dispose) { //FIXME move to executor
-                    if (auto rc = db_->destroy_transaction(tx); rc != jogasaki::status::ok) {
-                        VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
-                    }
-                }
                 details::success<sql::response::ResultOnly>(*res, req_info);
             } else {
                 VLOG(log_error) << log_location_prefix << info->message();

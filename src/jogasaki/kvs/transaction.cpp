@@ -16,6 +16,7 @@
 #include "transaction.h"
 
 #include <thread>
+#include <atomic>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -50,15 +51,24 @@ transaction::~transaction() noexcept {
 }
 
 status transaction::commit(bool async) {
-    auto rc = sharksfin::transaction_commit(tx_, async);
-    if (rc == sharksfin::StatusCode::WAITING_FOR_OTHER_TRANSACTION) {
-        VLOG_LP(log_debug) << "commit request has been submitted - waiting for other transaction to finish";
-    } else if(rc == sharksfin::StatusCode::OK ||
-        rc == sharksfin::StatusCode::ERR_ABORTED ||
-        rc == sharksfin::StatusCode::ERR_ABORTED_RETRYABLE) {
-        active_ = false;
+    (void) async;
+    active_ = false;
+    std::atomic_bool callback_called = false;
+    status rc{};
+    auto b = sharksfin::transaction_commit_with_callback(tx_, [&](
+        ::sharksfin::StatusCode st,
+        ::sharksfin::ErrorCode ec,
+        ::sharksfin::durability_marker_type marker
+    ){
+        (void) ec;
+        (void) marker;
+        callback_called = true;
+        rc = resolve(st);
+    });
+    if(! b) {
+        while(! callback_called) {}
     }
-    return resolve(rc);
+    return rc;
 }
 
 bool transaction::commit(transaction::commit_callback_type cb) {

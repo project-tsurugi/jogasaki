@@ -470,7 +470,7 @@ void service::command_commit(
     opt.auto_dispose_on_success(cm.auto_dispose())
         .commit_response(from(cm.notification_type()));
     tx.commit_async(
-        [this, res, tx, req_info](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+        [res, req_info](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
                 details::success<sql::response::ResultOnly>(*res, req_info);
             } else {

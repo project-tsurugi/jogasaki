@@ -43,15 +43,7 @@ public:
     durability_callback(durability_callback&& other) noexcept = default;
     durability_callback& operator=(durability_callback&& other) noexcept = default;
 
-    durability_callback(
-        api::impl::database& db,
-        durability_manager& mgr,
-        scheduler::task_scheduler& scheduler
-    ) :
-        db_(std::addressof(db)),
-        manager_(std::addressof(mgr)),
-        scheduler_(std::addressof(scheduler))
-    {}
+    explicit durability_callback(api::impl::database& db);
 
     void operator()(marker_type marker);
 

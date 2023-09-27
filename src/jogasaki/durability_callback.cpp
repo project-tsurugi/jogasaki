@@ -53,5 +53,13 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
         scheduler::schedule_option{scheduler::schedule_policy_kind::suspended_worker}
     );
 }
+
+durability_callback::durability_callback(
+    api::impl::database& db
+) :
+    db_(std::addressof(db)),
+    manager_(db.durable_manager().get()),
+    scheduler_(db.task_scheduler())
+{}
 }
 

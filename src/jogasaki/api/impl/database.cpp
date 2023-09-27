@@ -136,7 +136,7 @@ status database::start() {
         task_scheduler_->start();
     }
 
-    kvs_db_->register_durability_callback(durability_callback{*this, *durability_manager_, *task_scheduler_});
+    kvs_db_->register_durability_callback(durability_callback{*this});
 
     return status::ok;
 }

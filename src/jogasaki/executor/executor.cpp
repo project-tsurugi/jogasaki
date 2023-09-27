@@ -502,13 +502,13 @@ scheduler::job_context::job_id_type commit_async(
         database.config()->default_commit_response();
     tx->commit_response(cr);
 
-    auto t = scheduler::create_custom_task(rctx.get(), [&database, rctx, jobid, txid]() {
+    auto t = scheduler::create_custom_task(rctx.get(), [&database, rctx, jobid, txid, option]() {
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
             << txid
             << " job_id:"
             << utils::hex(jobid);
         [[maybe_unused]] auto b = rctx->transaction()->commit(
-            [jobid, rctx, txid, &database](
+            [jobid, rctx, txid, &database, option](
                 ::sharksfin::StatusCode st,
                 ::sharksfin::ErrorCode ec,
                 ::sharksfin::durability_marker_type marker
@@ -542,6 +542,14 @@ scheduler::job_context::job_id_type commit_async(
                     return;
                 }
                 rctx->transaction()->durability_marker(marker);
+
+                // if auto dispose
+                if (option.auto_dispose_on_success()) {
+                    api::transaction_handle handle{rctx->transaction().get(), std::addressof(database)};
+                    if (auto rc = database.destroy_transaction(handle); rc != jogasaki::status::ok) {
+                        VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
+                    }
+                }
                 auto cr = rctx->transaction()->commit_response();
                 if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
                     scheduler::submit_teardown(*rctx);

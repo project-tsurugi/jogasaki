@@ -206,6 +206,12 @@ public:
 
     /**
      * @brief setter for the error info
+     * @details only the first one is stored and subsequent error info (that comes late) is ignored
+     * @param the error info to be stored
+     * @return true if the given error info is stored
+     * @return false if the given error info is not stored because error info is already set.
+     * @note this function is thread-safe and multiple threads can simultaneously call error_info setter/getter.
+     *
      */
     bool error_info(std::shared_ptr<error::error_info> const& info) noexcept;
 
@@ -213,18 +219,23 @@ public:
      * @brief accessor for the error info
      * @return the error info for the request result
      * @return nullptr if no error occurs
+     * @note this function is thread-safe and multiple threads can simultaneously call error_info setter/getter.
      */
     [[nodiscard]] std::shared_ptr<error::error_info> error_info() const noexcept;
 
     /**
      * @brief accessor for the commit_response value
      * @return the commit response kind indicating the timing when commit completion is notified
+     * @note this function is not thread-safe - multiple threads should not call commit_response
+     * setter/getter simultaneously.
      */
     [[nodiscard]] commit_response_kind commit_response() const noexcept;
 
     /**
      * @brief setter for the commit_response value
      * @param arg the commit_response value to be set
+     * @note this function is not thread-safe - multiple threads should not call commit_response
+     * setter/getter simultaneously.
      */
     void commit_response(commit_response_kind arg) noexcept;
 
@@ -232,12 +243,16 @@ public:
      * @brief accessor for the durability marker value
      * @return the durability marker set for this transaction
      * @return nullopt if marker is not set (e.g. pre-commit not yet completed)
+     * @note this function is not thread-safe - multiple threads should not call durability_marker
+     * setter/getter simultaneously.
      */
     [[nodiscard]] std::optional<durability_marker_type> durability_marker() const noexcept;
 
     /**
      * @brief setter for the durability marker value
      * @param arg the durability marker value to be set
+     * @note this function is not thread-safe - multiple threads should not call durability_marker
+     * setter/getter simultaneously.
      */
     void durability_marker(std::optional<durability_marker_type> arg) noexcept;
 

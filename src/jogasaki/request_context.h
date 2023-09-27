@@ -200,6 +200,12 @@ public:
 
     /**
      * @brief setter for the error info
+     * @details only the first one is stored and subsequent error info (that comes late) is ignored
+     * @param the error info to be stored
+     * @return true if the given error info is stored
+     * @return false if the given error info is not stored because error info is already set.
+     * @note this function is thread-safe and multiple threads can simultaneously call error_info setter/getter.
+     *
      */
     bool error_info(std::shared_ptr<error::error_info> const& info) noexcept;
 
@@ -207,6 +213,7 @@ public:
      * @brief accessor for the error info
      * @return the error info for the request result
      * @return nullptr if no error occurs
+     * @note this function is thread-safe and multiple threads can simultaneously call error_info setter/getter.
      */
     [[nodiscard]] std::shared_ptr<error::error_info> error_info() const noexcept;
 

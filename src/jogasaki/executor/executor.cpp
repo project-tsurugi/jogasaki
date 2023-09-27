@@ -496,13 +496,10 @@ scheduler::job_context::job_id_type commit_async(
     auto jobid = rctx->job()->id();
     std::string txid{tx->transaction_id()};
 
-    {
-        // TODO do wee need to set commit response in tx ?
-        auto cr = option.commit_response() != commit_response_kind::undefined ?
-            option.commit_response() :
-            database.config()->default_commit_response();
-        tx->commit_response(cr);
-    }
+    auto cr = option.commit_response() != commit_response_kind::undefined ?
+        option.commit_response() :
+        database.config()->default_commit_response();
+    tx->commit_response(cr);
 
     auto t = scheduler::create_custom_task(rctx.get(), [&database, tx, rctx, jobid, txid]() {
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "

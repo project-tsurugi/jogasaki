@@ -365,14 +365,18 @@ static void success_put(int written, std::shared_ptr<tateyama::api::server::resp
     proto_res.release_put();
 }
 
-static void error_put(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_put(status status, std::shared_ptr<tateyama::api::server::response> &res,
+                      std::string *message = nullptr) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Put put { };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(status, error);
+    auto alloc_detail = set_error(status, message, error);
     put.set_allocated_error(&error);
     proto_res.set_allocated_put(&put);
     reply(proto_res, res);
+    if (alloc_detail) {
+        error.release_detail();
+    }
     put.release_error();
     proto_res.release_put();
 }
@@ -406,6 +410,12 @@ void service::command_put(tateyama::proto::kvs::request::Request const &proto_re
         case status::not_found: // opt==update && didn't update
             success_put(0, res);
             break;
+        case status::err_not_implemented: {
+            // TODO better message handling
+            std::string msg{"table with secondary index not fully supported yet"};
+            error_put(status, res, &msg);
+            break;
+        }
         default:
             error_put(status, res);
             break;
@@ -503,14 +513,18 @@ static void success_remove(int removed, std::shared_ptr<tateyama::api::server::r
     proto_res.release_remove();
 }
 
-static void error_remove(status status, std::shared_ptr<tateyama::api::server::response> &res) {
+static void error_remove(status status, std::shared_ptr<tateyama::api::server::response> &res,
+                         std::string *message = nullptr) {
     tateyama::proto::kvs::response::Error error { };
     tateyama::proto::kvs::response::Remove remove{ };
     tateyama::proto::kvs::response::Response proto_res { };
-    set_error(status, error);
+    auto alloc_detail = set_error(status, message, error);
     remove.set_allocated_error(&error);
     proto_res.set_allocated_remove(&remove);
     reply(proto_res, res);
+    if (alloc_detail) {
+        error.release_detail();
+    }
     remove.release_error();
     proto_res.release_remove();
 }
@@ -543,6 +557,12 @@ void service::command_remove(tateyama::proto::kvs::request::Request const &proto
         case status::not_found:
             success_remove(0, res);
             break;
+        case status::err_not_implemented: {
+            // TODO better message handling
+            std::string msg{"table with secondary index not fully supported yet"};
+            error_remove(status, res, &msg);
+            break;
+        }
         default:
             error_remove(status, res);
             break;

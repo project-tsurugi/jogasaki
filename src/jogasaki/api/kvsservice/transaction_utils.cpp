@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <jogasaki/utils/storage_utils.h>
+
 #include "mapped_record.h"
 #include "serializer.h"
 #include "transaction_utils.h"
@@ -71,11 +73,16 @@ status get_table(jogasaki::api::impl::database* db,
     return status::err_table_not_found;
 }
 
-bool is_valid_record(tateyama::proto::kvs::data::Record const &record) {
+bool has_secondary_index(std::shared_ptr<yugawara::storage::table const> &table) {
+    auto size = jogasaki::utils::index_count(*table);
+    return size > 1;
+}
+
+bool is_valid_record(tateyama::proto::kvs::data::Record const &record) noexcept {
     return record.names_size() >= 1 && record.names_size() == record.values_size();
 }
 
-static status check_valid_reccols(record_columns &rec_cols) {
+static status check_valid_reccols(record_columns &rec_cols) noexcept {
     if (rec_cols.has_unknown_column()) {
         return status::err_column_not_found;
     }
@@ -89,6 +96,12 @@ static status check_valid_column(column_data const &cd) {
     if (cd.value() == nullptr) {
         // TODO support default values (currently all columns' values are necessary)
         return status::err_incomplete_columns;
+    }
+    if (cd.value()->value_case() == tateyama::proto::kvs::data::Value::VALUE_NOT_SET) {
+        if (cd.column()->criteria().nullity().nullable()) {
+            return status::ok;
+        }
+        return status::err_invalid_argument;
     }
     if (!equal_type(cd.column()->type().kind(), cd.value()->value_case())) {
         return status::err_column_type_mismatch;
@@ -169,7 +182,7 @@ status add_value_column(yugawara::storage::column const &column,
                          tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data());
     auto new_value = record.add_values();
-    if (auto s = deserialize(spec_value, nullable_value, column, stream, new_value);
+    if (auto s = deserialize(spec_value, column, stream, new_value);
             s != status::ok) {
         return s;
     }

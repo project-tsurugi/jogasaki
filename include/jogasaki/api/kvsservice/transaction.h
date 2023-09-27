@@ -164,15 +164,14 @@ public:
                                 remove_option opt = remove_option::counting);
 
     /**
-     * @brief set commit/abort error information
+     * @brief set error information
      * @see get_error_info()
      */
     void set_error_info(tateyama::proto::kvs::response::Error const &error) noexcept;
 
     /**
-     * @brief retrieves commit/abort error information
-     * @return commit/abort error information after commit/abort called
-     * @return cleared error object before commit/abort called
+     * @brief retrieves error information
+     * @return error information
      * @see set_error_info()
      */
     [[nodiscard]] tateyama::proto::kvs::response::Error const &get_error_info() const noexcept;

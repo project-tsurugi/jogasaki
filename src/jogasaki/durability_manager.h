@@ -20,7 +20,7 @@
 
 #include <tbb/concurrent_priority_queue.h>
 
-#include <jogasaki/transaction_context.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki {
 
@@ -28,14 +28,14 @@ class request_context;
 
 namespace details {
 
-using durability_manager_element_type = std::pair<std::shared_ptr<transaction_context>, std::shared_ptr<request_context>>;
+using durability_manager_element_type = std::shared_ptr<request_context>;
 
 struct less {
     bool operator()(
         durability_manager_element_type const& a,
         durability_manager_element_type const& b
     ) {
-        return a.first->durability_marker() > b.first->durability_marker();
+        return a->transaction()->durability_marker() > b->transaction()->durability_marker();
     }
 };
 
@@ -48,10 +48,8 @@ class durability_manager {
 public:
     using element_type = details::durability_manager_element_type;
 
-    using element_reference_type = std::pair<
-        std::reference_wrapper<std::shared_ptr<transaction_context> const>,
-        std::reference_wrapper<std::shared_ptr<request_context> const>
-    >;
+    using element_reference_type = element_type const&;
+
     using marker_type = transaction_context::durability_marker_type;
 
     using callback = std::function<void(element_reference_type)>;

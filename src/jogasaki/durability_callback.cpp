@@ -40,10 +40,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                 if(mgr->update_current_marker(
                     marker,
                     [](element_reference_type e){
-                        auto& tx = e.first;
-                        (void) tx;
-                        auto& rctx = e.second;
-                        scheduler::submit_teardown(*rctx.get(), false, true);
+                        scheduler::submit_teardown(*e, false, true);
                     })) {
                     scheduler::submit_teardown(*request_ctx);
                     return model::task_result::complete;

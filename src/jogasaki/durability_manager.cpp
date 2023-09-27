@@ -42,11 +42,11 @@ bool durability_manager::update_current_marker(
     heap_in_use_ = true;
     element_type top{};
     while(heap_.try_pop(top)) {
-        if(top.first->durability_marker() > marker) {
+        if(top->transaction()->durability_marker() > marker) {
             heap_.push(std::move(top));
             break;
         }
-        cb({std::cref(top.first), std::cref(top.second)});
+        cb(top);
     }
     if(! current_set_ || current_ < marker) {
         current_ = marker;
@@ -57,7 +57,7 @@ bool durability_manager::update_current_marker(
 }
 
 void durability_manager::add_to_waitlist(durability_manager::element_type arg) {
-    heap_.push(std::move(arg));
+    heap_.emplace(std::move(arg));
 }
 }
 

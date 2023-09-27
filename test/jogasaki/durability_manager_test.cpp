@@ -23,37 +23,44 @@ namespace jogasaki {
 
 class durability_manager_test : public ::testing::Test {};
 
+std::shared_ptr<request_context> create_rctx(durability_manager::marker_type marker) {
+    auto tx = std::make_shared<transaction_context>();
+    tx->durability_marker(marker);
+    return std::make_shared<request_context>(
+        std::shared_ptr<class configuration>{},
+        std::shared_ptr<memory::lifo_paged_memory_resource>{},
+        std::shared_ptr<kvs::database>{},
+        std::move(tx)
+    );
+}
+
 TEST_F(durability_manager_test, basic) {
     durability_manager mgr{};
-    auto tx0 = std::make_shared<transaction_context>();
-    tx0->durability_marker(0);
-    auto tx1 = std::make_shared<transaction_context>();
-    tx1->durability_marker(1);
-    auto tx2 = std::make_shared<transaction_context>();
-    tx2->durability_marker(2);
-    std::shared_ptr<request_context> rctx{};
-    mgr.add_to_waitlist({std::cref(tx0), std::cref(rctx)});
-    mgr.add_to_waitlist({std::cref(tx1), std::cref(rctx)});
-    mgr.add_to_waitlist({std::cref(tx2), std::cref(rctx)});
+    auto rctx0 = create_rctx(0);
+    auto rctx1 = create_rctx(1);
+    auto rctx2 = create_rctx(2);
+    mgr.add_to_waitlist(rctx0);
+    mgr.add_to_waitlist(rctx1);
+    mgr.add_to_waitlist(rctx2);
     std::atomic_bool called = false;
-    std::shared_ptr<transaction_context> tx{};
-    auto cb = [&](durability_manager::element_reference_type t) {
+    std::shared_ptr<request_context> rctx{};
+    auto cb = [&](durability_manager::element_reference_type e) {
         called = true;
-        tx = t.first;
+        rctx = e;
     };
     mgr.update_current_marker(0, cb);
     ASSERT_TRUE(called);
-    EXPECT_EQ(tx0, tx);
+    EXPECT_EQ(rctx0, rctx);
     called = false;
-    tx = {};
+    rctx = {};
     mgr.update_current_marker(1, cb);
     ASSERT_TRUE(called);
-    EXPECT_EQ(tx1, tx);
+    EXPECT_EQ(rctx1, rctx);
     called = false;
-    tx = {};
+    rctx = {};
     mgr.update_current_marker(2, cb);
     ASSERT_TRUE(called);
-    EXPECT_EQ(tx2, tx);
+    EXPECT_EQ(rctx2, rctx);
 }
 
 }

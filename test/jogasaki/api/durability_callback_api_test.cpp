@@ -63,18 +63,49 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->default_commit_response(commit_response_kind::propagated);
         db_setup(cfg);
     }
 
     void TearDown() override {
         db_teardown();
     }
+    void test_commit_response();
 };
 
 using namespace std::string_view_literals;
 
-TEST_F(durability_callback_api_test, basic) {
+TEST_F(durability_callback_api_test, occ_available) {
+    utils::set_global_tx_option({false, true});
+    utils::set_global_commit_option(api::commit_option{}.commit_response(commit_response_kind::available));
+    test_commit_response();
+}
+
+TEST_F(durability_callback_api_test, occ_stored) {
+    utils::set_global_tx_option({false, true});
     utils::set_global_commit_option(api::commit_option{}.commit_response(commit_response_kind::stored));
+    test_commit_response();
+}
+
+TEST_F(durability_callback_api_test, ltx_available) {
+    utils::set_global_tx_option({true, false});
+    utils::set_global_commit_option(api::commit_option{}.commit_response(commit_response_kind::available));
+    test_commit_response();
+}
+
+TEST_F(durability_callback_api_test, ltx_stored) {
+    utils::set_global_tx_option({true, false});
+    utils::set_global_commit_option(api::commit_option{}.commit_response(commit_response_kind::stored));
+    test_commit_response();
+}
+
+TEST_F(durability_callback_api_test, occ_default) {
+    utils::set_global_tx_option({false, true});
+    utils::set_global_commit_option(api::commit_option{}.commit_response(commit_response_kind::undefined));
+    test_commit_response();
+}
+
+void durability_callback_api_test::test_commit_response() {
     execute_statement("create table T (C0 int primary key)");
     constexpr std::size_t num_rows = 10;
     std::vector<std::chrono::nanoseconds> took(num_rows);

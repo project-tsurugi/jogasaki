@@ -60,7 +60,7 @@ std::pair<api::impl::database*, std::shared_ptr<transaction_context>> cast(std::
 status transaction_handle::commit(api::commit_option option) {  //NOLINT(readability-make-member-function-const, performance-unnecessary-value-param)
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
-    return executor::commit(*db, tx, std::move(option));
+    return executor::commit(*db, tx, option);
 }
 
 void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readability-make-member-function-const)

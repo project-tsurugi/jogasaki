@@ -54,7 +54,7 @@ class sql_variations_test :
 public:
     // change this flag to debug with explain
     bool to_explain() override {
-        return true;
+        return false;
     }
 
     void SetUp() override {

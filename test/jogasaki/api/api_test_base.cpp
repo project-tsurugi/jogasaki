@@ -82,7 +82,7 @@ runner api_test_base::builder() {
     return runner{}
         .db(*db_)
         .show_plan(to_explain())
-        .show_recs(true);
+        .show_recs(false);
 }
 
 void api_test_base::execute_query(

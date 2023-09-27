@@ -18,6 +18,8 @@
 #include <atomic>
 #include <memory>
 
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/api/impl/request_context_factory.h>
@@ -27,6 +29,7 @@
 namespace jogasaki {
 
 void durability_callback::operator()(durability_callback::marker_type marker) {
+    VLOG_LP(log_trace) << "--- durability_callback marker:" << marker;
     [[maybe_unused]] auto cnt = db_->requests_inprocess();
     if(db_->stop_requested()) return;
     auto request_ctx = api::impl::create_request_context(db_, nullptr, nullptr, nullptr);

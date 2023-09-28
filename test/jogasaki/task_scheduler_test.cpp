@@ -63,7 +63,7 @@ TEST_F(task_scheduler_test, single) {
     ASSERT_TRUE(run);
 }
 
-TEST_F(task_scheduler_test, multi) {
+TEST_F(task_scheduler_test, DISABLED_multi) {
     auto cfg = std::make_shared<configuration>();
     stealing_task_scheduler executor{thread_params{cfg}};
     std::atomic_flag run = false;

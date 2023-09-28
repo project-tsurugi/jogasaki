@@ -91,6 +91,10 @@ SQLサービスがクライアントへ返すエラーレスポンスの構造�
 
     - SqlLimitReachedException (SQL-02036: 許可されたSQL操作の制限に達した) ※
       - TransactionExceededLimitException (SQL-02037: 同時作成可能なトランザクション数の制限を越えたためトランザクション開始に失敗した) ※
+      - InvalidRuntimeValueException (SQL-02054: 実行時に妥当でない値が使用された)
+        - ValueOutOfRangeException (SQL-02056: 許可された範囲外の値が使用された)
+        - ValueTooLongException (SQL-02058: 許可された最大長を超える可変長データが使用された)
+        - InvalidDecimalValueException(SQL-02060: 型と不整合なDecimalの値が使用された)
 
     - SqlRequestTimeoutException (SQL-02039: SQL操作要求がタイムアウトした)
 

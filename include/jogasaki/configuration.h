@@ -376,7 +376,7 @@ private:
     std::size_t task_polling_wait_ = 0;
     std::size_t lightweight_job_level_ = 0;
     bool enable_hybrid_scheduler_ = true;
-    bool busy_worker_ = true;
+    bool busy_worker_ = false;
     std::size_t watcher_interval_ = 1000;
     std::size_t worker_try_count_ = 1000;
     std::size_t worker_suspend_timeout_ = 1000000;

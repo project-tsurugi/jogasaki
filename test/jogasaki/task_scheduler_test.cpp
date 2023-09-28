@@ -63,8 +63,9 @@ TEST_F(task_scheduler_test, single) {
     ASSERT_TRUE(run);
 }
 
-TEST_F(task_scheduler_test, DISABLED_multi) {
-    stealing_task_scheduler executor{thread_params(1)};
+TEST_F(task_scheduler_test, multi) {
+    auto cfg = std::make_shared<configuration>();
+    stealing_task_scheduler executor{thread_params{cfg}};
     std::atomic_flag run = false;
     job_context jctx{};
     request_context rctx{};

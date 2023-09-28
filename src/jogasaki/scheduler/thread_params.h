@@ -26,19 +26,19 @@ public:
 
     explicit thread_params(
         std::size_t threads,
-        bool set_core_affinity = true,
-        std::size_t initial_core = 1,
-        bool assign_numa_nodes_uniformly = false,
-        std::size_t randomize_memory_usage = 0,
-        std::size_t force_numa_node = numa_node_unspecified,
-        bool stealing_enabled = false,
-        bool use_preferred_worker_for_current_thread = false,
-        std::size_t stealing_wait = 1,
-        std::size_t task_polling_wait = 0,
-        bool busy_worker = true,
-        std::size_t watcher_interval = 1000,
-        std::size_t worker_try_count = 100000,
-        std::size_t worker_suspend_timeout = 1000000
+        bool set_core_affinity,
+        std::size_t initial_core,
+        bool assign_numa_nodes_uniformly,
+        std::size_t randomize_memory_usage,
+        std::size_t force_numa_node,
+        bool stealing_enabled,
+        bool use_preferred_worker_for_current_thread,
+        std::size_t stealing_wait,
+        std::size_t task_polling_wait,
+        bool busy_worker,
+        std::size_t watcher_interval,
+        std::size_t worker_try_count,
+        std::size_t worker_suspend_timeout
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),

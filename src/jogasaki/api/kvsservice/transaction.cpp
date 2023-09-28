@@ -52,7 +52,7 @@ std::uint64_t transaction::system_id() const noexcept {
     return system_id_;
 }
 
-status transaction::is_inactive() const noexcept {
+status transaction::is_active() const noexcept {
     if (commit_abort_called_) {
         return status::err_inactive_transaction;
     }
@@ -76,16 +76,32 @@ std::mutex &transaction::transaction_mutex() {
 }
 
 status transaction::commit() {
-    if (auto s = is_inactive(); s != status::ok) {
+    if (auto s = is_active(); s != status::ok) {
         return s;
     }
     commit_abort_called_ = true;
-    auto code = sharksfin::transaction_commit(ctrl_handle_);
+    std::atomic_bool callback_called = false;
+    sharksfin::StatusCode code{};
+    auto b = sharksfin::transaction_commit_with_callback(ctrl_handle_, [&](
+            ::sharksfin::StatusCode st,
+            ::sharksfin::ErrorCode ec,
+            ::sharksfin::durability_marker_type marker
+    ){
+        (void) ec;
+        (void) marker;
+        callback_called = true;
+        code = st;
+    });
+    if(! b) {
+        // NOTE using busy wait for OCC is acceptable
+        // TODO DO NOT USE busy wait for LTX
+        while(! callback_called) {}
+    }
     return convert(code);
 }
 
 status transaction::abort() {
-    if (auto s = is_inactive(); s != status::ok) {
+    if (auto s = is_active(); s != status::ok) {
         return s;
     }
     commit_abort_called_ = true;
@@ -101,7 +117,7 @@ status transaction::get_storage(std::string_view name, sharksfin::StorageHandle 
 
 status transaction::put(std::string_view table_name, tateyama::proto::kvs::data::Record const &record,
                         put_option opt) {
-    if (auto s = is_inactive(); s != status::ok) {
+    if (auto s = is_active(); s != status::ok) {
         return s;
     }
     if (!is_valid_record(record)) {
@@ -152,7 +168,7 @@ status transaction::put(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::get(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         tateyama::proto::kvs::data::Record &record) {
-    if (auto s = is_inactive(); s != status::ok) {
+    if (auto s = is_active(); s != status::ok) {
         return s;
     }
     if (!is_valid_record(primary_key)) {
@@ -193,7 +209,7 @@ status transaction::get(std::string_view table_name, tateyama::proto::kvs::data:
 
 status transaction::remove(std::string_view table_name, tateyama::proto::kvs::data::Record const &primary_key,
                         remove_option opt) {
-    if (auto s = is_inactive(); s != status::ok) {
+    if (auto s = is_active(); s != status::ok) {
         return s;
     }
     if (!is_valid_record(primary_key)) {

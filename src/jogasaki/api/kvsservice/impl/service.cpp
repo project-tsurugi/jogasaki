@@ -161,6 +161,7 @@ static void error_begin(status status, std::shared_ptr<tateyama::api::server::re
 static status_message check_supported(transaction_option &opt) {
     // TODO support various options
     if (opt.type() != transaction_type::occ) {
+        // TODO DO NOT USE busy wait for LTX in transaction::commit()
         return {status::err_not_implemented,
                 "only supported OCC (short) transaction type, others not implemented yet"};
     }

@@ -589,6 +589,15 @@ scheduler::job_context::job_id_type commit_async(
             << (rctx->status_code() == status::ok ? "committed" : "aborted");
         on_completion(rctx->status_code(), rctx->error_info());
     });
+    std::weak_ptr wrctx{rctx};
+    rctx->job()->completion_readiness([wrctx=std::move(wrctx)]() {
+        // The job completion needs to wait for the commit callback released by cc engine.
+        // Because otherwise callback destruction (and that of req. and tx contexts) in cc engine results in
+        // api call (such as shirakami::leave) made from inside cc engine.
+        // This kind of reentrancy is not assured by the cc engine api, so the job completion should be delayed
+        // so that teardown becomes the last to release those context objects.
+        return wrctx.use_count() <= 1;
+    });
     auto& ts = *rctx->scheduler();
     req->status(scheduler::request_detail_status::submitted);
     log_request(*req);

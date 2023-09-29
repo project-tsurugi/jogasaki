@@ -95,6 +95,9 @@ bool flat_task::teardown() {  //NOLINT(readability-make-member-function-const)
         // Another teardown task will be scheduled at the end of this task.
         // It's not done here because newly scheduled task quickly completes and destroy job context.
         ret = false;
+    } else if (job()->completion_readiness() && !job()->completion_readiness()()) {
+        DVLOG_LP(log_debug) << *this << " job completion is not ready and teardown is rescheduled.";
+        ret = false;
     }
     log_exit << *this << " ret:" << ret;
     return ret;

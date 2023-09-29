@@ -68,5 +68,13 @@ void job_context::request(std::shared_ptr<request_detail> arg) noexcept {
 std::shared_ptr<request_detail> const &job_context::request() const noexcept {
     return request_detail_;
 }
+
+void job_context::completion_readiness(readiness_provider checker) noexcept {
+    readiness_provider_ = std::move(checker);
+}
+
+job_context::readiness_provider& job_context::completion_readiness() noexcept {
+    return readiness_provider_;
+}
 }
 

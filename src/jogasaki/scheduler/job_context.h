@@ -55,6 +55,11 @@ public:
     using job_completion_callback = std::function<void(void)>;
 
     /**
+     * @brief callable to check readiness for job completion
+     */
+    using readiness_provider = std::function<bool(void)>;
+
+    /**
      * @brief create default context object
      */
     job_context() = default;
@@ -113,6 +118,17 @@ public:
     [[nodiscard]] job_completion_callback& callback() noexcept;
 
     /**
+     * @brief setter for the completion readiness provider
+     */
+    void completion_readiness(readiness_provider checker) noexcept;
+
+    /**
+     * @brief accessor for completion ready checker
+     * @return read
+     */
+    [[nodiscard]] readiness_provider& completion_readiness() noexcept;
+
+    /**
      * @brief accessor for job context unique id
      * @return id value
      */
@@ -144,6 +160,7 @@ private:
     cache_align std::atomic_size_t preferred_worker_index_{undefined_index};
     cache_align std::atomic_bool started_{false};
     job_completion_callback callback_{};
+    readiness_provider readiness_provider_{};
     std::shared_ptr<request_detail> request_detail_{};
     cache_align std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
 

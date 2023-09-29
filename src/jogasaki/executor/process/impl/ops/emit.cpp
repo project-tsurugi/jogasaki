@@ -125,17 +125,21 @@ std::vector<details::emit_field> emit::create_fields(
     std::vector<details::emit_field> fields{};
     std::size_t sz = meta->field_count();
     fields.reserve(sz);
-    for(std::size_t ind = 0 ; ind < sz; ++ind) {
-        auto&& c = columns[ind];
+    std::size_t pos = 0; // field position in meta
+    for(auto&& c : columns) {
+        if(c.name() && utils::is_prefix(*c.name(), generated_pkey_column_prefix)) {
+            continue;
+        }
         auto& info = block_info().at(c.source());
         fields.emplace_back(details::emit_field{
-            meta_->at(ind),
+            meta_->at(pos),
             info.value_offset(),
-            meta_->value_offset(ind),
+            meta_->value_offset(pos),
             info.nullity_offset(),
-            meta_->nullity_offset(ind),
+            meta_->nullity_offset(pos),
             true // assuming variables and output columns are all nullable
         });
+        ++pos;
     }
     return fields;
 }

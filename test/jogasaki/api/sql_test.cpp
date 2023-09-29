@@ -83,6 +83,58 @@ TEST_F(sql_test, cross_join) {
     ASSERT_EQ(6, result.size());
 }
 
+TEST_F(sql_test, cross_join_pkless) {
+    execute_statement("CREATE TABLE TT0(C0 INT)");
+    execute_statement("INSERT INTO TT0 VALUES (10)");
+    execute_statement("INSERT INTO TT0 VALUES (20)");
+    execute_statement("CREATE TABLE TT1(C0 INT)");
+    execute_statement("INSERT INTO TT1 VALUES (100)");
+    execute_statement("INSERT INTO TT1 VALUES (200)");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM TT0, TT1 ORDER BY TT0.C0, TT1.C0", result);
+    ASSERT_EQ(4, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(10, 100)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(10, 200)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(20, 100)), result[2]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(20, 200)), result[3]);
+}
+
+TEST_F(sql_test, cross_join_pkless_multi_columns) {
+    execute_statement("CREATE TABLE TT0(C0 INT, C1 INT)");
+    execute_statement("INSERT INTO TT0 VALUES (10, 10)");
+    execute_statement("INSERT INTO TT0 VALUES (20, 20)");
+    execute_statement("CREATE TABLE TT1(C0 INT, C1 INT)");
+    execute_statement("INSERT INTO TT1 VALUES (100, 100)");
+    execute_statement("INSERT INTO TT1 VALUES (200, 200)");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM TT0, TT1 ORDER BY TT0.C0, TT1.C0", result);
+    ASSERT_EQ(4, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(10, 10, 100, 100)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(10, 10, 200, 200)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(20, 20, 100, 100)), result[2]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(20, 20, 200, 200)), result[3]);
+}
+
+TEST_F(sql_test, cross_join_pkless_with_varchar) {
+    // regression testcase - once mixing varchar column with hidden pk column caused server crash
+    execute_statement("CREATE TABLE TT0(C0 VARCHAR(12))");
+    execute_statement("INSERT INTO TT0 VALUES ('abcd')");
+    execute_statement("INSERT INTO TT0 VALUES ('efgh')");
+    execute_statement("CREATE TABLE TT1(C0 VARCHAR(12))");
+    execute_statement("INSERT INTO TT1 VALUES ('AAAAA')");
+    execute_statement("INSERT INTO TT1 VALUES ('BBBBBBB')");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM TT0, TT1 ORDER BY TT0.C0, TT1.C0", result);
+    ASSERT_EQ(4, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"abcd"}, accessor::text{"AAAAA"})), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"abcd"}, accessor::text{"BBBBBBB"})), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"efgh"}, accessor::text{"AAAAA"})), result[2]);
+    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"efgh"}, accessor::text{"BBBBBBB"})), result[3]);
+}
+
 TEST_F(sql_test, outer_join) {
     execute_statement("create table L (C0 INT PRIMARY KEY, C1 INT)");
     execute_statement("create table R (C0 INT PRIMARY KEY, C1 INT)");

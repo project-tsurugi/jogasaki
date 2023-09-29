@@ -76,6 +76,13 @@ void abort_transaction(transaction_context& tx) {
     }
 }
 
+bool update_skips_deletion(write_partial_context& ctx) {
+    if(! ctx.req_context()) return false;
+    if(! ctx.req_context()->configuration()) return false;
+    return ctx.req_context()->configuration()->update_skips_deletion();
+}
+
+
 operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
     // find update target and fill ctx.key_store_ and ctx.value_store_
@@ -91,17 +98,22 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
         return error_abort(ctx, res);
     }
 
-    // remove and recreate records
-    if(auto res = primary_.remove_record_by_encoded_key(
-            context,
-            *ctx.transaction(),
-            encoded
-        ); res != status::ok) {
-        abort_transaction(*ctx.transaction());
-        return error_abort(ctx, res);
+    if(primary_key_updated_ || ! update_skips_deletion(ctx)) {
+        // remove and recreate records
+        if(auto res = primary_.remove_record_by_encoded_key(
+                context,
+                *ctx.transaction(),
+                encoded
+            ); res != status::ok) {
+            abort_transaction(*ctx.transaction());
+            return error_abort(ctx, res);
+        }
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
+            continue;
+        }
         if(auto res = secondaries_[i].encode_and_remove(
             ctx.secondary_contexts_[i],
             *ctx.transaction(),
@@ -132,6 +144,9 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
+            continue;
+        }
         if(auto res = secondaries_[i].encode_and_put(
                 ctx.secondary_contexts_[i],
                 *ctx.transaction(),

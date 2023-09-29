@@ -223,7 +223,7 @@ TEST_F(update_test, multiple_rows_wo_hitting_existing_pk) {
 }
 
 // once occ hit serialization failure on commit
-TEST_F(update_test, DISABLED_multiple_rows_by_minus_one) {
+TEST_F(update_test, multiple_rows_by_minus_one) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (0)");
@@ -239,7 +239,7 @@ TEST_F(update_test, DISABLED_multiple_rows_by_minus_one) {
 }
 
 // once occ hit serialization failure
-TEST_F(update_test, DISABLED_multiple_rows_by_minus_11) {
+TEST_F(update_test, multiple_rows_by_minus_11) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});
     execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T VALUES (0, 0)");

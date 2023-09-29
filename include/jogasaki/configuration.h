@@ -321,6 +321,14 @@ public:
         default_commit_response_ = arg;
     }
 
+    void update_skips_deletion(bool arg) noexcept {
+        update_skips_deletion_ = arg;
+    }
+
+    [[nodiscard]] bool update_skips_deletion() const noexcept {
+        return update_skips_deletion_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -348,6 +356,7 @@ public:
             "worker_try_count:" << cfg.worker_try_count() << " " <<
             "worker_suspend_timeout:" << cfg.worker_suspend_timeout() << " " <<
             "default_commit_response:" << cfg.default_commit_response() << " " <<
+            "update_skips_deletion:" << cfg.update_skips_deletion() << " " <<
             "";
     }
 
@@ -381,6 +390,7 @@ private:
     std::size_t worker_try_count_ = 1000;
     std::size_t worker_suspend_timeout_ = 1000000;
     commit_response_kind default_commit_response_{commit_response_kind::propagated};
+    bool update_skips_deletion_ = false;
 };
 
 }

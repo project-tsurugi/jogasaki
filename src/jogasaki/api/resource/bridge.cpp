@@ -100,12 +100,19 @@ std::string_view bridge::label() const noexcept {
     return component_label;
 }
 
+std::string toupper(std::string_view src) {
+    std::string ret(src.size(), '\0');
+    std::transform(src.cbegin(), src.cend(), ret.begin(), ::toupper);
+    return ret;
+}
+
 template <class ...Args>
 bool validate_enum_strings(std::string_view name, std::string_view value, std::int32_t& out, Args...args) {
     std::vector<std::string> allowed{args...};
     std::int32_t idx = 0;
+    auto v = toupper(value);
     for(auto&& e : allowed) {
-        if(e == value) {
+        if(toupper(e) == v) {
             out = idx;
             return true;
         }
@@ -189,6 +196,10 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
             return {};
         }
         ret->default_commit_response(static_cast<commit_response_kind>(idx));
+    }
+
+    if (auto v = jogasaki_config->get<bool>("dev_update_skips_deletion")) {
+        ret->update_skips_deletion(v.value());
     }
     return ret;
 }

@@ -14,182 +14,182 @@ enum Code {
     // code not specified
     CODE_UNSPECIFIED = 0;
 
-    // SQL-01000
+    // SQL-01000 generic error in SQL service
     SQL_SERVICE_EXCEPTION = 1;
 
-    // SQL-02000
+    // SQL-02000 generic error in SQL execution
     SQL_EXECUTION_EXCEPTION = 2;
 
-    // SQL-02001
+    // SQL-02001 constraint Violation
     CONSTRAINT_VIOLATION_EXCEPTION = 3;
 
-    // SQL-02002
+    // SQL-02002 unique constraint violation
     UNIQUE_CONSTRAINT_VIOLATION_EXCEPTION = 4;
 
-    // SQL-02003
+    // SQL-02003 not-null constraint violation
     NOT_NULL_CONSTRAINT_VIOLATION_EXCEPTION = 5;
 
-    // SQL-02004
+    // SQL-02004 referential integrity constraint violation
     REFERENTIAL_INTEGRITY_CONSTRAINT_VIOLATION_EXCEPTION = 6;
 
-    // SQL-02005
+    // SQL-02005 check constraint violation
     CHECK_CONSTRAINT_VIOLATION_EXCEPTION = 7;
 
-    // SQL-02010
+    // SQL-02010 error in expression evaluation
     EVALUATION_EXCEPTION = 8;
 
-    // SQL-02011
+    // SQL-02011 error in value evaluation
     VALUE_EVALUATION_EXCEPTION = 9;
 
-    // SQL-02012
+    // SQL-02012 non-scalar results from scalar subquery
     SCALAR_SUBQUERY_EVALUATION_EXCEPTION = 10;
 
-    // SQL-02014
+    // SQL-02014 SQL operation target is not found
     TARGET_NOT_FOUND_EXCEPTION = 11;
 
-    // SQL-02016
+    // SQL-02016 target already exists for newly creation request
     TARGET_ALREADY_EXISTS_EXCEPTION = 12;
 
-    // SQL-02018
+    // SQL-02018 statement is inconsistent with the request
     INCONSISTENT_STATEMENT_EXCEPTION = 13;
 
-    // SQL-02020
+    // SQL-02020 restricted operation was requested
     RESTRICTED_OPERATION_EXCEPTION = 14;
 
-    // SQL-02021
+    // SQL-02021 deletion was requested for the object with dependencies on others
     DEPENDENCIES_VIOLATION_EXCEPTION = 15;
 
-    // SQL-02022
+    // SQL-02022 write operation was requested using RTX
     WRITE_OPERATION_BY_RTX_EXCEPTION = 16;
 
-    // SQL-02023
+    // SQL-02023 LTX write operation was requested outside of write preserve
     LTX_WRITE_OPERATION_WITHOUT_WRITE_PRESERVE_EXCEPTION = 17;
 
-    // SQL-02024
+    // SQL-02024 read operation was requested on restricted read area
     READ_OPERATION_ON_RESTRICTED_READ_AREA_EXCEPTION = 18;
 
-    // SQL-02025
+    // SQL-02025 operation was requested using transaction that had already committed or aborted
     INACTIVE_TRANSACTION_EXCEPTION = 19;
 
-    // SQL-02027
+    // SQL-02027 error on parameters or placeholders
     PARAMETER_EXCEPTION = 20;
 
-    // SQL-02028
+    // SQL-02028 requested statement has unresolved placeholders
     UNRESOLVED_PLACEHOLDER_EXCEPTION = 21;
 
-    // SQL-02030
+    // SQL-02030 error on files for load
     LOAD_FILE_EXCEPTION = 22;
 
-    // SQL-02031
+    // SQL-02031 target load file is not found
     LOAD_FILE_NOT_FOUND_EXCEPTION = 23;
 
-    // SQL-02032
+    // SQL-02032 unexpected load file format
     LOAD_FILE_FORMAT_EXCEPTION = 24;
 
-    // SQL-02033
+    // SQL-02033 error on files for dump
     DUMP_FILE_EXCEPTION = 25;
 
-    // SQL-02034
+    // SQL-02034 dump directory is not accessible
     DUMP_DIRECTORY_INACCESSIBLE_EXCEPTION = 26;
 
-    // SQL-02036
+    // SQL-02036 the requested operation reached the SQL limit
     SQL_LIMIT_REACHED_EXCEPTION = 27;
 
-    // SQL-02037
+    // SQL-02037 the number of running transactions exceeded the maximum limit allowed, and new transaction failed to start
     TRANSACTION_EXCEEDED_LIMIT_EXCEPTION = 28;
 
-    // SQL-02039
+    // SQL-02039 SQL request timed out
     SQL_REQUEST_TIMEOUT_EXCEPTION = 29;
 
-    // SQL-02041
+    // SQL-02041 detected data corruption
     DATA_CORRUPTION_EXCEPTION = 30;
 
-    // SQL-02042
+    // SQL-02042 detected secondary index data corruption
     SECONDARY_INDEX_CORRUPTION_EXCEPTION = 31;
 
-    // SQL-02044
+    // SQL-02044 request failed before starting processing (e.g. due to pre-condition not fulfilled)
     REQUEST_FAILURE_EXCEPTION = 32;
 
-    // SQL-02045
+    // SQL-02045 requested transaction is not found (or already released)
     TRANSACTION_NOT_FOUND_EXCEPTION = 33;
 
-    // SQL-02046
+    // SQL-02046 requested statement is not found (or already released)
     STATEMENT_NOT_FOUND_EXCEPTION = 34;
 
-    // SQL-02048
+    // SQL-02048 detected internal error
     INTERNAL_EXCEPTION = 35;
 
-    // SQL-02050
+    // SQL-02050 unsupported runtime feature was requested
     UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION = 36;
 
-    // SQL-02052
+    // SQL-02052 tried to execute operations with priority to higher priority transactions
     BLOCKED_BY_HIGH_PRIORITY_TRANSACTION_EXCEPTION = 37;
 
-    // SQL-02054
+    // SQL-02054 invalid value was used in runtime
     INVALID_RUNTIME_VALUE_EXCEPTION = 38;
 
-    // SQL-02056
+    // SQL-02056 value out of allowed range was used
     VALUE_OUT_OF_RANGE_EXCEPTION = 39;
 
-    // SQL-02058
+    // SQL-02058 variable length value was used exceeding the allowed maximum length
     VALUE_TOO_LONG_EXCEPTION = 40;
 
-    // SQL-02060
+    // SQL-02060 used value was not valid for the decimal type
     INVALID_DECIMAL_VALUE_EXCEPTION = 41;
 
     reserved 42 to 100;
 
-    // SQL-03000
+    // SQL-03000 compile error
     COMPILE_EXCEPTION = 101;
 
-    // SQL-03001
+    // SQL-03001 syntax error
     SYNTAX_EXCEPTION = 102;
 
-    // SQL-03002
+    // SQL-03002 analyze error
     ANALYZE_EXCEPTION = 103;
 
-    // SQL-03003
+    // SQL-03003 error on types
     TYPE_ANALYZE_EXCEPTION = 104;
 
-    // SQL-03004
+    // SQL-03004 error on symbols
     SYMBOL_ANALYZE_EXCEPTION = 105;
 
-    // SQL-03005
+    // SQL-03005 error on values
     VALUE_ANALYZE_EXCEPTION = 106;
 
-    // SQL-03010
+    // SQL-03010 unsupported feature/syntax was requested
     UNSUPPORTED_COMPILER_FEATURE_EXCEPTION = 107;
 
     reserved 108 to 200;
 
-    // SQL-04000
+    // SQL-04000 error in CC serialization
     CC_EXCEPTION = 201;
 
-    // SQL-04001
+    // SQL-04001 OCC aborted
     OCC_EXCEPTION = 202;
 
-    // SQL-04010
+    // SQL-04010 OCC aborted due to its read
     OCC_READ_EXCEPTION = 203;
 
-    // SQL-04015
+    // SQL-04015 OCC (early) aborted because it read other LTX's write preserve
     CONFLICT_ON_WRITE_PRESERVE_EXCEPTION = 204;
 
-    // SQL-04011
+    // SQL-04011 OCC aborted due to its write
     OCC_WRITE_EXCEPTION = 205;
 
-    // SQL-04003
+    // SQL-04003 LTX aborted
     LTX_EXCEPTION = 206;
 
-    // SQL-04013
+    // SQL-04013 LTX aborted due to its read
     LTX_READ_EXCEPTION = 207;
 
-    // SQL-04014
+    // SQL-04014 LTX aborted due to its write
     LTX_WRITE_EXCEPTION = 208;
 
-    // SQL-04005
+    // SQL-04005 RTX aborted
     RTX_EXCEPTION = 209;
 
-    // SQL-04007
+    // SQL-04007 request was blocked by the other operations executed concurrently
     BLOCKED_BY_CONCURRENT_OPERATION_EXCEPTION = 210;
 
 }

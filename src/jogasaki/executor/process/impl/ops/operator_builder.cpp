@@ -15,9 +15,8 @@
  */
 #include "operator_builder.h"
 
-#include <takatori/util/fail.h>
-
 #include <takatori/relation/step/dispatch.h>
+#include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/binding/relation_info.h>
@@ -42,8 +41,8 @@ namespace jogasaki::executor::process::impl::ops {
 
 namespace relation = takatori::relation;
 
-using takatori::util::fail;
 using takatori::relation::step::dispatch;
+using takatori::util::throw_exception;
 
 operator_builder::operator_builder(
     std::shared_ptr<processor_info> info,
@@ -74,7 +73,7 @@ relation::expression const& operator_builder::head() {
     if (result != nullptr) {
         return *result;
     }
-    fail();
+    throw_exception(std::logic_error{""});
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::find& node) {
@@ -145,7 +144,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::proj
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_scan& node) {
     (void)node;
-    fail();
+    throw_exception(std::logic_error{""});
     return {};
 }
 
@@ -157,7 +156,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::filt
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::buffer& node) {
     (void)node;
-    fail();
+    throw_exception(std::logic_error{""});
     return {};
 }
 
@@ -184,18 +183,18 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
         );
     }
     // INSERT is handled in other path and should not reach here
-    fail();
+    throw_exception(std::logic_error{""});
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {
     (void)node;
-    fail();
+    throw_exception(std::logic_error{""});
     return {};
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::identify& node) {
     (void)node;
-    fail();
+    throw_exception(std::logic_error{""});
     return {};
 }
 
@@ -226,13 +225,13 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::intersection& node) {
     (void)node;
-    fail();
+    throw_exception(std::logic_error{""});
     return {};
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::difference& node) {
     (void)node;
-    fail();
+    throw_exception(std::logic_error{""});
     return {};
 }
 
@@ -358,7 +357,7 @@ kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type t
         case t::prefixed_inclusive: return k::prefixed_inclusive;
         case t::prefixed_exclusive: return k::prefixed_exclusive;
     }
-    fail();
+    throw_exception(std::logic_error{""});
 }
 
 

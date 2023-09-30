@@ -19,6 +19,8 @@
 #include <glog/logging.h>
 
 #include <takatori/type/int.h>
+#include <takatori/type/octet.h>
+#include <takatori/type/bit.h>
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/api/field_type_kind.h>
@@ -58,6 +60,8 @@ public:
     void TearDown() override {
         db_teardown();
     }
+
+    void test_unsupported_column_type(type::data&& typ);
 };
 
 TEST_F(metadata_test, create_table_with_primary_index) {
@@ -278,4 +282,23 @@ TEST_F(metadata_test, use_sequence) {
     );
     ASSERT_EQ(status::ok, db_->create_table(t));
 }
+
+void metadata_test::test_unsupported_column_type(type::data&& typ) {
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int4(), nullity{false} },
+            column{ "C1", std::move(typ), nullity{true} },
+        }
+    );
+    ASSERT_EQ(status::err_unsupported, db_->create_table(t));
+}
+
+TEST_F(metadata_test, unsupported_column_types) {
+    test_unsupported_column_type(type::octet(10));
+    test_unsupported_column_type(type::octet(type::varying, 10));
+    test_unsupported_column_type(type::bit(10));
+}
+
+
 }

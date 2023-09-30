@@ -606,9 +606,39 @@ scheduler::task_scheduler* database::task_scheduler() const noexcept {
     return task_scheduler_.get();
 }
 
+bool validate_table_definition(yugawara::storage::table const& t) {
+    // should be sync with the same name function in create_table.cpp
+    using takatori::type::type_kind;
+    for(auto&& c : t.columns()) {
+        switch(c.type().kind()) {
+            case type_kind::boolean:
+            case type_kind::int1:
+            case type_kind::int2:
+            case type_kind::int4:
+            case type_kind::int8:
+            case type_kind::float4:
+            case type_kind::float8:
+            case type_kind::character:
+            case type_kind::date:
+            case type_kind::time_of_day:
+            case type_kind::time_point:
+            case type_kind::decimal:
+                break;
+            default:
+                VLOG_LP(log_error) << "Data type specified for column \"" << c.simple_name() << "\" is unsupported.";
+                return false;
+        }
+    }
+    return true;
+}
+
 status database::do_create_table(std::shared_ptr<yugawara::storage::table> table, std::string_view schema) {
     (void)schema;
     BOOST_ASSERT(table != nullptr);  //NOLINT
+    if(! validate_table_definition(*table)) {
+        return status::err_unsupported;
+    }
+
     std::string name{table->simple_name()};
     if (! kvs_db_) {
         VLOG_LP(log_error) << "db not started";
@@ -654,7 +684,6 @@ bool validate_primary_key_nullability(yugawara::storage::index const& index) {
     }
     return true;
 }
-
 
 status database::do_create_index(std::shared_ptr<yugawara::storage::index> index, std::string_view schema) {
     (void)schema;

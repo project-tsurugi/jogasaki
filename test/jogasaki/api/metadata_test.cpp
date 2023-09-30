@@ -65,7 +65,7 @@ TEST_F(metadata_test, create_table_with_primary_index) {
         "TEST",
         std::initializer_list<column>{
             column{ "C0", type::int8(), nullity{false} },
-            column{ "C1", type::float8 (), nullity{true} },
+            column{ "C1", type::float8(), nullity{true} },
         }
     );
     ASSERT_EQ(status::ok, db_->create_table(t));
@@ -114,12 +114,41 @@ TEST_F(metadata_test, create_table_with_primary_index) {
     }
 }
 
+TEST_F(metadata_test, primary_index_with_nullable_columns) {
+    // primary key column must not be nullable
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int4(), nullity{true} },
+            column{ "C1", type::int4(), nullity{true} },
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    auto i = std::make_shared<yugawara::storage::index>(
+        t,
+        "TEST",
+        std::initializer_list<index::key>{
+            t->columns()[0],
+        },
+        std::initializer_list<index::column_ref>{
+            t->columns()[1],
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::err_illegal_operation, db_->create_index(i));
+}
+
 TEST_F(metadata_test, create_table_with_secondary_index) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
             column{ "C0", type::int8(), nullity{false} },
-            column{ "C1", type::float8 (), nullity{true} },
+            column{ "C1", type::float8(), nullity{true} },
         }
     );
     ASSERT_EQ(status::ok, db_->create_table(t));
@@ -187,7 +216,7 @@ TEST_F(metadata_test, crud1) {
         "TEST",
         std::initializer_list<column>{
             column{ "C0", type::int8(), nullity{false} },
-            column{ "C1", type::float8 (), nullity{true} },
+            column{ "C1", type::float8(), nullity{true} },
         }
     );
     ASSERT_EQ(status::ok, db_->create_table(t));
@@ -244,7 +273,7 @@ TEST_F(metadata_test, use_sequence) {
         "TEST",
         std::initializer_list<column>{
             column{ "C0", type::int8(), nullity{false}, column_value{seq}},
-            column{ "C1", type::float8 (), nullity{true} },
+            column{ "C1", type::float8(), nullity{true} },
         }
     );
     ASSERT_EQ(status::ok, db_->create_table(t));

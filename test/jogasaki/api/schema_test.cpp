@@ -96,8 +96,6 @@ TEST_F(schema_test, variety_types) {
             column{ "K2", type::int8(), nullity{false} },
             column{ "K3", type::float8 (), nullity{false} },
             column{ "K4", type::character(~type::varying), nullity{false} },
-            column{ "K5", type::int4(), nullity{true} },
-            column{ "K6", type::float4(), nullity{true} },
             column{ "V1", type::character(type::varying), nullity{false} },
             column{ "V2", type::int8(), nullity{false} },
             column{ "V3", type::float8 (), nullity{false} },
@@ -116,16 +114,14 @@ TEST_F(schema_test, variety_types) {
             t->columns()[2],
             t->columns()[3],
             t->columns()[4],
-            t->columns()[5],
-            t->columns()[6],
         },
         std::initializer_list<index::column_ref>{
+            t->columns()[5],
+            t->columns()[6],
             t->columns()[7],
             t->columns()[8],
             t->columns()[9],
             t->columns()[10],
-            t->columns()[11],
-            t->columns()[12],
         },
         index_feature_set{
             ::yugawara::storage::index_feature::find,
@@ -136,18 +132,16 @@ TEST_F(schema_test, variety_types) {
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
 
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
+    execute_statement("INSERT INTO TEST VALUES (0, '0', 0, 0.0, '0', '0', 0, 0.0, '0', 0, 0.0)");
+    execute_statement("INSERT INTO TEST VALUES (1, '1', 1, 1.0, '1', '1', 1, 1.0, '1', 1, 1.0)");
+    execute_statement("INSERT INTO TEST VALUES (2, '2', 2, 2.0, '2', '2', 2, 2.0, '2', 2, 2.0)");
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST "
+    execute_query("SELECT C0, K1, K2, K3, K4, V1, V2, V3, V4, V5, V6 FROM TEST "
                   "WHERE "
                   "K1 = '1' AND "
                   "K2 = 1   AND "
                   "K3 = 1.0 AND "
                   "K4 = '1' AND "
-                  "K5 = 1 AND "
-                  "K6 = 1 AND "
                   "V1 = '1' AND "
                   "V2 = 1   AND "
                   "V3 = 1.0 AND "
@@ -156,10 +150,10 @@ TEST_F(schema_test, variety_types) {
                   "V6 = 1 AND "
                   "C0 = 1 ", result);
     ASSERT_EQ(1, result.size());
-    auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
-        boost::dynamic_bitset<std::uint64_t>{"0000000000000"s},  // note right most is position 0
-        std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0),
-        {false, false, false, false, false, false, false, false, false, false, false, false, false }
+    auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+        boost::dynamic_bitset<std::uint64_t>{"00000000000"s},  // note right most is position 0
+        std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), text("1"), 1, 1.0, text("1"), 1, 1.0),
+        {false, false, false, false, false, false, false, false, false, false, false }
     );
     EXPECT_EQ(exp, result[0]);
 }
@@ -169,12 +163,6 @@ TEST_F(schema_test, nullables) {
         "TEST",
         std::initializer_list<column>{
             column{ "C0", type::int8(), nullity{false} },
-            column{ "K1", type::character(type::varying), nullity{true} },
-            column{ "K2", type::int8(), nullity{true} },
-            column{ "K3", type::float8 (), nullity{true} },
-            column{ "K4", type::character(~type::varying), nullity{true} },
-            column{ "K5", type::int4(), nullity{true} },
-            column{ "K6", type::float4(), nullity{true} },
             column{ "V1", type::character(type::varying), nullity{true} },
             column{ "V2", type::int8(), nullity{true} },
             column{ "V3", type::float8 (), nullity{true} },
@@ -189,20 +177,14 @@ TEST_F(schema_test, nullables) {
         t->simple_name(),
         std::initializer_list<index::key>{
             t->columns()[0],
+        },
+        std::initializer_list<index::column_ref>{
             t->columns()[1],
             t->columns()[2],
             t->columns()[3],
             t->columns()[4],
             t->columns()[5],
             t->columns()[6],
-        },
-        std::initializer_list<index::column_ref>{
-            t->columns()[7],
-            t->columns()[8],
-            t->columns()[9],
-            t->columns()[10],
-            t->columns()[11],
-            t->columns()[12],
         },
         index_feature_set{
             ::yugawara::storage::index_feature::find,
@@ -213,30 +195,24 @@ TEST_F(schema_test, nullables) {
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
 
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
+    execute_statement("INSERT INTO TEST VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL)");
+    execute_statement("INSERT INTO TEST VALUES (0, '0', 0, 0.0, '0', 0, 0.0)");
+    execute_statement("INSERT INTO TEST VALUES (1, '1', 1, 1.0, '1', 1, 1.0)");
+    execute_statement("INSERT INTO TEST VALUES (2, '2', 2, 2.0, '2', 2, 2.0)");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST WHERE "
+        execute_query("SELECT C0, V1, V2, V3, V4, V5, V6 FROM TEST WHERE "
                       "C0 = 3", result);
         ASSERT_EQ(1, result.size());
-        auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
-            std::forward_as_tuple(3, text("3"), 3, 3.0, text("3"), 3, 3.0, text("3"), 3, 3.0, text("3"), 3, 3.0),
-            {false, true, true, true, true, true, true, true, true, true, true, true, true}
+        auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+            std::forward_as_tuple(3, text("3"), 3, 3.0, text("3"), 3, 3.0),
+            {false, true, true, true, true, true, true}
         );
         EXPECT_EQ(exp, result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST WHERE "
-                      "K1 = '1' AND "
-                      "K2 = 1   AND "
-                      "K3 = 1.0 AND "
-                      "K4 = '1' AND "
-                      "K5 = 1 AND "
-                      "K6 = 1 AND "
+        execute_query("SELECT C0, V1, V2, V3, V4, V5, V6 FROM TEST WHERE "
                       "V1 = '1' AND "
                       "V2 = 1   AND "
                       "V3 = 1.0 AND "
@@ -245,9 +221,9 @@ TEST_F(schema_test, nullables) {
                       "V6 = 1 AND "
                       "C0 = 1", result);
         ASSERT_EQ(1, result.size());
-        auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
-            std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0),
-            {false, false, false, false, false, false, false, false, false, false, false, false, false}
+        auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+            std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0),
+            {false, false, false, false, false, false, false}
         );
         EXPECT_EQ(exp, result[0]);
     }
@@ -258,12 +234,12 @@ TEST_F(schema_test, descending_keys) {
         "TEST",
         std::initializer_list<column>{
             column{ "C0", type::int8(), nullity{false} },
-            column{ "K1", type::character(type::varying), nullity{true} },
-            column{ "K2", type::int8(), nullity{true} },
-            column{ "K3", type::float8 (), nullity{true} },
-            column{ "K4", type::character(~type::varying), nullity{true} },
-            column{ "K5", type::int4(), nullity{true} },
-            column{ "K6", type::float4(), nullity{true} },
+            column{ "K1", type::character(type::varying), nullity{false} },
+            column{ "K2", type::int8(), nullity{false} },
+            column{ "K3", type::float8 (), nullity{false} },
+            column{ "K4", type::character(~type::varying), nullity{false} },
+            column{ "K5", type::int4(), nullity{false} },
+            column{ "K6", type::float4(), nullity{false} },
             column{ "V1", type::character(type::varying), nullity{true} },
             column{ "V2", type::int8(), nullity{true} },
             column{ "V3", type::float8 (), nullity{true} },
@@ -301,10 +277,10 @@ TEST_F(schema_test, descending_keys) {
         }
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, '3', 3, 3.0, '3', 3, 3.0, NULL, NULL, NULL, NULL, NULL, NULL)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
 
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST WHERE C0 = 1", result);
@@ -323,12 +299,12 @@ TEST_F(schema_test, descending_keys_ordering) {
             tabname.c_str(),
             std::initializer_list<column>{
                 column{ "C0", type::int8(), nullity{false} },
-                column{ "K1", type::character(type::varying), nullity{true} },
-                column{ "K2", type::int8(), nullity{true} },
-                column{ "K3", type::float8 (), nullity{true} },
-                column{ "K4", type::character(~type::varying), nullity{true} },
-                column{ "K5", type::int4(), nullity{true} },
-                column{ "K6", type::float4(), nullity{true} },
+                column{ "K1", type::character(type::varying), nullity{false} },
+                column{ "K2", type::int8(), nullity{false} },
+                column{ "K3", type::float8 (), nullity{false} },
+                column{ "K4", type::character(~type::varying), nullity{false} },
+                column{ "K5", type::int4(), nullity{false} },
+                column{ "K6", type::float4(), nullity{false} },
                 column{ "V1", type::character(type::varying), nullity{true} },
                 column{ "V2", type::int8(), nullity{true} },
                 column{ "V3", type::float8 (), nullity{true} },
@@ -361,31 +337,31 @@ TEST_F(schema_test, descending_keys_ordering) {
             }
         );
         ASSERT_EQ(status::ok, db_->create_index(i));
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
+        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, '3', 3, 3.0, '3', 3, 3.0, NULL, NULL, NULL, NULL, NULL, NULL)");
+        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
+        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
+        execute_statement("INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
 
         {
             std::vector<mock::basic_record> result{};
-            execute_query("SELECT C0 FROM "+tabname, result);
+            execute_query("SELECT C0 FROM "+tabname, result); // order is not assured by this sql, but using for testing
             ASSERT_EQ(4, result.size());
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(2)), result[0]);
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]); // null is smallest
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[3]);
         }
         {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT C0 FROM "+tabname+" ORDER BY " + std::string{key} + " DESC", result);
             ASSERT_EQ(4, result.size());
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(2)), result[0]);
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]); // null is smallest
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[3]);
         }
         {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT C0 FROM "+tabname+"  ORDER BY " + std::string{key} + " ASC", result);
             ASSERT_EQ(4, result.size());
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]); // null is smallest
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(0)), result[1]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[0]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]);
         }
     };
     check_desc(1, "K1");
@@ -403,12 +379,12 @@ TEST_F(schema_test, ascending_keys_ordering) {
             tabname.c_str(),
             std::initializer_list<column>{
                 column{ "C0", type::int8(), nullity{false} },
-                column{ "K1", type::character(type::varying), nullity{true} },
-                column{ "K2", type::int8(), nullity{true} },
-                column{ "K3", type::float8 (), nullity{true} },
-                column{ "K4", type::character(~type::varying), nullity{true} },
-                column{ "K5", type::int4(), nullity{true} },
-                column{ "K6", type::float4(), nullity{true} },
+                column{ "K1", type::character(type::varying), nullity{false} },
+                column{ "K2", type::int8(), nullity{false} },
+                column{ "K3", type::float8 (), nullity{false} },
+                column{ "K4", type::character(~type::varying), nullity{false} },
+                column{ "K5", type::int4(), nullity{false} },
+                column{ "K6", type::float4(), nullity{false} },
                 column{ "V1", type::character(type::varying), nullity{true} },
                 column{ "V2", type::int8(), nullity{true} },
                 column{ "V3", type::float8 (), nullity{true} },
@@ -441,31 +417,31 @@ TEST_F(schema_test, ascending_keys_ordering) {
             }
         );
         ASSERT_EQ(status::ok, db_->create_index(i));
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
-        execute_statement( "INSERT INTO "+tabname+" (C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6) VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
+        execute_statement("INSERT INTO "+tabname+" VALUES (3, '3', 3, 3.0, '3', 3, 3.0, NULL, NULL, NULL, NULL, NULL, NULL)");
+        execute_statement("INSERT INTO "+tabname+" VALUES (0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0, '0', 0, 0.0)");
+        execute_statement("INSERT INTO "+tabname+" VALUES (1, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0, '1', 1, 1.0)");
+        execute_statement("INSERT INTO "+tabname+" VALUES (2, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0, '2', 2, 2.0)");
 
         {
             std::vector<mock::basic_record> result{};
-            execute_query("SELECT C0 FROM "+tabname, result);
+            execute_query("SELECT C0 FROM "+tabname, result); // order is not assured by this sql, but using for testing
             ASSERT_EQ(4, result.size());
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]); // null is smallest
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(0)), result[1]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[0]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]);
         }
         {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT C0 FROM "+tabname+" ORDER BY " + std::string{key} + " DESC", result);
             ASSERT_EQ(4, result.size());
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(2)), result[0]);
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]); // null is smallest
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[3]);
         }
         {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT C0 FROM "+tabname+"  ORDER BY " + std::string{key} + " ASC", result);
             ASSERT_EQ(4, result.size());
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(3)), result[0]); // null is smallest
-            ASSERT_EQ((mock::create_nullable_record<kind::int8>(0)), result[1]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), result[0]);
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(3)), result[3]);
         }
     };
     check_desc(1, "K1");
@@ -480,7 +456,7 @@ TEST_F(schema_test, default_value) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
-            column{ "C0", type::int8(), nullity{true}, {column_value{value::int8{0}}}},
+            column{ "C0", type::int8(), nullity{false}, {column_value{value::int8{0}}}},
             column{ "K1", type::character(type::varying), nullity{true}, {column_value{value::character{"1"}}}},
             column{ "K2", type::int8(), nullity{true}, {column_value{value::int8{2}}}},
             column{ "K3", type::float8 (), nullity{true}, {column_value{value::float8{3.0}}}},
@@ -508,7 +484,7 @@ TEST_F(schema_test, default_value) {
     ASSERT_EQ(status::ok, db_->create_index(i));
 
     {
-        execute_statement( "INSERT INTO TEST (C0) VALUES (10)");
+        execute_statement("INSERT INTO TEST (C0) VALUES (10)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE C0=10", result);
         ASSERT_EQ(1, result.size());
@@ -520,7 +496,7 @@ TEST_F(schema_test, default_value) {
         EXPECT_EQ(exp, result[0]);
     }
     {
-        execute_statement( "INSERT INTO TEST (K2) VALUES (20)");
+        execute_statement("INSERT INTO TEST (K2) VALUES (20)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE K2=20", result);
         ASSERT_EQ(1, result.size());
@@ -565,7 +541,7 @@ TEST_F(schema_test, default_value_with_variety_of_types) {
     ASSERT_EQ(status::ok, db_->create_index(i));
 
     {
-        execute_statement( "INSERT INTO TEST (C0) VALUES (10)");
+        execute_statement("INSERT INTO TEST (C0) VALUES (10)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE C0=10", result);
         ASSERT_EQ(1, result.size());
@@ -577,7 +553,7 @@ TEST_F(schema_test, default_value_with_variety_of_types) {
         EXPECT_EQ(exp, result[0]);
     }
     {
-        execute_statement( "INSERT INTO TEST (K2) VALUES (20)");
+        execute_statement("INSERT INTO TEST (K2) VALUES (20)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE K2=20", result);
         ASSERT_EQ(1, result.size());
@@ -623,7 +599,7 @@ TEST_F(schema_test, DISABLED_default_value_with_different_type) {
     ASSERT_EQ(status::ok, db_->create_index(i));
 
     {
-        execute_statement( "INSERT INTO TEST (C0) VALUES (10)");
+        execute_statement("INSERT INTO TEST (C0) VALUES (10)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE C0=10", result);
         ASSERT_EQ(1, result.size());
@@ -635,7 +611,7 @@ TEST_F(schema_test, DISABLED_default_value_with_different_type) {
         EXPECT_EQ(exp, result[0]);
     }
     {
-        execute_statement( "INSERT INTO TEST (K2) VALUES (20)");
+        execute_statement("INSERT INTO TEST (K2) VALUES (20)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE K2=20", result);
         ASSERT_EQ(1, result.size());
@@ -651,7 +627,7 @@ TEST_F(schema_test, null_value) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
-            column{ "C0", type::int8(), nullity{true}},
+            column{ "C0", type::int8(), nullity{false}},
             column{ "K1", type::character(type::varying), nullity{true}},
             column{ "K2", type::int8(), nullity{true}},
             column{ "K3", type::float8 (), nullity{true}},
@@ -679,7 +655,7 @@ TEST_F(schema_test, null_value) {
     ASSERT_EQ(status::ok, db_->create_index(i));
 
     {
-        execute_statement( "INSERT INTO TEST (C0) VALUES (10)");
+        execute_statement("INSERT INTO TEST (C0) VALUES (10)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST", result);
         ASSERT_EQ(1, result.size());
@@ -689,18 +665,18 @@ TEST_F(schema_test, null_value) {
             {false, true, true, true}
         );
         EXPECT_EQ(exp, result[0]);
-        execute_statement( "DELETE FROM TEST");
+        execute_statement("DELETE FROM TEST");
     }
     wait_epochs(2);
     {
-        execute_statement( "INSERT INTO TEST (K2) VALUES (20)");
+        execute_statement("INSERT INTO TEST (C0, K2) VALUES (20, 20)");
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST", result);
         ASSERT_EQ(1, result.size());
         auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8>(
             boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
-            std::forward_as_tuple(0, text(""), 20, 0.0),
-            {true, true, false, true}
+            std::forward_as_tuple(20, text(""), 20, 0.0),
+            {false, true, false, true}
         );
         EXPECT_EQ(exp, result[0]);
     }

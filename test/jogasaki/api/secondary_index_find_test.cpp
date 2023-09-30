@@ -87,7 +87,7 @@ public:
         table_ = std::make_shared<table>(
             "TEST",
             std::initializer_list<column>{
-                column{ "C0", type::int8(), nullity{true} },
+                column{ "C0", type::int8(), nullity{false} },
                 column{ "K1", type::int8(), nullity{true} },
                 column{ "K2", type::int8(), nullity{true} },
                 column{ "V1", type::int8(), nullity{true} },
@@ -148,10 +148,10 @@ using namespace std::string_view_literals;
 // TODO secondary key is not used for range scan for now, so testing ORDER BY with secondary key is not here. Add when it's implemented.
 
 TEST_F(secondary_index_find_test, find_by_asc_secondary_key) {
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, V1) VALUES (3, 3, 3, 3)");
-    execute_statement( "INSERT INTO TEST (C0) VALUES (2)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, V1) VALUES (0, 0, 0, 0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, V1) VALUES (1, 0, 0, 0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, V1) VALUES (3, 3, 3, 3)");
+    execute_statement("INSERT INTO TEST (C0) VALUES (2)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, V1) VALUES (0, 0, 0, 0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, V1) VALUES (1, 0, 0, 0)");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0 FROM TEST WHERE K1 = 0 ORDER BY C0", result);
     ASSERT_EQ(2, result.size());
@@ -160,10 +160,10 @@ TEST_F(secondary_index_find_test, find_by_asc_secondary_key) {
 }
 
 TEST_F(secondary_index_find_test, find_by_desc_secondary_key) {
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, V1) VALUES (3, 3, 3, 3)");
-    execute_statement( "INSERT INTO TEST (C0) VALUES (2)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, V1) VALUES (0, 0, 0, 0)");
-    execute_statement( "INSERT INTO TEST (C0, K1, K2, V1) VALUES (1, 0, 0, 0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, V1) VALUES (3, 3, 3, 3)");
+    execute_statement("INSERT INTO TEST (C0) VALUES (2)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, V1) VALUES (0, 0, 0, 0)");
+    execute_statement("INSERT INTO TEST (C0, K1, K2, V1) VALUES (1, 0, 0, 0)");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0 FROM TEST WHERE K2 = 0 ORDER BY C0", result);
     ASSERT_EQ(2, result.size());

@@ -642,6 +642,20 @@ status database::do_drop_table(std::string_view name, std::string_view schema) {
     return status::not_found;
 }
 
+bool validate_primary_key_nullability(yugawara::storage::index const& index) {
+    if(index.simple_name() == index.table().simple_name()) {
+        // primary index
+        for(auto&& c : index.keys()) {
+            if(c.column().criteria().nullity().nullable()) {
+                VLOG_LP(log_error) << "primary key column \"" << c.column().simple_name() << "\" must not be nullable";
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
 status database::do_create_index(std::shared_ptr<yugawara::storage::index> index, std::string_view schema) {
     (void)schema;
     BOOST_ASSERT(index != nullptr);  //NOLINT
@@ -649,6 +663,9 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     std::uint64_t storage_id{kvs::database::undefined_storage_id};
     if(index->definition_id()) {
         storage_id = index->definition_id().value();
+    }
+    if(! validate_primary_key_nullability(*index)) {
+        return status::err_illegal_operation;
     }
 
     if (! kvs_db_) {

@@ -296,7 +296,7 @@ void api_test_base::test_stmt_err(
     std::string_view msg
 ) {
     std::shared_ptr<error::error_info> result{};
-    EXPECT_EQ(msg,
+    EXPECT_EQ("",  // check run() executed with no problem
         builder()
             .text(stmt)
             .expect_error(true)
@@ -307,6 +307,9 @@ void api_test_base::test_stmt_err(
     ASSERT_TRUE(result);
     std::cerr << *result << std::endl;
     ASSERT_EQ(expected, result->code());
+    if(! msg.empty()) {
+        ASSERT_EQ(msg, result->message());
+    }
 }
 
 void api_test_base::test_stmt_err(

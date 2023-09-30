@@ -48,7 +48,7 @@ runner& runner::run() {
                 prepared,
                 *out
             ); res != status::ok) {
-            exec_fail((*out)->message());
+            exec_fail(expect_error_ ? "" : (*out)->message());
         }
     }
 

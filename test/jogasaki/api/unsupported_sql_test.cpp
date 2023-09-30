@@ -99,4 +99,26 @@ TEST_F(unsupported_sql_test, join_scan) {
     );
 }
 
+TEST_F(unsupported_sql_test, ddl_with_binary_type) {
+    test_stmt_err(
+        "create table T ("
+        "C0 INT NOT NULL PRIMARY KEY,"
+        "C1 binary(10)"
+        ")",
+        error_code::unsupported_runtime_feature_exception,
+        "Data type specified for column \"C1\" is unsupported."
+    );
+}
+
+TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {
+    test_stmt_err(
+        "create table T ("
+        "C0 INT NOT NULL PRIMARY KEY,"
+        "C1 varbinary(10)"
+        ")",
+        error_code::unsupported_runtime_feature_exception,
+        "Data type specified for column \"C1\" is unsupported."
+    );
+}
+
 }

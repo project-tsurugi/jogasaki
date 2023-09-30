@@ -94,6 +94,39 @@ bool create_sequence_for_generated_pk(
     return true;
 }
 
+bool validate_table_definition(
+    request_context& context,
+    yugawara::storage::table const& t
+) {
+    using takatori::type::type_kind;
+    for(auto&& c : t.columns()) {
+        switch(c.type().kind()) {
+            case type_kind::boolean:
+            case type_kind::int1:
+            case type_kind::int2:
+            case type_kind::int4:
+            case type_kind::int8:
+            case type_kind::float4:
+            case type_kind::float8:
+            case type_kind::character:
+            case type_kind::date:
+            case type_kind::time_of_day:
+            case type_kind::time_point:
+            case type_kind::decimal:
+                break;
+            default:
+                set_error(
+                    context,
+                    error_code::unsupported_runtime_feature_exception,
+                    string_builder{} << "Data type specified for column \"" << c.simple_name() << "\" is unsupported." << string_builder::to_string,
+                    status::err_unsupported
+                );
+                return false;
+        }
+    }
+    return true;
+}
+
 bool create_table::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
@@ -105,6 +138,9 @@ bool create_table::operator()(request_context& context) const {
             string_builder{} << "Table \"" << c->simple_name() << "\" already exists." << string_builder::to_string,
             status::err_already_exists
         );
+        return false;
+    }
+    if(! validate_table_definition(context, *c)) {
         return false;
     }
 

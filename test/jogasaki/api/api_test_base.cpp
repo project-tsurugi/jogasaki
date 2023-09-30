@@ -292,10 +292,11 @@ void api_test_base::test_stmt_err(
 
 void api_test_base::test_stmt_err(
     std::string_view stmt,
-    error_code expected
+    error_code expected,
+    std::string_view msg
 ) {
     std::shared_ptr<error::error_info> result{};
-    ASSERT_EQ("",
+    EXPECT_EQ(msg,
         builder()
             .text(stmt)
             .expect_error(true)

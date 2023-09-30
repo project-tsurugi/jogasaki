@@ -69,6 +69,40 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
 );
 
+class exception : public std::exception {
+public:
+    /**
+     * @brief create empty object
+     */
+    exception() = default;
+
+    /**
+     * @brief destruct the object
+     */
+    ~exception() override = default;
+
+    exception(exception const& other) = default;
+    exception& operator=(exception const& other) = default;
+    exception(exception&& other) noexcept = default;
+    exception& operator=(exception&& other) noexcept = default;
+
+    explicit exception(std::shared_ptr<error::error_info> info) noexcept :
+        info_(std::move(info))
+    {}
+
+    [[nodiscard]] char const* what() const noexcept override {
+        if(! info_) return "";
+        return info_->message().data();
+    }
+
+    [[nodiscard]] std::shared_ptr<error::error_info> const& info() const noexcept {
+        return info_;
+    }
+
+private:
+    std::shared_ptr<error::error_info> info_{};
+};
+
 }
 
 /**

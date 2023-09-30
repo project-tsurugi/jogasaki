@@ -37,14 +37,18 @@ using jogasaki::api::impl::get_impl;
 
 runner& runner::run() {
     notnull(db_);
+    std::shared_ptr<error::error_info> temp{};
+    auto* out = output_error_info_ ? output_error_info_ : &temp;
+
     api::statement_handle prepared{prepared_};
     if(! text_.empty()) {
-        if(auto res = db_->prepare(
+        if(auto res = get_impl(*db_).prepare(
                 text_,
                 variables_ ? *variables_ : std::unordered_map<std::string, api::field_type_kind>{},
-                prepared
+                prepared,
+                *out
             ); res != status::ok) {
-            exec_fail("execution failed. db_->prepare()");
+            exec_fail((*out)->message());
         }
     }
 
@@ -75,8 +79,6 @@ runner& runner::run() {
         tx = *holder;
     }
 
-    std::shared_ptr<error::error_info> temp{};
-    auto* out = output_error_info_ ? output_error_info_ : &temp;
     status res{};
     auto tc = api::get_transaction_context(tx);
     if(output_records_) {

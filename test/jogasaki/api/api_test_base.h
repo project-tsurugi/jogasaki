@@ -155,7 +155,8 @@ public:
 
     void test_stmt_err(
         std::string_view stmt,
-        error_code expected
+        error_code expected,
+        std::string_view msg = ""
     );
     void resolve(std::string& query, std::string_view place_holder, std::string value);
 

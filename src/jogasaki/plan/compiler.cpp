@@ -162,6 +162,15 @@ void preprocess(
             case takatori::relation::expression_kind::offer: //fall-thru
                 container->work_level().set_minimum(statement_work_level_kind::simple_multirecord_operation);
                 break;
+            case takatori::relation::expression_kind::join_scan:
+                throw_exception(impl::exception(
+                    create_error_info(
+                        error_code::unsupported_runtime_feature_exception,
+                        "Compiling statement resulted in unsupported relational operator. "
+                        "Specify configuration parameter enable_index_join=false to avoid this.",
+                        status::err_unsupported
+                    )
+                ));
             case takatori::relation::expression_kind::join_find: //fall-thru
             case takatori::relation::expression_kind::join_group: //fall-thru
             case takatori::relation::expression_kind::take_group: //fall-thru
@@ -933,19 +942,29 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
 } // namespace impl
 
 status prepare(std::string_view sql, compiler_context &ctx) {
-    std::shared_ptr<prepared_statement> stmt{};
-    auto rc = impl::prepare(sql, ctx, stmt);
-    if (rc == status::ok) {
-        ctx.prepared_statement(std::move(stmt));
+    try {
+        std::shared_ptr<prepared_statement> stmt{};
+        auto rc = impl::prepare(sql, ctx, stmt);
+        if (rc == status::ok) {
+            ctx.prepared_statement(std::move(stmt));
+        }
+        return rc;
+    } catch (impl::exception const& e) {
+        ctx.error_info(e.info());
+        return e.info()->status();
     }
-    return rc;
 }
 
 status compile(
     compiler_context &ctx,
     parameter_set const* parameters
 ) {
-    return impl::create_executable_statement(ctx, parameters);
+    try {
+        return impl::create_executable_statement(ctx, parameters);
+    } catch (impl::exception const& e) {
+        ctx.error_info(e.info());
+        return e.info()->status();
+    }
 }
 
 status compile(
@@ -953,10 +972,15 @@ status compile(
     compiler_context &ctx,
     parameter_set const* parameters
 ) {
-    if(auto rc = prepare(sql, ctx); rc != status::ok) {
-        return rc;
+    try {
+        if(auto rc = prepare(sql, ctx); rc != status::ok) {
+            return rc;
+        }
+        return impl::create_executable_statement(ctx, parameters);
+    } catch (impl::exception const& e) {
+        ctx.error_info(e.info());
+        return e.info()->status();
     }
-    return impl::create_executable_statement(ctx, parameters);
 }
 
 }

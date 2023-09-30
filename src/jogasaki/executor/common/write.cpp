@@ -191,7 +191,7 @@ void handle_encode_error(
     if(st == status::err_insufficient_field_storage) {
         set_error(
             ctx,
-            error_code::sql_limit_reached_exception,
+            error_code::value_too_long_exception,
             "Insufficient storage to store field data.",
             st
         );

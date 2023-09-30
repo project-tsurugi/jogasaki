@@ -65,6 +65,10 @@ inline sql::error::Code map_error(jogasaki::error_code s) {
         case jogasaki::error_code::internal_exception: return sql::error::INTERNAL_EXCEPTION;
         case jogasaki::error_code::unsupported_runtime_feature_exception: return sql::error::UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION;
         case jogasaki::error_code::blocked_by_high_priority_transaction_exception: return sql::error::BLOCKED_BY_HIGH_PRIORITY_TRANSACTION_EXCEPTION;
+        case jogasaki::error_code::invalid_runtime_value_exception: return sql::error::INVALID_RUNTIME_VALUE_EXCEPTION;
+        case jogasaki::error_code::value_out_of_range_exception: return sql::error::VALUE_OUT_OF_RANGE_EXCEPTION;
+        case jogasaki::error_code::value_too_long_exception: return sql::error::VALUE_TOO_LONG_EXCEPTION;
+        case jogasaki::error_code::invalid_decimal_value_exception: return sql::error::INVALID_DECIMAL_VALUE_EXCEPTION;
 
         case jogasaki::error_code::compile_exception: return sql::error::COMPILE_EXCEPTION;
         case jogasaki::error_code::syntax_exception: return sql::error::SYNTAX_EXCEPTION;
@@ -127,6 +131,10 @@ inline jogasaki::error_code map_error(sql::error::Code s) {
         case sql::error::INTERNAL_EXCEPTION: return jogasaki::error_code::internal_exception;
         case sql::error::UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION: return jogasaki::error_code::unsupported_runtime_feature_exception;
         case sql::error::BLOCKED_BY_HIGH_PRIORITY_TRANSACTION_EXCEPTION: return jogasaki::error_code::blocked_by_high_priority_transaction_exception;
+        case sql::error::INVALID_RUNTIME_VALUE_EXCEPTION: return jogasaki::error_code::invalid_runtime_value_exception;
+        case sql::error::VALUE_OUT_OF_RANGE_EXCEPTION: return jogasaki::error_code::value_out_of_range_exception;
+        case sql::error::VALUE_TOO_LONG_EXCEPTION: return jogasaki::error_code::value_too_long_exception;
+        case sql::error::INVALID_DECIMAL_VALUE_EXCEPTION: return jogasaki::error_code::invalid_decimal_value_exception;
 
         case sql::error::COMPILE_EXCEPTION: return jogasaki::error_code::compile_exception;
         case sql::error::SYNTAX_EXCEPTION: return jogasaki::error_code::syntax_exception;

@@ -55,6 +55,7 @@ enum class error_code : std::int64_t {
     dump_directory_inaccessible_exception = 2034,
     sql_limit_reached_exception = 2036,
     transaction_exceeded_limit_exception = 2037,
+
     sql_request_timeout_exception = 2039,
     data_corruption_exception = 2041,
     secondary_index_corruption_exception = 2042,
@@ -64,6 +65,10 @@ enum class error_code : std::int64_t {
     internal_exception = 2048,
     unsupported_runtime_feature_exception = 2050,
     blocked_by_high_priority_transaction_exception = 2052,
+    invalid_runtime_value_exception = 2054,
+    value_out_of_range_exception = 2056,
+    value_too_long_exception = 2058,
+    invalid_decimal_value_exception = 2060,
 
     compile_exception = 3000,
     syntax_exception = 3001,
@@ -132,6 +137,10 @@ enum class error_code : std::int64_t {
         case code::internal_exception: return "internal_exception"sv;
         case code::unsupported_runtime_feature_exception: return "unsupported_runtime_feature_exception"sv;
         case code::blocked_by_high_priority_transaction_exception: return "blocked_by_high_priority_transaction_exception"sv;
+        case code::invalid_runtime_value_exception: return "invalid_runtime_value_exception"sv;
+        case code::value_out_of_range_exception: return "value_out_of_range_exception"sv;
+        case code::value_too_long_exception: return "value_too_long_exception"sv;
+        case code::invalid_decimal_value_exception: return "invalid_decimal_value_exception"sv;
         case code::compile_exception: return "compile_exception"sv;
         case code::syntax_exception: return "syntax_exception"sv;
         case code::analyze_exception: return "analyze_exception"sv;

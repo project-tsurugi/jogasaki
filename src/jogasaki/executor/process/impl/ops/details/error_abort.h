@@ -99,7 +99,7 @@ operation_status error_abort_impl(
         case status::err_insufficient_field_storage:
             error::set_error_impl(
                 *ctx.req_context(),
-                error_code::sql_limit_reached_exception,
+                error_code::value_too_long_exception,
                 "Insufficient storage to store field data.",
                 filepath,
                 position,

@@ -572,7 +572,7 @@ TEST_F(api_test, char_data_too_long_insert) {
         ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (1,'00000X', '11111')", stmt));
         auto tx = utils::create_transaction(*db_);
         auto err = execute(*tx, *stmt);
-        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
+        ASSERT_EQ(error_code::value_too_long_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
     {
@@ -580,7 +580,7 @@ TEST_F(api_test, char_data_too_long_insert) {
         ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO CHAR_TAB (C0, VC, CH) VALUES (2,'00000', '111111')", stmt));
         auto tx = utils::create_transaction(*db_);
         auto err = execute(*tx, *stmt);
-        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
+        ASSERT_EQ(error_code::value_too_long_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
 }
@@ -594,7 +594,7 @@ TEST_F(api_test, char_data_too_long_update_vc) {
         auto tx = utils::create_transaction(*db_);
         auto err = execute(*tx, *stmt);
         ASSERT_TRUE(err);
-        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
+        ASSERT_EQ(error_code::value_too_long_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
 }
@@ -607,7 +607,7 @@ TEST_F(api_test, char_data_too_long_update_ch) {
         auto tx = utils::create_transaction(*db_);
         auto err = execute(*tx, *stmt);
         ASSERT_TRUE(err);
-        ASSERT_EQ(error_code::sql_limit_reached_exception, err->code());
+        ASSERT_EQ(error_code::value_too_long_exception, err->code());
         ASSERT_EQ(status::ok, tx->abort());
     }
 }

@@ -11,8 +11,7 @@
   * yugawara
   * mizugaki
   * shakujo (until dependency is removed)
-  * mpdecimal 2.5.1 (see `Install steps for mpdecimal` section below)
-  * tsubakuro (for proto definition)
+  * mpdecimal 2.5.1 (see `Manual install steps for mpdecimal` section below to install on Ubuntu 20.04)
   * performance-tools (optional)
 * and see *Dockerfile* section
 
@@ -26,7 +25,7 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:22.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libparquet-dev=9.0.0-1 libparquet-glib-dev=9.0.0-1
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libmpdec-dev libparquet-dev=9.0.0-1 libparquet-glib-dev=9.0.0-1
 ```
 (see "Additional file installation for Apache Parquet" below if installing `libparquet-dev`, `libparquet-glib-dev` fails)
 
@@ -54,10 +53,9 @@ sudo apt install -y -V libparquet-dev=9.0.0-1 libparquet-glib-dev=9.0.0-1 libarr
 
 (You can see [here](https://arrow.apache.org/install/) for full instruction. )
 
-## Install steps for mpdecimal
+## Manual install steps for mpdecimal
 
-The apt command installs slightly old mpdecimal package (2.4) while jogasaki requires newer version(2.5 or later.) 
-Follow these steps in order to install mpdecmal in the custom location.
+Ubuntu 22.04 users can safely skip this section since `apt install libmpdec-dev` installs new version enough for Jogasaki. On Ubuntu 20.04, the apt command installs slightly old mpdecimal package (2.4) while jogasaki requires newer version(2.5 or later.) Follow these steps in order to install mpdecmal in the custom location.
 
 1. Download [mpdecimal-2.5.1.tar.gz](https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz) listed [here](https://www.bytereef.org/mpdecimal/download.html).
 2. Untar the archive and move into the extracted directory.

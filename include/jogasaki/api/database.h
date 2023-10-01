@@ -261,6 +261,7 @@ public:
      * @return status::ok if the table is successfully created/registered.
      * @return status::err_already_exists if the table with same name already exists.
      * No update is made to the existing metadata.
+     * @return status::err_unsupported if the table column type is unsupported
      * @note this function doesn't store table metadata into durable storage (while create_index for primary index does for both table/primary index metadata)
      */
     status create_table(
@@ -306,6 +307,7 @@ public:
      * @param schema the schema where index belongs.
      * @return status::ok if the index is successfully created/registered.
      * @return status::err_already_exists if the table with same name already exists.
+     * @return status::err_illegal_operation if this function tries to create primary index and one of key columns is nullable.
      * @note when creating primary index, this function stores also table and sequences metadata into primary index's durable storage.
      * When creating secondary index, this function stores only the secondary index metadata in its durable storage.
      */

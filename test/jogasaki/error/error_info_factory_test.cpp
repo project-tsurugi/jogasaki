@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/error_code.h>
-#include <jogasaki/error/json.hpp>
+#include "../../third_party/nlohmann/json.hpp"
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::error {

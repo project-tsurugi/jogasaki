@@ -16,7 +16,7 @@
 #include "error_info.h"
 
 #include <glog/logging.h>
-#include "json.hpp"
+#include "../../third_party/nlohmann/json.hpp"
 
 #include <string>
 #include <string_view>

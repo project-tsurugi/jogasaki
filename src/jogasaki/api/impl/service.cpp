@@ -15,7 +15,6 @@
  */
 #include "service.h"
 
-#include <msgpack.hpp>
 #include <google/protobuf/text_format.h>
 #include <glog/logging.h>
 #include <takatori/util/downcast.h>

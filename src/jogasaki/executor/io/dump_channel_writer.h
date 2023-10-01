@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <msgpack.hpp>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/io/record_writer.h>

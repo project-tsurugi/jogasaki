@@ -75,7 +75,6 @@ file(GLOB SRCS
         "jogasaki/scheduler/*.cpp"
         "jogasaki/serializer/*.cpp"
         "jogasaki/kvs/*.cpp"
-        "jogasaki/third_party/*.cpp"
         "jogasaki/utils/*.cpp"
         )
 

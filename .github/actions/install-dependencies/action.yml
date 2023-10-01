@@ -7,6 +7,12 @@ inputs:
   sharksfin-implementation:
     description: sharksfin implementation (memory or shirakami)
     required: true
+  checkout:
+    description: Skip checkout if false
+    default: true
+  path:
+    description: Relative path under $GITHUB_WORKSPACE to place the repository
+    default: build-deps
 
 runs:
   using: "composite"
@@ -14,82 +20,91 @@ runs:
   steps:
     - name: Checkout_Takatori
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/takatori
-        path: build-deps/takatori
+        path: ${{ inputs.path }}/takatori
         ref: master
         token: ${{ inputs.token }}
 
     - name: Checkout_Yugawara
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/yugawara
-        path: build-deps/yugawara
+        path: ${{ inputs.path }}/yugawara
         ref: master
         submodules: true
         token: ${{ inputs.token }}
 
     - name: Checkout_Shakujo
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/shakujo
-        path: build-deps/shakujo
+        path: ${{ inputs.path }}/shakujo
         ref: master
         submodules: recursive
         token: ${{ inputs.token }}
 
     - name: Checkout_Mizugaki
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/mizugaki
-        path: build-deps/mizugaki
+        path: ${{ inputs.path }}/mizugaki
         ref: master
         token: ${{ inputs.token }}
 
     - name: Checkout_Limestone
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/limestone
-        path: build-deps/limestone
+        path: ${{ inputs.path }}/limestone
         ref: master
         token: ${{ inputs.token }}
 
     - name: Checkout_Yakushima
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/yakushima
-        path: build-deps/yakushima
+        path: ${{ inputs.path }}/yakushima
         ref: master
         token: ${{ inputs.token }}
 
     - name: Checkout_Shirakami
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/shirakami
-        path: build-deps/shirakami
+        path: ${{ inputs.path }}/shirakami
         ref: master
         token: ${{ inputs.token }}
 
     - name: Checkout_Sharksfin
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/sharksfin
-        path: build-deps/sharksfin
+        path: ${{ inputs.path }}/sharksfin
         ref: master
         token: ${{ inputs.token }}
 
     - name: Checkout_Tateyama
       uses: actions/checkout@v3
+      if: ${{ inputs.checkout == 'true' }}
       with:
         repository: project-tsurugi/tateyama
-        path: build-deps/tateyama
+        path: ${{ inputs.path }}/tateyama
         ref: master
         submodules: true
         token: ${{ inputs.token }}
 
     - name: Install_Takatori
       run: |
-        cd build-deps/takatori
+        cd ${{ inputs.path }}/takatori
         rm -fr build
         mkdir build
         cd build
@@ -99,7 +114,7 @@ runs:
 
     - name: Install_hopscotch-map
       run: |
-        cd build-deps/yugawara/third_party/hopscotch-map
+        cd ${{ inputs.path }}/yugawara/third_party/hopscotch-map
         rm -fr ../../build-hopscotch-map
         mkdir ../../build-hopscotch-map
         cd ../../build-hopscotch-map
@@ -109,7 +124,7 @@ runs:
 
     - name: Install_Yugawara
       run: |
-        cd build-deps/yugawara
+        cd ${{ inputs.path }}/yugawara
         rm -fr build
         mkdir build
         cd build
@@ -119,7 +134,7 @@ runs:
 
     - name: Install_Shakujo
       run: |
-        cd build-deps/shakujo
+        cd ${{ inputs.path }}/shakujo
         rm -fr build
         mkdir build
         cd build
@@ -129,7 +144,7 @@ runs:
 
     - name: Install_Mizugaki
       run: |
-        cd build-deps/mizugaki
+        cd ${{ inputs.path }}/mizugaki
         rm -fr build
         mkdir build
         cd build
@@ -139,7 +154,7 @@ runs:
 
     - name: Install_Limestone
       run: |
-        cd build-deps/limestone
+        cd ${{ inputs.path }}/limestone
         rm -fr build
         mkdir build
         cd build
@@ -149,7 +164,7 @@ runs:
 
     - name: Install_Yakushima
       run: |
-        cd build-deps/yakushima
+        cd ${{ inputs.path }}/yakushima
         rm -fr build
         mkdir build
         cd build
@@ -159,7 +174,7 @@ runs:
 
     - name: Install_Shirakami
       run: |
-        cd build-deps/shirakami
+        cd ${{ inputs.path }}/shirakami
         rm -fr build
         mkdir build
         cd build
@@ -169,7 +184,7 @@ runs:
 
     - name: Install_Sharksfin
       run: |
-        cd build-deps/sharksfin
+        cd ${{ inputs.path }}/sharksfin
         rm -fr build
         mkdir build
         cd build
@@ -179,7 +194,7 @@ runs:
 
     - name: Install_moodycamel_Concurrentqueue
       run: |
-        cd build-deps/tateyama/third_party/concurrentqueue
+        cd ${{ inputs.path }}/tateyama/third_party/concurrentqueue
         rm -fr build_debug
         mkdir build_debug
         cd build_debug
@@ -189,7 +204,7 @@ runs:
 
     - name: Install_Tateyama
       run: |
-        cd build-deps/tateyama
+        cd ${{ inputs.path }}/tateyama
         rm -fr build
         mkdir build
         cd build

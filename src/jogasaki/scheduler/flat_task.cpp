@@ -87,7 +87,8 @@ void flat_task::resubmit(request_context& req_context) {
 }
 
 bool flat_task::teardown() {  //NOLINT(readability-make-member-function-const)
-    log_entry << *this;
+    // stop log_entry/log_exit since this function is called frequently as part of durability callback processing
+    // log_entry << *this;
     trace_scope_name("teardown");  //NOLINT
     bool ret = true;
     if (auto cnt = job()->task_count().load(); cnt > 0) {
@@ -99,7 +100,7 @@ bool flat_task::teardown() {  //NOLINT(readability-make-member-function-const)
         DVLOG_LP(log_debug) << *this << " job completion is not ready and teardown is rescheduled.";
         ret = false;
     }
-    log_exit << *this << " ret:" << ret;
+    // log_exit << *this << " ret:" << ret;
     return ret;
 }
 

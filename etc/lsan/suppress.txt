@@ -1,0 +1,5 @@
+# test lsan supressions option on this env.
+leak:lsan_suppress_test
+
+# libnuma global variable leaks
+leak:numa_bitmask_alloc

@@ -16,18 +16,18 @@
 #include "proto_debug_string.h"
 
 #include <google/protobuf/text_format.h>
+#include <google/protobuf/util/json_util.h>
 
 namespace jogasaki::utils {
 
-std::string to_debug_string(const google::protobuf::Message &message) {
-    ::google::protobuf::TextFormat::Printer printer{};
-    printer.SetSingleLineMode(true);
-    printer.SetUseUtf8StringEscaping(true);
-    std::string out{};
-    if(! printer.PrintToString(message, &out)) {
+std::string to_debug_string(google::protobuf::Message const& message) {
+    std::string ret{};
+    google::protobuf::util::JsonPrintOptions options{};
+    options.preserve_proto_field_names = true;
+    if(auto st = MessageToJsonString(message, &ret, options); ! st.ok()) {
         return {};
     }
-    return out;
+    return ret;
 }
 
 }

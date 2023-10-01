@@ -29,7 +29,7 @@
 namespace jogasaki {
 
 void durability_callback::operator()(durability_callback::marker_type marker) {
-    VLOG_LP(log_trace) << "--- durability_callback marker:" << marker;
+    // Avoid tracing entry. This function is called frequently. Trace only effective calls below.
     [[maybe_unused]] auto cnt = db_->requests_inprocess();
     if(db_->stop_requested()) return;
     auto request_ctx = api::impl::create_request_context(db_, nullptr, nullptr, nullptr);
@@ -42,7 +42,9 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
             [mgr=manager_, marker, request_ctx=request_ctx.get()](){ // capture request_ctx pointer to avoid cyclic dependency
                 if(mgr->update_current_marker(
                     marker,
-                    [](element_reference_type e){
+                    [marker](element_reference_type e){
+                        VLOG(log_trace) << "/:jogasaki:durability_callback:operator() "
+                            << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
                         scheduler::submit_teardown(*e, false, true);
                     })) {
                     scheduler::submit_teardown(*request_ctx);

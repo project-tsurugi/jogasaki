@@ -33,10 +33,16 @@ constexpr std::size_t default_partitions = 5;
 constexpr static std::size_t bits_per_byte = std::numeric_limits<std::uint8_t>::digits;
 
 /**
+ * @brief old system table name for sequences
+ * @details the deprecated table name for sequences
+ */
+constexpr static std::string_view legacy_system_sequences_name = "system_sequences";
+
+/**
  * @brief system table name for sequences
  * @details the table name for the sequence id mapping
  */
-constexpr static std::string_view system_sequences_name = "system_sequences";
+constexpr static std::string_view system_sequences_name = "__system_sequences";
 
 /**
  * @brief average number of indices per table

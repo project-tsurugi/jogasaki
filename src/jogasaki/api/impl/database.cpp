@@ -890,6 +890,11 @@ status database::recover_metadata() {
     if(auto res = kvs_db_->list_storages(names); res != status::ok) {
         return res;
     }
+    if(std::find(names.cbegin(), names.cend(), legacy_system_sequences_name) != names.cend()) {
+        // found deprecated system table - db should not start
+        LOG(ERROR) << "database metadata version is too old to recover";
+        return status::err_invalid_state;
+    }
     std::vector<std::string> secondaries{};
     secondaries.reserve(names.size());
     // recover primary index/table

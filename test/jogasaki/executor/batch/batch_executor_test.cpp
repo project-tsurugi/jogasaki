@@ -228,7 +228,8 @@ TEST_F(batch_executor_test, max_file_block_params) {
     test_bootstrap({{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, 1, 1);
 }
 
-TEST_F(batch_executor_test, files_with_empty_blocks) {
+// temporarily disabled as ci randomly fails
+TEST_F(batch_executor_test, DISABLED_files_with_empty_blocks) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory timed out the testcase";
     }

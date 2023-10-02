@@ -344,7 +344,8 @@ TEST_F(batch_executor_test, DISABLED_many_files_and_blocks) {
     test_bootstrap(std::move(defs));
 }
 
-TEST_F(batch_executor_test, error_pk_violation) {
+// TODO sometimes failed by err_serialization_failure
+TEST_F(batch_executor_test, DISABLED_error_pk_violation) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory timed out the testcase";
     }

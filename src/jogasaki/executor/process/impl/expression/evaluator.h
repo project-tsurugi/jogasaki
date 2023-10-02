@@ -72,6 +72,7 @@ public:
     any sign_inversion_any(any const& exp);
     any conditional_not_any(any const& exp);
     any length_any(any const& exp);
+    any is_null(any const& exp);
     any operator()(takatori::scalar::unary const& exp);
     any operator()(takatori::scalar::cast const&);
     any compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right);

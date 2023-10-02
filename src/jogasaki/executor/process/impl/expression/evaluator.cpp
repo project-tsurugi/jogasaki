@@ -421,10 +421,17 @@ any engine::length_any(any const& exp) {
     }
 }
 
+any engine::is_null(any const& exp) {
+    return any{std::in_place_type<bool>, exp.empty()};
+}
+
 any engine::operator()(takatori::scalar::unary const& exp) {
     using optype = takatori::scalar::unary::operator_kind_type;
     auto v = dispatch(*this, exp.operand());
-    if (! v) return v;
+    if (! v && exp.operator_kind() != takatori::scalar::unary_operator::is_null) {
+        // except for is_null predicate, return null if input is null
+        return v;
+    }
     switch(exp.operator_kind()) {
         case optype::plus:
             // no-op - pass current value upward
@@ -435,6 +442,8 @@ any engine::operator()(takatori::scalar::unary const& exp) {
             return conditional_not_any(v);
         case optype::length:
             return length_any(v);
+        case optype::is_null:
+            return is_null(v);
         default: return return_unsupported();
     }
 }

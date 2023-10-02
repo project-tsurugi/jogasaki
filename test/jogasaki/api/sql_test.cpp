@@ -718,13 +718,13 @@ TEST_F(sql_test, is_null) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0 FROM T WHERE C1 IS NULL ORDER BY C0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>({1,0}, {false, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0 FROM T WHERE C1 IS NOT NULL ORDER BY C0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,20)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]);
     }
 }
 

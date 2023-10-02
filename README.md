@@ -33,11 +33,8 @@ optional packages:
 #### tsurugidb modules
 
 This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) modules to be installed.
-* [sharksfin](https://github.com/project-tsurugi/sharksfin)
-* [takatori](https://github.com/project-tsurugi/takatori)
-* [yugawara](https://github.com/project-tsurugi/yugawara)
 * [mizugaki](https://github.com/project-tsurugi/mizugaki)
-* [shakujo](https://github.com/project-tsurugi/shakujo) (transitive)
+* [tateyama](https://github.com/project-tsurugi/tateyama)
 * [performance-tools](https://github.com/project-tsurugi/sandbox-performance-tools) (optional)
 
 ### Additional file installation for Apache Parquet

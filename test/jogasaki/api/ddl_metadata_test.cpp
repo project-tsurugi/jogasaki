@@ -121,8 +121,8 @@ T const& as(takatori::type::data const& t) {
 void ddl_metadata_test::test_decimal(std::string_view coldef,
     bool has_precision,
     bool has_scale,
-    std::size_t precision,
-    std::size_t scale
+    std::size_t precision, // meaningful only when has_precision = true
+    std::size_t scale // meaningful only when has_scale = true
 ) {
     execute_statement("CREATE TABLE T (C0 " + std::string{coldef} + " PRIMARY KEY)");
     auto t = find_table(*db_, "T");
@@ -146,46 +146,56 @@ void ddl_metadata_test::test_decimal(std::string_view coldef,
     }
 }
 
-TEST_F(ddl_metadata_test , decimal) {
+TEST_F(ddl_metadata_test, decimal) {
     test_decimal("DECIMAL(5,3)", true, true, 5, 3);
 }
 
-TEST_F(ddl_metadata_test , decimal_precision_only) {
+TEST_F(ddl_metadata_test, decimal_precision_only) {
     test_decimal("DECIMAL(5)", true, true, 5, 0);
 }
 
-TEST_F(ddl_metadata_test , decimal_wo_ps) {
+//TODO raise error
+TEST_F(ddl_metadata_test, decimal_prec_smaller_than_scale) {
+    test_decimal("DECIMAL(3,4)", true, true, 3, 4);
+}
+
+TEST_F(ddl_metadata_test, decimal_wo_ps) {
     test_decimal("DECIMAL", true, true, 38, 0);
 }
 
-TEST_F(ddl_metadata_test , decimal_wildcard) {
+TEST_F(ddl_metadata_test, decimal_wildcard) {
     test_decimal("DECIMAL(*)", false, true, -1, 0);
 }
 
 //TODO raise error
-TEST_F(ddl_metadata_test , decimal_ps_wildcards) {
+TEST_F(ddl_metadata_test, decimal_ps_wildcards) {
     test_decimal("DECIMAL(*, *)", false, false, -1, -1);
 }
 
 //TODO raise error
-TEST_F(ddl_metadata_test , decimal_zero) {
+TEST_F(ddl_metadata_test, decimal_scale_wildcard) {
+    test_decimal("DECIMAL(5, *)", true, false, 5, -1);
+}
+
+//TODO raise error
+TEST_F(ddl_metadata_test, decimal_zero) {
     test_decimal("DECIMAL(0)", true, true, 0, 0);
 }
 
-TEST_F(ddl_metadata_test , decimal_prec_minus) {
+TEST_F(ddl_metadata_test, decimal_prec_minus) {
     test_stmt_err("CREATE TABLE T (C0 DECIMAL(-1) PRIMARY KEY)", error_code::syntax_exception);
 }
-TEST_F(ddl_metadata_test , decimal_scale_minus) {
+TEST_F(ddl_metadata_test, decimal_scale_minus) {
     test_stmt_err("CREATE TABLE T (C0 DECIMAL(5, -1) PRIMARY KEY)", error_code::syntax_exception);
 }
 
-TEST_F(ddl_metadata_test , decimal_paren_no_len) {
+TEST_F(ddl_metadata_test, decimal_paren_no_len) {
     test_stmt_err("CREATE TABLE T (C0 DECIMAL() PRIMARY KEY)", error_code::syntax_exception);
 }
 
 void ddl_metadata_test::test_character(std::string_view coldef,
     bool has_len,
-    std::size_t len,
+    std::size_t len, // meaningful only when has_len = true
     bool varying
 ) {
     execute_statement("CREATE TABLE T (C0 " + std::string{coldef} + " PRIMARY KEY)");
@@ -196,8 +206,12 @@ void ddl_metadata_test::test_character(std::string_view coldef,
     ASSERT_EQ(takatori::type::type_kind::character, c->type().kind());
     auto l = as<takatori::type::character>(c->type()).length();
     auto var = as<takatori::type::character>(c->type()).varying();
-    ASSERT_TRUE(l.has_value());
-    EXPECT_EQ(len, l);
+    if(has_len) {
+        ASSERT_TRUE(l.has_value());
+        EXPECT_EQ(len, *l);
+    } else {
+        ASSERT_FALSE(l.has_value());
+    }
     if(varying) {
         ASSERT_TRUE(var);
     } else {
@@ -209,12 +223,17 @@ TEST_F(ddl_metadata_test, char_minus) {
     test_stmt_err("CREATE TABLE T (C0 CHAR(-1) PRIMARY KEY)", error_code::syntax_exception);
 }
 
+//TODO raise error
 TEST_F(ddl_metadata_test, char_0) {
     test_character("CHAR(0)", true, 0, false);
 }
 
 TEST_F(ddl_metadata_test, char_wo_len) {
     test_character("CHAR", true, 1, false);
+}
+
+TEST_F(ddl_metadata_test, char_wildcard) {
+    test_stmt_err("CREATE TABLE T (C0 CHAR(*) PRIMARY KEY)", error_code::syntax_exception);
 }
 
 TEST_F(ddl_metadata_test, char_paren_wo_len) {
@@ -224,15 +243,30 @@ TEST_F(ddl_metadata_test, char_paren_wo_len) {
 TEST_F(ddl_metadata_test, varchar_minus) {
     test_stmt_err("CREATE TABLE T (C0 VARCHAR(-1) PRIMARY KEY)", error_code::syntax_exception);
 }
-TEST_F(ddl_metadata_test , varchar_wo_len) {
+TEST_F(ddl_metadata_test, varchar_wo_len) {
     test_stmt_err("CREATE TABLE T (C0 VARCHAR PRIMARY KEY)", error_code::syntax_exception);
 }
 
-TEST_F(ddl_metadata_test , varchar_paren_wo_len_) {
+TEST_F(ddl_metadata_test, varchar_paren_wo_len_) {
     test_stmt_err("CREATE TABLE T (C0 VARCHAR() PRIMARY KEY)", error_code::syntax_exception);
 }
 
-TEST_F(ddl_metadata_test , varchar_0) {
+TEST_F(ddl_metadata_test, varchar_wildcard) {
+    test_character("VARCHAR(*)", false, -1, true);
+}
+
+//TODO raise error
+TEST_F(ddl_metadata_test, varchar_0) {
     test_character("VARCHAR(0)", true, 0, true);
+}
+
+//TODO raise error
+TEST_F(ddl_metadata_test, varchar_exceeding_limit) {
+    test_character("VARCHAR(30717)", true, 30717, true);
+}
+
+//TODO raise error
+TEST_F(ddl_metadata_test, char_exceeding_limit) {
+    test_character("CHAR(30717)", true, 30717, false);
 }
 }

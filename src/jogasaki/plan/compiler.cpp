@@ -439,6 +439,8 @@ status prepare(
         ctx.aggregate_provider(),
         ctx.variable_provider()
     };
+    // used when DDL has no parenthesis for decimal: "create table T (c0 decimal)"
+    options.default_decimal_precision() = 38;
 
     yugawara::runtime_feature_set runtime_features {
         //TODO enable features

@@ -73,7 +73,7 @@ using namespace std::string_view_literals;
 TEST_F(sequence_test, generate_primary_key) {
     {
         std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM system_sequences", entries);
+        execute_query("SELECT * FROM __system_sequences", entries);
         ASSERT_LT(0, entries.size());
     }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
@@ -91,7 +91,7 @@ TEST_F(sequence_test, generate_primary_key) {
     EXPECT_LT(s1, s2);
     {
         std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM system_sequences", entries);
+        execute_query("SELECT * FROM __system_sequences", entries);
         ASSERT_LT(0, entries.size());
     }
 }
@@ -113,7 +113,7 @@ TEST_F(sequence_test, recovery) {
     {
         SCOPED_TRACE("before recovery 0");
         std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM system_sequences", entries);
+        execute_query("SELECT * FROM __system_sequences", entries);
         num_seqs = entries.size();
         ASSERT_LT(0, num_seqs);
     }
@@ -122,7 +122,7 @@ TEST_F(sequence_test, recovery) {
     {
         SCOPED_TRACE("after recovery 0");
         std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM system_sequences", entries);
+        execute_query("SELECT * FROM __system_sequences", entries);
         ASSERT_EQ(num_seqs, entries.size());
     }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (30)");
@@ -143,7 +143,7 @@ TEST_F(sequence_test, recovery) {
     {
         SCOPED_TRACE("after recovery 0");
         std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM system_sequences", entries);
+        execute_query("SELECT * FROM __system_sequences", entries);
         ASSERT_EQ(num_seqs, entries.size());
     }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (40)");

@@ -4,15 +4,7 @@
 
 * CMake `>= 3.16`
 * C++ Compiler `>= C++17`
-* access to installed dependent modules: 
-  * sharksfin
-  * tateyama
-  * takatori
-  * yugawara
-  * mizugaki
-  * shakujo (until dependency is removed)
-  * mpdecimal 2.5.1 (see `Manual install steps for mpdecimal` section below to install on Ubuntu 20.04)
-  * performance-tools (optional)
+* mpdecimal 2.5.1 (see `Manual install steps for mpdecimal` section below to install on Ubuntu 20.04)
 * and see *Dockerfile* section
 
 ```sh
@@ -33,10 +25,22 @@ optional packages:
 
 * `doxygen`
 * `graphviz`
-* `clang-tidy-14
+* `clang-tidy-14`
 * [`linenoise-ng`](https://github.com/arangodb/linenoise-ng.git)
 
-## Additional file installation for Apache Parquet
+### Install modules
+
+#### tsurugidb modules
+
+This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) modules to be installed.
+* [sharksfin](https://github.com/project-tsurugi/sharksfin)
+* [takatori](https://github.com/project-tsurugi/takatori)
+* [yugawara](https://github.com/project-tsurugi/yugawara)
+* [mizugaki](https://github.com/project-tsurugi/mizugaki)
+* [shakujo](https://github.com/project-tsurugi/shakujo) (transitive)
+* [performance-tools](https://github.com/project-tsurugi/sandbox-performance-tools) (optional)
+
+### Additional file installation for Apache Parquet
 
 Jogasaki requires Apache Parquet package versioned as `9.0.0-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.) 
 
@@ -53,7 +57,7 @@ sudo apt install -y -V libparquet-dev=9.0.0-1 libparquet-glib-dev=9.0.0-1 libarr
 
 (You can see [here](https://arrow.apache.org/install/) for full instruction. )
 
-## Manual install steps for mpdecimal
+### Manual install steps for mpdecimal
 
 Ubuntu 22.04 users can safely skip this section since `apt install libmpdec-dev` installs new version enough for Jogasaki. On Ubuntu 20.04, the apt command installs slightly old mpdecimal package (2.4) while jogasaki requires newer version(2.5 or later.) Follow these steps in order to install mpdecmal in the custom location.
 

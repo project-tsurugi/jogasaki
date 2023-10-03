@@ -37,8 +37,7 @@ public:
      * @brief create new object
      */
     explicit create_table(
-        takatori::statement::create_table& ct,
-        std::string_view sql_text
+        takatori::statement::create_table& ct
     ) noexcept;
 
     /**
@@ -53,8 +52,6 @@ public:
 
 private:
     takatori::statement::create_table* ct_{};
-    std::string metadata_{};
-
 };
 
 }

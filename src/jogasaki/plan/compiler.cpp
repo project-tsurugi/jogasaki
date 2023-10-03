@@ -775,7 +775,7 @@ void create_mirror_for_ddl(
     switch(statement->kind()) {
         case statement::statement_kind::create_table: {
             auto& node = unsafe_downcast<statement::create_table>(*statement);
-            ops = std::make_shared<executor::common::create_table>(node, ctx.sql_text());
+            ops = std::make_shared<executor::common::create_table>(node);
             break;
         }
         case statement::statement_kind::drop_table: {

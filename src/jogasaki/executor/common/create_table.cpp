@@ -38,27 +38,10 @@ namespace jogasaki::executor::common {
 using takatori::util::fail;
 using takatori::util::string_builder;
 
-static std::string create_metadata(std::string_view sql_text) {
-    proto::metadata::storage::Storage st{};
-    proto::metadata::storage::TexualDefinition text{};
-    st.set_message_version(metadata_format_version);
-    st.set_allocated_statement(&text);
-    text.set_ddl_statement(std::string{sql_text});
-
-    std::stringstream ss{};
-    if (!st.SerializeToOstream(&ss)) {
-        fail();
-    }
-    st.release_statement();
-    return ss.str();
-}
-
 create_table::create_table(
-    takatori::statement::create_table& ct,
-    std::string_view sql_text
+    takatori::statement::create_table& ct
 ) noexcept:
-    ct_(std::addressof(ct)),
-    metadata_(create_metadata(sql_text))
+    ct_(std::addressof(ct))
 {}
 
 model::statement_kind create_table::kind() const noexcept {

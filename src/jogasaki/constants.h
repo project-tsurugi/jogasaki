@@ -78,7 +78,7 @@ constexpr std::size_t dumped_decimal_default_scale = 5;
 /**
  * @brief serialized storage metadata version
  */
-constexpr std::size_t metadata_format_version = 3;
+constexpr std::size_t metadata_format_version = 10;
 
 /**
  * @brief format id of the explain response

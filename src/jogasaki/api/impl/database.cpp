@@ -633,11 +633,53 @@ scheduler::task_scheduler* database::task_scheduler() const noexcept {
     return task_scheduler_.get();
 }
 
+bool validate_type(
+    std::string_view colname,
+    takatori::type::decimal const& typ
+) {
+    std::string_view reason{};
+    if(! typ.scale()) {
+        reason = "invalid scale";
+    } else if(typ.precision() && ! (typ.precision().value() >= 1 && typ.precision().value() <= 38)) {
+        reason = "invalid precision";
+    } else if(typ.precision() && typ.scale() && ! (typ.scale().value() <= typ.precision().value())) {
+        reason = "scale out of range for the precision";
+    } else {
+        return true;
+    }
+    VLOG_LP(log_error) << "Data type specified for column \"" << colname << "\" is unsupported (" << reason << ")";
+    return false;
+}
+
+bool validate_type(
+    std::string_view colname,
+    takatori::type::character const& typ
+) {
+    std::string_view reason{};
+    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= 30716)) {
+        reason = "invalid length";
+    } else {
+        return true;
+    }
+    VLOG_LP(log_error) << "Data type specified for column \"" << colname << "\" is unsupported (" << reason << ")";
+    return false;
+}
+
 bool validate_table_definition(yugawara::storage::table const& t) {
     // should be sync with the same name function in create_table.cpp
     using takatori::type::type_kind;
     for(auto&& c : t.columns()) {
         switch(c.type().kind()) {
+            case type_kind::decimal:
+                if(! validate_type(c.simple_name(), unsafe_downcast<takatori::type::decimal const>(c.type()))) {
+                    return false;
+                }
+                break;
+            case type_kind::character:
+                if(! validate_type(c.simple_name(), unsafe_downcast<takatori::type::character const>(c.type()))) {
+                    return false;
+                }
+                break;
             case type_kind::boolean:
             case type_kind::int1:
             case type_kind::int2:
@@ -645,11 +687,9 @@ bool validate_table_definition(yugawara::storage::table const& t) {
             case type_kind::int8:
             case type_kind::float4:
             case type_kind::float8:
-            case type_kind::character:
             case type_kind::date:
             case type_kind::time_of_day:
             case type_kind::time_point:
-            case type_kind::decimal:
                 break;
             default:
                 VLOG_LP(log_error) << "Data type specified for column \"" << c.simple_name() << "\" is unsupported.";

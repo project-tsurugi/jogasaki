@@ -132,7 +132,12 @@ status database::start() {
         LOG_LP(ERROR) << "Opening database failed.";
         return status::err_io_error;
     }
-
+    if(auto res = setup_system_storage(); res != status::ok) {
+        (void) kvs_db_->close();
+        kvs_db_.reset();
+        deinit();
+        return res;
+    }
     if(auto res = recover_metadata(); res != status::ok) {
         (void) kvs_db_->close();
         kvs_db_.reset();
@@ -210,7 +215,6 @@ void database::init() {
     if(initialized_) return;
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
-    executor::add_builtin_tables(*tables_);
     if(cfg_->prepare_test_tables()) {
         executor::add_test_tables(*tables_);
     }
@@ -904,6 +908,36 @@ status database::recover_index_metadata(
             LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata";
             return status::err_unknown;
         }
+    }
+    return status::ok;
+}
+
+status database::setup_system_storage() {
+    // if system table doesn't exist, create a kvs store, that will be recovered later in this start-up process
+    std::vector<std::string> names{};
+    auto stg = kvs_db_->get_storage(system_sequences_name);
+    if(stg) {
+        return status::ok;
+    }
+    auto provider = std::make_shared<yugawara::storage::configurable_provider>(); // just for serialize
+    executor::add_builtin_tables(*provider);
+    bool success = true;
+    provider->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& i) {
+        if(! success) return;
+        std::string storage{};
+        if(! recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{true})) {
+            success = false;
+            return;
+        }
+        ::sharksfin::StorageOptions options{};
+        options.payload(std::move(storage));
+        if(stg = kvs_db_->create_storage(id, options); ! stg) {
+            success = false;
+            return;
+        }
+    });
+    if(! success) {
+        return status::err_unknown;
     }
     return status::ok;
 }

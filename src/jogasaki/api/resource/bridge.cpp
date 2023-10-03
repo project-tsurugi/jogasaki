@@ -18,6 +18,7 @@
 #include <functional>
 #include <memory>
 #include <type_traits>
+#include <boost/thread.hpp>
 
 #include <tateyama/framework/boot_mode.h>
 #include <tateyama/framework/service.h>
@@ -136,9 +137,16 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     }
 
     if (auto v = jogasaki_config->get<std::size_t>("thread_pool_size")) {
-        if(v.has_value()) {
-            ret->thread_pool_size(v.value());
+        ret->thread_pool_size(v.value());
+    } else {
+        constexpr double default_worker_coefficient = 0.8;
+        auto physical_cores = boost::thread::physical_concurrency();
+        constexpr std::size_t max_default_worker = 32;
+        auto workers = std::min(static_cast<std::size_t>(default_worker_coefficient * physical_cores), max_default_worker);
+        if(workers == 0) {
+            workers = 1;
         }
+        ret->thread_pool_size(workers);
     }
     if (auto v = jogasaki_config->get<bool>("prepare_test_tables")) {
         ret->prepare_test_tables(v.value());

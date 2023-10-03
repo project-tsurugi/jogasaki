@@ -80,7 +80,7 @@ using namespace tateyama;
 
 static constexpr std::string_view default_configuration {  // NOLINT
     "[sql]\n"
-        "thread_pool_size=5\n"
+        "thread_pool_size=\n"
         "enable_index_join=false\n"
         "stealing_enabled=true\n"
         "default_partitions=5\n"

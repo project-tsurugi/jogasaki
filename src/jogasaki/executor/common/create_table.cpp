@@ -34,7 +34,6 @@
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
-#include <takatori/util/downcast.h>
 
 namespace jogasaki::executor::common {
 

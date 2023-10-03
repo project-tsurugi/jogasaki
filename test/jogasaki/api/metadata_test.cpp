@@ -20,6 +20,8 @@
 
 #include <takatori/type/int.h>
 #include <takatori/type/octet.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/character.h>
 #include <takatori/type/bit.h>
 #include <yugawara/variable/nullity.h>
 
@@ -319,6 +321,15 @@ TEST_F(metadata_test, unsupported_column_types) {
     test_unsupported_column_type(type::octet(10));
     test_unsupported_column_type(type::octet(type::varying, 10));
     test_unsupported_column_type(type::bit(10));
+    test_unsupported_column_type(type::decimal(39));
+    test_unsupported_column_type(type::decimal(0));
+    test_unsupported_column_type(type::decimal(3, 4));
+    test_unsupported_column_type(type::decimal({}, {}));
+    test_unsupported_column_type(type::decimal(5, {}));
+    test_unsupported_column_type(type::character(0));
+    test_unsupported_column_type(type::character(type::varying, 0));
+    test_unsupported_column_type(type::character(30717));
+    test_unsupported_column_type(type::character(type::varying, 30717));
 }
 
 

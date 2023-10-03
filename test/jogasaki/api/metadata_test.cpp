@@ -24,9 +24,11 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/proto_debug_string.h>
 #include "api_test_base.h"
 
 namespace jogasaki::testing {
@@ -38,6 +40,7 @@ using namespace yugawara::storage;
 
 namespace type = takatori::type;
 using nullity = yugawara::variable::nullity;
+using api::impl::get_impl;
 
 /**
  * @brief test database api
@@ -62,6 +65,22 @@ public:
     }
 
     void test_unsupported_column_type(type::data&& typ);
+
+    void verify_index_storage_metadata(std::string_view name) {
+        // synthesized flag is not in yugawara config. provider, so check manually
+        auto kvs = get_impl(*db_).kvs_db();
+        auto stg = kvs->get_storage(name);
+        ASSERT_TRUE(stg);
+        sharksfin::StorageOptions options{};
+        ASSERT_EQ(status::ok, stg->get_options(options));
+        auto src = options.payload();
+        proto::metadata::storage::Storage storage{};
+        if (! storage.ParseFromArray(src.data(), static_cast<int>(src.size()))) {
+            FAIL();
+        }
+        std::cerr << "storage_option_json:" << utils::to_debug_string(storage) << std::endl;
+        ASSERT_TRUE(storage.index().synthesized());
+    }
 };
 
 TEST_F(metadata_test, create_table_with_primary_index) {
@@ -90,6 +109,7 @@ TEST_F(metadata_test, create_table_with_primary_index) {
         }
     );
     ASSERT_EQ(status::ok, db_->create_index(i));
+    verify_index_storage_metadata("TEST");
     {
         auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
@@ -187,6 +207,7 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
         }
     );
     ASSERT_EQ(status::ok, db_->create_index(i2));
+    verify_index_storage_metadata("TEST_SECONDARY");
     {
         auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};

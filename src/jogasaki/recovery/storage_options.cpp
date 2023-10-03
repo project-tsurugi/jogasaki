@@ -24,6 +24,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/proto_debug_string.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
@@ -51,6 +52,7 @@ bool create_storage_option(
         return false;
     }
     storage = ss.str();
+    VLOG_LP(log_trace) << "storage_option:" << utils::to_debug_string(stg);
     stg.release_index();
     return true;
 }

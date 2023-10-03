@@ -35,7 +35,6 @@ optional packages:
 This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) modules to be installed.
 * [mizugaki](https://github.com/project-tsurugi/mizugaki)
 * [tateyama](https://github.com/project-tsurugi/tateyama)
-* [performance-tools](https://github.com/project-tsurugi/sandbox-performance-tools) (optional)
 
 ### Additional file installation for Apache Parquet
 

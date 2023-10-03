@@ -89,8 +89,31 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
     return aggregate_functions_;
 }
 
+#define LOGCFG (LOG(INFO) << lp << std::boolalpha)
+void dump_public_configurations(configuration const& cfg) {
+    constexpr std::string_view lp = "/:jogasaki:config: ";
+    LOGCFG << "(thread_pool_size) " << cfg.thread_pool_size() << " : number of threads used by task scheduler";
+    LOGCFG << "(enable_index_join) " << cfg.enable_index_join() << " : whether join tries to use index";
+    LOGCFG << "(stealing_enabled) " << cfg.stealing_enabled() << " : whether task scheduler steals tasks";
+    LOGCFG << "(default_partitions) " << cfg.default_partitions() << " : number of default partitions for relational operators";
+    LOGCFG << "(use_preferred_worker_for_current_thread) " << cfg.use_preferred_worker_for_current_thread() << " : whether to use fixed worker assigned for request thread";
+    LOGCFG << "(stealing_wait) " << cfg.stealing_wait() << " : number of polling by worker thread on task queue before stealing";
+    LOGCFG << "(task_polling_wait) " << cfg.task_polling_wait() << " : sleep duration(us) of worker thread that find no task";
+    LOGCFG << "(tasked_write) " << cfg.tasked_write() << " : whether insert statement is executed as a task";
+    LOGCFG << "(enable_hybrid_scheduler) " << cfg.enable_hybrid_scheduler() << " : whether to enable hybrid scheduler";
+    LOGCFG << "(lightweight_job_level) " << cfg.lightweight_job_level() << " : boundary value to define job that finishes quickly";
+    LOGCFG << "(busy_worker) " << cfg.busy_worker() << " : whether task scheduler workers check task queues highly frequently";
+    LOGCFG << "(watcher_interval) " << cfg.watcher_interval() << " : duration(us) between watcher thread suspends and resumes";
+    LOGCFG << "(worker_try_count) " << cfg.worker_try_count() << " : number of polling by worker thread on task queue before suspend";
+    LOGCFG << "(worker_suspend_timeout) " << cfg.worker_suspend_timeout() << " : duration(us)  between worker thread suspends and resumes";
+    LOGCFG << "(commit_response) " << cfg.default_commit_response() << " : commit notification timing default";
+    LOGCFG << "(dev_update_skips_deletion) " << cfg.update_skips_deletion() << " : whether update statement skips unnecessary deletion when possible";
+}
+
 status database::start() {
     LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
+    dump_public_configurations(*cfg_);
+
     // this function is not called on maintenance/quiescent mode
     init();
     if (! kvs_db_) {

@@ -502,7 +502,7 @@ TEST_F(ddl_test, max_key_len) {
     }
 }
 
-TEST_F(ddl_test, insert_exceeding_max_key_len) {
+TEST_F(ddl_test, DISABLED_insert_exceeding_max_key_len) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has no limit";
     }

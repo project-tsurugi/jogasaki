@@ -16,8 +16,10 @@
 #include "create_table.h"
 
 #include <yugawara/binding/extract.h>
-#include <takatori/util/fail.h>
+#include <takatori/util/downcast.h>
 #include <takatori/util/string_builder.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/character.h>
 
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/plan/storage_processor.h>
@@ -32,10 +34,11 @@
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
+#include <takatori/util/downcast.h>
 
 namespace jogasaki::executor::common {
 
-using takatori::util::fail;
+using takatori::util::unsafe_downcast;
 using takatori::util::string_builder;
 
 create_table::create_table(
@@ -77,6 +80,50 @@ bool create_sequence_for_generated_pk(
     return true;
 }
 
+bool validate_type(
+    request_context& context,
+    std::string_view colname,
+    takatori::type::decimal const& typ
+) {
+    std::string_view reason{};
+    if(! typ.scale()) {
+        reason = "invalid scale";
+    } else if(typ.precision() && ! (typ.precision().value() >= 1 && typ.precision().value() <= 38)) {
+        reason = "invalid precision";
+    } else if(typ.precision() && typ.scale() && ! (typ.scale().value() <= typ.precision().value())) {
+        reason = "scale out of range for the precision";
+    } else {
+        return true;
+    }
+    set_error(
+        context,
+        error_code::unsupported_runtime_feature_exception,
+        string_builder{} << "decimal type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,
+        status::err_unsupported
+    );
+    return false;
+}
+
+bool validate_type(
+    request_context& context,
+    std::string_view colname,
+    takatori::type::character const& typ
+) {
+    std::string_view reason{};
+    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= 30716)) {
+        reason = "invalid length";
+    } else {
+        return true;
+    }
+    set_error(
+        context,
+        error_code::unsupported_runtime_feature_exception,
+        string_builder{} << "character type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,
+        status::err_unsupported
+    );
+    return false;
+}
+
 bool validate_table_definition(
     request_context& context,
     yugawara::storage::table const& t
@@ -84,6 +131,16 @@ bool validate_table_definition(
     using takatori::type::type_kind;
     for(auto&& c : t.columns()) {
         switch(c.type().kind()) {
+            case type_kind::decimal:
+                if(! validate_type(context, c.simple_name(), unsafe_downcast<takatori::type::decimal const>(c.type()))) {
+                    return false;
+                }
+                break;
+            case type_kind::character:
+                if(! validate_type(context, c.simple_name(), unsafe_downcast<takatori::type::character const>(c.type()))) {
+                    return false;
+                }
+                break;
             case type_kind::boolean:
             case type_kind::int1:
             case type_kind::int2:
@@ -91,11 +148,9 @@ bool validate_table_definition(
             case type_kind::int8:
             case type_kind::float4:
             case type_kind::float8:
-            case type_kind::character:
             case type_kind::date:
             case type_kind::time_of_day:
             case type_kind::time_point:
-            case type_kind::decimal:
                 break;
             default:
                 set_error(

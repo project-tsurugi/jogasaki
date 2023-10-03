@@ -154,9 +154,8 @@ TEST_F(ddl_metadata_test, decimal_precision_only) {
     test_decimal("DECIMAL(5)", true, true, 5, 0);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, decimal_prec_smaller_than_scale) {
-    test_decimal("DECIMAL(3,4)", true, true, 3, 4);
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(3,4) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(ddl_metadata_test, decimal_wo_ps) {
@@ -167,19 +166,16 @@ TEST_F(ddl_metadata_test, decimal_wildcard) {
     test_decimal("DECIMAL(*)", false, true, -1, 0);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, decimal_ps_wildcards) {
-    test_decimal("DECIMAL(*, *)", false, false, -1, -1);
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(*,*) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, decimal_scale_wildcard) {
-    test_decimal("DECIMAL(5, *)", true, false, 5, -1);
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(5,*) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, decimal_zero) {
-    test_decimal("DECIMAL(0)", true, true, 0, 0);
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(0) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(ddl_metadata_test, decimal_prec_minus) {
@@ -223,9 +219,8 @@ TEST_F(ddl_metadata_test, char_minus) {
     test_stmt_err("CREATE TABLE T (C0 CHAR(-1) PRIMARY KEY)", error_code::syntax_exception);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, char_0) {
-    test_character("CHAR(0)", true, 0, false);
+    test_stmt_err("CREATE TABLE T (C0 CHAR(0) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(ddl_metadata_test, char_wo_len) {
@@ -255,19 +250,16 @@ TEST_F(ddl_metadata_test, varchar_wildcard) {
     test_character("VARCHAR(*)", false, -1, true);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, varchar_0) {
-    test_character("VARCHAR(0)", true, 0, true);
+    test_stmt_err("CREATE TABLE T (C0 VARCHAR(0) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, varchar_exceeding_limit) {
-    test_character("VARCHAR(30717)", true, 30717, true);
+    test_stmt_err("CREATE TABLE T (C0 VARCHAR(30717) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
-//TODO raise error
 TEST_F(ddl_metadata_test, char_exceeding_limit) {
-    test_character("CHAR(30717)", true, 30717, false);
+    test_stmt_err("CREATE TABLE T (C0 CHAR(30717) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(ddl_metadata_test, genpk_column_features) {

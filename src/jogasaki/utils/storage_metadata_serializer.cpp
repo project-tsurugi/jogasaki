@@ -86,6 +86,20 @@ proto::metadata::common::AtomType from(takatori::type::data const& t) {
     fail();
 }
 
+void set_column_features(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
+    for(auto&& f : c.features()) {
+        switch(f) {
+            case yugawara::storage::column_feature::synthesized:
+                col->add_column_features(::jogasaki::proto::metadata::storage::TableColumnFeature::SYNTHESIZED);
+                break;
+            case yugawara::storage::column_feature::hidden:
+                col->add_column_features(::jogasaki::proto::metadata::storage::TableColumnFeature::HIDDEN);
+                break;
+        }
+
+    }
+}
+
 void set_type(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
     auto typ = col->mutable_type();
     typ->set_atom_type(from(c.type()));
@@ -226,6 +240,7 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         col->set_nullable(c.criteria().nullity().nullable());
         set_type(col, c);
         set_default(col, c);
+        set_column_features(col, c);
     }
     return true;
 }
@@ -474,14 +489,21 @@ yugawara::storage::column_value default_value(
 yugawara::storage::column::feature_set_type create_column_feature_set(
     ::jogasaki::proto::metadata::storage::TableColumn const& column
 ) {
-    if(utils::is_prefix(column.name(), generated_pkey_column_prefix)) {
-        // TODO add synthesized/hidden flags to TableColumn
-        return yugawara::storage::column::feature_set_type{
-            yugawara::storage::column_feature::synthesized,
-            yugawara::storage::column_feature::hidden
-        };
+    yugawara::storage::column::feature_set_type ret{};
+    for(auto&& f : column.column_features()) {
+        switch(f) {
+            case ::jogasaki::proto::metadata::storage::TableColumnFeature::SYNTHESIZED:
+                ret.insert(yugawara::storage::column_feature::synthesized);
+                break;
+            case ::jogasaki::proto::metadata::storage::TableColumnFeature::HIDDEN:
+                ret.insert(yugawara::storage::column_feature::hidden);
+                break;
+            default:
+                // no-op
+                break;
+        }
     }
-    return yugawara::storage::column::feature_set_type{};
+    return ret;
 }
 
 yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column, yugawara::storage::configurable_provider& provider) {

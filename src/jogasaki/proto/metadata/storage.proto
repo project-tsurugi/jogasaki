@@ -69,6 +69,18 @@ message SequenceDefinition {
 
 // -- tables
 
+// feature of individual table columns. (see yugawara::storage::column)
+enum TableColumnFeature {
+    // unspecified.
+    COLUMN_FEATURE_UNSPECIFIED = 0;
+
+    // synthesized.
+    SYNTHESIZED = 1;
+
+    // hidden.
+    HIDDEN = 2;
+}
+
 // the table column definition.
 message TableColumn {
 
@@ -136,6 +148,9 @@ message TableColumn {
 
         // TODO more date-time functions like NOW()
     }
+
+    // the table column features.
+    repeated TableColumnFeature column_features = 100;
 }
 
 // the definition of tables.

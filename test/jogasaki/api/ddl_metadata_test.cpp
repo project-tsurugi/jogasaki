@@ -269,4 +269,29 @@ TEST_F(ddl_metadata_test, varchar_exceeding_limit) {
 TEST_F(ddl_metadata_test, char_exceeding_limit) {
     test_character("CHAR(30717)", true, 30717, false);
 }
+
+TEST_F(ddl_metadata_test, genpk_column_features) {
+    execute_statement("CREATE TABLE T (C0 INT)");
+    auto t = find_table(*db_, "T");
+    ASSERT_TRUE(t);
+    {
+        auto c = find_column(*t, "__generated_rowid___T");
+        ASSERT_TRUE(c);
+        ASSERT_EQ(takatori::type::type_kind::int8, c->type().kind());
+        auto features = c->features();
+        EXPECT_TRUE(features.contains(yugawara::storage::column_feature::synthesized));
+        EXPECT_TRUE(features.contains(yugawara::storage::column_feature::hidden));
+    }
+    {
+        // verify non-generated column has no features
+        auto c = find_column(*t, "C0");
+        ASSERT_TRUE(c);
+        ASSERT_EQ(takatori::type::type_kind::int4, c->type().kind());
+        auto features = c->features();
+        EXPECT_FALSE(features.contains(yugawara::storage::column_feature::synthesized));
+        EXPECT_FALSE(features.contains(yugawara::storage::column_feature::hidden));
+    }
+}
+
+
 }

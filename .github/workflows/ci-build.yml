@@ -29,12 +29,10 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: true
-          token: ${{ secrets.GHA_PAT }}
 
       - name: Install_Dependencies
         uses: ./.github/actions/install-dependencies
         with:
-          token: ${{ secrets.GHA_PAT }}
           sharksfin-implementation: ${{ matrix.sharksfin-implementation }}
 
       - name: CMake_Build_Jogasaki_${{ matrix.sharksfin-implementation }}
@@ -80,13 +78,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          submodules: recursive
-          token: ${{ secrets.GHA_PAT }}
+          submodules: true
 
       - name: Install_Dependencies
         uses: ./.github/actions/install-dependencies
         with:
-          token: ${{ secrets.GHA_PAT }}
           sharksfin-implementation: memory
 
       - name: CMake_Build_Jogasaki_memory

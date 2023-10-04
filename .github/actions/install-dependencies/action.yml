@@ -1,9 +1,6 @@
 name: Jogasaki-Install-Dependencies
 
 inputs:
-  token:
-    description: token for checkout private repo
-    required: true
   sharksfin-implementation:
     description: sharksfin implementation (memory or shirakami)
     required: true
@@ -25,7 +22,6 @@ runs:
         repository: project-tsurugi/takatori
         path: ${{ inputs.path }}/takatori
         ref: master
-        token: ${{ inputs.token }}
 
     - name: Checkout_Yugawara
       uses: actions/checkout@v3
@@ -35,7 +31,6 @@ runs:
         path: ${{ inputs.path }}/yugawara
         ref: master
         submodules: true
-        token: ${{ inputs.token }}
 
     - name: Checkout_Shakujo
       uses: actions/checkout@v3
@@ -45,7 +40,6 @@ runs:
         path: ${{ inputs.path }}/shakujo
         ref: master
         submodules: recursive
-        token: ${{ inputs.token }}
 
     - name: Checkout_Mizugaki
       uses: actions/checkout@v3
@@ -54,7 +48,6 @@ runs:
         repository: project-tsurugi/mizugaki
         path: ${{ inputs.path }}/mizugaki
         ref: master
-        token: ${{ inputs.token }}
 
     - name: Checkout_Limestone
       uses: actions/checkout@v3
@@ -63,7 +56,6 @@ runs:
         repository: project-tsurugi/limestone
         path: ${{ inputs.path }}/limestone
         ref: master
-        token: ${{ inputs.token }}
 
     - name: Checkout_Yakushima
       uses: actions/checkout@v3
@@ -72,7 +64,6 @@ runs:
         repository: project-tsurugi/yakushima
         path: ${{ inputs.path }}/yakushima
         ref: master
-        token: ${{ inputs.token }}
 
     - name: Checkout_Shirakami
       uses: actions/checkout@v3
@@ -81,7 +72,6 @@ runs:
         repository: project-tsurugi/shirakami
         path: ${{ inputs.path }}/shirakami
         ref: master
-        token: ${{ inputs.token }}
 
     - name: Checkout_Sharksfin
       uses: actions/checkout@v3
@@ -90,7 +80,6 @@ runs:
         repository: project-tsurugi/sharksfin
         path: ${{ inputs.path }}/sharksfin
         ref: master
-        token: ${{ inputs.token }}
 
     - name: Checkout_Tateyama
       uses: actions/checkout@v3
@@ -100,7 +89,6 @@ runs:
         path: ${{ inputs.path }}/tateyama
         ref: master
         submodules: true
-        token: ${{ inputs.token }}
 
     - name: Install_Takatori
       run: |

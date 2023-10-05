@@ -17,6 +17,7 @@
 
 #include <gtest/gtest.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/mock/basic_record.h>
@@ -33,6 +34,7 @@
 namespace jogasaki::testing {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::string_builder;
 using jogasaki::api::impl::get_impl;
 
 runner& runner::run() {
@@ -84,7 +86,7 @@ runner& runner::run() {
     if(output_records_) {
         std::unique_ptr<api::result_set> rs{};
         if(res = executor::execute(get_impl(*db_), tc, *stmt, rs, *out);res != status::ok && ! expect_error_) {
-            exec_fail("execution failed. executor::execute()");
+            exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }
         auto it = rs->iterator();
         if(show_recs_) {
@@ -105,7 +107,7 @@ runner& runner::run() {
     } else {
         std::unique_ptr<api::result_set> result{};
         if(res = executor::execute(get_impl(*db_), tc, *stmt, result, *out);res != status::ok && ! expect_error_) {
-            exec_fail("execution failed. executor::execute()");
+            exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }
     }
 

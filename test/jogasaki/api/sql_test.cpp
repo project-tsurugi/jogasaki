@@ -279,6 +279,34 @@ TEST_F(sql_test, sum_empty_records_with_grouping) {
     ASSERT_EQ(0, result.size());
 }
 
+TEST_F(sql_test, concat) {
+    execute_statement("CREATE TABLE T (C0 VARCHAR(10), C1 VARCHAR(10))");
+    execute_statement("INSERT INTO T VALUES ('AAA', 'BBB')");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0 || C1 FROM T", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::character>(accessor::text{"AAABBB"})), result[0]);
+}
+
+// LENGTH not registered yet
+TEST_F(sql_test, DISABLED_strlen) {
+    execute_statement("CREATE TABLE T (C0 CHAR(10), C1 VARCHAR(10))");
+    execute_statement("INSERT INTO T VALUES ('AAA', 'BBB')");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT LENGTH(C0), LENGTH(C1) FROM T", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int8, kind::int8>(10, 3)), result[0]);
+}
+
+TEST_F(sql_test, remainder) {
+    execute_statement("CREATE TABLE T (C0 INT, C1 INT)");
+    execute_statement("INSERT INTO T VALUES (9, 4)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0 % C1 FROM T", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+}
+
 TEST_F(sql_test, count_null) {
     execute_statement( "INSERT INTO T0 (C0) VALUES (1)");
     execute_statement( "INSERT INTO T0 (C0) VALUES (2)");
@@ -298,6 +326,30 @@ TEST_F(sql_test, sum_null) {
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_TRUE(rec.is_null(0));
+}
+
+// SUM is not available for distinct yet
+TEST_F(sql_test, DISABLED_sum_distinct) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 20.0)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT SUM(distinct C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(30.0, rec.get_value<double>(0));
+}
+TEST_F(sql_test, count_all) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 20.0)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT COUNT(all C1) FROM T0", result);
+    ASSERT_EQ(1, result.size());
+    auto& rec = result[0];
+    EXPECT_FALSE(rec.is_null(0));
+    EXPECT_EQ(3, rec.get_value<std::int64_t>(0));
 }
 
 TEST_F(sql_test, count_distinct) {
@@ -497,6 +549,17 @@ TEST_F(sql_test, read_null) {
     }
 }
 
+// literal TRUE/FALSE is accepted but seems to be ignored // TODO
+TEST_F(sql_test, DISABLED_literal_true) {
+    execute_statement("INSERT INTO T0(C0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1, TRUE FROM T0 WHERE FALSE", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>({0, 0.0}, {false, true})), result[0]);
+    }
+}
+
 // join with on clause fails for now TODO
 TEST_F(sql_test, DISABLED_join_condition_on_clause) {
     execute_statement( "CREATE TABLE TT0 (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0,C1))");
@@ -526,6 +589,27 @@ TEST_F(sql_test, cast) {
     }
 }
 
+TEST_F(sql_test, cast_from_varchar) {
+    execute_statement("create table TT (C0 varchar(10) primary key, C1 varchar(10), C2 varchar(10), C3 varchar(10))");
+    execute_statement("INSERT INTO TT VALUES ('1', '10', '100.0', '1000.0')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS INT), CAST(C1 AS BIGINT), CAST(C2 AS REAL), CAST(C3 AS DOUBLE) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
+    }
+}
+TEST_F(sql_test, cast_from_char) {
+    // verify padding spaces are ignored
+    execute_statement("create table TT (C0 char(10) primary key, C1 char(10), C2 char(10), C3 char(10))");
+    execute_statement("INSERT INTO TT VALUES ('1', '10', '100.0', '1000.0')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS INT), CAST(C1 AS BIGINT), CAST(C2 AS REAL), CAST(C3 AS DOUBLE) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
+    }
+}
 TEST_F(sql_test, cast_failure) {
     execute_statement("create table TT (C0 int primary key)");
     test_stmt_err("INSERT INTO TT (C0) VALUES (CAST('BADVALUE' AS INT))", error_code::value_evaluation_exception);
@@ -687,12 +771,14 @@ TEST_F(sql_test, DISABLED_like_expression) {
 // current compiler doesn't read double literal correctly
 TEST_F(sql_test, DISABLED_double_literal) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
-    execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
+    execute_statement("create table TT (C0 int primary key, C1 double)");
+//    execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 1e2)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (0, 0.0)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("select 1e2 from TT", result);
         ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::float8>(0.01)), result[0]);
     }
 }
 

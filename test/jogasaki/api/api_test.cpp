@@ -739,4 +739,21 @@ TEST_F(api_test, list_tables) {
     ASSERT_FALSE(contains(simple_names, "I1"));
 }
 
+// TODO auto generate index name when omitted
+TEST_F(api_test, create_index_wo_name) {
+    execute_statement("create table TT0 (C0 int)");
+    execute_statement("create index on TT0 (C0)");
+    test_stmt_err("create index on TT0 (C0)", error_code::target_already_exists_exception);
+}
+
+TEST_F(api_test, create_table_if_not_exsits) {
+    execute_statement("create table if not exists T (C0 int)");
+    execute_statement("create table if not exists T (C0 int)");
+}
+
+TEST_F(api_test, create_index_if_not_exsits) {
+    execute_statement("create table TT0 (C0 int)");
+    execute_statement("create index I0 on TT0 (C0)");
+    execute_statement("create index if not exists I0 on TT0 (C0)");
+}
 }

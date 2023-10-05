@@ -51,6 +51,7 @@
 #include <takatori/relation/emit.h>
 #include <takatori/relation/find.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -83,6 +84,8 @@
 namespace jogasaki::plan {
 
 #define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st) //NOLINT
+
+using takatori::util::throw_exception;
 
 ///@private
 namespace impl {
@@ -241,7 +244,7 @@ std::shared_ptr<mirror_container> preprocess_mirror(
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         default:
-            fail();
+            throw_exception(std::logic_error{""});
     }
     container->host_variable_info(create_host_variable_info(provider, info));
     return container;
@@ -346,7 +349,7 @@ status create_prepared_statement(
             break;
         }
         default:
-            fail();
+            throw_exception(std::logic_error{""});
     }
 
     if(!result.success()) {
@@ -794,7 +797,7 @@ void create_mirror_for_ddl(
             break;
         }
         default:
-            fail();
+            throw_exception(std::logic_error{""});
     }
     auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     ctx.executable_statement(
@@ -848,10 +851,10 @@ void create_mirror_for_execute(
                 }
                 case takatori::plan::step_kind::broadcast:
                     // TODO implement
-                    fail();
+                    throw_exception(std::logic_error{""});
                     break;
                 case takatori::plan::step_kind::discard:
-                    fail();
+                    throw_exception(std::logic_error{""});
                     break;
                 case takatori::plan::step_kind::process: {
                     auto& process = unsafe_downcast<takatori::plan::process const>(s);  //NOLINT
@@ -936,7 +939,7 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:
-            fail();
+            throw_exception(std::logic_error{""});
     }
     return status::ok;
 }

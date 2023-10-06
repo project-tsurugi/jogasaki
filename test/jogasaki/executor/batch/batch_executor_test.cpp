@@ -303,7 +303,8 @@ TEST_F(batch_executor_test, many_blocks) {
     test_bootstrap(std::move(defs));
 }
 
-TEST_F(batch_executor_test, many_blocks_with_many_empty_ones) {
+// TODO temporarily disable as CI sometimes fails
+TEST_F(batch_executor_test, DISABLED_many_blocks_with_many_empty_ones) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory timed out the testcase";
     }

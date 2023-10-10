@@ -19,20 +19,11 @@
 #include <memory>
 
 #include <jogasaki/commit_response.h>
+#include <jogasaki/commit_profile.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/kvs/database.h>
 
 namespace jogasaki {
-
-struct commit_profile {
-    using clock = std::chrono::steady_clock;
-    using time_point = std::chrono::time_point<clock, std::chrono::nanoseconds>;
-
-    time_point commit_requested_{};
-    time_point precommit_cb_invoked_{};
-    time_point durability_cb_invoked_{};
-    time_point commit_job_completed_{};
-};
 
 namespace details {
 
@@ -261,9 +252,12 @@ public:
      */
     void durability_marker(std::optional<durability_marker_type> arg) noexcept;
 
-    std::shared_ptr<commit_profile> const& profile() const noexcept {
-        return profile_;
-    }
+    /**
+     * @brief accessor for the commit profile
+     * @return the profiling information for the commit of this transaction
+     */
+    std::shared_ptr<commit_profile> const& profile() const noexcept;
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};

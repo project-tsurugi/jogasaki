@@ -125,6 +125,10 @@ void transaction_context::commit_response(commit_response_kind arg) noexcept {
     commit_response_ = arg;
 }
 
+std::shared_ptr<commit_profile> const& transaction_context::profile() const noexcept {
+    return profile_;
+}
+
 std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
 }

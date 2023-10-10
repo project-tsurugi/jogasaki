@@ -36,16 +36,21 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     request_ctx->job()->callback([request_ctx](){
         (void) request_ctx;
     });
+
+    commit_profile::time_point durability_callback_invoked{};
+    if(db_->config()->profile_commits()) {
+        durability_callback_invoked = commit_profile::clock::now();
+    }
     scheduler_->schedule_task(
         scheduler::create_custom_task(
             request_ctx.get(),
-            [mgr=manager_, marker, request_ctx=request_ctx.get()](){ // capture request_ctx pointer to avoid cyclic dependency
+            [mgr=manager_, marker, request_ctx=request_ctx.get(), durability_callback_invoked](){ // capture request_ctx pointer to avoid cyclic dependency
                 if(mgr->update_current_marker(
                     marker,
-                    [marker](element_reference_type e){
+                    [marker, durability_callback_invoked](element_reference_type e){
                         VLOG(log_trace) << "/:jogasaki:durability_callback:operator() "
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
-                        e->transaction()->profile()->durability_cb_invoked_ = commit_profile::clock::now();
+                        e->transaction()->profile()->set_durability_cb_invoked(durability_callback_invoked);
                         scheduler::submit_teardown(*e, false, true);
                     })) {
                     scheduler::submit_teardown(*request_ctx);

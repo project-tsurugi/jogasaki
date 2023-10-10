@@ -16,16 +16,15 @@
 #pragma once
 
 #include <memory>
-#include "../../third_party/nlohmann/json.hpp"
+#include <atomic>
+#include <limits>
 
-#include <jogasaki/logging_helper.h>
-#include <jogasaki/transaction_context.h>
+#include <jogasaki/commit_profile.h>
 
 namespace jogasaki::api::impl {
 
 /**
- * @brief error info object
- * @details this object represents the error information of the API request
+ * @brief commit profiling statistics
  */
 class commit_stats {
 public:
@@ -61,52 +60,29 @@ public:
      */
     ~commit_stats() = default;
 
-    void add(commit_profile const& arg) {
-        if(arg.commit_requested_ != time_point{}) {
-            ++commits_requested_;
-        }
-        if(arg.precommit_cb_invoked_ != time_point{}) {
-            ++precommit_cb_invoked_;
-            precommit_duration_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(arg.precommit_cb_invoked_ - arg.commit_requested_).count();
-        }
-        if(arg.durability_cb_invoked_ != time_point{}) {
-            ++durable_cb_invoked_;
-            durability_duration_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(arg.durability_cb_invoked_ - arg.precommit_cb_invoked_).count();
-        }
-        if(arg.commit_job_completed_ != time_point{}) {
-            ++commit_job_completed_;
-            if(arg.durability_cb_invoked_ != time_point{}) {
-                notification_duration_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(arg.commit_job_completed_ - arg.durability_cb_invoked_).count();
-            } else if(arg.precommit_cb_invoked_ != time_point{}) {
-                notification_duration_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(arg.commit_job_completed_ - arg.precommit_cb_invoked_).count();
-            }
-        }
-    }
+    void add(commit_profile const& arg);
+    void dump();
+    void enabled(bool arg) noexcept;
+    [[nodiscard]] bool enabled() const noexcept;
 
-    void dump() {
-        using json = nlohmann::json;
-        try {
-            json j{};
-            j["commits_requested"] = commits_requested_.load();
-            j["precommit_cb_invoked"] = precommit_cb_invoked_.load();
-            j["durable_cb_invoked"] = durable_cb_invoked_.load();
-            j["commit_job_completed"] = commit_job_completed_.load();
-            j["precommit_duration_ns"] = precommit_cb_invoked_.load() ? (precommit_duration_ns_.load() / precommit_cb_invoked_.load()) : 0;
-            j["durability_duration_ns"] = durable_cb_invoked_.load() ? (durability_duration_ns_.load() / durable_cb_invoked_.load()) : 0;
-            j["notification_duration_ns"] = commit_job_completed_.load() ? (notification_duration_ns_.load() / commit_job_completed_.load()) : 0;
-            LOG_LP(INFO) << "commit_profile " << j.dump();
-        } catch (json::exception const& e) {
-            LOG_LP(INFO) << "json exception " << e.what();
-        }
-    }
 private:
+    bool enabled_{false};
     std::atomic_size_t commits_requested_{};
     std::atomic_size_t precommit_cb_invoked_{};
     std::atomic_size_t durable_cb_invoked_{};
     std::atomic_size_t commit_job_completed_{};
-    std::atomic_size_t precommit_duration_ns_{};
-    std::atomic_size_t durability_duration_ns_{};
-    std::atomic_size_t notification_duration_ns_{};
+    std::atomic_size_t sum_precommit_duration_ns_{};
+    std::atomic_size_t sum_durability_duration_ns_{};
+    std::atomic_size_t sum_notification_duration_ns_{};
+    std::atomic_size_t min_precommit_duration_ns_{std::numeric_limits<std::size_t>::max()};
+    std::atomic_size_t min_durability_duration_ns_{std::numeric_limits<std::size_t>::max()};
+    std::atomic_size_t min_notification_duration_ns_{std::numeric_limits<std::size_t>::max()};
+    std::atomic_size_t max_precommit_duration_ns_{};
+    std::atomic_size_t max_durability_duration_ns_{};
+    std::atomic_size_t max_notification_duration_ns_{};
+
+    void update_min(std::atomic_size_t& target, std::size_t new_v);
+    void update_max(std::atomic_size_t& target, std::size_t new_v);
 };
 
 

@@ -329,6 +329,13 @@ public:
         return update_skips_deletion_;
     }
 
+    void profile_commits(bool arg) noexcept {
+        profile_commits_ = arg;
+    }
+
+    [[nodiscard]] bool profile_commits() const noexcept {
+        return profile_commits_;
+    }
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -357,6 +364,7 @@ public:
             "worker_suspend_timeout:" << cfg.worker_suspend_timeout() << " " <<
             "default_commit_response:" << cfg.default_commit_response() << " " <<
             "update_skips_deletion:" << cfg.update_skips_deletion() << " " <<
+            "profile_commits:" << cfg.profile_commits() << " " <<
             "";
     }
 
@@ -391,6 +399,7 @@ private:
     std::size_t worker_suspend_timeout_ = 1000000;
     commit_response_kind default_commit_response_{commit_response_kind::propagated};
     bool update_skips_deletion_ = false;
+    bool profile_commits_ = false;
 };
 
 }

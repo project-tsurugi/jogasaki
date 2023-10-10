@@ -108,6 +108,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(worker_suspend_timeout) " << cfg.worker_suspend_timeout() << " : duration(us)  between worker thread suspends and resumes";
     LOGCFG << "(commit_response) " << cfg.default_commit_response() << " : commit notification timing default";
     LOGCFG << "(dev_update_skips_deletion) " << cfg.update_skips_deletion() << " : whether update statement skips unnecessary deletion when possible";
+    LOGCFG << "(dev_profile_commits) " << cfg.profile_commits() << " : whether to profile commit/durability callbacks";
 }
 
 status database::start() {
@@ -164,6 +165,7 @@ status database::start() {
         task_scheduler_->start();
     }
 
+    commit_stats_->enabled(cfg_->profile_commits());
     kvs_db_->register_durability_callback(durability_callback{*this});
 
     return status::ok;
@@ -604,7 +606,9 @@ status database::destroy_transaction(
 ) {
     decltype(transactions_)::accessor acc{};
     if (transactions_.find(acc, handle)) {
-        commit_stats_->add(*acc->second->profile());
+        if(cfg_->profile_commits()) {
+            commit_stats_->add(*acc->second->profile());
+        }
         transactions_.erase(acc);
     } else {
         VLOG_LP(log_warning) << "invalid handle";

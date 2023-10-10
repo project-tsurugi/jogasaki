@@ -64,6 +64,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->default_commit_response(commit_response_kind::propagated);
+        cfg->profile_commits(true);
         db_setup(cfg);
     }
 

@@ -44,6 +44,7 @@
 #include <jogasaki/proto/metadata/storage.pb.h>
 
 #include <tateyama/status.h>
+#include "commit_stats.h"
 
 namespace jogasaki::scheduler {
 class task_scheduler;
@@ -288,6 +289,8 @@ private:
     std::shared_ptr<durability_manager> durability_manager_{std::make_shared<durability_manager>()};
     std::atomic_bool stop_requested_{false};
     utils::use_counter requests_inprocess_{};
+    std::shared_ptr<commit_stats> commit_stats_{std::make_shared<commit_stats>()};
+
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,

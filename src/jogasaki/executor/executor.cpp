@@ -568,12 +568,14 @@ scheduler::job_context::job_id_type commit_async(
             << txid
             << " job_id:"
             << utils::hex(jobid);
+        rctx->transaction()->profile()->commit_requested_ = commit_profile::clock::now();
         [[maybe_unused]] auto b = rctx->transaction()->commit(
             [jobid, rctx, txid, &database, option](
                 ::sharksfin::StatusCode st,
                 ::sharksfin::ErrorCode ec,
                 ::sharksfin::durability_marker_type marker
             ){
+                rctx->transaction()->profile()->precommit_cb_invoked_ = commit_profile::clock::now();
                 process_commit_callback(st, ec, marker, jobid, rctx, txid, database, option);
             });
         return model::task_result::complete;
@@ -587,6 +589,7 @@ scheduler::job_context::job_id_type commit_async(
             << txid
             << " status:"
             << (rctx->status_code() == status::ok ? "committed" : "aborted");
+        rctx->transaction()->profile()->commit_job_completed_ = commit_profile::clock::now();
         on_completion(rctx->status_code(), rctx->error_info());
     });
     std::weak_ptr wrctx{rctx};

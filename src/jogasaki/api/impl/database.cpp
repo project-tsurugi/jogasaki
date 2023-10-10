@@ -195,6 +195,8 @@ status database::stop() {
         kvs_db_ = nullptr;
     }
     transactions_.clear();
+
+    commit_stats_->dump();
     return status::ok;
 }
 
@@ -602,6 +604,7 @@ status database::destroy_transaction(
 ) {
     decltype(transactions_)::accessor acc{};
     if (transactions_.find(acc, handle)) {
+        commit_stats_->add(*acc->second->profile());
         transactions_.erase(acc);
     } else {
         VLOG_LP(log_warning) << "invalid handle";

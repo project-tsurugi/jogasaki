@@ -45,6 +45,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                     [marker](element_reference_type e){
                         VLOG(log_trace) << "/:jogasaki:durability_callback:operator() "
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
+                        e->transaction()->profile()->durability_cb_invoked_ = commit_profile::clock::now();
                         scheduler::submit_teardown(*e, false, true);
                     })) {
                     scheduler::submit_teardown(*request_ctx);

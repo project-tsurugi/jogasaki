@@ -24,6 +24,16 @@
 
 namespace jogasaki {
 
+struct commit_profile {
+    using clock = std::chrono::steady_clock;
+    using time_point = std::chrono::time_point<clock, std::chrono::nanoseconds>;
+
+    time_point commit_requested_{};
+    time_point precommit_cb_invoked_{};
+    time_point durability_cb_invoked_{};
+    time_point commit_job_completed_{};
+};
+
 namespace details {
 
 inline std::uint32_t upper(std::uint64_t arg) {
@@ -251,6 +261,9 @@ public:
      */
     void durability_marker(std::optional<durability_marker_type> arg) noexcept;
 
+    std::shared_ptr<commit_profile> const& profile() const noexcept {
+        return profile_;
+    }
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
@@ -259,6 +272,7 @@ private:
     std::shared_ptr<error::error_info> error_info_{};
     commit_response_kind commit_response_{commit_response_kind::undefined};
     std::optional<durability_marker_type> durability_marker_{};
+    std::shared_ptr<commit_profile> profile_{std::make_shared<commit_profile>()};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

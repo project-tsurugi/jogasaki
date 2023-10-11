@@ -256,7 +256,7 @@ public:
      * @brief accessor for the commit profile
      * @return the profiling information for the commit of this transaction
      */
-    std::shared_ptr<commit_profile> const& profile() const noexcept;
+    [[nodiscard]] std::shared_ptr<commit_profile> const& profile() const noexcept;
 
 private:
     std::shared_ptr<kvs::transaction> transaction_{};

@@ -525,6 +525,7 @@ status write::create_targets(
     // first entry is primary index
     out.emplace_back(true, primary->simple_name(), std::move(ks), std::move(vs));
 
+    bool has_secondaries{false};
     status ret_status{status::ok};
     table.owner()->each_table_index(table,
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
@@ -532,6 +533,7 @@ status write::create_targets(
             if (entry == primary) {
                 return;
             }
+            has_secondaries = true;
             std::vector<details::write_tuple> ts{};
             if (auto res = create_tuples(ctx, *entry, columns, tuples, info, resource,
                     host_variables, true, ts, out[0].keys_); res != status::ok) {
@@ -548,6 +550,16 @@ status write::create_targets(
     );
     if(ret_status != status::ok) {
         handle_encode_error(ctx, ret_status);
+    }
+    if(has_secondaries && kind_ == write_kind::insert_overwrite) {
+        set_error(
+            ctx,
+            error_code::unsupported_runtime_feature_exception,
+            string_builder{} <<
+                "INSERT OR REPLACE statement is not supported yet for tables with secondary indices" << string_builder::to_string,
+            status::err_unsupported
+        );
+        return status::err_unsupported;
     }
     return ret_status;
 }

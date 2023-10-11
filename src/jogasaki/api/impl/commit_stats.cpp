@@ -35,15 +35,15 @@ void commit_stats::dump() {
 
         j["min_duration_ns_precommit"] = min_precommit_duration_ns_.load();
         j["max_duration_ns_precommit"] = max_precommit_duration_ns_.load();
-        j["avg_duration_ns_precommit"] = precommit_cb_invoked_.load() ? (sum_precommit_duration_ns_.load() / precommit_cb_invoked_.load()) : 0;
+        j["avg_duration_ns_precommit"] = precommit_cb_invoked_.load() != 0 ? (sum_precommit_duration_ns_.load() / precommit_cb_invoked_.load()) : 0;
 
         j["min_duration_ns_durability"] = min_durability_duration_ns_.load();
         j["max_duration_ns_durability"] = max_durability_duration_ns_.load();
-        j["avg_duration_ns_durability"] = durable_cb_invoked_.load() ? (sum_durability_duration_ns_.load() / durable_cb_invoked_.load()) : 0;
+        j["avg_duration_ns_durability"] = durable_cb_invoked_.load() != 0 ? (sum_durability_duration_ns_.load() / durable_cb_invoked_.load()) : 0;
 
         j["min_duration_ns_notification"] = min_notification_duration_ns_.load();
         j["max_duration_ns_notification"] = max_notification_duration_ns_.load();
-        j["avg_duration_ns_notification"] = commit_job_completed_.load() ? (sum_notification_duration_ns_.load() / commit_job_completed_.load()) : 0;
+        j["avg_duration_ns_notification"] = commit_job_completed_.load() != 0 ? (sum_notification_duration_ns_.load() / commit_job_completed_.load()) : 0;
         LOG_LP(INFO) << "commit_profile " << j.dump();
     } catch (json::exception const& e) {
         LOG_LP(INFO) << "json exception " << e.what();

@@ -54,11 +54,11 @@ struct commit_profile {
         commit_job_completed_ = clock::now();
     }
 
-    bool enabled_{};
-    time_point commit_requested_{};
-    time_point precommit_cb_invoked_{};
-    time_point durability_cb_invoked_{};
-    time_point commit_job_completed_{};
+    bool enabled_{};  //NOLINT
+    time_point commit_requested_{};  //NOLINT
+    time_point precommit_cb_invoked_{};  //NOLINT
+    time_point durability_cb_invoked_{};  //NOLINT
+    time_point commit_job_completed_{};  //NOLINT
 };
 
 }

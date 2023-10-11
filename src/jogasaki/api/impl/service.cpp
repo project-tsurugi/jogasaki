@@ -969,7 +969,10 @@ void service::execute_query(
     {
         trace_scope_name("acquire_channel");  //NOLINT
         if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
-            throw_exception(std::logic_error{"acquire_channel failed"});
+            auto msg = "creating output channel failed (maybe too many requests)";
+            auto err_info = create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
         }
     }
     info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
@@ -1128,7 +1131,10 @@ void service::execute_dump(
     {
         trace_scope_name("acquire_channel");  //NOLINT
         if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
-            throw_exception(std::logic_error{"acquire_channel failed"});
+            auto msg = "creating output channel failed (maybe too many requests)";
+            auto err_info = create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
         }
     }
     info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(ch);

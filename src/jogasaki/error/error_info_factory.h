@@ -39,6 +39,15 @@ std::shared_ptr<error_info> create_error_info_impl(
     bool append_stacktrace
 );
 
+std::shared_ptr<error_info> create_error_info_with_stack_impl(
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st,
+    std::string_view stacktrace
+);
+
 /**
  * @brief set error info to the request context and transaction context
  * @param rctx request context to set error

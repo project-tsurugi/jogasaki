@@ -20,6 +20,19 @@
 
 namespace jogasaki::error {
 
+std::shared_ptr<error_info> create_error_info_with_stack_impl(
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st,
+    std::string_view stacktrace
+) {
+    auto info = std::make_shared<error_info>(code, message, filepath, position, stacktrace);
+    info->status(st);
+    return info;
+}
+
 std::shared_ptr<error_info> create_error_info_impl(
     jogasaki::error_code code,
     std::string_view message,
@@ -33,9 +46,7 @@ std::shared_ptr<error_info> create_error_info_impl(
         // be careful - stacktrace is expensive esp. on debug build
         ss << ::boost::stacktrace::stacktrace{};
     }
-    auto info = std::make_shared<error_info>(code, message, filepath, position, ss.str());
-    info->status(st);
-    return info;
+    return create_error_info_with_stack_impl(code, message, filepath, position, st, ss.str());
 }
 
 void set_error_impl(

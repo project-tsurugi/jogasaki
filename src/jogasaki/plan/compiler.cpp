@@ -52,6 +52,7 @@
 #include <takatori/relation/find.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -83,9 +84,11 @@
 
 namespace jogasaki::plan {
 
-#define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st) //NOLINT
+#define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, "") //NOLINT
+#define set_compile_error_with_stack(ctx, code, msg, st, stack) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, stack) //NOLINT
 
 using takatori::util::throw_exception;
+using takatori::util::string_builder;
 
 ///@private
 namespace impl {
@@ -114,9 +117,10 @@ void set_compile_error_impl(
     std::string_view message,
     std::string_view filepath,
     std::string_view position,
-    status st
+    status st,
+    std::string_view stack
 ) {
-    auto info = error::create_error_info_impl(code, message, filepath, position, st, false);
+    auto info = error::create_error_info_with_stack_impl(code, message, filepath, position, st, stack);
     ctx.error_info(info);
 }
 
@@ -957,6 +961,20 @@ status prepare(std::string_view sql, compiler_context &ctx) {
     } catch (impl::exception const& e) {
         ctx.error_info(e.info());
         return e.info()->status();
+    } catch (std::exception const& e) {
+        std::stringstream ss{};
+        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
+            ss << *tr;
+            set_compile_error_with_stack(
+                ctx,
+                error_code::compile_exception,
+                string_builder{} << "unexpected compile error occurred (likely unsupported SQL): " <<
+                    e.what() << string_builder::to_string,
+                status::err_compiler_error,
+                ss.str()
+            );
+        }
+        return status::err_compiler_error;
     }
 }
 

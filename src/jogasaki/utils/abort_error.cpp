@@ -81,6 +81,13 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator 
     }
 }
 
+std::string transaction_id_str(transaction_context& tx) {
+    if(auto txid = tx.object()->transaction_id(); ! txid.empty()) {
+        return "transaction:" + std::string{txid} + " ";
+    }
+    return {};
+}
+
 std::string create_abort_message(
     request_context const& rctx
 ) {
@@ -95,11 +102,7 @@ std::string create_abort_message(
             handle_code_and_locator(result->code(), result->location().get(), *tables, rctx.request_resource(), ss);
         }
     }
-    std::string idstr{};
-    if(auto txid = tx.object()->transaction_id(); ! txid.empty()) {
-        idstr = "transaction:" + std::string{txid} + " ";
-    }
-
+    auto idstr = transaction_id_str(tx);
     return string_builder{} << "serialization failed " << idstr << desc << " " << ss.str() << string_builder::to_string;
 }
 

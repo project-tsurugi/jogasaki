@@ -29,5 +29,7 @@ std::shared_ptr<yugawara::storage::index const> find_storage(
     std::string_view storage_name
 );
 
+std::string transaction_id_str(transaction_context& tx);
+
 }
 

@@ -26,7 +26,7 @@
 namespace jogasaki::api::impl {
 
 std::shared_ptr<request_context> create_request_context(
-    impl::database* db,
+    impl::database& db,
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,

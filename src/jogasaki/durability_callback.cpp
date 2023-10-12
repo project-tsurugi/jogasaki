@@ -32,7 +32,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     // Avoid tracing entry. This function is called frequently. Trace only effective calls below.
     [[maybe_unused]] auto cnt = db_->requests_inprocess();
     if(db_->stop_requested()) return;
-    auto request_ctx = api::impl::create_request_context(db_, nullptr, nullptr, nullptr);
+    auto request_ctx = api::impl::create_request_context(*db_, nullptr, nullptr, nullptr);
     request_ctx->job()->callback([request_ctx](){
         (void) request_ctx;
     });

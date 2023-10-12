@@ -1054,7 +1054,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     log_request(*req);
 
     auto rctx = impl::create_request_context(
-        this,
+        *this,
         nullptr,
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
@@ -1183,7 +1183,7 @@ bool database::execute_load(
     log_request(*req);
 
     auto rctx = impl::create_request_context(
-        this,
+        *this,
         nullptr,
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),

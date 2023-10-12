@@ -21,35 +21,35 @@
 namespace jogasaki::api::impl {
 
 std::shared_ptr<request_context> create_request_context(
-    impl::database* db,
+    impl::database& db,
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
     std::shared_ptr<scheduler::request_detail> request_detail
 ) {
-    auto& c = db->configuration();
+    auto& c = db.configuration();
     auto rctx = std::make_shared<request_context>(
         c,
         std::move(resource),
-        db->kvs_db(),
+        db.kvs_db(),
         std::move(tx),
-        db->sequence_manager(),
+        db.sequence_manager(),
         channel
     );
-    rctx->scheduler(db->scheduler());
+    rctx->scheduler(db.scheduler());
     rctx->stmt_scheduler(
         std::make_shared<scheduler::statement_scheduler>(
-            db->configuration(),
-            *db->task_scheduler()
+            db.configuration(),
+            *db.task_scheduler()
         )
     );
-    rctx->storage_provider(db->tables());
+    rctx->storage_provider(db.tables());
 
     auto job = std::make_shared<scheduler::job_context>();
     job->request(std::move(request_detail));
     rctx->job(maybe_shared_ptr{job.get()});
 
-    auto& ts = *db->task_scheduler();
+    auto& ts = *db.task_scheduler();
     ts.register_job(job);
     return rctx;
 }

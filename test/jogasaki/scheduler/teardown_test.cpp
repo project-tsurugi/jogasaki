@@ -64,7 +64,7 @@ TEST_F(teardown_test, basic) {
     std::atomic_size_t completed_task_count = 0;
     s.start();
     auto rctx = api::impl::create_request_context(
-        &get_impl(*db_),
+        get_impl(*db_),
         nullptr,
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())

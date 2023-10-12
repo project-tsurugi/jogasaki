@@ -16,7 +16,6 @@
 #include "executor.h"
 
 #include <takatori/util/downcast.h>
-#include <takatori/util/string_builder.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
@@ -52,7 +51,6 @@
 namespace jogasaki::executor {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::string_builder;
 
 constexpr static std::string_view log_location_prefix = "/:jogasaki:executor ";
 

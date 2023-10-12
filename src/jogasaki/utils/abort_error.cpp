@@ -81,21 +81,26 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator 
     }
 }
 
-std::string create_abort_message(request_context const& rctx, transaction_context &tx,
-    const yugawara::storage::configurable_provider &tables) {
+std::string create_abort_message(
+    request_context const& rctx
+) {
+    auto& tx = *rctx.transaction();
+    auto& tables = rctx.storage_provider();
     auto result = tx.object()->recent_call_result();
     std::string_view desc{};
     std::stringstream ss{};
     if(result) {
         desc = result->description();
-        handle_code_and_locator(result->code(), result->location().get(), tables, rctx.request_resource(), ss);
+        if(tables) {
+            handle_code_and_locator(result->code(), result->location().get(), *tables, rctx.request_resource(), ss);
+        }
     }
     std::string idstr{};
     if(auto txid = tx.object()->transaction_id(); ! txid.empty()) {
         idstr = "transaction:" + std::string{txid} + " ";
     }
 
-    return string_builder{} << "Transaction aborted. " << idstr << desc << " " << ss.str() << string_builder::to_string;
+    return string_builder{} << "serialization failed " << idstr << desc << " " << ss.str() << string_builder::to_string;
 }
 
 std::shared_ptr<yugawara::storage::index const>

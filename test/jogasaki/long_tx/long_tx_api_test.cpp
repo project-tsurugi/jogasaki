@@ -314,4 +314,12 @@ TEST_F(long_tx_api_test, wp_with_rtx) {
     ASSERT_FALSE(tx);
 }
 
+TEST_F(long_tx_api_test, error_info_occ_reading_wp) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true}); // to run with occ
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    auto ltx = utils::create_transaction(*db_, false, true, {"T"});
+    auto occ = utils::create_transaction(*db_);
+    test_stmt_err("SELECT * FROM T", *occ, error_code::cc_exception);
+}
 }

@@ -15,6 +15,8 @@
  */
 #include "handle_kvs_errors.h"
 
+#include <jogasaki/utils/abort_error.h>
+
 namespace jogasaki::utils {
 
 void handle_kvs_errors_impl(
@@ -34,10 +36,11 @@ void handle_kvs_errors_impl(
         case status::waiting_for_other_transaction: return;
 
         case status::err_serialization_failure: {
+            auto msg = utils::create_abort_message(context);
             error::set_error_impl(
                 context,
                 error_code::cc_exception,
-                "Serialization failed. ",
+                msg,
                 filepath,
                 position,
                 res,

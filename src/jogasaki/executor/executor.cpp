@@ -58,22 +58,6 @@ constexpr static std::string_view log_location_prefix = "/:jogasaki:executor ";
 
 namespace details {
 
-std::shared_ptr<request_context> create_request_context(
-    api::impl::database& database,
-    std::shared_ptr<transaction_context> tx,
-    maybe_shared_ptr<executor::io::record_channel> const& channel,
-    std::shared_ptr<memory::lifo_paged_memory_resource> resource,
-    std::shared_ptr<scheduler::request_detail> request_detail
-) {
-    return api::impl::create_request_context(
-        std::addressof(database),
-        std::move(tx),
-        channel,
-        std::move(resource),
-        std::move(request_detail)
-    );
-}
-
 bool execute_internal(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,
@@ -91,7 +75,7 @@ bool execute_internal(
     log_request(*req);
 
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
-    auto rctx = details::create_request_context(database, std::move(tx), channel, s.resource(), std::move(req));
+    auto rctx = create_request_context(database, std::move(tx), channel, s.resource(), std::move(req));
     rctx->lightweight(
         stmt->mirrors()->work_level().value() <=
         static_cast<std::int32_t>(rctx->configuration()->lightweight_job_level())
@@ -214,7 +198,7 @@ bool execute_async(
     req->statement_text(stmt->sql_text_shared());
     log_request(*req);
 
-    auto request_ctx = details::create_request_context(
+    auto request_ctx = create_request_context(
         database,
         tx,
         channel,
@@ -407,7 +391,7 @@ bool execute_load(
     req->statement_text(reinterpret_cast<api::impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
     log_request(*req);
 
-    auto rctx = details::create_request_context(
+    auto rctx = create_request_context(
         database,
         tx,
         nullptr,
@@ -444,38 +428,6 @@ void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& 
     ts.schedule_task(std::move(t));
 }
 
-bool check_tx_state_for_wait(
-    api::impl::database& database,
-    transaction_context& tx, //NOLINT(performance-unnecessary-value-param)
-    request_context& rctx
-) {
-    auto st = tx.object()->check_state().state_kind();
-    switch(st) {
-        case ::sharksfin::TransactionState::StateKind::WAITING_CC_COMMIT:
-            return false;
-        case ::sharksfin::TransactionState::StateKind::ABORTED: {
-            // get result and return error info
-            auto msg = utils::create_abort_message(rctx, tx, *database.tables());
-            set_error(
-                rctx,
-                error_code::cc_exception,
-                msg,
-                status::err_serialization_failure
-            );
-            break;
-        }
-        case ::sharksfin::TransactionState::StateKind::WAITING_DURABLE:
-            break;
-        case ::sharksfin::TransactionState::StateKind::DURABLE:
-            break;
-        default: {
-            scheduler::submit_teardown(rctx); // try to recover as much as possible
-            throw std::logic_error(string_builder{} << "wrong state:" << st << string_builder::to_string);
-        }
-    }
-    return true;
-}
-
 void process_commit_callback(
     ::sharksfin::StatusCode st,
     ::sharksfin::ErrorCode ec,
@@ -497,8 +449,8 @@ void process_commit_callback(
     if(res != status::ok) {
         auto& ts = *rctx->scheduler();
         ts.schedule_task(
-            scheduler::create_custom_task(rctx.get(), [rctx, &database, res]() {
-                auto msg = utils::create_abort_message(*rctx, *rctx->transaction(), *database.tables());
+            scheduler::create_custom_task(rctx.get(), [rctx, res]() {
+                auto msg = utils::create_abort_message(*rctx);
                 auto code = res == status::err_inactive_transaction ?
                     error_code::inactive_transaction_exception :
                     error_code::cc_exception;
@@ -548,7 +500,7 @@ scheduler::job_context::job_id_type commit_async(
     req->transaction_id(tx->transaction_id());
     log_request(*req);
 
-    auto rctx = details::create_request_context(
+    auto rctx = create_request_context(
         database,
         tx,
         nullptr,

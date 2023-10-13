@@ -89,7 +89,7 @@ void commit_stats::update_min(std::atomic_size_t& target, std::size_t new_v) {
         if(new_v >= cur) {
             return;
         }
-    } while(target.compare_exchange_strong(cur, new_v));
+    } while(! target.compare_exchange_strong(cur, new_v));
 }
 
 void commit_stats::update_max(std::atomic_size_t& target, std::size_t new_v) {
@@ -98,7 +98,7 @@ void commit_stats::update_max(std::atomic_size_t& target, std::size_t new_v) {
         if(new_v <= cur) {
             return;
         }
-    } while(target.compare_exchange_strong(cur, new_v));
+    } while(! target.compare_exchange_strong(cur, new_v));
 }
 
 void commit_stats::enabled(bool arg) noexcept {

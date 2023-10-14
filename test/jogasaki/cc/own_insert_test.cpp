@@ -191,8 +191,8 @@ TEST_F(own_insert_test, insert_can_see_own_insert) {
         [&](api::transaction_handle tx0) {
             execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", tx0);
             // range delete inserted record successfully
-            execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", tx0, status::err_already_exists);
-            ASSERT_EQ(status::ok, tx0.commit());
+            execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", tx0, status::err_unique_constraint_violation);
+            ASSERT_EQ(status::err_inactive_transaction, tx0.commit());
         },
         [&]() {
             execute_statement("DELETE FROM T0");

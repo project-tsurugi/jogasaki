@@ -45,7 +45,7 @@ using takatori::util::unsafe_downcast;
 using jogasaki::mock::create_nullable_record;
 using kind = meta::field_type_kind;
 
-class delete_reorder_test :
+class select_reorder_test :
     public ::testing::Test,
     public api_test_base {
 
@@ -89,76 +89,98 @@ private:
     std::atomic_bool finished_{false};
 };
 
-TEST_F(delete_reorder_test, delete_forwarded_before_insert) {
-    // low priority tx1 (delete) is forwarded before high priority tx0 (insert)
-    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
-    {
-        auto tx0 = utils::create_transaction(*db_, false, true, {"T"});
-        wait_epochs(1);
-        auto tx1 = utils::create_transaction(*db_, false, true, {"T"});
-        execute_statement("INSERT INTO T (C0, C1) VALUES (2, 2)", *tx0);  // w of rw
-        execute_statement("DELETE FROM T WHERE C0=2", *tx1);  // r of rw
-        ASSERT_EQ(status::ok, tx0->commit());
-        ASSERT_EQ(status::ok, tx1->commit());
-        {
-            std::vector<mock::basic_record> result{};
-            execute_query("SELECT * FROM T WHERE C0=2", result);
-            EXPECT_EQ(1, result.size());
-        }
-    }
-}
-
-// TODO need investigation after fix
-TEST_F(delete_reorder_test, DISABLED_delete_forwarded_before_insert_existing_rec) {
-    // similar to delete_forwarded_before_insert, but there is existing rec
+TEST_F(select_reorder_test, point_read_forwarded) {
+    // simple scenario to verify forwarding by an anti-dependency
+    // low priority tx1 (select) is forwarded before high priority tx0 (upsert)
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (2, 2)");
     {
         auto tx0 = utils::create_transaction(*db_, false, true, {"T"});
         wait_epochs(1);
         auto tx1 = utils::create_transaction(*db_, false, true, {"T"});
-        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 20)", *tx0);  // w of rw
+        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 20)", *tx0);
         {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT * FROM T WHERE C0=2", *tx1, result);
             ASSERT_EQ(1, result.size());
             EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,2)), result[0]);
         }
-        execute_statement("DELETE FROM T WHERE C0=2", *tx1);  // r of rw
         ASSERT_EQ(status::ok, tx0->commit());
         ASSERT_EQ(status::ok, tx1->commit());
-        {
-            std::vector<mock::basic_record> result{};
-            execute_query("SELECT * FROM T WHERE C0=2", result);
-            ASSERT_EQ(1, result.size());
-            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,20)), result[0]);
-        }
     }
 }
 
-TEST_F(delete_reorder_test, DISABLED_insert_forwarded_before_delete) {
-    // low priority tx1 (delete) is forwarded before high priority tx0 (insert)
+TEST_F(select_reorder_test, range_read_forwarded) {
+    // same as point_read_forwarded, except range read is used
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 2)");
     {
         auto tx0 = utils::create_transaction(*db_, false, true, {"T"});
         wait_epochs(1);
         auto tx1 = utils::create_transaction(*db_, false, true, {"T"});
-        execute_statement("INSERT OR REPLACE INTO T VALUES (1,1)", *tx0);  // w of rw
-        execute_statement("DELETE FROM T WHERE C0=2", *tx0);
+        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 20)", *tx0);
         {
             std::vector<mock::basic_record> result{};
-            execute_query("SELECT * FROM T WHERE C1=1", *tx1, result);  // r of rw
-            EXPECT_EQ(0, result.size());
+            execute_query("SELECT * FROM T", *tx1, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,2)), result[0]);
         }
-        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 2)", *tx1);
         ASSERT_EQ(status::ok, tx0->commit());
         ASSERT_EQ(status::ok, tx1->commit());
-        {
-            std::vector<mock::basic_record> result{};
-            execute_query("SELECT * FROM T WHERE C0=2", result);
-            EXPECT_EQ(0, result.size());
-        }
     }
 }
 
+TEST_F(select_reorder_test, forward_fail) {
+    // typical scenario of forward failure by two read-modify-write transactions
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 2)");
+    {
+        auto tx0 = utils::create_transaction(*db_, false, true, {"T"});
+        wait_epochs(1);
+        auto tx1 = utils::create_transaction(*db_, false, true, {"T"});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T WHERE C0=2", *tx0, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,2)), result[0]);
+        }
+        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 20)", *tx0);
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T WHERE C0=2", *tx1, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,2)), result[0]);
+        }
+        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 30)", *tx1);
+        ASSERT_EQ(status::ok, tx0->commit());
+        ASSERT_EQ(status::err_serialization_failure, tx1->commit());
+    }
+}
+
+TEST_F(select_reorder_test, range_read_forward_fail) {
+    // same as forward_fail, except range read is used
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 2)");
+    {
+        auto tx0 = utils::create_transaction(*db_, false, true, {"T"});
+        wait_epochs(1);
+        auto tx1 = utils::create_transaction(*db_, false, true, {"T"});
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx0, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,2)), result[0]);
+        }
+        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 20)", *tx0);
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx1, result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,2)), result[0]);
+        }
+        execute_statement("INSERT OR REPLACE INTO T (C0, C1) VALUES (2, 30)", *tx1);
+        ASSERT_EQ(status::ok, tx0->commit());
+        ASSERT_EQ(status::err_serialization_failure, tx1->commit());
+    }
+}
 }

@@ -81,12 +81,12 @@ file(GLOB SRCS
 # long tx specific testcases
 if(${SHARKSFIN_IMPLEMENTATION} STREQUAL "shirakami")
     # temporarily disable cc related test due to unstability
-#    file(GLOB CC_TESTS
-#            "jogasaki/cc/*.cpp"
-#            )
-#    foreach(file ${CC_TESTS})
-#        list(APPEND SRCS ${file})
-#    endforeach()
+    file(GLOB CC_TESTS
+            "jogasaki/cc/*.cpp"
+            )
+    foreach(file ${CC_TESTS})
+        list(APPEND SRCS ${file})
+    endforeach()
     file(GLOB LONG_TX_TESTS
             "jogasaki/long_tx/*.cpp"
             )

@@ -154,7 +154,7 @@ TEST_F(own_update_test, select_can_see_own_range_update) {
     );
 }
 
-TEST_F(own_update_test, DISABLED_insert_can_see_own_point_pk_update) {
+TEST_F(own_update_test, insert_can_see_own_point_pk_update) {
     run(*db_,
         [&]() {
             execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");
@@ -162,14 +162,14 @@ TEST_F(own_update_test, DISABLED_insert_can_see_own_point_pk_update) {
         },
         [&](api::transaction_handle tx0) {
             execute_statement("UPDATE T0 SET C0=20 WHERE C0=2", tx0);
-            execute_statement("INSERT INTO T0 (C0, C1) VALUES (20, 20.0)", tx0, status::err_already_exists);
-            ASSERT_EQ(status::ok, tx0.commit());
+            execute_statement("INSERT INTO T0 (C0, C1) VALUES (20, 20.0)", tx0, status::err_unique_constraint_violation);
+            ASSERT_EQ(status::err_inactive_transaction, tx0.commit());
             {
                 //verify with point query
                 std::vector<mock::basic_record> result{};
-                execute_query("SELECT * FROM T0 WHERE C0=20", result);
+                execute_query("SELECT * FROM T0 WHERE C0=2", result);
                 ASSERT_EQ(1, result.size());
-                EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(20,2.0)), result[0]);
+                EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(2,2.0)), result[0]);
             }
             {
                 //verify with range query
@@ -177,7 +177,7 @@ TEST_F(own_update_test, DISABLED_insert_can_see_own_point_pk_update) {
                 execute_query("SELECT * FROM T0 ORDER BY C0", result);
                 ASSERT_EQ(2, result.size());
                 EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(1,1.0)), result[0]);
-                EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(20,2.0)), result[1]);
+                EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(2,2.0)), result[1]);
             }
         },
         [&]() {
@@ -226,7 +226,7 @@ TEST_F(own_update_test, point_update_can_see_point_pk_update) {
     );
 }
 
-TEST_F(own_update_test, DISABLED_range_update_can_see_point_pk_update) {
+TEST_F(own_update_test, range_update_can_see_point_pk_update) {
     run(*db_,
         [&]() {
             execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 1.0)");

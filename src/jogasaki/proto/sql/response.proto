@@ -39,7 +39,8 @@ message Error {
  * Each response message
  */
 
-/* For response to ExecuteStatement, ExecutePreparedStatement, Commit, and/or Rollback. */
+/* For response to ExecuteQuery, ExecutePreparedQuery, Commit, Rollback, 
+DisposePreparedStatement, DisposeTransaction, ExecuteDump and ExecuteLoad. */
 message ResultOnly {
   oneof result {
     Success success = 1;
@@ -239,6 +240,54 @@ message DisposeTransaction {
   }
 }
 
+/* For response to ExecuteStatement and ExecutePreparedStatement. */
+message ExecuteResult {
+  reserved 1 to 10;
+
+  // request is successfully completed.
+  message Success {
+
+    // group of counters during SQL execution.
+    repeated CounterEntry counters = 1;
+  }
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 11;
+
+    // engine error was occurred.
+    Error error = 12;
+  }
+
+  // a counted item.
+  message CounterEntry {
+    // the counter type.
+    CounterType type = 1;
+
+    // the count.
+    int64 value = 2;
+  }
+
+  // a kind of execution counter.
+  enum CounterType {
+      // the un-categorized counter type.
+      COUNTER_TYPE_UNSPECIFIED = 0;
+
+      // The number of rows inserted in the execution.
+      INSERTED_ROWS = 10;
+
+      // The number of rows updated in the execution.
+      UPDATED_ROWS = 20;
+
+      // The number of rows merged in the execution.
+      MERGED_ROWS = 30;
+
+      // The number of rows deleted in the execution.
+      DELETED_ROWS = 40;
+  }
+}
+
 /* For response message from the SQL service. */
 message Response {
   oneof response {
@@ -253,6 +302,7 @@ message Response {
     GetSearchPath get_search_path = 9;
     GetErrorInfo get_error_info = 10;
     DisposeTransaction dispose_transaction = 11;
+    ExecuteResult execute_result = 12;
   }
 }
 

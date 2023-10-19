@@ -106,12 +106,12 @@ status commit(
     std::shared_ptr<transaction_context> tx,
     api::commit_option option  //NOLINT(performance-unnecessary-value-param)
 ) {
-    status ret{};
+    std::atomic<status> ret{};
     auto jobid = commit_async(
             database,
             std::move(tx),
             [&](status st, std::shared_ptr<error::error_info> info){  //NOLINT(performance-unnecessary-value-param)
-                ret = st;
+                ret.store(st);
                 if(st != status::ok) {
                     VLOG(log_error) << log_location_prefix << (info ? info->message() : "");
                 }

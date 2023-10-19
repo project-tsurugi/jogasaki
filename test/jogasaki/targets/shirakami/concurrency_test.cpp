@@ -53,7 +53,6 @@ public:
     void SetUp() {
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
-        cfg->single_thread(true);
         cfg->prepare_test_tables(true);
         db_->start();
     }

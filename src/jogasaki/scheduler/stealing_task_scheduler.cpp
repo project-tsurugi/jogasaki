@@ -16,7 +16,7 @@
 #include "stealing_task_scheduler.h"
 
 #include <glog/logging.h>
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -30,7 +30,7 @@
 
 namespace jogasaki::scheduler {
 
-using takatori::util::fail;
+using takatori::util::throw_exception;
 
 stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     scheduler_cfg_(create_scheduler_cfg(params)),
@@ -152,13 +152,13 @@ tateyama::task_scheduler::task_scheduler_cfg stealing_task_scheduler::create_sch
 void stealing_task_scheduler::register_job(std::shared_ptr<job_context> ctx) {
     auto cid = ctx->id();
     if(! job_contexts_.emplace(cid, std::move(ctx))) {
-        fail();
+        throw_exception(std::logic_error{""});
     }
 }
 
 void stealing_task_scheduler::unregister_job(std::size_t job_id) {
     if(! job_contexts_.erase(job_id)) {
-        fail();
+        throw_exception(std::logic_error{""});
     }
 }
 

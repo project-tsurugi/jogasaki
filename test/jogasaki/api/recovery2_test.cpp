@@ -63,7 +63,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->single_thread(true);
         cfg->prepare_benchmark_tables(true);
         db_setup(cfg);
     }

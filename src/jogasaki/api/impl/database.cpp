@@ -168,6 +168,7 @@ status database::start() {
     commit_stats_->enabled(cfg_->profile_commits());
     kvs_db_->register_durability_callback(durability_callback{*this});
 
+    stop_requested_ = false;
     return status::ok;
 }
 

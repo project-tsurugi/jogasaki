@@ -89,7 +89,9 @@ private:
 
     static thread_local entity_type tasks_;  //NOLINT
     static thread_local conditional_entity_type conditional_tasks_;  //NOLINT
-    static thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> job_contexts_;  //NOLINT
+
+    // a job can be started / finished on different threads
+    tbb::concurrent_hash_map<std::size_t, std::shared_ptr<job_context>> job_contexts_{};
 };
 
 }

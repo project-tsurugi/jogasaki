@@ -17,15 +17,17 @@
 
 #include <thread>
 #include <unordered_set>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::scheduler {
 
+using takatori::util::throw_exception;
+
 thread_local serial_task_scheduler::entity_type serial_task_scheduler::tasks_{};  //NOLINT
 thread_local serial_task_scheduler::conditional_entity_type serial_task_scheduler::conditional_tasks_;  //NOLINT
-thread_local std::unordered_map<std::size_t, std::shared_ptr<job_context>> serial_task_scheduler::job_contexts_{};  //NOLINT
 
 void serial_task_scheduler::do_schedule_task(
     flat_task&& task,
@@ -77,11 +79,16 @@ task_scheduler_kind serial_task_scheduler::kind() const noexcept {
 }
 
 void serial_task_scheduler::register_job(std::shared_ptr<job_context> ctx) {
-    job_contexts_.emplace(ctx->id(), std::move(ctx));
+    auto cid = ctx->id();
+    if(! job_contexts_.emplace(cid, std::move(ctx))) {
+        throw_exception(std::logic_error{""});
+    }
 }
 
 void serial_task_scheduler::unregister_job(std::size_t job_id) {
-    job_contexts_.erase(job_id);
+    if(! job_contexts_.erase(job_id)) {
+        throw_exception(std::logic_error{""});
+    }
 }
 
 void serial_task_scheduler::print_diagnostic(std::ostream &os) {

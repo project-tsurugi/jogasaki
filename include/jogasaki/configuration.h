@@ -397,7 +397,7 @@ private:
     std::size_t watcher_interval_ = 1000;
     std::size_t worker_try_count_ = 1000;
     std::size_t worker_suspend_timeout_ = 1000000;
-    commit_response_kind default_commit_response_{commit_response_kind::propagated};
+    commit_response_kind default_commit_response_{commit_response_kind::stored};
     bool update_skips_deletion_ = false;
     bool profile_commits_ = false;
 };

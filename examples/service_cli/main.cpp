@@ -145,7 +145,6 @@ public:
         cfg.stealing_enabled(FLAGS_steal);
 
         if (FLAGS_test_build) {
-            cfg.single_thread(true);
             cfg.thread_pool_size(1);
             cfg.initial_core(1);
             cfg.core_affinity(false);

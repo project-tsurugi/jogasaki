@@ -534,7 +534,7 @@ TEST_F(long_tx_test, occ_accessing_wp) {
     }
     {
         auto tx2 = utils::create_transaction(*db_, false, false);
-        test_stmt_err("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2, error_code::conflict_on_write_preserve_exception);
+        test_stmt_err("INSERT INTO T0 (C0, C1) VALUES (2, 2.0)", *tx2, error_code::cc_exception);
         ASSERT_EQ(status::ok, tx2->abort());
     }
     {

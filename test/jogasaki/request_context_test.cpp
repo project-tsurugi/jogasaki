@@ -64,5 +64,17 @@ TEST_F(request_context_test, overwriting_error_info) {
     c.error_info(create_error_info(error_code::constraint_violation_exception, "", status::err_unknown));
     ASSERT_EQ(error_code::constraint_violation_exception, c.error_info()->code());
 }
+
+TEST_F(request_context_test, request_stats) {
+    // verify stats
+    request_context c{};
+    EXPECT_FALSE(c.stats());
+    c.enable_stats();
+    EXPECT_TRUE(c.stats());
+    c.stats()->counter(counter_kind::inserted).count(1);
+    EXPECT_EQ(1, c.stats()->counter(counter_kind::inserted).count());
+    c.stats()->counter(counter_kind::deleted).count(2);
+    EXPECT_EQ(2, c.stats()->counter(counter_kind::deleted).count());
+}
 }
 

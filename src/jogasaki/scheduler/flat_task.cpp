@@ -293,8 +293,12 @@ void flat_task::resolve(tateyama::task_scheduler::context& ctx) {
                 *sctx_->database_,
                 req_context_.ownership(),
                 maybe_shared_ptr{e.get()},
-                [sctx=sctx_](status st, std::shared_ptr<error::error_info> info) { // pass sctx_ to live long enough
-                    sctx->callback_(st, std::move(info));
+                [sctx=sctx_](
+                    status st,
+                    std::shared_ptr<error::error_info> info,
+                    std::shared_ptr<request_statistics> stats
+                ) { // pass sctx_ to live long enough
+                    sctx->callback_(st, std::move(info), std::move(stats));
                 },
                 false
         );

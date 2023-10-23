@@ -82,10 +82,12 @@ runner& runner::run() {
     }
 
     status res{};
+    std::shared_ptr<request_statistics> temp_stats{};
+    auto* out_stats = stats_ ? stats_ : &temp_stats;
     auto tc = api::get_transaction_context(tx);
     if(output_records_) {
         std::unique_ptr<api::result_set> rs{};
-        if(res = executor::execute(get_impl(*db_), tc, *stmt, rs, *out);res != status::ok && ! expect_error_) {
+        if(res = executor::execute(get_impl(*db_), tc, *stmt, rs, *out, *out_stats); res != status::ok && ! expect_error_) {
             exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }
         auto it = rs->iterator();
@@ -106,7 +108,7 @@ runner& runner::run() {
         rs->close();
     } else {
         std::unique_ptr<api::result_set> result{};
-        if(res = executor::execute(get_impl(*db_), tc, *stmt, result, *out);res != status::ok && ! expect_error_) {
+        if(res = executor::execute(get_impl(*db_), tc, *stmt, result, *out, *out_stats); res != status::ok && ! expect_error_) {
             exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }
     }

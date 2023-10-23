@@ -118,7 +118,8 @@ TEST_F(api_test, inconsistent_type_in_query) {
 std::shared_ptr<error::error_info> api_test::execute(api::transaction_handle tx, api::executable_statement& stmt) {
     std::shared_ptr<error::error_info> err{};
     std::unique_ptr<api::result_set> result{};
-    executor::execute(get_impl(*db_), get_transaction_context(tx), stmt, result, err);
+    std::shared_ptr<request_statistics> stats{};
+    executor::execute(get_impl(*db_), get_transaction_context(tx), stmt, result, err, stats);
     std::cerr << *err << std::endl;
     return err;
 }

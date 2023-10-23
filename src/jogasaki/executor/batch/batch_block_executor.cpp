@@ -186,8 +186,13 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         info_.prepared(),
         std::move(ps),
         nullptr,
-        [&, state = state_, root = std::move(r)](status st, std::shared_ptr<error::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
+        [&, state = state_, root = std::move(r)](
+            status st,
+            std::shared_ptr<error::error_info> err_info,  //NOLINT(performance-unnecessary-value-param)
+            std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
+        ) {
             (void) root; // let callback own the tree root
+            (void) stats;  // TODO implement stats for load
             --state->running_statements();
             if(state->error_aborting()) {
                 return;

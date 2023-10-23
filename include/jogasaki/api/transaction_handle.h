@@ -23,6 +23,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/status.h>
+#include <jogasaki/request_statistics.h>
 #include <jogasaki/api/commit_option.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/error_info.h>
@@ -54,7 +55,17 @@ public:
      * @brief the callback type used for async execution
      * @see `execute_async` or `commit_async`
      */
-    using error_info_callback = std::function<void(status, std::shared_ptr<api::error_info>)>;
+    using error_info_callback = std::function<
+        void(status, std::shared_ptr<api::error_info>)
+    >;
+
+    /**
+     * @brief the callback type used for async execution
+     * @see `execute_async` or `commit_async`
+     */
+    using error_info_stats_callback = std::function<
+        void(status, std::shared_ptr<api::error_info>, std::shared_ptr<request_statistics>)
+    >;
 
     /**
      * @brief create empty handle - null reference
@@ -207,7 +218,7 @@ public:
      * @return false on error in preparing async execution (normally this should not happen)
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    bool execute_async(maybe_shared_ptr<executable_statement> const& statement, error_info_callback on_completion);
+    bool execute_async(maybe_shared_ptr<executable_statement> const& statement, error_info_stats_callback on_completion);
 
     /**
      * @brief asynchronously execute the statement in the transaction. The result records are expected
@@ -242,7 +253,7 @@ public:
     bool execute_async(
         maybe_shared_ptr<executable_statement> const& statement,
         maybe_shared_ptr<data_channel> const& channel,
-        error_info_callback on_completion
+        error_info_stats_callback on_completion
     );
 
     /**

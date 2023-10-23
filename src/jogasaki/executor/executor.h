@@ -42,7 +42,16 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief the callback type used for async execution
  */
-using error_info_callback = std::function<void(status, std::shared_ptr<error::error_info>)>;
+using error_info_callback = std::function<
+    void(status, std::shared_ptr<error::error_info>)
+>;
+
+/**
+ * @brief the callback type used for async execution
+ */
+using error_info_stats_callback = std::function<
+    void(status, std::shared_ptr<error::error_info>, std::shared_ptr<request_statistics>)
+>;
 
 /**
  * @brief commit the transaction
@@ -94,6 +103,7 @@ status abort(
  * @param statement statement to execute
  * @param result [out] the result set to be filled on completion
  * @param error [out] the info object to be filled on error
+ * @param stats [out] the stats object to be filled
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -103,7 +113,8 @@ status execute(
     std::shared_ptr<transaction_context> tx,
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result,
-    std::shared_ptr<error::error_info>& error
+    std::shared_ptr<error::error_info>& error,
+    std::shared_ptr<request_statistics>& stats
 );
 
 /**
@@ -114,6 +125,7 @@ status execute(
  * @param parameters parameters to fill the place holders
  * @param result [out] the result set to be filled on completion
  * @param error [out] the info object to be filled on error
+ * @param stats [out] the stats object to be filled
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -124,7 +136,8 @@ status execute(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<api::result_set>& result,
-    std::shared_ptr<error::error_info>& error
+    std::shared_ptr<error::error_info>& error,
+    std::shared_ptr<request_statistics>& stats
 );
 
 /**
@@ -142,7 +155,7 @@ bool execute_async(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
-    error_info_callback on_completion
+    error_info_stats_callback on_completion
 );
 
 /**
@@ -163,7 +176,7 @@ bool execute_async(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    error_info_callback on_completion,
+    error_info_stats_callback on_completion,
     bool sync = false
 );
 
@@ -181,7 +194,7 @@ bool execute_async_on_context(
     api::impl::database& database,
     std::shared_ptr<request_context> rctx,
     maybe_shared_ptr<api::executable_statement> const& statement,
-    error_info_callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    error_info_stats_callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 );
 

@@ -157,6 +157,15 @@ public:
         return *this;
     }
 
+    /**
+     * @brief set stats output object
+     * @param arg output stats variable filled on run()
+     * @return *this
+     */
+    runner& stats(std::shared_ptr<request_statistics>& arg) {
+        stats_ = &arg;
+        return *this;
+    }
 
     /**
      * @brief set no_abort flag to indicate not to abort tx even if error is expected (by expect_error())
@@ -237,6 +246,7 @@ private:
     std::shared_ptr<error::error_info>* output_error_info_{};
     std::string* explain_output_{};
     status* output_status_{};
+    std::shared_ptr<request_statistics>* stats_{};
 
     bool no_abort_{};
     bool show_plan_{};

@@ -190,7 +190,12 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
             prepared_,
             std::move(ps),
             nullptr,
-            [&](status st, std::shared_ptr<error::error_info> info){  //NOLINT(performance-unnecessary-value-param)
+            [&](
+                status st,
+                std::shared_ptr<error::error_info> info,  //NOLINT(performance-unnecessary-value-param)
+                std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
+            ){
+                (void) stats; // TODO
                 --running_statement_count_;
                 if(st != status::ok) {
                     std::stringstream ss{};

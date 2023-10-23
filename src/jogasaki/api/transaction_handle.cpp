@@ -64,7 +64,10 @@ status transaction_handle::commit(api::commit_option option) {  //NOLINT(readabi
 }
 
 void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readability-make-member-function-const)
-    commit_async([on_completion=std::move(on_completion)](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+    commit_async([on_completion=std::move(on_completion)](
+        status st,
+        std::shared_ptr<api::error_info> info //NOLINT(performance-unnecessary-value-param)
+    ) {
         on_completion(st, (info ? info->message() : ""));
     });
 }
@@ -80,7 +83,10 @@ void transaction_handle::commit_async(error_info_callback on_completion, commit_
         );
         return;
     }
-    executor::commit_async(*db, tx, [on_completion](status st, std::shared_ptr<error::error_info> info) {
+    executor::commit_async(*db, tx, [on_completion](
+        status st,
+        std::shared_ptr<error::error_info> info
+    ) {
         on_completion(st, api::impl::error_info::create(std::move(info)));
     }, opt);
 }
@@ -97,14 +103,16 @@ status transaction_handle::execute(executable_statement& statement) {  //NOLINT(
     if(! tx) return status::err_invalid_argument;
     std::unique_ptr<api::result_set> result{};
     std::shared_ptr<error::error_info> info{};
-    return executor::execute(*db, tx, statement, result, info);
+    std::shared_ptr<request_statistics> stats{};
+    return executor::execute(*db, tx, statement, result, info, stats);
 }
 
 status transaction_handle::execute(executable_statement& statement, std::unique_ptr<result_set>& result) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     std::shared_ptr<error::error_info> info{};
-    return executor::execute(*db, tx, statement, result, info);
+    std::shared_ptr<request_statistics> stats{};
+    return executor::execute(*db, tx, statement, result, info, stats);
 }
 
 status transaction_handle::execute( //NOLINT
@@ -115,21 +123,27 @@ status transaction_handle::execute( //NOLINT
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     std::shared_ptr<error::error_info> info{};
-    return executor::execute(*db, tx, prepared, std::move(parameters), result, info);
+    std::shared_ptr<request_statistics> stats{};
+    return executor::execute(*db, tx, prepared, std::move(parameters), result, info, stats);
 }
 
 bool transaction_handle::execute_async(   //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<executable_statement> const& statement,
     transaction_handle::callback on_completion
 ) {
-    return execute_async(statement, [on_completion=std::move(on_completion)](status st, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
+    return execute_async(statement, [on_completion=std::move(on_completion)](
+        status st,
+        std::shared_ptr<api::error_info> info,  //NOLINT(performance-unnecessary-value-param)
+        std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
+    ){
+        (void) stats;
         on_completion(st, (info ? info->message() : ""));
     });
 }
 
 bool transaction_handle::execute_async(   //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<executable_statement> const& statement,
-    transaction_handle::error_info_callback on_completion  //NOLINT(performance-unnecessary-value-param)
+    transaction_handle::error_info_stats_callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
@@ -137,7 +151,8 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
         on_completion(res,
             api::impl::error_info::create(
                 create_error_info(error_code::transaction_not_found_exception, "invalid tx handle", res)
-            )
+            ),
+            nullptr
         );
         return true;
     }
@@ -146,8 +161,12 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
         tx,
         statement,
         nullptr,
-        [on_completion](status st, std::shared_ptr<error::error_info> info) {
-            on_completion(st, api::impl::error_info::create(std::move(info)));
+        [on_completion](
+            status st,
+            std::shared_ptr<error::error_info> info,
+            std::shared_ptr<request_statistics> stats
+        ) {
+            on_completion(st, api::impl::error_info::create(std::move(info)), std::move(stats));
         }
     );
 }
@@ -157,7 +176,12 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
     maybe_shared_ptr<data_channel> const& channel,
     transaction_handle::callback on_completion
 ) {
-    return execute_async(statement, channel, [on_completion=std::move(on_completion)](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+    return execute_async(statement, channel, [on_completion=std::move(on_completion)](
+        status st,
+        std::shared_ptr<api::error_info> info,  //NOLINT(performance-unnecessary-value-param)
+        std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
+    ) {
+        (void) stats;
         on_completion(st, (info ? info->message() : ""));
     });
 }
@@ -165,7 +189,7 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
 bool transaction_handle::execute_async(  //NOLINT(readability-make-member-function-const)
     maybe_shared_ptr<executable_statement> const& statement,
     maybe_shared_ptr<data_channel> const& channel,
-    transaction_handle::error_info_callback on_completion  //NOLINT(performance-unnecessary-value-param)
+    transaction_handle::error_info_stats_callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
@@ -173,7 +197,8 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
         on_completion(res,
             api::impl::error_info::create(
                 create_error_info(error_code::transaction_not_found_exception, "invalid tx handle", res)
-            )
+            ),
+            nullptr
         );
         return true;
     }
@@ -182,8 +207,12 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
         tx,
         statement,
         channel,
-        [on_completion](status st, std::shared_ptr<error::error_info> info) {
-            on_completion(st, api::impl::error_info::create(std::move(info)));
+        [on_completion](
+            status st,
+            std::shared_ptr<error::error_info> info,
+            std::shared_ptr<request_statistics> stats
+        ) {
+            on_completion(st, api::impl::error_info::create(std::move(info)), std::move(stats));
         }
     );
 }

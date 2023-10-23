@@ -131,7 +131,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         return false;
                     }
                     // write_kind::insert_skip
-                    // duplicated key is simply ignored
+                    // duplicated key is simply ignored, no counter update
 
                     // currently this is for Load operation and assuming single tuple insert
                     // TODO skip tuples for secondary index and move to next tuple for primary
@@ -141,6 +141,10 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 handle_kvs_errors(context, res);
                 handle_generic_error(context, res, error_code::sql_service_exception);
                 return false;
+            }
+            if(e.primary_) {
+                auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
+                context.enable_stats()->counter(kind).count(1);
             }
         }
     }

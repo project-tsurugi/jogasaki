@@ -88,10 +88,15 @@ public:
      * @brief accessor of the counter
      * @return the current value of the counter
      */
-    std::int64_t count() const noexcept;
+    std::optional<std::int64_t> count() const noexcept;
+
+    /**
+     * @brief returns whether the counter has value
+     */
+    [[nodiscard]] bool has_value() const noexcept;
 
 private:
-    std::int64_t count_{};
+    std::optional<std::int64_t> count_{};
 };
 
 /**

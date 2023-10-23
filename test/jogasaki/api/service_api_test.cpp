@@ -133,8 +133,12 @@ public:
     void test_dispose_transaction(std::uint64_t handle, status expected = status::ok);
     void test_rollback(std::uint64_t& handle);
     void test_statement(std::string_view sql);
+    void test_statement(std::string_view sql, std::shared_ptr<request_statistics>& stats);
     void test_statement(std::string_view sql, std::uint64_t tx_handle);
+    void test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats);
     void test_statement(std::string_view sql, std::uint64_t tx_handle, status exp);
+    void test_statement(
+        std::string_view sql, std::uint64_t tx_handle, status exp, std::shared_ptr<request_statistics>& stats);
     void test_query(std::string_view query = "select * from T0");
 
     void test_query(
@@ -377,7 +381,14 @@ TEST_F(service_api_test, error_on_dispose) {
     ASSERT_FALSE(error.message_.empty());
 }
 
-void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle, status exp) {
+void service_api_test::test_statement(
+    std::string_view sql, std::uint64_t tx_handle, status exp) {
+    std::shared_ptr<request_statistics> stats{};
+    test_statement(sql, tx_handle, exp, stats);
+}
+
+void service_api_test::test_statement(
+    std::string_view sql, std::uint64_t tx_handle, status exp, std::shared_ptr<request_statistics>& stats) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -388,7 +399,8 @@ void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_han
     ASSERT_EQ(exp == status::ok ? response_code::success : response_code::application_error, res->code_);
     EXPECT_TRUE(res->all_released());
 
-    auto [success, error, stats] = decode_execute_result(res->body_);
+    auto [success, error, statistics] = decode_execute_result(res->body_);
+    stats = std::move(statistics);
     if(exp == status::ok) {
         ASSERT_TRUE(success);
     } else {
@@ -400,10 +412,21 @@ void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_han
     test_statement(sql, tx_handle, status::ok);
 }
 
+void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats) {
+    test_statement(sql, tx_handle, status::ok, stats);
+}
+
 void service_api_test::test_statement(std::string_view sql) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_statement(sql, tx_handle);
+    test_commit(tx_handle);
+}
+
+void service_api_test::test_statement(std::string_view sql, std::shared_ptr<request_statistics>& stats) {
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_statement(sql, tx_handle, stats);
     test_commit(tx_handle);
 }
 
@@ -1766,4 +1789,66 @@ TEST_F(service_api_test, get_error_info_on_empty_commit_auto_dispose_off) {
     test_commit(tx_handle, false);
     test_get_error_info(tx_handle, false, error_code::none);
 }
+
+TEST_F(service_api_test, stats) {
+    test_statement("create table T(C0 int primary key)");
+    test_statement("insert into T values (0)");
+    test_statement("insert into T values (2)");
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("insert into T values (1)", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_EQ(1, stats->counter(counter_kind::inserted).count());
+    }
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("update T set C0=0 where C0=0", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_EQ(1, stats->counter(counter_kind::updated).count());
+    }
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("delete from T where C0=2", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_EQ(1, stats->counter(counter_kind::deleted).count());
+    }
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("insert or replace into T values (3)", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_EQ(1, stats->counter(counter_kind::merged).count());
+    }
+}
+TEST_F(service_api_test, stats_wo_change) {
+    test_statement("create table T(C0 int primary key)");
+    test_statement("insert into T values (0)");
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("select * from T", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+        EXPECT_FALSE(stats->counter(counter_kind::updated).has_value());
+        EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+        EXPECT_FALSE(stats->counter(counter_kind::deleted).has_value());
+    }
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("insert if not exists into T values (0)", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_EQ(0, stats->counter(counter_kind::inserted).count());
+    }
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("update T set C0=0 where C0=10", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_EQ(0, stats->counter(counter_kind::updated).count());
+    }
+    {
+        std::shared_ptr<request_statistics> stats{};
+        test_statement("delete from T where C0=10", stats);
+        ASSERT_TRUE(stats);
+        EXPECT_EQ(0, stats->counter(counter_kind::deleted).count());
+    }
+}
+
 }

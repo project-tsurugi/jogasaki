@@ -32,6 +32,7 @@
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/request_statistics.h>
 
 namespace jogasaki {
 
@@ -217,6 +218,20 @@ public:
      */
     [[nodiscard]] std::shared_ptr<error::error_info> error_info() const noexcept;
 
+    /**
+     * @brief enable gathering the request statistics
+     * @note this function is not thread-safe
+     */
+    void enable_stats() noexcept;
+
+    /**
+     * @brief accessor for the request statistics info
+     * @return the stats object for the request result
+     * @return nullptr if stats is not enabled
+     * @note this function is not thread-safe
+     */
+    [[nodiscard]] std::shared_ptr<request_statistics> const& stats() const noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -236,6 +251,7 @@ private:
     std::string status_message_{};
     bool lightweight_{};
     std::shared_ptr<error::error_info> error_info_{};
+    std::shared_ptr<request_statistics> stats_{};
 };
 
 /**

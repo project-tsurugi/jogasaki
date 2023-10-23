@@ -18,11 +18,18 @@
 namespace jogasaki {
 
 void request_execution_counter::count(std::int64_t arg) {
-    count_ += arg;
+    if(! count_.has_value()) {
+        count_ = 0;
+    }
+    count_ = *count_ + arg;
 }
 
-std::int64_t request_execution_counter::count() const noexcept {
+std::optional<std::int64_t> request_execution_counter::count() const noexcept {
     return count_;
+}
+
+bool request_execution_counter::has_value() const noexcept {
+    return count_.has_value();
 }
 
 request_execution_counter& request_statistics::counter(counter_kind kind) {
@@ -33,6 +40,7 @@ void request_statistics::each_counter(
     request_statistics::each_counter_consumer consumer
 ) const noexcept {
     for(auto&& [k, e] : entity_) {
+        if(! e.count().has_value()) continue;
         consumer(static_cast<counter_kind>(k), e);
     }
 }

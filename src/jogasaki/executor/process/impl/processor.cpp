@@ -53,6 +53,13 @@ abstract::status processor::run(abstract::task_context *context) {
     for(auto& block_info : info_->vars_info_list()) {
         work->variable_tables().emplace_back(block_info);
     }
+    // initialize req. stats to zero for UPDATE/DELETE statements
+    if(info_->details().has_write_operations()) {
+        auto update = info_->details().write_for_update();
+        if(work->req_context()) {
+            work->req_context()->stats()->counter(update ? counter_kind::updated : counter_kind::deleted).count(0);
+        }
+    }
     unsafe_downcast<ops::record_operator>(operators_.root()).process_record(context);
     // TODO handling status code
     return abstract::status::completed;

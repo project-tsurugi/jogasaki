@@ -496,10 +496,10 @@ inline void success<sql::response::ExecuteResult>(
     er.set_allocated_success(&s);
     r.set_allocated_execute_result(&er);
     stats->each_counter([&](auto&& kind, auto&& counter){
-        if(counter.count() > 0) {
+        if(counter.count().has_value()) {
             auto* c = s.add_counters();
             c->set_type(from(kind));
-            c->set_value(counter.count());
+            c->set_value(*counter.count());
         }
     });
     res.code(response_code::success);

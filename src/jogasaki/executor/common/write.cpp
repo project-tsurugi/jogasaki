@@ -131,7 +131,9 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         return false;
                     }
                     // write_kind::insert_skip
-                    // duplicated key is simply ignored, no counter update
+                    // duplicated key is simply ignored
+                    // simply set stats 0 in order to mark INSERT IF NOT EXISTS statement executed
+                    context.enable_stats()->counter(counter_kind::inserted).count(0);
 
                     // currently this is for Load operation and assuming single tuple insert
                     // TODO skip tuples for secondary index and move to next tuple for primary

@@ -388,7 +388,7 @@ void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_han
     ASSERT_EQ(exp == status::ok ? response_code::success : response_code::application_error, res->code_);
     EXPECT_TRUE(res->all_released());
 
-    auto [success, error] = decode_result_only(res->body_);
+    auto [success, error, stats] = decode_execute_result(res->body_);
     if(exp == status::ok) {
         ASSERT_TRUE(success);
     } else {
@@ -503,7 +503,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        auto [success, error] = decode_result_only(res->body_);
+        auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
@@ -618,7 +618,7 @@ TEST_F(service_api_test, data_types) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        auto [success, error] = decode_result_only(res->body_);
+        auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
@@ -726,7 +726,7 @@ TEST_F(service_api_test, decimals) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        auto [success, error] = decode_result_only(res->body_);
+        auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
@@ -841,7 +841,7 @@ TEST_F(service_api_test, temporal_types) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        auto [success, error] = decode_result_only(res->body_);
+        auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
     }
     test_commit(tx_handle);
@@ -979,7 +979,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::application_error, res->code_);
 
-        auto [success, error] = decode_result_only(res->body_);
+        auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_FALSE(success);
         ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
         ASSERT_FALSE(error.message_.empty());
@@ -1184,7 +1184,7 @@ TEST_F(service_api_test, null_host_variable) {
         ASSERT_TRUE(st);
         ASSERT_EQ(response_code::success, res->code_);
 
-        auto [success, error] = decode_result_only(res->body_);
+        auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
     }
     test_commit(tx_handle);

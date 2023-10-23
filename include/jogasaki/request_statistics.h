@@ -22,6 +22,7 @@
 #include <ostream>
 #include <unordered_map>
 #include <functional>
+#include <optional>
 
 namespace jogasaki {
 

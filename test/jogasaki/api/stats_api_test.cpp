@@ -135,6 +135,9 @@ TEST_F(stats_api_test, update_wo_change) {
 }
 
 TEST_F(stats_api_test, update_multiple_rows) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory causes problem updating multiple rows";
+    }
     std::shared_ptr<request_statistics> stats{};
     execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (1)");

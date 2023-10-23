@@ -22,8 +22,6 @@
 #include <ostream>
 #include <unordered_map>
 
-#include <jogasaki/utils/interference_size.h>
-
 namespace jogasaki {
 
 enum counter_kind : std::int32_t {
@@ -62,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& out, counter_kind value) {
     return out << to_string_view(value);
 }
 
-class cache_align request_execution_counter {
+class request_execution_counter {
 public:
     /**
      * @brief create new object

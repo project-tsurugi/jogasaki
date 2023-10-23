@@ -61,7 +61,7 @@ bool execute_internal(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    error_info_callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    error_info_stats_callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
     BOOST_ASSERT(channel);  //NOLINT
@@ -110,7 +110,10 @@ status commit(
     auto jobid = commit_async(
             database,
             std::move(tx),
-            [&](status st, std::shared_ptr<error::error_info> info){  //NOLINT(performance-unnecessary-value-param)
+            [&](
+                status st,
+                std::shared_ptr<error::error_info> info  //NOLINT(performance-unnecessary-value-param)
+            ){
                 ret.store(st);
                 if(st != status::ok) {
                     VLOG(log_error) << log_location_prefix << (info ? info->message() : "");
@@ -139,7 +142,8 @@ status execute(
     std::shared_ptr<transaction_context> tx,
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result,
-    std::shared_ptr<error::error_info>& error
+    std::shared_ptr<error::error_info>& error,
+    std::shared_ptr<request_statistics>& stats
 ) {
     auto store = std::make_unique<data::result_store>();
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
@@ -149,9 +153,14 @@ status execute(
             std::move(tx),
             maybe_shared_ptr{std::addressof(statement)},
             ch,
-            [&](status st, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+            [&](
+                status st,
+                std::shared_ptr<error::error_info> info,  //NOLINT(performance-unnecessary-value-param)
+                std::shared_ptr<request_statistics> statistics  //NOLINT(performance-unnecessary-value-param)
+            ) {
                 ret = st;
                 error = std::move(info);
+                stats = std::move(statistics);
             },
             true
     );
@@ -168,14 +177,21 @@ status execute(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<api::result_set>& result,
-    std::shared_ptr<error::error_info>& error
+    std::shared_ptr<error::error_info>& error,
+    std::shared_ptr<request_statistics>& stats
 ) {
     auto store = std::make_unique<data::result_store>();
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
     status ret{};
-    execute_async(database, std::move(tx), prepared, std::move(parameters), ch, [&](status st, std::shared_ptr<error::error_info> info){  //NOLINT(performance-unnecessary-value-param)
-        ret = st;
-        error = std::move(info);
+    execute_async(database, std::move(tx), prepared, std::move(parameters), ch,
+        [&](
+            status st,
+            std::shared_ptr<error::error_info> info,   //NOLINT(performance-unnecessary-value-param)
+            std::shared_ptr<request_statistics> statistics //NOLINT(performance-unnecessary-value-param)
+        ){
+            ret = st;
+            error = std::move(info);
+            stats = std::move(statistics);
     }, true);
     result = std::make_unique<api::impl::result_set>(std::move(store));
     return ret;
@@ -187,7 +203,7 @@ bool execute_async(
     api::statement_handle prepared,
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
-    error_info_callback on_completion,
+    error_info_stats_callback on_completion,
     bool sync
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
@@ -234,7 +250,7 @@ bool execute_async(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
-    error_info_callback on_completion  //NOLINT(performance-unnecessary-value-param)
+    error_info_stats_callback on_completion  //NOLINT(performance-unnecessary-value-param)
 ) {
     return details::execute_internal(
         database,
@@ -271,7 +287,12 @@ bool execute_dump(
         std::move(tx),
         statement,
         dump_ch,
-        [on_completion=std::move(on_completion), dump_ch, cfg](status st, std::shared_ptr<error::error_info> info) {
+        [on_completion=std::move(on_completion), dump_ch, cfg](
+            status st,
+            std::shared_ptr<error::error_info> info,
+            std::shared_ptr<request_statistics> stats
+        ) {
+            (void) stats; // no stats for dump yet
             if(st != status::ok) {
                 if (! cfg.keep_files_on_error_) {
                     dump_ch->clean_output_files();
@@ -287,7 +308,7 @@ bool execute_dump(
 bool validate_statement(
     plan::executable_statement const& exec,
     maybe_shared_ptr<executor::io::record_channel> const& ch,
-    error_info_callback on_completion //NOLINT(performance-unnecessary-value-param)
+    error_info_stats_callback on_completion //NOLINT(performance-unnecessary-value-param)
 ) {
     if(!exec.mirrors()->external_writer_meta() &&
         dynamic_cast<executor::io::record_channel_adapter*>(ch.get())) {
@@ -296,7 +317,7 @@ bool validate_statement(
         auto msg = "statement has no result records, but called with API expecting result records";
         VLOG_LP(log_error) << msg;
         auto res = status::err_illegal_operation;
-        on_completion(res, create_error_info(error_code::inconsistent_statement_exception, msg, res));
+        on_completion(res, create_error_info(error_code::inconsistent_statement_exception, msg, res), nullptr);
         return false;
     }
     return true;
@@ -306,13 +327,14 @@ bool execute_async_on_context(
     api::impl::database& database,
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
-    error_info_callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    error_info_stats_callback on_completion, //NOLINT(performance-unnecessary-value-param)
     bool sync
 ) {
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
     if(! validate_statement(*s.body(), rctx->record_channel(), on_completion)) {
         return false;
     }
+    rctx->enable_stats();
     auto& e = s.body();
     auto job = rctx->job();
     auto& ts = *rctx->scheduler();
@@ -322,7 +344,7 @@ bool execute_async_on_context(
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
-            on_completion(rctx->status_code(), rctx->error_info());
+            on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
         });
 
         auto jobid = job->id();
@@ -346,7 +368,7 @@ bool execute_async_on_context(
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
-            on_completion(rctx->status_code(), rctx->error_info());
+            on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
         });
 
         auto jobid = job->id();
@@ -367,7 +389,7 @@ bool execute_async_on_context(
     // write on non-tasked mode or DDL
     scheduler::statement_scheduler sched{ database.configuration(), *database.task_scheduler()};
     sched.schedule(*e->operators(), *rctx);
-    on_completion(rctx->status_code(), rctx->error_info());
+    on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
     if(auto req = job->request()) {
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, rctx->status_code() == status::ok);

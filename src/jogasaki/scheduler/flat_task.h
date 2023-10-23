@@ -89,7 +89,9 @@ inline constexpr task_enum_tag_t<Kind> task_enum_tag {};
 using callback = api::transaction_handle::callback;
 
 // original is in executor.h, but defining here in order to avoid cycle in headers inclusion
-using error_info_callback = std::function<void(status, std::shared_ptr<error::error_info>)>;
+using error_info_callback = std::function<
+    void(status, std::shared_ptr<error::error_info>, std::shared_ptr<request_statistics>)
+>;
 
 struct statement_context {
     statement_context(

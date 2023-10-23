@@ -469,7 +469,10 @@ void service::command_commit(
     opt.auto_dispose_on_success(cm.auto_dispose())
         .commit_response(from(cm.notification_type()));
     tx.commit_async(
-        [res, req_info](status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+        [res, req_info](
+            status st,
+            std::shared_ptr<api::error_info> info //NOLINT(performance-unnecessary-value-param)
+        ) {
             if(st == jogasaki::status::ok) {
                 details::success<sql::response::ResultOnly>(*res, req_info);
             } else {
@@ -837,7 +840,12 @@ void service::execute_statement(
     }
     if(auto success = tx.execute_async(
             std::move(stmt),
-            [cbp, this, req_info](status s, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
+            [cbp, this, req_info](
+                status s,
+                std::shared_ptr<api::error_info> info,  //NOLINT(performance-unnecessary-value-param)
+                std::shared_ptr<request_statistics> stats //NOLINT(performance-unnecessary-value-param)
+            ){
+                (void) stats; // FIXME
                 if (s == jogasaki::status::ok) {
                     details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                 } else {
@@ -984,7 +992,12 @@ void service::execute_query(
     if(auto rc = tx.execute_async(
             std::shared_ptr{std::move(e)},
             info->data_channel_,
-            [cbp, this, req_info](status s, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
+            [cbp, this, req_info](
+                status s,
+                std::shared_ptr<api::error_info> info,  //NOLINT(performance-unnecessary-value-param)
+                std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
+            ){
+                (void) stats; // no stats for query
                 {
                     trace_scope_name("release_channel");  //NOLINT
                     cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
@@ -1162,7 +1175,10 @@ void service::execute_dump(
             std::shared_ptr{std::move(e)},
             info->data_channel_,
             directory,
-            [cbp, this, req_info](status s, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+            [cbp, this, req_info](
+                status s,
+                std::shared_ptr<error::error_info> info //NOLINT(performance-unnecessary-value-param)
+            ) {
                 {
                     trace_scope_name("release_channel");  //NOLINT
                     cbp->response_->release_channel(*cbp->channel_info_->data_channel_->origin());
@@ -1211,7 +1227,10 @@ void service::execute_load( //NOLINT
                 statement,
                 q.params(),
                 files,
-                [cbp, this, req_info](status s, std::shared_ptr<error::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
+                [cbp, this, req_info](
+                    status s,
+                    std::shared_ptr<error::error_info> info  //NOLINT(performance-unnecessary-value-param)
+                ) {
                     if (s == jogasaki::status::ok) {
                         details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
                     } else {

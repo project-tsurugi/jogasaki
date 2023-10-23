@@ -221,7 +221,7 @@ public:
     /**
      * @brief enable gathering the request statistics
      * @return the stats object for the request result
-     * @note this function is not thread-safe
+     * @note this function is not thread-safe and should not race with `stats()`
      */
     std::shared_ptr<request_statistics> const& enable_stats() noexcept;
 
@@ -229,7 +229,6 @@ public:
      * @brief accessor for the request statistics info
      * @return the stats object for the request result
      * @return nullptr if stats is not enabled
-     * @note this function is not thread-safe
      */
     [[nodiscard]] std::shared_ptr<request_statistics> const& stats() const noexcept;
 

@@ -843,10 +843,10 @@ void service::execute_statement(
             [cbp, this, req_info](
                 status s,
                 std::shared_ptr<api::error_info> info,  //NOLINT(performance-unnecessary-value-param)
-                std::shared_ptr<request_statistics> stats //NOLINT(performance-unnecessary-value-param)
+                std::shared_ptr<request_statistics> stats
             ){
                 if (s == jogasaki::status::ok) {
-                    details::success<sql::response::ExecuteResult>(*cbp->response_, req_info, stats);
+                    details::success<sql::response::ExecuteResult>(*cbp->response_, req_info, std::move(stats));
                 } else {
                     details::error<sql::response::ExecuteResult>(*cbp->response_, info.get(), req_info);
                 }

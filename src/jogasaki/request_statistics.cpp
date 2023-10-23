@@ -37,7 +37,7 @@ request_execution_counter& request_statistics::counter(counter_kind kind) {
 }
 
 void request_statistics::each_counter(
-    request_statistics::each_counter_consumer consumer
+    request_statistics::each_counter_consumer consumer  //NOLINT(performance-unnecessary-value-param)
 ) const noexcept {
     for(auto&& [k, e] : entity_) {
         if(! e.count().has_value()) continue;

@@ -651,7 +651,15 @@ private:
         return true;
     }
 
-    bool handle_result_only(std::string_view body) {
+    bool handle_result_only(bool execute_result, std::string_view body) {
+        if (execute_result) {
+            auto [success, error, stats] = jogasaki::utils::decode_execute_result(body);
+            if (success) {
+                return true;
+            }
+            LOG(ERROR) << "command returned " << sql::status::Status_Name(error.status_) << ": " << error.message_;
+            return false;
+        }
         auto [success, error] = jogasaki::utils::decode_result_only(body);
         if (success) {
             return true;
@@ -681,7 +689,7 @@ private:
         if(! st || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
         }
-        auto ret = handle_result_only(res->body_);
+        auto ret = handle_result_only(false, res->body_);
         wait_for_statements(); // just for cleanup
         return ret;
     }
@@ -695,7 +703,7 @@ private:
         if(! st || !res->completed() || res->code_ != response_code::success) {
             LOG(ERROR) << "error executing command";
         }
-        auto ret = handle_result_only(res->body_);
+        auto ret = handle_result_only(false, res->body_);
         wait_for_statements(); // just for cleanup
         return ret;
     }
@@ -772,7 +780,7 @@ private:
                     DVLOG(jogasaki::log_debug) << "record : " << r;
                 }
             }
-            return handle_result_only(res->body_);
+            return handle_result_only(!query, res->body_);
         };
         return wait_completion();
     }

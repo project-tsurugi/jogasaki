@@ -290,7 +290,7 @@ bool execute_dump(
         [on_completion=std::move(on_completion), dump_ch, cfg](
             status st,
             std::shared_ptr<error::error_info> info,
-            std::shared_ptr<request_statistics> stats
+            std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
         ) {
             (void) stats; // no stats for dump yet
             if(st != status::ok) {

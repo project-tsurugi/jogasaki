@@ -488,7 +488,7 @@ template<>
 inline void success<sql::response::ExecuteResult>(
     tateyama::api::server::response& res,
     request_info req_info,  //NOLINT(performance-unnecessary-value-param)
-    std::shared_ptr<request_statistics> stats
+    std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
 ) {
     sql::response::ExecuteResult::Success s{};
     sql::response::ExecuteResult er{};

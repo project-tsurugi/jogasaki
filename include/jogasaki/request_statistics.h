@@ -89,7 +89,7 @@ public:
      * @brief accessor of the counter
      * @return the current value of the counter
      */
-    std::optional<std::int64_t> count() const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> count() const noexcept;
 
     /**
      * @brief returns whether the counter has value

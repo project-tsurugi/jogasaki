@@ -220,9 +220,10 @@ public:
 
     /**
      * @brief enable gathering the request statistics
+     * @return the stats object for the request result
      * @note this function is not thread-safe
      */
-    void enable_stats() noexcept;
+    std::shared_ptr<request_statistics> const& enable_stats() noexcept;
 
     /**
      * @brief accessor for the request statistics info

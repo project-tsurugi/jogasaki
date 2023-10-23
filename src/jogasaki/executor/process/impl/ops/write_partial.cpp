@@ -142,6 +142,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
         }
         return error_abort(ctx, res);
     }
+    context.req_context()->enable_stats()->counter(counter_kind::updated).count(1);
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
         if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
@@ -171,6 +172,7 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
             ); res != status::ok) {
             return error_abort(ctx, res);
         }
+        context.req_context()->enable_stats()->counter(counter_kind::deleted).count(1);
         return {};
     }
 
@@ -183,6 +185,7 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
         ); res != status::ok) {
         return error_abort(ctx, res);
     }
+    context.req_context()->enable_stats()->counter(counter_kind::deleted).count(1);
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
         if(auto res = secondaries_[i].encode_and_remove(

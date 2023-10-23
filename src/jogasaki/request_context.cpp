@@ -167,9 +167,11 @@ std::shared_ptr<error::error_info> request_context::error_info() const noexcept 
     return std::atomic_load(std::addressof(error_info_));
 }
 
-void request_context::enable_stats() noexcept {
-    if(stats_) return;
-    stats_ = std::make_shared<request_statistics>();
+std::shared_ptr<request_statistics> const& request_context::enable_stats() noexcept {
+    if(! stats_) {
+        stats_ = std::make_shared<request_statistics>();
+    }
+    return stats_;
 }
 
 std::shared_ptr<request_statistics> const& request_context::stats() const noexcept {

@@ -29,6 +29,7 @@
 #include "jogasaki/proto/sql/status.pb.h"
 
 #include <jogasaki/api.h>
+#include <jogasaki/request_statistics.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/decimal.h>
@@ -293,6 +294,36 @@ inline std::pair<bool, error> decode_result_only(std::string_view res) {
         return {false, {er.status(), er.detail(), api::impl::map_error(er.code()), er.supplemental_text()}};
     }
     return {true, {}};
+}
+
+inline std::shared_ptr<request_statistics> make_stats(::jogasaki::proto::sql::response::ExecuteResult::Success const& s) {
+    auto ret = std::make_shared<request_statistics>();
+    for(auto&& e : s.counters()) {
+        switch(e.type()) {
+            case ::jogasaki::proto::sql::response::ExecuteResult::INSERTED_ROWS: ret->counter(counter_kind::inserted).count(e.value()); break;
+            case ::jogasaki::proto::sql::response::ExecuteResult::UPDATED_ROWS: ret->counter(counter_kind::updated).count(e.value()); break;
+            case ::jogasaki::proto::sql::response::ExecuteResult::MERGED_ROWS: ret->counter(counter_kind::merged).count(e.value()); break;
+            case ::jogasaki::proto::sql::response::ExecuteResult::DELETED_ROWS: ret->counter(counter_kind::deleted).count(e.value()); break;
+            default: break;
+        }
+    }
+    return ret;
+}
+
+inline std::tuple<bool, error, std::shared_ptr<request_statistics>> decode_execute_result(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_execute_result())  {
+        LOG(ERROR) << "**** missing execute_result **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {false, {}, {}};
+    }
+    auto& er = resp.execute_result();
+    if (er.has_error()) {
+        auto& err = er.error();
+        return {false, {err.status(), err.detail(), api::impl::map_error(err.code()), err.supplemental_text()}, {}};
+    }
+    return {true, {}, make_stats(er.success())};
 }
 
 inline std::string encode_dispose_prepare(std::uint64_t handle) {

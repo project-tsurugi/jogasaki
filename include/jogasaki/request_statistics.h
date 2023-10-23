@@ -21,6 +21,7 @@
 #include <string_view>
 #include <ostream>
 #include <unordered_map>
+#include <functional>
 
 namespace jogasaki {
 
@@ -98,6 +99,8 @@ private:
  */
 class request_statistics {
 public:
+    using each_counter_consumer = std::function<void(counter_kind kind, request_execution_counter const&)>;
+
     /**
      * @brief create new object
      */
@@ -114,6 +117,8 @@ public:
     request_statistics& operator=(request_statistics&& other) noexcept = default;
 
     request_execution_counter& counter(counter_kind kind);
+
+    void each_counter(each_counter_consumer consumer) const noexcept;
 
 private:
     std::unordered_map<std::underlying_type_t<counter_kind>, request_execution_counter> entity_{};

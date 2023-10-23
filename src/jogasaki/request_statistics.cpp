@@ -28,5 +28,13 @@ std::int64_t request_execution_counter::count() const noexcept {
 request_execution_counter& request_statistics::counter(counter_kind kind) {
     return entity_[static_cast<std::underlying_type_t<counter_kind>>(kind)];
 }
+
+void request_statistics::each_counter(
+    request_statistics::each_counter_consumer consumer
+) const noexcept {
+    for(auto&& [k, e] : entity_) {
+        consumer(static_cast<counter_kind>(k), e);
+    }
+}
 }
 

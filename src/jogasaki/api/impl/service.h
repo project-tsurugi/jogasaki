@@ -120,6 +120,8 @@ void set_allocated_object(sql::response::Response& r, T& p) {
         r.set_allocated_list_tables(&p);
     } else if constexpr (std::is_same_v<T, sql::response::GetErrorInfo>) {  //NOLINT
         r.set_allocated_get_error_info(&p);
+    } else if constexpr (std::is_same_v<T, sql::response::ExecuteResult>) {  //NOLINT
+        r.set_allocated_execute_result(&p);
     } else {
         static_fail();
     }
@@ -143,6 +145,8 @@ void release_object(sql::response::Response& r, T&) {
         r.release_list_tables();
     } else if constexpr (std::is_same_v<T, sql::response::GetErrorInfo>) {  //NOLINT
         r.release_get_error_info();
+    } else if constexpr (std::is_same_v<T, sql::response::ExecuteResult>) {  //NOLINT
+        r.release_execute_result();
     } else {
         static_fail();
     }
@@ -467,6 +471,41 @@ inline void success<sql::response::GetErrorInfo>(
         gei.release_success();
     }
     r.release_get_error_info();
+}
+
+inline sql::response::ExecuteResult::CounterType from(counter_kind kind) {
+    using k = counter_kind;
+    switch(kind) {
+        case k::inserted: return sql::response::ExecuteResult::INSERTED_ROWS;
+        case k::updated: return sql::response::ExecuteResult::UPDATED_ROWS;
+        case k::merged: return sql::response::ExecuteResult::MERGED_ROWS;
+        case k::deleted: return sql::response::ExecuteResult::DELETED_ROWS;
+        default: return sql::response::ExecuteResult::COUNTER_TYPE_UNSPECIFIED;
+    }
+}
+
+template<>
+inline void success<sql::response::ExecuteResult>(
+    tateyama::api::server::response& res,
+    request_info req_info,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<request_statistics> stats
+) {
+    sql::response::ExecuteResult::Success s{};
+    sql::response::ExecuteResult er{};
+    sql::response::Response r{};
+    er.set_allocated_success(&s);
+    r.set_allocated_execute_result(&er);
+    stats->each_counter([&](auto&& kind, auto&& counter){
+        if(counter.count() > 0) {
+            auto* c = s.add_counters();
+            c->set_type(from(kind));
+            c->set_value(counter.count());
+        }
+    });
+    res.code(response_code::success);
+    reply(res, r, req_info);
+    r.release_execute_result();
+    er.release_success();
 }
 
 inline void send_body_head(

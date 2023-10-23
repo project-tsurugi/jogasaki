@@ -324,14 +324,14 @@ void service::command_execute_statement(
             status::err_invalid_argument
         );
         abort_tx(tx, err_info);
-        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+        details::error<sql::response::ExecuteResult>(*res, err_info.get(), req_info);
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     std::shared_ptr<error::error_info> err_info{};
     if(auto rc = get_impl(*db_).create_executable(sql, e, err_info); rc != jogasaki::status::ok) {
         abort_tx(tx, err_info);
-        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+        details::error<sql::response::ExecuteResult>(*res, err_info.get(), req_info);
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx, req_info);
@@ -403,7 +403,7 @@ void service::command_execute_prepared_statement(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ExecuteResult>(pq, *res, req_info);
     if(! handle) {
         abort_tx(tx);
         return;
@@ -415,7 +415,7 @@ void service::command_execute_prepared_statement(
     std::shared_ptr<error::error_info> err_info{};
     if(auto rc = get_impl(*db_).resolve(handle, std::shared_ptr{std::move(params)}, e, err_info); rc != jogasaki::status::ok) {
         abort_tx(tx, err_info);
-        details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+        details::error<sql::response::ExecuteResult>(*res, err_info.get(), req_info);
         return;
     }
     execute_statement(res, std::shared_ptr{std::move(e)}, tx, req_info);
@@ -845,11 +845,10 @@ void service::execute_statement(
                 std::shared_ptr<api::error_info> info,  //NOLINT(performance-unnecessary-value-param)
                 std::shared_ptr<request_statistics> stats //NOLINT(performance-unnecessary-value-param)
             ){
-                (void) stats; // FIXME
                 if (s == jogasaki::status::ok) {
-                    details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
+                    details::success<sql::response::ExecuteResult>(*cbp->response_, req_info, stats);
                 } else {
-                    details::error<sql::response::ResultOnly>(*cbp->response_, info.get(), req_info);
+                    details::error<sql::response::ExecuteResult>(*cbp->response_, info.get(), req_info);
                 }
                 if(! callbacks_.erase(cbp->id_)) {
                     throw_exception(std::logic_error{"missing callback"});

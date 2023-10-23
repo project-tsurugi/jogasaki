@@ -89,7 +89,7 @@ inline constexpr task_enum_tag_t<Kind> task_enum_tag {};
 using callback = api::transaction_handle::callback;
 
 // original is in executor.h, but defining here in order to avoid cycle in headers inclusion
-using error_info_callback = std::function<
+using error_info_stats_callback = std::function<
     void(status, std::shared_ptr<error::error_info>, std::shared_ptr<request_statistics>)
 >;
 
@@ -99,7 +99,7 @@ struct statement_context {
         std::shared_ptr<api::parameter_set const> parameters,
         api::impl::database* database,
         std::shared_ptr<transaction_context> tx,
-        error_info_callback cb
+        error_info_stats_callback cb
     ) noexcept :
         prepared_(prepared),
         parameters_(std::move(parameters)),
@@ -113,7 +113,7 @@ struct statement_context {
     api::impl::database* database_{};  //NOLINT
     std::shared_ptr<transaction_context> tx_{};  //NOLINT
     std::unique_ptr<api::executable_statement> executable_statement_{};  //NOLINT
-    error_info_callback callback_{};  //NOLINT
+    error_info_stats_callback callback_{};  //NOLINT
 };
 
 void submit_teardown(request_context& req_context, bool force = false, bool try_on_suspended_worker = false);

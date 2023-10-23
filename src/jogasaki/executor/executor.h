@@ -42,12 +42,10 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief the callback type used for async execution
  */
-using error_info_callback = std::function<
-    void(status, std::shared_ptr<error::error_info>)
->;
+using error_info_callback = std::function<void(status, std::shared_ptr<error::error_info>)>;
 
 /**
- * @brief the callback type used for async execution
+ * @brief the callback type exchanging statistics information
  */
 using error_info_stats_callback = std::function<
     void(status, std::shared_ptr<error::error_info>, std::shared_ptr<request_statistics>)

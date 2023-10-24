@@ -87,9 +87,9 @@ private:
 
 }
 
-template<class T>
+template<class Response, class Request>
 jogasaki::api::transaction_handle validate_transaction_handle(
-    T msg,
+    Request msg,
     api::database* db,
     tateyama::api::server::response& res,
     details::request_info const& req_info
@@ -217,7 +217,7 @@ void service::command_get_error_info(
     details::request_info const& req_info
 ) {
     auto& gei = proto_req.get_error_info();
-    auto tx = validate_transaction_handle(gei, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::GetErrorInfo>(gei, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -242,7 +242,7 @@ void service::command_dispose_transaction(
     details::request_info const& req_info
 ) {
     auto& dt = proto_req.dispose_transaction();
-    auto tx = validate_transaction_handle(dt, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ResultOnly>(dt, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -260,9 +260,9 @@ void service::command_dispose_transaction(
     details::success<sql::response::ResultOnly>(*res, req_info);
 }
 
-template<class T>
+template<class Response, class Request>
 jogasaki::api::transaction_handle validate_transaction_handle(
-    T msg,
+    Request msg,
     api::database* db,
     tateyama::api::server::response& res,
     details::request_info const& req_info
@@ -274,7 +274,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
             "Invalid request format - missing transaction_handle",
             status::err_invalid_argument
         );
-        details::error<sql::response::ResultOnly>(res, err_info.get(), req_info);
+        details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
     jogasaki::api::transaction_handle tx{msg.transaction_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT
@@ -284,7 +284,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
             "Invalid request format - invalid transaction handle",
             status::err_invalid_argument
         );
-        details::error<sql::response::ResultOnly>(res, err_info.get(), req_info);
+        details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
     return tx;
@@ -311,7 +311,7 @@ void service::command_execute_statement(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_statement();
-    auto tx = validate_transaction_handle(eq, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ExecuteResult>(eq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -344,7 +344,7 @@ void service::command_execute_query(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_query();
-    auto tx = validate_transaction_handle(eq, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ResultOnly>(eq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -399,7 +399,7 @@ void service::command_execute_prepared_statement(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_statement();
-    auto tx = validate_transaction_handle(pq, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ExecuteResult>(pq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -428,7 +428,7 @@ void service::command_execute_prepared_query(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_query();
-    auto tx = validate_transaction_handle(pq, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ResultOnly>(pq, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -461,7 +461,7 @@ void service::command_commit(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& cm = proto_req.commit();
-    auto tx = validate_transaction_handle(cm, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ResultOnly>(cm, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -489,7 +489,7 @@ void service::command_rollback(
     details::request_info const& req_info
 ) {
     auto& rb = proto_req.rollback();
-    auto tx = validate_transaction_handle(rb, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ResultOnly>(rb, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -596,7 +596,7 @@ void service::command_execute_dump(
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& ed = proto_req.execute_dump();
-    auto tx = validate_transaction_handle(ed, db_, *res, req_info);
+    auto tx = validate_transaction_handle<sql::response::ResultOnly>(ed, db_, *res, req_info);
     if(! tx) {
         return;
     }
@@ -625,14 +625,14 @@ void service::command_execute_load(
     auto& ed = proto_req.execute_load();
     jogasaki::api::transaction_handle tx{};
     if(ed.has_transaction_handle()) {
-        tx = validate_transaction_handle(ed, db_, *res, req_info);
+        tx = validate_transaction_handle<sql::response::ExecuteResult>(ed, db_, *res, req_info);
         if (!tx) {
             return;
         }
     } else {
         // non-transactional load
     }
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ExecuteResult>(ed, *res, req_info);
     if(! handle) {
         return;
     }

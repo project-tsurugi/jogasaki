@@ -1505,7 +1505,7 @@ void service_api_test::test_load(bool transactional, status expected, Args...fil
         ASSERT_TRUE(st);
         ASSERT_EQ(expected == status::ok ? response_code::success : response_code::application_error, res->code_);
         {
-            auto [success, error] = decode_result_only(res->body_);
+            auto [success, error, stats] = decode_execute_result(res->body_);
             if(expected == status::ok) {
                 ASSERT_TRUE(success);
                 if(transactional) {

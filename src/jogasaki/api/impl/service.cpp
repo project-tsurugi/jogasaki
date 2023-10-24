@@ -1231,9 +1231,10 @@ void service::execute_load( //NOLINT
                     std::shared_ptr<error::error_info> info  //NOLINT(performance-unnecessary-value-param)
                 ) {
                     if (s == jogasaki::status::ok) {
-                        details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
+                        auto stats = std::make_shared<request_statistics>();
+                        details::success<sql::response::ExecuteResult>(*cbp->response_, req_info, std::move(stats));
                     } else {
-                        details::error<sql::response::ResultOnly>(*cbp->response_, info.get(), req_info);
+                        details::error<sql::response::ExecuteResult>(*cbp->response_, info.get(), req_info);
                     }
                     if (!callbacks_.erase(cbp->id_)) {
                         throw_exception(std::logic_error{"missing callback"});
@@ -1251,9 +1252,10 @@ void service::execute_load( //NOLINT
                 files,
                 [cbp, this, req_info](status s, std::shared_ptr<error::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
                     if (s == jogasaki::status::ok) {
-                        details::success<sql::response::ResultOnly>(*cbp->response_, req_info);
+                        auto stats = std::make_shared<request_statistics>();
+                        details::success<sql::response::ExecuteResult>(*cbp->response_, req_info, std::move(stats));
                     } else {
-                        details::error<sql::response::ResultOnly>(*cbp->response_, err_info.get(), req_info);
+                        details::error<sql::response::ExecuteResult>(*cbp->response_, err_info.get(), req_info);
                     }
                     if (!callbacks_.erase(cbp->id_)) {
                         throw_exception(std::logic_error{"missing callback"});

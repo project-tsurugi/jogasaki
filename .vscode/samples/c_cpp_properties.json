@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${env:HOME}/git/.local-${env:BUILD_TYPE}/include", // tsurugi installation directory
+                "${env:HOME}/git/.opt/include" // third-party installation directory
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compileCommands": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

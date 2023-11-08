@@ -8,7 +8,9 @@
 .DS_Store
 
 # VSCode
-/.vscode
+/.vscode/*
+!/.vscode/samples
+
 
 # CLion
 cmake-build-*

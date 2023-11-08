@@ -1,0 +1,42 @@
+{
+    "cmake.configureArgs": [
+        "-DCMAKE_PREFIX_PATH=${env:HOME}/git/.opt",
+        "-DFORCE_INSTALL_RPATH=ON",
+        "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+        "-DCMAKE_BUILD_TYPE=${env:BUILD_TYPE}"
+    ],
+    "cmake.installPrefix": "${env:HOME}/git/.local-${env:BUILD_TYPE}/",
+    "cmake.buildDirectory": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}",
+    "testMate.cpp.log.logpanel": true,
+    "testMate.cpp.log.logfile": "/tmp/testMate.log",
+    "testMate.cpp.test.advancedExecutables": [
+        {
+            "pattern": "build-${os_env:BUILD_TYPE}-${os_env:SHARKSFIN_IMPLEMENTATION}/**/*_test",
+            "cwd": "${absDirpath}",
+            "env": {}
+        }
+    ],
+    "testMate.cpp.debug.configTemplate": {
+        "type": "cppdbg",
+        "MIMode": "gdb",
+        "program": "${exec}",
+        "args": "${argsArray}",
+        "cwd": "${cwd}",
+        "env": "${envObj}",
+        "environment": "${envObjArray}",
+        "sourceFileMap": "${sourceFileMapObj}",
+        "externalConsole": false,
+        "testMate.cpp.debug.setEnv": {
+            "ASAN_OPTIONS": "detect_leaks=0"
+        },
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            }
+        ]
+    },
+    "C_Cpp.codeAnalysis.clangTidy.headerFilter": ".*/(include|src)/.*\\.h$",
+    "window.title": "${rootName}"
+}

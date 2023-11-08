@@ -8,7 +8,7 @@
     "cmake.installPrefix": "${env:HOME}/git/.local-${env:BUILD_TYPE}/",
     "cmake.buildDirectory": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}",
     "testMate.cpp.log.logpanel": true,
-    "testMate.cpp.log.logfile": "/tmp/testMate.log",
+    "testMate.cpp.log.logfile": "/tmp/testMate-jogasaki-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}.log",
     "testMate.cpp.test.advancedExecutables": [
         {
             "pattern": "build-${os_env:BUILD_TYPE}-${os_env:SHARKSFIN_IMPLEMENTATION}/**/*_test",

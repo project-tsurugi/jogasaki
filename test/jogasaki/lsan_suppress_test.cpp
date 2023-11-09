@@ -34,7 +34,8 @@ TEST_F(lsan_suppress_test, simple) {
     if(! (v != nullptr && contains(v, "suppressions"))) {
         GTEST_SKIP() << "Test should run only when LSAN is configured to suppress leaks from the testcase.";
     }
-    malloc(7);
+    auto r = malloc(7);
+    (void) r;
 }
 
 }

@@ -3,7 +3,8 @@
         "-DCMAKE_PREFIX_PATH=${env:HOME}/git/.opt",
         "-DFORCE_INSTALL_RPATH=ON",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
-        "-DCMAKE_BUILD_TYPE=${env:BUILD_TYPE}"
+        "-DCMAKE_BUILD_TYPE=${env:BUILD_TYPE}",
+        "-DSHARKSFIN_IMPLEMENTATION=${env:SHARKSFIN_IMPLEMENTATION}"
     ],
     "cmake.installPrefix": "${env:HOME}/git/.local-${env:BUILD_TYPE}/",
     "cmake.buildDirectory": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}",

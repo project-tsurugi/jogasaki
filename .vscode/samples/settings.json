@@ -10,11 +10,14 @@
     "cmake.buildDirectory": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}",
     "testMate.cpp.log.logpanel": true,
     "testMate.cpp.log.logfile": "/tmp/testMate-jogasaki-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}.log",
+    "testMate.cpp.discovery.testListCaching": true,
     "testMate.cpp.test.advancedExecutables": [
         {
             "pattern": "build-${os_env:BUILD_TYPE}-${os_env:SHARKSFIN_IMPLEMENTATION}/**/*_test",
             "cwd": "${absDirpath}",
-            "env": {}
+            "env": {
+                "GLOG_v": "50"
+            }
         }
     ],
     "testMate.cpp.debug.configTemplate": {

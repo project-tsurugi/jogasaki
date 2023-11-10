@@ -64,17 +64,26 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator 
             BOOST_ASSERT(locator->kind() == sharksfin::ErrorLocatorKind::storage_key); //NOLINT
             auto loc = static_cast<sharksfin::StorageKeyErrorLocator*>(locator);  //NOLINT
             data::aligned_buffer buf{default_record_buffer_size};
-            auto [meta, ref] = read_key_as_record_ref(tables, buf, loc->storage(), loc->key(), resource);
+            auto stg = loc->storage().has_value() ? loc->storage().value() : "";
             ss << "location={key:";
-            if(meta) {
-                ss << ref << *meta;
+            if (loc->key().has_value()) {
+                auto [meta, ref] = read_key_as_record_ref(tables, buf, stg, loc->key().value(), resource);
+                if (meta) {
+                    ss << ref << *meta;
+                } else {
+                    auto d = loc->key().value();
+                    utils::binary_printer p{d.data(), d.size()};
+                    ss << p;
+                }
             } else {
-                auto d = loc->key();
-                utils::binary_printer p{d.data(), d.size()};
-                ss << p;
+                ss << "<not available>";
             }
-            ss << " ";
-            ss << "storage:" << loc->storage();
+            ss << " storage:";
+            if (loc->storage().has_value()) {
+                ss << loc->storage().value();
+            } else {
+                ss << "<not available>";
+            }
             ss << "}";
         }
         default: break;

@@ -73,6 +73,7 @@
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/common/write.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
+#include <jogasaki/executor/common/empty.h>
 #include <jogasaki/executor/common/create_table.h>
 #include <jogasaki/executor/common/drop_table.h>
 #include <jogasaki/executor/common/create_index.h>
@@ -246,6 +247,8 @@ std::shared_ptr<mirror_container> preprocess_mirror(
             break;
         case statement::statement_kind::drop_index:
             container->work_level().set_minimum(statement_work_level_kind::infinity);
+            break;
+        case statement::statement_kind::empty:
             break;
         default:
             throw_exception(std::logic_error{""});
@@ -770,6 +773,27 @@ void create_mirror_for_write(
         )
     );
 }
+void create_mirror_for_empty_statement(
+    compiler_context& ctx,
+    maybe_shared_ptr<statement::statement> statement,
+    compiled_info info,
+    std::shared_ptr<mirror_container> const& mirrors,
+    parameter_set const* parameters
+) {
+auto ops = std::make_shared<executor::common::empty>();
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
+    ctx.executable_statement(
+        std::make_shared<executable_statement>(
+            std::move(statement),
+            std::move(info),
+            std::move(ops),
+            mirrors->host_variable_info(),
+            std::move(vars),
+            mirrors,
+            ctx.sql_text_shared()
+        )
+    );
+}
 
 void create_mirror_for_ddl(
     compiler_context& ctx,
@@ -941,6 +965,9 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             break;
         case statement_kind::drop_index:
             create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::empty:
+            create_mirror_for_empty_statement(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:
             throw_exception(std::logic_error{""});

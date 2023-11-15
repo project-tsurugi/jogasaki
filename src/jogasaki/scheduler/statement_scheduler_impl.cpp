@@ -73,6 +73,9 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
             dt(context);
             break;
         }
+        case kind::empty: {
+            break;
+        }
     }
 }
 

@@ -362,7 +362,7 @@ bool execute_async_on_context(
         }
         return true;
     }
-    if(!e->is_ddl() && rctx->configuration()->tasked_write()) {
+    if(!e->is_ddl() && !e->is_empty() && rctx->configuration()->tasked_write()) {
         // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
         job->callback([statement, on_completion, rctx](){  // callback is copy-based

@@ -30,6 +30,7 @@ enum class statement_kind : std::size_t {
     drop_table,
     create_index,
     drop_index,
+    empty,
 };
 
 /**
@@ -47,6 +48,7 @@ enum class statement_kind : std::size_t {
         case kind::drop_table: return "drop_table"sv;
         case kind::create_index: return "create_index"sv;
         case kind::drop_index: return "drop_index"sv;
+        case kind::empty: return "empty"sv;
     }
     std::abort();
 }

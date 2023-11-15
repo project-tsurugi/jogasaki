@@ -68,6 +68,8 @@ public:
 
     [[nodiscard]] bool is_ddl() const noexcept;
 
+    [[nodiscard]] bool is_empty() const noexcept;
+
     [[nodiscard]] maybe_shared_ptr<::takatori::statement::statement> const& statement() const noexcept;
 
     [[nodiscard]] yugawara::compiled_info const& compiled_info() const noexcept;

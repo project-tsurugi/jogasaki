@@ -26,6 +26,10 @@ bool executable_statement::is_execute() const noexcept {
     return statement_ && statement_->kind() == takatori::statement::statement_kind::execute;
 }
 
+bool executable_statement::is_empty() const noexcept {
+    return statement_ && statement_->kind() == takatori::statement::statement_kind::empty;
+}
+
 executable_statement::executable_statement(
     maybe_shared_ptr<::takatori::statement::statement> statement,
     yugawara::compiled_info compiled_info,

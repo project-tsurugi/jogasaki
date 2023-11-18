@@ -626,6 +626,14 @@ TEST_F(sql_test, cast_failure_in_where) {
     test_stmt_err("SELECT C0 FROM TT WHERE C0 = CAST('999999999999999999999' AS INT)", error_code::value_evaluation_exception);
 }
 
+TEST_F(sql_test, cast_failure_vs_null) {
+    // verify if evaluation failure is not ignored when comparing with null
+    execute_statement("create table TT (C0 int primary key, C1 int)");
+    execute_statement("INSERT INTO TT (C0) VALUES (1)");
+    test_stmt_err("SELECT C0 FROM TT WHERE C1 = CAST('999999999999999999999' AS INT)", error_code::value_evaluation_exception);
+    test_stmt_err("SELECT C0 FROM TT WHERE CAST('999999999999999999999' AS INT) = C1", error_code::value_evaluation_exception);
+}
+
 // regression test scenario - once updating sequence stuck on 4th insert
 TEST_F(sql_test, pkless_insert) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});

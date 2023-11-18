@@ -325,6 +325,8 @@ any engine::operator()(takatori::scalar::binary const& exp) {
     using optype = takatori::scalar::binary_operator;
     auto l = dispatch(*this, exp.left());
     auto r = dispatch(*this, exp.right());
+    if (l.error()) return l;
+    if (r.error()) return r;
     if (! l) return l;
     if (! r) return r;
     switch(exp.operator_kind()) {
@@ -570,6 +572,8 @@ any engine::operator()(takatori::scalar::cast const& exp) {
 any engine::operator()(takatori::scalar::compare const& exp) {
     auto l = dispatch(*this, exp.left());
     auto r = dispatch(*this, exp.right());
+    if (l.error()) return l;
+    if (r.error()) return r;
     if (! l) return l;
     if (! r) return r;
     return compare_any(exp.operator_kind(), l, r);

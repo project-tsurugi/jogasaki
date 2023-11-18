@@ -620,6 +620,12 @@ TEST_F(sql_test, cast_failure) {
     }
 }
 
+TEST_F(sql_test, cast_failure_in_where) {
+    execute_statement("create table TT (C0 int primary key)");
+    execute_statement("INSERT INTO TT (C0) VALUES (1)");
+    test_stmt_err("SELECT C0 FROM TT WHERE C0 = CAST('999999999999999999999' AS INT)", error_code::value_evaluation_exception);
+}
+
 // regression test scenario - once updating sequence stuck on 4th insert
 TEST_F(sql_test, pkless_insert) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});
@@ -740,32 +746,35 @@ TEST_F(sql_test, select_constant) {
 }
 
 // like expression not yet supported
-TEST_F(sql_test, DISABLED_select_boolean_expression) {
+TEST_F(sql_test, select_boolean_expression) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
     execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("select C1 like 'A%' from TT", result);
-        ASSERT_EQ(1, result.size());
-    }
+    test_stmt_err("select C1 like 'A%' from TT", error_code::unsupported_runtime_feature_exception);
+    // {
+        // std::vector<mock::basic_record> result{};
+        // execute_query("select C1 like 'A%' from TT", result);
+        // ASSERT_EQ(1, result.size());
+    // }
 }
 
 // like expression not yet supported
-TEST_F(sql_test, DISABLED_like_expression) {
+TEST_F(sql_test, like_expression) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
     execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("select * from TT where C1 like 'A%'", result);
-        ASSERT_EQ(1, result.size());
-    }
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("select * from TT where NOT C1 like 'A%'", result);
-        ASSERT_EQ(0, result.size());
-    }
+    test_stmt_err("select * from TT where C1 like 'A%'", error_code::unsupported_runtime_feature_exception);
+    // {
+        // std::vector<mock::basic_record> result{};
+        // execute_query("select * from TT where C1 like 'A%'", result);
+        // ASSERT_EQ(1, result.size());
+    // }
+    test_stmt_err("select * from TT where NOT C1 like 'A%'", error_code::unsupported_runtime_feature_exception);
+    // {
+        // std::vector<mock::basic_record> result{};
+        // execute_query("select * from TT where NOT C1 like 'A%'", result);
+        // ASSERT_EQ(0, result.size());
+    // }
 }
 
 // current compiler doesn't read double literal correctly

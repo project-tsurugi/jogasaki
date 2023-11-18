@@ -21,6 +21,7 @@
 #include <takatori/relation/step/join.h>
 #include <takatori/util/downcast.h>
 
+#include <jogasaki/data/any.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/meta/group_meta.h>
@@ -30,6 +31,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/utils/iterator_pair.h>
@@ -140,7 +142,7 @@ public:
         }
     }
 
-    bool assign_and_evaluate_condition(
+    data::any assign_and_evaluate_condition(
         join_context& ctx,
         cogroup<iterator>& cgrp,
         iterator_incrementer& incr
@@ -149,7 +151,10 @@ public:
         auto resource = ctx.varlen_resource();
         auto& vars = ctx.input_variables();
         expression::evaluator_context c{};
-        return !has_condition_ || evaluate_bool(c, evaluator_, vars, resource);
+        if(!has_condition_) {
+            return data::any{std::in_place_type<bool>, true};
+        }
+        return evaluate_bool(c, evaluator_, vars, resource);
     }
 
     bool call_downstream(
@@ -195,7 +200,11 @@ public:
                     break;
                 }
                 do {
-                    if(assign_and_evaluate_condition(ctx, cgrp, incr)) {
+                    auto a = assign_and_evaluate_condition(ctx, cgrp, incr);
+                    if(a.error()) {
+                        return handle_expression_error(ctx, a);
+                    }
+                    if(a.template to<bool>()) {
                         if(! call_downstream(context)) {
                             ctx.abort();
                             return {operation_status_kind::aborted};
@@ -213,9 +222,13 @@ public:
                     bool exists_match = false;
                     if(secondary_group_available) {
                         do {
-                            if(assign_and_evaluate_condition(ctx, cgrp, incr)) {
+                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr);
+                            if (a.error()) {
+                                return handle_expression_error(ctx, a);
+                            }
+                            if (a.template to<bool>()) {
                                 exists_match = true;
-                                if (! call_downstream(context)) {
+                                if (!call_downstream(context)) {
                                     ctx.abort();
                                     return {operation_status_kind::aborted};
                                 }
@@ -243,7 +256,11 @@ public:
                     bool exists_match = false;
                     if(groups_available(cgrp, true)) {
                         do {
-                            if(assign_and_evaluate_condition(ctx, cgrp, incr)) {
+                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr);
+                            if (a.error()) {
+                                return handle_expression_error(ctx, a);
+                            }
+                            if (a.template to<bool>()) {
                                 exists_match = true;
                                 break;
                             }

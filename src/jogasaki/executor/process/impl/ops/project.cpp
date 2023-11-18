@@ -23,6 +23,7 @@
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 
 #include "operator_base.h"
 #include "project_context.h"
@@ -79,8 +80,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {
-            VLOG_LP(log_error) << "evaluation error: " << result.to<expression::error>();
-            return error_abort(ctx, status::err_expression_evaluation_failure);
+            return handle_expression_error(ctx, result);
         }
         using t = takatori::type::type_kind;
         bool is_null = result.empty();

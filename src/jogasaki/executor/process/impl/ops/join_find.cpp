@@ -30,6 +30,7 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include "operator_base.h"
 #include "context_helper.h"
 #include "join_find_context.h"
@@ -197,7 +198,10 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
             if (condition_) {
                 expression::evaluator_context c{};
                 auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
-                if(! r) {
+                if (r.error()) {
+                    return handle_expression_error(ctx, r);
+                }
+                if(! r.to<bool>()) {
                     continue;
                 }
             }

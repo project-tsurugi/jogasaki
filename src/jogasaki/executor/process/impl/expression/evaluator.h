@@ -160,9 +160,10 @@ private:
  * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
  * never generate types whose values are stored via memory resource(e.g. accessor::text).
  * Then UB if such type is processed.
- * @return the result of evaluation. If the result is empty (i.e. null value), false is returned.
+ * @return error if the evaluation failed
+ * @return non-empty bool value of the evaluation result
  */
-[[nodiscard]] bool evaluate_bool(
+[[nodiscard]] any evaluate_bool(
     evaluator_context& ctx,
     evaluator& eval,
     executor::process::impl::variable_table& variables,

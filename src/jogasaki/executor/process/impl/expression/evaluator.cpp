@@ -422,6 +422,9 @@ any engine::length_any(any const& exp) {
 }
 
 any engine::is_null(any const& exp) {
+    if(exp.error()) {
+        return exp;
+    }
     return any{std::in_place_type<bool>, exp.empty()};
 }
 
@@ -621,7 +624,7 @@ any evaluator::operator()(
     return takatori::scalar::dispatch(e, *expression_);
 }
 
-bool evaluate_bool(
+any evaluate_bool(
     evaluator_context& ctx,
     evaluator& eval,
     variable_table& variables,
@@ -630,9 +633,9 @@ bool evaluate_bool(
     utils::checkpoint_holder h{resource};
     auto a = eval(ctx, variables, resource);
     if (a.error()) {
-        VLOG_LP(log_error) << "evaluation error: " << a.to<process::impl::expression::error>();
+        return a;
     }
-    return a && a.to<bool>();
+    return any{std::in_place_type<bool>, a && a.to<bool>()};
 }
 
 } // namespace

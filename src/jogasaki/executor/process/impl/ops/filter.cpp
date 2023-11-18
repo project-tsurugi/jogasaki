@@ -20,6 +20,7 @@
 
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include "operator_base.h"
 #include "filter_context.h"
@@ -64,7 +65,10 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     auto resource = ctx.varlen_resource();
     expression::evaluator_context c{};
     auto res = evaluate_bool(c, evaluator_, vars, resource);
-    if (res) {
+    if (res.error()) {
+        return handle_expression_error(ctx, res);
+    }
+    if (res.to<bool>()) {
         if (downstream_) {
             if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
                 ctx.abort();

@@ -72,8 +72,11 @@ struct cache_align secondary_key_field : index::field_info {
     bool key_{}; //NOLINT
 };
 /**
- * @brief primary target for write
- * @details this object represents write operation interface for primary index
+ * @brief secondary target for write
+ * @details this object represents write operation interface for secondary index
+ * It's associated the following records whose fields info. are given in the constructor.
+ * - source key/value records
+ *   - the source columns to generate secondary index key
  */
 class write_secondary_target {
 public:
@@ -92,6 +95,7 @@ public:
     /**
      * @brief create new object
      * @param storage_name the primary storage name to write
+     * @param secondary_key_fields the secondary key fields
      */
     write_secondary_target(
         std::string_view storage_name,

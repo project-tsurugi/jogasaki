@@ -37,7 +37,7 @@ static constexpr std::size_t npos = static_cast<std::size_t>(-1);
 
 /**
  * @brief field info of the update operation
- * @details update operation uses these fields to know how the variables or input record fields are are mapped to
+ * @details update operation uses these fields to know how the variables or input record fields are mapped to
  * key/value fields. The update operation retrieves the key/value records from kvs and decode to
  * the record (of key/value respectively), updates the record fields by replacing the value with one from variable table
  * record (source), encodes the record and puts into kvs.
@@ -52,7 +52,7 @@ struct cache_align update_field {
      * @param target_nullity_offset bit offset of the field nullity in the target record in ctx.key_store_/value_store_.
      * @param nullable whether the target field is nullable or not
      * @param source_external indicates whether the source is from host variables
-     * @param key indicates the filed is part of the key
+     * @param key indicates the fieled is part of the key
      */
     update_field(
         meta::field_type type,
@@ -86,6 +86,14 @@ struct cache_align update_field {
 /**
  * @brief primary target for write
  * @details this object represents write operation interface for primary index
+ * It hides encoding/decoding specs and provide write access api based on key/value record_ref.
+ * Encoding/decoding specification are given to construtor and held as 'fields'.
+ * It's associated the following records whose fields info. are given in the constructor.
+ * - input key record
+ *   - the source columns to generate key for finding target entry in the primary index
+ * - extracted key/value records
+ *   - the target columns to be filled by find operation
+ *   - the source columns to generate key/value to be put into the primary index
  */
 class write_primary_target {
 public:

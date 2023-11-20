@@ -265,8 +265,7 @@ status write_primary_target::decode_fields(
             return res;
         }
         target.set_null(f.nullity_offset_, false); // currently assuming fields are nullable and
-        // f.nullity_offset_ is valid even if f.nullable_
-        // is false
+        // f.nullity_offset_ is valid even if f.nullable_ is false
     }
     return status::ok;
 }

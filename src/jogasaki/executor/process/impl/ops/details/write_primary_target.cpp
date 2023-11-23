@@ -41,14 +41,14 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::throw_exception;
 
 status encode_fields(
-    std::vector<index::field_info> const& fields,
+    write_primary_target::field_mapping_type const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
 );
 
 status do_encode(
     data::aligned_buffer& buf,
-    std::vector<index::field_info> const& info,
+    write_primary_target::field_mapping_type const& info,
     accessor::record_ref source,
     std::string_view& out
 );
@@ -75,9 +75,9 @@ write_primary_target::write_primary_target(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
-    std::vector<index::field_info> input_keys,
-    std::vector<index::field_info> extracted_keys,
-    std::vector<index::field_info> extracted_values,
+    write_primary_target::field_mapping_type input_keys,
+    write_primary_target::field_mapping_type extracted_keys,
+    write_primary_target::field_mapping_type extracted_values,
     std::vector<details::update_field> updates
 ) :
     storage_name_(storage_name),
@@ -92,11 +92,11 @@ write_primary_target::write_primary_target(
 status write_primary_target::find_record_and_remove(
     write_primary_context& ctx,
     transaction_context& tx,
-    accessor::record_ref variables,
+    accessor::record_ref key,
     memory_resource* varlen_resource
 ) {
     std::string_view k{};
-    if(auto res = find_record(ctx, tx, variables, varlen_resource, k); res != status::ok) {
+    if(auto res = find_record(ctx, tx, key, varlen_resource, k); res != status::ok) {
         return res;
     }
     return remove_record_by_encoded_key(ctx, tx, k);
@@ -105,34 +105,34 @@ status write_primary_target::find_record_and_remove(
 status write_primary_target::find_record(
     write_primary_context& ctx,
     transaction_context& tx,
-    accessor::record_ref variables,
+    accessor::record_ref key,
     memory_resource* varlen_resource
 ) {
     std::string_view k{};
-    return find_record(ctx, tx, variables, varlen_resource, k);
+    return find_record(ctx, tx, key, varlen_resource, k);
 }
 
 status write_primary_target::find_record(
     write_primary_context& ctx,
     transaction_context& tx,
-    accessor::record_ref variables,
+    accessor::record_ref key,
     memory_resource* varlen_resource,
-    std::string_view& key
+    std::string_view& encoded_key
 ) {
-    if(auto res = prepare_encoded_key(ctx, variables, key); res != status::ok) {
+    if(auto res = prepare_encoded_key(ctx, key, encoded_key); res != status::ok) {
         return res;
     }
     std::string_view v{};
-    if(auto res = ctx.stg_->get(tx, key, v); res != status::ok) {
+    if(auto res = ctx.stg_->get(tx, encoded_key, v); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }
     kvs::readable_stream keys{key.data(), key.size()};
     kvs::readable_stream values{v.data(), v.size()};
-    if(auto res = decode_fields(extracted_keys_, keys, ctx.key_store_.ref(), varlen_resource); res != status::ok) {
+    if(auto res = decode_fields(extracted_keys_, keys, ctx.extracted_key_store_.ref(), varlen_resource); res != status::ok) {
         return res;
     }
-    if(auto res = decode_fields(extracted_values_, values, ctx.value_store_.ref(), varlen_resource); res != status::ok) {
+    if(auto res = decode_fields(extracted_values_, values, ctx.extracted_value_store_.ref(), varlen_resource); res != status::ok) {
         return res;
     }
     return status::ok;
@@ -141,10 +141,10 @@ status write_primary_target::find_record(
 status write_primary_target::remove_record(
     write_primary_context& ctx,
     transaction_context& tx,
-    accessor::record_ref variables
+    accessor::record_ref key
 ) {
     std::string_view k{};
-    if(auto res = prepare_encoded_key(ctx, variables, k); res != status::ok) {
+    if(auto res = prepare_encoded_key(ctx, key, k); res != status::ok) {
         return res;
     }
     return remove_record_by_encoded_key(ctx, tx, k);
@@ -153,9 +153,9 @@ status write_primary_target::remove_record(
 status write_primary_target::remove_record_by_encoded_key(
     write_primary_context& ctx,
     transaction_context& tx,
-    std::string_view key
+    std::string_view encoded_key
 ) {
-    if(auto res = ctx.stg_->remove(tx, key); res != status::ok) {
+    if(auto res = ctx.stg_->remove(tx, encoded_key); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }
@@ -176,7 +176,7 @@ status write_primary_target::prepare_encoded_key(
 
 status do_encode(
     data::aligned_buffer& buf,
-    std::vector<index::field_info> const& info,
+    write_primary_target::field_mapping_type const& info,
     accessor::record_ref source,
     std::string_view& out
 ) {
@@ -206,11 +206,11 @@ status write_primary_target::encode_and_put(
 ) const {
     std::string_view k{};
     std::string_view v{};
-    if(auto res = do_encode(ctx.key_buf_, extracted_keys_, ctx.key_store_.ref(), k); res != status::ok) {
+    if(auto res = do_encode(ctx.key_buf_, extracted_keys_, ctx.extracted_key_store_.ref(), k); res != status::ok) {
         return res;
     }
     ctx.key_len_ = k.size();
-    if(auto res = do_encode(ctx.value_buf_, extracted_values_, ctx.value_store_.ref(), v); res != status::ok) {
+    if(auto res = do_encode(ctx.value_buf_, extracted_values_, ctx.extracted_value_store_.ref(), v); res != status::ok) {
         return res;
     }
     if(auto res = ctx.stg_->put(tx, k, v, opt); res != status::ok) {
@@ -227,7 +227,7 @@ void write_primary_target::update_record(
 ) {
     for(auto const& f : updates_) {
         // assuming intermediate fields are nullable. Nullability check is done on encoding.
-        auto target = f.key_ ? ctx.key_store_.ref() : ctx.value_store_.ref();
+        auto target = f.key_ ? ctx.extracted_key_store_.ref() : ctx.extracted_value_store_.ref();
         utils::copy_nullable_field(
             f.type_,
             target,
@@ -241,7 +241,7 @@ void write_primary_target::update_record(
 }
 
 status write_primary_target::decode_fields(
-    std::vector<index::field_info> const& fields,
+    write_primary_target::field_mapping_type const& fields,
     kvs::readable_stream& stream,
     accessor::record_ref target,
     memory::lifo_paged_memory_resource* varlen_resource
@@ -271,7 +271,7 @@ status write_primary_target::decode_fields(
 }
 
 status encode_fields(
-    std::vector<index::field_info> const& fields,
+    write_primary_target::field_mapping_type const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
 ) {

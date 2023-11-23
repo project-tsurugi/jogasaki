@@ -35,11 +35,7 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::throw_exception;
 
 /**
- * @brief field info of the update operation
- * @details update operation uses these fields to know how the variables or input record fields are are mapped to
- * key/value fields. The update operation retrieves the key/value records from kvs and decode to
- * the record (of key/value respectively), updates the record fields by replacing the value with one from variable table
- * record (source), encodes the record and puts into kvs.
+ * @brief field info for secondary index key
  */
 struct cache_align secondary_key_field : index::field_info {
     /**
@@ -71,21 +67,26 @@ struct cache_align secondary_key_field : index::field_info {
 
     bool key_{}; //NOLINT
 };
+
 /**
  * @brief secondary target for write
  * @details this object represents write operation interface for secondary index
- * It's associated the following records whose fields info. are given in the constructor.
- * - source key/value records
- *   - the source columns to generate secondary index key
+ * It hides encoding/decoding details under field mapping and provide write access api based on key/value record_ref.
+ * It's associated the following records and each record is represented with a field mapping and record_ref.
+ * - primary index key/value records
+ *   - the source records of the primary index key/value to generate secondary index key
+ * This object holds common static information and dynamically changing parts are separated as write_secondary_context.
  */
 class write_secondary_target {
 public:
     friend class write_secondary_context;
 
-    using key = takatori::relation::write::key;
-    using column = takatori::relation::write::column;
+    /**
+     * @brief field mapping type
+     */
+    using field_mapping_type = std::vector<details::secondary_key_field>;
+
     using memory_resource = memory::lifo_paged_memory_resource;
-    using variable = takatori::descriptor::variable;
 
     /**
      * @brief create empty object
@@ -99,7 +100,7 @@ public:
      */
     write_secondary_target(
         std::string_view storage_name,
-        std::vector<details::secondary_key_field> secondary_key_fields
+        field_mapping_type secondary_key_fields
     ) :
         storage_name_(storage_name),
         secondary_key_fields_(std::move(secondary_key_fields))
@@ -114,6 +115,8 @@ public:
     /**
      * @brief create new object from takatori columns
      * @param idx target index information
+     * @param primary_key_meta primary key meta
+     * @param primary_value_meta primary value meta
      */
     write_secondary_target(
         yugawara::storage::index const& idx,
@@ -128,6 +131,11 @@ public:
 
     /**
      * @brief encode key/value and put them to index
+     * @param ctx write secondary context
+     * @param tx transaction context
+     * @param primary_key key record for the primary index used to generate secondary key
+     * @param primary_value value record for the primary index used to generate secondary key
+     * @param encoded_primary_key encoded primary key (redundant with `primary_key` but for performance)
      * @returns status::ok when successful
      * @returns any other error otherwise
      * @note this uses `upsert` so status::already_exist is not expected to be returned
@@ -135,13 +143,18 @@ public:
     status encode_and_put(
         write_secondary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref source_key,
-        accessor::record_ref source_value,
-        std::string_view primary_key
+        accessor::record_ref primary_key,
+        accessor::record_ref primary_value,
+        std::string_view encoded_primary_key
     ) const;
 
     /**
      * @brief encode key and remove the corresponding entry in the index
+     * @param ctx write secondary context
+     * @param tx transaction context
+     * @param primary_key key record for the primary index used to generate secondary key
+     * @param primary_value value record for the primary index used to generate secondary key
+     * @param encoded_primary_key encoded primary key (redundant with `primary_key` but for performance)
      * @returns status::ok when successful
      * @returns status::not_found when target entry is not found
      * @returns any other error otherwise
@@ -149,13 +162,14 @@ public:
     status encode_and_remove(
         write_secondary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref source_key,
-        accessor::record_ref source_value,
-        std::string_view primary_key
+        accessor::record_ref primary_key,
+        accessor::record_ref primary_value,
+        std::string_view encoded_primary_key
     ) const;
 
     /**
      * @brief accessor to storage name
+     * @return storage name
      */
     [[nodiscard]] std::string_view storage_name() const noexcept {
         return storage_name_;
@@ -163,17 +177,17 @@ public:
 
 private:
     std::string storage_name_{};
-    std::vector<details::secondary_key_field> secondary_key_fields_{};
+    field_mapping_type secondary_key_fields_{};
 
-    status encode_key(
+    status encode_secondary_key(
         write_secondary_context& ctx,
-        accessor::record_ref source_key,
-        accessor::record_ref source_value,
-        std::string_view primary_key,
+        accessor::record_ref primary_key,
+        accessor::record_ref primary_value,
+        std::string_view encoded_primary_key,
         std::string_view& out
     ) const;
 
-    std::vector<details::secondary_key_field> create_fields(
+    field_mapping_type create_fields(
         yugawara::storage::index const& idx,
         maybe_shared_ptr<meta::record_meta> const& primary_key_meta, //NOLINT
         maybe_shared_ptr<meta::record_meta> const& primary_value_meta //NOLINT

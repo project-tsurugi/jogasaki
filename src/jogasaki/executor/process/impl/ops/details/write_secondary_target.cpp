@@ -30,11 +30,11 @@
 
 namespace jogasaki::executor::process::impl::ops::details {
 
-status details::write_secondary_target::encode_key(
+status details::write_secondary_target::encode_secondary_key(
     write_secondary_context& ctx,
-    accessor::record_ref source_key,
-    accessor::record_ref source_value,
-    std::string_view primary_key,
+    accessor::record_ref primary_key,
+    accessor::record_ref primary_value,
+    std::string_view encoded_primary_key,
     std::string_view& out
 ) const {
     std::size_t length{};
@@ -42,7 +42,7 @@ status details::write_secondary_target::encode_key(
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
         kvs::writable_stream s{buf.data(), buf.capacity(), loop == 0};
         for(auto&& f : secondary_key_fields_) {
-            auto src = f.key_ ? source_key : source_value;
+            auto src = f.key_ ? primary_key : primary_value;
             if (f.nullable_) {
                 if(auto res = kvs::encode_nullable(src, f.offset_, f.nullity_offset_, f.type_, f.spec_, s);
                     res != status::ok) {
@@ -54,7 +54,7 @@ status details::write_secondary_target::encode_key(
                 }
             }
         }
-        if (auto res = s.write(primary_key.data(), primary_key.size()); res != status::ok) {
+        if (auto res = s.write(encoded_primary_key.data(), encoded_primary_key.size()); res != status::ok) {
             return res;
         }
         length = s.size();
@@ -74,12 +74,12 @@ status details::write_secondary_target::encode_key(
 status details::write_secondary_target::encode_and_put(
     write_secondary_context& ctx,
     transaction_context& tx,
-    accessor::record_ref source_key,
-    accessor::record_ref source_value,
-    std::string_view primary_key
+    accessor::record_ref primary_key,
+    accessor::record_ref primary_value,
+    std::string_view encoded_primary_key
 ) const {
     std::string_view k{};
-    if(auto res = encode_key(ctx, source_key, source_value, primary_key, k); res != status::ok) {
+    if(auto res = encode_secondary_key(ctx, primary_key, primary_value, encoded_primary_key, k); res != status::ok) {
         return res;
     }
     if(auto res = ctx.stg_->put(tx, k, {}, kvs::put_option::create_or_update); res != status::ok) {
@@ -93,12 +93,12 @@ status details::write_secondary_target::encode_and_put(
 status details::write_secondary_target::encode_and_remove(
     write_secondary_context& ctx,
     transaction_context& tx,
-    accessor::record_ref source_key,
-    accessor::record_ref source_value,
-    std::string_view primary_key
+    accessor::record_ref primary_key,
+    accessor::record_ref primary_value,
+    std::string_view encoded_primary_key
 ) const {
     std::string_view k{};
-    if(auto res = encode_key(ctx, source_key, source_value, primary_key, k); res != status::ok) {
+    if(auto res = encode_secondary_key(ctx, primary_key, primary_value, encoded_primary_key, k); res != status::ok) {
         return res;
     }
     if(auto res = ctx.stg_->remove(tx, k); ! is_ok(res)) {
@@ -109,7 +109,7 @@ status details::write_secondary_target::encode_and_remove(
     return status::ok;
 }
 
-std::vector<details::secondary_key_field> write_secondary_target::create_fields(
+write_secondary_target::field_mapping_type write_secondary_target::create_fields(
     yugawara::storage::index const& idx,
     maybe_shared_ptr<meta::record_meta> const& primary_key_meta,
     maybe_shared_ptr<meta::record_meta> const& primary_value_meta
@@ -117,7 +117,7 @@ std::vector<details::secondary_key_field> write_secondary_target::create_fields(
     auto& table = idx.table();
     auto primary = table.owner()->find_primary_index(table);
     if(!(primary != nullptr)) throw_exception(std::logic_error{""});
-    std::vector<details::secondary_key_field> ret{};
+    write_secondary_target::field_mapping_type ret{};
     ret.reserve(table.columns().size());
     for(auto&& k : idx.keys()) {
         bool found = false;

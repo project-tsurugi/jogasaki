@@ -92,9 +92,13 @@ struct write_field : process::impl::ops::default_value_property {
         nullable_(nullable)
     {}
 
+    //@brief value position in the tuple. npos if values clause doesn't contain one for this field.
     std::size_t index_{};  //NOLINT
+    //@brief field type
     meta::field_type type_{};  //NOLINT
+    //@brief coding spec
     kvs::coding_spec spec_{};  //NOLINT
+    //@brief if the field is nullable
     bool nullable_{};  //NOLINT
 };
 

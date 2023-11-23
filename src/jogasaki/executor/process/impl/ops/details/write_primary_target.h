@@ -48,8 +48,8 @@ struct cache_align update_field {
      * @param type type of the field
      * @param source_offset byte offset of the field in the input variables record (in variable table)
      * @param source_nullity_offset bit offset of the field nullity in the input variables record
-     * @param target_offset byte offset of the field in the target record in ctx.key_store_/value_store_.
-     * @param target_nullity_offset bit offset of the field nullity in the target record in ctx.key_store_/value_store_.
+     * @param target_offset byte offset of the field in the target record in ctx.extracted_key_store_/extracted_value_store_.
+     * @param target_nullity_offset bit offset of the field nullity in the target record in ctx.extracted_key_store_/extracted_value_store_.
      * @param nullable whether the target field is nullable or not
      * @param source_external indicates whether the source is from host variables
      * @param key indicates the fieled is part of the key
@@ -86,18 +86,25 @@ struct cache_align update_field {
 /**
  * @brief primary target for write
  * @details this object represents write operation interface for primary index
- * It hides encoding/decoding specs and provide write access api based on key/value record_ref.
- * Encoding/decoding specification are given to construtor and held as 'fields'.
- * It's associated the following records whose fields info. are given in the constructor.
+ * It hides encoding/decoding details under field mapping and provide write access api based on key/value record_ref.
+ * It's associated the following records and each record is represented with a field mapping and record_ref.
  * - input key record
  *   - the source columns to generate key for finding target entry in the primary index
  * - extracted key/value records
  *   - the target columns to be filled by find operation
  *   - the source columns to generate key/value to be put into the primary index
+ * This object holds common static information and dynamically changing parts are separated as write_primary_context.
+ * Extracted key/value records are stored in the context object, while the input key record is stored externally.
  */
 class write_primary_target {
 public:
     friend class write_primary_context;
+
+    /**
+     * @brief field mapping type
+     * @details list of fields that composes the key or value record
+     */
+    using field_mapping_type = std::vector<index::field_info>;
 
     using key = takatori::relation::write::key;
     using column = takatori::relation::write::column;
@@ -123,9 +130,9 @@ public:
         std::string_view storage_name,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
-        std::vector<index::field_info> input_keys,
-        std::vector<index::field_info> extracted_keys,
-        std::vector<index::field_info> extracted_values,
+        field_mapping_type input_keys,
+        field_mapping_type extracted_keys,
+        field_mapping_type extracted_values,
         std::vector<details::update_field> updates
     );
 
@@ -152,7 +159,7 @@ public:
     );
 
     /**
-     * @brief encode key, find the record, fill variables, and remove
+     * @brief encode key, find the record, fill extracted key/value records, and remove
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
@@ -160,12 +167,12 @@ public:
     status find_record_and_remove(
         write_primary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref variables,
+        accessor::record_ref key,
         memory_resource* varlen_resource
     );
 
     /**
-     * @brief encode key, find the record, and fill variables
+     * @brief encode key, find the record, and fill extracted key/value records
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
@@ -173,7 +180,7 @@ public:
     status find_record(
         write_primary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref variables,
+        accessor::record_ref key,
         memory_resource* varlen_resource
     );
 
@@ -183,9 +190,9 @@ public:
     status find_record(
         write_primary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref variables,
+        accessor::record_ref key,
         memory_resource* varlen_resource,
-        std::string_view& key
+        std::string_view& encoded_key
     );
 
     /**
@@ -197,7 +204,7 @@ public:
     status remove_record(
         write_primary_context& ctx,
         transaction_context& tx,
-        accessor::record_ref variables
+        accessor::record_ref key
     );
 
     /**
@@ -209,11 +216,11 @@ public:
     status remove_record_by_encoded_key(
         write_primary_context& ctx,
         transaction_context& tx,
-        std::string_view key
+        std::string_view encoded_key
     );
 
     /**
-     * @brief do update by copying values from source variable(or host variables) to target.
+     * @brief update extracted key/values by copying values from source variable(or host variables)
      */
     void update_record(
         write_primary_context& ctx,
@@ -222,7 +229,7 @@ public:
     );
 
     /**
-     * @brief gather the extracted (possibly updated) variables, encode key/value and put them to index
+     * @brief gather the extracted key/value records, encode and put them to index
      * @returns status::ok when successful
      * @returns status::already_exist if record already exists and `opt` is `create`
      * @returns status::not_found if record not found and `opt` is `update`
@@ -258,9 +265,9 @@ private:
     std::string storage_name_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
-    std::vector<index::field_info> input_keys_{};
-    std::vector<index::field_info> extracted_keys_{};
-    std::vector<index::field_info> extracted_values_{};
+    field_mapping_type input_keys_{};
+    field_mapping_type extracted_keys_{};
+    field_mapping_type extracted_values_{};
     std::vector<details::update_field> updates_{};
 
     std::vector<details::update_field> create_update_fields(
@@ -272,7 +279,7 @@ private:
     );
 
     status decode_fields(
-        std::vector<index::field_info> const& fields,
+        field_mapping_type const& fields,
         kvs::readable_stream& stream,
         accessor::record_ref target,
         memory_resource* varlen_resource

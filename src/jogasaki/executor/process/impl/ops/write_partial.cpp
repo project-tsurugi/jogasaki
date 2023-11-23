@@ -85,7 +85,7 @@ bool update_skips_deletion(write_partial_context& ctx) {
 
 operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
-    // find update target and fill ctx.key_store_ and ctx.value_store_
+    // find update target and fill internal extracted key/values in primary target
     std::string_view encoded{};
     if(auto res = primary_.find_record(
             context,
@@ -126,14 +126,14 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
         }
     }
 
-    // update fields in key_store_/value_store_ with values from variable table
+    // update extracted key/value in primary target with values from variable table
     primary_.update_record(
         context,
         ctx.input_variables().store().ref(),
         host_variables() ? host_variables()->store().ref() : accessor::record_ref{}
     );
 
-    // encode values from key_store_/value_store_ and send to kvs
+    // encode extracted key/value in primary target and send to kvs
     kvs::put_option opt = primary_key_updated_ ? kvs::put_option::create : kvs::put_option::create_or_update;
     if(auto res = primary_.encode_and_put(context, *ctx.transaction(), opt); res != status::ok) {
         abort_transaction(*ctx.transaction());
@@ -180,7 +180,7 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
         return {};
     }
 
-    // find update target and fill ctx.key_store_ and ctx.value_store_ to delete from secondaries
+    // find update target and fill ctx.extracted_key_store_ and ctx.extracted_value_store_ to delete from secondaries
     if(auto res = primary_.find_record_and_remove(
             context,
             *ctx.transaction(),

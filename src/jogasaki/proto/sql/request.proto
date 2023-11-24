@@ -370,4 +370,13 @@ message Request {
     GetErrorInfo get_error_info = 19;
     DisposeTransaction dispose_transaction = 20;
   }
+
+  reserved 21 to 99;
+
+  // service message version (major)
+  uint64 service_message_version_major = 100;
+
+  // service message version (minor)
+  uint64 service_message_version_minor = 101;
+
 }

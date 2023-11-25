@@ -433,7 +433,15 @@ TEST_F(ddl_test, string_args) {
 }
 
 TEST_F(ddl_test, default_value) {
+    // NOT NULL clause and DEFAULT clause cannot be specified at the same time
+    // TODO check with new compiler
     test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT NOT NULL DEFAULT 100)", error_code::syntax_exception);
+}
+
+TEST_F(ddl_test, negative_default_value) {
+    // DEFAULT clause with negative integer cannot be specified
+    // TODO check with new compiler
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT DEFAULT -100)", error_code::syntax_exception);
 }
 
 TEST_F(ddl_test, drop_indices_cascade) {

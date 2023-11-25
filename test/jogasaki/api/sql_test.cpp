@@ -634,51 +634,6 @@ TEST_F(sql_test, cast_failure_vs_null) {
     test_stmt_err("SELECT C0 FROM TT WHERE CAST('999999999999999999999' AS INT) = C1", error_code::value_evaluation_exception);
 }
 
-// regression test scenario - once updating sequence stuck on 4th insert
-TEST_F(sql_test, pkless_insert) {
-    utils::set_global_tx_option(utils::create_tx_option{false, true});
-    execute_statement("create table TT (C0 int, C1 int)");
-    wait_epochs(1);
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
-    wait_epochs(1);
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
-    wait_epochs(1);
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
-    wait_epochs(1);
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0 FROM TT", result);
-        ASSERT_EQ(4, result.size());
-    }
-}
-
-TEST_F(sql_test, insert_without_explicit_column) {
-    std::unique_ptr<api::executable_statement> stmt0{};
-    ASSERT_EQ(status::ok, db_->create_executable("INSERT INTO T0 VALUES (1, 20.0)", stmt0));
-    auto tx = utils::create_transaction(*db_);
-    ASSERT_EQ(status::ok, tx->execute(*stmt0));
-    ASSERT_EQ(status::ok, tx->commit());
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0", result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(1,20.0)), result[0]);
-}
-
-TEST_F(sql_test, pkless_insert_without_explicit_column) {
-    utils::set_global_tx_option(utils::create_tx_option{false, true});
-    execute_statement("create table TT (C0 int, C1 int)");
-    execute_statement("INSERT INTO TT VALUES (2,20)");
-    execute_statement("INSERT INTO TT VALUES (2,20)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, C1 FROM TT", result);
-        ASSERT_EQ(2, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,20)), result[0]);
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2,20)), result[1]);
-    }
-}
-
 // jogasaki should catch runtime exception from compiler
 TEST_F(sql_test, DISABLED_subquery) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});

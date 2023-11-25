@@ -127,7 +127,7 @@ status write_primary_target::find_record(
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }
-    kvs::readable_stream keys{key.data(), key.size()};
+    kvs::readable_stream keys{encoded_key.data(), encoded_key.size()};
     kvs::readable_stream values{v.data(), v.size()};
     if(auto res = decode_fields(extracted_keys_, keys, ctx.extracted_key_store_.ref(), varlen_resource); res != status::ok) {
         return res;

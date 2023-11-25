@@ -70,7 +70,8 @@ status test_response::body_head(std::string_view body_head) {
     return status::ok;
 }
 
-void test_response::error(proto::diagnostics::Record const&) {
+void test_response::error(proto::diagnostics::Record const& record) {
+    error_ = record;
     completed_ = true;
 }
 

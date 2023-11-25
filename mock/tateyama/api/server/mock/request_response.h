@@ -169,6 +169,7 @@ public:
     std::size_t released_{};  //NOLINT
     std::function<void(std::string_view)> on_write_{}; //NOLINT
     std::size_t session_id_{};  //NOLINT
+    proto::diagnostics::Record error_{};  //NOLINT
 };
 
 }

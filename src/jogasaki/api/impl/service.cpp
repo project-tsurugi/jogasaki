@@ -709,6 +709,34 @@ void report_error(
     res.error(rec);
 }
 
+std::string version_string(std::size_t major, std::size_t minor) {
+    return string_builder{} << "sql-" << major << "." << minor << string_builder::to_string;
+}
+
+bool check_message_version(
+    sql::request::Request const& proto_req,
+    tateyama::api::server::response& res,
+    std::size_t reqid
+) {
+    auto major = proto_req.service_message_version_major();
+    auto minor = proto_req.service_message_version_minor();
+    //FIXME remove this if statement when client is ready and sends message version
+    if(minor == 0 && major == 0) {
+        return true;
+    }
+    if(major == service_message_version_major) {
+        return true;
+    }
+    auto msg = string_builder{} <<
+        "inconsistent service message version: see"
+        " https://github.com/project-tsurugi/tateyama/blob/master/docs/service-message-compatibilities.md"
+        " (client: \"" << version_string(major, minor) <<
+        "\", server: \"" << version_string(service_message_version_major, service_message_version_minor) << "\")" <<
+        string_builder::to_string;
+    report_error(res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
+    return false;
+}
+
 bool service::process(
     std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
@@ -735,6 +763,9 @@ bool service::process(
             return true;
         }
         VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size() << "): " << utils::to_debug_string(proto_req);
+    }
+    if(! check_message_version(proto_req, *res, reqid)) {
+        return true;
     }
 
     switch (proto_req.request_case()) {

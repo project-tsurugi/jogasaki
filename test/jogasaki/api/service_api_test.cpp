@@ -967,6 +967,7 @@ TEST_F(service_api_test, protobuf1) {
 }
 
 TEST_F(service_api_test, invalid_request) {
+    // error returned as parse error
     auto req = std::make_shared<tateyama::api::server::mock::test_request>("ABC");
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -982,7 +983,6 @@ TEST_F(service_api_test, empty_request) {
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    EXPECT_NE(response_code::success, res->code_);
     EXPECT_NE(response_code::success, res->code_);
 }
 

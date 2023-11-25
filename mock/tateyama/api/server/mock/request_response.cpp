@@ -71,7 +71,7 @@ status test_response::body_head(std::string_view body_head) {
 }
 
 void test_response::error(proto::diagnostics::Record const&) {
-    // no-op
+    completed_ = true;
 }
 
 status test_response::acquire_channel(std::string_view name, std::shared_ptr<data_channel>& ch) {

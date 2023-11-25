@@ -127,6 +127,8 @@ public:
 
     status body_head(std::string_view body_head) override;
 
+    void error(proto::diagnostics::Record const& record) override;
+
     status acquire_channel(std::string_view name, std::shared_ptr<data_channel>& ch) override;
 
     status release_channel(data_channel& ch) override;

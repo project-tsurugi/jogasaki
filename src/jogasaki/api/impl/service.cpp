@@ -31,6 +31,7 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/utils/proto_field_types.h>
+#include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/meta/external_record_meta.h>
@@ -694,6 +695,20 @@ bool service::operator()(
     return true;
 }
 
+void report_error(
+    tateyama::api::server::response& res,
+    tateyama::proto::diagnostics::Code code,
+    std::string_view msg,
+    std::size_t reqid
+) {
+    VLOG(log_error) << log_location_prefix << msg;
+    tateyama::proto::diagnostics::Record rec{};
+    rec.set_code(code);
+    rec.set_message(msg.data(), msg.size());
+    VLOG(log_trace) << log_location_prefix << "respond with error (rid=" << reqid << "): " << utils::to_debug_string(rec);
+    res.error(rec);
+}
+
 bool service::process(
     std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
@@ -715,11 +730,8 @@ bool service::process(
         trace_scope_name("parse_request");  //NOLINT
         auto s = req->payload();
         if (!proto_req.ParseFromArray(s.data(), static_cast<int>(s.size()))) {
-            VLOG(log_error) << log_location_prefix << "parse error";
-            res->code(response_code::io_error);
-            std::string msg{"parse error with request body"};
-            VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << reqid << " len=" << msg.size() << "): " << msg;
-            res->body(msg);
+            auto msg = string_builder{} << "parse error with request (rid=" << reqid << ") body:" << utils::binary_printer{s} << string_builder::to_string;
+            report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             return true;
         }
         VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size() << "): " << utils::to_debug_string(proto_req);
@@ -812,11 +824,8 @@ bool service::process(
             break;
         }
         default:
-            std::string msg{"invalid request code: "};
-            VLOG(log_error) << log_location_prefix << msg << proto_req.request_case();
-            res->code(response_code::io_error);
-            VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << reqid << " len=" << msg.size() << "):" << std::endl << msg;
-            res->body(msg);
+            auto msg = string_builder{} << "request code is invalid (rid=" << reqid << ") code:" << proto_req.request_case() << " body:" << utils::to_debug_string(proto_req) << string_builder::to_string;
+            report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             break;
     }
     if (enable_performance_counter) {

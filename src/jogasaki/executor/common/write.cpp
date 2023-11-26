@@ -303,6 +303,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
             host_variables_,
             key_store
         ); res != status::ok) {
+            abort_transaction(*tx);
             return false;
         }
         if(auto res = create_record_from_tuple(
@@ -314,6 +315,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
             host_variables_,
             value_store
         ); res != status::ok) {
+            abort_transaction(*tx);
             return false;
         }
 
@@ -355,6 +357,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 continue;
             }
             handle_generic_error(context, res, error_code::sql_service_exception);
+            abort_transaction(*tx);
             return false;
         }
         auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
@@ -374,6 +377,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 encoded_primary_key
             ); res != status::ok) {
                 handle_generic_error(context, res, error_code::sql_service_exception);
+                abort_transaction(*tx);
                 return false;
             }
         }

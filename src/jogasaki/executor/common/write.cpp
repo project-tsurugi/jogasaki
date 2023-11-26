@@ -84,7 +84,6 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
     executor::process::impl::variable_table const* host_variables,
     data::small_record_store& out
 ) {
-    utils::checkpoint_holder cph(std::addressof(resource));
     for (auto&& f: fields) {
         if (f.index_ == npos) {
             // value not specified for the field use default value or null
@@ -169,7 +168,6 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
                 }
                 utils::copy_field(f.type_, out.ref(), f.offset_, res, std::addressof(resource));
             }
-            cph.reset();
         }
     }
     return status::ok;
@@ -250,7 +248,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
         input_value_fields,
         std::vector<process::impl::ops::details::update_field>{});
     auto primary_ctx = std::make_unique<write_primary_context>(
-        db->get_storage(primary->storage_name()),
+        db->get_or_create_storage(primary->storage_name()),
         primary->key_meta(),
         primary->value_meta(),
         std::addressof(context));
@@ -274,15 +272,28 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 value_meta
             );
             secondary_contexts.emplace_back(
-                db->get_storage(entry->simple_name()),
+                db->get_or_create_storage(entry->simple_name()),
                 std::addressof(context));
         }
     );
+
+    if(has_secondaries && kind_ == write_kind::insert_overwrite) {
+        set_error(
+            context,
+            error_code::unsupported_runtime_feature_exception,
+            string_builder{} <<
+                "INSERT OR REPLACE statement is not supported yet for tables with secondary indices" << string_builder::to_string,
+            status::err_unsupported
+        );
+        return false;
+    }
 
     data::small_record_store key_store{key_meta, resource_};
     data::small_record_store value_store{value_meta, resource_};
     for(auto&& tuple: wrt_->tuples()) {
         // create input record (input_key, input_value)
+        utils::checkpoint_holder cph(resource_);
+
         if(auto res = create_record_from_tuple(
             context,
             tuple,
@@ -343,7 +354,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 // skip updating secondary index and move to next tuple for primary
                 continue;
             }
-            handle_kvs_errors(context, res);
             handle_generic_error(context, res, error_code::sql_service_exception);
             return false;
         }
@@ -363,7 +373,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 value_store.ref(),
                 encoded_primary_key
             ); res != status::ok) {
-                handle_kvs_errors(context, res);
                 handle_generic_error(context, res, error_code::sql_service_exception);
                 return false;
             }

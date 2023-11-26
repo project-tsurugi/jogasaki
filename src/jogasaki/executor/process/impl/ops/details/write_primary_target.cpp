@@ -27,6 +27,7 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -120,6 +121,7 @@ status write_primary_target::find_record(
     std::string_view& encoded_key
 ) {
     if(auto res = prepare_encoded_key(ctx, key, encoded_key); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
     std::string_view v{};
@@ -130,9 +132,11 @@ status write_primary_target::find_record(
     kvs::readable_stream keys{encoded_key.data(), encoded_key.size()};
     kvs::readable_stream values{v.data(), v.size()};
     if(auto res = decode_fields(extracted_keys_, keys, ctx.extracted_key_store_.ref(), varlen_resource); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
     if(auto res = decode_fields(extracted_values_, values, ctx.extracted_value_store_.ref(), varlen_resource); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
     return status::ok;
@@ -168,6 +172,7 @@ status write_primary_target::prepare_encoded_key(
     std::string_view& out
 ) const {
     if(auto res = do_encode(ctx.key_buf_, input_keys_, source, out); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
     ctx.key_len_ = out.size();
@@ -220,10 +225,12 @@ status write_primary_target::encode_and_put(
     std::string_view k{};
     std::string_view v{};
     if(auto res = do_encode(ctx.key_buf_, extracted_keys_, key_record, k); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
     ctx.key_len_ = k.size();
     if(auto res = do_encode(ctx.value_buf_, extracted_values_, value_record, v); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
     if(auto res = ctx.stg_->put(tx, k, v, opt); res != status::ok) {

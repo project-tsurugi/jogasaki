@@ -25,6 +25,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include "write_secondary_context.h"
 
@@ -46,15 +47,18 @@ status details::write_secondary_target::encode_secondary_key(
             if (f.nullable_) {
                 if(auto res = kvs::encode_nullable(src, f.offset_, f.nullity_offset_, f.type_, f.spec_, s);
                     res != status::ok) {
+                    handle_encode_errors(*ctx.req_context(), res);
                     return res;
                 }
             } else {
                 if(auto res = kvs::encode(src, f.offset_, f.type_, f.spec_, s); res != status::ok) {
+                    handle_encode_errors(*ctx.req_context(), res);
                     return res;
                 }
             }
         }
         if (auto res = s.write(encoded_primary_key.data(), encoded_primary_key.size()); res != status::ok) {
+            handle_encode_errors(*ctx.req_context(), res);
             return res;
         }
         length = s.size();

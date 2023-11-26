@@ -100,6 +100,9 @@ struct write_field : process::impl::ops::default_value_property {
     kvs::coding_spec spec_{};  //NOLINT
     //@brief if the field is nullable
     bool nullable_{};  //NOLINT
+
+    std::size_t offset_{};        //NOLINT
+    std::size_t nullity_offset_{};//NOLINT
 };
 
 class write_target {

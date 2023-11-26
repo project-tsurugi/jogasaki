@@ -199,24 +199,38 @@ status do_encode(
     out = static_cast<std::string_view>(buf);
     return status::ok;
 }
+
 status write_primary_target::encode_and_put(
     write_primary_context& ctx,
     transaction_context& tx,
     kvs::put_option opt
-) const {
+) {
+    std::string_view k{};
+    return encode_and_put(ctx, tx, opt, ctx.extracted_key_store_.ref(), ctx.extracted_value_store_.ref(), k);
+}
+
+status write_primary_target::encode_and_put(
+    write_primary_context& ctx,
+    transaction_context& tx,
+    kvs::put_option opt,
+    accessor::record_ref key_record,
+    accessor::record_ref value_record,
+    std::string_view& encoded_key
+) {
     std::string_view k{};
     std::string_view v{};
-    if(auto res = do_encode(ctx.key_buf_, extracted_keys_, ctx.extracted_key_store_.ref(), k); res != status::ok) {
+    if(auto res = do_encode(ctx.key_buf_, extracted_keys_, key_record, k); res != status::ok) {
         return res;
     }
     ctx.key_len_ = k.size();
-    if(auto res = do_encode(ctx.value_buf_, extracted_values_, ctx.extracted_value_store_.ref(), v); res != status::ok) {
+    if(auto res = do_encode(ctx.value_buf_, extracted_values_, value_record, v); res != status::ok) {
         return res;
     }
     if(auto res = ctx.stg_->put(tx, k, v, opt); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }
+    encoded_key = k;
     return status::ok;
 }
 

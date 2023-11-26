@@ -33,9 +33,14 @@
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/ops/details/write_primary_target.h>
+#include <jogasaki/executor/process/impl/ops/details/write_secondary_target.h>
+#include <jogasaki/executor/process/impl/ops/details/write_primary_context.h>
+#include <jogasaki/executor/process/impl/ops/details/write_secondary_context.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
@@ -50,12 +55,125 @@ namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
 using jogasaki::executor::process::impl::expression::evaluator;
+using jogasaki::executor::process::impl::ops::details::write_primary_target;
+using jogasaki::executor::process::impl::ops::details::write_secondary_target;
+using jogasaki::executor::process::impl::ops::details::write_primary_context;
+using jogasaki::executor::process::impl::ops::details::write_secondary_context;
 using yugawara::compiled_info;
 
 using takatori::util::throw_exception;
 using takatori::util::string_builder;
 using data::any;
 
+constexpr static std::size_t npos = static_cast<std::size_t>(-1);
+
+// fwd declaration
+status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out);
+void handle_encode_error(
+    request_context& ctx,
+    status st
+);
+
+// encode tuple into buf, and return result data length
+status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
+    request_context& ctx,
+    write::tuple const& t,
+    std::vector<details::write_field> const& fields,
+    compiled_info const& info,
+    memory::lifo_paged_memory_resource& resource,
+    executor::process::impl::variable_table const* host_variables,
+    data::small_record_store& out
+) {
+    utils::checkpoint_holder cph(std::addressof(resource));
+    for (auto&& f: fields) {
+        if (f.index_ == npos) {
+            // value not specified for the field use default value or null
+            switch (f.kind_) {
+                case process::impl::ops::default_value_kind::nothing:
+                    if (! f.nullable_) {
+                        set_error(
+                            ctx,
+                            error_code::not_null_constraint_violation_exception,
+                            string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                            status::err_integrity_constraint_violation);
+                        return status::err_integrity_constraint_violation;
+                    }
+                    out.ref().set_null(f.nullity_offset_, true);
+                    break;
+                case process::impl::ops::default_value_kind::immediate: {
+                    auto src = f.default_value_immediate_;
+                    auto is_null = src.empty();
+                    if (is_null && !f.nullable_) {
+                        auto rc = status::err_integrity_constraint_violation;
+                        set_error(
+                            ctx,
+                            error_code::not_null_constraint_violation_exception,
+                            string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                            rc);
+                        return rc;
+                    }
+                    out.ref().set_null(f.nullity_offset_, is_null);
+                    if (f.nullable_) {
+                        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, src, std::addressof(resource));
+                    } else {
+                        utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
+                    }
+                    break;
+                }
+                case process::impl::ops::default_value_kind::sequence: {
+                    // increment sequence - loop might increment the sequence twice
+                    sequence_value v{};
+                    if (auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
+                        handle_encode_error(ctx, res);
+                        return res;
+                    }
+                    out.ref().set_null(f.nullity_offset_, false);
+                    out.ref().set_value<std::int64_t>(f.offset_, v);
+                    break;
+                }
+            }
+        } else {
+            evaluator eval{t.elements()[f.index_], info, host_variables};
+            process::impl::variable_table empty{};
+            process::impl::expression::evaluator_context c{};
+            auto res = eval(c, empty, &resource);
+            if (res.error()) {
+                auto rc = status::err_expression_evaluation_failure;
+                set_error(
+                    ctx,
+                    error_code::value_evaluation_exception,
+                    string_builder{} << "An error occurred in evaluating values. error:" << res.to<process::impl::expression::error>() << string_builder::to_string,
+                    rc);
+                return rc;
+            }
+            if (!utils::convert_any(res, f.type_)) {
+                auto rc = status::err_expression_evaluation_failure;
+                set_error(
+                    ctx,
+                    error_code::value_evaluation_exception,
+                    string_builder{} << "An error occurred in evaluating values. type mismatch: expected " << f.type_ << ", value index is " << res.type_index() << string_builder::to_string,
+                    rc);
+                return rc;
+            }
+            if (f.nullable_) {
+                utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, res, std::addressof(resource));
+            } else {
+                if (!res) {
+                    auto rc = status::err_integrity_constraint_violation;
+                    set_error(
+                        ctx,
+                        error_code::not_null_constraint_violation_exception,
+                        string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                        rc);
+                    return rc;
+                }
+                utils::copy_field(f.type_, out.ref(), f.offset_, res, std::addressof(resource));
+            }
+            cph.reset();
+        }
+    }
+    return status::ok;
+}
 write::write(
     write_kind kind,
     yugawara::storage::index const& idx,
@@ -86,6 +204,173 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
+
+    std::vector<details::write_field> key_fields{};
+    if(auto res = create_fields(*idx_, wrt_->columns(), true, key_fields); res != status::ok) {
+        return false;
+    }
+    std::vector<details::write_field> value_fields{};
+    if(auto res = create_fields(*idx_, wrt_->columns(), false, value_fields); res != status::ok) {
+        return false;
+    }
+
+    std::vector<index::field_info> input_key_fields{};
+    input_key_fields.reserve(key_fields.size());
+    for(auto&& f : key_fields) {
+        input_key_fields.emplace_back(
+            f.type_,
+            true,
+            f.offset_,
+            f.nullity_offset_,
+            f.nullable_,
+            f.spec_
+        );
+    }
+    std::vector<index::field_info> input_value_fields{};
+    for(auto&& f : value_fields) {
+        input_value_fields.emplace_back(
+            f.type_,
+            true,
+            f.offset_,
+            f.nullity_offset_,
+            f.nullable_,
+            f.spec_
+        );
+    }
+
+    // setup primary/secondary targets and contexts
+    auto key_meta = index::create_meta(*idx_, true);
+    auto value_meta = index::create_meta(*idx_, false);
+    auto primary = std::make_unique<write_primary_target>(
+        idx_->simple_name(),
+        key_meta,
+        value_meta,
+        input_key_fields,
+        input_key_fields,
+        input_value_fields,
+        std::vector<process::impl::ops::details::update_field>{});
+    auto primary_ctx = std::make_unique<write_primary_context>(
+        db->get_storage(primary->storage_name()),
+        primary->key_meta(),
+        primary->value_meta(),
+        std::addressof(context));
+
+    std::vector<write_secondary_target> secondary_targets{};
+    std::vector<write_secondary_context> secondary_contexts{};
+
+    bool has_secondaries = false;
+    status ret_status{status::ok};
+    idx_->table().owner()->each_table_index(idx_->table(),
+        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if (ret_status != status::ok) return;
+            if (*entry == *idx_) {
+                return;
+            }
+            has_secondaries = true;
+
+            secondary_targets.emplace_back(
+                *entry,
+                key_meta,
+                value_meta
+            );
+            secondary_contexts.emplace_back(
+                db->get_storage(entry->simple_name()),
+                std::addressof(context));
+        }
+    );
+
+    data::small_record_store key_store{key_meta, resource_};
+    data::small_record_store value_store{value_meta, resource_};
+    for(auto&& tuple: wrt_->tuples()) {
+        // create input record (input_key, input_value)
+        if(auto res = create_record_from_tuple(
+            context,
+            tuple,
+            key_fields,
+            info_,
+            *resource_,
+            host_variables_,
+            key_store
+        ); res != status::ok) {
+            return false;
+        }
+        if(auto res = create_record_from_tuple(
+            context,
+            tuple,
+            value_fields,
+            info_,
+            *resource_,
+            host_variables_,
+            value_store
+        ); res != status::ok) {
+            return false;
+        }
+
+        if(kind_ == write_kind::insert_overwrite && has_secondaries) {
+            // TODO update secondaries
+        }
+
+        kvs::put_option opt = (kind_ == write_kind::insert || kind_ == write_kind::insert_skip) ?
+            kvs::put_option::create :
+            kvs::put_option::create_or_update;
+        std::string_view encoded_primary_key{};
+        if(auto res = primary->encode_and_put(
+            *primary_ctx,
+            *tx,
+            opt,
+            key_store.ref(),
+            value_store.ref(),
+            encoded_primary_key
+        ); res != status::ok) {
+            if (opt == kvs::put_option::create && res == status::already_exists) {
+                if (kind_ == write_kind::insert) {
+                    // integrity violation should be handled in SQL layer and forces transaction abort
+                    // status::already_exists is an internal code, raise it as constraint violation
+                    set_error(
+                        context,
+                        error_code::unique_constraint_violation_exception,
+                        string_builder{} << "Unique constraint violation occurred. Table:" << primary->storage_name() << string_builder::to_string,
+                        status::err_unique_constraint_violation);
+                    abort_transaction(*tx);
+                    return false;
+                }
+                // write_kind::insert_skip
+                // duplicated key is simply ignored
+                // simply set stats 0 in order to mark INSERT IF NOT EXISTS statement executed
+                context.enable_stats()->counter(counter_kind::inserted).count(0);
+
+                // currently this is for Load operation and assuming single tuple insert
+                // skip updating secondary index and move to next tuple for primary
+                continue;
+            }
+            handle_kvs_errors(context, res);
+            handle_generic_error(context, res, error_code::sql_service_exception);
+            return false;
+        }
+        auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
+        context.enable_stats()->counter(kind).count(1);
+
+        if(kind_ == write_kind::insert_overwrite) {
+            // updating secondaries is done already
+            continue;
+        }
+        for(std::size_t i=0, n=secondary_targets.size(); i < n; ++i) {
+            auto& e = secondary_targets[i];
+            if(auto res = e.encode_and_put(
+                secondary_contexts[i],
+                *tx,
+                key_store.ref(),
+                value_store.ref(),
+                encoded_primary_key
+            ); res != status::ok) {
+                handle_kvs_errors(context, res);
+                handle_generic_error(context, res, error_code::sql_service_exception);
+                return false;
+            }
+        }
+    }
+
+/*
     std::vector<details::write_target> targets{};
     if(auto res = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(),
             info_, *resource_, host_variables_, targets); res != status::ok) {
@@ -101,9 +386,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
         if(! stg) {
             throw_exception(std::logic_error{""});
         }
-        kvs::put_option opt = ((kind_ == write_kind::insert || kind_ == write_kind::insert_skip) && e.primary_) ?
-            kvs::put_option::create :
-            kvs::put_option::create_or_update;
         // TODO for insert_overwrite, update secondary first
         BOOST_ASSERT(e.keys_.size() == e.values_.size() || e.values_.empty());  //NOLINT
         for(std::size_t i=0, n=e.keys_.size(); i<n; ++i) {
@@ -116,44 +398,12 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                     {static_cast<char*>(value->data()), value->size()},
                     opt
                 ); res != status::ok) {
-                if (opt == kvs::put_option::create && res == status::already_exists) {
-                    if(kind_ == write_kind::insert) {
-                        // integrity violation should be handled in SQL layer and forces transaction abort
-                        // status::already_exists is an internal code, raise it as constraint violation
-                        set_error(
-                            context,
-                            error_code::unique_constraint_violation_exception,
-                            string_builder{} <<
-                                "Unique constraint violation occurred. Table:" << e.storage_name_ << string_builder::to_string,
-                            status::err_unique_constraint_violation
-                        );
-                        abort_transaction(*tx);
-                        return false;
-                    }
-                    // write_kind::insert_skip
-                    // duplicated key is simply ignored
-                    // simply set stats 0 in order to mark INSERT IF NOT EXISTS statement executed
-                    context.enable_stats()->counter(counter_kind::inserted).count(0);
-
-                    // currently this is for Load operation and assuming single tuple insert
-                    // TODO skip tuples for secondary index and move to next tuple for primary
-                    continue;
-                }
-                // TODO error handling for secondary index, multiple tuples
-                handle_kvs_errors(context, res);
-                handle_generic_error(context, res, error_code::sql_service_exception);
-                return false;
-            }
-            if(e.primary_) {
-                auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
-                context.enable_stats()->counter(kind).count(1);
             }
         }
     }
+    */
     return true;
 }
-
-constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
 status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out) {
     BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
@@ -371,19 +621,22 @@ status create_generated_field(
     data::aligned_buffer buf{};
     auto t = utils::type_for(type);
     auto knd = process::impl::ops::default_value_kind::nothing;
+    data::any src{};
+    bool is_immediate = false;
     switch(dv.kind()) {
         case column_value_kind::nothing:
             break;
         case column_value_kind::immediate: {
             knd = process::impl::ops::default_value_kind::immediate;
-            auto src = utils::as_any(
+            src = utils::as_any(
                 *dv.element<column_value_kind::immediate>(),
                 type,
                 nullptr
             );
-            if(auto res = utils::encode_any(buf, t, nullable, spec, {src}); res != status::ok) {
-                return res;
-            }
+            is_immediate = true;
+            // if(auto res = utils::encode_any(buf, t, nullable, spec, {src}); res != status::ok) {
+            //     return res;
+            // }
             break;
         }
         case column_value_kind::sequence: {
@@ -395,7 +648,7 @@ status create_generated_field(
             }
         }
     }
-    ret.emplace_back(
+    auto& e = ret.emplace_back(
         index,
         t,
         spec,
@@ -404,6 +657,9 @@ status create_generated_field(
         std::move(buf),
         def_id
     );
+    if(is_immediate) {
+        e.default_value_immediate_ = src;
+    }
     return status::ok;
 }
 
@@ -414,6 +670,8 @@ status write::create_fields(
     std::vector<details::write_field>& out
 ) const {
     using reference = takatori::descriptor::variable::reference_type;
+    auto key_meta = index::create_meta(idx, true);
+    auto value_meta = index::create_meta(idx, false);
     yugawara::binding::factory bindings{};
     std::unordered_map<reference, std::size_t> variable_indices{};
     for(std::size_t i=0, n=columns.size(); i<n; ++i) {
@@ -434,17 +692,24 @@ status write::create_fields(
             if(variable_indices.count(kc.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = k.column().default_value();
+                auto pos = out.size();
                 if(auto res = create_generated_field(out, npos, dv, type, nullable, spec); res != status::ok) {
                     return res;
                 }
+                auto& f = out[pos];
+                f.nullity_offset_ = key_meta->nullity_offset(pos);
+                f.offset_ = key_meta->value_offset(pos);
                 continue;
             }
-            out.emplace_back(
+            auto pos = out.size();
+            auto& f = out.emplace_back(
                 variable_indices[kc.reference()],
                 t,
                 spec,
                 nullable
             );
+            f.nullity_offset_ = key_meta->nullity_offset(pos);
+            f.offset_ = key_meta->value_offset(pos);
         }
     } else {
         out.reserve(idx.values().size());
@@ -461,17 +726,24 @@ status write::create_fields(
             if(variable_indices.count(b.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = c.default_value();
+                auto pos = out.size();
                 if(auto res = create_generated_field(out, npos, dv, type, nullable, spec); res != status::ok) {
                     return res;
                 }
+                auto& f = out[pos];
+                f.nullity_offset_ = value_meta->nullity_offset(pos);
+                f.offset_ = value_meta->value_offset(pos);
                 continue;
             }
-            out.emplace_back(
+            auto pos = out.size();
+            auto& f = out.emplace_back(
                 variable_indices[b.reference()],
                 t,
                 spec,
                 nullable
             );
+            f.nullity_offset_ = value_meta->nullity_offset(pos);
+            f.offset_ = value_meta->value_offset(pos);
         }
     }
     return status::ok;

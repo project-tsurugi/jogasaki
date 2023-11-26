@@ -75,6 +75,7 @@ struct cache_align default_value_property {
     default_value_kind kind_{};  //NOLINT
     data::aligned_buffer default_value_{};  //NOLINT
     sequence_definition_id def_id_{};  //NOLINT
+    data::any default_value_immediate_{};   //NOLINT
 };
 
 }

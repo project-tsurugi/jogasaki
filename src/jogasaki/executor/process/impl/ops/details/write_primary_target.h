@@ -227,6 +227,21 @@ public:
         accessor::record_ref input_variables,
         accessor::record_ref host_variables
     );
+    /**
+     * @brief gather the extracted key/value records, encode and put them to index
+     * @returns status::ok when successful
+     * @returns status::already_exist if record already exists and `opt` is `create`
+     * @returns status::not_found if record not found and `opt` is `update`
+     * @returns any other error otherwise
+     */
+    status encode_and_put(
+        write_primary_context& ctx,
+        transaction_context& tx,
+        kvs::put_option opt,
+        accessor::record_ref key_record,
+        accessor::record_ref value_record,
+        std::string_view& encoded_key
+        );
 
     /**
      * @brief gather the extracted key/value records, encode and put them to index
@@ -239,7 +254,7 @@ public:
         write_primary_context& ctx,
         transaction_context& tx,
         kvs::put_option opt = kvs::put_option::create_or_update
-    ) const;
+    );
 
     /**
      * @brief accessor to key metadata

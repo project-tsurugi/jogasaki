@@ -720,10 +720,6 @@ bool check_message_version(
 ) {
     auto major = proto_req.service_message_version_major();
     auto minor = proto_req.service_message_version_minor();
-//FIXME remove this if statement when client is ready and sends message version
-    if(minor == 0 && major == 0) {
-        return true;
-    }
     if(major == service_message_version_major) {
         return true;
     }

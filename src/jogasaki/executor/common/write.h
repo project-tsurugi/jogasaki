@@ -162,6 +162,10 @@ private:
     memory::lifo_paged_memory_resource* resource_{};
     compiled_info info_{};
     executor::process::impl::variable_table const* host_variables_{};
+    maybe_shared_ptr<meta::record_meta> key_meta_{};
+    maybe_shared_ptr<meta::record_meta> value_meta_{};
+    std::vector<details::write_field> key_fields_{};
+    std::vector<details::write_field> value_fields_{};
 
     status create_tuples(
         request_context& ctx,
@@ -187,11 +191,10 @@ private:
         std::vector<details::write_target>& out
     ) const;
 
-    [[nodiscard]] status create_fields(
+    [[nodiscard]] std::vector<details::write_field> create_fields(
         yugawara::storage::index const& idx,
         sequence_view<column const> columns,
-        bool key,
-        std::vector<details::write_field>& out
+        bool key
     ) const;
 };
 

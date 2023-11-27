@@ -119,7 +119,7 @@ TEST_F(sql_write_test, expression_error_handling_with_insert) {
     EXPECT_EQ(status::err_inactive_transaction, tx->commit());
 
     if (jogasaki::kvs::implementation_id() == "memory") {
-        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+        GTEST_SKIP() << "jogasaki-memory doesn't support aborting transaction";
     }
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0 FROM T", result);

@@ -74,7 +74,6 @@ void handle_encode_error(
     status st
 );
 
-// encode tuple into buf, and return result data length
 status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
     write::tuple const& t,
@@ -185,7 +184,11 @@ write::write(
     wrt_(std::addressof(wrt)),
     resource_(std::addressof(resource)),
     info_(std::move(info)),
-    host_variables_(host_variables)
+    host_variables_(host_variables),
+    key_meta_(index::create_meta(*idx_, true)),
+    value_meta_(index::create_meta(*idx_, false)),
+    key_fields_(create_fields(*idx_, wrt_->columns(), true)),
+    value_fields_(create_fields(*idx_, wrt_->columns(), false))
 {}
 
 model::statement_kind write::kind() const noexcept {
@@ -203,18 +206,9 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
 
-    std::vector<details::write_field> key_fields{};
-    if(auto res = create_fields(*idx_, wrt_->columns(), true, key_fields); res != status::ok) {
-        return false;
-    }
-    std::vector<details::write_field> value_fields{};
-    if(auto res = create_fields(*idx_, wrt_->columns(), false, value_fields); res != status::ok) {
-        return false;
-    }
-
     std::vector<index::field_info> input_key_fields{};
-    input_key_fields.reserve(key_fields.size());
-    for(auto&& f : key_fields) {
+    input_key_fields.reserve(key_fields_.size());
+    for(auto&& f : key_fields_) {
         input_key_fields.emplace_back(
             f.type_,
             true,
@@ -225,7 +219,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
         );
     }
     std::vector<index::field_info> input_value_fields{};
-    for(auto&& f : value_fields) {
+    for(auto&& f : value_fields_) {
         input_value_fields.emplace_back(
             f.type_,
             true,
@@ -237,20 +231,18 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
     }
 
     // setup primary/secondary targets and contexts
-    auto key_meta = index::create_meta(*idx_, true);
-    auto value_meta = index::create_meta(*idx_, false);
     auto primary = std::make_unique<write_primary_target>(
         idx_->simple_name(),
-        key_meta,
-        value_meta,
+        key_meta_,
+        value_meta_,
         input_key_fields,
         input_key_fields,
         input_value_fields,
         std::vector<process::impl::ops::details::update_field>{});
     auto primary_ctx = std::make_unique<write_primary_context>(
         db->get_or_create_storage(primary->storage_name()),
-        primary->key_meta(),
-        primary->value_meta(),
+        key_meta_,
+        value_meta_,
         std::addressof(context));
 
     std::vector<write_secondary_target> secondary_targets{};
@@ -268,8 +260,8 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
 
             secondary_targets.emplace_back(
                 *entry,
-                key_meta,
-                value_meta
+                key_meta_,
+                value_meta_
             );
             secondary_contexts.emplace_back(
                 db->get_or_create_storage(entry->simple_name()),
@@ -288,8 +280,8 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
         return false;
     }
 
-    data::small_record_store key_store{key_meta, resource_};
-    data::small_record_store value_store{value_meta, resource_};
+    data::small_record_store key_store{key_meta_, resource_};
+    data::small_record_store value_store{value_meta_, resource_};
     for(auto&& tuple: wrt_->tuples()) {
         // create input record (input_key, input_value)
         utils::checkpoint_holder cph(resource_);
@@ -297,7 +289,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
         if(auto res = create_record_from_tuple(
             context,
             tuple,
-            key_fields,
+            key_fields_,
             info_,
             *resource_,
             host_variables_,
@@ -309,7 +301,7 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
         if(auto res = create_record_from_tuple(
             context,
             tuple,
-            value_fields,
+            value_fields_,
             info_,
             *resource_,
             host_variables_,
@@ -621,7 +613,7 @@ status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
     return status::ok;
 }
 
-status create_generated_field(
+void create_generated_field(
     std::vector<details::write_field>& ret,
     std::size_t index,
     yugawara::storage::column_value const& dv,
@@ -673,19 +665,16 @@ status create_generated_field(
     if(is_immediate) {
         e.default_value_immediate_ = src;
     }
-    return status::ok;
 }
 
-status write::create_fields(
+std::vector<details::write_field> write::create_fields(
     yugawara::storage::index const& idx,
     sequence_view<column const> columns,
-    bool key,
-    std::vector<details::write_field>& out
+    bool key
 ) const {
     using reference = takatori::descriptor::variable::reference_type;
-    auto key_meta = index::create_meta(idx, true);
-    auto value_meta = index::create_meta(idx, false);
     yugawara::binding::factory bindings{};
+    std::vector<details::write_field> out{};
     std::unordered_map<reference, std::size_t> variable_indices{};
     for(std::size_t i=0, n=columns.size(); i<n; ++i) {
         auto&& c = columns[i];
@@ -706,12 +695,10 @@ status write::create_fields(
                 // no column specified - use default value
                 auto& dv = k.column().default_value();
                 auto pos = out.size();
-                if(auto res = create_generated_field(out, npos, dv, type, nullable, spec); res != status::ok) {
-                    return res;
-                }
+                create_generated_field(out, npos, dv, type, nullable, spec);
                 auto& f = out[pos];
-                f.nullity_offset_ = key_meta->nullity_offset(pos);
-                f.offset_ = key_meta->value_offset(pos);
+                f.nullity_offset_ = key_meta_->nullity_offset(pos);
+                f.offset_ = key_meta_->value_offset(pos);
                 continue;
             }
             auto pos = out.size();
@@ -721,8 +708,8 @@ status write::create_fields(
                 spec,
                 nullable
             );
-            f.nullity_offset_ = key_meta->nullity_offset(pos);
-            f.offset_ = key_meta->value_offset(pos);
+            f.nullity_offset_ = key_meta_->nullity_offset(pos);
+            f.offset_ = key_meta_->value_offset(pos);
         }
     } else {
         out.reserve(idx.values().size());
@@ -740,12 +727,10 @@ status write::create_fields(
                 // no column specified - use default value
                 auto& dv = c.default_value();
                 auto pos = out.size();
-                if(auto res = create_generated_field(out, npos, dv, type, nullable, spec); res != status::ok) {
-                    return res;
-                }
+                create_generated_field(out, npos, dv, type, nullable, spec);
                 auto& f = out[pos];
-                f.nullity_offset_ = value_meta->nullity_offset(pos);
-                f.offset_ = value_meta->value_offset(pos);
+                f.nullity_offset_ = value_meta_->nullity_offset(pos);
+                f.offset_ = value_meta_->value_offset(pos);
                 continue;
             }
             auto pos = out.size();
@@ -755,11 +740,11 @@ status write::create_fields(
                 spec,
                 nullable
             );
-            f.nullity_offset_ = value_meta->nullity_offset(pos);
-            f.offset_ = value_meta->value_offset(pos);
+            f.nullity_offset_ = value_meta_->nullity_offset(pos);
+            f.offset_ = value_meta_->value_offset(pos);
         }
     }
-    return status::ok;
+    return out;
 }
 
 status write::create_tuples(
@@ -775,9 +760,12 @@ status write::create_tuples(
     std::vector<details::write_tuple> const& primary_key_tuples
 ) const {
     std::vector<details::write_field> fields{};
-    if(auto res = create_fields(idx, columns, key, fields); res != status::ok) {
-        return res;
-    }
+    (void) idx;
+    (void) columns;
+    (void) key;
+    // if(auto res = create_fields(idx, columns, key, fields); res != status::ok) {
+        // return res;
+    // }
     data::aligned_buffer buf{default_record_buffer_size};
     std::size_t count = 0;
     out.clear();

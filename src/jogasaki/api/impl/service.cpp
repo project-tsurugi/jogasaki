@@ -720,7 +720,7 @@ bool check_message_version(
 ) {
     auto major = proto_req.service_message_version_major();
     auto minor = proto_req.service_message_version_minor();
-    //FIXME remove this if statement when client is ready and sends message version
+//FIXME remove this if statement when client is ready and sends message version
     if(minor == 0 && major == 0) {
         return true;
     }
@@ -764,8 +764,10 @@ bool service::process(
         }
         VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size() << "): " << utils::to_debug_string(proto_req);
     }
-    if(! check_message_version(proto_req, *res, reqid)) {
-        return true;
+    if (! db_->config()->skip_smv_check()) {
+        if (! check_message_version(proto_req, *res, reqid)) {
+            return true;
+        }
     }
 
     switch (proto_req.request_case()) {

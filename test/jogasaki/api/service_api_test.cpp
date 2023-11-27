@@ -96,6 +96,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->prepare_test_tables(true);
+        cfg->skip_smv_check(true); // for testing, we don't check message versions
         set_dbpath(*cfg);
 
         db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};

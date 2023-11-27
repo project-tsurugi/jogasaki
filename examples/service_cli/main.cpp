@@ -168,6 +168,7 @@ public:
     }
 
     int run(std::shared_ptr<jogasaki::configuration> cfg) {
+        cfg->skip_smv_check(true);  // skip strict version check for internal use
         db_ = std::shared_ptr{jogasaki::api::create_database(cfg)};
         auto c = std::make_shared<tateyama::api::configuration::whole>("");
         service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());

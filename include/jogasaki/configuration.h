@@ -336,6 +336,14 @@ public:
     [[nodiscard]] bool profile_commits() const noexcept {
         return profile_commits_;
     }
+    void skip_smv_check(bool arg) noexcept {
+        skip_smv_check_ = arg;
+    }
+
+    [[nodiscard]] bool skip_smv_check() const noexcept {
+        return skip_smv_check_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -365,6 +373,7 @@ public:
             "default_commit_response:" << cfg.default_commit_response() << " " <<
             "update_skips_deletion:" << cfg.update_skips_deletion() << " " <<
             "profile_commits:" << cfg.profile_commits() << " " <<
+            "skip_smv_check:" << cfg.skip_smv_check() << " " <<
             "";
     }
 
@@ -400,6 +409,7 @@ private:
     commit_response_kind default_commit_response_{commit_response_kind::stored};
     bool update_skips_deletion_ = false;
     bool profile_commits_ = false;
+    bool skip_smv_check_ = false;
 };
 
 }

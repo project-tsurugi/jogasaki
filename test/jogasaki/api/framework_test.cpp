@@ -169,6 +169,7 @@ TEST_F(framework_test, send_request_with_header) {
     sv.setup();
     auto* db = sqlsvc->database();
     db->config()->prepare_benchmark_tables(true);
+    db->config()->skip_smv_check(true);
     sv.start();
     std::uint64_t handle{};
     {

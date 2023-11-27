@@ -44,7 +44,6 @@
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
 #include "jogasaki/proto/sql/common.pb.h"
-#include "jogasaki/proto/sql/status.pb.h"
 
 namespace jogasaki::api {
 

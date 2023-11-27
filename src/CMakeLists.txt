@@ -6,7 +6,6 @@ set(SqlProtoFiles
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/common.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/request.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/response.proto
-        ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/status.proto
         ${CMAKE_SOURCE_DIR}/src/jogasaki/proto/sql/error.proto
         )
 

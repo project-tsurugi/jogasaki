@@ -658,14 +658,14 @@ private:
             if (success) {
                 return true;
             }
-            LOG(ERROR) << "command returned " << sql::status::Status_Name(error.status_) << ": " << error.message_;
+            LOG(ERROR) << "command returned " << error.code_ << ": " << error.message_;
             return false;
         }
         auto [success, error] = jogasaki::utils::decode_result_only(body);
         if (success) {
             return true;
         }
-        LOG(ERROR) << "command returned " << sql::status::Status_Name(error.status_) << ": " << error.message_;
+        LOG(ERROR) << "command returned " << error.code_ << ": " << error.message_;
         return false;
     }
 

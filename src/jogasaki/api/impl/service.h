@@ -49,7 +49,6 @@
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
 #include "jogasaki/proto/sql/common.pb.h"
-#include "jogasaki/proto/sql/status.pb.h"
 
 #include "map_error_code.h"
 
@@ -152,60 +151,16 @@ void release_object(sql::response::Response& r, T&) {
     }
 }
 
-inline sql::status::Status map_status(jogasaki::status s) {
-    switch(s) {
-        case jogasaki::status::ok: return sql::status::Status::OK;
-        case jogasaki::status::not_found: return sql::status::Status::NOT_FOUND;
-        case jogasaki::status::already_exists: return sql::status::Status::ALREADY_EXISTS;
-        case jogasaki::status::user_rollback: return sql::status::Status::USER_ROLLBACK;
-        case jogasaki::status::err_unknown: return sql::status::Status::ERR_UNKNOWN;
-        case jogasaki::status::err_io_error: return sql::status::Status::ERR_IO_ERROR;
-        case jogasaki::status::err_parse_error: return sql::status::Status::ERR_PARSE_ERROR;
-        case jogasaki::status::err_translator_error: return sql::status::Status::ERR_TRANSLATOR_ERROR;
-        case jogasaki::status::err_compiler_error: return sql::status::Status::ERR_COMPILER_ERROR;
-        case jogasaki::status::err_invalid_argument: return sql::status::Status::ERR_INVALID_ARGUMENT;
-        case jogasaki::status::err_invalid_state: return sql::status::Status::ERR_INVALID_STATE;
-        case jogasaki::status::err_unsupported: return sql::status::Status::ERR_UNSUPPORTED;
-        case jogasaki::status::err_user_error: return sql::status::Status::ERR_USER_ERROR;
-        case jogasaki::status::err_aborted: return sql::status::Status::ERR_ABORTED;
-        case jogasaki::status::err_serialization_failure: return sql::status::Status::ERR_SERIALIZATION_FAILURE;
-        case jogasaki::status::err_not_found: return sql::status::Status::ERR_NOT_FOUND;
-        case jogasaki::status::err_already_exists: return sql::status::Status::ERR_ALREADY_EXISTS;
-        case jogasaki::status::err_inconsistent_index: return sql::status::Status::ERR_INCONSISTENT_INDEX;
-        case jogasaki::status::err_time_out: return sql::status::Status::ERR_TIME_OUT;
-        case jogasaki::status::err_integrity_constraint_violation: return sql::status::Status::ERR_INTEGRITY_CONSTRAINT_VIOLATION;
-        case jogasaki::status::err_expression_evaluation_failure: return sql::status::Status::ERR_EXPRESSION_EVALUATION_FAILURE;
-        case jogasaki::status::err_unresolved_host_variable: return sql::status::Status::ERR_UNRESOLVED_HOST_VARIABLE;
-        case jogasaki::status::err_type_mismatch: return sql::status::Status::ERR_TYPE_MISMATCH;
-        case jogasaki::status::err_not_implemented: return sql::status::Status::ERR_NOT_IMPLEMENTED;
-        case jogasaki::status::err_illegal_operation: return sql::status::Status::ERR_ILLEGAL_OPERATION;
-        case jogasaki::status::err_missing_operation_target: return sql::status::Status::ERR_MISSING_OPERATION_TARGET;
-        case jogasaki::status::err_conflict_on_write_preserve: return sql::status::Status::ERR_CONFLICT_ON_WRITE_PRESERVE;
-        case jogasaki::status::err_inactive_transaction: return sql::status::Status::ERR_INACTIVE_TRANSACTION;
-        case jogasaki::status::err_data_corruption: return sql::status::Status::ERR_DATA_CORRUPTION;
-        case jogasaki::status::err_resource_limit_reached: return sql::status::Status::ERR_RESOURCE_LIMIT_REACHED;
-        case jogasaki::status::err_unique_constraint_violation: return sql::status::Status::ERR_UNIQUE_CONSTRAINT_VIOLATION;
-        case jogasaki::status::waiting_for_other_transaction: return sql::status::Status::ERR_UNKNOWN;  // wait_for_transaction is internal, should not be exposed
-        case jogasaki::status::err_write_without_write_preserve: return sql::status::Status::ERR_ILLEGAL_OPERATION;
-        case jogasaki::status::err_read_area_violation: return sql::status::Status::ERR_ILLEGAL_OPERATION;
-        case jogasaki::status::err_write_operation_by_rtx: return sql::status::Status::ERR_ILLEGAL_OPERATION;
-        case jogasaki::status::err_invalid_key_length: return sql::status::Status::ERR_INVALID_ARGUMENT;
-        case jogasaki::status::err_insufficient_field_storage: return sql::status::Status::ERR_TYPE_MISMATCH;
-    }
-    fail();
-}
-
 template<typename T>
 void error(
     tateyama::api::server::response& res,
-    jogasaki::status s,
+    jogasaki::status,
     std::string_view msg,
     request_info const& req_info
-) { 
+) {
     sql::response::Error e{};
     T p{};
     sql::response::Response r{};
-    e.set_status(map_status(s));
     std::string m{utils::sanitize_utf8(msg)};
     e.set_detail(m);
     p.set_allocated_error(&e);
@@ -225,7 +180,6 @@ void error(
     sql::response::Error e{};
     T p{};
     sql::response::Response r{};
-    e.set_status(map_status(err_info ? err_info->status() : status::ok));
     e.set_code(map_error(err_info ? err_info->code() : error_code::none));
     std::string detail{utils::sanitize_utf8(err_info ? err_info->message() : "")};
     e.set_detail(detail);
@@ -456,7 +410,6 @@ inline void success<sql::response::GetErrorInfo>(
         gei.set_allocated_error_not_found(&v);
     } else {
         gei.set_allocated_success(&error);
-        error.set_status(map_status(info->status()));
         error.set_code(map_error(info->code()));
         auto msg = info->message();
         error.set_detail(msg.data(), msg.size());

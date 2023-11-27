@@ -435,7 +435,7 @@ private:
             }
             return true;
         }
-        std::cerr << "command returned " << sql::status::Status_Name(error.status_) << ": " << error.message_ << std::endl;
+        std::cerr << "command returned " << error.code_ << ": " << error.message_ << std::endl;
         return false;
     }
 
@@ -908,7 +908,7 @@ private:
 
         auto [explained, id, version, cols, err] = jogasaki::utils::decode_explain(res->body_);
         if (explained.empty()) {
-            std::cerr << "explain error: " << err.status_ << " " << err.message_ << std::endl;
+            std::cerr << "explain error: " << err.code_ << " " << err.message_ << std::endl;
             return false;
         }
         std::cout << explained << std::endl;

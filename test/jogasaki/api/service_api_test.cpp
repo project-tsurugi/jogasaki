@@ -53,7 +53,6 @@
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
 #include "jogasaki/proto/sql/common.pb.h"
-#include "jogasaki/proto/sql/status.pb.h"
 
 namespace jogasaki::api {
 
@@ -131,15 +130,15 @@ public:
         bool auto_dispose_on_commit_success = true,
         error_code expected = error_code::none
     );
-    void test_dispose_transaction(std::uint64_t handle, status expected = status::ok);
+    void test_dispose_transaction(std::uint64_t handle, error_code expected = error_code::none);
     void test_rollback(std::uint64_t& handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::shared_ptr<request_statistics>& stats);
     void test_statement(std::string_view sql, std::uint64_t tx_handle);
     void test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats);
-    void test_statement(std::string_view sql, std::uint64_t tx_handle, status exp);
+    void test_statement(std::string_view sql, std::uint64_t tx_handle, error_code exp);
     void test_statement(
-        std::string_view sql, std::uint64_t tx_handle, status exp, std::shared_ptr<request_statistics>& stats);
+        std::string_view sql, std::uint64_t tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats);
     void test_query(std::string_view query = "select * from T0");
 
     void test_query(
@@ -159,7 +158,6 @@ public:
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
         handle = decode_prepare(res->body_);
     }
     void test_dispose_prepare(std::uint64_t& handle);
@@ -172,7 +170,6 @@ public:
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::application_error, res->code_);
         EXPECT_EQ(-1, decode_prepare(res->body_));
     }
     void test_get_error_info(
@@ -188,7 +185,6 @@ public:
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ((! expect_error) ? response_code::success : response_code::application_error, res->code_);
 
         auto [success, error] = decode_get_error_info(res->body_);
         EXPECT_TRUE(res->all_released());
@@ -203,10 +199,10 @@ public:
         LOG(INFO) << "error supplemental text : " << error.supplemental_text_;
     }
 
-    void test_dump(std::vector<std::string>& files, std::string_view dir = "", status expected = status::ok);
+    void test_dump(std::vector<std::string>& files, std::string_view dir = "", error_code expected = error_code::none);
 
     template <class ... Args>
-    void test_load(bool transactional, status expected, Args ... args);
+    void test_load(bool transactional, error_code expected, Args ... args);
 
     void execute_statement_as_query(std::string_view sql);
 
@@ -242,7 +238,6 @@ void service_api_test::test_begin(
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
     result = decode_begin(res->body_);
 }
 
@@ -258,7 +253,6 @@ void service_api_test::test_commit(
     EXPECT_TRUE(res->wait_completion());
     ASSERT_TRUE(st);
 
-    ASSERT_EQ(expected == error_code::none ? response_code::success : response_code::application_error, res->code_);
     {
         auto [success, error] = decode_result_only(res->body_);
         if(expected == error_code::none) {
@@ -277,7 +271,6 @@ void service_api_test::test_rollback(std::uint64_t& handle) {
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_TRUE(success);
 }
@@ -296,11 +289,10 @@ TEST_F(service_api_test, error_on_commit) {
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_FALSE(success);
-    ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_EQ(error_code::sql_execution_exception, error.code_);
     ASSERT_FALSE(error.message_.empty());
 }
 
@@ -314,7 +306,6 @@ TEST_F(service_api_test, rollback) {
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
         auto [success, error] = decode_result_only(res->body_);
         ASSERT_TRUE(success);
     }
@@ -328,11 +319,10 @@ TEST_F(service_api_test, error_on_rollback) {
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_FALSE(success);
-    ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_EQ(error_code::sql_execution_exception, error.code_);
     ASSERT_FALSE(error.message_.empty());
 }
 
@@ -343,7 +333,6 @@ void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_TRUE(success);
 }
@@ -374,22 +363,21 @@ TEST_F(service_api_test, error_on_dispose) {
 
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_FALSE(success);
-    ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+    ASSERT_EQ(error_code::sql_execution_exception, error.code_);
     ASSERT_FALSE(error.message_.empty());
 }
 
 void service_api_test::test_statement(
-    std::string_view sql, std::uint64_t tx_handle, status exp) {
+    std::string_view sql, std::uint64_t tx_handle, error_code exp) {
     std::shared_ptr<request_statistics> stats{};
     test_statement(sql, tx_handle, exp, stats);
 }
 
 void service_api_test::test_statement(
-    std::string_view sql, std::uint64_t tx_handle, status exp, std::shared_ptr<request_statistics>& stats) {
+    std::string_view sql, std::uint64_t tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -397,24 +385,23 @@ void service_api_test::test_statement(
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(exp == status::ok ? response_code::success : response_code::application_error, res->code_);
     EXPECT_TRUE(res->all_released());
 
     auto [success, error, statistics] = decode_execute_result(res->body_);
     stats = std::move(statistics);
-    if(exp == status::ok) {
+    if(exp == error_code::none) {
         ASSERT_TRUE(success);
     } else {
         ASSERT_FALSE(success);
-        ASSERT_EQ(api::impl::details::map_status(exp), error.status_);
+        ASSERT_EQ(exp, error.code_);
     }
 }
 void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle) {
-    test_statement(sql, tx_handle, status::ok);
+    test_statement(sql, tx_handle, error_code::none);
 }
 
 void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats) {
-    test_statement(sql, tx_handle, status::ok, stats);
+    test_statement(sql, tx_handle, error_code::none, stats);
 }
 
 void service_api_test::test_statement(std::string_view sql) {
@@ -446,7 +433,6 @@ void service_api_test::test_query(
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
     EXPECT_TRUE(res->all_released());
 
     {
@@ -525,7 +511,6 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
@@ -554,7 +539,6 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
@@ -640,7 +624,6 @@ TEST_F(service_api_test, data_types) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
@@ -670,7 +653,6 @@ TEST_F(service_api_test, data_types) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
@@ -748,7 +730,6 @@ TEST_F(service_api_test, decimals) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
@@ -771,7 +752,6 @@ TEST_F(service_api_test, decimals) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
@@ -863,7 +843,6 @@ TEST_F(service_api_test, temporal_types) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
@@ -886,7 +865,6 @@ TEST_F(service_api_test, temporal_types) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
@@ -974,7 +952,6 @@ TEST_F(service_api_test, invalid_request) {
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    EXPECT_NE(response_code::success, res->code_);
 }
 
 TEST_F(service_api_test, empty_request) {
@@ -984,7 +961,6 @@ TEST_F(service_api_test, empty_request) {
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    EXPECT_NE(response_code::success, res->code_);
 }
 
 TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
@@ -1001,11 +977,10 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::application_error, res->code_);
 
         auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_FALSE(success);
-        ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_EQ(error_code::sql_execution_exception, error.code_);
         ASSERT_FALSE(error.message_.empty());
         test_commit(tx_handle, true, error_code::inactive_transaction_exception); // verify tx already aborted
     }
@@ -1020,11 +995,10 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::application_error, res->code_);
 
         auto [success, error] = decode_result_only(res->body_);
         ASSERT_FALSE(success);
-        ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_EQ(error_code::sql_execution_exception, error.code_);
         ASSERT_FALSE(error.message_.empty());
         test_rollback(tx_handle); // Even tx has been aborted already, requesting rollback is successful.
         //note that repeating rollback here results in segv because commit or rollback request destroys tx body and tx handle gets dangling
@@ -1041,11 +1015,10 @@ void service_api_test::execute_statement_as_query(std::string_view sql) {
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
     ASSERT_FALSE(success);
-    ASSERT_EQ(sql::status::Status::ERR_ILLEGAL_OPERATION, error.status_);
+    ASSERT_EQ(error_code::inconsistent_statement_exception, error.code_);
     ASSERT_FALSE(error.message_.empty());
     test_commit(tx_handle);
 }
@@ -1083,7 +1056,6 @@ TEST_F(service_api_test, explain_insert) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         auto [result, id, version, cols, error] = decode_explain(res->body_);
         ASSERT_FALSE(result.empty());
@@ -1117,7 +1089,6 @@ TEST_F(service_api_test, explain_query) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         auto [result, id, version, cols, error] = decode_explain(res->body_);
         ASSERT_FALSE(result.empty());
@@ -1143,13 +1114,12 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_NE(response_code::success, res->code_);
 
         auto [result, id, version, cols, error] = decode_explain(res->body_);
         ASSERT_TRUE(result.empty());
         ASSERT_TRUE(cols.empty());
 
-        ASSERT_EQ(sql::status::Status::ERR_INVALID_ARGUMENT, error.status_);
+        ASSERT_EQ(error_code::sql_execution_exception, error.code_);
         ASSERT_FALSE(error.message_.empty());
         LOG(INFO) << error.message_;
     }
@@ -1173,12 +1143,11 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::application_error, res->code_);
 
         auto [explained, id, version, cols, error] = decode_explain(res->body_);
         ASSERT_TRUE(explained.empty());
         ASSERT_TRUE(cols.empty());
-        ASSERT_EQ(sql::status::Status::ERR_UNRESOLVED_HOST_VARIABLE, error.status_);
+        ASSERT_EQ(error_code::unresolved_placeholder_exception, error.code_);
         ASSERT_FALSE(error.message_.empty());
     }
 }
@@ -1206,7 +1175,6 @@ TEST_F(service_api_test, null_host_variable) {
         EXPECT_TRUE(res->wait_completion());
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::success, res->code_);
 
         auto [success, error, stats] = decode_execute_result(res->body_);
         ASSERT_TRUE(success);
@@ -1265,7 +1233,7 @@ TEST_F(service_api_test, execute_ddl) {
     test_query("select * from MYTABLE");
 }
 
-void service_api_test::test_dump(std::vector<std::string>& files, std::string_view dir, status expected) {
+void service_api_test::test_dump(std::vector<std::string>& files, std::string_view dir, error_code expected) {
     std::string p{dir.empty() ? service_api_test::temporary_.path() : std::string{dir}};
     test_statement("insert into T0(C0, C1) values (0, 0.0)");
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
@@ -1302,11 +1270,9 @@ void service_api_test::test_dump(std::vector<std::string>& files, std::string_vi
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
         ASSERT_TRUE(st);
-        if (expected != status::ok) {
-            ASSERT_EQ(response_code::application_error, res->code_);
+        if (expected != error_code::none) {
             break;
         }
-        ASSERT_EQ(response_code::success, res->code_);
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::cout << "name : " << name << std::endl;
@@ -1343,7 +1309,7 @@ TEST_F(service_api_test, execute_dump_load) {
         ss << " ";
     }
     LOG(INFO) << "dump files: " << ss.str();
-    test_load(true, status::ok, files[0]);
+    test_load(true, error_code::none, files[0]);
     {
         using kind = meta::field_type_kind;
         std::vector<mock::basic_record> result{};
@@ -1364,7 +1330,7 @@ TEST_F(service_api_test, execute_dump_load_non_tx) {
         ss << " ";
     }
     LOG(INFO) << "dump files: " << ss.str();
-    test_load(false, status::ok, files[0]);
+    test_load(false, error_code::none, files[0]);
     {
         using kind = meta::field_type_kind;
         std::vector<mock::basic_record> result{};
@@ -1378,7 +1344,7 @@ TEST_F(service_api_test, execute_dump_load_non_tx) {
 TEST_F(service_api_test, dump_bad_path) {
     // check if error code is returned correctly
     std::vector<std::string> files{};
-    test_dump(files, "/dummy_path", status::err_io_error);
+    test_dump(files, "/dummy_path", error_code::sql_execution_exception);
 }
 
 TEST_F(service_api_test, dump_error_with_query_result) {
@@ -1404,7 +1370,6 @@ TEST_F(service_api_test, dump_error_with_query_result) {
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
         ASSERT_TRUE(st);
-        ASSERT_EQ(response_code::application_error, res->code_);
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::cout << "name : " << name << std::endl;
@@ -1426,7 +1391,8 @@ TEST_F(service_api_test, dump_error_with_query_result) {
         {
             auto [success, error] = decode_result_only(res->body_);
             ASSERT_FALSE(success);
-            ASSERT_EQ(sql::status::Status::ERR_EXPRESSION_EVALUATION_FAILURE, error.status_);
+
+            ASSERT_EQ(error_code::value_evaluation_exception, error.code_);
         }
     } while(0);
     test_commit(tx_handle);
@@ -1436,13 +1402,13 @@ TEST_F(service_api_test, dump_error_with_query_result) {
 TEST_F(service_api_test, load_no_file) {
     // no file is specified - success
     std::vector<std::string> files{};
-    test_load(true, status::ok);
+    test_load(true, error_code::none);
 }
 
 TEST_F(service_api_test, DISABLED_load_no_file_non_tx) {
     // no file is specified - success
     std::vector<std::string> files{};
-    test_load(false, status::ok);
+    test_load(false, error_code::none);
 }
 
 TEST_F(service_api_test, load_empty_file_name) {
@@ -1450,7 +1416,7 @@ TEST_F(service_api_test, load_empty_file_name) {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
     std::vector<std::string> files{};
-    test_load(true, status::err_aborted, "");
+    test_load(true, error_code::sql_execution_exception, "");
 }
 
 TEST_F(service_api_test, load_empty_file_name_non_tx) {
@@ -1458,7 +1424,7 @@ TEST_F(service_api_test, load_empty_file_name_non_tx) {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
     std::vector<std::string> files{};
-    test_load(false, status::err_io_error, "");
+    test_load(false, error_code::load_file_exception, "");
 }
 
 TEST_F(service_api_test, load_missing_files) {
@@ -1466,18 +1432,18 @@ TEST_F(service_api_test, load_missing_files) {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
     std::vector<std::string> files{};
-    test_load(true, status::err_aborted, "dummy1.parquet", "dummy2.parquet");
+    test_load(true, error_code::sql_execution_exception, "dummy1.parquet", "dummy2.parquet");
 }
 TEST_F(service_api_test, load_missing_files_non_tx) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
     std::vector<std::string> files{};
-    test_load(true, status::err_aborted, "dummy1.parquet", "dummy2.parquet");
+    test_load(true, error_code::sql_execution_exception, "dummy1.parquet", "dummy2.parquet");
 }
 
 template <class ... Args>
-void service_api_test::test_load(bool transactional, status expected, Args...files) {
+void service_api_test::test_load(bool transactional, error_code expected, Args...files) {
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
@@ -1504,17 +1470,16 @@ void service_api_test::test_load(bool transactional, status expected, Args...fil
         EXPECT_TRUE(res->completed());
         EXPECT_TRUE(res->all_released());
         ASSERT_TRUE(st);
-        ASSERT_EQ(expected == status::ok ? response_code::success : response_code::application_error, res->code_);
         {
             auto [success, error, stats] = decode_execute_result(res->body_);
-            if(expected == status::ok) {
+            if(expected == error_code::none) {
                 ASSERT_TRUE(success);
                 if(transactional) {
                     test_commit(tx_handle);
                 }
             } else {
                 ASSERT_FALSE(success);
-                ASSERT_EQ(api::impl::details::map_status(expected), error.status_);
+                ASSERT_EQ(expected, error.code_);
             }
         }
     }
@@ -1530,7 +1495,6 @@ TEST_F(service_api_test, describe_table) {
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
 
     auto [result, error] = decode_describe_table(res->body_);
     ASSERT_EQ("T0", result.table_name_);
@@ -1552,10 +1516,9 @@ TEST_F(service_api_test, describe_table_not_found) {
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::application_error, res->code_);
 
     auto [result, error] = decode_describe_table(res->body_);
-    ASSERT_EQ(sql::status::ERR_NOT_FOUND, error.status_);
+    ASSERT_EQ(error_code::target_not_found_exception, error.code_);
     LOG(INFO) << "error: " << error.message_;
 }
 
@@ -1570,7 +1533,6 @@ TEST_F(service_api_test, describe_pkless_table) {
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
 
     auto [result, error] = decode_describe_table(res->body_);
     ASSERT_EQ("T", result.table_name_);
@@ -1641,7 +1603,6 @@ TEST_F(service_api_test, list_tables) {
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
 
     auto result = decode_list_tables(res->body_);
     ASSERT_TRUE(contains(result, "TT0"));
@@ -1658,7 +1619,6 @@ TEST_F(service_api_test, get_search_path) {
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(response_code::success, res->code_);
 
     auto result = decode_get_search_path(res->body_);
     ASSERT_EQ(0, result.size());
@@ -1677,9 +1637,9 @@ TEST_F(service_api_test, get_error_info) {
     test_statement("INSERT INTO TT VALUES (0)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
-    test_statement("INSERT INTO TT VALUES (0)", tx_handle, status::err_unique_constraint_violation);
-    test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::err_inactive_transaction);
-    test_statement("INSERT INTO TT VALUES (2)", tx_handle, status::err_inactive_transaction);
+    test_statement("INSERT INTO TT VALUES (0)", tx_handle, error_code::unique_constraint_violation_exception);
+    test_statement("INSERT INTO TT VALUES (1)", tx_handle, error_code::inactive_transaction_exception);
+    test_statement("INSERT INTO TT VALUES (2)", tx_handle, error_code::inactive_transaction_exception);
     test_get_error_info(tx_handle, false, error_code::unique_constraint_violation_exception);
     test_dispose_transaction(tx_handle);
 }
@@ -1691,7 +1651,7 @@ TEST_F(service_api_test, dispose_transaction_invalid_handle) {
 TEST_F(service_api_test, dispose_transaction_missing_handle) {
     // protobuf treats 0 as if not handle is specified
     // this case is handled as an error because sending 0 is usage error anyway
-    test_dispose_transaction(0, status::err_invalid_argument);
+    test_dispose_transaction(0, error_code::sql_execution_exception);
 }
 
 TEST_F(service_api_test, dispose_transaction) {
@@ -1717,7 +1677,7 @@ TEST_F(service_api_test, dispose_transaction_aborted) {
     {
         std::uint64_t tx_handle{};
         test_begin(tx_handle);
-        test_statement("INSERT INTO TT VALUES (0)", tx_handle, status::err_unique_constraint_violation);
+        test_statement("INSERT INTO TT VALUES (0)", tx_handle, error_code::unique_constraint_violation_exception);
 
         EXPECT_EQ(1, get_impl(*db_).transaction_count());
         test_dispose_transaction(tx_handle);
@@ -1732,7 +1692,7 @@ TEST_F(service_api_test, dispose_transaction_auto_dispose) {
     {
         std::uint64_t tx_handle{};
         test_begin(tx_handle);
-        test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::ok);
+        test_statement("INSERT INTO TT VALUES (1)", tx_handle);
         test_commit(tx_handle);
 
         EXPECT_EQ(0, get_impl(*db_).transaction_count());
@@ -1742,7 +1702,7 @@ TEST_F(service_api_test, dispose_transaction_auto_dispose) {
 
 void service_api_test::test_dispose_transaction(
     std::uint64_t handle,
-    status expected
+    error_code expected
 ) {
     auto s = encode_dispose_transaction(handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -1752,14 +1712,13 @@ void service_api_test::test_dispose_transaction(
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
-    ASSERT_EQ(expected == status::ok ? response_code::success : response_code::application_error, res->code_);
 
     auto [success, error] = decode_result_only(res->body_);
-    if(expected == status::ok) {
+    if(expected == error_code::none) {
         ASSERT_TRUE(success);
     } else {
         ASSERT_FALSE(success);
-        ASSERT_EQ(api::impl::details::map_status(expected), error.status_);
+        ASSERT_EQ(expected, error.code_);
     }
 }
 
@@ -1769,8 +1728,8 @@ TEST_F(service_api_test, get_error_info_on_compile_error) {
     test_statement("INSERT INTO TT VALUES (0)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
-    test_statement("INSERT INTO dummy VALUES (0)", tx_handle, status::err_compiler_error);
-    test_statement("INSERT INTO TT VALUES (1)", tx_handle, status::err_inactive_transaction);
+    test_statement("INSERT INTO dummy VALUES (0)", tx_handle, error_code::symbol_analyze_exception);
+    test_statement("INSERT INTO TT VALUES (1)", tx_handle, error_code::inactive_transaction_exception);
     test_get_error_info(tx_handle, false, error_code::symbol_analyze_exception);
     test_dispose_transaction(tx_handle);
 }

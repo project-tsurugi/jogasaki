@@ -26,7 +26,6 @@
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
 #include "jogasaki/proto/sql/common.pb.h"
-#include "jogasaki/proto/sql/status.pb.h"
 
 #include <jogasaki/api.h>
 #include <jogasaki/request_statistics.h>
@@ -204,7 +203,7 @@ inline begin_result decode_begin(std::string_view res) {
     auto& begin = resp.begin();
     if (! begin.has_success()) {
         auto& err = begin.error();
-        LOG(ERROR) << "**** error returned in Begin : " << err.status() << "'" << err.detail() << "' **** ";
+        LOG(ERROR) << "**** error returned in Begin : " << err.code() << "'" << err.detail() << "' **** ";
         if (utils_raise_exception_on_error) std::abort();
         return {};
     }
@@ -223,7 +222,7 @@ inline std::uint64_t decode_prepare(std::string_view res) {
     auto& prep = resp.prepare();
     if (! prep.has_prepared_statement_handle()) {
         auto& err = prep.error();
-        LOG(ERROR) << "**** error returned in Prepare : " << sql::status::Status_Name(err.status()) << " '" << err.detail() << "' **** ";
+        LOG(ERROR) << "**** error returned in Prepare : " << sql::error::Code_Name(err.code()) << " '" << err.detail() << "' **** ";
         if (utils_raise_exception_on_error) std::abort();
         return -1;
     }
@@ -251,32 +250,19 @@ inline std::string encode_rollback(std::uint64_t handle) {
 struct error {
     error() = default;
 
-    error(sql::status::Status st, std::string_view msg) noexcept :
-        status_(st),
+    error(error_code code, std::string_view msg) noexcept :
+        code_(code),
         message_(msg)
     {}
 
-    error(error_code code, std::string_view msg) noexcept :
-        message_(msg),
-        code_(code)
-    {}
-
-    error(sql::status::Status st, std::string_view msg, error_code code) noexcept :
-        status_(st),
-        message_(msg),
-        code_(code)
-    {}
-
-    error(sql::status::Status st, std::string_view msg, error_code code, std::string_view supplemental_text) noexcept :
-        status_(st),
-        message_(msg),
+    error(error_code code, std::string_view msg, std::string_view supplemental_text) noexcept :
         code_(code),
+        message_(msg),
         supplemental_text_(supplemental_text)
     {}
 
-    sql::status::Status status_;
-    std::string message_;
     error_code code_;
+    std::string message_;
     std::string supplemental_text_;
 };
 
@@ -291,7 +277,7 @@ inline std::pair<bool, error> decode_result_only(std::string_view res) {
     auto& ro = resp.result_only();
     if (ro.has_error()) {
         auto& er = ro.error();
-        return {false, {er.status(), er.detail(), api::impl::map_error(er.code()), er.supplemental_text()}};
+        return {false, {api::impl::map_error(er.code()), er.detail(), er.supplemental_text()}};
     }
     return {true, {}};
 }
@@ -321,7 +307,7 @@ inline std::tuple<bool, error, std::shared_ptr<request_statistics>> decode_execu
     auto& er = resp.execute_result();
     if (er.has_error()) {
         auto& err = er.error();
-        return {false, {err.status(), err.detail(), api::impl::map_error(err.code()), err.supplemental_text()}, {}};
+        return {false, {api::impl::map_error(err.code()), err.detail(), err.supplemental_text()}, {}};
     }
     return {true, {}, make_stats(er.success())};
 }
@@ -572,7 +558,7 @@ inline std::tuple<std::string, std::string, std::size_t, std::vector<colinfo>, e
     auto& explain = resp.explain();
     if (explain.has_error()) {
         auto& er = explain.error();
-        return {{}, {}, {}, {}, {er.status(), er.detail()}};
+        return {{}, {}, {}, {}, {api::impl::map_error(er.code()), er.detail()}};
     }
     auto cols = create_colinfo(explain.success());
     return {
@@ -656,7 +642,7 @@ inline std::pair<table_info, error> decode_describe_table(std::string_view res) 
     auto& dt = resp.describe_table();
     if (dt.has_error()) {
         auto& er = dt.error();
-        return {{}, {er.status(), er.detail()}};
+        return {{}, {api::impl::map_error(er.code()), er.detail()}};
     }
 
     std::vector<column_info> cols{};
@@ -729,9 +715,9 @@ inline std::pair<bool, error> decode_get_error_info(std::string_view res) {
     }
     if(! gei.has_success()) {
         auto& err = gei.error();
-        return {false, { err.status(), err.detail(), api::impl::map_error(err.code()), err.supplemental_text() }};
+        return {false, { api::impl::map_error(err.code()), err.detail(), err.supplemental_text() }};
     }
     auto& err = gei.success();
-    return {true, { err.status(), err.detail(), api::impl::map_error(err.code()), err.supplemental_text() }};
+    return {true, { api::impl::map_error(err.code()), err.detail(), err.supplemental_text() }};
 }
 }

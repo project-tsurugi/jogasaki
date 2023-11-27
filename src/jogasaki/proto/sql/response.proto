@@ -7,7 +7,6 @@ option java_package = "com.tsurugidb.sql.proto";
 option java_outer_classname = "SqlResponse";
 
 import "jogasaki/proto/sql/common.proto";
-import "jogasaki/proto/sql/status.proto";
 import "jogasaki/proto/sql/error.proto";
 
 /*
@@ -21,8 +20,7 @@ message Success {
 /* For response of error containing a error message. */
 message Error {
 
-  // result status code (to be deprecated)
-  status.Status status = 1;
+  reserved 1;
 
   // error message text
   string detail = 2;

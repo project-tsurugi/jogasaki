@@ -330,6 +330,31 @@ void api_test_base::test_stmt_err(
     ASSERT_EQ(expected, result->code());
 }
 
+void api_test_base::test_stmt_err(
+    std::string_view stmt,
+    std::unordered_map<std::string, api::field_type_kind> const& variables,
+    api::parameter_set const& params,
+    error_code expected,
+    std::string_view msg) {
+    std::shared_ptr<error::error_info> result{};
+    ASSERT_EQ("",
+        builder()
+            .text(stmt)
+            .params(params)
+            .vars(variables)
+            .expect_error(true)
+            .error(result)
+            .run()
+            .report()
+    );
+    ASSERT_TRUE(result);
+    std::cerr << *result << std::endl;
+    ASSERT_EQ(expected, result->code());
+    if(! msg.empty()) {
+        ASSERT_EQ(msg, result->message());
+    }
+}
+
 void api_test_base::explain_statement(
     std::string_view query,
     std::string& out,

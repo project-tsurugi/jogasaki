@@ -158,6 +158,14 @@ public:
         error_code expected,
         std::string_view msg = ""
     );
+
+    void test_stmt_err(
+        std::string_view stmt,
+        std::unordered_map<std::string, api::field_type_kind> const& variables,
+        api::parameter_set const& params,
+        error_code expected = error_code::none,
+        std::string_view msg = "");
+
     void resolve(std::string& query, std::string_view place_holder, std::string value);
 
     void explain_statement(

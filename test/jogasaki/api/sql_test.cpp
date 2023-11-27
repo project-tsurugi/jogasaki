@@ -843,4 +843,32 @@ TEST_F(sql_test, DISABLED_literal_with_invalid_char) {
     }
 }
 
+TEST_F(sql_test, insert_string_with_invalid_char) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 varchar(3) primary key)");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character},
+    };
+    auto ps = api::create_parameter_set();
+    std::string str("A\0B", 3);
+    ps->set_character("p0", str);
+
+    test_stmt_err("INSERT INTO T VALUES (:p0)", variables, *ps, error_code::invalid_runtime_value_exception);
+}
+
+TEST_F(sql_test, update_string_with_invalid_char) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 varchar(3) primary key)");
+    execute_statement("INSERT INTO T VALUES ('ABC')");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character},
+    };
+    auto ps = api::create_parameter_set();
+    std::string str("A\0B", 3);
+    ps->set_character("p0", str);
+
+    test_stmt_err("UPDATE T SET C0 = :p0", variables, *ps, error_code::invalid_runtime_value_exception);
+}
 }

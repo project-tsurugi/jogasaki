@@ -151,7 +151,7 @@ public:
     }
 
     bool equal(char const* s, std::size_t safe_len) const {
-        if(!(byte_size <= safe_len)) throw_exception(std::logic_error{""});
+        if(!(byte_size <= safe_len)) throw_exception(std::domain_error{"buffer over-read"});
         (void)safe_len;
         for(std::size_t i=0; i < byte_size; ++i) {
             if(s[i] != buf_[i]) return false; //NOLINT

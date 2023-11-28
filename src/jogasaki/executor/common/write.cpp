@@ -203,6 +203,15 @@ void handle_encode_error(
         );
         return;
     }
+    if(st == status::err_invalid_runtime_value) {
+        set_error(
+            ctx,
+            error_code::invalid_runtime_value_exception,
+            "detected invalid runtime value",
+            st
+        );
+        return;
+    }
     set_error(
         ctx,
         error_code::sql_service_exception,

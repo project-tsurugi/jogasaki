@@ -100,6 +100,16 @@ public:
         return status::ok;
     }
 
+    bool validate_text(std::string_view sv) {
+        for(std::size_t i=0,n=sv.size(); i<n; ++i) {
+            if(sv[i] == 0) {
+                VLOG_LP(log_error) << "an invalid octet appears in the character field data position:" << i << " data length:" << n;
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * @brief write the accessor::text field data respecting order to the stream
      * @tparam T must be accessor::text
@@ -113,6 +123,9 @@ public:
         if(max_len < sz) {
             VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
             return status::err_insufficient_field_storage;
+        }
+        if(! validate_text(sv)) {
+            return status::err_invalid_runtime_value;
         }
         do_write(sv.data(), sz, odr);
         if(add_padding) {

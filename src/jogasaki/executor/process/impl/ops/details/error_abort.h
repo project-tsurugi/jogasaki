@@ -107,6 +107,17 @@ operation_status error_abort_impl(
                 false
             );
             break;
+        case status::err_invalid_runtime_value:
+            error::set_error_impl(
+                *ctx.req_context(),
+                error_code::invalid_runtime_value_exception,
+                "detected invalid runtime value",
+                filepath,
+                position,
+                res,
+                false
+            );
+            break;
         default:
             error::set_error_impl(
                 *ctx.req_context(),

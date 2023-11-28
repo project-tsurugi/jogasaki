@@ -66,6 +66,7 @@ enum class status : std::int64_t {
     err_write_operation_by_rtx = -30,
     err_invalid_key_length = -31,
     err_insufficient_field_storage = -32,
+    err_invalid_runtime_value = -33,
 
     // internal status
     waiting_for_other_transaction = -10001,
@@ -117,6 +118,7 @@ enum class status : std::int64_t {
         case status::err_write_operation_by_rtx: return "err_write_operation_by_rtx"sv;
         case status::err_invalid_key_length: return "err_invalid_key_length"sv;
         case status::err_insufficient_field_storage: return "err_insufficient_field_storage"sv;
+        case status::err_invalid_runtime_value: return "err_invalid_runtime_value"sv;
 
         case status::waiting_for_other_transaction: return "waiting_for_other_transaction"sv;
     }

@@ -24,6 +24,8 @@
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
+#include <jogasaki/executor/process/impl/ops/details/write_primary_target.h>
+#include <jogasaki/executor/process/impl/ops/details/write_secondary_target.h>
 #include <jogasaki/data/aligned_buffer.h>
 
 namespace jogasaki::executor::common {
@@ -153,9 +155,9 @@ public:
 
     [[nodiscard]] model::statement_kind kind() const noexcept override;
 
-    bool operator()(request_context& context) const;
+    bool operator()(request_context& context);
 
-    bool process(request_context& context) const;
+    bool process(request_context& context);
 
 private:
     write_kind kind_{};
@@ -168,6 +170,8 @@ private:
     maybe_shared_ptr<meta::record_meta> value_meta_{};
     std::vector<details::write_field> key_fields_{};
     std::vector<details::write_field> value_fields_{};
+    process::impl::ops::details::write_primary_target primary_{};
+    std::vector<process::impl::ops::details::write_secondary_target> secondaries_{};
 
     status create_tuples(
         request_context& ctx,
@@ -191,12 +195,6 @@ private:
         memory::lifo_paged_memory_resource& resource,
         executor::process::impl::variable_table const* host_variables,
         std::vector<details::write_target>& out
-    ) const;
-
-    [[nodiscard]] std::vector<details::write_field> create_fields(
-        yugawara::storage::index const& idx,
-        sequence_view<column const> columns,
-        bool key
     ) const;
 };
 

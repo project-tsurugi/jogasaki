@@ -73,6 +73,25 @@ void handle_encode_error(
     request_context& ctx,
     status st
 );
+std::vector<details::write_field> create_fields(
+    yugawara::storage::index const& idx,
+    sequence_view<write::column const> columns,
+    maybe_shared_ptr<meta::record_meta> key_meta,
+    maybe_shared_ptr<meta::record_meta> value_meta,
+    bool key
+);
+write_primary_target create_primary_target(
+    std::string_view storage_name,
+    maybe_shared_ptr<meta::record_meta> key_meta,
+    maybe_shared_ptr<meta::record_meta> value_meta,
+    std::vector<details::write_field> const& key_fields,
+    std::vector<details::write_field> const& value_fields
+);
+std::vector<write_secondary_target> create_secondary_targets(
+    yugawara::storage::index const& idx,
+    maybe_shared_ptr<meta::record_meta> key_meta,
+    maybe_shared_ptr<meta::record_meta> value_meta
+);
 
 status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
@@ -187,8 +206,10 @@ write::write(
     host_variables_(host_variables),
     key_meta_(index::create_meta(*idx_, true)),
     value_meta_(index::create_meta(*idx_, false)),
-    key_fields_(create_fields(*idx_, wrt_->columns(), true)),
-    value_fields_(create_fields(*idx_, wrt_->columns(), false))
+    key_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true)),
+    value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false)),
+    primary_(create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_)),
+    secondaries_(create_secondary_targets(*idx_, key_meta_, value_meta_))
 {}
 
 model::statement_kind write::kind() const noexcept {
@@ -201,23 +222,27 @@ void abort_transaction(transaction_context& tx) {
     }
 }
 
-bool write::operator()(request_context& context) const {
+bool write::operator()(request_context& context) {
     auto res = process(context);
     if(! res) {
+        // Ensure tx aborts on any error. Though tx might be already aborted due to kvs errors,
+        // aborting again will do no harm since sharksfin tx manages is_active flag and omits aborting again.
         auto& tx = context.transaction();
         abort_transaction(*tx);
     }
     return res;
 }
 
-bool write::process(request_context& context) const {  //NOLINT(readability-function-cognitive-complexity)
-    auto& tx = context.transaction();
-    BOOST_ASSERT(tx);  //NOLINT
-    auto* db = tx->database();
-
+write_primary_target create_primary_target(
+    std::string_view storage_name,
+    maybe_shared_ptr<meta::record_meta> key_meta,
+    maybe_shared_ptr<meta::record_meta> value_meta,
+    std::vector<details::write_field> const& key_fields,
+    std::vector<details::write_field> const& value_fields
+) {
     std::vector<index::field_info> input_key_fields{};
-    input_key_fields.reserve(key_fields_.size());
-    for(auto&& f : key_fields_) {
+    input_key_fields.reserve(key_fields.size());
+    for(auto&& f : key_fields) {
         input_key_fields.emplace_back(
             f.type_,
             true,
@@ -228,7 +253,7 @@ bool write::process(request_context& context) const {  //NOLINT(readability-func
         );
     }
     std::vector<index::field_info> input_value_fields{};
-    for(auto&& f : value_fields_) {
+    for(auto&& f : value_fields) {
         input_value_fields.emplace_back(
             f.type_,
             true,
@@ -238,47 +263,70 @@ bool write::process(request_context& context) const {  //NOLINT(readability-func
             f.spec_
         );
     }
-
-    // setup primary/secondary targets and contexts
-    auto primary = std::make_unique<write_primary_target>(
-        idx_->simple_name(),
-        key_meta_,
-        value_meta_,
+    return {
+        storage_name,
+        std::move(key_meta),
+        std::move(value_meta),
         input_key_fields,
         input_key_fields,
-        input_value_fields,
-        std::vector<process::impl::ops::details::update_field>{});
-    auto primary_ctx = std::make_unique<write_primary_context>(
-        db->get_or_create_storage(primary->storage_name()),
-        key_meta_,
-        value_meta_,
-        std::addressof(context));
+        std::move(input_value_fields),
+        std::vector<process::impl::ops::details::update_field>{}
+    };
+}
 
-    std::vector<write_secondary_target> secondary_targets{};
-    std::vector<write_secondary_context> secondary_contexts{};
-
-    bool has_secondaries = false;
-    status ret_status{status::ok};
-    idx_->table().owner()->each_table_index(idx_->table(),
+std::vector<write_secondary_target> create_secondary_targets(
+    yugawara::storage::index const& idx,
+    maybe_shared_ptr<meta::record_meta> key_meta,
+    maybe_shared_ptr<meta::record_meta> value_meta
+) {
+    std::vector<write_secondary_target> ret{};
+    auto cnt = 0;
+    idx.table().owner()->each_table_index(idx.table(),
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (ret_status != status::ok) return;
-            if (*entry == *idx_) {
+            if (*entry == idx) {
                 return;
             }
-            has_secondaries = true;
-
-            secondary_targets.emplace_back(
-                *entry,
-                key_meta_,
-                value_meta_
-            );
-            secondary_contexts.emplace_back(
-                db->get_or_create_storage(entry->simple_name()),
-                std::addressof(context));
+            ++cnt;
         }
     );
+    ret.reserve(cnt);
+    idx.table().owner()->each_table_index(idx.table(),
+        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
+            if (*entry == idx) {
+                return;
+            }
+            ret.emplace_back(
+                *entry,
+                key_meta,
+                value_meta
+            );
+        }
+    );
+    return ret;
+}
 
-    if(has_secondaries && kind_ == write_kind::insert_overwrite) {
+std::vector<write_secondary_context> create_secondary_contexts(
+    std::vector<write_secondary_target> const& targets,
+    kvs::database& db,
+    request_context& context
+) {
+    std::vector<write_secondary_context> ret{};
+    ret.reserve(targets.size());
+    for (auto&& e: targets) {
+        ret.emplace_back(
+            db.get_or_create_storage(e.storage_name()),
+            std::addressof(context));
+    }
+    return ret;
+}
+
+bool write::process(request_context& context) {  //NOLINT(readability-function-cognitive-complexity)
+    auto& tx = context.transaction();
+    BOOST_ASSERT(tx);  //NOLINT
+    auto* db = tx->database();
+
+    // TODO move this check on write object construction
+    if(! secondaries_.empty() && kind_ == write_kind::insert_overwrite) {
         set_error(
             context,
             error_code::unsupported_runtime_feature_exception,
@@ -289,8 +337,17 @@ bool write::process(request_context& context) const {  //NOLINT(readability-func
         return false;
     }
 
+    // setup primary/secondary contexts
+    auto primary_ctx = std::make_unique<write_primary_context>(
+        db->get_or_create_storage(primary_.storage_name()),
+        key_meta_,
+        value_meta_,
+        std::addressof(context));
+    auto secondary_contexts = create_secondary_contexts(secondaries_, *db, context);
+
     data::small_record_store key_store{key_meta_, resource_};
     data::small_record_store value_store{value_meta_, resource_};
+
     for(auto&& tuple: wrt_->tuples()) {
         // create input record (input_key, input_value)
         utils::checkpoint_holder cph(resource_);
@@ -318,7 +375,7 @@ bool write::process(request_context& context) const {  //NOLINT(readability-func
             return false;
         }
 
-        if(kind_ == write_kind::insert_overwrite && has_secondaries) {
+        if(kind_ == write_kind::insert_overwrite && ! secondaries_.empty()) {
             // TODO update secondaries
         }
 
@@ -326,7 +383,7 @@ bool write::process(request_context& context) const {  //NOLINT(readability-func
             kvs::put_option::create :
             kvs::put_option::create_or_update;
         std::string_view encoded_primary_key{};
-        if(auto res = primary->encode_and_put(
+        if(auto res = primary_.encode_and_put(
             *primary_ctx,
             *tx,
             opt,
@@ -341,7 +398,7 @@ bool write::process(request_context& context) const {  //NOLINT(readability-func
                     set_error(
                         context,
                         error_code::unique_constraint_violation_exception,
-                        string_builder{} << "Unique constraint violation occurred. Table:" << primary->storage_name() << string_builder::to_string,
+                        string_builder{} << "Unique constraint violation occurred. Table:" << primary_.storage_name() << string_builder::to_string,
                         status::err_unique_constraint_violation);
                     return false;
                 }
@@ -364,8 +421,8 @@ bool write::process(request_context& context) const {  //NOLINT(readability-func
             // updating secondaries is done already
             continue;
         }
-        for(std::size_t i=0, n=secondary_targets.size(); i < n; ++i) {
-            auto& e = secondary_targets[i];
+        for(std::size_t i=0, n=secondaries_.size(); i < n; ++i) {
+            auto& e = secondaries_[i];
             if(auto res = e.encode_and_put(
                 secondary_contexts[i],
                 *tx,
@@ -671,11 +728,13 @@ void create_generated_field(
     }
 }
 
-std::vector<details::write_field> write::create_fields(
+std::vector<details::write_field> create_fields(
     yugawara::storage::index const& idx,
-    sequence_view<column const> columns,
+    sequence_view<write::column const> columns,
+    maybe_shared_ptr<meta::record_meta> key_meta,
+    maybe_shared_ptr<meta::record_meta> value_meta,
     bool key
-) const {
+) {
     using reference = takatori::descriptor::variable::reference_type;
     yugawara::binding::factory bindings{};
     std::vector<details::write_field> out{};
@@ -701,8 +760,8 @@ std::vector<details::write_field> write::create_fields(
                 auto pos = out.size();
                 create_generated_field(out, npos, dv, type, nullable, spec);
                 auto& f = out[pos];
-                f.nullity_offset_ = key_meta_->nullity_offset(pos);
-                f.offset_ = key_meta_->value_offset(pos);
+                f.nullity_offset_ = key_meta->nullity_offset(pos);
+                f.offset_ = key_meta->value_offset(pos);
                 continue;
             }
             auto pos = out.size();
@@ -712,8 +771,8 @@ std::vector<details::write_field> write::create_fields(
                 spec,
                 nullable
             );
-            f.nullity_offset_ = key_meta_->nullity_offset(pos);
-            f.offset_ = key_meta_->value_offset(pos);
+            f.nullity_offset_ = key_meta->nullity_offset(pos);
+            f.offset_ = key_meta->value_offset(pos);
         }
     } else {
         out.reserve(idx.values().size());
@@ -733,8 +792,8 @@ std::vector<details::write_field> write::create_fields(
                 auto pos = out.size();
                 create_generated_field(out, npos, dv, type, nullable, spec);
                 auto& f = out[pos];
-                f.nullity_offset_ = value_meta_->nullity_offset(pos);
-                f.offset_ = value_meta_->value_offset(pos);
+                f.nullity_offset_ = value_meta->nullity_offset(pos);
+                f.offset_ = value_meta->value_offset(pos);
                 continue;
             }
             auto pos = out.size();
@@ -744,8 +803,8 @@ std::vector<details::write_field> write::create_fields(
                 spec,
                 nullable
             );
-            f.nullity_offset_ = value_meta_->nullity_offset(pos);
-            f.offset_ = value_meta_->value_offset(pos);
+            f.nullity_offset_ = value_meta->nullity_offset(pos);
+            f.offset_ = value_meta->value_offset(pos);
         }
     }
     return out;

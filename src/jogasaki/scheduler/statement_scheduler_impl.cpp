@@ -49,8 +49,9 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
             break;
         }
         case kind::write: {
-            auto& w = unsafe_downcast<executor::common::write>(s);
-            w(context);
+            // FIXME remove tasked write
+            // auto& w = unsafe_downcast<executor::common::write>(s);
+            // w(context);
             break;
         }
         case kind::create_table: {

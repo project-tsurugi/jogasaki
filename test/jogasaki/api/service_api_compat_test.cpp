@@ -159,8 +159,7 @@ TEST_F(service_api_compat_test, invalid_version) {
               "inconsistent service message version: see https://github.com/project-tsurugi/tateyama/blob/master/docs/service-message-compatibilities.md (client: \"sql-2.0\", server: \"sql-1.0\")");
 }
 
-//FIXME re-enable after version 0.0 is blocked as error
-TEST_F(service_api_compat_test, DISABLED_none_version_provided) {
+TEST_F(service_api_compat_test, none_version_provided) {
     // verify by sending request with no version info
     sql::request::Request r{};
     auto* lt = r.mutable_listtables();

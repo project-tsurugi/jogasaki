@@ -201,7 +201,16 @@ void abort_transaction(transaction_context& tx) {
     }
 }
 
-bool write::operator()(request_context& context) const {  //NOLINT(readability-function-cognitive-complexity)
+bool write::operator()(request_context& context) const {
+    auto res = process(context);
+    if(! res) {
+        auto& tx = context.transaction();
+        abort_transaction(*tx);
+    }
+    return res;
+}
+
+bool write::process(request_context& context) const {  //NOLINT(readability-function-cognitive-complexity)
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
@@ -295,7 +304,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
             host_variables_,
             key_store
         ); res != status::ok) {
-            abort_transaction(*tx);
             return false;
         }
         if(auto res = create_record_from_tuple(
@@ -307,7 +315,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
             host_variables_,
             value_store
         ); res != status::ok) {
-            abort_transaction(*tx);
             return false;
         }
 
@@ -336,7 +343,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                         error_code::unique_constraint_violation_exception,
                         string_builder{} << "Unique constraint violation occurred. Table:" << primary->storage_name() << string_builder::to_string,
                         status::err_unique_constraint_violation);
-                    abort_transaction(*tx);
                     return false;
                 }
                 // write_kind::insert_skip
@@ -349,7 +355,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 continue;
             }
             handle_generic_error(context, res, error_code::sql_service_exception);
-            abort_transaction(*tx);
             return false;
         }
         auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
@@ -369,7 +374,6 @@ bool write::operator()(request_context& context) const {  //NOLINT(readability-f
                 encoded_primary_key
             ); res != status::ok) {
                 handle_generic_error(context, res, error_code::sql_service_exception);
-                abort_transaction(*tx);
                 return false;
             }
         }

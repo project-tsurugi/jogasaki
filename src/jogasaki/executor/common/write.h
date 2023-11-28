@@ -155,6 +155,8 @@ public:
 
     bool operator()(request_context& context) const;
 
+    bool process(request_context& context) const;
+
 private:
     write_kind kind_{};
     yugawara::storage::index const* idx_{};

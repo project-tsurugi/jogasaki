@@ -63,6 +63,18 @@ void handle_encode_errors_impl(
             );
             return;
         }
+        case status::err_invalid_runtime_value: {
+            error::set_error_impl(
+                context,
+                error_code::invalid_runtime_value_exception,
+                "detected invalid runtime value",
+                filepath,
+                position,
+                res,
+                false
+            );
+            return;
+        }
         default:
             // no-op - only known error is handled
             break;

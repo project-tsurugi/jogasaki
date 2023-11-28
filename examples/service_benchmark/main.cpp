@@ -90,7 +90,6 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
 using namespace jogasaki::query_bench_cli;
-using tateyama::api::server::response_code;
 
 using takatori::util::unsafe_downcast;
 
@@ -642,7 +641,8 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(! res->wait_completion() || ! st || !res->completed() || res->code_ != response_code::success) {
+        if (!res->wait_completion() || !st || !res->completed() ||
+            res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             LOG(ERROR) << "error executing command";
             return false;
         }
@@ -687,7 +687,7 @@ private:
             LOG(ERROR) << "response timed out";
             return false;
         }
-        if(! st || res->code_ != response_code::success) {
+        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             LOG(ERROR) << "error executing command";
         }
         auto ret = handle_result_only(false, res->body_);
@@ -701,7 +701,9 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+
+        if (! st || !res->completed() ||
+            res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             LOG(ERROR) << "error executing command";
         }
         auto ret = handle_result_only(false, res->body_);
@@ -717,7 +719,8 @@ private:
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
-        if(! st || !res->completed() || res->code_ != response_code::success) {
+        if (! st || !res->completed() ||
+            res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             LOG(ERROR) << "error executing command";
             return false;
         }
@@ -769,7 +772,7 @@ private:
                 LOG(ERROR) << "execution took too long";
                 std::abort();
             }
-            if(res->code_ != response_code::success) {
+            if (res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
                 LOG(ERROR) << "error executing command";
             }
             if (verify_query_records_) {

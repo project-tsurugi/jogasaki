@@ -66,7 +66,6 @@ namespace tateyama::service_cli {
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
-using tateyama::api::server::response_code;
 
 using takatori::util::unsafe_downcast;
 
@@ -413,7 +412,7 @@ private:
             return false;
         }
         bool error{false};
-        if(! st || res->code_ != response_code::success) {
+        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
@@ -462,7 +461,7 @@ private:
             LOG(ERROR) << "response timed out";
             return false;
         }
-        if(! st || res->code_ != response_code::success) {
+        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_, for_autocommit);
@@ -496,7 +495,7 @@ private:
             LOG(ERROR) << "response timed out";
             return false;
         }
-        if(! st || res->code_ != response_code::success) {
+        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             std::cerr << "error executing command" << std::endl;
         }
         auto ret = handle_result_only(res->body_);
@@ -663,7 +662,7 @@ private:
             LOG(ERROR) << "response timed out";
             return false;
         }
-        if(! st || res->code_ != response_code::success) {
+        if(! st || res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
             std::cerr << "error executing command" << std::endl;
             error = true;
         }
@@ -827,7 +826,7 @@ private:
         on_going_statements_.emplace_back(
             std::async(std::launch::async, [&, res]() {
                 wait_response(*res);
-                if(res->code_ != response_code::success) {
+                if (res->error_.code() != ::tateyama::proto::diagnostics::Code::UNKNOWN) {
                     std::cerr << "error executing command" << std::endl;
                 }
                 if (verify_query_records_) {

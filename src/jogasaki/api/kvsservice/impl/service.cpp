@@ -40,23 +40,18 @@ bool service::shutdown(bool) {
 /*
  * reply methods
  */
-static void reply(tateyama::api::server::response_code code, std::string_view body,
+static void reply(std::string_view body,
                   std::shared_ptr<tateyama::api::server::response> &res) {
-    res->code(code);
     res->body(body);
 }
 
-static void reply(google::protobuf::Message &message, tateyama::api::server::response_code code,
+static void reply(google::protobuf::Message &message,
                   std::shared_ptr<tateyama::api::server::response> &res) {
     std::string s { };
     if (!message.SerializeToString(&s)) {
         throw_exception(std::logic_error{"SerializeToOstream failed"});
     }
-    reply(code, s, res);
-}
-
-static void reply(tateyama::proto::kvs::response::Response &proto_res, std::shared_ptr<tateyama::api::server::response> &res) {
-    reply(proto_res, tateyama::api::server::response_code::success, res);
+    reply(s, res);
 }
 
 static void set_error(status status, tateyama::proto::kvs::response::Error &error) {
@@ -676,8 +671,7 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
     res->session_id(req->session_id());
     auto s = req->payload();
     if (!proto_req.ParseFromArray(s.data(), static_cast<int>(s.size()))) {
-        reply(tateyama::api::server::response_code::io_error,
-              "parse error with request body", res);
+        reply("parse error with request body", res);
         return true;
     }
     switch (proto_req.command_case()) {
@@ -706,13 +700,11 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
             break;
         }
         case tateyama::proto::kvs::request::Request::kScan: {
-            reply(tateyama::api::server::response_code::application_error,
-                  "not supported yet", res);
+            reply("not supported yet", res);
             break;
         }
         case tateyama::proto::kvs::request::Request::kBatch: {
-            reply(tateyama::api::server::response_code::application_error,
-                  "not supported yet", res);
+            reply("not supported yet", res);
             break;
         }
         case tateyama::proto::kvs::request::Request::kGetErrorInfo: {
@@ -726,12 +718,11 @@ bool service::operator()(std::shared_ptr<tateyama::api::server::request const> r
         case tateyama::proto::kvs::request::Request::COMMAND_NOT_SET: {
             // NOTE: for transfer benchmark of empty message
             // see tsubakuro/modules/kvs/src/bench/java/com/tsurugidb/tsubakuro/kvs/bench/EmptyMessageBench.java
-            reply(tateyama::api::server::response_code::success, "", res);
+            reply("", res);
             break;
         }
         default:
-            reply(tateyama::api::server::response_code::application_error,
-                  "invalid request code", res);
+            reply("invalid request code", res);
             break;
     }
 

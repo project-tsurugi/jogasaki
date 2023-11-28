@@ -44,7 +44,6 @@
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/writer.h>
 #include <tateyama/api/server/data_channel.h>
-#include <tateyama/api/server/response_code.h>
 
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
@@ -56,8 +55,6 @@ namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
-
-using response_code = tateyama::api::server::response_code;
 
 namespace sql = jogasaki::proto::sql;
 
@@ -165,7 +162,6 @@ void error(
     e.set_detail(m);
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
-    res.code(response_code::application_error);
     reply(res, r, req_info);
     release_object(r, p);
     p.release_error();
@@ -187,7 +183,6 @@ void error(
     e.set_supplemental_text(suptext);
     p.set_allocated_error(&e);
     set_allocated_object(r, p);
-    res.code(response_code::application_error);
     reply(res, r, req_info);
     release_object(r, p);
     p.release_error();
@@ -221,7 +216,6 @@ inline void success<sql::response::ResultOnly>(
 
     ro.set_allocated_success(&s);
     r.set_allocated_result_only(&ro);
-    res.code(response_code::success);
     reply(res, r, req_info);
     r.release_result_only();
     ro.release_success();
@@ -246,7 +240,6 @@ inline void success<sql::response::Begin>(
     s.set_allocated_transaction_id(&tid);
     b.set_allocated_success(&s);
     r.set_allocated_begin(&b);
-    res.code(response_code::success);
     reply(res, r, req_info);
     r.release_begin();
     b.release_success();
@@ -268,7 +261,6 @@ inline void success<sql::response::Prepare>(
     ps.set_has_result_records(statement.has_result_records());
     p.set_allocated_prepared_statement_handle(&ps);
     r.set_allocated_prepare(&p);
-    res.code(response_code::success);
     reply(res, r, req_info);
     r.release_prepare();
     p.release_prepared_statement_handle();
@@ -313,7 +305,6 @@ inline void success<sql::response::Explain>(
     success.set_allocated_contents(&output);
     r.set_allocated_explain(&explain);
     set_metadata(meta, success);
-    res.code(response_code::success);
     reply(res, r, req_info);
     success.clear_columns();
     r.release_explain();
@@ -346,7 +337,6 @@ inline void success<sql::response::DescribeTable>(
         c->set_name(std::string{col.simple_name()});
         c->set_atom_type(to_atom_type(col.type()));
     }
-    res.code(response_code::success);
     reply(res, r, req_info);
     success.clear_columns();
     dt.release_success();
@@ -368,7 +358,6 @@ inline void success<sql::response::ListTables>(
         auto* name = success.add_table_path_names();
         name->add_identifiers()->set_label(n);
     }
-    res.code(response_code::success);
     reply(res, r, req_info);
     lt.release_success();
     r.release_list_tables();
@@ -387,7 +376,6 @@ inline void success<sql::response::GetSearchPath>(
 
     // currently search path is not in place yet, so return empty success object
 
-    res.code(response_code::success);
     reply(res, r, req_info);
     sp.release_success();
     r.release_get_search_path();
@@ -416,7 +404,6 @@ inline void success<sql::response::GetErrorInfo>(
         auto text = info->supplemental_text();
         error.set_supplemental_text(text.data(), text.size());
     }
-    res.code(response_code::success);
     reply(res, r, req_info);
     if (! info) {
         gei.release_error_not_found();
@@ -455,7 +442,6 @@ inline void success<sql::response::ExecuteResult>(
             c->set_value(*counter.count());
         }
     });
-    res.code(response_code::success);
     reply(res, r, req_info);
     r.release_execute_result();
     er.release_success();

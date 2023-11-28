@@ -55,10 +55,6 @@ status test_channel::release(writer&) {
     return status::ok;
 }
 
-void test_response::code(response_code code) {
-    code_ = code;
-}
-
 status test_response::body(std::string_view body) {
     body_.assign(body);
     completed_ = true;

@@ -17,7 +17,6 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/data_channel.h>
-#include <tateyama/api/server/response_code.h>
 
 #include <memory>
 #include <regex>
@@ -121,8 +120,6 @@ public:
 class test_response : public response {
 public:
 
-    void code(response_code code) override;
-
     status body(std::string_view body) override;
 
     status body_head(std::string_view body_head) override;
@@ -164,7 +161,6 @@ public:
     std::string body_head_{};  //NOLINT
     std::shared_ptr<test_channel> channel_{};  //NOLINT
     std::string message_{};  //NOLINT
-    response_code code_{response_code::unknown};  //NOLINT
     std::atomic_bool completed_{};  //NOLINT
     std::size_t released_{};  //NOLINT
     std::function<void(std::string_view)> on_write_{}; //NOLINT

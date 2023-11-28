@@ -46,7 +46,6 @@
 #include <jogasaki/test_utils/temporary_folder.h>
 
 #include <tateyama/api/server/mock/request_response.h>
-#include <tateyama/api/server/response_code.h>
 #include "api_test_base.h"
 #include <jogasaki/utils/msgbuf_utils.h>
 

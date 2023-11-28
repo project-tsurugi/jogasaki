@@ -155,6 +155,7 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
             break;
         }
         if (st = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); st != status::ok) {
+            handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
         if (downstream_) {

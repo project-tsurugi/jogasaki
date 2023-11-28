@@ -54,6 +54,7 @@ using namespace jogasaki::scheduler;
 using takatori::util::unsafe_downcast;
 
 using namespace yugawara::storage;
+using index = yugawara::storage::index;
 namespace type = takatori::type;
 namespace value = takatori::value;
 using nullity = yugawara::variable::nullity;

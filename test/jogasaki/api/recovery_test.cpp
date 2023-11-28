@@ -43,6 +43,7 @@ using namespace std::chrono_literals;
 
 using namespace yugawara;
 using namespace yugawara::storage;
+using index = yugawara::storage::index;
 
 namespace type = takatori::type;
 using nullity = yugawara::variable::nullity;

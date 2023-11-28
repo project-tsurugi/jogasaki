@@ -39,6 +39,7 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 using namespace yugawara::storage;
+using index = yugawara::storage::index;
 
 namespace type = takatori::type;
 using nullity = yugawara::variable::nullity;

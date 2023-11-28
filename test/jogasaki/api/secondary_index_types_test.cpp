@@ -50,6 +50,7 @@ using namespace jogasaki::mock;
 
 using decimal_v = takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
+using index = yugawara::storage::index;
 
 using kind = meta::field_type_kind;
 

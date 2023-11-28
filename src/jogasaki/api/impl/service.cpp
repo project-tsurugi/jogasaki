@@ -725,7 +725,7 @@ bool check_message_version(
     }
     auto msg = string_builder{} <<
         "inconsistent service message version: see"
-        " https://github.com/project-tsurugi/tateyama/blob/master/docs/service-message-compatibilities.md"
+        " https://github.com/project-tsurugi/tsurugidb/blob/master/docs/service-message-compatibilities.md"
         " (client: \"" << version_string(major, minor) <<
         "\", server: \"" << version_string(service_message_version_major, service_message_version_minor) << "\")" <<
         string_builder::to_string;

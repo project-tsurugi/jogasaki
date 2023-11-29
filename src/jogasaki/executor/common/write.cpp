@@ -43,7 +43,6 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/data/aligned_buffer.h>
@@ -56,11 +55,6 @@ namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
 using jogasaki::executor::process::impl::expression::evaluator;
-using jogasaki::executor::process::impl::ops::details::write_primary_target;
-using jogasaki::executor::process::impl::ops::details::write_secondary_target;
-using jogasaki::executor::process::impl::ops::details::write_primary_context;
-using jogasaki::executor::process::impl::ops::details::write_secondary_context;
-using yugawara::compiled_info;
 
 using takatori::util::throw_exception;
 using takatori::util::string_builder;
@@ -198,7 +192,7 @@ write::write(
     memory::lifo_paged_memory_resource& resource,
     compiled_info info,
     executor::process::impl::variable_table const* host_variables
-) noexcept:
+) :
     kind_(kind),
     idx_(std::addressof(idx)),
     wrt_(std::addressof(wrt)),
@@ -254,6 +248,7 @@ write_primary_target create_primary_target(
         );
     }
     std::vector<index::field_info> input_value_fields{};
+    input_value_fields.reserve(value_fields.size());
     for(auto&& f : value_fields) {
         input_value_fields.emplace_back(
             f.type_,
@@ -368,8 +363,8 @@ bool write::put_primary(
 
 write_context::write_context(request_context& context,
     std::string_view storage_name,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta,
+    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
+    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
     std::vector<write_secondary_target> const& secondaries,
     kvs::database& db,
     memory::lifo_paged_memory_resource* resource) :
@@ -403,22 +398,70 @@ bool write::put_secondaries(
     return true;
 }
 
+bool write::update_secondaries_before_upsert(
+    write_context& wctx
+) {
+    std::string_view encoded_primary_key{};
+    auto res = primary_.find_record(
+        wctx.primary_context_,
+        *wctx.request_context_->transaction(),
+        wctx.key_store_.ref(),
+        resource_,
+        encoded_primary_key
+    );
+    if(res != status::ok && res != status::not_found) {
+        handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+        return false;
+    }
+
+    data::aligned_buffer buf_i{};
+    data::aligned_buffer buf_e{};
+    bool found_primary = res != status::not_found;
+    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
+        auto& e = secondaries_[i];
+        auto& c = wctx.secondary_contexts_[i];
+        if (found_primary) {
+            // try update existing secondary entry
+            std::string_view encoded_i{};
+            if (auto res = e.encode_secondary_key(c, buf_i, wctx.key_store_.ref(), wctx.value_store_.ref(), encoded_primary_key, encoded_i); res != status::ok) {
+                handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+                return false;
+            }
+            std::string_view encoded_e{};
+            if (auto res = e.encode_secondary_key(c, buf_e, wctx.primary_context_.extracted_key(), wctx.primary_context_.extracted_value(), encoded_primary_key, encoded_e); res != status::ok) {
+                handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+                return false;
+            }
+            if (encoded_e.size() != encoded_i.size() || std::memcmp(encoded_i.data(), encoded_e.data(), encoded_e.size()) != 0) {
+                // secondary entry needs to be updated - first remove it
+                if (auto res = e.remove_by_encoded_key(
+                        c,
+                        *wctx.request_context_->transaction(),
+                        encoded_e); res != status::ok) {
+                    handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+                    return false;
+                }
+            }
+        }
+        if(auto res = e.encode_and_put(
+            c,
+            *wctx.request_context_->transaction(),
+            wctx.key_store_.ref(),
+            wctx.value_store_.ref(),
+            encoded_primary_key
+        ); res != status::ok) {
+            handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+            return false;
+        }
+    }
+    return true;
+}
+
 bool write::process(request_context& context) {  //NOLINT(readability-function-cognitive-complexity)
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
 
-    // TODO move this check on write object construction
-    if(! secondaries_.empty() && kind_ == write_kind::insert_overwrite) {
-        set_error(
-            context,
-            error_code::unsupported_runtime_feature_exception,
-            string_builder{} <<
-                "INSERT OR REPLACE statement is not supported yet for tables with secondary indices" << string_builder::to_string,
-            status::err_unsupported
-        );
-        return false;
-    }
 
     write_context wctx(context,
         idx_->simple_name(),
@@ -454,7 +497,9 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         }
 
         if(kind_ == write_kind::insert_overwrite && ! secondaries_.empty()) {
-            // TODO update secondaries
+            if(! update_secondaries_before_upsert(wctx)) {
+                return false;
+            }
         }
 
         std::string_view encoded_primary_key{};
@@ -707,9 +752,6 @@ void create_generated_field(
                 nullptr
             );
             is_immediate = true;
-            // if(auto res = utils::encode_any(buf, t, nullable, spec, {src}); res != status::ok) {
-            //     return res;
-            // }
             break;
         }
         case column_value_kind::sequence: {
@@ -738,8 +780,8 @@ void create_generated_field(
 std::vector<details::write_field> create_fields(
     yugawara::storage::index const& idx,
     sequence_view<write::column const> columns,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta,
+    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
+    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
     bool key
 ) {
     using reference = takatori::descriptor::variable::reference_type;

@@ -173,7 +173,7 @@ public:
         memory::lifo_paged_memory_resource& resource,
         compiled_info info,
         executor::process::impl::variable_table const* host_variables
-    ) noexcept;
+    );
 
     [[nodiscard]] model::statement_kind kind() const noexcept override;
 
@@ -226,6 +226,9 @@ private:
     bool put_secondaries(
         write_context& wctx,
         std::string_view encoded_primary_key);
+    bool update_secondaries_before_upsert(
+        write_context& wctx
+    );
 };
 
 }

@@ -175,10 +175,41 @@ public:
         return storage_name_;
     }
 
+    /**
+     * @brief encode secondary key
+     * @details this is used to generate secondary key from primary index key/value
+     * @returns status::ok when successful
+     * @returns any other error otherwise
+     */
+    status encode_secondary_key(
+        write_secondary_context& ctx,
+        data::aligned_buffer& buf,
+        accessor::record_ref primary_key,
+        accessor::record_ref primary_value,
+        std::string_view encoded_primary_key,
+        std::string_view& out) const;
+
+    /**
+     * @brief remove secondary index entry by given encoded key
+     * @details this is used to remove secondary index entry by given encoded key
+     * @returns status::ok when successful
+     * @returns any other error otherwise
+     */
+    status remove_by_encoded_key(
+        write_secondary_context& ctx,
+        transaction_context& tx,
+        std::string_view encoded_secondary_key) const;
+
 private:
     std::string storage_name_{};
     field_mapping_type secondary_key_fields_{};
 
+
+    field_mapping_type create_fields(
+        yugawara::storage::index const& idx,
+        maybe_shared_ptr<meta::record_meta> const& primary_key_meta, //NOLINT
+        maybe_shared_ptr<meta::record_meta> const& primary_value_meta //NOLINT
+    );
     status encode_secondary_key(
         write_secondary_context& ctx,
         accessor::record_ref primary_key,
@@ -187,11 +218,6 @@ private:
         std::string_view& out
     ) const;
 
-    field_mapping_type create_fields(
-        yugawara::storage::index const& idx,
-        maybe_shared_ptr<meta::record_meta> const& primary_key_meta, //NOLINT
-        maybe_shared_ptr<meta::record_meta> const& primary_value_meta //NOLINT
-    );
 };
 
 }

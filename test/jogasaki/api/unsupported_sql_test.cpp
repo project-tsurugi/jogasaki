@@ -121,18 +121,6 @@ TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {
     );
 }
 
-TEST_F(unsupported_sql_test, insert_or_replace_with_secondary_indices) {
-    execute_statement("create table T (C0 int not null primary key, C1 int not null)");
-    execute_statement("create index I on T (C1)");
-    test_stmt_err(
-        "INSERT OR REPLACE INTO T VALUES (1,1)",
-        error_code::unsupported_runtime_feature_exception,
-        "INSERT OR REPLACE statement is not supported yet for tables with secondary indices"
-    );
-    execute_statement("drop index I");
-    execute_statement("INSERT OR REPLACE INTO T VALUES (1,1)");
-}
-
 TEST_F(unsupported_sql_test, subquery) {
     execute_statement("create table T (C0 int not null primary key)");
     test_stmt_err(

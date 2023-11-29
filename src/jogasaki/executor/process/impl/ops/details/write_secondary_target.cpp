@@ -38,8 +38,18 @@ status details::write_secondary_target::encode_secondary_key(
     std::string_view encoded_primary_key,
     std::string_view& out
 ) const {
+    return encode_secondary_key(ctx, ctx.key_buf_, primary_key, primary_value, encoded_primary_key, out);
+}
+
+status details::write_secondary_target::encode_secondary_key(
+    write_secondary_context& ctx,
+    data::aligned_buffer& buf,
+    accessor::record_ref primary_key,
+    accessor::record_ref primary_value,
+    std::string_view encoded_primary_key,
+    std::string_view& out
+) const {
     std::size_t length{};
-    auto& buf = ctx.key_buf_;
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
         kvs::writable_stream s{buf.data(), buf.capacity(), loop == 0};
         for(auto&& f : secondary_key_fields_) {
@@ -94,6 +104,19 @@ status details::write_secondary_target::encode_and_put(
     return status::ok;
 }
 
+status details::write_secondary_target::remove_by_encoded_key(
+    write_secondary_context& ctx,
+    transaction_context& tx,
+    std::string_view encoded_secondary_key
+) const {
+    if(auto res = ctx.stg_->remove(tx, encoded_secondary_key); ! is_ok(res)) {
+        handle_kvs_errors(*ctx.req_context(), res);
+        handle_generic_error(*ctx.req_context(), res, error_code::sql_execution_exception);
+        return res;
+    }
+    return status::ok;
+}
+
 status details::write_secondary_target::encode_and_remove(
     write_secondary_context& ctx,
     transaction_context& tx,
@@ -105,12 +128,7 @@ status details::write_secondary_target::encode_and_remove(
     if(auto res = encode_secondary_key(ctx, primary_key, primary_value, encoded_primary_key, k); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->remove(tx, k); ! is_ok(res)) {
-        handle_kvs_errors(*ctx.req_context(), res);
-        handle_generic_error(*ctx.req_context(), res, error_code::sql_execution_exception);
-        return res;
-    }
-    return status::ok;
+    return remove_by_encoded_key(ctx, tx, k);
 }
 
 write_secondary_target::field_mapping_type write_secondary_target::create_fields(

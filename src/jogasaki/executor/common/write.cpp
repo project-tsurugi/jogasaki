@@ -85,6 +85,108 @@ std::vector<write_secondary_target> create_secondary_targets(
 );
 // fwd declaration end
 
+status fill_default_value(
+    details::write_field const& f,
+    request_context& ctx,
+    memory::lifo_paged_memory_resource& resource,
+    data::small_record_store& out
+) {
+    switch (f.kind_) {
+        case process::impl::ops::default_value_kind::nothing:
+            if (!f.nullable_) {
+                set_error(
+                    ctx,
+                    error_code::not_null_constraint_violation_exception,
+                    string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                    status::err_integrity_constraint_violation);
+                return status::err_integrity_constraint_violation;
+            }
+            out.ref().set_null(f.nullity_offset_, true);
+            break;
+        case process::impl::ops::default_value_kind::immediate: {
+            auto src = f.default_value_immediate_;
+            auto is_null = src.empty();
+            if (is_null && !f.nullable_) {
+                auto rc = status::err_integrity_constraint_violation;
+                set_error(
+                    ctx,
+                    error_code::not_null_constraint_violation_exception,
+                    string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                    rc);
+                return rc;
+            }
+            out.ref().set_null(f.nullity_offset_, is_null);
+            if (f.nullable_) {
+                utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, src, std::addressof(resource));
+            } else {
+                utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
+            }
+            break;
+        }
+        case process::impl::ops::default_value_kind::sequence: {
+            // increment sequence - loop might increment the sequence twice
+            sequence_value v{};
+            if (auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
+                handle_encode_errors(ctx, res);
+                handle_generic_error(ctx, res, error_code::sql_service_exception);
+                return res;
+            }
+            out.ref().set_null(f.nullity_offset_, false);
+            out.ref().set_value<std::int64_t>(f.offset_, v);
+            break;
+        }
+    }
+    return status::ok;
+}
+
+status fill_evaluated_value(
+    details::write_field const& f,
+    request_context& ctx,
+    write::tuple const& t,
+    compiled_info const& info,
+    memory::lifo_paged_memory_resource& resource,
+    executor::process::impl::variable_table const* host_variables,
+    data::small_record_store& out
+) {
+    evaluator eval{t.elements()[f.index_], info, host_variables};
+    process::impl::variable_table empty{};
+    process::impl::expression::evaluator_context c{};
+    auto res = eval(c, empty, &resource);
+    if (res.error()) {
+        auto rc = status::err_expression_evaluation_failure;
+        set_error(
+            ctx,
+            error_code::value_evaluation_exception,
+            string_builder{} << "An error occurred in evaluating values. error:" << res.to<process::impl::expression::error>() << string_builder::to_string,
+            rc);
+        return rc;
+    }
+    if (!utils::convert_any(res, f.type_)) {
+        auto rc = status::err_expression_evaluation_failure;
+        set_error(
+            ctx,
+            error_code::value_evaluation_exception,
+            string_builder{} << "An error occurred in evaluating values. type mismatch: expected " << f.type_ << ", value index is " << res.type_index() << string_builder::to_string,
+            rc);
+        return rc;
+    }
+    if (f.nullable_) {
+        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, res, std::addressof(resource));
+    } else {
+        if (!res) {
+            auto rc = status::err_integrity_constraint_violation;
+            set_error(
+                ctx,
+                error_code::not_null_constraint_violation_exception,
+                string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+                rc);
+            return rc;
+        }
+        utils::copy_field(f.type_, out.ref(), f.offset_, res, std::addressof(resource));
+    }
+    return status::ok;
+}
+
 status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
     write::tuple const& t,
@@ -97,92 +199,18 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
     for (auto&& f: fields) {
         if (f.index_ == npos) {
             // value not specified for the field use default value or null
-            switch (f.kind_) {
-                case process::impl::ops::default_value_kind::nothing:
-                    if (! f.nullable_) {
-                        set_error(
-                            ctx,
-                            error_code::not_null_constraint_violation_exception,
-                            string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                            status::err_integrity_constraint_violation);
-                        return status::err_integrity_constraint_violation;
-                    }
-                    out.ref().set_null(f.nullity_offset_, true);
-                    break;
-                case process::impl::ops::default_value_kind::immediate: {
-                    auto src = f.default_value_immediate_;
-                    auto is_null = src.empty();
-                    if (is_null && !f.nullable_) {
-                        auto rc = status::err_integrity_constraint_violation;
-                        set_error(
-                            ctx,
-                            error_code::not_null_constraint_violation_exception,
-                            string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                            rc);
-                        return rc;
-                    }
-                    out.ref().set_null(f.nullity_offset_, is_null);
-                    if (f.nullable_) {
-                        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, src, std::addressof(resource));
-                    } else {
-                        utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
-                    }
-                    break;
-                }
-                case process::impl::ops::default_value_kind::sequence: {
-                    // increment sequence - loop might increment the sequence twice
-                    sequence_value v{};
-                    if (auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
-                        handle_encode_errors(ctx, res);
-                        handle_generic_error(ctx, res, error_code::sql_service_exception);
-                        return res;
-                    }
-                    out.ref().set_null(f.nullity_offset_, false);
-                    out.ref().set_value<std::int64_t>(f.offset_, v);
-                    break;
-                }
+            if(auto res = fill_default_value(f, ctx, resource, out); res != status::ok) {
+                return res;
             }
-        } else {
-            evaluator eval{t.elements()[f.index_], info, host_variables};
-            process::impl::variable_table empty{};
-            process::impl::expression::evaluator_context c{};
-            auto res = eval(c, empty, &resource);
-            if (res.error()) {
-                auto rc = status::err_expression_evaluation_failure;
-                set_error(
-                    ctx,
-                    error_code::value_evaluation_exception,
-                    string_builder{} << "An error occurred in evaluating values. error:" << res.to<process::impl::expression::error>() << string_builder::to_string,
-                    rc);
-                return rc;
-            }
-            if (!utils::convert_any(res, f.type_)) {
-                auto rc = status::err_expression_evaluation_failure;
-                set_error(
-                    ctx,
-                    error_code::value_evaluation_exception,
-                    string_builder{} << "An error occurred in evaluating values. type mismatch: expected " << f.type_ << ", value index is " << res.type_index() << string_builder::to_string,
-                    rc);
-                return rc;
-            }
-            if (f.nullable_) {
-                utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, res, std::addressof(resource));
-            } else {
-                if (!res) {
-                    auto rc = status::err_integrity_constraint_violation;
-                    set_error(
-                        ctx,
-                        error_code::not_null_constraint_violation_exception,
-                        string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                        rc);
-                    return rc;
-                }
-                utils::copy_field(f.type_, out.ref(), f.offset_, res, std::addressof(resource));
-            }
+            continue;
+        }
+        if(auto res = fill_evaluated_value(f, ctx, t, info, resource, host_variables, out); res != status::ok) {
+            return res;
         }
     }
     return status::ok;
 }
+
 write::write(
     write_kind kind,
     yugawara::storage::index const& idx,
@@ -572,6 +600,7 @@ void create_generated_field(
             } else {
                 throw_exception(std::logic_error{"sequence must be defined with definition_id"});
             }
+            break;
         }
     }
     auto& e = ret.emplace_back(

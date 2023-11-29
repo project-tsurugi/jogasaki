@@ -43,6 +43,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/data/aligned_buffer.h>
@@ -320,32 +321,87 @@ std::vector<write_secondary_context> create_secondary_contexts(
     return ret;
 }
 
-class write_context {
-public:
-    write_context(request_context& context,
-        std::string_view storage_name,
-        maybe_shared_ptr<meta::record_meta> key_meta,
-        maybe_shared_ptr<meta::record_meta> value_meta,
-        std::vector<write_secondary_target> const& secondaries,
-        kvs::database& db,
-        memory::lifo_paged_memory_resource* resource
-    ) :
-        primary_context_(
-            db.get_or_create_storage(storage_name),
-            key_meta,
-            value_meta,
-            std::addressof(context)
-        ),
-        secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
-        key_store_(key_meta, resource),
-        value_store_(value_meta, resource)
-    {}
+bool write::put_primary(
+    write_context& wctx,
+    bool& skip_error,
+    std::string_view& encoded_primary_key
+) {
+    skip_error = false;
+    kvs::put_option opt = (kind_ == write_kind::insert || kind_ == write_kind::insert_skip) ?
+        kvs::put_option::create :
+        kvs::put_option::create_or_update;
+    if(auto res = primary_.encode_and_put(
+        wctx.primary_context_,
+        *wctx.request_context_->transaction(),
+        opt,
+        wctx.key_store_.ref(),
+        wctx.value_store_.ref(),
+        encoded_primary_key
+    ); res != status::ok) {
+        if (opt == kvs::put_option::create && res == status::already_exists) {
+            if (kind_ == write_kind::insert) {
+                // integrity violation should be handled in SQL layer and forces transaction abort
+                // status::already_exists is an internal code, raise it as constraint violation
+                set_error(
+                    *wctx.request_context_,
+                    error_code::unique_constraint_violation_exception,
+                    string_builder{} << "Unique constraint violation occurred. Table:" << primary_.storage_name() << string_builder::to_string,
+                    status::err_unique_constraint_violation);
+                return false;
+            }
+            // write_kind::insert_skip
+            // duplicated key is simply ignored
+            // simply set stats 0 in order to mark INSERT IF NOT EXISTS statement executed
+            wctx.request_context_->enable_stats()->counter(counter_kind::inserted).count(0);
 
-    write_primary_context primary_context_{};  //NOLINT
-    std::vector<write_secondary_context> secondary_contexts_{};  //NOLINT
-    data::small_record_store key_store_{};  //NOLINT
-    data::small_record_store value_store_{};  //NOLINT
-};
+            // skip error and move to next tuple
+            skip_error = true;
+            return false;
+        }
+        handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+        return false;
+    }
+    auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
+    wctx.request_context_->enable_stats()->counter(kind).count(1);
+    return true;
+}
+
+write_context::write_context(request_context& context,
+    std::string_view storage_name,
+    maybe_shared_ptr<meta::record_meta> key_meta,
+    maybe_shared_ptr<meta::record_meta> value_meta,
+    std::vector<write_secondary_target> const& secondaries,
+    kvs::database& db,
+    memory::lifo_paged_memory_resource* resource) :
+    request_context_(std::addressof(context)),
+    primary_context_(
+        db.get_or_create_storage(storage_name),
+        key_meta,
+        value_meta,
+        std::addressof(context)),
+    secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
+    key_store_(key_meta, resource),
+    value_store_(value_meta, resource) {}
+
+bool write::put_secondaries(
+    write_context& wctx,
+    std::string_view encoded_primary_key
+) {
+    for(std::size_t i=0, n=secondaries_.size(); i < n; ++i) {
+        auto& e = secondaries_[i];
+        if(auto res = e.encode_and_put(
+            wctx.secondary_contexts_[i],
+            *wctx.request_context_->transaction(),
+            wctx.key_store_.ref(),
+            wctx.value_store_.ref(),
+            encoded_primary_key
+        ); res != status::ok) {
+            handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+            return false;
+        }
+    }
+    return true;
+}
 
 bool write::process(request_context& context) {  //NOLINT(readability-function-cognitive-complexity)
     auto& tx = context.transaction();
@@ -363,8 +419,6 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         );
         return false;
     }
-
-    // setup primary/secondary contexts
 
     write_context wctx(context,
         idx_->simple_name(),
@@ -405,61 +459,23 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
             // TODO update secondaries
         }
 
-        kvs::put_option opt = (kind_ == write_kind::insert || kind_ == write_kind::insert_skip) ?
-            kvs::put_option::create :
-            kvs::put_option::create_or_update;
         std::string_view encoded_primary_key{};
-        if(auto res = primary_.encode_and_put(
-            wctx.primary_context_,
-            *tx,
-            opt,
-            wctx.key_store_.ref(),
-            wctx.value_store_.ref(),
-            encoded_primary_key
-        ); res != status::ok) {
-            if (opt == kvs::put_option::create && res == status::already_exists) {
-                if (kind_ == write_kind::insert) {
-                    // integrity violation should be handled in SQL layer and forces transaction abort
-                    // status::already_exists is an internal code, raise it as constraint violation
-                    set_error(
-                        context,
-                        error_code::unique_constraint_violation_exception,
-                        string_builder{} << "Unique constraint violation occurred. Table:" << primary_.storage_name() << string_builder::to_string,
-                        status::err_unique_constraint_violation);
-                    return false;
-                }
-                // write_kind::insert_skip
-                // duplicated key is simply ignored
-                // simply set stats 0 in order to mark INSERT IF NOT EXISTS statement executed
-                context.enable_stats()->counter(counter_kind::inserted).count(0);
-
-                // currently this is for Load operation and assuming single tuple insert
-                // skip updating secondary index and move to next tuple for primary
+        bool skip_error = false;
+        if(! put_primary(wctx, skip_error, encoded_primary_key)) {
+            if(skip_error) {
                 continue;
             }
-            handle_generic_error(context, res, error_code::sql_service_exception);
             return false;
         }
-        auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
-        context.enable_stats()->counter(kind).count(1);
 
         if(kind_ == write_kind::insert_overwrite) {
             // updating secondaries is done already
             continue;
         }
-        for(std::size_t i=0, n=secondaries_.size(); i < n; ++i) {
-            auto& e = secondaries_[i];
-            if(auto res = e.encode_and_put(
-                wctx.secondary_contexts_[i],
-                *tx,
-                wctx.key_store_.ref(),
-                wctx.value_store_.ref(),
-                encoded_primary_key
-            ); res != status::ok) {
-                handle_generic_error(context, res, error_code::sql_service_exception);
-                return false;
-            }
-        }
+
+        if(! put_secondaries(wctx, encoded_primary_key)) {
+            return false;
+        };
     }
 
 /*

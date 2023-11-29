@@ -32,6 +32,10 @@ namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
 using yugawara::compiled_info;
+using write_primary_target = jogasaki::executor::process::impl::ops::details::write_primary_target;
+using write_primary_context = jogasaki::executor::process::impl::ops::details::write_primary_context;
+using write_secondary_target = jogasaki::executor::process::impl::ops::details::write_secondary_target;
+using write_secondary_context = jogasaki::executor::process::impl::ops::details::write_secondary_context;
 
 namespace details {
 
@@ -128,6 +132,24 @@ public:
 };
 } // namespace
 
+class write_context {
+public:
+    write_context(request_context& context,
+        std::string_view storage_name,
+        maybe_shared_ptr<meta::record_meta> key_meta,
+        maybe_shared_ptr<meta::record_meta> value_meta,
+        std::vector<write_secondary_target> const& secondaries,
+        kvs::database& db,
+        memory::lifo_paged_memory_resource* resource
+    );
+
+    request_context* request_context_{};  //NOLINT
+    write_primary_context primary_context_{};  //NOLINT
+    std::vector<write_secondary_context> secondary_contexts_{};  //NOLINT
+    data::small_record_store key_store_{};  //NOLINT
+    data::small_record_store value_store_{};  //NOLINT
+};
+
 /**
  * @brief write statement (to execute Insert)
  */
@@ -196,6 +218,14 @@ private:
         executor::process::impl::variable_table const* host_variables,
         std::vector<details::write_target>& out
     ) const;
+
+    bool put_primary(
+        write_context& wctx,
+        bool& skip_error,
+        std::string_view& encoded_primary_key);
+    bool put_secondaries(
+        write_context& wctx,
+        std::string_view encoded_primary_key);
 };
 
 }

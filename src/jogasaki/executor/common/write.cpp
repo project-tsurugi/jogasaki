@@ -44,6 +44,7 @@
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
@@ -58,16 +59,11 @@ using jogasaki::executor::process::impl::expression::evaluator;
 
 using takatori::util::throw_exception;
 using takatori::util::string_builder;
-using data::any;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-// fwd declaration
+// fwd declaration begin
 status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out);
-void handle_encode_error(
-    request_context& ctx,
-    status st
-);
 std::vector<details::write_field> create_fields(
     yugawara::storage::index const& idx,
     sequence_view<write::column const> columns,
@@ -87,6 +83,7 @@ std::vector<write_secondary_target> create_secondary_targets(
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta
 );
+// fwd declaration end
 
 status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
@@ -136,7 +133,8 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
                     // increment sequence - loop might increment the sequence twice
                     sequence_value v{};
                     if (auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
-                        handle_encode_error(ctx, res);
+                        handle_encode_errors(ctx, res);
+                        handle_generic_error(ctx, res, error_code::sql_service_exception);
                         return res;
                     }
                     out.ref().set_null(f.nullity_offset_, false);
@@ -462,7 +460,6 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
 
-
     write_context wctx(context,
         idx_->simple_name(),
         key_meta_,
@@ -540,192 +537,6 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
     return status::ok;
 }
 
-void handle_encode_error(
-    request_context& ctx,
-    status st
-) {
-    if(st == status::err_data_corruption) {
-        set_error(
-            ctx,
-            error_code::data_corruption_exception,
-            "Data inconsistency detected.",
-            st
-        );
-        return;
-    }
-    if(st == status::err_expression_evaluation_failure) {
-        set_error(
-            ctx,
-            error_code::value_evaluation_exception,
-            "An error occurred in evaluating values. Encoding failed.",
-            st
-        );
-        return;
-    }
-    if(st == status::err_insufficient_field_storage) {
-        set_error(
-            ctx,
-            error_code::value_too_long_exception,
-            "Insufficient storage to store field data.",
-            st
-        );
-        return;
-    }
-    if(st == status::err_invalid_runtime_value) {
-        set_error(
-            ctx,
-            error_code::invalid_runtime_value_exception,
-            "detected invalid runtime value",
-            st
-        );
-        return;
-    }
-    set_error(
-        ctx,
-        error_code::sql_service_exception,
-        string_builder{} <<
-            "Unexpected error occurred." << string_builder::to_string,
-        st
-    );
-}
-// encode tuple into buf, and return result data length
-status encode_tuple(  //NOLINT(readability-function-cognitive-complexity)
-    request_context& ctx,
-    write::tuple const& t,
-    std::vector<details::write_field> const& fields,
-    compiled_info const& info,
-    memory::lifo_paged_memory_resource& resource,
-    data::aligned_buffer& buf,
-    executor::process::impl::variable_table const* host_variables,
-    std::size_t& length,
-    details::write_tuple const* primary_key_tuple = nullptr
-) {
-    utils::checkpoint_holder cph(std::addressof(resource));
-    length = 0;
-
-    for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
-        kvs::writable_stream s{buf.data(), buf.capacity(), loop == 0};
-        for(auto&& f : fields) {
-            if (f.index_ == npos) {
-                // value not specified for the field use default value or null
-                switch(f.kind_) {
-                    case process::impl::ops::default_value_kind::nothing:
-                        if (! f.nullable_) {
-                            set_error(
-                                ctx,
-                                error_code::not_null_constraint_violation_exception,
-                                string_builder{} <<
-                                    "Null assigned for non-nullable field." << string_builder::to_string,
-                                status::err_integrity_constraint_violation
-                            );
-                            return status::err_integrity_constraint_violation;
-                        }
-                        if(auto res = kvs::encode_nullable({}, f.type_, f.spec_, s); res != status::ok) {
-                            handle_encode_error(ctx, res);
-                            return res;
-                        }
-                        break;
-                    case process::impl::ops::default_value_kind::immediate: {
-                        auto& d = f.default_value_;
-                        if(auto res = s.write(static_cast<char const*>(d.data()), d.size()); res != status::ok) {
-                            handle_encode_error(ctx, res);
-                            return res;
-                        }
-                        break;
-                    }
-                    case process::impl::ops::default_value_kind::sequence:
-                        // increment sequence - loop might increment the sequence twice
-                        sequence_value v{};
-                        if(auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
-                            handle_encode_error(ctx, res);
-                            return res;
-                        }
-                        any a{std::in_place_type<std::int64_t>, v};
-                        if (f.nullable_) {
-                            if(auto res = kvs::encode_nullable(a, f.type_, f.spec_, s); res != status::ok) {
-                                handle_encode_error(ctx, res);
-                                return res;
-                            }
-                        } else {
-                            if(auto res = kvs::encode(a, f.type_, f.spec_, s); res != status::ok) {
-                                handle_encode_error(ctx, res);
-                                return res;
-                            }
-                        }
-                        break;
-                }
-            } else {
-                evaluator eval{t.elements()[f.index_], info, host_variables};
-                process::impl::variable_table empty{};
-                process::impl::expression::evaluator_context c{};
-                auto res = eval(c, empty, &resource);
-                if (res.error()) {
-                    auto rc = status::err_expression_evaluation_failure;
-                    set_error(
-                        ctx,
-                        error_code::value_evaluation_exception,
-                        string_builder{} <<
-                            "An error occurred in evaluating values. error:" << res.to<process::impl::expression::error>() << string_builder::to_string,
-                        rc
-                    );
-                    return rc;
-                }
-                if(! utils::convert_any(res, f.type_)) {
-                    auto rc = status::err_expression_evaluation_failure;
-                    set_error(
-                        ctx,
-                        error_code::value_evaluation_exception,
-                        string_builder{} <<
-                            "An error occurred in evaluating values. type mismatch: expected " << f.type_ << ", value index is " << res.type_index() << string_builder::to_string,
-                        rc
-                    );
-                    return rc;
-                }
-                if (f.nullable_) {
-                    if(auto rc = kvs::encode_nullable(res, f.type_, f.spec_, s); rc != status::ok) {
-                        handle_encode_error(ctx, rc);
-                        return rc;
-                    }
-                } else {
-                    if(! res) {
-                        auto rc = status::err_integrity_constraint_violation;
-                        set_error(
-                            ctx,
-                            error_code::not_null_constraint_violation_exception,
-                            string_builder{} <<
-                                "Null assigned for non-nullable field." << string_builder::to_string,
-                            rc
-                        );
-                        return rc;
-                    }
-                    if(auto rc = kvs::encode(res, f.type_, f.spec_, s); rc != status::ok) {
-                        handle_encode_error(ctx, rc);
-                        return rc;
-                    }
-                }
-                cph.reset();
-            }
-        }
-        if (primary_key_tuple != nullptr) {
-            if(auto res = s.write(static_cast<char*>(primary_key_tuple->data()), primary_key_tuple->size());
-                res != status::ok) {
-                handle_encode_error(ctx, res);
-                return res;
-            }
-        }
-        length = s.size();
-        bool fit = length <= buf.capacity();
-        buf.resize(length);
-        if (loop == 0) {
-            if (fit) {
-                break;
-            }
-            buf.resize(0); // set data size 0 and start from beginning
-        }
-    }
-    return status::ok;
-}
-
 void create_generated_field(
     std::vector<details::write_field>& ret,
     std::size_t index,
@@ -749,7 +560,7 @@ void create_generated_field(
             src = utils::as_any(
                 *dv.element<column_value_kind::immediate>(),
                 type,
-                nullptr
+                nullptr // varlen data is owned by takatori so resource is not required
             );
             is_immediate = true;
             break;
@@ -857,130 +668,6 @@ std::vector<details::write_field> create_fields(
         }
     }
     return out;
-}
-
-status write::create_tuples(
-    request_context& ctx,
-    yugawara::storage::index const& idx,
-    sequence_view<column const> columns,
-    takatori::tree::tree_fragment_vector<tuple> const& tuples,
-    compiled_info const& info,
-    memory::lifo_paged_memory_resource& resource,
-    executor::process::impl::variable_table const* host_variables,
-    bool key,
-    std::vector<details::write_tuple>& out,
-    std::vector<details::write_tuple> const& primary_key_tuples
-) const {
-    std::vector<details::write_field> fields{};
-    (void) idx;
-    (void) columns;
-    (void) key;
-    // if(auto res = create_fields(idx, columns, key, fields); res != status::ok) {
-        // return res;
-    // }
-    data::aligned_buffer buf{default_record_buffer_size};
-    std::size_t count = 0;
-    out.clear();
-    out.reserve(tuples.size());
-    for(auto&& tuple: tuples) {
-        std::size_t sz = 0;
-        if(auto res = encode_tuple(ctx, tuple, fields, info, resource, buf, host_variables, sz,
-            primary_key_tuples.empty() ? nullptr : &primary_key_tuples[count]); res != status::ok) {
-            return res;
-        }
-        std::string_view sv{static_cast<char*>(buf.data()), sz};
-        out.emplace_back(sv);
-        ++count;
-    }
-    return status::ok;
-}
-
-status write::create_targets(
-    request_context& ctx,
-    yugawara::storage::index const& idx,
-    sequence_view<column const> columns,
-    takatori::tree::tree_fragment_vector<tuple> const& tuples,
-    compiled_info const& info,
-    memory::lifo_paged_memory_resource& resource,
-    executor::process::impl::variable_table const* host_variables,
-    std::vector<details::write_target>& out
-) const {
-    out.clear();
-    out.reserve(approx_index_count_per_table);
-    auto& table = idx.table();
-    auto primary = table.owner()->find_primary_index(table);
-    BOOST_ASSERT(primary != nullptr); //NOLINT
-    std::vector<details::write_tuple> ks{};
-    if (auto res = create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, true, ks);
-        res != status::ok) {
-        handle_encode_error(ctx, res);
-        return res;
-    }
-    std::vector<details::write_tuple> vs{};
-    if (auto res = create_tuples(ctx, *primary, columns, tuples, info, resource, host_variables, false, vs);
-        res != status::ok) {
-        handle_encode_error(ctx, res);
-        return res;
-    }
-    // first entry is primary index
-    out.emplace_back(true, primary->simple_name(), std::move(ks), std::move(vs));
-
-    bool has_secondaries{false};
-    status ret_status{status::ok};
-    table.owner()->each_table_index(table,
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (ret_status != status::ok) return;
-            if (entry == primary) {
-                return;
-            }
-            has_secondaries = true;
-            std::vector<details::write_tuple> ts{};
-            if (auto res = create_tuples(ctx, *entry, columns, tuples, info, resource,
-                    host_variables, true, ts, out[0].keys_); res != status::ok) {
-                ret_status = res;
-                return;
-            }
-            out.emplace_back(
-                false,
-                entry->simple_name(),
-                std::move(ts),
-                std::vector<details::write_tuple>{}
-            );
-        }
-    );
-    if(ret_status != status::ok) {
-        handle_encode_error(ctx, ret_status);
-    }
-    if(has_secondaries && kind_ == write_kind::insert_overwrite) {
-        set_error(
-            ctx,
-            error_code::unsupported_runtime_feature_exception,
-            string_builder{} <<
-                "INSERT OR REPLACE statement is not supported yet for tables with secondary indices" << string_builder::to_string,
-            status::err_unsupported
-        );
-        return status::err_unsupported;
-    }
-    return ret_status;
-}
-
-details::write_tuple::write_tuple(std::string_view data) :
-    buf_(data.size())
-{
-    std::memcpy(buf_.data(), data.data(), data.size());
-    buf_.resize(data.size());
-}
-
-void* details::write_tuple::data() const noexcept {
-    return buf_.data();
-}
-
-std::size_t details::write_tuple::size() const noexcept {
-    return buf_.size();
-}
-
-details::write_tuple::operator std::string_view() const noexcept {
-    return static_cast<std::string_view>(buf_);
 }
 
 }

@@ -40,29 +40,6 @@ using write_secondary_context = jogasaki::executor::process::impl::ops::details:
 namespace details {
 
 /**
- * @brief tuple holds the buffer for tuple values
- */
-class cache_align write_tuple {
-public:
-    write_tuple() = default;
-
-    /**
-     * @brief create new write field
-     * @param size size in byte of the tuple to be written
-     */
-    explicit write_tuple(std::string_view data);
-
-    [[nodiscard]] void* data() const noexcept;
-
-    [[nodiscard]] std::size_t size() const noexcept;
-
-    [[nodiscard]] explicit operator std::string_view() const noexcept;
-
-private:
-    data::aligned_buffer buf_{};
-};
-
-/**
  * @brief field info. for write
  */
 struct write_field : process::impl::ops::default_value_property {
@@ -106,31 +83,13 @@ struct write_field : process::impl::ops::default_value_property {
     kvs::coding_spec spec_{};  //NOLINT
     //@brief if the field is nullable
     bool nullable_{};  //NOLINT
-
+    //@brief value offset
     std::size_t offset_{};        //NOLINT
+    //@brief nullity bit offset
     std::size_t nullity_offset_{};//NOLINT
 };
 
-class write_target {
-public:
-    write_target(
-        bool primary,
-        std::string_view storage_name,
-        std::vector<details::write_tuple> keys,
-        std::vector<details::write_tuple> values
-    ) :
-        primary_(primary),
-        storage_name_(storage_name),
-        keys_(std::move(keys)),
-        values_(std::move(values))
-    {}
-
-    bool primary_{};  //NOLINT
-    std::string storage_name_{};  //NOLINT
-    std::vector<details::write_tuple> keys_{};  //NOLINT
-    std::vector<details::write_tuple> values_{};  //NOLINT
-};
-} // namespace
+} // namespace details
 
 class write_context {
 public:
@@ -195,40 +154,9 @@ private:
     process::impl::ops::details::write_primary_target primary_{};
     std::vector<process::impl::ops::details::write_secondary_target> secondaries_{};
 
-    status create_tuples(
-        request_context& ctx,
-        yugawara::storage::index const& idx,
-        sequence_view<column const> columns,
-        takatori::tree::tree_fragment_vector<tuple> const& tuples,
-        compiled_info const& info,
-        memory::lifo_paged_memory_resource& resource,
-        executor::process::impl::variable_table const* host_variables,
-        bool key,
-        std::vector<details::write_tuple>& out,
-        std::vector<details::write_tuple> const& primary_key_tuples = {}
-    ) const;
-
-    status create_targets(
-        request_context& ctx,
-        yugawara::storage::index const& idx,
-        sequence_view<column const> columns,
-        takatori::tree::tree_fragment_vector<tuple> const& tuples,
-        compiled_info const& info,
-        memory::lifo_paged_memory_resource& resource,
-        executor::process::impl::variable_table const* host_variables,
-        std::vector<details::write_target>& out
-    ) const;
-
-    bool put_primary(
-        write_context& wctx,
-        bool& skip_error,
-        std::string_view& encoded_primary_key);
-    bool put_secondaries(
-        write_context& wctx,
-        std::string_view encoded_primary_key);
-    bool update_secondaries_before_upsert(
-        write_context& wctx
-    );
+    bool put_primary(write_context& wctx, bool& skip_error, std::string_view& encoded_primary_key);
+    bool put_secondaries(write_context& wctx, std::string_view encoded_primary_key);
+    bool update_secondaries_before_upsert(write_context& wctx);
 };
 
 }

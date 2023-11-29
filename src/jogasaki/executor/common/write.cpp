@@ -320,6 +320,33 @@ std::vector<write_secondary_context> create_secondary_contexts(
     return ret;
 }
 
+class write_context {
+public:
+    write_context(request_context& context,
+        std::string_view storage_name,
+        maybe_shared_ptr<meta::record_meta> key_meta,
+        maybe_shared_ptr<meta::record_meta> value_meta,
+        std::vector<write_secondary_target> const& secondaries,
+        kvs::database& db,
+        memory::lifo_paged_memory_resource* resource
+    ) :
+        primary_context_(
+            db.get_or_create_storage(storage_name),
+            key_meta,
+            value_meta,
+            std::addressof(context)
+        ),
+        secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
+        key_store_(key_meta, resource),
+        value_store_(value_meta, resource)
+    {}
+
+    write_primary_context primary_context_{};  //NOLINT
+    std::vector<write_secondary_context> secondary_contexts_{};  //NOLINT
+    data::small_record_store key_store_{};  //NOLINT
+    data::small_record_store value_store_{};  //NOLINT
+};
+
 bool write::process(request_context& context) {  //NOLINT(readability-function-cognitive-complexity)
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
@@ -338,15 +365,14 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
     }
 
     // setup primary/secondary contexts
-    auto primary_ctx = std::make_unique<write_primary_context>(
-        db->get_or_create_storage(primary_.storage_name()),
+
+    write_context wctx(context,
+        idx_->simple_name(),
         key_meta_,
         value_meta_,
-        std::addressof(context));
-    auto secondary_contexts = create_secondary_contexts(secondaries_, *db, context);
-
-    data::small_record_store key_store{key_meta_, resource_};
-    data::small_record_store value_store{value_meta_, resource_};
+        secondaries_,
+        *db,
+        resource_);
 
     for(auto&& tuple: wrt_->tuples()) {
         // create input record (input_key, input_value)
@@ -359,7 +385,7 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
             info_,
             *resource_,
             host_variables_,
-            key_store
+            wctx.key_store_
         ); res != status::ok) {
             return false;
         }
@@ -370,7 +396,7 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
             info_,
             *resource_,
             host_variables_,
-            value_store
+            wctx.value_store_
         ); res != status::ok) {
             return false;
         }
@@ -384,11 +410,11 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
             kvs::put_option::create_or_update;
         std::string_view encoded_primary_key{};
         if(auto res = primary_.encode_and_put(
-            *primary_ctx,
+            wctx.primary_context_,
             *tx,
             opt,
-            key_store.ref(),
-            value_store.ref(),
+            wctx.key_store_.ref(),
+            wctx.value_store_.ref(),
             encoded_primary_key
         ); res != status::ok) {
             if (opt == kvs::put_option::create && res == status::already_exists) {
@@ -424,10 +450,10 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         for(std::size_t i=0, n=secondaries_.size(); i < n; ++i) {
             auto& e = secondaries_[i];
             if(auto res = e.encode_and_put(
-                secondary_contexts[i],
+                wctx.secondary_contexts_[i],
                 *tx,
-                key_store.ref(),
-                value_store.ref(),
+                wctx.key_store_.ref(),
+                wctx.value_store_.ref(),
                 encoded_primary_key
             ); res != status::ok) {
                 handle_generic_error(context, res, error_code::sql_service_exception);

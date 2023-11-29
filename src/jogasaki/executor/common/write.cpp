@@ -429,9 +429,7 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         resource_);
 
     for(auto&& tuple: wrt_->tuples()) {
-        // create input record (input_key, input_value)
         utils::checkpoint_holder cph(resource_);
-
         if(auto res = create_record_from_tuple(
             context,
             tuple,
@@ -477,39 +475,6 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
             return false;
         };
     }
-
-/*
-    std::vector<details::write_target> targets{};
-    if(auto res = create_targets(context, *idx_, wrt_->columns(), wrt_->tuples(),
-            info_, *resource_, host_variables_, targets); res != status::ok) {
-        // Errors from create_targets() are in SQL layer, so we need to abort tx manually.
-        // An exception is sequence generation error which can abort tx,
-        // even so, aborting again will do no harm since sharksfin tx manages is_active flag and omits aborting again.
-        abort_transaction(*tx);
-        context.status_code(res);
-        return false;
-    }
-    for(auto&& e : targets) {
-        auto stg = db->get_or_create_storage(e.storage_name_);
-        if(! stg) {
-            throw_exception(std::logic_error{""});
-        }
-        // TODO for insert_overwrite, update secondary first
-        BOOST_ASSERT(e.keys_.size() == e.values_.size() || e.values_.empty());  //NOLINT
-        for(std::size_t i=0, n=e.keys_.size(); i<n; ++i) {
-            auto& key = e.keys_[i];
-            details::write_tuple empty{};
-            auto const* value = e.values_.empty() ? &empty : &e.values_[i];
-            if(auto res = stg->put(
-                    *tx,
-                    {static_cast<char*>(key.data()), key.size()},
-                    {static_cast<char*>(value->data()), value->size()},
-                    opt
-                ); res != status::ok) {
-            }
-        }
-    }
-    */
     return true;
 }
 

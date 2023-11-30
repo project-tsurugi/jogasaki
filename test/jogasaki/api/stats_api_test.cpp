@@ -29,7 +29,7 @@
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
-#include "runner.h"
+#include <jogasaki/utils/runner.h>
 
 namespace jogasaki::testing {
 

@@ -32,7 +32,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include "../api/api_test_base.h"
-#include "../api/runner.h"
+#include <jogasaki/utils/runner.h>
 
 namespace jogasaki::testing {
 

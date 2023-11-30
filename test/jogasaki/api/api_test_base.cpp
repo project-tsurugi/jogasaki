@@ -34,8 +34,7 @@
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/utils/create_tx.h>
-
-#include "runner.h"
+#include <jogasaki/utils/runner.h>
 
 namespace jogasaki::testing {
 
@@ -78,8 +77,8 @@ void api_test_base::explain(api::executable_statement& stmt) {
     }
 }
 
-runner api_test_base::builder() {
-    return runner{}
+utils::runner api_test_base::builder() {
+    return utils::runner{}
         .db(*db_)
         .show_plan(to_explain())
         .show_recs(false);

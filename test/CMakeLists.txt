@@ -1,7 +1,6 @@
 file(GLOB TEST_COMMON_SRCS
         "main.cpp"
         "jogasaki/api/api_test_base.cpp"
-        "jogasaki/api/runner.cpp"
         "jogasaki/mock/mock_task.cpp"
         "jogasaki/kvs_test_utils.cpp"
         "jogasaki/kvs/kvs_test_base.cpp"

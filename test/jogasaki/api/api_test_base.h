@@ -23,6 +23,9 @@
 #include <jogasaki/test_base.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 
+namespace jogasaki::utils {
+class runner;
+}
 namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
@@ -33,8 +36,6 @@ using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
 using takatori::util::fail;
-
-class runner;
 
 class api_test_base : public test_base {
 
@@ -225,7 +226,7 @@ public:
         }
     }
 
-    runner builder();
+    utils::runner builder();
 
     [[nodiscard]] std::string path() const;
 

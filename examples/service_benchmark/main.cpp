@@ -83,6 +83,7 @@ DEFINE_bool(busy_worker, true, "whether task scheduler workers suspend when they
 DEFINE_int64(watcher_interval, 1000, "duration in us before watcher thread wakes up in order to try next check");  //NOLINT
 DEFINE_int64(worker_try_count, 1000, "how many times worker checks the task queues before suspend");  //NOLINT
 DEFINE_int64(worker_suspend_timeout, 1000000, "duration in us before worker wakes up from suspend");  //NOLINT
+DEFINE_bool(md, false, "output result to stdout as markdown table");  //NOLINT
 
 namespace tateyama::service_benchmark {
 
@@ -127,36 +128,119 @@ inline std::ostream& operator<<(std::ostream& out, mode value) {
     return out << to_string_view(value);
 }
 
-void show_result(
+struct formatted_result {
+    std::string duration_;
+    std::string avg_begin_commit_interval_;
+    std::string avg_statements_interval_;
+    std::string executed_transactions_;
+    std::string executed_statements_;
+    std::string throughput_transactions_;
+    std::string throughput_statements_;
+    std::string throughput_transactions_per_thread_;
+    std::string throughput_statements_per_thread_;
+    std::string avg_turn_around_transaction_;
+    std::string avg_turn_around_statement_;
+};
+
+[[nodiscard]] formatted_result create_format_result(
     result_info result,
     std::size_t duration_ms,
     std::size_t threads
 ) {
-    auto& transactions = result.transactions_;
-    auto& statements = result.statements_;
-//    auto& records = result.records_;
     auto transaction_ns = result.commit_ns_ + result.statement_ns_ + result.commit_ns_;
     auto& statement_ns = result.statement_ns_;
 
-    LOG(INFO) << "duration: " << format(duration_ms) << " ms";
-    LOG(INFO) << "  avg. begin-commit interval : " << format((std::int64_t)(double)transaction_ns / threads) << " ns/thread";
-    LOG(INFO) << "  avg. statements interval : " << format((std::int64_t)(double)statement_ns / threads) << " ns/thread";
+    formatted_result ret{};
+    auto& transactions = result.transactions_;
+    auto& statements = result.statements_;
+
+    ret.duration_ =  format(duration_ms);
+    ret.avg_begin_commit_interval_ = format((std::int64_t)(double)transaction_ns / threads);
+    ret.avg_statements_interval_ = format((std::int64_t)(double)statement_ns / threads);
+    ret.executed_transactions_ = format(transactions);
+    ret.executed_statements_ = format(statements);
+    ret.throughput_transactions_ = format((std::int64_t)((double)transactions / duration_ms * 1000));
+    ret.throughput_statements_ = format((std::int64_t)((double) statements / duration_ms * 1000));
+    ret.throughput_transactions_per_thread_ = format((std::int64_t)((double)transactions / threads / duration_ms * 1000));
+    ret.throughput_statements_per_thread_ = format((std::int64_t)((double)statements / threads / duration_ms * 1000));
+    ret.avg_turn_around_transaction_= format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / transactions));
+    ret.avg_turn_around_statement_ = format((std::int64_t)((double) duration_ms * 1000 * 1000 * threads / statements));
+
+    return ret;
+}
+
+void display_text(formatted_result const& result) {
+    LOG(INFO) << "duration: " << result.duration_ << " ms";
+    LOG(INFO) << "  avg. begin-commit interval : " << result.avg_begin_commit_interval_ << " ns/thread";
+    LOG(INFO) << "  avg. statements interval : " << result.avg_statements_interval_ << " ns/thread";
     LOG(INFO) << "executed: " <<
-        format(transactions) << " transactions, " <<
-        format(statements) << " statements";
-//        format(records) << " records";  // not supported yet
+      result.executed_transactions_ << " transactions, " <<
+      result.executed_statements_ << " statements";
     LOG(INFO) << "throughput: " <<
-        format((std::int64_t)((double)transactions / duration_ms * 1000)) << " transactions/s, " <<  //NOLINT
-        format((std::int64_t)((double)statements / duration_ms * 1000)) << " statements/s";  //NOLINT
-//        format((std::int64_t)((double)records / duration_ms * 1000)) << " records/s";// not supported yet  //NOLINT
+        result.throughput_transactions_ << " transactions/s, " <<  //NOLINT
+        result.throughput_statements_ << " statements/s";  //NOLINT
     LOG(INFO) << "throughput/thread: " <<
-        format((std::int64_t)((double)transactions / threads / duration_ms * 1000)) << " transactions/s/thread, " <<  //NOLINT
-        format((std::int64_t)((double)statements / threads / duration_ms * 1000)) << " statements/s/thread"; //NOLINT
-//        format((std::int64_t)((double)records/ threads / duration_ms * 1000)) << " records/s/thread";// not supported yet  //NOLINT
+        result.throughput_transactions_per_thread_ << " transactions/s/thread, " <<  //NOLINT
+        result.throughput_statements_per_thread_ << " statements/s/thread"; //NOLINT
     LOG(INFO) << "avg turn-around: " <<
-        "transaction " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / transactions)) << " ns, " <<  //NOLINT
-        "statement " << format((std::int64_t)((double)duration_ms * 1000 * 1000 * threads / statements)) << " ns";  //NOLINT
-//        "record " << format((std::int64_t)((double)statement_ns / records)) << " ns";// not supported yet  //NOLINT
+        "transaction " << result.avg_turn_around_transaction_ << " ns, " <<  //NOLINT
+        "statement " << result.avg_turn_around_statement_ << " ns";  //NOLINT
+}
+
+class cli;
+
+void display_md(formatted_result const& result) {
+    std::cout << "|";
+    std::cout << "stmt|";
+    std::cout << "tx type|";
+    std::cout << "duration(ms)|";
+    std::cout << "threads|";
+    std::cout << "clients|";
+    std::cout << "statements/tx|";
+    // std::cout << "avg. tx interval(ns)|";
+    // std::cout << "avg. stmt interval(ns)|";
+    // std::cout << "executed txs|";
+    std::cout << "executed stmts|";
+    // std::cout << "throughput(txs/s)|";
+    // std::cout << "throughput(stmts/s)|";
+    // std::cout << "throughput(txs/s/thread)|";
+    std::cout << "throughput(stmts/s/thread)|";
+    // std::cout << "avg turn-around txs(ns)|";
+    // std::cout << "avg turn-around stmts(ns)|";
+
+    std::cout << std::endl;
+    std::cout << "|-|-|-|-|-|-|-|-|" << std::endl;
+    std::cout << "|";
+    std::cout << (FLAGS_insert ? "INSERT" : (FLAGS_upsert ? "UPSERT" : (FLAGS_update ? "UPDATE" : (FLAGS_query ? "QUERY" : (FLAGS_query2 ? "QUERY2" : "NA"))))) << "|";
+    std::cout << (FLAGS_ltx ? "LTX" : (FLAGS_rtx ? "RTX" : "OCC")) << "|";
+    std::cout << result.duration_ << "|";
+    std::cout << FLAGS_thread_count << "|";
+    std::cout << FLAGS_clients << "|";
+    std::cout << FLAGS_statements << "|";
+    // std::cout << result.avg_begin_commit_interval_ << "|";
+    // std::cout << result.avg_statements_interval_ << "|";
+    // std::cout << result.executed_transactions_ << "|";
+    std::cout << result.executed_statements_ << "|";
+    // std::cout << result.throughput_transactions_ << "|";
+    // std::cout << result.throughput_statements_ << "|";
+    // std::cout << result.throughput_transactions_per_thread_ << "|";
+    std::cout << result.throughput_statements_per_thread_ << "|";
+    // std::cout << result.avg_turn_around_transaction_ << "|";
+    // std::cout << result.avg_turn_around_statement_ << "|";
+    std::cout << std::endl;
+}
+void show_result(
+    result_info result,
+    std::size_t duration_ms,
+    std::size_t threads,
+    bool md
+) {
+    auto res = create_format_result(result, duration_ms, threads);
+    if(! md) {
+        display_text(res);
+    } else {
+        display_md(res);
+    }
 }
 
 enum class profile {
@@ -222,6 +306,7 @@ class cli {
     bool ltx_{}; //NOLINT
     bool rtx_{}; //NOLINT
     std::int64_t client_idle_{};
+    bool md_{}; //NOLINT
 
 public:
 
@@ -296,6 +381,7 @@ public:
         ltx_ = FLAGS_ltx;
         rtx_ = FLAGS_rtx;
         client_idle_ = FLAGS_client_idle;
+        md_ = FLAGS_md;
 
         if (verify_query_records_ && clients_ != 1) {
             LOG(ERROR) << "--verify requires --clients=1";
@@ -586,7 +672,7 @@ public:
         results.clear();
         auto end = clock::now();
         auto duration_ms = std::chrono::duration_cast<clock::duration>(end-begin).count()/1000/1000;
-        show_result(total_result, duration_ms, clients_);
+        show_result(total_result, duration_ms, clients_, md_);
         return true;
     }
 

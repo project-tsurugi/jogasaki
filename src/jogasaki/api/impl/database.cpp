@@ -99,7 +99,6 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(use_preferred_worker_for_current_thread) " << cfg.use_preferred_worker_for_current_thread() << " : whether to use fixed worker assigned for request thread";
     LOGCFG << "(stealing_wait) " << cfg.stealing_wait() << " : number of polling by worker thread on task queue before stealing";
     LOGCFG << "(task_polling_wait) " << cfg.task_polling_wait() << " : sleep duration(us) of worker thread that find no task";
-    LOGCFG << "(tasked_write) " << cfg.tasked_write() << " : whether insert statement is executed as a task";
     LOGCFG << "(enable_hybrid_scheduler) " << cfg.enable_hybrid_scheduler() << " : whether to enable hybrid scheduler";
     LOGCFG << "(lightweight_job_level) " << cfg.lightweight_job_level() << " : boundary value to define job that finishes quickly";
     LOGCFG << "(busy_worker) " << cfg.busy_worker() << " : whether task scheduler workers check task queues highly frequently";

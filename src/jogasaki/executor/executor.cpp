@@ -362,7 +362,7 @@ bool execute_async_on_context(
         }
         return true;
     }
-    if(!e->is_ddl() && !e->is_empty() && rctx->configuration()->tasked_write()) {
+    if(!e->is_ddl() && !e->is_empty()) {
         // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
         job->callback([statement, on_completion, rctx](){  // callback is copy-based
@@ -386,7 +386,7 @@ bool execute_async_on_context(
         }
         return true;
     }
-    // write on non-tasked mode or DDL
+    // DDL
     scheduler::statement_scheduler sched{ database.configuration(), *database.task_scheduler()};
     sched.schedule(*e->operators(), *rctx);
     on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());

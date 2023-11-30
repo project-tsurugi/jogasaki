@@ -72,7 +72,6 @@ DEFINE_int64(duration, 5000, "Run duration in milli-seconds");  //NOLINT
 DEFINE_int64(transactions, -1, "Number of transactions executed per client thread. Specify -1 to use duration instead.");  //NOLINT
 DEFINE_int32(clients, 1, "Number of client threads");  //NOLINT
 DEFINE_int32(client_initial_core, -1, "set the client thread core affinity and assign sequentially from the specified core. Specify -1 not to set core-level thread affinity, then threads are distributed on numa nodes uniformly.");  //NOLINT
-DEFINE_bool(tasked_insert, true, "run insert as task");  //NOLINT
 DEFINE_int32(stealing_wait, -1, "Coefficient for the number of times checking local queue before stealing. Specify -1 to use jogasaki default.");  //NOLINT
 DEFINE_int32(task_polling_wait, 0, "wait method/duration parameter in the worker's busy loop");  //NOLINT
 DEFINE_bool(use_preferred_worker_for_current_thread, true, "whether worker is selected depending on the current thread requesting schedule");  //NOLINT
@@ -343,7 +342,6 @@ public:
         }
         cfg.single_thread(FLAGS_single_thread);
         cfg.thread_pool_size(FLAGS_thread_count);
-        cfg.tasked_write(FLAGS_tasked_insert);
 
         cfg.core_affinity(FLAGS_core_affinity);
         cfg.initial_core(FLAGS_initial_core);

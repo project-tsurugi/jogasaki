@@ -79,7 +79,6 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "default_partitions=5\n"
         "stealing_wait=1\n"
         "task_polling_wait=0\n"
-        "tasked_write=true\n"
         "lightweight_job_level=0\n"
         "enable_hybrid_scheduler=true\n"
         "commit_response=PROPAGATED\n"

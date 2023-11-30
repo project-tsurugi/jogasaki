@@ -175,9 +175,6 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<std::size_t>("task_polling_wait")) {
         ret->task_polling_wait(v.value());
     }
-    if (auto v = jogasaki_config->get<bool>("tasked_write")) {
-        ret->tasked_write(v.value());
-    }
     if (auto v = jogasaki_config->get<bool>("enable_hybrid_scheduler")) {
         ret->enable_hybrid_scheduler(v.value());
     }

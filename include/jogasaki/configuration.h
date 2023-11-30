@@ -151,14 +151,6 @@ public:
         db_location_ = arg;
     }
 
-    [[nodiscard]] bool tasked_write() const noexcept {
-        return tasked_write_;
-    }
-
-    void tasked_write(bool arg) noexcept {
-        tasked_write_ = arg;
-    }
-
     [[nodiscard]] bool scheduler_rr_workers() const noexcept {
         return scheduler_rr_workers_;
     }
@@ -358,7 +350,6 @@ public:
             "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
             "stealing_enabled:" << cfg.stealing_enabled() << " " <<
             "db_location:" << cfg.db_location() << " " <<
-            "tasked_write:" << cfg.tasked_write() << " " <<
             "activate_scheduler:" << cfg.activate_scheduler() << " " <<
             "enable_index_join:" << cfg.enable_index_join() << " " <<
             "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
@@ -393,7 +384,6 @@ private:
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = true;
     std::string db_location_{};
-    bool tasked_write_ = true;
     bool scheduler_rr_workers_ = false;
     bool activate_scheduler_ = true;
     bool enable_index_join_ = false;

@@ -16,6 +16,7 @@
 #include "statement_scheduler_impl.h"
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/exception.h>
 
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/executor/common/execute.h>
@@ -29,6 +30,7 @@
 namespace jogasaki::scheduler {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::throw_exception;
 
 statement_scheduler::impl::impl(std::shared_ptr<configuration> cfg, task_scheduler& scheduler) :
     dag_controller_(std::make_shared<dag_controller>(cfg, scheduler)),
@@ -49,10 +51,8 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
             break;
         }
         case kind::write: {
-            // FIXME remove tasked write
-            // auto& w = unsafe_downcast<executor::common::write>(s);
-            // w(context);
-            break;
+            // write must be scheduled as a task
+            throw_exception(std::logic_error(""));
         }
         case kind::create_table: {
             auto& ct = unsafe_downcast<executor::common::create_table>(s);

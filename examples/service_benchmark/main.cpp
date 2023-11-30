@@ -25,6 +25,7 @@
 #include <takatori/util/fail.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/exception.h>
 
 #include <tateyama/api/server/mock/request_response.h>
 #include <tateyama/utils/thread_affinity.h>
@@ -34,6 +35,7 @@
 #include <jogasaki/utils/command_utils.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/runner.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/executor/tables.h>
@@ -84,6 +86,8 @@ DEFINE_int64(watcher_interval, 1000, "duration in us before watcher thread wakes
 DEFINE_int64(worker_try_count, 1000, "how many times worker checks the task queues before suspend");  //NOLINT
 DEFINE_int64(worker_suspend_timeout, 1000000, "duration in us before worker wakes up from suspend");  //NOLINT
 DEFINE_bool(md, false, "output result to stdout as markdown table");  //NOLINT
+DEFINE_bool(ddl, false, "issue ddl instead of using built-in table. Required for --secondary.");  //NOLINT
+DEFINE_bool(secondary, false, "use secondary index");  //NOLINT
 
 namespace tateyama::service_benchmark {
 
@@ -93,6 +97,7 @@ using namespace std::chrono_literals;
 using namespace jogasaki::query_bench_cli;
 
 using takatori::util::unsafe_downcast;
+using takatori::util::throw_exception;
 
 using clock = std::chrono::high_resolution_clock;
 namespace sql = jogasaki::proto::sql;
@@ -307,6 +312,8 @@ class cli {
     bool rtx_{}; //NOLINT
     std::int64_t client_idle_{};
     bool md_{}; //NOLINT
+    bool ddl_{}; //NOLINT
+    std::size_t secondary_index_count_{}; //NOLINT
 
 public:
 
@@ -371,6 +378,7 @@ public:
         } else {
             cfg.db_location(std::string(FLAGS_location));
         }
+        cfg.prepare_benchmark_tables(!FLAGS_ddl);
 
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify;
@@ -382,6 +390,12 @@ public:
         rtx_ = FLAGS_rtx;
         client_idle_ = FLAGS_client_idle;
         md_ = FLAGS_md;
+        ddl_ = FLAGS_ddl;
+        secondary_index_count_ = FLAGS_secondary ? 1 : 0;
+        if (secondary_index_count_ > 0 && ! ddl_) {
+            LOG(ERROR) << "secondary index requires --ddl";
+            return false;
+        }
 
         if (verify_query_records_ && clients_ != 1) {
             LOG(ERROR) << "--verify requires --clients=1";
@@ -676,6 +690,64 @@ public:
         return true;
     }
 
+    void execute_statement(std::string_view stmt) {
+        std::string msg = std::string{jogasaki::utils::runner{}
+            .db(*db_)
+            .show_plan(false)
+            .show_recs(false)
+            .text(stmt)
+            .run()
+            .report()};
+        if (!msg.empty()) {
+            throw_exception(std::runtime_error{msg});
+        }
+    }
+    void setup_tables() {
+        execute_statement(
+            "CREATE TABLE NEW_ORDER ("
+            "no_o_id INT NOT NULL, "
+            "no_d_id INT NOT NULL, "
+            "no_w_id INT NOT NULL, "
+            "PRIMARY KEY(no_w_id, no_d_id, no_o_id))");
+        if(secondary_index_count_ > 0) {
+            execute_statement("CREATE INDEX NEW_ORDER_IDX1 ON NEW_ORDER(no_w_id)");
+        }
+        execute_statement(
+               "CREATE TABLE DISTRICT ("
+               "d_id INT NOT NULL, "
+               "d_w_id INT NOT NULL, "
+               "d_name VARCHAR(10) NOT NULL, "
+               "d_street_1 VARCHAR(20) NOT NULL, "
+               "d_street_2 VARCHAR(20) NOT NULL, "
+               "d_city VARCHAR(20) NOT NULL, "
+               "d_state CHAR(2) NOT NULL, "
+               "d_zip  CHAR(9) NOT NULL, "
+               "d_tax DOUBLE NOT NULL, "
+               "d_ytd DOUBLE NOT NULL, "
+               "d_next_o_id INT NOT NULL, "
+               "PRIMARY KEY(d_w_id, d_id))"
+        );
+        execute_statement(
+            "CREATE TABLE STOCK ("
+            "s_i_id INT NOT NULL, "
+            "s_w_id INT NOT NULL, "
+            "s_quantity INT NOT NULL, "
+            "s_dist_01 CHAR(24) NOT NULL, "
+            "s_dist_02 CHAR(24) NOT NULL, "
+            "s_dist_03 CHAR(24) NOT NULL, "
+            "s_dist_04 CHAR(24) NOT NULL, "
+            "s_dist_05 CHAR(24) NOT NULL, "
+            "s_dist_06 CHAR(24) NOT NULL, "
+            "s_dist_07 CHAR(24) NOT NULL, "
+            "s_dist_08 CHAR(24) NOT NULL, "
+            "s_dist_09 CHAR(24) NOT NULL, "
+            "s_dist_10 CHAR(24) NOT NULL, "
+            "s_ytd INT NOT NULL, "
+            "s_order_cnt INT NOT NULL, "
+            "s_remote_cnt INT NOT NULL, "
+            "s_data VARCHAR(50) NOT NULL, "
+            "PRIMARY KEY(s_w_id, s_i_id))");
+    }
     void setup_db(
         std::shared_ptr<jogasaki::configuration> cfg,
         jogasaki::common_cli::temporary_folder& dir
@@ -694,8 +766,12 @@ public:
         service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
         db_->start();
 
-        auto& impl = jogasaki::api::impl::get_impl(*db_);
-        jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
+        if(ddl_) {
+            setup_tables();
+        } else {
+            auto& impl = jogasaki::api::impl::get_impl(*db_);
+            jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
+        }
         if (! FLAGS_load_from.empty()) {
             jogasaki::common_cli::load(*db_, FLAGS_load_from);
         }
@@ -889,7 +965,6 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     tateyama::service_benchmark::cli e{};
     auto cfg = std::make_shared<jogasaki::configuration>();
-    cfg->prepare_benchmark_tables(true);
     if (! e.fill_from_flags(*cfg)) {
         return -1;
     }

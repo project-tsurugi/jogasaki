@@ -90,10 +90,6 @@ bool test_response::completed() {
     return completed_.load();
 }
 
-status test_response::close_session() {
-    return status::ok;
-}
-
 bool test_response::all_released() const noexcept {
     return !channel_ || released_ > 0;
 }

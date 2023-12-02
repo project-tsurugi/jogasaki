@@ -38,6 +38,11 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/index/index_accessor.h>
+#include <jogasaki/index/field_factory.h>
+#include <jogasaki/index/utils.h>
+#include <jogasaki/test_utils/secondary_index.h>
 #include "api_test_base.h"
 
 namespace jogasaki::testing {
@@ -57,6 +62,8 @@ namespace value = takatori::value;
 using nullity = yugawara::variable::nullity;
 using kind = meta::field_type_kind;
 using accessor::text;
+using api::impl::get_impl;
+using kvs::end_point_kind;
 
 namespace type = ::takatori::type;
 using ::yugawara::variable::nullity;
@@ -84,58 +91,6 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-
-        table_ = std::make_shared<table>(
-            "TEST",
-            std::initializer_list<column>{
-                column{ "C0", type::int8(), nullity{false} },
-                column{ "K1", type::int8(), nullity{true} },
-                column{ "K2", type::int8(), nullity{true} },
-                column{ "V1", type::int8(), nullity{true} },
-            }
-        );
-        ASSERT_EQ(status::ok, db_->create_table(table_));
-
-        {
-        std::shared_ptr<yugawara::storage::index> i = std::make_shared<yugawara::storage::index>(
-            table_,
-            table_->simple_name(),
-            std::initializer_list<index::key>{
-                table_->columns()[0],
-            },
-            std::initializer_list<index::column_ref>{
-                table_->columns()[1],
-                table_->columns()[2],
-                table_->columns()[3],
-            },
-            index_features
-        );
-        ASSERT_EQ(status::ok, db_->create_index(i));
-        }
-        {
-            auto i = std::make_shared<yugawara::storage::index>(
-                table_,
-                "TEST_SECONDARY0",
-                std::initializer_list<index::key>{
-                    {table_->columns()[1], takatori::relation::sort_direction::ascendant},
-                },
-                std::initializer_list<index::column_ref>{},
-                secondary_index_features
-            );
-            ASSERT_EQ(status::ok, db_->create_index(i));
-        }
-        {
-            auto i = std::make_shared<yugawara::storage::index>(
-                table_,
-                "TEST_SECONDARY1",
-                std::initializer_list<index::key>{
-                    {table_->columns()[2], takatori::relation::sort_direction::descendant},
-                },
-                std::initializer_list<index::column_ref>{},
-                secondary_index_features
-            );
-            ASSERT_EQ(status::ok, db_->create_index(i));
-        }
     }
 
     void TearDown() override {
@@ -167,6 +122,17 @@ TEST_F(secondary_index_upsert_test, upsert_creates_new_entry_on_secondary_index)
             R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("T"),
+            *get_impl(*db_).tables()->find_index("I"),
+            mock::create_nullable_record<kind::int4>(),
+            mock::create_nullable_record<kind::int4>());
+        ASSERT_EQ(1, entries.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(10)), entries[0].first);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), entries[0].second);
+    }
 }
 
 TEST_F(secondary_index_upsert_test, upsert_updates_existing_entry_on_secondary_index) {
@@ -186,6 +152,17 @@ TEST_F(secondary_index_upsert_test, upsert_updates_existing_entry_on_secondary_i
         EXPECT_TRUE(contains(plan,
             R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
+    }
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("T"),
+            *get_impl(*db_).tables()->find_index("I"),
+            mock::create_nullable_record<kind::int4>(),
+            mock::create_nullable_record<kind::int4>());
+        ASSERT_EQ(1, entries.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(10)), entries[0].first);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), entries[0].second);
     }
 }
 
@@ -207,5 +184,17 @@ TEST_F(secondary_index_upsert_test, upsert_updates_existing_entry_on_secondary_i
             R"({"kind":"find","this":"@2","source":{"kind":"relation","binding":{"kind":"index","table":"T","simple_name":"I")"
         ));
     }
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("T"),
+            *get_impl(*db_).tables()->find_index("I"),
+            mock::create_nullable_record<kind::int4>(),
+            mock::create_nullable_record<kind::int4>());
+        ASSERT_EQ(1, entries.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(10)), entries[0].first);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), entries[0].second);
+    }
 }
+
 }

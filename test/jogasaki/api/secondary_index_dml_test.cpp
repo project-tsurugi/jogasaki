@@ -40,6 +40,7 @@
 #include "api_test_base.h"
 #include "../kvs_test_utils.h"
 #include "jogasaki/utils/coder.h"
+#include "jogasaki/test_utils/secondary_index.h"
 
 namespace jogasaki::api::impl {
 
@@ -299,6 +300,25 @@ TEST_F(secondary_index_dml_test, update_index_key_multi_secondaries) {
         auto m = get_secondary_entries("I2", 100);
         ASSERT_EQ(1, m.size());
         EXPECT_EQ(1, m.count(1));
+    }
+}
+
+TEST_F(secondary_index_dml_test, insert_or_skip_wont_update_secondary_index_on_duplicate_pk) {
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT, C2 INT)");
+    execute_statement("CREATE INDEX I ON T (C1)");
+    execute_statement("INSERT INTO T VALUES(1,1,1)");
+
+    execute_statement("INSERT IF NOT EXISTS INTO T VALUES(1,10,100)");
+    {
+        auto entries = utils::get_secondary_entries(
+            *get_impl(*db_).kvs_db(),
+            *get_impl(*db_).tables()->find_index("T"),
+            *get_impl(*db_).tables()->find_index("I"),
+            mock::create_nullable_record<kind::int4>(),
+            mock::create_nullable_record<kind::int4>());
+        ASSERT_EQ(1, entries.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), entries[0].first);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), entries[0].second);
     }
 }
 

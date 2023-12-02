@@ -4,6 +4,7 @@ file(GLOB TEST_COMMON_SRCS
         "jogasaki/mock/mock_task.cpp"
         "jogasaki/kvs_test_utils.cpp"
         "jogasaki/kvs/kvs_test_base.cpp"
+        "jogasaki/test_utils/secondary_index.cpp"
         )
 
 add_library(test_common OBJECT ${TEST_COMMON_SRCS})

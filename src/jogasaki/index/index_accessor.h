@@ -63,12 +63,6 @@ public:
         return decode_fields(flds, stream, target, resource) == status::ok;
     }
 
-    bool write(bool key, accessor::record_ref src, kvs::writable_stream& stream) {
-        (void) key;
-        (void) stream;
-        (void) src;
-        return true;
-    }
 private:
     std::vector<field_info> key_fields_{};
     std::vector<field_info> value_fields_{};

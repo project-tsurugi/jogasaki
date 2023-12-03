@@ -48,20 +48,14 @@ public:
     mapper(
         std::vector<field_info> key_fields,
         std::vector<field_info> value_fields
-    ) :
-        key_fields_(std::move(key_fields)),
-        value_fields_(std::move(value_fields))
-    {}
+    );
 
     bool read(
         bool key,
         kvs::readable_stream& stream,
         accessor::record_ref target,
         memory::lifo_paged_memory_resource* resource
-    ) {
-        auto& flds = key ? key_fields_ : value_fields_;
-        return decode_fields(flds, stream, target, resource) == status::ok;
-    }
+    );
 
 private:
     std::vector<field_info> key_fields_{};

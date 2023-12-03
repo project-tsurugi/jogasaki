@@ -96,6 +96,7 @@ file(GLOB SOURCES
         "jogasaki/memory/*.cpp"
         "jogasaki/memory/details/*.cpp"
         "jogasaki/meta/*.cpp"
+        "jogasaki/meta/impl/*.cpp"
         "jogasaki/model/*.cpp"
         "jogasaki/plan/*.cpp"
         "jogasaki/recovery/*.cpp"

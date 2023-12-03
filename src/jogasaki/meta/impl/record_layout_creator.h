@@ -35,55 +35,15 @@ public:
     using value_offset_table_type = record_meta::value_offset_table_type;
     using nullity_offset_table_type = record_meta::nullity_offset_table_type;
 
-    record_layout_creator(
-        fields_type const& fields,
-        nullability_type const& nullability
-    ) {
-        std::size_t nullity_offset = 0;
-        auto field_count = fields.size();
-        BOOST_ASSERT(field_count == nullability.size()); // NOLINT
-        for(std::size_t i = 0; i < field_count; ++i) {
-            std::size_t pos = record_meta::npos;
-            if (nullability[i]) {
-                pos = nullity_offset;
-                ++nullity_offset;
-            }
-            nullity_offset_table_.emplace_back(pos);
-        }
-        auto nullity_bytes = utils::round_up_to_power_of_two(
-            (nullability.count() + bits_per_byte - 1) / bits_per_byte
-        );
-        std::size_t record_max_align = 1UL;
-        std::size_t cur = nullity_bytes;
-        for(std::size_t i = 0; i < field_count; ++i) {
-            auto&& field = fields[i];
-            auto alignment = field.runtime_type_alignment();
-            record_max_align = std::max(record_max_align, alignment);
-            cur = (cur + alignment - 1) / alignment * alignment;
-            value_offset_table_.emplace_back(cur);
-            cur += field.runtime_type_size();
-        }
-        record_alignment_ = record_max_align;
-        record_size_ = (cur + record_alignment_ - 1) / record_alignment_ * record_alignment_;
-        BOOST_ASSERT(record_max_align <= record_meta::max_alignment); //NOLINT
-        BOOST_ASSERT(record_meta::max_alignment % record_max_align == 0); //NOLINT
-    }
+    record_layout_creator(fields_type const& fields, nullability_type const& nullability);
 
-    [[nodiscard]] value_offset_table_type& value_offset_table() noexcept {
-        return value_offset_table_;
-    }
+    [[nodiscard]] value_offset_table_type& value_offset_table() noexcept;
 
-    [[nodiscard]] nullity_offset_table_type& nullity_offset_table() noexcept {
-        return nullity_offset_table_;
-    }
+    [[nodiscard]] nullity_offset_table_type& nullity_offset_table() noexcept;
 
-    [[nodiscard]] size_t record_alignment() const noexcept {
-        return record_alignment_;
-    }
+    [[nodiscard]] size_t record_alignment() const noexcept;
 
-    [[nodiscard]] size_t record_size() const noexcept {
-        return record_size_;
-    }
+    [[nodiscard]] size_t record_size() const noexcept;
 
 private:
     value_offset_table_type value_offset_table_{};
@@ -92,5 +52,4 @@ private:
     std::size_t record_size_{};
 };
 
-} // namespace
-
+}  // namespace jogasaki::meta::impl

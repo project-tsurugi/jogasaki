@@ -23,7 +23,8 @@
 
 namespace jogasaki::index {
 
-status decode_fields(std::vector<index::field_info> const& fields,
+status decode_fields(
+    std::vector<index::field_info> const& fields,
     kvs::readable_stream& stream,
     accessor::record_ref target,
     memory::lifo_paged_memory_resource* resource
@@ -65,6 +66,19 @@ status decode_fields(std::vector<index::field_info> const& fields,
     return status::ok;
 }
 
+mapper::mapper(std::vector<field_info> key_fields, std::vector<field_info> value_fields) :
+    key_fields_(std::move(key_fields)),
+    value_fields_(std::move(value_fields))
+{}
+
+bool mapper::read(
+    bool key,
+    kvs::readable_stream& stream,
+    accessor::record_ref target,
+    memory::lifo_paged_memory_resource* resource
+) {
+    auto& flds = key ? key_fields_ : value_fields_;
+    return decode_fields(flds, stream, target, resource) == status::ok;
 }
 
-
+}  // namespace jogasaki::index

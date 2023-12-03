@@ -130,9 +130,9 @@ TEST_F(record_layout_creator_test, 17_nullable_fields) {
             },
             boost::dynamic_bitset<std::uint64_t>{17}.flip()};
     EXPECT_EQ(1,  c.record_alignment());
-    EXPECT_EQ(20,  c.record_size());
-    EXPECT_EQ(3,  c.value_offset_table()[0]);
-    EXPECT_EQ(19,  c.value_offset_table()[16]);
+    EXPECT_EQ(21,  c.record_size());
+    EXPECT_EQ(4,  c.value_offset_table()[0]);
+    EXPECT_EQ(20,  c.value_offset_table()[16]);
     EXPECT_EQ(0,  c.nullity_offset_table()[0]);
     EXPECT_EQ(16,  c.nullity_offset_table()[16]);
 }

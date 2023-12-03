@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/round.h>
 
 namespace jogasaki::meta::impl {
 
@@ -49,9 +50,11 @@ public:
             }
             nullity_offset_table_.emplace_back(pos);
         }
-        auto nullity_bytes = (nullability.count() + bits_per_byte - 1) / bits_per_byte;
+        auto nullity_bytes = utils::round_up_to_power_of_two(
+            (nullability.count() + bits_per_byte - 1) / bits_per_byte
+        );
+        std::size_t record_max_align = 1UL;
         std::size_t cur = nullity_bytes;
-        std::size_t record_max_align = 1;
         for(std::size_t i = 0; i < field_count; ++i) {
             auto&& field = fields[i];
             auto alignment = field.runtime_type_alignment();

@@ -600,7 +600,9 @@ void create_generated_field(
     yugawara::storage::column_value const& dv,
     takatori::type::data const& type,
     bool nullable,
-    kvs::coding_spec spec
+    kvs::coding_spec spec,
+    std::size_t offset,
+    std::size_t nullity_offset
 ) {
     using yugawara::storage::column_value_kind;
     sequence_definition_id def_id{};
@@ -635,6 +637,8 @@ void create_generated_field(
         t,
         spec,
         nullable,
+        offset,
+        nullity_offset,
         knd,
         immediate_val,
         def_id
@@ -671,21 +675,27 @@ std::vector<details::write_field> create_fields(
                 // no column specified - use default value
                 auto& dv = k.column().default_value();
                 auto pos = out.size();
-                create_generated_field(out, npos, dv, type, nullable, spec);
-                auto& f = out[pos];
-                f.nullity_offset_ = key_meta->nullity_offset(pos);
-                f.offset_ = key_meta->value_offset(pos);
+                create_generated_field(
+                    out,
+                    npos,
+                    dv,
+                    type,
+                    nullable,
+                    spec,
+                    key_meta->value_offset(pos),
+                    key_meta->nullity_offset(pos)
+                );
                 continue;
             }
             auto pos = out.size();
-            auto& f = out.emplace_back(
+            out.emplace_back(
                 variable_indices[kc.reference()],
                 t,
                 spec,
-                nullable
+                nullable,
+                key_meta->value_offset(pos),
+                key_meta->nullity_offset(pos)
             );
-            f.nullity_offset_ = key_meta->nullity_offset(pos);
-            f.offset_ = key_meta->value_offset(pos);
         }
     } else {
         out.reserve(idx.values().size());
@@ -703,21 +713,27 @@ std::vector<details::write_field> create_fields(
                 // no column specified - use default value
                 auto& dv = c.default_value();
                 auto pos = out.size();
-                create_generated_field(out, npos, dv, type, nullable, spec);
-                auto& f = out[pos];
-                f.nullity_offset_ = value_meta->nullity_offset(pos);
-                f.offset_ = value_meta->value_offset(pos);
+                create_generated_field(
+                    out,
+                    npos,
+                    dv,
+                    type,
+                    nullable,
+                    spec,
+                    value_meta->value_offset(pos),
+                    value_meta->nullity_offset(pos)
+                );
                 continue;
             }
             auto pos = out.size();
-            auto& f = out.emplace_back(
+            out.emplace_back(
                 variable_indices[b.reference()],
                 t,
                 spec,
-                nullable
+                nullable,
+                value_meta->value_offset(pos),
+                value_meta->nullity_offset(pos)
             );
-            f.nullity_offset_ = value_meta->nullity_offset(pos);
-            f.offset_ = value_meta->value_offset(pos);
         }
     }
     return out;

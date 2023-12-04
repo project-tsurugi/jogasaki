@@ -47,19 +47,24 @@ struct write_field : process::impl::ops::default_value_property {
         std::size_t index,
         meta::field_type type,
         kvs::coding_spec spec,
-        bool nullable
+        bool nullable,
+        std::size_t offset,
+        std::size_t nullity_offset
     ) :
         index_(index),
         type_(std::move(type)),
         spec_(spec),
-        nullable_(nullable)
-    {}
+        nullable_(nullable),
+        offset_(offset),
+        nullity_offset_(nullity_offset) {}
 
     write_field(
         std::size_t index,
         meta::field_type type,
         kvs::coding_spec spec,
         bool nullable,
+        std::size_t offset,
+        std::size_t nullity_offset,
         process::impl::ops::default_value_kind kind,
         data::any immediate_value,
         sequence_definition_id def_id
@@ -72,8 +77,9 @@ struct write_field : process::impl::ops::default_value_property {
         index_(index),
         type_(std::move(type)),
         spec_(spec),
-        nullable_(nullable)
-    {}
+        nullable_(nullable),
+        offset_(offset),
+        nullity_offset_(nullity_offset) {}
 
     //@brief value position in the tuple. npos if values clause doesn't contain one for this field.
     std::size_t index_{};  //NOLINT

@@ -17,12 +17,10 @@
 
 #include <vector>
 
-#include <takatori/util/fail.h>
 #include <takatori/relation/write.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
-using takatori::util::fail;
 namespace relation = takatori::relation;
 
 /**
@@ -76,6 +74,4 @@ constexpr inline write_kind write_kind_from(relation::write_kind kind) noexcept 
     std::abort();
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

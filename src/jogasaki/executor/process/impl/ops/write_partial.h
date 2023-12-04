@@ -17,15 +17,16 @@
 
 #include <vector>
 
-#include <yugawara/storage/index.h>
 #include <takatori/relation/write.h>
+#include <yugawara/storage/index.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/kvs/coder.h>
-#include "write_partial_context.h"
-#include "write_kind.h"
+
 #include "details/write_primary_target.h"
 #include "details/write_secondary_target.h"
+#include "write_kind.h"
+#include "write_partial_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -138,4 +139,4 @@ private:
     operation_status do_delete(write_partial_context& ctx);
 };
 
-}
+}  // namespace jogasaki::executor::process::impl::ops

@@ -15,11 +15,12 @@
  */
 #include "write_partial_context.h"
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/kvs/transaction.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -62,6 +63,4 @@ details::write_primary_context& write_partial_context::primary_context() noexcep
     return primary_context_;
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

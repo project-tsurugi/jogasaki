@@ -15,15 +15,16 @@
  */
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/transaction.h>
+
 #include "context_base.h"
 #include "details/write_primary_context.h"
 #include "details/write_secondary_context.h"
@@ -72,6 +73,4 @@ private:
     std::vector<details::write_secondary_context> secondary_contexts_{};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

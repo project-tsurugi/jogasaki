@@ -21,19 +21,20 @@
 #include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
 
-#include <jogasaki/logging.h>
 #include <jogasaki/error.h>
-#include <jogasaki/request_context.h>
 #include <jogasaki/index/utils.h>
-#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
-#include "operator_base.h"
+#include "jogasaki/logging_helper.h"
+
 #include "context_helper.h"
 #include "details/error_abort.h"
-#include "jogasaki/logging_helper.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -81,7 +82,6 @@ bool update_skips_deletion(write_partial_context& ctx) {
     if(! ctx.req_context()->configuration()) return false;
     return ctx.req_context()->configuration()->update_skips_deletion();
 }
-
 
 operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
@@ -206,6 +206,7 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
     }
     return {};
 }
+
 operation_status write_partial::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
@@ -315,7 +316,6 @@ create_secondary_targets_and_key_update_list(
     yugawara::storage::index const& idx,
     sequence_view<write_partial::column const> columns
 ) {
-
     auto& table = idx.table();
     auto& primary = *table.owner()->find_primary_index(table);
     auto key_meta = index::create_meta(primary, true);
@@ -369,4 +369,4 @@ write_partial::bool_list_type create_secondary_key_updated(
     return updates;
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::ops

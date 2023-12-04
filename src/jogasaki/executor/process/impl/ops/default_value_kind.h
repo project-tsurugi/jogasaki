@@ -18,7 +18,9 @@
 #include <vector>
 
 #include <yugawara/storage/index.h>
+
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/common_types.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -63,21 +65,18 @@ struct cache_align default_value_property {
      */
     default_value_property(
         default_value_kind kind,
-        data::aligned_buffer default_value,
+        data::any immediate_value,  //NOLINT
         sequence_definition_id def_id
     ) :
         kind_(kind),
-        default_value_(std::move(default_value)),
+        immediate_value_(immediate_value),
         def_id_(def_id)
     {}
 
     // default value properties (valid if exists_ = false)
     default_value_kind kind_{};  //NOLINT
-    data::aligned_buffer default_value_{};  //NOLINT
+    data::any immediate_value_{};   //NOLINT
     sequence_definition_id def_id_{};  //NOLINT
-    data::any default_value_immediate_{};   //NOLINT
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

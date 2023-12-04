@@ -104,7 +104,7 @@ status fill_default_value(
             out.ref().set_null(f.nullity_offset_, true);
             break;
         case process::impl::ops::default_value_kind::immediate: {
-            auto src = f.default_value_immediate_;
+            auto src = f.immediate_value_;
             auto is_null = src.empty();
             if (is_null && !f.nullable_) {
                 auto rc = status::err_integrity_constraint_violation;
@@ -607,19 +607,17 @@ void create_generated_field(
     data::aligned_buffer buf{};
     auto t = utils::type_for(type);
     auto knd = process::impl::ops::default_value_kind::nothing;
-    data::any src{};
-    bool is_immediate = false;
+    data::any immediate_val{};
     switch(dv.kind()) {
         case column_value_kind::nothing:
             break;
         case column_value_kind::immediate: {
             knd = process::impl::ops::default_value_kind::immediate;
-            src = utils::as_any(
+            immediate_val = utils::as_any(
                 *dv.element<column_value_kind::immediate>(),
                 type,
                 nullptr // varlen data is owned by takatori so resource is not required
             );
-            is_immediate = true;
             break;
         }
         case column_value_kind::sequence: {
@@ -632,18 +630,15 @@ void create_generated_field(
             break;
         }
     }
-    auto& e = ret.emplace_back(
+    ret.emplace_back(
         index,
         t,
         spec,
         nullable,
         knd,
-        std::move(buf),
+        immediate_val,
         def_id
     );
-    if(is_immediate) {
-        e.default_value_immediate_ = src;
-    }
 }
 
 std::vector<details::write_field> create_fields(

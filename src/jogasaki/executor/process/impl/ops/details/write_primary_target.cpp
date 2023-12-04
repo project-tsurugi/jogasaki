@@ -94,10 +94,12 @@ status write_primary_target::encode_find_remove(
     write_primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
-    memory_resource* varlen_resource
+    memory_resource* varlen_resource,
+    accessor::record_ref dest_key,
+    accessor::record_ref dest_value
 ) {
     std::string_view k{};
-    if(auto res = encode_find(ctx, tx, key, varlen_resource, k); res != status::ok) {
+    if(auto res = encode_find(ctx, tx, key, varlen_resource, dest_key, dest_value, k); res != status::ok) {
         return res;
     }
     return remove_by_encoded_key(ctx, tx, k);
@@ -107,10 +109,12 @@ status write_primary_target::encode_find(
     write_primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
-    memory_resource* varlen_resource
+    memory_resource* varlen_resource,
+    accessor::record_ref dest_key,
+    accessor::record_ref dest_value
 ) {
     std::string_view k{};
-    return encode_find(ctx, tx, key, varlen_resource, k);
+    return encode_find(ctx, tx, key, varlen_resource, dest_key, dest_value, k);
 }
 
 status write_primary_target::encode_find(
@@ -118,6 +122,8 @@ status write_primary_target::encode_find(
     transaction_context& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource,
+    accessor::record_ref dest_key,
+    accessor::record_ref dest_value,
     std::string_view& encoded_key
 ) {
     if(auto res = prepare_encoded_key(ctx, key, encoded_key); res != status::ok) {
@@ -131,12 +137,12 @@ status write_primary_target::encode_find(
     }
     kvs::readable_stream keys{encoded_key.data(), encoded_key.size()};
     kvs::readable_stream values{v.data(), v.size()};
-    if(auto res = decode_fields(extracted_keys_, keys, ctx.extracted_key_store_.ref(), varlen_resource);
+    if(auto res = decode_fields(extracted_keys_, keys, dest_key, varlen_resource);
        res != status::ok) {
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
-    if(auto res = decode_fields(extracted_values_, values, ctx.extracted_value_store_.ref(), varlen_resource);
+    if(auto res = decode_fields(extracted_values_, values, dest_value, varlen_resource);
        res != status::ok) {
         handle_encode_errors(*ctx.req_context(), res);
         return res;
@@ -205,15 +211,6 @@ status do_encode(
     }
     out = static_cast<std::string_view>(buf);
     return status::ok;
-}
-
-status write_primary_target::encode_put(
-    write_primary_context& ctx,
-    transaction_context& tx,
-    kvs::put_option opt
-) {
-    std::string_view k{};
-    return encode_put(ctx, tx, opt, ctx.extracted_key_store_.ref(), ctx.extracted_value_store_.ref(), k);
 }
 
 status write_primary_target::encode_put(

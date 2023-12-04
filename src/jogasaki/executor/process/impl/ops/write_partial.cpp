@@ -94,6 +94,8 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
             *ctx.transaction(),
             ctx.input_variables().store().ref(),
             ctx.varlen_resource(),
+            context.extracted_key(),
+            context.extracted_value(),
             encoded
         ); res != status::ok) {
         abort_transaction(*ctx.transaction());
@@ -137,7 +139,16 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 
     // encode extracted key/value in primary target and send to kvs
     kvs::put_option opt = primary_key_updated_ ? kvs::put_option::create : kvs::put_option::create_or_update;
-    if(auto res = primary_.encode_put(context, *ctx.transaction(), opt); res != status::ok) {
+    std::string_view encoded_key{};
+    if(auto res = primary_.encode_put(
+           context,
+           *ctx.transaction(),
+           opt,
+           context.extracted_key(),
+           context.extracted_value(),
+           encoded_key
+       );
+       res != status::ok) {
         abort_transaction(*ctx.transaction());
         if(res == status::already_exists) {
             res = status::err_unique_constraint_violation;
@@ -182,12 +193,13 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
         return {};
     }
 
-    // find update target and fill ctx.extracted_key_store_ and ctx.extracted_value_store_ to delete from secondaries
     if(auto res = primary_.encode_find_remove(
             context,
             *ctx.transaction(),
             ctx.input_variables().store().ref(),
-            ctx.varlen_resource()
+            ctx.varlen_resource(),
+            context.extracted_key(),
+            context.extracted_value()
         ); res != status::ok) {
         return error_abort(ctx, res);
     }

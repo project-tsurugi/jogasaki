@@ -95,7 +95,7 @@ struct cache_align update_field {
  *   - the source columns to generate key for finding target entry in the primary index
  * - extracted key/value records
  *   - the target columns to be filled by find operation
- *   - the source columns to generate key/value to be put into the primary index
+ *   - the source columns to generate key/value on put operation
  * This object holds common static information and dynamically changing parts are separated as write_primary_context.
  * Extracted key/value records are stored in the context object, while the input key record is stored externally.
  */
@@ -163,7 +163,13 @@ public:
     );
 
     /**
-     * @brief encode key (stored internally), find the record, fill extracted key/value records, and remove
+     * @brief encode key (stored internally), find the record, fill dest key/value records, and remove
+     * @param ctx context
+     * @param tx transaction context
+     * @param key key record to fine entry in the primary index
+     * @param varlen_resource resource for variable length data
+     * @param dest_key [out] extracted key record
+     * @param dest_value [out] extracted value record
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
@@ -172,11 +178,19 @@ public:
         write_primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
-        memory_resource* varlen_resource
+        memory_resource* varlen_resource,
+        accessor::record_ref dest_key,
+        accessor::record_ref dest_value
     );
 
     /**
-     * @brief encode key (stored internally), find the record, and fill extracted key/value records
+     * @brief encode key (stored internally), find the record, and fill dest key/value records
+     * @param ctx context
+     * @param tx transaction context
+     * @param key key record to fine entry in the primary index
+     * @param varlen_resource resource for variable length data
+     * @param dest_key [out] extracted key record
+     * @param dest_value [out] extracted value record
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
@@ -185,17 +199,31 @@ public:
         write_primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
-        memory_resource* varlen_resource
+        memory_resource* varlen_resource,
+        accessor::record_ref dest_key,
+        accessor::record_ref dest_value
     );
 
     /**
      * @brief same as `encode_find`, except returning view of encoded key for recycle.
+     * @param ctx context
+     * @param tx transaction context
+     * @param key key record to fine entry in the primary index
+     * @param varlen_resource resource for variable length data
+     * @param dest_key [out] extracted key record
+     * @param dest_value [out] extracted value record
+     * @param encoded_key [out] created encoded key (stored internally)
+     * @returns status::ok when successful
+     * @returns status::not_found if record is not found
+     * @returns any other error otherwise
      */
     status encode_find(
         write_primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
         memory_resource* varlen_resource,
+        accessor::record_ref dest_key,
+        accessor::record_ref dest_value,
         std::string_view& encoded_key
     );
 
@@ -233,7 +261,7 @@ public:
     );
 
     /**
-     * @brief gather the extracted key/value records, encode and put them to index
+     * @brief encode key/value (stored internally) from the given key/value records, and put them to index
      * @returns status::ok when successful
      * @returns status::already_exist if record already exists and `opt` is `create`
      * @returns status::not_found if record not found and `opt` is `update`
@@ -247,19 +275,6 @@ public:
         accessor::record_ref value_record,
         std::string_view& encoded_key
         );
-
-    /**
-     * @brief gather the extracted key/value records, encode and put them to index
-     * @returns status::ok when successful
-     * @returns status::already_exist if record already exists and `opt` is `create`
-     * @returns status::not_found if record not found and `opt` is `update`
-     * @returns any other error otherwise
-     */
-    status encode_put(
-        write_primary_context& ctx,
-        transaction_context& tx,
-        kvs::put_option opt = kvs::put_option::create_or_update
-    );
 
     /**
      * @brief accessor to key metadata

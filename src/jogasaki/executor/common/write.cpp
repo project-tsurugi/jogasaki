@@ -585,6 +585,8 @@ bool write::update_secondaries_before_upsert(
         *wctx.request_context_->transaction(),
         wctx.key_store_.ref(),
         resource_,
+        wctx.primary_context_.extracted_key(),
+        wctx.primary_context_.extracted_value(),
         encoded_primary_key
     );
     if(res != status::ok && res != status::not_found) {

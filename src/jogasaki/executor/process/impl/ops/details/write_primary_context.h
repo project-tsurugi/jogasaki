@@ -82,8 +82,8 @@ public:
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
-    data::aligned_buffer key_buf_{};
-    data::aligned_buffer value_buf_{};
+    data::aligned_buffer key_buf_{};  // internal buffer used from write_primary_target
+    data::aligned_buffer value_buf_{};  // internal buffer used from write_primary_target
     data::small_record_store extracted_key_store_{};
     data::small_record_store extracted_value_store_{};
     std::size_t key_len_{};

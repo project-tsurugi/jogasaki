@@ -62,28 +62,22 @@ using takatori::util::string_builder;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-// fwd declaration begin
-status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out);
-std::vector<details::write_field> create_fields(
-    yugawara::storage::index const& idx,
-    sequence_view<write::column const> columns,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta,
-    bool key
-);
-write_primary_target create_primary_target(
-    std::string_view storage_name,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta,
-    std::vector<details::write_field> const& key_fields,
-    std::vector<details::write_field> const& value_fields
-);
-std::vector<write_secondary_target> create_secondary_targets(
-    yugawara::storage::index const& idx,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta
-);
-// fwd declaration end
+status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out) {
+    BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
+    auto& mgr = *ctx.sequence_manager();
+    auto* seq = mgr.find_sequence(def_id);
+    if(seq == nullptr) {
+        throw_exception(std::logic_error{""});
+    }
+    auto ret = seq->next(*ctx.transaction()->object());
+    try {
+        mgr.notify_updates(*ctx.transaction()->object());
+    } catch(executor::sequence::exception const& e) {
+        return e.get_status();
+    }
+    out = ret;
+    return status::ok;
+}
 
 status fill_default_value(
     details::write_field const& f,
@@ -222,47 +216,149 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
     return status::ok;
 }
 
-write::write(
-    write_kind kind,
+void create_generated_field(
+    std::vector<details::write_field>& ret,
+    std::size_t index,
+    yugawara::storage::column_value const& dv,
+    takatori::type::data const& type,
+    bool nullable,
+    kvs::coding_spec spec,
+    std::size_t offset,
+    std::size_t nullity_offset
+) {
+    using yugawara::storage::column_value_kind;
+    sequence_definition_id def_id{};
+    data::aligned_buffer buf{};
+    auto t = utils::type_for(type);
+    auto knd = process::impl::ops::default_value_kind::nothing;
+    data::any immediate_val{};
+    switch(dv.kind()) {
+        case column_value_kind::nothing:
+            break;
+        case column_value_kind::immediate: {
+            knd = process::impl::ops::default_value_kind::immediate;
+            immediate_val = utils::as_any(
+                *dv.element<column_value_kind::immediate>(),
+                type,
+                nullptr // varlen data is owned by takatori so resource is not required
+            );
+            break;
+        }
+        case column_value_kind::sequence: {
+            knd = process::impl::ops::default_value_kind::sequence;
+            if (auto id = dv.element<column_value_kind::sequence>()->definition_id()) {
+                def_id = *id;
+            } else {
+                throw_exception(std::logic_error{"sequence must be defined with definition_id"});
+            }
+            break;
+        }
+    }
+    ret.emplace_back(
+        index,
+        t,
+        spec,
+        nullable,
+        offset,
+        nullity_offset,
+        knd,
+        immediate_val,
+        def_id
+    );
+}
+
+std::vector<details::write_field> create_fields(
     yugawara::storage::index const& idx,
-    takatori::statement::write const& wrt,
-    memory::lifo_paged_memory_resource& resource,
-    compiled_info info,
-    executor::process::impl::variable_table const* host_variables
-) :
-    kind_(kind),
-    idx_(std::addressof(idx)),
-    wrt_(std::addressof(wrt)),
-    resource_(std::addressof(resource)),
-    info_(std::move(info)),
-    host_variables_(host_variables),
-    key_meta_(index::create_meta(*idx_, true)),
-    value_meta_(index::create_meta(*idx_, false)),
-    key_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true)),
-    value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false)),
-    primary_(create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_)),
-    secondaries_(create_secondary_targets(*idx_, key_meta_, value_meta_))
-{}
-
-model::statement_kind write::kind() const noexcept {
-    return model::statement_kind::write;
-}
-
-void abort_transaction(transaction_context& tx) {
-    if (auto res = tx.abort(); res != status::ok) {
-        throw_exception(std::logic_error{"abort failed unexpectedly"});
+    sequence_view<write::column const> columns,
+    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
+    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
+    bool key
+) {
+    using reference = takatori::descriptor::variable::reference_type;
+    yugawara::binding::factory bindings{};
+    std::vector<details::write_field> out{};
+    std::unordered_map<reference, std::size_t> variable_indices{};
+    for(std::size_t i=0, n=columns.size(); i<n; ++i) {
+        auto&& c = columns[i];
+        variable_indices[c.reference()] = i;
     }
-}
+    if (key) {
+        out.reserve(idx.keys().size());
+        for(auto&& k : idx.keys()) {
+            auto kc = bindings(k.column());
+            auto& type = k.column().type();
+            auto t = utils::type_for(type);
+            auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
+                kvs::spec_key_ascending : kvs::spec_key_descending;
+            // pass storage spec with fields for write
+            spec.storage(index::extract_storage_spec(type));
+            bool nullable = k.column().criteria().nullity().nullable();
+            if(variable_indices.count(kc.reference()) == 0) {
+                // no column specified - use default value
+                auto& dv = k.column().default_value();
+                auto pos = out.size();
+                create_generated_field(
+                    out,
+                    npos,
+                    dv,
+                    type,
+                    nullable,
+                    spec,
+                    key_meta->value_offset(pos),
+                    key_meta->nullity_offset(pos)
+                );
+                continue;
+            }
+            auto pos = out.size();
+            out.emplace_back(
+                variable_indices[kc.reference()],
+                t,
+                spec,
+                nullable,
+                key_meta->value_offset(pos),
+                key_meta->nullity_offset(pos)
+            );
+        }
+    } else {
+        out.reserve(idx.values().size());
+        for(auto&& v : idx.values()) {
+            auto b = bindings(v);
 
-bool write::operator()(request_context& context) {
-    auto res = process(context);
-    if(! res) {
-        // Ensure tx aborts on any error. Though tx might be already aborted due to kvs errors,
-        // aborting again will do no harm since sharksfin tx manages is_active flag and omits aborting again.
-        auto& tx = context.transaction();
-        abort_transaction(*tx);
+            auto& c = static_cast<yugawara::storage::column const&>(v);
+            auto& type = c.type();
+            auto t = utils::type_for(type);
+            bool nullable = c.criteria().nullity().nullable();
+            auto spec = kvs::spec_value;
+            // pass storage spec with fields for write
+            spec.storage(index::extract_storage_spec(type));
+            if(variable_indices.count(b.reference()) == 0) {
+                // no column specified - use default value
+                auto& dv = c.default_value();
+                auto pos = out.size();
+                create_generated_field(
+                    out,
+                    npos,
+                    dv,
+                    type,
+                    nullable,
+                    spec,
+                    value_meta->value_offset(pos),
+                    value_meta->nullity_offset(pos)
+                );
+                continue;
+            }
+            auto pos = out.size();
+            out.emplace_back(
+                variable_indices[b.reference()],
+                t,
+                spec,
+                nullable,
+                value_meta->value_offset(pos),
+                value_meta->nullity_offset(pos)
+            );
+        }
     }
-    return res;
+    return out;
 }
 
 write_primary_target create_primary_target(
@@ -337,6 +433,50 @@ std::vector<write_secondary_target> create_secondary_targets(
     );
     return ret;
 }
+
+write::write(
+    write_kind kind,
+    yugawara::storage::index const& idx,
+    takatori::statement::write const& wrt,
+    memory::lifo_paged_memory_resource& resource,
+    compiled_info info,
+    executor::process::impl::variable_table const* host_variables
+) :
+    kind_(kind),
+    idx_(std::addressof(idx)),
+    wrt_(std::addressof(wrt)),
+    resource_(std::addressof(resource)),
+    info_(std::move(info)),
+    host_variables_(host_variables),
+    key_meta_(index::create_meta(*idx_, true)),
+    value_meta_(index::create_meta(*idx_, false)),
+    key_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true)),
+    value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false)),
+    primary_(create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_)),
+    secondaries_(create_secondary_targets(*idx_, key_meta_, value_meta_))
+{}
+
+model::statement_kind write::kind() const noexcept {
+    return model::statement_kind::write;
+}
+
+void abort_transaction(transaction_context& tx) {
+    if (auto res = tx.abort(); res != status::ok) {
+        throw_exception(std::logic_error{"abort failed unexpectedly"});
+    }
+}
+
+bool write::operator()(request_context& context) {
+    auto res = process(context);
+    if(! res) {
+        // Ensure tx aborts on any error. Though tx might be already aborted due to kvs errors,
+        // aborting again will do no harm since sharksfin tx manages is_active flag and omits aborting again.
+        auto& tx = context.transaction();
+        abort_transaction(*tx);
+    }
+    return res;
+}
+
 
 std::vector<write_secondary_context> create_secondary_contexts(
     std::vector<write_secondary_target> const& targets,
@@ -575,168 +715,6 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         };
     }
     return true;
-}
-
-status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out) {
-    BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
-    auto& mgr = *ctx.sequence_manager();
-    auto* seq = mgr.find_sequence(def_id);
-    if(seq == nullptr) {
-        throw_exception(std::logic_error{""});
-    }
-    auto ret = seq->next(*ctx.transaction()->object());
-    try {
-        mgr.notify_updates(*ctx.transaction()->object());
-    } catch(executor::sequence::exception const& e) {
-        return e.get_status();
-    }
-    out = ret;
-    return status::ok;
-}
-
-void create_generated_field(
-    std::vector<details::write_field>& ret,
-    std::size_t index,
-    yugawara::storage::column_value const& dv,
-    takatori::type::data const& type,
-    bool nullable,
-    kvs::coding_spec spec,
-    std::size_t offset,
-    std::size_t nullity_offset
-) {
-    using yugawara::storage::column_value_kind;
-    sequence_definition_id def_id{};
-    data::aligned_buffer buf{};
-    auto t = utils::type_for(type);
-    auto knd = process::impl::ops::default_value_kind::nothing;
-    data::any immediate_val{};
-    switch(dv.kind()) {
-        case column_value_kind::nothing:
-            break;
-        case column_value_kind::immediate: {
-            knd = process::impl::ops::default_value_kind::immediate;
-            immediate_val = utils::as_any(
-                *dv.element<column_value_kind::immediate>(),
-                type,
-                nullptr // varlen data is owned by takatori so resource is not required
-            );
-            break;
-        }
-        case column_value_kind::sequence: {
-            knd = process::impl::ops::default_value_kind::sequence;
-            if (auto id = dv.element<column_value_kind::sequence>()->definition_id()) {
-                def_id = *id;
-            } else {
-                throw_exception(std::logic_error{"sequence must be defined with definition_id"});
-            }
-            break;
-        }
-    }
-    ret.emplace_back(
-        index,
-        t,
-        spec,
-        nullable,
-        offset,
-        nullity_offset,
-        knd,
-        immediate_val,
-        def_id
-    );
-}
-
-std::vector<details::write_field> create_fields(
-    yugawara::storage::index const& idx,
-    sequence_view<write::column const> columns,
-    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
-    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
-    bool key
-) {
-    using reference = takatori::descriptor::variable::reference_type;
-    yugawara::binding::factory bindings{};
-    std::vector<details::write_field> out{};
-    std::unordered_map<reference, std::size_t> variable_indices{};
-    for(std::size_t i=0, n=columns.size(); i<n; ++i) {
-        auto&& c = columns[i];
-        variable_indices[c.reference()] = i;
-    }
-    if (key) {
-        out.reserve(idx.keys().size());
-        for(auto&& k : idx.keys()) {
-            auto kc = bindings(k.column());
-            auto& type = k.column().type();
-            auto t = utils::type_for(type);
-            auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
-                kvs::spec_key_ascending : kvs::spec_key_descending;
-            // pass storage spec with fields for write
-            spec.storage(index::extract_storage_spec(type));
-            bool nullable = k.column().criteria().nullity().nullable();
-            if(variable_indices.count(kc.reference()) == 0) {
-                // no column specified - use default value
-                auto& dv = k.column().default_value();
-                auto pos = out.size();
-                create_generated_field(
-                    out,
-                    npos,
-                    dv,
-                    type,
-                    nullable,
-                    spec,
-                    key_meta->value_offset(pos),
-                    key_meta->nullity_offset(pos)
-                );
-                continue;
-            }
-            auto pos = out.size();
-            out.emplace_back(
-                variable_indices[kc.reference()],
-                t,
-                spec,
-                nullable,
-                key_meta->value_offset(pos),
-                key_meta->nullity_offset(pos)
-            );
-        }
-    } else {
-        out.reserve(idx.values().size());
-        for(auto&& v : idx.values()) {
-            auto b = bindings(v);
-
-            auto& c = static_cast<yugawara::storage::column const&>(v);
-            auto& type = c.type();
-            auto t = utils::type_for(type);
-            bool nullable = c.criteria().nullity().nullable();
-            auto spec = kvs::spec_value;
-            // pass storage spec with fields for write
-            spec.storage(index::extract_storage_spec(type));
-            if(variable_indices.count(b.reference()) == 0) {
-                // no column specified - use default value
-                auto& dv = c.default_value();
-                auto pos = out.size();
-                create_generated_field(
-                    out,
-                    npos,
-                    dv,
-                    type,
-                    nullable,
-                    spec,
-                    value_meta->value_offset(pos),
-                    value_meta->nullity_offset(pos)
-                );
-                continue;
-            }
-            auto pos = out.size();
-            out.emplace_back(
-                variable_indices[b.reference()],
-                t,
-                spec,
-                nullable,
-                value_meta->value_offset(pos),
-                value_meta->nullity_offset(pos)
-            );
-        }
-    }
-    return out;
 }
 
 }  // namespace jogasaki::executor::common

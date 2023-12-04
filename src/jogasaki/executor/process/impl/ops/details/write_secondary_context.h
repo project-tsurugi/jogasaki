@@ -54,7 +54,7 @@ public:
 
 private:
     std::unique_ptr<kvs::storage> stg_{};
-    data::aligned_buffer key_buf_{};
+    data::aligned_buffer encoded_secondary_key_{};
     request_context* rctx_{};
 };
 

@@ -56,21 +56,21 @@ public:
     /**
      * @brief accessor to the encoded key
      * @return the encoded key
-     * @pre write_primary_target::encode_and_put() or find_record_and_extract() is called with this object beforehand
+     * @pre write_primary_target::encode_put() or find_record_and_extract() is called with this object beforehand
      */
     [[nodiscard]] std::string_view encoded_key() const noexcept;
 
     /**
      * @brief accessor to the extracted key store
      * @return the encoded key
-     * @pre write_primary_target::find_record_and_remove() is called with this object beforehand
+     * @pre write_primary_target::encode_find_remove() is called with this object beforehand
      */
     [[nodiscard]] accessor::record_ref extracted_key() const noexcept;
 
     /**
      * @brief accessor to the extracted value store
      * @return the encoded key
-     * @pre write_primary_target::find_record_and_remove() is called with this object beforehand
+     * @pre write_primary_target::encode_find_remove() is called with this object beforehand
      */
     [[nodiscard]] accessor::record_ref extracted_value() const noexcept;
 

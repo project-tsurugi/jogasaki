@@ -39,10 +39,10 @@ status details::write_secondary_target::encode_secondary_key(
     std::string_view encoded_primary_key,
     std::string_view& out
 ) const {
-    return encode_secondary_key(ctx, ctx.key_buf_, primary_key, primary_value, encoded_primary_key, out);
+    return create_secondary_key(ctx, ctx.encoded_secondary_key_, primary_key, primary_value, encoded_primary_key, out);
 }
 
-status details::write_secondary_target::encode_secondary_key(
+status details::write_secondary_target::create_secondary_key(
     write_secondary_context& ctx,
     data::aligned_buffer& buf,
     accessor::record_ref primary_key,
@@ -86,7 +86,7 @@ status details::write_secondary_target::encode_secondary_key(
     return status::ok;
 }
 
-status details::write_secondary_target::encode_and_put(
+status details::write_secondary_target::encode_put(
     write_secondary_context& ctx,
     transaction_context& tx,
     accessor::record_ref primary_key,
@@ -118,7 +118,7 @@ status details::write_secondary_target::remove_by_encoded_key(
     return status::ok;
 }
 
-status details::write_secondary_target::encode_and_remove(
+status details::write_secondary_target::encode_remove(
     write_secondary_context& ctx,
     transaction_context& tx,
     accessor::record_ref primary_key,

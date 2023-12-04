@@ -101,6 +101,7 @@ struct cache_align update_field {
  */
 class write_primary_target {
 public:
+
     friend class write_primary_context;
 
     /**
@@ -162,12 +163,12 @@ public:
     );
 
     /**
-     * @brief encode key, find the record, fill extracted key/value records, and remove
+     * @brief encode key (stored internally), find the record, fill extracted key/value records, and remove
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
      */
-    status find_record_and_remove(
+    status encode_find_remove(
         write_primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
@@ -175,12 +176,12 @@ public:
     );
 
     /**
-     * @brief encode key, find the record, and fill extracted key/value records
+     * @brief encode key (stored internally), find the record, and fill extracted key/value records
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
      */
-    status find_record(
+    status encode_find(
         write_primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
@@ -188,9 +189,9 @@ public:
     );
 
     /**
-     * @brief same as `find_record`, except returning encoded key for recycle.
+     * @brief same as `encode_find`, except returning view of encoded key for recycle.
      */
-    status find_record(
+    status encode_find(
         write_primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
@@ -199,12 +200,12 @@ public:
     );
 
     /**
-     * @brief encode key, and remove the record
+     * @brief encode key (stored internally), and remove the record
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
      */
-    status remove_record(
+    status encode_remove(
         write_primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key
@@ -216,7 +217,7 @@ public:
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
      */
-    status remove_record_by_encoded_key(
+    status remove_by_encoded_key(
         write_primary_context& ctx,
         transaction_context& tx,
         std::string_view encoded_key
@@ -230,6 +231,7 @@ public:
         accessor::record_ref input_variables,
         accessor::record_ref host_variables
     );
+
     /**
      * @brief gather the extracted key/value records, encode and put them to index
      * @returns status::ok when successful
@@ -237,7 +239,7 @@ public:
      * @returns status::not_found if record not found and `opt` is `update`
      * @returns any other error otherwise
      */
-    status encode_and_put(
+    status encode_put(
         write_primary_context& ctx,
         transaction_context& tx,
         kvs::put_option opt,
@@ -253,7 +255,7 @@ public:
      * @returns status::not_found if record not found and `opt` is `update`
      * @returns any other error otherwise
      */
-    status encode_and_put(
+    status encode_put(
         write_primary_context& ctx,
         transaction_context& tx,
         kvs::put_option opt = kvs::put_option::create_or_update
@@ -280,6 +282,7 @@ public:
     [[nodiscard]] bool updates_key() const noexcept;
 
 private:
+
     std::string storage_name_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
@@ -303,6 +306,13 @@ private:
         memory_resource* varlen_resource
     ) const;
 
+    /**
+     * @brief encode key on `ctx.encoded_key_` and return its view
+     * @param ctx context
+     * @param source source record to encode key
+     * @param out [out] generated encode key
+     * @return
+     */
     status prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const;
 
 };

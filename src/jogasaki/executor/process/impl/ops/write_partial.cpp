@@ -19,6 +19,7 @@
 
 #include <takatori/relation/write.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/fail.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/error.h>
@@ -40,6 +41,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 using variable = takatori::descriptor::variable;
 using takatori::util::throw_exception;
+using takatori::util::fail;
 
 void write_partial::finish(abstract::task_context* context) {
     if (! context) return;
@@ -87,7 +89,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
     // find update target and fill internal extracted key/values in primary target
     std::string_view encoded{};
-    if(auto res = primary_.find_record(
+    if(auto res = primary_.encode_find(
             context,
             *ctx.transaction(),
             ctx.input_variables().store().ref(),
@@ -100,7 +102,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 
     if(primary_key_updated_ || ! update_skips_deletion(ctx)) {
         // remove and recreate records
-        if(auto res = primary_.remove_record_by_encoded_key(
+        if(auto res = primary_.remove_by_encoded_key(
                 context,
                 *ctx.transaction(),
                 encoded
@@ -114,7 +116,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
         if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
             continue;
         }
-        if(auto res = secondaries_[i].encode_and_remove(
+        if(auto res = secondaries_[i].encode_remove(
             ctx.secondary_contexts_[i],
             *ctx.transaction(),
             context.extracted_key(),
@@ -135,7 +137,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 
     // encode extracted key/value in primary target and send to kvs
     kvs::put_option opt = primary_key_updated_ ? kvs::put_option::create : kvs::put_option::create_or_update;
-    if(auto res = primary_.encode_and_put(context, *ctx.transaction(), opt); res != status::ok) {
+    if(auto res = primary_.encode_put(context, *ctx.transaction(), opt); res != status::ok) {
         abort_transaction(*ctx.transaction());
         if(res == status::already_exists) {
             res = status::err_unique_constraint_violation;
@@ -150,7 +152,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
         if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
             continue;
         }
-        if(auto res = secondaries_[i].encode_and_put(
+        if(auto res = secondaries_[i].encode_put(
                 ctx.secondary_contexts_[i],
                 *ctx.transaction(),
                 context.extracted_key(),
@@ -167,7 +169,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 operation_status write_partial::do_delete(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
     if(secondaries_.empty()) {
-        if(auto res = primary_.remove_record(
+        if(auto res = primary_.encode_remove(
                 context,
                 *ctx.transaction(),
                 ctx.input_variables().store().ref()
@@ -181,7 +183,7 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
     }
 
     // find update target and fill ctx.extracted_key_store_ and ctx.extracted_value_store_ to delete from secondaries
-    if(auto res = primary_.find_record_and_remove(
+    if(auto res = primary_.encode_find_remove(
             context,
             *ctx.transaction(),
             ctx.input_variables().store().ref(),
@@ -194,7 +196,7 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        if(auto res = secondaries_[i].encode_and_remove(
+        if(auto res = secondaries_[i].encode_remove(
                 ctx.secondary_contexts_[i],
                 *ctx.transaction(),
                 context.extracted_key(),

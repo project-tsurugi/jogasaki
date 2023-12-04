@@ -502,7 +502,7 @@ bool write::put_primary(
     kvs::put_option opt = (kind_ == write_kind::insert || kind_ == write_kind::insert_skip) ?
         kvs::put_option::create :
         kvs::put_option::create_or_update;
-    if(auto res = primary_.encode_and_put(
+    if(auto res = primary_.encode_put(
         wctx.primary_context_,
         *wctx.request_context_->transaction(),
         opt,
@@ -562,7 +562,7 @@ bool write::put_secondaries(
 ) {
     for(std::size_t i=0, n=secondaries_.size(); i < n; ++i) {
         auto& e = secondaries_[i];
-        if(auto res = e.encode_and_put(
+        if(auto res = e.encode_put(
             wctx.secondary_contexts_[i],
             *wctx.request_context_->transaction(),
             wctx.key_store_.ref(),
@@ -580,7 +580,7 @@ bool write::update_secondaries_before_upsert(
     write_context& wctx
 ) {
     std::string_view encoded_primary_key{};
-    auto res = primary_.find_record(
+    auto res = primary_.encode_find(
         wctx.primary_context_,
         *wctx.request_context_->transaction(),
         wctx.key_store_.ref(),
@@ -601,7 +601,7 @@ bool write::update_secondaries_before_upsert(
         if (found_primary) {
             // try update existing secondary entry
             std::string_view encoded_i{};
-            if(auto res = e.encode_secondary_key(
+            if(auto res = e.create_secondary_key(
                    c,
                    buf_i,
                    wctx.key_store_.ref(),
@@ -614,7 +614,7 @@ bool write::update_secondaries_before_upsert(
                 return false;
             }
             std::string_view encoded_e{};
-            if(auto res = e.encode_secondary_key(
+            if(auto res = e.create_secondary_key(
                    c,
                    buf_e,
                    wctx.primary_context_.extracted_key(),
@@ -638,7 +638,7 @@ bool write::update_secondaries_before_upsert(
                 }
             }
         }
-        if(auto res = e.encode_and_put(
+        if(auto res = e.encode_put(
             c,
             *wctx.request_context_->transaction(),
             wctx.key_store_.ref(),

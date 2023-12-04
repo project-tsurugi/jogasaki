@@ -131,7 +131,7 @@ public:
     {}
 
     /**
-     * @brief encode key/value and put them to index
+     * @brief encode secondary key (stored internally) from primary key/value and put them to index
      * @param ctx write secondary context
      * @param tx transaction context
      * @param primary_key key record for the primary index used to generate secondary key
@@ -141,7 +141,7 @@ public:
      * @returns any other error otherwise
      * @note this uses `upsert` so status::already_exist is not expected to be returned
      */
-    status encode_and_put(
+    status encode_put(
         write_secondary_context& ctx,
         transaction_context& tx,
         accessor::record_ref primary_key,
@@ -150,7 +150,7 @@ public:
     ) const;
 
     /**
-     * @brief encode key and remove the corresponding entry in the index
+     * @brief encode secondary key (stored internally) from primary key/value and remove the entry from the index
      * @param ctx write secondary context
      * @param tx transaction context
      * @param primary_key key record for the primary index used to generate secondary key
@@ -160,7 +160,7 @@ public:
      * @returns status::not_found when target entry is not found
      * @returns any other error otherwise
      */
-    status encode_and_remove(
+    status encode_remove(
         write_secondary_context& ctx,
         transaction_context& tx,
         accessor::record_ref primary_key,
@@ -182,13 +182,14 @@ public:
      * @returns status::ok when successful
      * @returns any other error otherwise
      */
-    status encode_secondary_key(
+    status create_secondary_key(
         write_secondary_context& ctx,
         data::aligned_buffer& buf,
         accessor::record_ref primary_key,
         accessor::record_ref primary_value,
         std::string_view encoded_primary_key,
-        std::string_view& out) const;
+        std::string_view& out
+    ) const;
 
     /**
      * @brief remove secondary index entry by given encoded key

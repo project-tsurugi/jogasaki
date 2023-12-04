@@ -90,30 +90,30 @@ write_primary_target::write_primary_target(
     updates_(std::move(updates))
 {}
 
-status write_primary_target::find_record_and_remove(
+status write_primary_target::encode_find_remove(
     write_primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource
 ) {
     std::string_view k{};
-    if(auto res = find_record(ctx, tx, key, varlen_resource, k); res != status::ok) {
+    if(auto res = encode_find(ctx, tx, key, varlen_resource, k); res != status::ok) {
         return res;
     }
-    return remove_record_by_encoded_key(ctx, tx, k);
+    return remove_by_encoded_key(ctx, tx, k);
 }
 
-status write_primary_target::find_record(
+status write_primary_target::encode_find(
     write_primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource
 ) {
     std::string_view k{};
-    return find_record(ctx, tx, key, varlen_resource, k);
+    return encode_find(ctx, tx, key, varlen_resource, k);
 }
 
-status write_primary_target::find_record(
+status write_primary_target::encode_find(
     write_primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
@@ -144,7 +144,7 @@ status write_primary_target::find_record(
     return status::ok;
 }
 
-status write_primary_target::remove_record(
+status write_primary_target::encode_remove(
     write_primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key
@@ -153,10 +153,10 @@ status write_primary_target::remove_record(
     if(auto res = prepare_encoded_key(ctx, key, k); res != status::ok) {
         return res;
     }
-    return remove_record_by_encoded_key(ctx, tx, k);
+    return remove_by_encoded_key(ctx, tx, k);
 }
 
-status write_primary_target::remove_record_by_encoded_key(
+status write_primary_target::remove_by_encoded_key(
     write_primary_context& ctx,
     transaction_context& tx,
     std::string_view encoded_key
@@ -207,16 +207,16 @@ status do_encode(
     return status::ok;
 }
 
-status write_primary_target::encode_and_put(
+status write_primary_target::encode_put(
     write_primary_context& ctx,
     transaction_context& tx,
     kvs::put_option opt
 ) {
     std::string_view k{};
-    return encode_and_put(ctx, tx, opt, ctx.extracted_key_store_.ref(), ctx.extracted_value_store_.ref(), k);
+    return encode_put(ctx, tx, opt, ctx.extracted_key_store_.ref(), ctx.extracted_value_store_.ref(), k);
 }
 
-status write_primary_target::encode_and_put(
+status write_primary_target::encode_put(
     write_primary_context& ctx,
     transaction_context& tx,
     kvs::put_option opt,

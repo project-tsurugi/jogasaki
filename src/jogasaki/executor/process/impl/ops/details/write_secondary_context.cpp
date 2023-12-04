@@ -29,4 +29,4 @@ request_context* write_secondary_context::req_context() const noexcept {
     return rctx_;
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::ops::details

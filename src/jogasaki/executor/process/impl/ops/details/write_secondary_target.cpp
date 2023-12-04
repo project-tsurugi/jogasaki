@@ -19,14 +19,15 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/kvs/coder.h>
 #include <jogasaki/error.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
+
 #include "write_secondary_context.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -186,4 +187,4 @@ write_secondary_target::field_mapping_type write_secondary_target::create_fields
     return ret;
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::ops::details

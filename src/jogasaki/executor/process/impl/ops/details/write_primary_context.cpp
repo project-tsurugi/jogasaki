@@ -15,8 +15,8 @@
  */
 #include "write_primary_context.h"
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/step.h>
@@ -51,6 +51,4 @@ request_context* write_primary_context::req_context() const noexcept {
     return rctx_;
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops::details

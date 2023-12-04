@@ -17,13 +17,14 @@
 
 #include <vector>
 
-#include <yugawara/storage/index.h>
 #include <takatori/relation/write.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/storage/index.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/coder.h>
+
 #include "write_primary_context.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -48,8 +49,10 @@ struct cache_align update_field {
      * @param type type of the field
      * @param source_offset byte offset of the field in the input variables record (in variable table)
      * @param source_nullity_offset bit offset of the field nullity in the input variables record
-     * @param target_offset byte offset of the field in the target record in ctx.extracted_key_store_/extracted_value_store_.
-     * @param target_nullity_offset bit offset of the field nullity in the target record in ctx.extracted_key_store_/extracted_value_store_.
+     * @param target_offset byte offset of the field in the target record in
+     * ctx.extracted_key_store_/extracted_value_store_.
+     * @param target_nullity_offset bit offset of the field nullity in the target record in
+     * ctx.extracted_key_store_/extracted_value_store_.
      * @param nullable whether the target field is nullable or not
      * @param source_external indicates whether the source is from host variables
      * @param key indicates the fieled is part of the key
@@ -304,4 +307,4 @@ private:
 
 };
 
-}
+}  // namespace jogasaki::executor::process::impl::ops::details

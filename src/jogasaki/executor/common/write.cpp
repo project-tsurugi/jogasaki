@@ -19,37 +19,37 @@
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/factory.h>
 
-#include <jogasaki/data/any.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/error.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/executor/common/step.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/details/write_primary_context.h>
+#include <jogasaki/executor/process/impl/ops/details/write_primary_target.h>
+#include <jogasaki/executor/process/impl/ops/details/write_secondary_context.h>
+#include <jogasaki/executor/process/impl/ops/details/write_secondary_target.h>
+#include <jogasaki/executor/process/impl/ops/write_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/sequence/exception.h>
+#include <jogasaki/index/utils.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/process/impl/ops/write_kind.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/impl/ops/details/write_primary_target.h>
-#include <jogasaki/executor/process/impl/ops/details/write_secondary_target.h>
-#include <jogasaki/executor/process/impl/ops/details/write_primary_context.h>
-#include <jogasaki/executor/process/impl/ops/details/write_secondary_context.h>
-#include <jogasaki/executor/sequence/exception.h>
-#include <jogasaki/index/utils.h>
-#include <jogasaki/utils/field_types.h>
-#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/handle_encode_errors.h>
-#include <jogasaki/utils/handle_generic_error.h>
-#include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/coder.h>
 #include <jogasaki/utils/convert_any.h>
+#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/handle_encode_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/storage_utils.h>
 
 namespace jogasaki::executor::common {
@@ -117,7 +117,14 @@ status fill_default_value(
             }
             out.ref().set_null(f.nullity_offset_, is_null);
             if (f.nullable_) {
-                utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, src, std::addressof(resource));
+                utils::copy_nullable_field(
+                    f.type_,
+                    out.ref(),
+                    f.offset_,
+                    f.nullity_offset_,
+                    src,
+                    std::addressof(resource)
+                );
             } else {
                 utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
             }
@@ -157,8 +164,10 @@ status fill_evaluated_value(
         set_error(
             ctx,
             error_code::value_evaluation_exception,
-            string_builder{} << "An error occurred in evaluating values. error:" << res.to<process::impl::expression::error>() << string_builder::to_string,
-            rc);
+            string_builder{} << "An error occurred in evaluating values. error:"
+                             << res.to<process::impl::expression::error>() << string_builder::to_string,
+            rc
+        );
         return rc;
     }
     if (!utils::convert_any(res, f.type_)) {
@@ -166,8 +175,10 @@ status fill_evaluated_value(
         set_error(
             ctx,
             error_code::value_evaluation_exception,
-            string_builder{} << "An error occurred in evaluating values. type mismatch: expected " << f.type_ << ", value index is " << res.type_index() << string_builder::to_string,
-            rc);
+            string_builder{} << "An error occurred in evaluating values. type mismatch: expected " << f.type_
+                             << ", value index is " << res.type_index() << string_builder::to_string,
+            rc
+        );
         return rc;
     }
     if (f.nullable_) {
@@ -366,8 +377,10 @@ bool write::put_primary(
                 set_error(
                     *wctx.request_context_,
                     error_code::unique_constraint_violation_exception,
-                    string_builder{} << "Unique constraint violation occurred. Table:" << primary_.storage_name() << string_builder::to_string,
-                    status::err_unique_constraint_violation);
+                    string_builder{} << "Unique constraint violation occurred. Table:" << primary_.storage_name()
+                                     << string_builder::to_string,
+                    status::err_unique_constraint_violation
+                );
                 return false;
             }
             // write_kind::insert_skip
@@ -387,22 +400,21 @@ bool write::put_primary(
     return true;
 }
 
-write_context::write_context(request_context& context,
+write_context::write_context(
+    request_context& context,
     std::string_view storage_name,
-    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
+    maybe_shared_ptr<meta::record_meta> key_meta,    //NOLINT(performance-unnecessary-value-param)
     maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
     std::vector<write_secondary_target> const& secondaries,
     kvs::database& db,
-    memory::lifo_paged_memory_resource* resource) :
+    memory::lifo_paged_memory_resource* resource
+) :
     request_context_(std::addressof(context)),
-    primary_context_(
-        db.get_or_create_storage(storage_name),
-        key_meta,
-        value_meta,
-        std::addressof(context)),
+    primary_context_(db.get_or_create_storage(storage_name), key_meta, value_meta, std::addressof(context)),
     secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
     key_store_(key_meta, resource),
-    value_store_(value_meta, resource) {}
+    value_store_(value_meta, resource)
+{}
 
 bool write::put_secondaries(
     write_context& wctx,
@@ -449,16 +461,33 @@ bool write::update_secondaries_before_upsert(
         if (found_primary) {
             // try update existing secondary entry
             std::string_view encoded_i{};
-            if (auto res = e.encode_secondary_key(c, buf_i, wctx.key_store_.ref(), wctx.value_store_.ref(), encoded_primary_key, encoded_i); res != status::ok) {
+            if(auto res = e.encode_secondary_key(
+                   c,
+                   buf_i,
+                   wctx.key_store_.ref(),
+                   wctx.value_store_.ref(),
+                   encoded_primary_key,
+                   encoded_i
+               );
+               res != status::ok) {
                 handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
                 return false;
             }
             std::string_view encoded_e{};
-            if (auto res = e.encode_secondary_key(c, buf_e, wctx.primary_context_.extracted_key(), wctx.primary_context_.extracted_value(), encoded_primary_key, encoded_e); res != status::ok) {
+            if(auto res = e.encode_secondary_key(
+                   c,
+                   buf_e,
+                   wctx.primary_context_.extracted_key(),
+                   wctx.primary_context_.extracted_value(),
+                   encoded_primary_key,
+                   encoded_e
+               );
+               res != status::ok) {
                 handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
                 return false;
             }
-            if (encoded_e.size() != encoded_i.size() || std::memcmp(encoded_i.data(), encoded_e.data(), encoded_e.size()) != 0) {
+            if(encoded_e.size() != encoded_i.size() ||
+               std::memcmp(encoded_i.data(), encoded_e.data(), encoded_e.size()) != 0) {
                 // secondary entry needs to be updated - first remove it
                 if (auto res = e.remove_by_encoded_key(
                         c,
@@ -699,4 +728,4 @@ std::vector<details::write_field> create_fields(
     return out;
 }
 
-}
+}  // namespace jogasaki::executor::common

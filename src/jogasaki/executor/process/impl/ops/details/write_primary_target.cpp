@@ -21,20 +21,20 @@
 #include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
 
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
 #include <jogasaki/error.h>
-#include <jogasaki/request_context.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/handle_encode_errors.h>
-#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/index/field_factory.h>
+#include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
-#include <jogasaki/index/field_factory.h>
-#include <jogasaki/index/utils.h>
+#include <jogasaki/utils/handle_encode_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
@@ -131,11 +131,13 @@ status write_primary_target::find_record(
     }
     kvs::readable_stream keys{encoded_key.data(), encoded_key.size()};
     kvs::readable_stream values{v.data(), v.size()};
-    if(auto res = decode_fields(extracted_keys_, keys, ctx.extracted_key_store_.ref(), varlen_resource); res != status::ok) {
+    if(auto res = decode_fields(extracted_keys_, keys, ctx.extracted_key_store_.ref(), varlen_resource);
+       res != status::ok) {
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
-    if(auto res = decode_fields(extracted_values_, values, ctx.extracted_value_store_.ref(), varlen_resource); res != status::ok) {
+    if(auto res = decode_fields(extracted_values_, values, ctx.extracted_value_store_.ref(), varlen_resource);
+       res != status::ok) {
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
@@ -421,4 +423,4 @@ bool write_primary_target::updates_key() const noexcept {
     });
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::ops::details

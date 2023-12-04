@@ -17,16 +17,17 @@
 
 #include <vector>
 
-#include <yugawara/storage/index.h>
-#include <yugawara/binding/factory.h>
 #include <takatori/relation/write.h>
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/binding/factory.h>
+#include <yugawara/storage/index.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
+
 #include "write_secondary_context.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -220,4 +221,4 @@ private:
 
 };
 
-}
+}  // namespace jogasaki::executor::process::impl::ops::details

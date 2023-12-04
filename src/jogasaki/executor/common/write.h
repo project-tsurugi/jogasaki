@@ -17,16 +17,16 @@
 
 #include <takatori/statement/write.h>
 
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/model/statement.h>
-#include <jogasaki/request_context.h>
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/process/impl/ops/write_kind.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/details/write_primary_target.h>
 #include <jogasaki/executor/process/impl/ops/details/write_secondary_target.h>
-#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/process/impl/ops/write_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/model/statement.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::common {
 
@@ -84,16 +84,17 @@ struct write_field : process::impl::ops::default_value_property {
     //@brief if the field is nullable
     bool nullable_{};  //NOLINT
     //@brief value offset
-    std::size_t offset_{};        //NOLINT
+    std::size_t offset_{};  //NOLINT
     //@brief nullity bit offset
-    std::size_t nullity_offset_{};//NOLINT
+    std::size_t nullity_offset_{};  //NOLINT
 };
 
-} // namespace details
+}  // namespace details
 
 class write_context {
 public:
-    write_context(request_context& context,
+    write_context(
+        request_context& context,
         std::string_view storage_name,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
@@ -159,4 +160,4 @@ private:
     bool update_secondaries_before_upsert(write_context& wctx);
 };
 
-}
+}  // namespace jogasaki::executor::common

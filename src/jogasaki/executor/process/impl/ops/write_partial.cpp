@@ -277,16 +277,6 @@ operation_status write_partial::process_record(abstract::task_context* context) 
     return (*this)(*p);
 }
 
-// fwd declarations
-std::vector<index::secondary_target> create_secondary_targets(
-    yugawara::storage::index const& idx,
-    sequence_view<write_partial::column const> columns
-);
-write_partial::bool_list_type create_secondary_key_updated(
-    yugawara::storage::index const& idx,
-    sequence_view<write_partial::column const> columns
-);
-
 std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
     variable_table_info const& block_variables,
     variable_table_info const* host_variables,
@@ -375,63 +365,6 @@ std::vector<details::update_field> create_update_fields(
     return ret;
 }
 
-write_partial::write_partial(
-    operator_base::operator_index_type index,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
-    write_kind kind,
-    yugawara::storage::index const& idx,
-    sequence_view<key const> keys,
-    sequence_view<column const> columns,
-    variable_table_info const* input_variable_info
-) :
-    write_partial(
-        index,
-        info,
-        block_index,
-        kind,
-        index::primary_target{
-            idx,
-            keys,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
-        },
-        create_update_fields(
-            idx,
-            keys,
-            columns,
-            info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
-        ),
-        create_secondary_targets(idx, columns),
-        create_secondary_key_updated(idx, columns),
-        input_variable_info
-    )
-{}
-
-write_partial::write_partial(
-    operator_base::operator_index_type index,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
-    write_kind kind,
-    index::primary_target primary,
-    std::vector<details::update_field> updates,
-    std::vector<index::secondary_target> secondaries,
-    bool_list_type secondary_key_updated,
-    variable_table_info const* input_variable_info
-) :
-    record_operator(index, info, block_index, input_variable_info),
-    kind_(kind),
-    primary_(std::move(primary)),
-    secondaries_(std::move(secondaries)),
-    primary_key_updated_(updates_key(updates)),
-    secondary_key_updated_(std::move(secondary_key_updated)),
-    updates_(std::move(updates))
-{}
-
-index::primary_target const& write_partial::primary() const noexcept {
-    return primary_;
-}
-
 bool overwraps(
     std::vector<yugawara::storage::index::key> const& keys,
     sequence_view<write_partial::column const> columns
@@ -504,6 +437,63 @@ write_partial::bool_list_type create_secondary_key_updated(
     auto [tgts, updates] = create_secondary_targets_and_key_update_list(idx, columns);
     (void) tgts;
     return updates;
+}
+
+write_partial::write_partial(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    write_kind kind,
+    yugawara::storage::index const& idx,
+    sequence_view<key const> keys,
+    sequence_view<column const> columns,
+    variable_table_info const* input_variable_info
+) :
+    write_partial(
+        index,
+        info,
+        block_index,
+        kind,
+        index::primary_target{
+            idx,
+            keys,
+            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
+        },
+        create_update_fields(
+            idx,
+            keys,
+            columns,
+            info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr,
+            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
+        ),
+        create_secondary_targets(idx, columns),
+        create_secondary_key_updated(idx, columns),
+        input_variable_info
+    )
+{}
+
+write_partial::write_partial(
+    operator_base::operator_index_type index,
+    processor_info const& info,
+    operator_base::block_index_type block_index,
+    write_kind kind,
+    index::primary_target primary,
+    std::vector<details::update_field> updates,
+    std::vector<index::secondary_target> secondaries,
+    bool_list_type secondary_key_updated,
+    variable_table_info const* input_variable_info
+) :
+    record_operator(index, info, block_index, input_variable_info),
+    kind_(kind),
+    primary_(std::move(primary)),
+    secondaries_(std::move(secondaries)),
+    primary_key_updated_(updates_key(updates)),
+    secondary_key_updated_(std::move(secondary_key_updated)),
+    updates_(std::move(updates))
+{}
+
+index::primary_target const& write_partial::primary() const noexcept {
+    return primary_;
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

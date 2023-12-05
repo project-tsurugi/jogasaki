@@ -18,7 +18,6 @@
 #include <vector>
 
 #include <takatori/relation/write.h>
-#include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
 
 #include <jogasaki/error.h>
@@ -39,7 +38,6 @@
 namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::throw_exception;
 
 status encode_fields(
     primary_target::field_mapping_type const& fields,

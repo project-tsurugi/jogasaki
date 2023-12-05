@@ -215,4 +215,32 @@ TEST_F(validate_qa_test, delete_with_secondary) {
         ASSERT_EQ(0, result.size());
     }
 }
+
+TEST_F(validate_qa_test, delete_insert_met_already_exists) {
+    // once DELETE->INSERT caused ALREADY EXISTS error (issue #26)
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "this test is regression scenario only for jogasaki-shirakami";
+    }
+    utils::set_global_tx_option(utils::create_tx_option{false, true});
+    {
+        auto tx = utils::create_transaction(*db_, false, false, {});
+        execute_statement("delete from qa_t1", *tx);
+        execute_statement("insert into qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) values (1, 0, 0, 0, 0, 'a')", *tx);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+
+    auto tx1 = utils::create_transaction(*db_, false, false, {});
+    execute_statement("update qa_t1 set c_i4 = 1 where c_pk = 1", *tx1);
+    auto tx2 = utils::create_transaction(*db_, false, false, {});
+    execute_statement("delete from qa_t1", *tx2);
+    execute_statement("insert into qa_t1 (c_pk, c_i4, c_i8, c_f4, c_f8, c_ch) values (1, 1, 0, 0, 0, 'x')", *tx2); // once this caused ALREADY EXISTS error
+    ASSERT_EQ(status::ok, tx2->commit());
+    ASSERT_EQ(status::err_serialization_failure, tx1->commit());  //KVS_DELETE
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from qa_t1", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
 }

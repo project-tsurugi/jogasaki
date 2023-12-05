@@ -89,15 +89,17 @@ struct cache_align update_field {
 /**
  * @brief primary target for write
  * @details this object represents write operation interface for primary index
- * It hides encoding/decoding details under field mapping and provide write access api based on key/value record_ref.
- * It's associated the following records and each record is represented with a field mapping and record_ref.
+ * This hides encoding/decoding details under field mapping and provide write access api based on key/value record_ref.
+ * This object has following record definitions and each is represented by field mapping.
  * - input key record
  *   - the source columns to generate key for finding target entry in the primary index
  * - extracted key/value records
  *   - the target columns to be filled by find operation
  *   - the source columns to generate key/value on put operation
- * This object holds common static information and dynamically changing parts are separated as write_primary_context.
- * Extracted key/value records are stored in the context object, while the input key record is stored externally.
+ * This object has common static information and dynamically changing parts are separated as write_primary_context.
+ *
+ * The member functions whose name begins with `encode` store the encoded key/values in the context working buffer(
+ * write_primary_context::encoded_key_ or write_primary_context::encoded_value_).
  */
 class write_primary_target {
 public:
@@ -163,7 +165,7 @@ public:
     );
 
     /**
-     * @brief encode key (stored internally), find the record, fill dest key/value records, and remove
+     * @brief encode key (stored in context), find the record, fill dest key/value records, and remove
      * @param ctx context
      * @param tx transaction context
      * @param key key record to fine entry in the primary index
@@ -184,7 +186,7 @@ public:
     );
 
     /**
-     * @brief encode key (stored internally), find the record, and fill dest key/value records
+     * @brief encode key (store in context), find the record, and fill dest key/value records
      * @param ctx context
      * @param tx transaction context
      * @param key key record to fine entry in the primary index
@@ -228,7 +230,7 @@ public:
     );
 
     /**
-     * @brief encode key (stored internally), and remove the record
+     * @brief encode key (store in context), and remove the record
      * @returns status::ok when successful
      * @returns status::not_found if record is not found
      * @returns any other error otherwise
@@ -261,7 +263,7 @@ public:
     );
 
     /**
-     * @brief encode key/value (stored internally) from the given key/value records, and put them to index
+     * @brief encode key/value (store in context) from the given key/value records, and put them to index
      * @returns status::ok when successful
      * @returns status::already_exist if record already exists and `opt` is `create`
      * @returns status::not_found if record not found and `opt` is `update`

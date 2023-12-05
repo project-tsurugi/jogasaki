@@ -72,11 +72,11 @@ struct cache_align secondary_key_field : index::field_info {
 /**
  * @brief secondary target for write
  * @details this object represents write operation interface for secondary index
- * It hides encoding/decoding details under field mapping and provide write access api based on key/value record_ref.
- * It's associated the following records and each record is represented with a field mapping and record_ref.
+ * This hides encoding/decoding details under field mapping and provide write access api based on key/value record_ref.
+ * This object has the following record definition and each is represented with a field mapping.
  * - primary index key/value records
- *   - the source records of the primary index key/value to generate secondary index key
- * This object holds common static information and dynamically changing parts are separated as write_secondary_context.
+ *   - the source columns of the primary index key/value to generate secondary index key
+ * This object has common static information and dynamically changing parts are separated as write_secondary_context.
  */
 class write_secondary_target {
 public:

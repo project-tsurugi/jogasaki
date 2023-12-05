@@ -37,56 +37,6 @@ using takatori::util::maybe_shared_ptr;
 static constexpr std::size_t npos = static_cast<std::size_t>(-1);
 
 /**
- * @brief field info of the update operation
- * @details update operation uses these fields to know how the variables or input record fields are mapped to
- * key/value fields. The update operation retrieves the key/value records from kvs and decode to
- * the record (of key/value respectively), updates the record fields by replacing the value with one from variable table
- * record (source), encodes the record and puts into kvs.
- */
-struct cache_align update_field {
-    /**
-     * @brief create new object
-     * @param type type of the field
-     * @param source_offset byte offset of the field in the input variables record (in variable table)
-     * @param source_nullity_offset bit offset of the field nullity in the input variables record
-     * @param target_offset byte offset of the field in the target record in
-     * ctx.extracted_key_store_/extracted_value_store_.
-     * @param target_nullity_offset bit offset of the field nullity in the target record in
-     * ctx.extracted_key_store_/extracted_value_store_.
-     * @param nullable whether the target field is nullable or not
-     * @param source_external indicates whether the source is from host variables
-     * @param key indicates the fieled is part of the key
-     */
-    update_field(
-        meta::field_type type,
-        std::size_t source_offset,
-        std::size_t source_nullity_offset,
-        std::size_t target_offset,
-        std::size_t target_nullity_offset,
-        bool nullable,
-        bool source_external,
-        bool key
-    ) :
-        type_(std::move(type)),
-        source_offset_(source_offset),
-        source_nullity_offset_(source_nullity_offset),
-        target_offset_(target_offset),
-        target_nullity_offset_(target_nullity_offset),
-        nullable_(nullable),
-        source_external_(source_external),
-        key_(key)
-    {}
-    meta::field_type type_{};  //NOLINT
-    std::size_t source_offset_{};  //NOLINT
-    std::size_t source_nullity_offset_{};  //NOLINT
-    std::size_t target_offset_{};  //NOLINT
-    std::size_t target_nullity_offset_{};  //NOLINT
-    bool nullable_{}; //NOLINT
-    bool source_external_{}; //NOLINT
-    bool key_{}; //NOLINT
-};
-
-/**
  * @brief primary target for write
  * @details this object represents write operation interface for primary index
  * This hides encoding/decoding details under field mapping and provide write access api based on key/value record_ref.
@@ -130,7 +80,6 @@ public:
      * @param input_keys field offset information for incoming key fields
      * @param extracted_keys field offset information for extracted key fields
      * @param extracted_values field offset information for extracted value fields
-     * @param updates update information such as source/target field offsets
      */
     write_primary_target(
         std::string_view storage_name,
@@ -138,8 +87,7 @@ public:
         maybe_shared_ptr<meta::record_meta> value_meta,
         field_mapping_type input_keys,
         field_mapping_type extracted_keys,
-        field_mapping_type extracted_values,
-        std::vector<details::update_field> updates
+        field_mapping_type extracted_values
     );
 
     ~write_primary_target() = default;
@@ -154,14 +102,11 @@ public:
      * @param keys takatori write keys information
      * @param columns takatori write columns information
      * @param input_variable_info variable table info for the input variables
-     * @param host_variable_info host variable info used as source for update.
      */
     write_primary_target(
         yugawara::storage::index const& idx,
         sequence_view<key const> keys,
-        sequence_view<column const> columns,
-        variable_table_info const& input_variable_info,
-        variable_table_info const* host_variable_info = nullptr
+        variable_table_info const& input_variable_info
     );
 
     /**
@@ -254,15 +199,6 @@ public:
     );
 
     /**
-     * @brief update extracted key/values by copying values from source variable(or host variables)
-     */
-    void update_record(
-        write_primary_context& ctx,
-        accessor::record_ref input_variables,
-        accessor::record_ref host_variables
-    );
-
-    /**
      * @brief encode key/value (store in context) from the given key/value records, and put them to index
      * @returns status::ok when successful
      * @returns status::already_exist if record already exists and `opt` is `create`
@@ -293,11 +229,6 @@ public:
      */
     [[nodiscard]] std::string_view storage_name() const noexcept;
 
-    /**
-     * @brief return whether one of the primary key columns is updated
-     */
-    [[nodiscard]] bool updates_key() const noexcept;
-
 private:
 
     std::string storage_name_{};
@@ -306,15 +237,7 @@ private:
     field_mapping_type input_keys_{};
     field_mapping_type extracted_keys_{};
     field_mapping_type extracted_values_{};
-    std::vector<details::update_field> updates_{};
 
-    std::vector<details::update_field> create_update_fields(
-        yugawara::storage::index const& idx,
-        sequence_view<key const> keys,
-        sequence_view<column const> columns,
-        variable_table_info const* host_variable_info,
-        variable_table_info const& input_variable_info
-    );
 
     status decode_fields(
         field_mapping_type const& fields,

@@ -85,6 +85,33 @@ bool update_skips_deletion(write_partial_context& ctx) {
     return ctx.req_context()->configuration()->update_skips_deletion();
 }
 
+void write_partial::update_record(
+    accessor::record_ref extracted_key_record,
+    accessor::record_ref extracted_value_record,
+    accessor::record_ref input_variables,
+    accessor::record_ref host_variables
+) {
+    for(auto const& f : updates_) {
+        // assuming intermediate fields are nullable. Nullability check is done on encoding.
+        auto target = f.key_ ? extracted_key_record : extracted_value_record;
+        utils::copy_nullable_field(
+            f.type_,
+            target,
+            f.target_offset_,
+            f.target_nullity_offset_,
+            f.source_external_ ? host_variables : input_variables,
+            f.source_offset_,
+            f.source_nullity_offset_
+        );
+    }
+}
+
+bool updates_key(std::vector<details::update_field> const& updates) noexcept {
+    return std::any_of(updates.begin(), updates.end(), [](auto f) {
+        return f.key_;
+    });
+}
+
 operation_status write_partial::do_update(write_partial_context& ctx) {
     auto& context = ctx.primary_context();
     // find update target and fill internal extracted key/values in primary target
@@ -131,8 +158,9 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     }
 
     // update extracted key/value in primary target with values from variable table
-    primary_.update_record(
-        context,
+    update_record(
+        context.extracted_key(),
+        context.extracted_value(),
         ctx.input_variables().store().ref(),
         host_variables() ? host_variables()->store().ref() : accessor::record_ref{}
     );
@@ -259,6 +287,94 @@ write_partial::bool_list_type create_secondary_key_updated(
     sequence_view<write_partial::column const> columns
 );
 
+std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
+    variable_table_info const& block_variables,
+    variable_table_info const* host_variables,
+    variable_table_info::variable const& src
+) {
+    if (block_variables.exists(src)) {
+        return {
+            block_variables.at(src).value_offset(),
+            block_variables.at(src).nullity_offset(),
+            false
+        };
+    }
+    BOOST_ASSERT(host_variables != nullptr && host_variables->exists(src));  //NOLINT
+    return {
+        host_variables->at(src).value_offset(),
+        host_variables->at(src).nullity_offset(),
+        true
+    };
+}
+
+std::vector<details::update_field> create_update_fields(
+    yugawara::storage::index const& idx,
+    sequence_view<takatori::relation::write::key const> keys, // keys to identify the updated record, possibly part of idx.keys()
+    sequence_view<takatori::relation::write::column const> columns, // columns to be updated
+    variable_table_info const* host_variable_info,
+    variable_table_info const& input_variable_info
+) {
+    std::vector<details::update_field> ret{};
+    yugawara::binding::factory bindings{};
+    std::unordered_map<variable, variable> key_dest_to_src{};
+    std::unordered_map<variable, variable> column_dest_to_src{};
+    for(auto&& c : keys) {
+        key_dest_to_src.emplace(c.destination(), c.source());
+    }
+    for(auto&& c : columns) {
+        column_dest_to_src.emplace(c.destination(), c.source());
+    }
+
+    ret.reserve(idx.keys().size()+idx.values().size());
+    {
+        auto meta = index::create_meta(idx, true);
+        for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
+            auto&& k = idx.keys()[i];
+            auto kc = bindings(k.column());
+            auto t = utils::type_for(k.column().type());
+            if (key_dest_to_src.count(kc) == 0) {
+                throw_exception(std::logic_error{""}); // TODO update by non-unique keys
+            }
+            if (column_dest_to_src.count(kc) != 0) {
+                auto&& src = column_dest_to_src.at(kc);
+                auto [os, nos, b] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
+                ret.emplace_back(
+                    t,
+                    os,
+                    nos,
+                    meta->value_offset(i),
+                    meta->nullity_offset(i),
+                    k.column().criteria().nullity().nullable(),
+                    b,
+                    true
+                );
+            }
+        }
+    }
+    auto meta = index::create_meta(idx, false);
+    for(std::size_t i=0, n=idx.values().size(); i<n; ++i) {
+        auto&& v = idx.values()[i];
+        auto b = bindings(v);
+        auto& c = static_cast<yugawara::storage::column const&>(v);
+        auto t = utils::type_for(c.type());
+        if (column_dest_to_src.count(b) != 0) {
+            auto&& src = column_dest_to_src.at(b);
+            auto [os, nos, src_is_external ] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
+            ret.emplace_back(
+                t,
+                os,
+                nos,
+                meta->value_offset(i),
+                meta->nullity_offset(i),
+                c.criteria().nullity().nullable(),
+                src_is_external,
+                false
+            );
+        }
+    }
+    return ret;
+}
+
 write_partial::write_partial(
     operator_base::operator_index_type index,
     processor_info const& info,
@@ -277,10 +393,15 @@ write_partial::write_partial(
         details::write_primary_target{
             idx,
             keys,
-            columns,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
-            info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr
+            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
         },
+        create_update_fields(
+            idx,
+            keys,
+            columns,
+            info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr,
+            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
+        ),
         create_secondary_targets(idx, columns),
         create_secondary_key_updated(idx, columns),
         input_variable_info
@@ -293,6 +414,7 @@ write_partial::write_partial(
     operator_base::block_index_type block_index,
     write_kind kind,
     details::write_primary_target primary,
+    std::vector<details::update_field> updates,
     std::vector<details::write_secondary_target> secondaries,
     bool_list_type secondary_key_updated,
     variable_table_info const* input_variable_info
@@ -301,8 +423,9 @@ write_partial::write_partial(
     kind_(kind),
     primary_(std::move(primary)),
     secondaries_(std::move(secondaries)),
-    primary_key_updated_(primary_.updates_key()),
-    secondary_key_updated_(std::move(secondary_key_updated))
+    primary_key_updated_(updates_key(updates)),
+    secondary_key_updated_(std::move(secondary_key_updated)),
+    updates_(std::move(updates))
 {}
 
 details::write_primary_target const& write_partial::primary() const noexcept {

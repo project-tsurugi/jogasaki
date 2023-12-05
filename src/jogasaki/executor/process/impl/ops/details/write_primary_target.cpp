@@ -57,9 +57,7 @@ status do_encode(
 write_primary_target::write_primary_target(
     yugawara::storage::index const& idx,
     sequence_view<key const> keys,
-    sequence_view<column const> columns,
-    variable_table_info const& input_variable_info,
-    variable_table_info const* host_variable_info
+    variable_table_info const& input_variable_info
 ) :
     write_primary_target(
         idx.simple_name(),
@@ -67,8 +65,7 @@ write_primary_target::write_primary_target(
         index::create_meta(idx, false),
         index::create_fields(idx, keys, input_variable_info, true, false),
         index::index_fields(idx, true),
-        index::index_fields(idx, false),
-        create_update_fields(idx, keys, columns, host_variable_info, input_variable_info)
+        index::index_fields(idx, false)
     )
 {}
 
@@ -78,16 +75,14 @@ write_primary_target::write_primary_target(
     maybe_shared_ptr<meta::record_meta> value_meta,
     write_primary_target::field_mapping_type input_keys,
     write_primary_target::field_mapping_type extracted_keys,
-    write_primary_target::field_mapping_type extracted_values,
-    std::vector<details::update_field> updates
+    write_primary_target::field_mapping_type extracted_values
 ) :
     storage_name_(storage_name),
     key_meta_(std::move(key_meta)),
     value_meta_(std::move(value_meta)),
     input_keys_(std::move(input_keys)),
     extracted_keys_(std::move(extracted_keys)),
-    extracted_values_(std::move(extracted_values)),
-    updates_(std::move(updates))
+    extracted_values_(std::move(extracted_values))
 {}
 
 status write_primary_target::encode_find_remove(
@@ -240,26 +235,6 @@ status write_primary_target::encode_put(
     return status::ok;
 }
 
-void write_primary_target::update_record(
-    write_primary_context& ctx,
-    accessor::record_ref input_variables,
-    accessor::record_ref host_variables
-) {
-    for(auto const& f : updates_) {
-        // assuming intermediate fields are nullable. Nullability check is done on encoding.
-        auto target = f.key_ ? ctx.extracted_key_store_.ref() : ctx.extracted_value_store_.ref();
-        utils::copy_nullable_field(
-            f.type_,
-            target,
-            f.target_offset_,
-            f.target_nullity_offset_,
-            f.source_external_ ? host_variables : input_variables,
-            f.source_offset_,
-            f.source_nullity_offset_
-        );
-    }
-}
-
 status write_primary_target::decode_fields(
     write_primary_target::field_mapping_type const& fields,
     kvs::readable_stream& stream,
@@ -314,93 +289,6 @@ status encode_fields(
     return status::ok;
 }
 
-std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
-    variable_table_info const& block_variables,
-    variable_table_info const* host_variables,
-    variable_table_info::variable const& src
-) {
-    if (block_variables.exists(src)) {
-        return {
-            block_variables.at(src).value_offset(),
-            block_variables.at(src).nullity_offset(),
-            false
-        };
-    }
-    BOOST_ASSERT(host_variables != nullptr && host_variables->exists(src));  //NOLINT
-    return {
-        host_variables->at(src).value_offset(),
-        host_variables->at(src).nullity_offset(),
-        true
-    };
-}
-
-std::vector<details::update_field> write_primary_target::create_update_fields(
-    yugawara::storage::index const& idx,
-    sequence_view<key const> keys, // keys to identify the updated record, possibly part of idx.keys()
-    sequence_view<column const> columns, // columns to be updated
-    variable_table_info const* host_variable_info,
-    variable_table_info const& input_variable_info
-) {
-    std::vector<details::update_field> ret{};
-    yugawara::binding::factory bindings{};
-    std::unordered_map<variable, variable> key_dest_to_src{};
-    std::unordered_map<variable, variable> column_dest_to_src{};
-    for(auto&& c : keys) {
-        key_dest_to_src.emplace(c.destination(), c.source());
-    }
-    for(auto&& c : columns) {
-        column_dest_to_src.emplace(c.destination(), c.source());
-    }
-
-    ret.reserve(idx.keys().size()+idx.values().size());
-    {
-        auto meta = index::create_meta(idx, true);
-        for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
-            auto&& k = idx.keys()[i];
-            auto kc = bindings(k.column());
-            auto t = utils::type_for(k.column().type());
-            if (key_dest_to_src.count(kc) == 0) {
-                throw_exception(std::logic_error{""}); // TODO update by non-unique keys
-            }
-            if (column_dest_to_src.count(kc) != 0) {
-                auto&& src = column_dest_to_src.at(kc);
-                auto [os, nos, b] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
-                ret.emplace_back(
-                    t,
-                    os,
-                    nos,
-                    meta->value_offset(i),
-                    meta->nullity_offset(i),
-                    k.column().criteria().nullity().nullable(),
-                    b,
-                    true
-                );
-            }
-        }
-    }
-    auto meta = index::create_meta(idx, false);
-    for(std::size_t i=0, n=idx.values().size(); i<n; ++i) {
-        auto&& v = idx.values()[i];
-        auto b = bindings(v);
-        auto& c = static_cast<yugawara::storage::column const&>(v);
-        auto t = utils::type_for(c.type());
-        if (column_dest_to_src.count(b) != 0) {
-            auto&& src = column_dest_to_src.at(b);
-            auto [os, nos, src_is_external ] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
-            ret.emplace_back(
-                t,
-                os,
-                nos,
-                meta->value_offset(i),
-                meta->nullity_offset(i),
-                c.criteria().nullity().nullable(),
-                src_is_external,
-                false
-            );
-        }
-    }
-    return ret;
-}
 
 maybe_shared_ptr<meta::record_meta> const& write_primary_target::key_meta() const noexcept {
     return key_meta_;
@@ -412,12 +300,6 @@ maybe_shared_ptr<meta::record_meta> const& write_primary_target::value_meta() co
 
 std::string_view write_primary_target::storage_name() const noexcept {
     return storage_name_;
-}
-
-bool write_primary_target::updates_key() const noexcept {
-    return std::any_of(updates_.begin(), updates_.end(), [](auto f) {
-        return f.key_;
-    });
 }
 
 }  // namespace jogasaki::executor::process::impl::ops::details

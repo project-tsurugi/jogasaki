@@ -398,8 +398,7 @@ write_primary_target create_primary_target(
         std::move(value_meta),
         input_key_fields,
         input_key_fields,
-        std::move(input_value_fields),
-        std::vector<process::impl::ops::details::update_field>{}
+        std::move(input_value_fields)
     };
 }
 

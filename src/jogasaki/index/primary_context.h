@@ -33,21 +33,21 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief primary target context
  */
-class write_primary_context {
+class primary_context {
 public:
 
-    friend class write_primary_target;
+    friend class primary_target;
     using memory_resource = memory::lifo_paged_memory_resource;
 
     /**
      * @brief create empty object
      */
-    write_primary_context() = default;
+    primary_context() = default;
 
     /**
      * @brief create new object
      */
-    write_primary_context(
+    primary_context(
         std::unique_ptr<kvs::storage> stg,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
@@ -57,21 +57,21 @@ public:
     /**
      * @brief accessor to the encoded key
      * @return the encoded key
-     * @pre write_primary_target::encode_put() or find_record_and_extract() is called with this object beforehand
+     * @pre primary_target::encode_put() or find_record_and_extract() is called with this object beforehand
      */
     [[nodiscard]] std::string_view encoded_key() const noexcept;
 
     /**
      * @brief accessor to the extracted key store
      * @return the encoded key
-     * @pre write_primary_target::encode_find_remove() is called with this object beforehand
+     * @pre primary_target::encode_find_remove() is called with this object beforehand
      */
     [[nodiscard]] accessor::record_ref extracted_key() const noexcept;
 
     /**
      * @brief accessor to the extracted value store
      * @return the encoded key
-     * @pre write_primary_target::encode_find_remove() is called with this object beforehand
+     * @pre primary_target::encode_find_remove() is called with this object beforehand
      */
     [[nodiscard]] accessor::record_ref extracted_value() const noexcept;
 
@@ -84,8 +84,8 @@ public:
 private:
 
     std::unique_ptr<kvs::storage> stg_{};
-    data::aligned_buffer key_buf_{};  // internal buffer used from write_primary_target
-    data::aligned_buffer value_buf_{};  // internal buffer used from write_primary_target
+    data::aligned_buffer key_buf_{};  // internal buffer used from primary_target
+    data::aligned_buffer value_buf_{};  // internal buffer used from primary_target
     data::small_record_store extracted_key_store_{};
     data::small_record_store extracted_value_store_{};
     std::size_t key_len_{};

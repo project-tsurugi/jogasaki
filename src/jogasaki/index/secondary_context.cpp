@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_secondary_context.h"
+#include "secondary_context.h"
 
 namespace jogasaki::index {
 
-write_secondary_context::write_secondary_context(
+secondary_context::secondary_context(
     std::unique_ptr<kvs::storage> stg,
     request_context* rctx
 ) :
@@ -25,7 +25,7 @@ write_secondary_context::write_secondary_context(
     rctx_(rctx)
 {}
 
-request_context* write_secondary_context::req_context() const noexcept {
+request_context* secondary_context::req_context() const noexcept {
     return rctx_;
 }
 

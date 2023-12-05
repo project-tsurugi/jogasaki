@@ -28,8 +28,8 @@
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/index/write_primary_context.h>
-#include <jogasaki/index/write_secondary_context.h>
+#include <jogasaki/index/primary_context.h>
+#include <jogasaki/index/secondary_context.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/sequence/exception.h>
@@ -359,7 +359,7 @@ std::vector<details::write_field> create_fields(
     return out;
 }
 
-write_primary_target create_primary_target(
+primary_target create_primary_target(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
@@ -400,12 +400,12 @@ write_primary_target create_primary_target(
     };
 }
 
-std::vector<write_secondary_target> create_secondary_targets(
+std::vector<secondary_target> create_secondary_targets(
     yugawara::storage::index const& idx,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta
 ) {
-    std::vector<write_secondary_target> ret{};
+    std::vector<secondary_target> ret{};
     auto cnt = 0;
     idx.table().owner()->each_table_index(idx.table(),
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
@@ -475,12 +475,12 @@ bool write::operator()(request_context& context) {
 }
 
 
-std::vector<write_secondary_context> create_secondary_contexts(
-    std::vector<write_secondary_target> const& targets,
+std::vector<secondary_context> create_secondary_contexts(
+    std::vector<secondary_target> const& targets,
     kvs::database& db,
     request_context& context
 ) {
-    std::vector<write_secondary_context> ret{};
+    std::vector<secondary_context> ret{};
     ret.reserve(targets.size());
     for (auto&& e: targets) {
         ret.emplace_back(
@@ -542,7 +542,7 @@ write_context::write_context(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,    //NOLINT(performance-unnecessary-value-param)
     maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
-    std::vector<write_secondary_target> const& secondaries,
+    std::vector<secondary_target> const& secondaries,
     kvs::database& db,
     memory::lifo_paged_memory_resource* resource
 ) :

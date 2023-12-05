@@ -21,8 +21,8 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/index/write_primary_target.h>
-#include <jogasaki/index/write_secondary_target.h>
+#include <jogasaki/index/primary_target.h>
+#include <jogasaki/index/secondary_target.h>
 #include <jogasaki/kvs/coder.h>
 
 #include "write_kind.h"
@@ -119,9 +119,9 @@ public:
         processor_info const& info,
         block_index_type block_index,
         write_kind kind,
-        index::write_primary_target primary,
+        index::primary_target primary,
         std::vector<details::update_field> updates,
-        std::vector<index::write_secondary_target> secondaries,
+        std::vector<index::secondary_target> secondaries,
         bool_list_type secondary_key_updated,
         variable_table_info const* input_variable_info = nullptr
     );
@@ -182,13 +182,13 @@ public:
     /**
      * @brief accessor to primary target
      */
-    [[nodiscard]] index::write_primary_target const& primary() const noexcept;
+    [[nodiscard]] index::primary_target const& primary() const noexcept;
 
 private:
 
     write_kind kind_{};
-    index::write_primary_target primary_{};
-    std::vector<index::write_secondary_target> secondaries_{};
+    index::primary_target primary_{};
+    std::vector<index::secondary_target> secondaries_{};
     bool primary_key_updated_{};
     bool_list_type secondary_key_updated_{};
     std::vector<details::update_field> updates_{};

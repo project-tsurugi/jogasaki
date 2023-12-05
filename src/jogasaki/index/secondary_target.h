@@ -28,7 +28,7 @@
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
 
-#include "write_secondary_context.h"
+#include "secondary_context.h"
 
 namespace jogasaki::index {
 
@@ -76,11 +76,11 @@ struct cache_align secondary_key_field : index::field_info {
  * This object has the following record definition and each is represented with a field mapping.
  * - primary index key/value records
  *   - the source columns of the primary index key/value to generate secondary index key
- * This object has common static information and dynamically changing parts are separated as write_secondary_context.
+ * This object has common static information and dynamically changing parts are separated as secondary_context.
  */
-class write_secondary_target {
+class secondary_target {
 public:
-    friend class write_secondary_context;
+    friend class secondary_context;
 
     /**
      * @brief field mapping type
@@ -92,14 +92,14 @@ public:
     /**
      * @brief create empty object
      */
-    write_secondary_target() = default;
+    secondary_target() = default;
 
     /**
      * @brief create new object
      * @param storage_name the primary storage name to write
      * @param secondary_key_fields the secondary key fields
      */
-    write_secondary_target(
+    secondary_target(
         std::string_view storage_name,
         field_mapping_type secondary_key_fields
     ) :
@@ -107,11 +107,11 @@ public:
         secondary_key_fields_(std::move(secondary_key_fields))
     {}
 
-    ~write_secondary_target() = default;
-    write_secondary_target(write_secondary_target const& other) = default;
-    write_secondary_target& operator=(write_secondary_target const& other) = default;
-    write_secondary_target(write_secondary_target&& other) noexcept = default;
-    write_secondary_target& operator=(write_secondary_target&& other) noexcept = default;
+    ~secondary_target() = default;
+    secondary_target(secondary_target const& other) = default;
+    secondary_target& operator=(secondary_target const& other) = default;
+    secondary_target(secondary_target&& other) noexcept = default;
+    secondary_target& operator=(secondary_target&& other) noexcept = default;
 
     /**
      * @brief create new object from takatori columns
@@ -119,12 +119,12 @@ public:
      * @param primary_key_meta primary key meta
      * @param primary_value_meta primary value meta
      */
-    write_secondary_target(
+    secondary_target(
         yugawara::storage::index const& idx,
         maybe_shared_ptr<meta::record_meta> const& primary_key_meta,
         maybe_shared_ptr<meta::record_meta> const& primary_value_meta
     ) :
-        write_secondary_target(
+        secondary_target(
             idx.simple_name(),
             create_fields(idx, primary_key_meta, primary_value_meta)
         )
@@ -142,7 +142,7 @@ public:
      * @note this uses `upsert` so status::already_exist is not expected to be returned
      */
     status encode_put(
-        write_secondary_context& ctx,
+        secondary_context& ctx,
         transaction_context& tx,
         accessor::record_ref primary_key,
         accessor::record_ref primary_value,
@@ -161,7 +161,7 @@ public:
      * @returns any other error otherwise
      */
     status encode_remove(
-        write_secondary_context& ctx,
+        secondary_context& ctx,
         transaction_context& tx,
         accessor::record_ref primary_key,
         accessor::record_ref primary_value,
@@ -183,7 +183,7 @@ public:
      * @returns any other error otherwise
      */
     status create_secondary_key(
-        write_secondary_context& ctx,
+        secondary_context& ctx,
         data::aligned_buffer& buf,
         accessor::record_ref primary_key,
         accessor::record_ref primary_value,
@@ -198,7 +198,7 @@ public:
      * @returns any other error otherwise
      */
     status remove_by_encoded_key(
-        write_secondary_context& ctx,
+        secondary_context& ctx,
         transaction_context& tx,
         std::string_view encoded_secondary_key) const;
 
@@ -213,7 +213,7 @@ private:
         maybe_shared_ptr<meta::record_meta> const& primary_value_meta //NOLINT
     );
     status encode_secondary_key(
-        write_secondary_context& ctx,
+        secondary_context& ctx,
         accessor::record_ref primary_key,
         accessor::record_ref primary_value,
         std::string_view encoded_primary_key,

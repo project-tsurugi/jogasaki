@@ -22,8 +22,8 @@
 
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/index/write_primary_context.h>
-#include <jogasaki/index/write_secondary_context.h>
+#include <jogasaki/index/primary_context.h>
+#include <jogasaki/index/secondary_context.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/transaction.h>
 
@@ -56,7 +56,7 @@ public:
         maybe_shared_ptr<meta::record_meta> value_meta,
         memory_resource* resource,
         memory_resource* varlen_resource,
-        std::vector<index::write_secondary_context> secondary_contexts
+        std::vector<index::secondary_context> secondary_contexts
     );
 
     [[nodiscard]] operator_kind kind() const noexcept override;
@@ -65,12 +65,12 @@ public:
 
     [[nodiscard]] transaction_context* transaction() const noexcept;
 
-    [[nodiscard]] index::write_primary_context& primary_context() noexcept;
+    [[nodiscard]] index::primary_context& primary_context() noexcept;
 
 private:
     transaction_context* tx_{};
-    index::write_primary_context primary_context_{};
-    std::vector<index::write_secondary_context> secondary_contexts_{};
+    index::primary_context primary_context_{};
+    std::vector<index::secondary_context> secondary_contexts_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

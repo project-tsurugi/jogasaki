@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_primary_context.h"
+#include "primary_context.h"
 
 #include <memory>
 #include <vector>
@@ -23,7 +23,7 @@
 
 namespace jogasaki::index {
 
-write_primary_context::write_primary_context(
+primary_context::primary_context(
     std::unique_ptr<kvs::storage> stg,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
@@ -35,19 +35,19 @@ write_primary_context::write_primary_context(
     rctx_(rctx)
 {}
 
-std::string_view write_primary_context::encoded_key() const noexcept {
+std::string_view primary_context::encoded_key() const noexcept {
     return {static_cast<char*>(key_buf_.data()), key_len_};
 }
 
-accessor::record_ref write_primary_context::extracted_key() const noexcept {
+accessor::record_ref primary_context::extracted_key() const noexcept {
     return extracted_key_store_.ref();
 }
 
-accessor::record_ref write_primary_context::extracted_value() const noexcept {
+accessor::record_ref primary_context::extracted_value() const noexcept {
     return extracted_value_store_.ref();
 }
 
-request_context* write_primary_context::req_context() const noexcept {
+request_context* primary_context::req_context() const noexcept {
     return rctx_;
 }
 

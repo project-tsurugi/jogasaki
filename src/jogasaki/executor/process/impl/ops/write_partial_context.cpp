@@ -34,7 +34,7 @@ write_partial_context::write_partial_context(
     maybe_shared_ptr<meta::record_meta> value_meta,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource,
-    std::vector<index::write_secondary_context> secondary_contexts
+    std::vector<index::secondary_context> secondary_contexts
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     tx_(tx),
@@ -59,7 +59,7 @@ transaction_context* write_partial_context::transaction() const noexcept {
     return tx_;
 }
 
-index::write_primary_context& write_partial_context::primary_context() noexcept {
+index::primary_context& write_partial_context::primary_context() noexcept {
     return primary_context_;
 }
 

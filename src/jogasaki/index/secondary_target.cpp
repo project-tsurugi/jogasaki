@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_secondary_target.h"
+#include "secondary_target.h"
 
 #include <vector>
 
@@ -28,12 +28,12 @@
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 
-#include "write_secondary_context.h"
+#include "secondary_context.h"
 
 namespace jogasaki::index {
 
-status write_secondary_target::encode_secondary_key(
-    write_secondary_context& ctx,
+status secondary_target::encode_secondary_key(
+    secondary_context& ctx,
     accessor::record_ref primary_key,
     accessor::record_ref primary_value,
     std::string_view encoded_primary_key,
@@ -42,8 +42,8 @@ status write_secondary_target::encode_secondary_key(
     return create_secondary_key(ctx, ctx.encoded_secondary_key_, primary_key, primary_value, encoded_primary_key, out);
 }
 
-status write_secondary_target::create_secondary_key(
-    write_secondary_context& ctx,
+status secondary_target::create_secondary_key(
+    secondary_context& ctx,
     data::aligned_buffer& buf,
     accessor::record_ref primary_key,
     accessor::record_ref primary_value,
@@ -86,8 +86,8 @@ status write_secondary_target::create_secondary_key(
     return status::ok;
 }
 
-status write_secondary_target::encode_put(
-    write_secondary_context& ctx,
+status secondary_target::encode_put(
+    secondary_context& ctx,
     transaction_context& tx,
     accessor::record_ref primary_key,
     accessor::record_ref primary_value,
@@ -105,8 +105,8 @@ status write_secondary_target::encode_put(
     return status::ok;
 }
 
-status write_secondary_target::remove_by_encoded_key(
-    write_secondary_context& ctx,
+status secondary_target::remove_by_encoded_key(
+    secondary_context& ctx,
     transaction_context& tx,
     std::string_view encoded_secondary_key
 ) const {
@@ -118,8 +118,8 @@ status write_secondary_target::remove_by_encoded_key(
     return status::ok;
 }
 
-status write_secondary_target::encode_remove(
-    write_secondary_context& ctx,
+status secondary_target::encode_remove(
+    secondary_context& ctx,
     transaction_context& tx,
     accessor::record_ref primary_key,
     accessor::record_ref primary_value,
@@ -132,7 +132,7 @@ status write_secondary_target::encode_remove(
     return remove_by_encoded_key(ctx, tx, k);
 }
 
-write_secondary_target::field_mapping_type write_secondary_target::create_fields(
+secondary_target::field_mapping_type secondary_target::create_fields(
     yugawara::storage::index const& idx,
     maybe_shared_ptr<meta::record_meta> const& primary_key_meta,
     maybe_shared_ptr<meta::record_meta> const& primary_value_meta
@@ -140,7 +140,7 @@ write_secondary_target::field_mapping_type write_secondary_target::create_fields
     auto& table = idx.table();
     auto primary = table.owner()->find_primary_index(table);
     if(!(primary != nullptr)) throw_exception(std::logic_error{""});
-    write_secondary_target::field_mapping_type ret{};
+    secondary_target::field_mapping_type ret{};
     ret.reserve(table.columns().size());
     for(auto&& k : idx.keys()) {
         bool found = false;

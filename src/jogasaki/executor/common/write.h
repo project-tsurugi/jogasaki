@@ -20,8 +20,8 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
-#include <jogasaki/index/write_primary_target.h>
-#include <jogasaki/index/write_secondary_target.h>
+#include <jogasaki/index/primary_target.h>
+#include <jogasaki/index/secondary_target.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
@@ -32,10 +32,10 @@ namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
 using yugawara::compiled_info;
-using write_primary_target = jogasaki::index::write_primary_target;
-using write_primary_context = jogasaki::index::write_primary_context;
-using write_secondary_target = jogasaki::index::write_secondary_target;
-using write_secondary_context = jogasaki::index::write_secondary_context;
+using primary_target = jogasaki::index::primary_target;
+using primary_context = jogasaki::index::primary_context;
+using secondary_target = jogasaki::index::secondary_target;
+using secondary_context = jogasaki::index::secondary_context;
 
 namespace details {
 
@@ -104,14 +104,14 @@ public:
         std::string_view storage_name,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
-        std::vector<write_secondary_target> const& secondaries,
+        std::vector<secondary_target> const& secondaries,
         kvs::database& db,
         memory::lifo_paged_memory_resource* resource
     );
 
     request_context* request_context_{};  //NOLINT
-    write_primary_context primary_context_{};  //NOLINT
-    std::vector<write_secondary_context> secondary_contexts_{};  //NOLINT
+    primary_context primary_context_{};  //NOLINT
+    std::vector<secondary_context> secondary_contexts_{};  //NOLINT
     data::small_record_store key_store_{};  //NOLINT
     data::small_record_store value_store_{};  //NOLINT
 };
@@ -158,8 +158,8 @@ private:
     maybe_shared_ptr<meta::record_meta> value_meta_{};
     std::vector<details::write_field> key_fields_{};
     std::vector<details::write_field> value_fields_{};
-    write_primary_target primary_{};
-    std::vector<write_secondary_target> secondaries_{};
+    primary_target primary_{};
+    std::vector<secondary_target> secondaries_{};
 
     bool put_primary(write_context& wctx, bool& skip_error, std::string_view& encoded_primary_key);
     bool put_secondaries(write_context& wctx, std::string_view encoded_primary_key);

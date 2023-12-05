@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_primary_target.h"
+#include "primary_target.h"
 
 #include <vector>
 
@@ -42,25 +42,25 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::throw_exception;
 
 status encode_fields(
-    write_primary_target::field_mapping_type const& fields,
+    primary_target::field_mapping_type const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
 );
 
 status do_encode(
     data::aligned_buffer& buf,
-    write_primary_target::field_mapping_type const& info,
+    primary_target::field_mapping_type const& info,
     accessor::record_ref source,
     std::string_view& out
 );
 
-write_primary_target::write_primary_target(
+primary_target::primary_target(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
-    write_primary_target::field_mapping_type input_keys,
-    write_primary_target::field_mapping_type extracted_keys,
-    write_primary_target::field_mapping_type extracted_values
+    primary_target::field_mapping_type input_keys,
+    primary_target::field_mapping_type extracted_keys,
+    primary_target::field_mapping_type extracted_values
 ) :
     storage_name_(storage_name),
     key_meta_(std::move(key_meta)),
@@ -70,8 +70,8 @@ write_primary_target::write_primary_target(
     extracted_values_(std::move(extracted_values))
 {}
 
-status write_primary_target::encode_find_remove(
-    write_primary_context& ctx,
+status primary_target::encode_find_remove(
+    primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource,
@@ -85,8 +85,8 @@ status write_primary_target::encode_find_remove(
     return remove_by_encoded_key(ctx, tx, k);
 }
 
-status write_primary_target::encode_find(
-    write_primary_context& ctx,
+status primary_target::encode_find(
+    primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource,
@@ -97,8 +97,8 @@ status write_primary_target::encode_find(
     return encode_find(ctx, tx, key, varlen_resource, dest_key, dest_value, k);
 }
 
-status write_primary_target::encode_find(
-    write_primary_context& ctx,
+status primary_target::encode_find(
+    primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource,
@@ -130,8 +130,8 @@ status write_primary_target::encode_find(
     return status::ok;
 }
 
-status write_primary_target::encode_remove(
-    write_primary_context& ctx,
+status primary_target::encode_remove(
+    primary_context& ctx,
     transaction_context& tx,
     accessor::record_ref key
 ) {
@@ -142,8 +142,8 @@ status write_primary_target::encode_remove(
     return remove_by_encoded_key(ctx, tx, k);
 }
 
-status write_primary_target::remove_by_encoded_key(
-    write_primary_context& ctx,
+status primary_target::remove_by_encoded_key(
+    primary_context& ctx,
     transaction_context& tx,
     std::string_view encoded_key
 ) {
@@ -154,8 +154,8 @@ status write_primary_target::remove_by_encoded_key(
     return status::ok;
 }
 
-status write_primary_target::prepare_encoded_key(
-    write_primary_context& ctx,
+status primary_target::prepare_encoded_key(
+    primary_context& ctx,
     accessor::record_ref source,
     std::string_view& out
 ) const {
@@ -169,7 +169,7 @@ status write_primary_target::prepare_encoded_key(
 
 status do_encode(
     data::aligned_buffer& buf,
-    write_primary_target::field_mapping_type const& info,
+    primary_target::field_mapping_type const& info,
     accessor::record_ref source,
     std::string_view& out
 ) {
@@ -193,8 +193,8 @@ status do_encode(
     return status::ok;
 }
 
-status write_primary_target::encode_put(
-    write_primary_context& ctx,
+status primary_target::encode_put(
+    primary_context& ctx,
     transaction_context& tx,
     kvs::put_option opt,
     accessor::record_ref key_record,
@@ -220,8 +220,8 @@ status write_primary_target::encode_put(
     return status::ok;
 }
 
-status write_primary_target::decode_fields(
-    write_primary_target::field_mapping_type const& fields,
+status primary_target::decode_fields(
+    primary_target::field_mapping_type const& fields,
     kvs::readable_stream& stream,
     accessor::record_ref target,
     memory::lifo_paged_memory_resource* varlen_resource
@@ -251,7 +251,7 @@ status write_primary_target::decode_fields(
 }
 
 status encode_fields(
-    write_primary_target::field_mapping_type const& fields,
+    primary_target::field_mapping_type const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
 ) {
@@ -275,15 +275,15 @@ status encode_fields(
 }
 
 
-maybe_shared_ptr<meta::record_meta> const& write_primary_target::key_meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& primary_target::key_meta() const noexcept {
     return key_meta_;
 }
 
-maybe_shared_ptr<meta::record_meta> const& write_primary_target::value_meta() const noexcept {
+maybe_shared_ptr<meta::record_meta> const& primary_target::value_meta() const noexcept {
     return value_meta_;
 }
 
-std::string_view write_primary_target::storage_name() const noexcept {
+std::string_view primary_target::storage_name() const noexcept {
     return storage_name_;
 }
 

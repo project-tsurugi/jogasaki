@@ -28,20 +28,20 @@ namespace jogasaki::index {
 /**
  * @brief secondary target context
  */
-class write_secondary_context {
+class secondary_context {
 public:
-    friend class write_secondary_target;
+    friend class secondary_target;
 
     using memory_resource = memory::lifo_paged_memory_resource;
     /**
      * @brief create empty object
      */
-    write_secondary_context() = default;
+    secondary_context() = default;
 
     /**
      * @brief create new object
      */
-    write_secondary_context(
+    secondary_context(
         std::unique_ptr<kvs::storage> stg,
         request_context* rctx
     );

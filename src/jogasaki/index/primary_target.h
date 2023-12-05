@@ -27,7 +27,7 @@
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
 
-#include "write_primary_context.h"
+#include "primary_context.h"
 
 namespace jogasaki::index {
 
@@ -48,15 +48,15 @@ static constexpr std::size_t npos = static_cast<std::size_t>(-1);
  * - extracted key/value records
  *   - the target columns to be filled by find operation
  *   - the source columns to generate key/value on put operation
- * This object has common static information and dynamically changing parts are separated as write_primary_context.
+ * This object has common static information and dynamically changing parts are separated as primary_context.
  *
  * The member functions whose name begins with `encode` store the encoded key/values in the context working buffer(
- * write_primary_context::encoded_key_ or write_primary_context::encoded_value_).
+ * primary_context::encoded_key_ or primary_context::encoded_value_).
  */
-class write_primary_target {
+class primary_target {
 public:
 
-    friend class write_primary_context;
+    friend class primary_context;
 
     /**
      * @brief field mapping type
@@ -70,7 +70,7 @@ public:
     /**
      * @brief create empty object
      */
-    write_primary_target() = default;
+    primary_target() = default;
 
     /**
      * @brief create new object
@@ -81,7 +81,7 @@ public:
      * @param extracted_keys field offset information for extracted key fields
      * @param extracted_values field offset information for extracted value fields
      */
-    write_primary_target(
+    primary_target(
         std::string_view storage_name,
         maybe_shared_ptr<meta::record_meta> key_meta,
         maybe_shared_ptr<meta::record_meta> value_meta,
@@ -90,11 +90,11 @@ public:
         field_mapping_type extracted_values
     );
 
-    ~write_primary_target() = default;
-    write_primary_target(write_primary_target const& other) = default;
-    write_primary_target& operator=(write_primary_target const& other) = default;
-    write_primary_target(write_primary_target&& other) noexcept = default;
-    write_primary_target& operator=(write_primary_target&& other) noexcept = default;
+    ~primary_target() = default;
+    primary_target(primary_target const& other) = default;
+    primary_target& operator=(primary_target const& other) = default;
+    primary_target(primary_target&& other) noexcept = default;
+    primary_target& operator=(primary_target&& other) noexcept = default;
 
     /**
      * @brief create new object from takatori columns
@@ -103,12 +103,12 @@ public:
      * @param input_variable_info variable table info for the input variables
      */
     template<class Column>
-    write_primary_target(
+    primary_target(
         yugawara::storage::index const& idx,
         sequence_view<Column const> keys,
         variable_table_info const& input_variable_info
     ) :
-        write_primary_target(
+        primary_target(
             idx.simple_name(),
             index::create_meta(idx, true),
             index::create_meta(idx, false),
@@ -130,7 +130,7 @@ public:
      * @returns any other error otherwise
      */
     status encode_find_remove(
-        write_primary_context& ctx,
+        primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
         memory_resource* varlen_resource,
@@ -151,7 +151,7 @@ public:
      * @returns any other error otherwise
      */
     status encode_find(
-        write_primary_context& ctx,
+        primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
         memory_resource* varlen_resource,
@@ -173,7 +173,7 @@ public:
      * @returns any other error otherwise
      */
     status encode_find(
-        write_primary_context& ctx,
+        primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key,
         memory_resource* varlen_resource,
@@ -189,7 +189,7 @@ public:
      * @returns any other error otherwise
      */
     status encode_remove(
-        write_primary_context& ctx,
+        primary_context& ctx,
         transaction_context& tx,
         accessor::record_ref key
     );
@@ -201,7 +201,7 @@ public:
      * @returns any other error otherwise
      */
     status remove_by_encoded_key(
-        write_primary_context& ctx,
+        primary_context& ctx,
         transaction_context& tx,
         std::string_view encoded_key
     );
@@ -214,7 +214,7 @@ public:
      * @returns any other error otherwise
      */
     status encode_put(
-        write_primary_context& ctx,
+        primary_context& ctx,
         transaction_context& tx,
         kvs::put_option opt,
         accessor::record_ref key_record,
@@ -261,7 +261,7 @@ private:
      * @param out [out] generated encode key
      * @return
      */
-    status prepare_encoded_key(write_primary_context& ctx, accessor::record_ref source, std::string_view& out) const;
+    status prepare_encoded_key(primary_context& ctx, accessor::record_ref source, std::string_view& out) const;
 
 };
 

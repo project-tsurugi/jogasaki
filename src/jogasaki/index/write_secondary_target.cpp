@@ -30,9 +30,9 @@
 
 #include "write_secondary_context.h"
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
-status details::write_secondary_target::encode_secondary_key(
+status write_secondary_target::encode_secondary_key(
     write_secondary_context& ctx,
     accessor::record_ref primary_key,
     accessor::record_ref primary_value,
@@ -42,7 +42,7 @@ status details::write_secondary_target::encode_secondary_key(
     return create_secondary_key(ctx, ctx.encoded_secondary_key_, primary_key, primary_value, encoded_primary_key, out);
 }
 
-status details::write_secondary_target::create_secondary_key(
+status write_secondary_target::create_secondary_key(
     write_secondary_context& ctx,
     data::aligned_buffer& buf,
     accessor::record_ref primary_key,
@@ -86,7 +86,7 @@ status details::write_secondary_target::create_secondary_key(
     return status::ok;
 }
 
-status details::write_secondary_target::encode_put(
+status write_secondary_target::encode_put(
     write_secondary_context& ctx,
     transaction_context& tx,
     accessor::record_ref primary_key,
@@ -105,7 +105,7 @@ status details::write_secondary_target::encode_put(
     return status::ok;
 }
 
-status details::write_secondary_target::remove_by_encoded_key(
+status write_secondary_target::remove_by_encoded_key(
     write_secondary_context& ctx,
     transaction_context& tx,
     std::string_view encoded_secondary_key
@@ -118,7 +118,7 @@ status details::write_secondary_target::remove_by_encoded_key(
     return status::ok;
 }
 
-status details::write_secondary_target::encode_remove(
+status write_secondary_target::encode_remove(
     write_secondary_context& ctx,
     transaction_context& tx,
     accessor::record_ref primary_key,
@@ -187,4 +187,4 @@ write_secondary_target::field_mapping_type write_secondary_target::create_fields
     return ret;
 }
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

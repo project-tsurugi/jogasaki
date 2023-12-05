@@ -21,7 +21,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/step.h>
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 write_primary_context::write_primary_context(
     std::unique_ptr<kvs::storage> stg,
@@ -51,4 +51,4 @@ request_context* write_primary_context::req_context() const noexcept {
     return rctx_;
 }
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

@@ -254,7 +254,7 @@ operation_status write_partial::process_record(abstract::task_context* context) 
     context_helper ctx{*context};
     auto* p = find_context<write_partial_context>(index(), ctx.contexts());
     if (! p) {
-        std::vector<details::write_secondary_context> contexts{};
+        std::vector<index::write_secondary_context> contexts{};
         contexts.reserve(secondaries_.size());
         for(auto&& s : secondaries_) {
             contexts.emplace_back(
@@ -278,7 +278,7 @@ operation_status write_partial::process_record(abstract::task_context* context) 
 }
 
 // fwd declarations
-std::vector<details::write_secondary_target> create_secondary_targets(
+std::vector<index::write_secondary_target> create_secondary_targets(
     yugawara::storage::index const& idx,
     sequence_view<write_partial::column const> columns
 );
@@ -390,7 +390,7 @@ write_partial::write_partial(
         info,
         block_index,
         kind,
-        details::write_primary_target{
+        index::write_primary_target{
             idx,
             keys,
             input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
@@ -413,9 +413,9 @@ write_partial::write_partial(
     processor_info const& info,
     operator_base::block_index_type block_index,
     write_kind kind,
-    details::write_primary_target primary,
+    index::write_primary_target primary,
     std::vector<details::update_field> updates,
-    std::vector<details::write_secondary_target> secondaries,
+    std::vector<index::write_secondary_target> secondaries,
     bool_list_type secondary_key_updated,
     variable_table_info const* input_variable_info
 ) :
@@ -428,7 +428,7 @@ write_partial::write_partial(
     updates_(std::move(updates))
 {}
 
-details::write_primary_target const& write_partial::primary() const noexcept {
+index::write_primary_target const& write_partial::primary() const noexcept {
     return primary_;
 }
 
@@ -448,7 +448,7 @@ bool overwraps(
     return false;
 }
 
-std::pair<std::vector<details::write_secondary_target>, write_partial::bool_list_type>
+std::pair<std::vector<index::write_secondary_target>, write_partial::bool_list_type>
 create_secondary_targets_and_key_update_list(
     yugawara::storage::index const& idx,
     sequence_view<write_partial::column const> columns
@@ -457,7 +457,7 @@ create_secondary_targets_and_key_update_list(
     auto& primary = *table.owner()->find_primary_index(table);
     auto key_meta = index::create_meta(primary, true);
     auto value_meta = index::create_meta(primary, false);
-    std::vector<details::write_secondary_target> ret_l{};
+    std::vector<index::write_secondary_target> ret_l{};
     write_partial::bool_list_type ret_r{};
     std::size_t count{};
     table.owner()->each_table_index(table,
@@ -488,7 +488,7 @@ create_secondary_targets_and_key_update_list(
     return {ret_l, ret_r};
 }
 
-std::vector<details::write_secondary_target> create_secondary_targets(
+std::vector<index::write_secondary_target> create_secondary_targets(
     yugawara::storage::index const& idx,
     sequence_view<write_partial::column const> columns
 ) {

@@ -28,10 +28,8 @@
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/executor/process/impl/ops/details/write_primary_context.h>
-#include <jogasaki/executor/process/impl/ops/details/write_primary_target.h>
-#include <jogasaki/executor/process/impl/ops/details/write_secondary_context.h>
-#include <jogasaki/executor/process/impl/ops/details/write_secondary_target.h>
+#include <jogasaki/index/write_primary_context.h>
+#include <jogasaki/index/write_secondary_context.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/sequence/exception.h>

@@ -30,7 +30,7 @@
 
 #include "write_secondary_context.h"
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::throw_exception;
@@ -85,7 +85,7 @@ public:
     /**
      * @brief field mapping type
      */
-    using field_mapping_type = std::vector<details::secondary_key_field>;
+    using field_mapping_type = std::vector<secondary_key_field>;
 
     using memory_resource = memory::lifo_paged_memory_resource;
 
@@ -222,4 +222,4 @@ private:
 
 };
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

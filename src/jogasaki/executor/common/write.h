@@ -20,8 +20,8 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
-#include <jogasaki/executor/process/impl/ops/details/write_primary_target.h>
-#include <jogasaki/executor/process/impl/ops/details/write_secondary_target.h>
+#include <jogasaki/index/write_primary_target.h>
+#include <jogasaki/index/write_secondary_target.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
@@ -32,10 +32,10 @@ namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
 using yugawara::compiled_info;
-using write_primary_target = jogasaki::executor::process::impl::ops::details::write_primary_target;
-using write_primary_context = jogasaki::executor::process::impl::ops::details::write_primary_context;
-using write_secondary_target = jogasaki::executor::process::impl::ops::details::write_secondary_target;
-using write_secondary_context = jogasaki::executor::process::impl::ops::details::write_secondary_context;
+using write_primary_target = jogasaki::index::write_primary_target;
+using write_primary_context = jogasaki::index::write_primary_context;
+using write_secondary_target = jogasaki::index::write_secondary_target;
+using write_secondary_context = jogasaki::index::write_secondary_context;
 
 namespace details {
 
@@ -158,8 +158,8 @@ private:
     maybe_shared_ptr<meta::record_meta> value_meta_{};
     std::vector<details::write_field> key_fields_{};
     std::vector<details::write_field> value_fields_{};
-    process::impl::ops::details::write_primary_target primary_{};
-    std::vector<process::impl::ops::details::write_secondary_target> secondaries_{};
+    write_primary_target primary_{};
+    std::vector<write_secondary_target> secondaries_{};
 
     bool put_primary(write_context& wctx, bool& skip_error, std::string_view& encoded_primary_key);
     bool put_secondaries(write_context& wctx, std::string_view encoded_primary_key);

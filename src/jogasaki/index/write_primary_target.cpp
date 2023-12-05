@@ -36,7 +36,7 @@
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::throw_exception;
@@ -287,4 +287,4 @@ std::string_view write_primary_target::storage_name() const noexcept {
     return storage_name_;
 }
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

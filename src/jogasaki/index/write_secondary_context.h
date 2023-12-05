@@ -23,7 +23,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 /**
  * @brief secondary target context
@@ -58,4 +58,4 @@ private:
     request_context* rctx_{};
 };
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

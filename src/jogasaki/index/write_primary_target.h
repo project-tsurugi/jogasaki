@@ -29,7 +29,7 @@
 
 #include "write_primary_context.h"
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
 
@@ -265,4 +265,4 @@ private:
 
 };
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

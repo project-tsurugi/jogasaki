@@ -15,7 +15,7 @@
  */
 #include "write_secondary_context.h"
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 write_secondary_context::write_secondary_context(
     std::unique_ptr<kvs::storage> stg,
@@ -29,4 +29,4 @@ request_context* write_secondary_context::req_context() const noexcept {
     return rctx_;
 }
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

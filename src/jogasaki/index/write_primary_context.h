@@ -26,7 +26,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
 
-namespace jogasaki::executor::process::impl::ops::details {
+namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
 
@@ -35,6 +35,7 @@ using takatori::util::maybe_shared_ptr;
  */
 class write_primary_context {
 public:
+
     friend class write_primary_target;
     using memory_resource = memory::lifo_paged_memory_resource;
 
@@ -81,6 +82,7 @@ public:
     [[nodiscard]] request_context* req_context() const noexcept;
 
 private:
+
     std::unique_ptr<kvs::storage> stg_{};
     data::aligned_buffer key_buf_{};  // internal buffer used from write_primary_target
     data::aligned_buffer value_buf_{};  // internal buffer used from write_primary_target
@@ -90,4 +92,4 @@ private:
     request_context* rctx_{};
 };
 
-}  // namespace jogasaki::executor::process::impl::ops::details
+}  // namespace jogasaki::index

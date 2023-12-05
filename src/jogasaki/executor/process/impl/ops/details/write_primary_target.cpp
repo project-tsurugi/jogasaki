@@ -55,21 +55,6 @@ status do_encode(
 );
 
 write_primary_target::write_primary_target(
-    yugawara::storage::index const& idx,
-    sequence_view<key const> keys,
-    variable_table_info const& input_variable_info
-) :
-    write_primary_target(
-        idx.simple_name(),
-        index::create_meta(idx, true),
-        index::create_meta(idx, false),
-        index::create_fields(idx, keys, input_variable_info, true, false),
-        index::index_fields(idx, true),
-        index::index_fields(idx, false)
-    )
-{}
-
-write_primary_target::write_primary_target(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,

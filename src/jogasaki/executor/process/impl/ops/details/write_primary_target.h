@@ -22,7 +22,9 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/index/field_factory.h>
 #include <jogasaki/index/field_info.h>
+#include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
 
 #include "write_primary_context.h"
@@ -62,8 +64,6 @@ public:
      */
     using field_mapping_type = std::vector<index::field_info>;
 
-    using key = takatori::relation::write::key;
-    using column = takatori::relation::write::column;
     using memory_resource = memory::lifo_paged_memory_resource;
     using variable = takatori::descriptor::variable;
 
@@ -100,14 +100,22 @@ public:
      * @brief create new object from takatori columns
      * @param idx target index information
      * @param keys takatori write keys information
-     * @param columns takatori write columns information
      * @param input_variable_info variable table info for the input variables
      */
+    template<class Column>
     write_primary_target(
         yugawara::storage::index const& idx,
-        sequence_view<key const> keys,
+        sequence_view<Column const> keys,
         variable_table_info const& input_variable_info
-    );
+    ) :
+        write_primary_target(
+            idx.simple_name(),
+            index::create_meta(idx, true),
+            index::create_meta(idx, false),
+            index::create_fields(idx, keys, input_variable_info, true, false),
+            index::index_fields(idx, true),
+            index::index_fields(idx, false)
+        ) {}
 
     /**
      * @brief encode key (stored in context), find the record, fill dest key/value records, and remove

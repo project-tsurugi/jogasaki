@@ -39,6 +39,7 @@ option(ENABLE_CACHE_ALIGN "enable optional cache align requirement" OFF)
 option(TRACY_ENABLE "enable tracy profiler" OFF)
 option(INSTALL_API_ONLY "configure cmake build dir. just to install public api files. No build runs. This is used to provide api files to components outside jogasaki" OFF)
 option(LIKWID_ENABLE "enable likwid hardware counter profiling" OFF)
+option(ENABLE_ALTIMETER "enable altimeter integration" OFF)
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")
@@ -81,6 +82,11 @@ endif()
 find_package(Protobuf REQUIRED)
 find_package(mpdecpp REQUIRED)
 find_package(likwid)
+
+if(ENABLE_ALTIMETER)
+find_package(fmt REQUIRED)
+find_package(altimeter REQUIRED)
+endif()
 
 # to suppress not-found warnings
 set(re2Alt_FIND_QUIETLY TRUE)

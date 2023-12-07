@@ -47,3 +47,8 @@ if(LIKWID_ENABLE)
     message("likwid enabled")
     add_definitions(-DLIKWID_PERFMON)
 endif()
+
+if(ENABLE_ALTIMETER)
+    message("altimeter enabled")
+    add_definitions(-DENABLE_ALTIMETER)
+endif()

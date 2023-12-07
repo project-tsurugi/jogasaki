@@ -28,6 +28,11 @@
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/type/decimal.h>
+#ifdef ENABLE_ALTIMETER
+#include <altimeter/logger.h>
+#include <altimeter/configuration.h>
+#include <altimeter/log_item.h>
+#endif
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -175,6 +180,12 @@ status database::start() {
 
 status database::stop() {
     stop_requested_ = true;
+
+#ifdef ENABLE_ALTIMETER
+    altimeter::logger::shutdown();
+#endif
+
+
     std::size_t cnt = 0;
     while(requests_inprocess_.count() != 1) {
         std::this_thread::sleep_for(std::chrono::milliseconds{1});

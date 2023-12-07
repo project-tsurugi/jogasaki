@@ -4,7 +4,8 @@
         "-DFORCE_INSTALL_RPATH=ON",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         "-DCMAKE_BUILD_TYPE=${env:BUILD_TYPE}",
-        "-DSHARKSFIN_IMPLEMENTATION=${env:SHARKSFIN_IMPLEMENTATION}"
+        "-DSHARKSFIN_IMPLEMENTATION=${env:SHARKSFIN_IMPLEMENTATION}",
+        "-DENABLE_ALTIMETER=ON"
     ],
     "cmake.installPrefix": "${env:HOME}/git/.local-${env:BUILD_TYPE}/",
     "cmake.buildDirectory": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}",

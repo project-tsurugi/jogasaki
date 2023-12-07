@@ -184,6 +184,12 @@ if (PERFORMANCE_TOOLS)
     target_compile_definitions(${ENGINE} PUBLIC PERFORMANCE_TOOLS)
 endif()
 
+if(ENABLE_ALTIMETER)
+        target_link_libraries(${ENGINE}
+                PRIVATE altimeter
+        )
+endif()
+
 # Boost.Thread doesn't seem to allow multiple versions to coexist.
 # This version definition should be shared with caller at least.
 target_compile_definitions(${ENGINE} PUBLIC BOOST_THREAD_VERSION=4)

@@ -41,9 +41,9 @@ This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) mo
 
 ### Additional file installation for Apache Arrow/Parquet
 
-Jogasaki requires Apache Arrow and Parquet package versioned as `14.0.1-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.) 
+Jogasaki requires Apache Arrow and Parquet package versioned as `14.0.1-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.)
 
-Installing Apache Arrow/Paquet packages `libarrow-dev`, `libarrow-glib-dev`, `libparquet-dev`, `libparquet-glib-dev` requires additional files installation. 
+Installing Apache Arrow/Paquet packages `libarrow-dev`, `libarrow-glib-dev`, `libparquet-dev`, `libparquet-glib-dev` requires additional files installation.
 If installing these packages from `apt install` command fails, issue below commands to install required files.
 
 ```
@@ -97,14 +97,15 @@ available options:
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `memory`)
 * `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance
 * `-DINSTALL_API_ONLY=ON` - configure build directory just to install public header files. Use when other components require jogasaki public headers.
+* `-DENABLE_ALTIMETER=ON` - turn on altimeter logging.
 * for debugging only
   * `-DENABLE_SANITIZER=OFF` - disable sanitizers (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DENABLE_UB_SANITIZER=ON` - enable undefined behavior sanitizer (requires `-DENABLE_SANITIZER=ON`)
   * `-DENABLE_COVERAGE=ON` - enable code coverage analysis (requires `-DCMAKE_BUILD_TYPE=Debug`)
   * `-DTRACY_ENABLE=ON` - enable tracy profiler for multi-thread debugging. See section below.
   * `-DLIKWID_ENABLE=ON` - enable LIKWID for performance metrics. See section below.
-    
-### install 
+
+### install
 
 ```sh
 cmake --build . --target install
@@ -122,11 +123,11 @@ ctest -V
 cmake --build . --target doxygen
 ```
 
-### Customize logging setting 
+### Customize logging setting
 You can customize logging in the same way as sharksfin. See sharksfin [README.md](https://github.com/project-tsurugi/sharksfin/blob/master/README.md#customize-logging-setting) for more details.
 
 ```sh
-GLOG_minloglevel=0 ./group-cli --minimum 
+GLOG_minloglevel=0 ./group-cli --minimum
 ```
 
 ### Multi-thread debugging/profiling with Tracy
@@ -136,7 +137,7 @@ By setting cmake build option `-DTRACY_ENABLE=ON`, TracyClient.cpp file is added
 
 (2021-11 TracyClient.cpp is included in tateyama only in order to avoid start up conflict, so set `-DTRACY_ENABLE=ON` both on tateyama and jogasaki if you profile jogasaki)
 
-Prerequirement: 
+Prerequirement:
 
 1. ensure tracy code is located under `third_party/tracy` directory.
 ```
@@ -153,13 +154,13 @@ git submodule update --init third_party/tracy
 ### Recompile time saving with ccache
 
 You can save re-compile time using [ccache](https://ccache.dev), which caches the compiled output and reuse on recompilation if no change is detected.
-This works well with jogasaki build as jogasaki build has dependencies to many components and translation units are getting bigger. 
+This works well with jogasaki build as jogasaki build has dependencies to many components and translation units are getting bigger.
 
-1. Install ccache 
+1. Install ccache
 ```
 apt install ccache
 ```
-2. add `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache` to cmake build option. 
+2. add `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache` to cmake build option.
 
 First time build does not change as it requires building and caching all artifacts into cache directory, e.g. `~/.ccache`. When you recompile, you will see it finishes very fast.
 Checking `ccache -s` shows the cache hit ratio and size of the cached files.
@@ -177,8 +178,8 @@ Prerequirement:
 ```
 #include <jogasaki/common.h>
 ```
-3. Make sure LIKWID initialize/deinitialize macros `LIKWID_MARKER_INIT`/`LIKWID_MARKER_CLOSE` are called at some point where the code does initialize/deinitialize. 
-4. Put `LIKWID_MARKER_START`/`LIKWID_MARKER_STOP` macros to specify the scope to profile. 
+3. Make sure LIKWID initialize/deinitialize macros `LIKWID_MARKER_INIT`/`LIKWID_MARKER_CLOSE` are called at some point where the code does initialize/deinitialize.
+4. Put `LIKWID_MARKER_START`/`LIKWID_MARKER_STOP` macros to specify the scope to profile.
 
 Running jogasaki with likwid-perfctr command will show you the performance counters incremented by the code between`LIKWID_MARKER_START` and `LIKWID_MARKER_STOP`. See LIKWID documentation for details
 

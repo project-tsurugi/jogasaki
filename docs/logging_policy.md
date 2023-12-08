@@ -136,4 +136,4 @@ DBMSサーバープロセスの情報提供を目的としたメッセージ
   - ファイル名レベルでしかfilteringが効かないので、コンポーネントごとにon/offができない
 - LOG(FATAL)はプロセスを終了させるので使用できる局面は限定的
 - VLOG(0)は使用しないほうがいい。デフォルトはverbose level=0なのでLOG(INFO)と同じ意味になる
-- VLOGによる出力はINFOレベルで表示される。verbose levelを0より大きく設定するとともに、minloglevelもINFO(1)以上にする必要がある
+- VLOGによる出力はINFOで表示される。VLOGの出力を確認するためにはverbose levelを適切な値に設定するとともに、minloglevelを0(INFO)にする必要がある

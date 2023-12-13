@@ -255,6 +255,12 @@ enum DumpFailBehavior {
     KEEP_FILES = 2;
 }
 
+// settings about Apache Parquet files.
+message ParquetFileFormat {}
+
+// settings about Apache Arrow files.
+message ArrowFileFormat {}
+
 // options for dump request
 message DumpOption {
     reserved 1 to 10;
@@ -267,6 +273,19 @@ message DumpOption {
 
     // time unit used for timestamp columns
     common.TimeUnit timestamp_unit = 13;
+
+    reserved 14 to 20;
+
+    // dump output file format specification.
+    oneof file_format {
+
+        // dump tables as Apache Parquet format.
+        ParquetFileFormat parquet = 21;
+
+        // dump tables as Apache Arrow format.
+        ArrowFileFormat arrow = 22;
+
+    }
 }
 
 /* For execute dump request. */

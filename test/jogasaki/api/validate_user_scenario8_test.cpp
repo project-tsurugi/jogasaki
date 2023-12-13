@@ -17,20 +17,21 @@
 #include <regex>
 #include <gtest/gtest.h>
 
-#include <takatori/util/downcast.h>
 #include <takatori/type/int.h>
+#include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/id.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/utils/storage_data.h>
+
 #include "api_test_base.h"
 
 namespace jogasaki::testing {
@@ -72,8 +73,11 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(validate_user_scenario8_test, DISABLED_upsert_primary_abort) {
+TEST_F(validate_user_scenario8_test, upsert_primary_abort) {
     // once aborting after upsert left the record resulting in scan failed
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot abort the changes";
+    }
     utils::set_global_tx_option(utils::create_tx_option{false, true});
     execute_statement("create table T (C0 int primary key, C1 int)");
     execute_statement("insert into T values (0,0)");
@@ -90,8 +94,11 @@ TEST_F(validate_user_scenario8_test, DISABLED_upsert_primary_abort) {
     ASSERT_EQ(1, result.size());
 }
 
-TEST_F(validate_user_scenario8_test, DISABLED_upsert_secondaries_abort) {
+TEST_F(validate_user_scenario8_test, upsert_secondaries_abort) {
     // once aborting after upsert (to secondary) left the record
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot abort the changes";
+    }
     utils::set_global_tx_option(utils::create_tx_option{false, true});
     execute_statement("create table T (C0 int primary key, C1 int)");
     execute_statement("create index I on T(C1)");

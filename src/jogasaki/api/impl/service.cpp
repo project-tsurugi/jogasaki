@@ -15,35 +15,35 @@
  */
 #include "service.h"
 
-#include <google/protobuf/text_format.h>
 #include <glog/logging.h>
-#include <takatori/util/downcast.h>
-#include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/exception.h>
-#include <takatori/util/string_builder.h>
+#include <google/protobuf/text_format.h>
 
-#include <jogasaki/status.h>
-#include <jogasaki/common.h>
-#include <jogasaki/logging.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/string_builder.h>
+#include <tateyama/api/server/request.h>
+#include <tateyama/api/server/response.h>
+
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
+#include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle_internal.h>
-#include <jogasaki/utils/proto_field_types.h>
-#include <jogasaki/utils/binary_printer.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/api/impl/prepared_statement.h>
-#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/common.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/request_logging.h>
+#include <jogasaki/status.h>
+#include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/proto_debug_string.h>
-#include <jogasaki/request_logging.h>
-
-#include <tateyama/api/server/request.h>
-#include <tateyama/api/server/response.h>
+#include <jogasaki/utils/proto_field_types.h>
 
 namespace jogasaki::api::impl {
 
@@ -86,7 +86,7 @@ private:
     std::variant<std::string_view, handle_parameters> entity_{};
 };
 
-}
+}  // namespace details
 
 template<class Response, class Request>
 jogasaki::api::transaction_handle validate_transaction_handle(
@@ -414,7 +414,8 @@ void service::command_execute_prepared_statement(
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     std::shared_ptr<error::error_info> err_info{};
-    if(auto rc = get_impl(*db_).resolve(handle, std::shared_ptr{std::move(params)}, e, err_info); rc != jogasaki::status::ok) {
+    if(auto rc = get_impl(*db_).resolve(handle, std::shared_ptr{std::move(params)}, e, err_info);
+       rc != jogasaki::status::ok) {
         abort_tx(tx, err_info);
         details::error<sql::response::ExecuteResult>(*res, err_info.get(), req_info);
         return;
@@ -623,7 +624,14 @@ void service::command_execute_dump(
              opts.file_format_ = executor::io::dump_file_format_kind::parquet;
         }
     }
-    execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, ed.directory(), opts, req_info);
+    execute_dump(
+        res,
+        details::query_info{handle.get(), std::shared_ptr{std::move(params)}},
+        tx,
+        ed.directory(),
+        opts,
+        req_info
+    );
 }
 
 void service::command_execute_load(
@@ -714,7 +722,8 @@ void report_error(
     tateyama::proto::diagnostics::Record rec{};
     rec.set_code(code);
     rec.set_message(msg.data(), msg.size());
-    VLOG(log_trace) << log_location_prefix << "respond with error (rid=" << reqid << "): " << utils::to_debug_string(rec);
+    VLOG(log_trace) << log_location_prefix << "respond with error (rid=" << reqid
+                    << "): " << utils::to_debug_string(rec);
     res.error(rec);
 }
 
@@ -763,11 +772,13 @@ bool service::process(
         trace_scope_name("parse_request");  //NOLINT
         auto s = req->payload();
         if (!proto_req.ParseFromArray(s.data(), static_cast<int>(s.size()))) {
-            auto msg = string_builder{} << "parse error with request (rid=" << reqid << ") body:" << utils::binary_printer{s} << string_builder::to_string;
+            auto msg = string_builder{} << "parse error with request (rid=" << reqid
+                                        << ") body:" << utils::binary_printer{s} << string_builder::to_string;
             report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             return true;
         }
-        VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size() << "): " << utils::to_debug_string(proto_req);
+        VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size()
+                        << "): " << utils::to_debug_string(proto_req);
     }
     if (! db_->config()->skip_smv_check()) {
         if (! check_message_version(proto_req, *res, reqid)) {
@@ -862,7 +873,9 @@ bool service::process(
             break;
         }
         default:
-            auto msg = string_builder{} << "request code is invalid (rid=" << reqid << ") code:" << proto_req.request_case() << " body:" << utils::to_debug_string(proto_req) << string_builder::to_string;
+            auto msg = string_builder{} << "request code is invalid (rid=" << reqid
+                                        << ") code:" << proto_req.request_case()
+                                        << " body:" << utils::to_debug_string(proto_req) << string_builder::to_string;
             report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             break;
     }
@@ -913,7 +926,10 @@ takatori::decimal::triple to_triple(::jogasaki::proto::sql::common::Decimal cons
     return utils::read_decimal(buf, -exp);
 }
 
-void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params) {
+void service::set_params(
+    ::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps,
+    std::unique_ptr<jogasaki::api::parameter_set>& params
+) {
     for (std::size_t i=0, n=static_cast<std::size_t>(ps.size()); i < n; ++i) {
         auto& p = ps.Get(static_cast<int>(i));
         switch (p.value_case()) {
@@ -939,7 +955,12 @@ void service::set_params(::google::protobuf::RepeatedPtrField<sql::request::Para
                 params->set_date(p.name(), field_type_traits<kind::date>::runtime_type{p.date_value()});
                 break;
             case sql::request::Parameter::ValueCase::kTimeOfDayValue:
-                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{std::chrono::duration<std::uint64_t, std::nano>{p.time_of_day_value()}});
+                params->set_time_of_day(
+                    p.name(),
+                    field_type_traits<kind::time_of_day>::runtime_type{
+                        std::chrono::duration<std::uint64_t, std::nano>{p.time_of_day_value()}
+                    }
+                );
                 break;
             case sql::request::Parameter::ValueCase::kTimePointValue: {
                 auto& v = p.time_point_value();
@@ -1014,7 +1035,8 @@ void service::execute_query(
     if(! has_result_records) {
         auto msg = "statement has no result records, but called with API expecting result records";
         VLOG(log_error) << log_location_prefix << msg;
-        auto err_info = create_error_info(error_code::inconsistent_statement_exception, msg, status::err_illegal_operation);
+        auto err_info =
+            create_error_info(error_code::inconsistent_statement_exception, msg, status::err_illegal_operation);
         details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
@@ -1024,7 +1046,8 @@ void service::execute_query(
         trace_scope_name("acquire_channel");  //NOLINT
         if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
-            auto err_info = create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);
+            auto err_info =
+                create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
@@ -1087,13 +1110,15 @@ void details::reply(
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id() << " len=" << ss.size() << "): " << utils::to_debug_string(r);
+        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id()
+                        << " len=" << ss.size() << "): " << utils::to_debug_string(r);
         res.body_head(ss);
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.size() << "): " << utils::to_debug_string(r);
+        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.size()
+                        << "): " << utils::to_debug_string(r);
         res.body(ss);
     }
 }
@@ -1155,7 +1180,8 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                 column->set_atom_type(sql::common::AtomType::TIME_POINT);
                 break;
             default:
-                LOG(ERROR) << log_location_prefix << "unsupported data type at field (" << i << "): " << metadata->at(i).kind();
+                LOG(ERROR) << log_location_prefix << "unsupported data type at field (" << i
+                           << "): " << metadata->at(i).kind();
                 break;
         }
     }
@@ -1191,7 +1217,8 @@ void service::execute_dump(
         trace_scope_name("acquire_channel");  //NOLINT
         if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
-            auto err_info = create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);
+            auto err_info =
+                create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
@@ -1288,7 +1315,8 @@ void service::execute_load( //NOLINT
                     }
                 }
             ); !rc) {
-            // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
+            // for now execute_async doesn't raise error. But if it happens in future,
+            // error response should be sent here.
             throw_exception(std::logic_error{"execute_load failed"});
         }
     } else {
@@ -1309,7 +1337,8 @@ void service::execute_load( //NOLINT
                     }
                 }
             ); !rc) {
-            // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
+            // for now execute_async doesn't raise error. But if it happens in future,
+            // error response should be sent here.
             throw_exception(std::logic_error{"execute_load failed"});
         }
     }
@@ -1328,4 +1357,5 @@ bool service::start() {
 jogasaki::api::database* service::database() const noexcept {
     return db_;
 }
-}
+
+}  // namespace jogasaki::api::impl

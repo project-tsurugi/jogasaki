@@ -15,12 +15,12 @@
  */
 #include "dump_channel.h"
 
-#include <jogasaki/executor/io/record_channel.h>
-#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/api/data_channel.h>
+#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
 #include <jogasaki/executor/io/dump_channel_writer.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/api/data_channel.h>
+#include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::executor::io {
@@ -84,4 +84,4 @@ std::string_view dump_channel::prefix() const noexcept {
     return prefix_;
 }
 
-}
+}  // namespace jogasaki::executor::io

@@ -113,4 +113,4 @@ data_channel_writer::data_channel_writer(
     value_writer_(std::make_shared<value_writer>(*writer_))
 {}
 
-}
+}  // namespace jogasaki::executor::io

@@ -131,5 +131,4 @@ inline bool operator!=(group_reader const& a, group_reader const& b) noexcept {
     return !(a == b);
 }
 
-}
-
+}  // namespace jogasaki::executor::io

@@ -17,17 +17,16 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/api/transaction_handle.h>
-#include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
-#include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/executor/io/dump_option.h>
-#include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/scheduler/job_context.h>
-#include <jogasaki/utils/latch.h>
-
+#include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/latch.h>
 
 namespace jogasaki::api::impl {
 class database;
@@ -259,4 +258,4 @@ bool execute_load(
     kvs::transaction_option const& options
 );
 
-}
+}  // namespace jogasaki::executor

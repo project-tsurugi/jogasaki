@@ -15,17 +15,17 @@
  */
 #include "dump_channel_writer.h"
 
-#include <glog/logging.h>
 #include <boost/filesystem.hpp>
+#include <glog/logging.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/executor/io/dump_channel.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/io/dump_channel.h>
-#include <jogasaki/utils/interference_size.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::io {
 
@@ -71,7 +71,8 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
     if(auto res = parquet_writer_->write(rec); ! res) {
         return false;
     }
-    if(cfg_.max_records_per_file_ != dump_cfg::undefined && parquet_writer_->write_count() >= cfg_.max_records_per_file_) {
+    if(cfg_.max_records_per_file_ != dump_cfg::undefined &&
+       parquet_writer_->write_count() >= cfg_.max_records_per_file_) {
         flush();
     }
     return true;
@@ -102,4 +103,4 @@ void dump_channel_writer::flush() {
     }
 }
 
-}
+}  // namespace jogasaki::executor::io

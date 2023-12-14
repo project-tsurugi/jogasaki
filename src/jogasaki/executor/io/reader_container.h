@@ -21,9 +21,9 @@
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/utils/variant.h>
-#include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/io/record_reader.h>
+#include <jogasaki/utils/variant.h>
 
 namespace jogasaki::executor::io {
 
@@ -129,4 +129,4 @@ private:
     static constexpr std::size_t index_of = alternative_index<T, entity_type>();
 };
 
-} // namespace
+}  // namespace jogasaki::executor::io

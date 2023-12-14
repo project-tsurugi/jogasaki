@@ -15,40 +15,36 @@
  */
 #pragma once
 
-#include <string_view>
 #include <atomic>
 #include <memory>
-
+#include <string_view>
 #include <tbb/concurrent_hash_map.h>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
-
-#include <jogasaki/constants.h>
-#include <jogasaki/api/database.h>
-#include <jogasaki/configuration.h>
-#include <jogasaki/api/transaction_handle.h>
-#include <jogasaki/api/statement_handle.h>
-#include <jogasaki/api/impl/data_channel.h>
-#include <jogasaki/api/impl/data_writer.h>
-#include <jogasaki/executor/io/dump_option.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/utils/string_manipulation.h>
-#include <jogasaki/utils/sanitize_utf8.h>
-#include <jogasaki/api/impl/error_info.h>
-#include <jogasaki/error/error_info.h>
-
-#include <tateyama/status.h>
-
-#include <tateyama/framework/service.h>
 #include <tateyama/api/configuration.h>
+#include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/writer.h>
-#include <tateyama/api/server/data_channel.h>
+#include <tateyama/framework/service.h>
+#include <tateyama/status.h>
 
+#include <jogasaki/api/database.h>
+#include <jogasaki/api/impl/data_channel.h>
+#include <jogasaki/api/impl/data_writer.h>
+#include <jogasaki/api/impl/error_info.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/constants.h>
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/executor/io/dump_option.h>
+#include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/sanitize_utf8.h>
+#include <jogasaki/utils/string_manipulation.h>
+#include "jogasaki/proto/sql/common.pb.h"
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
-#include "jogasaki/proto/sql/common.pb.h"
 
 #include "map_error_code.h"
 
@@ -634,9 +630,11 @@ private:
         std::vector<std::string> const& files,
         details::request_info const& req_info
     );
-    void set_params(::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps, std::unique_ptr<jogasaki::api::parameter_set>& params);
+    void set_params(
+        ::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps,
+        std::unique_ptr<jogasaki::api::parameter_set>& params
+    );
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };
 
-}
-
+}  // namespace jogasaki::api::impl

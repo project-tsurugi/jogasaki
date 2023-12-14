@@ -15,9 +15,9 @@
  */
 #include "record_channel_adapter.h"
 
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/data_channel.h>
+#include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/executor/io/record_writer.h>
 
 namespace jogasaki::executor::io {
 
@@ -43,4 +43,4 @@ status record_channel_adapter::meta(maybe_shared_ptr<meta::external_record_meta>
     return status::ok;
 }
 
-}
+}  // namespace jogasaki::executor::io

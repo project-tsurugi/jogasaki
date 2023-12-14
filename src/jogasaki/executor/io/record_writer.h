@@ -94,5 +94,4 @@ inline bool operator!=(record_writer const& a, record_writer const& b) noexcept 
     return !(a == b);
 }
 
-}
-
+}  // namespace jogasaki::executor::io

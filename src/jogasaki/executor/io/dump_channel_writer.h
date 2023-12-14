@@ -17,12 +17,12 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/executor/file/parquet_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::io {
 
@@ -92,4 +92,4 @@ private:
     void close_parquet_writer();
 };
 
-}
+}  // namespace jogasaki::executor::io

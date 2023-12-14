@@ -15,12 +15,12 @@
  */
 #pragma once
 
-#include "record_writer.h"
-
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/status.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/status.h>
+
+#include "record_writer.h"
 
 namespace jogasaki::executor::io {
 
@@ -50,7 +50,8 @@ public:
 
     /**
      * @brief acquire a new writer
-     * @param wrt [out] the pointer to the acquired writer. The returned value is valid only when the call finishes with status code status::ok.
+     * @param wrt [out] the pointer to the acquired writer. The returned value is valid only when
+     * the call finishes with status code status::ok.
      * @details the caller can use the acquired writer freely to write the data. Once it finishes using the writer,
      * the writer must be returned by calling the `release` function.
      * @note when multiple writers are acquired from a single channel, the order of the data written by those writers
@@ -70,4 +71,4 @@ public:
     virtual status meta(maybe_shared_ptr<meta::external_record_meta> m) = 0;
 };
 
-}
+}  // namespace jogasaki::executor::io

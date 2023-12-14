@@ -17,35 +17,34 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/constants.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
-#include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/impl/result_set.h>
-#include <jogasaki/api/impl/request_context_factory.h>
+#include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/request_context_factory.h>
+#include <jogasaki/api/impl/result_set.h>
+#include <jogasaki/api/impl/result_store_channel.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/plan/compiler.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/write.h>
-#include <jogasaki/scheduler/flat_task.h>
-#include <jogasaki/scheduler/task_scheduler.h>
-#include <jogasaki/scheduler/job_context.h>
-#include <jogasaki/executor/sequence/sequence.h>
-#include <jogasaki/api/impl/result_store_channel.h>
-#include <jogasaki/scheduler/task_factory.h>
-#include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/null_record_channel.h>
-#include <jogasaki/utils/backoff_timer.h>
-#include <jogasaki/utils/abort_error.h>
-#include <jogasaki/utils/hex.h>
-#include <jogasaki/accessor/record_printer.h>
-#include <jogasaki/index/utils.h>
+#include <jogasaki/executor/io/record_channel_adapter.h>
+#include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/index/index_accessor.h>
+#include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/request_logging.h>
-
+#include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/task_factory.h>
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/utils/abort_error.h>
+#include <jogasaki/utils/backoff_timer.h>
+#include <jogasaki/utils/hex.h>
 #include "jogasaki/index/field_factory.h"
 
 namespace jogasaki::executor {
@@ -220,7 +219,8 @@ bool execute_async(
         req
     );
     request_ctx->lightweight(
-            stmt->mirrors()->work_level().value() <= static_cast<std::int32_t>(request_ctx->configuration()->lightweight_job_level())
+        stmt->mirrors()->work_level().value() <=
+        static_cast<std::int32_t>(request_ctx->configuration()->lightweight_job_level())
     );
     auto& ts = *database.task_scheduler();
     auto jobid = request_ctx->job()->id();
@@ -256,9 +256,10 @@ bool execute_async(
         database,
         std::move(tx),
         statement,
-        channel ?
-            maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::record_channel_adapter>(channel)} :
-            maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::null_record_channel>()},
+        channel ? maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::record_channel_adapter>(
+                      channel
+                  )}
+                : maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::null_record_channel>()},
         std::move(on_completion),
         false
     );
@@ -444,7 +445,8 @@ bool execute_load(
 }
 
 void submit_task_commit_wait(request_context* rctx, scheduler::task_body_type&& body) {
-    // wait task does not need to be sticky because multiple commit operation for a transaction doesn't happen concurrently
+    // wait task does not need to be sticky
+    // because multiple commit operation for a transaction doesn't happen concurrently
     auto t = scheduler::create_custom_task(rctx, std::move(body), false, true);
     auto& ts = *rctx->scheduler();
     ts.schedule_task(std::move(t));
@@ -596,4 +598,4 @@ status create_transaction(
     return status::ok;
 }
 
-}
+}  // namespace jogasaki::executor

@@ -21,19 +21,12 @@
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
+#include <jogasaki/executor/io/dump_option.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::executor::io {
-
-struct dump_cfg {
-    constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
-
-    std::size_t max_records_per_file_{undefined};
-    std::size_t max_file_byte_size_{undefined};
-    bool keep_files_on_error_{false};
-};
 
 /**
  * @brief record channel to execute dump
@@ -126,4 +119,4 @@ private:
     tbb::concurrent_queue<std::string> output_files_{};
 };
 
-}
+}  // namespace jogasaki::executor::io

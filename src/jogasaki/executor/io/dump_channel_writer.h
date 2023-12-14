@@ -87,7 +87,7 @@ private:
     std::size_t current_sequence_number_{};
     dump_cfg cfg_{};
 
-    [[nodiscard]] std::string create_file_name(std::string_view prefix) const;
+    [[nodiscard]] std::string create_file_name(std::string_view prefix, dump_cfg const& cfg) const;
     void write_file_path(std::string_view path);
     void close_parquet_writer();
 };

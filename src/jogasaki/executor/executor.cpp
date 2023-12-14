@@ -272,11 +272,13 @@ bool execute_dump(
     std::string_view directory,
     error_info_callback on_completion,
     std::size_t max_records_per_file,
-    bool keep_files_on_error
+    bool keep_files_on_error,
+    executor::io::dump_file_format_kind file_format
 ) {
     executor::io::dump_cfg cfg{};
     cfg.max_records_per_file_ = max_records_per_file;
     cfg.keep_files_on_error_ = keep_files_on_error;
+    cfg.file_format_ = file_format;
     auto dump_ch = std::make_shared<executor::io::dump_channel>(
         std::make_shared<executor::io::record_channel_adapter>(channel),
         directory,

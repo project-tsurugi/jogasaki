@@ -31,6 +31,7 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/data_channel.h>
 #include <jogasaki/api/impl/data_writer.h>
+#include <jogasaki/executor/io/dump_option.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/string_manipulation.h>
 #include <jogasaki/utils/sanitize_utf8.h>
@@ -615,6 +616,7 @@ private:
     struct dump_option {
         std::size_t max_records_per_file_{};
         bool keep_files_on_error_{};
+        executor::io::dump_file_format_kind file_format_{executor::io::dump_file_format_kind::unspecified};
     };
 
     void execute_dump(

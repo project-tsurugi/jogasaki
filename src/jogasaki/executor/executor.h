@@ -22,6 +22,7 @@
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/executor/io/dump_option.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/utils/latch.h>
@@ -220,7 +221,8 @@ bool execute_dump(
     std::string_view directory,
     error_info_callback on_completion,
     std::size_t max_records_per_file = undefined,
-    bool keep_files_on_error = false
+    bool keep_files_on_error = false,
+    executor::io::dump_file_format_kind file_format = executor::io::dump_file_format_kind::unspecified
 );
 
 /**

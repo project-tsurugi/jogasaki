@@ -50,15 +50,16 @@ void dump_channel_writer::release() {
     writer_->release();
 }
 
-std::string dump_channel_writer::create_file_name(std::string_view prefix) const {
+std::string dump_channel_writer::create_file_name(std::string_view prefix, dump_cfg const& cfg) const {
     return
         std::string{prefix} + "_" + std::to_string(writer_index_) + "_" +
-        std::to_string(current_sequence_number_) + ".parquet";
+        std::to_string(current_sequence_number_) +
+        (cfg.file_format_ == dump_file_format_kind::arrow ? ".arrow" : ".parquet");
 }
 
 bool dump_channel_writer::write(accessor::record_ref rec) {
     if (! parquet_writer_) {
-        auto fn = create_file_name(parent_->prefix());
+        auto fn = create_file_name(parent_->prefix(), cfg_);
         boost::filesystem::path p(std::string{parent_->directory()});
         p = p / fn;
         parquet_writer_ = file::parquet_writer::open(parent_->meta(), p.string());

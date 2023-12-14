@@ -614,6 +614,15 @@ void service::command_execute_dump(
         ed.option().max_record_count_per_file() :
         max_records_per_file;
     opts.keep_files_on_error_ = ed.has_option() && ed.option().fail_behavior() == proto::sql::request::KEEP_FILES;
+    if(ed.has_option()) {
+        auto& opt = ed.option();
+        if(opt.has_arrow()) {
+             opts.file_format_ = executor::io::dump_file_format_kind::arrow;
+        }
+        if(opt.has_parquet()) {
+             opts.file_format_ = executor::io::dump_file_format_kind::parquet;
+        }
+    }
     execute_dump(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, ed.directory(), opts, req_info);
 }
 

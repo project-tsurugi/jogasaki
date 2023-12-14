@@ -1266,7 +1266,8 @@ void service::execute_dump(
                 }
             },
             opts.max_records_per_file_ == 0 ? max_records_per_file : opts.max_records_per_file_,
-            opts.keep_files_on_error_
+            opts.keep_files_on_error_,
+            opts.file_format_
     ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         throw_exception(std::logic_error{"execute_dump failed"});

@@ -73,6 +73,52 @@ private:
     std::atomic_size_t read_{};  //NOLINT
 };
 
+class database_info_impl : public tateyama::api::server::database_info {
+public:
+    process_id_type process_id() const noexcept override {
+        return {};
+    }
+
+    std::string_view name() const noexcept override {
+        return "database-name";
+    }
+
+    time_type start_at() const noexcept override {
+        return {};
+    }
+};
+
+class session_info_impl : public tateyama::api::server::session_info {
+public:
+    id_type id() const noexcept {
+        return {};
+    }
+
+    std::string_view label() const noexcept override {
+        return "label";
+    }
+
+    std::string_view application_name() const noexcept override {
+        return "application-name";
+    }
+
+    std::string_view user_name() const noexcept override {
+        return "user-name";
+    }
+
+    time_type start_at() const noexcept override {
+        return {};
+    }
+
+    std::string_view connection_type_name() const noexcept override {
+        return "connection-type-name";
+    }
+
+    std::string_view connection_information() const noexcept override {
+        return "connection-information";
+    }
+};
+
 class test_request : public request {
 public:
     test_request() = default;
@@ -92,10 +138,15 @@ public:
     [[nodiscard]] std::size_t session_id() const override;
     [[nodiscard]] std::size_t service_id() const override;
     [[nodiscard]] std::string_view payload() const override;
+    [[nodiscard]] tateyama::api::server::database_info const& database_info() const noexcept override;
+    [[nodiscard]] tateyama::api::server::session_info const& session_info() const noexcept override;
 
     std::string payload_{};  //NOLINT
     std::size_t session_id_{};
     std::size_t service_id_{};
+    database_info_impl database_info_{};
+    session_info_impl session_info_{};
+
 };
 
 class test_channel : public data_channel {

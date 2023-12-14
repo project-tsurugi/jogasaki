@@ -41,6 +41,14 @@ std::size_t test_request::service_id() const {
     return service_id_;
 }
 
+tateyama::api::server::database_info const& test_request::database_info() const noexcept {
+    return database_info_;
+}
+
+tateyama::api::server::session_info const& test_request::session_info() const noexcept {
+    return session_info_;
+}
+
 status test_channel::acquire(std::shared_ptr<writer>& wrt) {
     auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
     if (on_write_) {

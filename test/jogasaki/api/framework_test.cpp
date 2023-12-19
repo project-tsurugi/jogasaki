@@ -99,14 +99,22 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "port=12345\n"
         "threads=104\n"
 
-    "[datastore]\n"
-        "log_location=\n"
-        "logging_max_parallelism=112\n"
-
     "[cc]\n"
         "epoch_duration=40000\n"
         "waiting_resolver_threads=2\n"
+
+    "[datastore]\n"
+        "logging_max_parallelism=112\n"
+        "log_location="
 };
+
+std::shared_ptr<tateyama::api::configuration::whole> framework_test::create_config() {
+    std::stringstream ss{};
+    ss << default_configuration;
+    ss << path();
+    ss << "\n";
+    return tateyama::api::configuration::create_configuration("", ss.str());
+}
 
 TEST_F(framework_test, server_to_start_sql_engine) {
     auto conf = tateyama::api::configuration::create_configuration("", default_configuration);

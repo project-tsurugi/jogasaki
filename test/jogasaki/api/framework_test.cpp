@@ -68,11 +68,13 @@ public:
     }
 
     void SetUp() override {
+        temporary_.prepare();
     }
 
     void TearDown() override {
+        temporary_.clean();
     }
-
+    std::shared_ptr<tateyama::api::configuration::whole> create_config();
 };
 
 using namespace std::string_view_literals;
@@ -117,7 +119,7 @@ std::shared_ptr<tateyama::api::configuration::whole> framework_test::create_conf
 }
 
 TEST_F(framework_test, server_to_start_sql_engine) {
-    auto conf = tateyama::api::configuration::create_configuration("", default_configuration);
+    auto conf = create_config();
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);
@@ -163,7 +165,7 @@ public:
 };
 
 TEST_F(framework_test, send_request_with_header) {
-    auto conf = tateyama::api::configuration::create_configuration("", default_configuration);
+    auto conf = create_config();
     framework::boot_mode mode = framework::boot_mode::database_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);
@@ -196,7 +198,7 @@ TEST_F(framework_test, send_request_with_header) {
 }
 
 TEST_F(framework_test, quiescent_mode) {
-    auto conf = tateyama::api::configuration::create_configuration("", default_configuration);
+    auto conf = create_config();
     framework::boot_mode mode = framework::boot_mode::quiescent_server;
     framework::server sv{mode, conf};
     framework::add_core_components(sv);

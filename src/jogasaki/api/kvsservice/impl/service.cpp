@@ -132,9 +132,9 @@ static void success_begin(std::shared_ptr<transaction> const &tx, std::shared_pt
     begin.set_allocated_success(&success);
     proto_res.set_allocated_begin(&begin);
     reply(proto_res, res);
-    begin.release_success();
-    success.release_transaction_handle();
-    proto_res.release_begin();
+    (void)begin.release_success();
+    (void)success.release_transaction_handle();
+    (void)proto_res.release_begin();
 }
 
 static void error_begin(status status, std::shared_ptr<tateyama::api::server::response> &res,
@@ -147,10 +147,10 @@ static void error_begin(status status, std::shared_ptr<tateyama::api::server::re
     proto_res.set_allocated_begin(&begin);
     reply(proto_res, res);
     if (alloc_detail) {
-        error.release_detail();
+        (void)error.release_detail();
     }
-    begin.release_error();
-    proto_res.release_begin();
+    (void)begin.release_error();
+    (void)proto_res.release_begin();
 }
 
 static status_message check_supported(transaction_option &opt) {
@@ -214,8 +214,8 @@ static void success_commit(std::shared_ptr<tateyama::api::server::response> &res
     commit.set_allocated_success(&v);
     proto_res.set_allocated_commit(&commit);
     reply(proto_res, res);
-    commit.release_success();
-    proto_res.release_commit();
+    (void)commit.release_success();
+    (void)proto_res.release_commit();
 }
 
 static void error_commit(status status, std::shared_ptr<tateyama::api::server::response> &res,
@@ -228,10 +228,10 @@ static void error_commit(status status, std::shared_ptr<tateyama::api::server::r
     proto_res.set_allocated_commit(&commit);
     reply(proto_res, res);
     if (alloc_detail) {
-        error.release_detail();
+        (void)error.release_detail();
     }
-    commit.release_error();
-    proto_res.release_commit();
+    (void)commit.release_error();
+    (void)proto_res.release_commit();
 }
 
 static status_message check_supported(tateyama::proto::kvs::request::CommitStatus const status) {
@@ -293,8 +293,8 @@ static void success_rollback(std::shared_ptr<tateyama::api::server::response> &r
     rollback.set_allocated_success(&v);
     proto_res.set_allocated_rollback(&rollback);
     reply(proto_res, res);
-    rollback.release_success();
-    proto_res.release_rollback();
+    (void)rollback.release_success();
+    (void)proto_res.release_rollback();
 }
 
 static void error_rollback(status status, std::shared_ptr<tateyama::api::server::response> &res) {
@@ -305,8 +305,8 @@ static void error_rollback(status status, std::shared_ptr<tateyama::api::server:
     rollback.set_allocated_error(&error);
     proto_res.set_allocated_rollback(&rollback);
     reply(proto_res, res);
-    rollback.release_error();
-    proto_res.release_rollback();
+    (void)rollback.release_error();
+    (void)proto_res.release_rollback();
 }
 
 void service::command_rollback(tateyama::proto::kvs::request::Request const &proto_req,
@@ -357,8 +357,8 @@ static void success_put(int written, std::shared_ptr<tateyama::api::server::resp
     put.set_allocated_success(&success);
     proto_res.set_allocated_put(&put);
     reply(proto_res, res);
-    put.release_success();
-    proto_res.release_put();
+    (void)put.release_success();
+    (void)proto_res.release_put();
 }
 
 static void error_put(status status, std::shared_ptr<tateyama::api::server::response> &res,
@@ -371,10 +371,10 @@ static void error_put(status status, std::shared_ptr<tateyama::api::server::resp
     proto_res.set_allocated_put(&put);
     reply(proto_res, res);
     if (alloc_detail) {
-        error.release_detail();
+        (void)error.release_detail();
     }
-    put.release_error();
-    proto_res.release_put();
+    (void)put.release_error();
+    (void)proto_res.release_put();
 }
 
 void service::command_put(tateyama::proto::kvs::request::Request const &proto_req,
@@ -428,10 +428,10 @@ static void success_get(tateyama::proto::kvs::response::Get_Success &success, st
     proto_res.set_allocated_get(&get);
     reply(proto_res, res);
     while (success.records_size() > 0) {
-        success.mutable_records()->ReleaseLast();
+        (void)success.mutable_records()->ReleaseLast();
     }
-    get.release_success();
-    proto_res.release_get();
+    (void)get.release_success();
+    (void)proto_res.release_get();
 }
 
 static void error_get(status status, std::shared_ptr<tateyama::api::server::response> &res) {
@@ -442,8 +442,8 @@ static void error_get(status status, std::shared_ptr<tateyama::api::server::resp
     get.set_allocated_error(&error);
     proto_res.set_allocated_get(&get);
     reply(proto_res, res);
-    get.release_error();
-    proto_res.release_get();
+    (void)get.release_error();
+    (void)proto_res.release_get();
 }
 
 void service::command_get(tateyama::proto::kvs::request::Request const &proto_req,
@@ -477,7 +477,7 @@ void service::command_get(tateyama::proto::kvs::request::Request const &proto_re
     }
     success_get(success, res);
     while (success.records_size() > 0) {
-        success.mutable_records()->ReleaseLast();
+        (void)success.mutable_records()->ReleaseLast();
     }
 }
 
@@ -505,8 +505,8 @@ static void success_remove(int removed, std::shared_ptr<tateyama::api::server::r
     remove.set_allocated_success(&success);
     proto_res.set_allocated_remove(&remove);
     reply(proto_res, res);
-    remove.release_success();
-    proto_res.release_remove();
+    (void)remove.release_success();
+    (void)proto_res.release_remove();
 }
 
 static void error_remove(status status, std::shared_ptr<tateyama::api::server::response> &res,
@@ -519,10 +519,10 @@ static void error_remove(status status, std::shared_ptr<tateyama::api::server::r
     proto_res.set_allocated_remove(&remove);
     reply(proto_res, res);
     if (alloc_detail) {
-        error.release_detail();
+        (void)error.release_detail();
     }
-    remove.release_error();
-    proto_res.release_remove();
+    (void)remove.release_error();
+    (void)proto_res.release_remove();
 }
 
 void service::command_remove(tateyama::proto::kvs::request::Request const &proto_req,
@@ -575,8 +575,8 @@ static void has_error_get_error_info(tateyama::proto::kvs::response::Error &erro
     getinfo.set_allocated_error(&error);
     proto_res.set_allocated_get_error_info(&getinfo);
     reply(proto_res, res);
-    getinfo.release_error();
-    proto_res.release_get_error_info();
+    (void)getinfo.release_error();
+    (void)proto_res.release_get_error_info();
 }
 
 static void no_error_get_error_info(std::shared_ptr<tateyama::api::server::response> &res) {
@@ -586,8 +586,8 @@ static void no_error_get_error_info(std::shared_ptr<tateyama::api::server::respo
     getinfo.set_allocated_error_not_found(&v);
     proto_res.set_allocated_get_error_info(&getinfo);
     reply(proto_res, res);
-    getinfo.release_error_not_found();
-    proto_res.release_get_error_info();
+    (void)getinfo.release_error_not_found();
+    (void)proto_res.release_get_error_info();
 }
 
 static void error_get_error_info(status status, std::shared_ptr<tateyama::api::server::response> &res) {
@@ -598,8 +598,8 @@ static void error_get_error_info(status status, std::shared_ptr<tateyama::api::s
     getinfo.set_allocated_error(&error);
     proto_res.set_allocated_get_error_info(&getinfo);
     reply(proto_res, res);
-    getinfo.release_error();
-    proto_res.release_get_error_info();
+    (void)getinfo.release_error();
+    (void)proto_res.release_get_error_info();
 }
 
 void service::command_get_error_info(tateyama::proto::kvs::request::Request const &proto_req,
@@ -629,8 +629,8 @@ static void success_dispose_transaction(std::shared_ptr<tateyama::api::server::r
     dispose.set_allocated_success(&v);
     proto_res.set_allocated_dispose_transaction(&dispose);
     reply(proto_res, res);
-    dispose.release_success();
-    proto_res.release_dispose_transaction();
+    (void)dispose.release_success();
+    (void)proto_res.release_dispose_transaction();
 }
 
 static void error_dispose_transaction(status status, std::shared_ptr<tateyama::api::server::response> &res) {
@@ -641,8 +641,8 @@ static void error_dispose_transaction(status status, std::shared_ptr<tateyama::a
     dispose.set_allocated_error(&error);
     proto_res.set_allocated_dispose_transaction(&dispose);
     reply(proto_res, res);
-    dispose.release_error();
-    proto_res.release_dispose_transaction();
+    (void)dispose.release_error();
+    (void)proto_res.release_dispose_transaction();
 }
 
 void service::command_dispose_transaction(tateyama::proto::kvs::request::Request const &proto_req,

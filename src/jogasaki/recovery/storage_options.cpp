@@ -53,7 +53,7 @@ bool create_storage_option(
     }
     storage = ss.str();
     VLOG_LP(log_trace) << "storage_option:" << utils::to_debug_string(stg);
-    stg.release_index();
+    (void)stg.release_index();
     return true;
 }
 

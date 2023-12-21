@@ -123,23 +123,23 @@ void set_allocated_object(sql::response::Response& r, T& p) {
 template<typename T>
 void release_object(sql::response::Response& r, T&) {
     if constexpr (std::is_same_v<T, sql::response::Begin>) {  //NOLINT
-        r.release_begin();
+        (void)r.release_begin();
     } else if constexpr (std::is_same_v<T, sql::response::Prepare>) {  //NOLINT
-        r.release_prepare();
+        (void)r.release_prepare();
     } else if constexpr (std::is_same_v<T, sql::response::ResultOnly>) {  //NOLINT
-        r.release_result_only();
+        (void)r.release_result_only();
     } else if constexpr (std::is_same_v<T, sql::response::ExecuteQuery>) {  //NOLINT
-        r.release_execute_query();
+        (void)r.release_execute_query();
     } else if constexpr (std::is_same_v<T, sql::response::Explain>) {  //NOLINT
-        r.release_explain();
+        (void)r.release_explain();
     } else if constexpr (std::is_same_v<T, sql::response::DescribeTable>) {  //NOLINT
-        r.release_describe_table();
+        (void)r.release_describe_table();
     } else if constexpr (std::is_same_v<T, sql::response::ListTables>) {  //NOLINT
-        r.release_list_tables();
+        (void)r.release_list_tables();
     } else if constexpr (std::is_same_v<T, sql::response::GetErrorInfo>) {  //NOLINT
-        r.release_get_error_info();
+        (void)r.release_get_error_info();
     } else if constexpr (std::is_same_v<T, sql::response::ExecuteResult>) {  //NOLINT
-        r.release_execute_result();
+        (void)r.release_execute_result();
     } else {
         static_fail();
     }
@@ -161,7 +161,7 @@ void error(
     set_allocated_object(r, p);
     reply(res, r, req_info);
     release_object(r, p);
-    p.release_error();
+    (void)p.release_error();
 }
 
 template<typename T>
@@ -182,7 +182,7 @@ void error(
     set_allocated_object(r, p);
     reply(res, r, req_info);
     release_object(r, p);
-    p.release_error();
+    (void)p.release_error();
 }
 
 template<typename T>
@@ -214,8 +214,8 @@ inline void success<sql::response::ResultOnly>(
     ro.set_allocated_success(&s);
     r.set_allocated_result_only(&ro);
     reply(res, r, req_info);
-    r.release_result_only();
-    ro.release_success();
+    (void)r.release_result_only();
+    (void)ro.release_success();
 }
 
 template<>
@@ -238,10 +238,10 @@ inline void success<sql::response::Begin>(
     b.set_allocated_success(&s);
     r.set_allocated_begin(&b);
     reply(res, r, req_info);
-    r.release_begin();
-    b.release_success();
-    s.release_transaction_id();
-    s.release_transaction_handle();
+    (void)r.release_begin();
+    (void)b.release_success();
+    (void)s.release_transaction_id();
+    (void)s.release_transaction_handle();
 }
 
 template<>
@@ -259,8 +259,8 @@ inline void success<sql::response::Prepare>(
     p.set_allocated_prepared_statement_handle(&ps);
     r.set_allocated_prepare(&p);
     reply(res, r, req_info);
-    r.release_prepare();
-    p.release_prepared_statement_handle();
+    (void)r.release_prepare();
+    (void)p.release_prepared_statement_handle();
 }
 
 inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::data const& type) {
@@ -304,10 +304,10 @@ inline void success<sql::response::Explain>(
     set_metadata(meta, success);
     reply(res, r, req_info);
     success.clear_columns();
-    r.release_explain();
-    success.release_format_id();
-    success.release_contents();
-    explain.release_success();
+    (void)r.release_explain();
+    (void)success.release_format_id();
+    (void)success.release_contents();
+    (void)explain.release_success();
 }
 
 template<>
@@ -336,8 +336,8 @@ inline void success<sql::response::DescribeTable>(
     }
     reply(res, r, req_info);
     success.clear_columns();
-    dt.release_success();
-    r.release_describe_table();
+    (void)dt.release_success();
+    (void)r.release_describe_table();
 }
 
 template<>
@@ -356,8 +356,8 @@ inline void success<sql::response::ListTables>(
         name->add_identifiers()->set_label(n);
     }
     reply(res, r, req_info);
-    lt.release_success();
-    r.release_list_tables();
+    (void)lt.release_success();
+    (void)r.release_list_tables();
 }
 
 template<>
@@ -374,8 +374,8 @@ inline void success<sql::response::GetSearchPath>(
     // currently search path is not in place yet, so return empty success object
 
     reply(res, r, req_info);
-    sp.release_success();
-    r.release_get_search_path();
+    (void)sp.release_success();
+    (void)r.release_get_search_path();
 }
 
 
@@ -403,11 +403,11 @@ inline void success<sql::response::GetErrorInfo>(
     }
     reply(res, r, req_info);
     if (! info) {
-        gei.release_error_not_found();
+        (void)gei.release_error_not_found();
     } else {
-        gei.release_success();
+        (void)gei.release_success();
     }
-    r.release_get_error_info();
+    (void)r.release_get_error_info();
 }
 
 inline sql::response::ExecuteResult::CounterType from(counter_kind kind) {
@@ -440,8 +440,8 @@ inline void success<sql::response::ExecuteResult>(
         }
     });
     reply(res, r, req_info);
-    r.release_execute_result();
-    er.release_success();
+    (void)r.release_execute_result();
+    (void)er.release_success();
 }
 
 inline void send_body_head(
@@ -458,8 +458,8 @@ inline void send_body_head(
     e.set_allocated_record_meta(&meta);
     r.set_allocated_execute_query(&e);
     details::reply(res, r, req_info, true);
-    r.release_execute_query();
-    e.release_record_meta();
+    (void)r.release_execute_query();
+    (void)e.release_record_meta();
 }
 
 }

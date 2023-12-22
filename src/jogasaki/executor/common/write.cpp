@@ -173,8 +173,10 @@ status fill_evaluated_value(
         );
         return rc;
     }
+    // varlen fields data is already on `resource`, so no need to copy
+    auto nocopy = nullptr;
     if (f.nullable_) {
-        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, res, std::addressof(resource));
+        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, res, nocopy);
     } else {
         if (!res) {
             auto rc = status::err_integrity_constraint_violation;
@@ -185,7 +187,7 @@ status fill_evaluated_value(
                 rc);
             return rc;
         }
-        utils::copy_field(f.type_, out.ref(), f.offset_, res, std::addressof(resource));
+        utils::copy_field(f.type_, out.ref(), f.offset_, res, nocopy);
     }
     return status::ok;
 }

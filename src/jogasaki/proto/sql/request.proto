@@ -255,11 +255,76 @@ enum DumpFailBehavior {
     KEEP_FILES = 2;
 }
 
-// settings about Apache Parquet files.
-message ParquetFileFormat {}
+// individual columns settings of ParquetFileFormat.
+message ParquetColumnFormat {
+    // the target column name.
+    string name = 1;
 
-// settings about Apache Arrow files.
-message ArrowFileFormat {}
+    // column compression codec name (overwrites the file format setting).
+    string codec = 2;
+
+    // column compression type name (overwrites the file format setting).
+    string encoding = 3;
+}
+
+// dump file format for Apache Parquet.
+message ParquetFileFormat {
+    // the parquet file format version.
+    string parquet_version = 1;
+
+    // the maximum number of rows in the same row group.
+    int64 record_batch_size = 2;
+
+    // the approximately maximum row group size in bytes.
+    int64 record_batch_in_bytes = 3;
+
+    // common compression codec name of the individual columns.
+    string codec = 4;
+
+    // common encoding type of the individual columns.
+    string encoding = 5;
+
+    reserved 6 to 10;
+
+    // settings of each column.
+    repeated ParquetColumnFormat columns = 11;
+}
+
+// CHAR column metadata type for Arrow files.
+enum ArrowCharacterFieldType {
+    // use default metadata type for CHAR columns.
+    ARROW_CHARACTER_FIELD_TYPE_UNSPECIFIED = 0;
+
+    // use StringBuilder for CHAR columns.
+    STRING = 1;
+
+    // use FixedSizeBinaryBuilder for CHAR columns.
+    FIXED_SIZE_BINARY = 2;
+}
+
+// dump file format for Apache Arrow.
+message ArrowFileFormat {
+    // the metadata format version.
+    string metadata_version = 1;
+
+    // the byte alignment of each values.
+    int32 alignment = 2;
+
+    // the maximum number of records in record batch.
+    int64 record_batch_size = 3;
+
+    // the approximately maximum size of each record batch in bytes.
+    int64 record_batch_in_bytes = 4;
+
+    // compression codec name.
+    string codec = 5;
+
+    // threshold for adopting compressed data.
+    double min_space_saving = 6;
+
+    // CHAR column metadata type.
+    ArrowCharacterFieldType character_field_type = 7;
+}
 
 // options for dump request
 message DumpOption {

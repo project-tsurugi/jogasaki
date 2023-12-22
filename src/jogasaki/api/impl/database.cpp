@@ -187,6 +187,8 @@ status database::stop() {
         task_scheduler_.reset();
     }
     sequence_manager_.reset();
+
+    global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
     deinit();
     prepared_statements_.clear();
 

@@ -134,6 +134,14 @@ public:
      */
     void release_page(page_info page) noexcept;
 
+    /**
+     * @brief dump pool information
+     * @details this is thread-unsafe operation and can break running sql if any.
+     * Appropriate for debugging on system failure (e.g. freeze) or on database shutdown.
+     * @param out the output stream to be written to
+     */
+    void unsafe_dump_info(std::ostream& out);
+
 private:
     using free_pages_type = tbb::concurrent_queue<void*>;
     std::vector<free_pages_type> free_pages_vector_{};

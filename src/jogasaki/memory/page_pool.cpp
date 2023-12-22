@@ -15,6 +15,13 @@
  */
 #include "page_pool.h"
 
+#include <glog/logging.h>
+
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+
+#include "../third_party/nlohmann/json.hpp"
+
 namespace jogasaki::memory {
 
 memory::page_pool::page_pool() {
@@ -60,6 +67,25 @@ page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
 void page_pool::release_page(page_info page) noexcept {
     auto& free_pages = get_free_pages(page.birth_place());
     free_pages.push(page.address());
+}
+
+void page_pool::unsafe_dump_info(std::ostream& out) {
+    using json = nlohmann::json;
+    try {
+        json j{};
+        j["nodes"] = json::array();
+        auto& nodes = j["nodes"];
+        std::size_t id = 0;
+        for(auto&& e: free_pages_vector_) {
+            json node{};
+            node["id"] = id++;
+            node["size"] = e.unsafe_size();
+            nodes.emplace_back(std::move(node));
+        }
+        out << j.dump();
+    } catch (json::exception const& e) {
+        VLOG_LP(log_error) << "json exception on dumping page pool information " << e.what();
+    }
 }
 
 }

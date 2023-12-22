@@ -108,6 +108,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(commit_response) " << cfg.default_commit_response() << " : commit notification timing default";
     LOGCFG << "(dev_update_skips_deletion) " << cfg.update_skips_deletion() << " : whether update statement skips unnecessary deletion when possible";
     LOGCFG << "(dev_profile_commits) " << cfg.profile_commits() << " : whether to profile commit/durability callbacks";
+    LOGCFG << "(dev_return_os_pages) " << cfg.return_os_pages() << " : whether to return released memory pages to operating system";
 }
 
 status database::start() {

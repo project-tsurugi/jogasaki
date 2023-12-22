@@ -336,6 +336,13 @@ public:
         return skip_smv_check_;
     }
 
+    void return_os_pages(bool arg) noexcept {
+        return_os_pages_ = arg;
+    }
+
+    [[nodiscard]] bool return_os_pages() const noexcept {
+        return return_os_pages_;
+    }
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -365,6 +372,7 @@ public:
             "update_skips_deletion:" << cfg.update_skips_deletion() << " " <<
             "profile_commits:" << cfg.profile_commits() << " " <<
             "skip_smv_check:" << cfg.skip_smv_check() << " " <<
+            "return_os_pages:" << cfg.return_os_pages() << " " <<
             "";
     }
 
@@ -400,6 +408,7 @@ private:
     bool update_skips_deletion_ = false;
     bool profile_commits_ = false;
     bool skip_smv_check_ = false;
+    bool return_os_pages_ = false;
 };
 
 }

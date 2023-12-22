@@ -17,6 +17,8 @@
 
 #include <glog/logging.h>
 
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 
@@ -65,6 +67,12 @@ page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
 }
 
 void page_pool::release_page(page_info page) noexcept {
+    if(global::config_pool()->return_os_pages()) {
+        if(0 != munmap(page.address(), page_size)) {
+            LOG_LP(ERROR) << "internal error - munmap failed << " << page.address();
+        }
+        return;
+    }
     auto& free_pages = get_free_pages(page.birth_place());
     free_pages.push(page.address());
 }

@@ -209,6 +209,9 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<bool>("dev_profile_commits")) {
         ret->profile_commits(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_return_os_pages")) {
+        ret->return_os_pages(v.value());
+    }
     return ret;
 }
 

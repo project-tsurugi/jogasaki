@@ -87,7 +87,13 @@ void page_pool::unsafe_dump_info(std::ostream& out) {
         for(auto&& e: free_pages_vector_) {
             json node{};
             node["id"] = id++;
-            node["size"] = e.unsafe_size();
+            // tbb::concurrent_queue::unsafe_size() sometime returns 0, so we avoid using it here
+            std::size_t sz = 0;
+            for(auto it = e.unsafe_begin(), end = e.unsafe_end(); it != end; ++it) {
+                ++sz;
+            }
+            node["free_page_count"] = sz;
+            node["free_page_bytes"] = sz * page_size;
             nodes.emplace_back(std::move(node));
         }
         out << j.dump();

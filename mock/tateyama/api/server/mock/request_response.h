@@ -90,7 +90,7 @@ public:
 
 class session_info_impl : public tateyama::api::server::session_info {
 public:
-    id_type id() const noexcept {
+    id_type id() const noexcept override {
         return {};
     }
 

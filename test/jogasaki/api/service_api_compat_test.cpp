@@ -121,7 +121,7 @@ TEST_F(service_api_compat_test, valid_version) {
     r.mutable_session_handle()->set_handle(1);
 
     r.set_service_message_version_major(service_message_version_major);
-    r.set_service_message_version_minor(service_message_version_major);
+    r.set_service_message_version_minor(service_message_version_minor);
 
     auto s = utils::serialize(r);
     r.clear_listtables();
@@ -143,7 +143,7 @@ TEST_F(service_api_compat_test, invalid_version) {
     r.mutable_session_handle()->set_handle(1);
 
     r.set_service_message_version_major(service_message_version_major+1);
-    r.set_service_message_version_minor(service_message_version_minor);
+    r.set_service_message_version_minor(0);
 
     auto s = utils::serialize(r);
     r.clear_listtables();
@@ -156,7 +156,7 @@ TEST_F(service_api_compat_test, invalid_version) {
     auto record = res->error_;
     EXPECT_EQ(record.code(), tateyama::proto::diagnostics::Code::INVALID_REQUEST);
     EXPECT_EQ(record.message(),
-              "inconsistent service message version: see https://github.com/project-tsurugi/tsurugidb/blob/master/docs/service-message-compatibilities.md (client: \"sql-2.0\", server: \"sql-1.0\")");
+              "inconsistent service message version: see https://github.com/project-tsurugi/tsurugidb/blob/master/docs/service-message-compatibilities.md (client: \"sql-2.0\", server: \"sql-1.1\")");
 }
 
 TEST_F(service_api_compat_test, none_version_provided) {
@@ -180,7 +180,7 @@ TEST_F(service_api_compat_test, none_version_provided) {
     auto record = res->error_;
     EXPECT_EQ(record.code(), tateyama::proto::diagnostics::Code::INVALID_REQUEST);
     EXPECT_EQ(record.message(),
-    "inconsistent service message version: see https://github.com/project-tsurugi/tsurugidb/blob/master/docs/service-message-compatibilities.md (client: \"sql-0.0\", server: \"sql-1.0\")"
+    "inconsistent service message version: see https://github.com/project-tsurugi/tsurugidb/blob/master/docs/service-message-compatibilities.md (client: \"sql-0.0\", server: \"sql-1.1\")"
     );
 }
 }

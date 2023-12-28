@@ -22,6 +22,7 @@
 
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/file/parquet_writer.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/record_meta.h>
@@ -44,8 +45,8 @@ dump_channel_writer::dump_channel_writer(
 {}
 
 void dump_channel_writer::release() {
-    if (parquet_writer_) {
-        close_parquet_writer();
+    if (file_writer_) {
+        close_file_writer();
     }
     writer_->release();
 }
@@ -58,21 +59,26 @@ std::string dump_channel_writer::create_file_name(std::string_view prefix, dump_
 }
 
 bool dump_channel_writer::write(accessor::record_ref rec) {
-    if (! parquet_writer_) {
+    if (! file_writer_) {
         auto fn = create_file_name(parent_->prefix(), cfg_);
         boost::filesystem::path p(std::string{parent_->directory()});
         p = p / fn;
-        parquet_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
-        if (! parquet_writer_) {
-            VLOG_LP(log_error) << "parquet file creation failed on path " << p.string();
+        if(cfg_.file_format_ == dump_file_format_kind::arrow) {
+            // FIXME
+            file_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
+        } else {
+            file_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
+        }
+        if (! file_writer_) {
+            VLOG_LP(log_error) << "dump file creation failed on path " << p.string();
             return false;
         }
     }
-    if(auto res = parquet_writer_->write(rec); ! res) {
+    if(auto res = file_writer_->write(rec); ! res) {
         return false;
     }
     if(cfg_.max_records_per_file_ != dump_cfg::undefined &&
-       parquet_writer_->write_count() >= cfg_.max_records_per_file_) {
+       file_writer_->write_count() >= cfg_.max_records_per_file_) {
         flush();
     }
     return true;
@@ -90,16 +96,16 @@ void dump_channel_writer::write_file_path(std::string_view path) {
     parent_->add_output_file(path);
 }
 
-void dump_channel_writer::close_parquet_writer() {
-    parquet_writer_->close();
-    write_file_path(parquet_writer_->path());
-    parquet_writer_.reset();
+void dump_channel_writer::close_file_writer() {
+    file_writer_->close();
+    write_file_path(file_writer_->path());
+    file_writer_.reset();
     ++current_sequence_number_;
 }
 
 void dump_channel_writer::flush() {
-    if (parquet_writer_) {
-        close_parquet_writer();
+    if (file_writer_) {
+        close_file_writer();
     }
 }
 

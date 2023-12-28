@@ -18,7 +18,7 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/data_channel.h>
-#include <jogasaki/executor/file/parquet_writer.h>
+#include <jogasaki/executor/file/file_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/meta/record_meta.h>
@@ -82,14 +82,14 @@ public:
 private:
     dump_channel* parent_{};
     maybe_shared_ptr<record_writer> writer_{};
-    std::shared_ptr<file::parquet_writer> parquet_writer_{};
+    std::shared_ptr<file::file_writer> file_writer_{};
     std::size_t writer_index_{};
     std::size_t current_sequence_number_{};
     dump_cfg cfg_{};
 
     [[nodiscard]] std::string create_file_name(std::string_view prefix, dump_cfg const& cfg) const;
     void write_file_path(std::string_view path);
-    void close_parquet_writer();
+    void close_file_writer();
 };
 
 }  // namespace jogasaki::executor::io

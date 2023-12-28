@@ -23,6 +23,7 @@
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/file/parquet_writer.h>
+#include <jogasaki/executor/file/arrow_writer.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/record_meta.h>
@@ -64,8 +65,7 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
         boost::filesystem::path p(std::string{parent_->directory()});
         p = p / fn;
         if(cfg_.file_format_ == dump_file_format_kind::arrow) {
-            // FIXME
-            file_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
+            file_writer_ = file::arrow_writer::open(parent_->meta(), p.string());
         } else {
             file_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
         }

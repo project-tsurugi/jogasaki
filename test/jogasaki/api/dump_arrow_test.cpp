@@ -51,6 +51,11 @@ using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
+using date_v = takatori::datetime::date;
+using time_of_day_v = takatori::datetime::time_of_day;
+using time_point_v = takatori::datetime::time_point;
+using decimal_v = takatori::decimal::triple;
+
 using takatori::util::unsafe_downcast;
 using jogasaki::api::impl::get_impl;
 
@@ -172,10 +177,89 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(dump_arrow_test, basic) {
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30.0)");
-    test_dump("select * from T0");
+    execute_statement("CREATE TABLE T(C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (2, 20.0)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (3, 30.0)");
+    test_dump("select * from T");
+}
+
+TEST_F(dump_arrow_test, int_float_types) {
+    execute_statement("CREATE TABLE T(PK INT NOT NULL PRIMARY KEY, C0 INT, C1 BIGINT, C2 REAL, C3 DOUBLE)");
+    execute_statement("INSERT INTO T (PK) VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (1, 11, 111, 11.11, 111.11)");
+    execute_statement("INSERT INTO T VALUES (2, 22, 222, 22.22, 222.22)");
+    execute_statement("INSERT INTO T VALUES (3, 33, 333, 33.33, 333.33)");
+    test_dump("select * from T");
+}
+
+TEST_F(dump_arrow_test, char_types) {
+    execute_statement("CREATE TABLE T(PK INT NOT NULL PRIMARY KEY, C0 CHAR(5), C1 VARCHAR(5))");
+    execute_statement("INSERT INTO T (PK) VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (1, '111', '111')");
+    execute_statement("INSERT INTO T VALUES (2, '222', '222')");
+    execute_statement("INSERT INTO T VALUES (3, '333', '333')");
+    test_dump("select * from T");
+}
+
+TEST_F(dump_arrow_test, decimal_types) {
+    execute_statement("CREATE TABLE T(PK INT NOT NULL PRIMARY KEY, C0 DECIMAL(3), C1 DECIMAL(5,3), C2 DECIMAL(10,5))");
+    execute_statement("INSERT INTO T (PK) VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (1, CAST('111' AS DECIMAL(3)), CAST('11.111' AS DECIMAL(5,3)), CAST('11111.11111' AS DECIMAL(10,5)))");
+    execute_statement("INSERT INTO T VALUES (2, CAST('222' AS DECIMAL(3)), CAST('22.222' AS DECIMAL(5,3)), CAST('22222.22222' AS DECIMAL(10,5)))");
+    execute_statement("INSERT INTO T VALUES (3, CAST('333' AS DECIMAL(3)), CAST('33.333' AS DECIMAL(5,3)), CAST('33333.33333' AS DECIMAL(10,5)))");
+    test_dump("select * from T");
+}
+
+TEST_F(dump_arrow_test, temporal_types) {
+    execute_statement("CREATE TABLE T(PK INT NOT NULL PRIMARY KEY, C0 DATE, C1 TIME, C2 TIMESTAMP)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::date},
+        {"p1", api::field_type_kind::time_of_day},
+        {"p2", api::field_type_kind::time_point},
+    };
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto ps = api::create_parameter_set();
+    ps->set_date("p0", d2000_1_1);
+    ps->set_time_of_day("p1", t12_0_0);
+    ps->set_time_point("p2", tp2000_1_1_12_0_0);
+    execute_statement("INSERT INTO T (PK) VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (1, :p0, :p1, :p2)", variables, *ps);
+    test_dump("select * from T");
+}
+TEST_F(dump_arrow_test, many_types) {
+    execute_statement("CREATE TABLE T("
+                      "PK INT NOT NULL PRIMARY KEY,"
+                      "C0 INT,"
+                      "C1 BIGINT,"
+                      "C2 REAL,"
+                      "C3 DOUBLE,"
+                      "C4 CHAR(5),"
+                      "C5 VARCHAR(5),"
+                      "C6 DECIMAL(3),"
+                      "C7 DECIMAL(5,3),"
+                      "C8 DECIMAL(10,5),"
+                      "C9 DATE,"
+                      "C10 TIME,"
+                      "C11 TIMESTAMP"
+                      ")");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::date},
+        {"p1", api::field_type_kind::time_of_day},
+        {"p2", api::field_type_kind::time_point},
+    };
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto ps = api::create_parameter_set();
+    ps->set_date("p0", d2000_1_1);
+    ps->set_time_of_day("p1", t12_0_0);
+    ps->set_time_point("p2", tp2000_1_1_12_0_0);
+    execute_statement("INSERT INTO T (PK) VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (1, 1, 11, 11.1, 11.11, '111', '111', CAST('111' AS DECIMAL(3)), CAST('11.111' AS DECIMAL(5,3)), CAST('11111.11111' AS DECIMAL(10,5)), :p0, :p1, :p2)", variables, *ps);
+    test_dump("select * from T");
 }
 
 }  // namespace jogasaki::api

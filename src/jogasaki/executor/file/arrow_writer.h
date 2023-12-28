@@ -20,8 +20,8 @@
 #include <boost/filesystem.hpp>
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
-#include <parquet/api/reader.h>
-#include <parquet/api/writer.h>
+
+#include <arrow/ipc/writer.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -36,19 +36,19 @@ namespace jogasaki::executor::file {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief parquet file writer
+ * @brief arrow file writer
  */
-class parquet_writer : public file_writer {
+class arrow_writer : public file_writer {
 public:
     /**
      * @brief create empty object
      */
-    parquet_writer() = default;
+    arrow_writer() = default;
 
-    parquet_writer(parquet_writer const& other) = delete;
-    parquet_writer& operator=(parquet_writer const& other) = delete;
-    parquet_writer(parquet_writer&& other) noexcept = default;
-    parquet_writer& operator=(parquet_writer&& other) noexcept = default;
+    arrow_writer(arrow_writer const& other) = delete;
+    arrow_writer& operator=(arrow_writer const& other) = delete;
+    arrow_writer(arrow_writer&& other) noexcept = default;
+    arrow_writer& operator=(arrow_writer&& other) noexcept = default;
 
     /**
      * @brief create new object
@@ -56,13 +56,13 @@ public:
      * @details this function is intended to be called from open(). Use open() function because it can report error
      * during initialization.
      */
-    explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta);
+    explicit arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta);
 
     /**
      * @brief destruct object
      * @details destruct the object closing the file if any opened
      */
-    ~parquet_writer() noexcept override;
+    ~arrow_writer() noexcept override;
 
     /**
      * @brief write the record
@@ -95,35 +95,40 @@ public:
     void new_row_group() override;
 
     /**
-     * @brief factory function to construct the new parquet_writer object
+     * @brief factory function to construct the new arrow_writer object
      * @param meta metadata of the written records
      * @param path the file path that is to be written
      * @return newly created object on success
      * @return nullptr otherwise
      */
-    static std::shared_ptr<parquet_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
+    static std::shared_ptr<arrow_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
-    std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
-    parquet::RowGroupWriter* row_group_writer_{};
-    std::vector<parquet::ColumnWriter*> column_writers_{};
+    std::shared_ptr<arrow::ipc::RecordBatchWriter> record_batch_writer_{};
+    std::shared_ptr<arrow::Schema> schema_{};
+
+    std::vector<std::shared_ptr<arrow::ArrayBuilder>> array_builders_{};
+    std::vector<std::shared_ptr<arrow::Array>> arrays_{};
     boost::filesystem::path path_{};
     std::size_t write_count_{};
     std::vector<details::column_option> column_options_{};
 
-    std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::column_option>> create_schema();
-    bool write_int4(std::size_t colidx, std::int32_t v, bool null = false);
-    bool write_int8(std::size_t colidx, std::int64_t v, bool null = false);
-    bool write_float4(std::size_t colidx, float v, bool null = false);
-    bool write_float8(std::size_t colidx, double v, bool null = false);
-    bool write_character(std::size_t colidx, accessor::text v, bool null = false);
-    bool write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null = false, details::column_option const& colopt = {});
-    bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
-    bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
-    bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
+    std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> create_schema();
+    bool write_int1(std::size_t colidx, std::int32_t v);
+    bool write_int2(std::size_t colidx, std::int32_t v);
+    bool write_int4(std::size_t colidx, std::int32_t v);
+    bool write_int8(std::size_t colidx, std::int64_t v);
+    bool write_float4(std::size_t colidx, float v);
+    bool write_float8(std::size_t colidx, double v);
+    bool write_character(std::size_t colidx, accessor::text v);
+    bool write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, details::column_option const& colopt = {});
+    bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v);
+    bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v);
+    bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v);
     bool init(std::string_view path);
+    void finish();
 };
 
 }

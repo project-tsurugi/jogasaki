@@ -27,6 +27,7 @@
 
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/file/file_writer.h>
 
 namespace jogasaki::executor::file {
 
@@ -61,7 +62,7 @@ struct column_option {
 /**
  * @brief parquet file writer
  */
-class parquet_writer {
+class parquet_writer : public file_writer {
 public:
     /**
      * @brief create empty object
@@ -85,7 +86,7 @@ public:
      * @brief destruct object
      * @details destruct the object closing the file if any opened
      */
-    ~parquet_writer() noexcept;
+    ~parquet_writer() noexcept override;
 
     /**
      * @brief write the record
@@ -93,29 +94,29 @@ public:
      * @return true when successful
      * @return false otherwise
      */
-    bool write(accessor::record_ref ref);
+    bool write(accessor::record_ref ref) override;
 
     /**
      * @brief close the writer and finish the output file
      * @return true when successful
      * @return false otherwise
      */
-    bool close();
+    bool close() override;
 
     /**
      * @brief accessor to the written file path
      */
-    [[nodiscard]] std::string path() const noexcept;
+    [[nodiscard]] std::string path() const noexcept override;
 
     /**
      * @brief accessor to the number of successful write
      */
-    [[nodiscard]] std::size_t write_count() const noexcept;
+    [[nodiscard]] std::size_t write_count() const noexcept override;
 
     /**
      * @brief close current row group and move to new one
      */
-    void new_row_group();
+    void new_row_group() override;
 
     /**
      * @brief factory function to construct the new parquet_writer object

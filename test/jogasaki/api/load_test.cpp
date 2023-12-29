@@ -14,33 +14,32 @@
  * limitations under the License.
  */
 
-#include <regex>
 #include <future>
+#include <regex>
 #include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/data/any.h>
-
-#include <jogasaki/kvs/id.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/executor/tables.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/executor.h>
-#include "api_test_base.h"
-#include "../test_utils/temporary_folder.h"
+#include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
-#include <jogasaki/utils/msgbuf_utils.h>
+#include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/msgbuf_utils.h>
+#include <jogasaki/utils/storage_data.h>
+
+#include "../test_utils/temporary_folder.h"
+#include "api_test_base.h"
 
 namespace jogasaki::api {
 
@@ -434,4 +433,5 @@ TEST_F(load_test, DISABLED_third_party_file) {
         ASSERT_EQ(5, result.size());
     }
 }
-}
+
+}  // namespace jogasaki::api

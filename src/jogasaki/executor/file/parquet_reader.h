@@ -17,18 +17,17 @@
 
 #include <iomanip>
 #include <string_view>
-
-#include <boost/filesystem.hpp>
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
+#include <boost/filesystem.hpp>
 #include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 namespace jogasaki::executor::file {
 
@@ -170,5 +169,4 @@ private:
     bool init(std::string_view path, parquet_reader_option const* opt, std::size_t row_group_index);
 };
 
-
-}
+}  // namespace jogasaki::executor::file

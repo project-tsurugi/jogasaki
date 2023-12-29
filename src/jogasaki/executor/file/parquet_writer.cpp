@@ -15,22 +15,21 @@
  */
 #include "parquet_writer.h"
 
-#include <iomanip>
 #include <array>
-
-#include <glog/logging.h>
+#include <iomanip>
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
+#include <glog/logging.h>
 #include <parquet/api/writer.h>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/decimal/triple.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::executor::file {
@@ -38,9 +37,9 @@ namespace jogasaki::executor::file {
 using takatori::util::maybe_shared_ptr;
 
 using parquet::ConvertedType;
+using parquet::LogicalType;
 using parquet::Repetition;
 using parquet::Type;
-using parquet::LogicalType;
 using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
 
@@ -170,7 +169,12 @@ bool parquet_writer::write_character(std::size_t colidx, accessor::text v, bool 
     return true;
 }
 
-bool parquet_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null, details::column_option const& colopt) {
+bool parquet_writer::write_decimal(
+    std::size_t colidx,
+    runtime_t<meta::field_type_kind::decimal> v,
+    bool null,
+    details::column_option const& colopt
+) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         return write_null(writer);
@@ -248,11 +252,15 @@ parquet_writer::create_schema() {
         }
         switch(meta_->at(i).kind()) {
             case meta::field_type_kind::int4: {
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Int(32, true), Type::INT32));
+                fields.push_back(
+                    PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Int(32, true), Type::INT32)
+                );
                 break;
             }
             case meta::field_type_kind::int8: {
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Int(64, true), Type::INT64));
+                fields.push_back(
+                    PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Int(64, true), Type::INT64)
+                );
                 break;
             }
             case meta::field_type_kind::float4: {
@@ -264,7 +272,9 @@ parquet_writer::create_schema() {
                 break;
             }
             case meta::field_type_kind::character: {
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::String(), Type::BYTE_ARRAY));
+                fields.push_back(
+                    PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::String(), Type::BYTE_ARRAY)
+                );
                 break;
             }
             case meta::field_type_kind::decimal: {
@@ -287,12 +297,22 @@ parquet_writer::create_schema() {
             }
             case meta::field_type_kind::time_of_day: {
                 auto opt = meta_->at(i).option<meta::field_type_kind::time_of_day>();
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Time(opt->with_offset_, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
+                fields.push_back(PrimitiveNode::Make(
+                    name,
+                    Repetition::OPTIONAL,
+                    LogicalType::Time(opt->with_offset_, parquet::LogicalType::TimeUnit::NANOS),
+                    Type::INT64
+                ));
                 break;
             }
             case meta::field_type_kind::time_point: {
                 auto opt = meta_->at(i).option<meta::field_type_kind::time_point>();
-                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Timestamp(opt->with_offset_, parquet::LogicalType::TimeUnit::NANOS), Type::INT64));
+                fields.push_back(PrimitiveNode::Make(
+                    name,
+                    Repetition::OPTIONAL,
+                    LogicalType::Timestamp(opt->with_offset_, parquet::LogicalType::TimeUnit::NANOS),
+                    Type::INT64
+                ));
                 break;
             }
             default:
@@ -317,4 +337,4 @@ parquet_writer::~parquet_writer() noexcept {
     close();
 }
 
-}
+}  // namespace jogasaki::executor::file

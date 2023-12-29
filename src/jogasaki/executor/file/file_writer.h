@@ -73,4 +73,4 @@ public:
     virtual void new_row_group() = 0;
 };
 
-}
+}  // namespace jogasaki::executor::file

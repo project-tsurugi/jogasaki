@@ -20,10 +20,10 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/executor/file/arrow_writer.h>
+#include <jogasaki/executor/file/parquet_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/file/parquet_writer.h>
-#include <jogasaki/executor/file/arrow_writer.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/record_meta.h>

@@ -15,32 +15,30 @@
  */
 #include "arrow_writer.h"
 
-#include <iomanip>
 #include <array>
-
-#include <glog/logging.h>
-#include <arrow/io/file.h>
-#include <arrow/util/logging.h>
-
+#include <iomanip>
 #include <arrow/array.h>
 #include <arrow/array/builder_decimal.h>
 #include <arrow/array/builder_primitive.h>
 #include <arrow/io/api.h>
+#include <arrow/io/file.h>
 #include <arrow/ipc/api.h>
 #include <arrow/result.h>
 #include <arrow/status.h>
 #include <arrow/table.h>
 #include <arrow/util/decimal.h>
+#include <arrow/util/logging.h>
+#include <glog/logging.h>
 
-#include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/exception.h>
 #include <takatori/decimal/triple.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::executor::file {
@@ -52,7 +50,8 @@ arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta) :
     meta_(std::move(meta))
 {}
 
-std::shared_ptr<arrow::ArrayBuilder> create_array_builder(meta::field_type const& type, std::shared_ptr<arrow::DataType> const& arrow_type) {
+std::shared_ptr<arrow::ArrayBuilder>
+create_array_builder(meta::field_type const& type, std::shared_ptr<arrow::DataType> const& arrow_type) {
     using k = meta::field_type_kind;
     arrow::MemoryPool* pool = arrow::default_memory_pool();
     switch(type.kind()) {
@@ -235,7 +234,11 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
     return true;
 }
 
-bool arrow_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, details::column_option const& colopt) {
+bool arrow_writer::write_decimal(
+    std::size_t colidx,
+    runtime_t<meta::field_type_kind::decimal> v,
+    details::column_option const& colopt
+) {
     (void) colopt;
     auto& builder = static_cast<arrow::Decimal128Builder&>(*array_builders_[colidx]);  //NOLINT
     arrow::BasicDecimal128 d{arrow::Decimal128::WordArray{v.coefficient_low(), v.coefficient_high()}};
@@ -332,7 +335,8 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
             case meta::field_type_kind::character: {
                 auto opt = meta_->at(i).option<meta::field_type_kind::character>();
                 options[i].varying_ = opt->varying_;
-                options[i].length_ = opt->length_.has_value() ? opt->length_.value() : details::column_option::undefined;
+                options[i].length_ =
+                    opt->length_.has_value() ? opt->length_.value() : details::column_option::undefined;
                 if(opt->varying_) {
                     type = arrow::utf8();
                     break;
@@ -397,4 +401,4 @@ arrow_writer::~arrow_writer() noexcept {
     close();
 }
 
-}
+}  // namespace jogasaki::executor::file

@@ -15,20 +15,19 @@
  */
 #include "parquet_reader.h"
 
-#include <iomanip>
 #include <algorithm>
+#include <iomanip>
 #include <glog/logging.h>
-
 #include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::executor::file {
@@ -137,22 +136,26 @@ runtime_t<meta::field_type_kind::date> read_data<runtime_t<meta::field_type_kind
         return runtime_t<meta::field_type_kind::date>{x};
 }
 
-template <>
-runtime_t<meta::field_type_kind::time_of_day> read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(
+template<>
+runtime_t<meta::field_type_kind::time_of_day>
+read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(
     parquet::ColumnReader& reader,
     parquet::ColumnDescriptor const& type,
     bool& null,
-    bool& nodata) {
-        auto x = read_data<std::int64_t, parquet::Int64Reader>(reader, type, null, nodata);
-        return runtime_t<meta::field_type_kind::time_of_day>{std::chrono::nanoseconds{x}};
+    bool& nodata
+) {
+    auto x = read_data<std::int64_t, parquet::Int64Reader>(reader, type, null, nodata);
+    return runtime_t<meta::field_type_kind::time_of_day>{std::chrono::nanoseconds{x}};
 }
 
-template <>
-runtime_t<meta::field_type_kind::time_point> read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(
+template<>
+runtime_t<meta::field_type_kind::time_point>
+read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(
     parquet::ColumnReader& reader,
     parquet::ColumnDescriptor const& type,
     bool& null,
-    bool& nodata) {
+    bool& nodata
+) {
     auto x = read_data<std::int64_t, parquet::Int64Reader>(reader, type, null, nodata);
     return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
 }
@@ -283,7 +286,8 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
                 c->physical_type() == parquet::Type::type::INT64) {
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
             }
-            VLOG_LP(log_error) << "unsupported length for int : " << c->type_length() << " physical type:" << c->physical_type();
+            VLOG_LP(log_error) << "unsupported length for int : " << c->type_length()
+                               << " physical type:" << c->physical_type();
             break;
         case parquet::LogicalType::Type::DECIMAL: {
             if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
@@ -331,10 +335,12 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
 
             // even without logical type, parameter type helps guessing the type
             if(parameter_type != nullptr) {
-                if (c->physical_type() == parquet::Type::type::INT32 && *parameter_type == meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>}) {
+                if(c->physical_type() == parquet::Type::type::INT32 &&
+                   *parameter_type == meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>}) {
                     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
                 }
-                if (c->physical_type() == parquet::Type::type::INT64 && *parameter_type == meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>}) {
+                if(c->physical_type() == parquet::Type::type::INT64 &&
+                   *parameter_type == meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>}) {
                     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
                 }
             }
@@ -342,7 +348,9 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
         default:
             break;
     }
-    VLOG_LP(log_debug) << "Column '" << c->name() << "' physical data type '" << c->physical_type() << "' logical data type '" << c->logical_type()->ToString() << "' is not supported and will be ignored.";
+    VLOG_LP(log_debug) << "Column '" << c->name() << "' physical data type '" << c->physical_type()
+                       << "' logical data type '" << c->logical_type()->ToString()
+                       << "' is not supported and will be ignored.";
     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::undefined>};
 }
 
@@ -435,7 +443,8 @@ std::size_t index_in(std::vector<std::string>::value_type const& e, std::vector<
     return npos;
 }
 
-std::vector<std::size_t> create_parameter_to_parquet_field(parquet_reader_option const& opt, parquet::FileMetaData& pmeta) {
+std::vector<std::size_t>
+create_parameter_to_parquet_field(parquet_reader_option const& opt, parquet::FileMetaData& pmeta) {
     std::vector<std::size_t> ret{};
     auto sz = opt.meta_->field_count();
     ret.reserve(sz);
@@ -474,8 +483,8 @@ bool validate_parameter_mapping(
         if(e == npos) continue;
         auto nam = parquet_meta.field_name(e);
         if(parquet_meta.at(e).kind() == meta::field_type_kind::undefined) {
-            auto msg = string_builder{} <<
-                "Unsupported type - Parquet column '" << (nam.has_value() ? *nam : "") << "'" << string_builder::to_string;
+            auto msg = string_builder{} << "Unsupported type - Parquet column '" << (nam.has_value() ? *nam : "") << "'"
+                                        << string_builder::to_string;
             VLOG_LP(log_error) << msg;
             return false;
         }
@@ -500,8 +509,9 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
     VLOG_LP(log_debug) << "num_row_groups:" << pmeta.num_row_groups();
     for(std::size_t i=0, n=pmeta.num_row_groups(); i<n; ++i) {
         auto rg = pmeta.RowGroup(static_cast<int>(i));
-        VLOG_LP(log_debug) << "  RowGroup:" << i << " num_rows:" << rg->num_rows() <<
-                " total_byte_size:" << rg->total_byte_size() << " total_compressed_size:" << rg->total_compressed_size();
+        VLOG_LP(log_debug) << "  RowGroup:" << i << " num_rows:" << rg->num_rows()
+                           << " total_byte_size:" << rg->total_byte_size()
+                           << " total_compressed_size:" << rg->total_compressed_size();
     }
     VLOG_LP(log_debug) << "schema name:" << pmeta.schema()->name();
     VLOG_LP(log_debug) << "num_columns:" << pmeta.num_columns();
@@ -511,7 +521,8 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
         auto&& c = pmeta.schema()->Column(static_cast<int>(i));
         auto&& cm = rg->ColumnChunk(static_cast<int>(i));
         std::stringstream ss{};
-        ss << "  column name:" << c->name() << " physical type:" << c->physical_type() << " logical type:" << c->logical_type()->ToString();
+        ss << "  column name:" << c->name() << " physical type:" << c->physical_type()
+           << " logical type:" << c->logical_type()->ToString();
         ss << " encodings:[";
         for(auto&& enc : cm->encodings()) {
             ss << " ";
@@ -585,4 +596,4 @@ parquet_reader::~parquet_reader() noexcept {
     close();
 }
 
-}
+}  // namespace jogasaki::executor::file

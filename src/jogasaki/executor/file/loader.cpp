@@ -18,15 +18,15 @@
 #include <atomic>
 #include <glog/logging.h>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/executor/executor.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/executor/executor.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/transaction_context.h>
 
 namespace jogasaki::executor::file {
@@ -51,12 +51,17 @@ loader::loader(
     bulk_size_(bulk_size)
 {}
 
-meta::field_type_kind host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
+meta::field_type_kind
+host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
     auto idx = vinfo.at(name).index();
     return vinfo.meta()->at(idx).kind();
 }
 
-void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, parameter> const& mapping) {
+void set_parameter(
+    api::parameter_set& ps,
+    accessor::record_ref ref,
+    std::unordered_map<std::string, parameter> const& mapping
+) {
     auto pset = static_cast<api::impl::parameter_set&>(ps).body();  //NOLINT
     for(auto&& [name, param] : mapping) {
         if(ref.is_null(param.nullity_offset_)) {
@@ -199,7 +204,8 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
                 --running_statement_count_;
                 if(st != status::ok) {
                     std::stringstream ss{};
-                    ss << "load failed with the statement position:" << records_loaded_ << " status:" << st << " with message \"" << (info ? info->message() : "") << "\"";
+                    ss << "load failed with the statement position:" << records_loaded_ << " status:" << st
+                       << " with message \"" << (info ? info->message() : "") << "\"";
                     status_ = st;
                     msg_ = ss.str();
                     VLOG_LP(log_error) << msg_;  //NOLINT
@@ -225,6 +231,4 @@ std::pair<status, std::string> loader::error_info() const noexcept {
     return {status_, msg_};
 }
 
-
-}
-
+}  // namespace jogasaki::executor::file

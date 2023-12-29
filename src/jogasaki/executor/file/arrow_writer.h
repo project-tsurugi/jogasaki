@@ -16,18 +16,16 @@
 #pragma once
 
 #include <iomanip>
-
-#include <boost/filesystem.hpp>
 #include <arrow/io/file.h>
-#include <arrow/util/logging.h>
-
 #include <arrow/ipc/writer.h>
+#include <arrow/util/logging.h>
+#include <boost/filesystem.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/file/file_writer.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 #include "column_option.h"
 
@@ -123,7 +121,11 @@ private:
     bool write_float4(std::size_t colidx, float v);
     bool write_float8(std::size_t colidx, double v);
     bool write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt);
-    bool write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, details::column_option const& colopt = {});
+    bool write_decimal(
+        std::size_t colidx,
+        runtime_t<meta::field_type_kind::decimal> v,
+        details::column_option const& colopt = {}
+    );
     bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v);
     bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v);
     bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v);

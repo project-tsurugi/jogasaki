@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <string_view>
+#include <cstddef>
 #include <cstdlib>
 #include <ostream>
-#include <cstddef>
+#include <string_view>
 
 namespace jogasaki::executor::io {
 

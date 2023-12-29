@@ -16,18 +16,17 @@
 #pragma once
 
 #include <iomanip>
-
-#include <boost/filesystem.hpp>
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
+#include <boost/filesystem.hpp>
 #include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/file/file_writer.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 #include "column_option.h"
 
@@ -101,7 +100,8 @@ public:
      * @return newly created object on success
      * @return nullptr otherwise
      */
-    static std::shared_ptr<parquet_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
+    static std::shared_ptr<parquet_writer>
+    open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
@@ -119,11 +119,16 @@ private:
     bool write_float4(std::size_t colidx, float v, bool null = false);
     bool write_float8(std::size_t colidx, double v, bool null = false);
     bool write_character(std::size_t colidx, accessor::text v, bool null = false);
-    bool write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, bool null = false, details::column_option const& colopt = {});
+    bool write_decimal(
+        std::size_t colidx,
+        runtime_t<meta::field_type_kind::decimal> v,
+        bool null = false,
+        details::column_option const& colopt = {}
+    );
     bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
     bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
     bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
     bool init(std::string_view path);
 };
 
-}
+}  // namespace jogasaki::executor::file

@@ -16,15 +16,17 @@
 #pragma once
 
 #include <atomic>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/executor/file/parquet_reader.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/interference_size.h>
-#include <jogasaki/api/statement_handle.h>
-#include <jogasaki/api/parameter_set.h>
-#include <jogasaki/executor/file/parquet_reader.h>
 
 namespace jogasaki {
+
 class request_context;
 class transaction_context;
 
@@ -161,7 +163,6 @@ private:
     bool error_aborted_{false};
 };
 
-}
+}  // namespace executor::file
 
-}
-
+}  // namespace jogasaki

@@ -17,9 +17,7 @@
 
 #include <cstdint>
 
-namespace jogasaki::executor::file {
-
-namespace details {
+namespace jogasaki::executor::file::details {
 
 /**
  * @brief column metadata options kept by arrow writer
@@ -55,6 +53,4 @@ struct column_option {
     std::size_t scale_{undefined};
 };
 
-}  // namespace details
-
-}
+}  // namespace jogasaki::executor::file::details

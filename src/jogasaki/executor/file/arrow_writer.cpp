@@ -79,7 +79,7 @@ std::shared_ptr<arrow::ArrayBuilder> create_array_builder(meta::field_type const
     std::abort();
 }
 
-bool check_status(std::function<::arrow::Status()> fn) {
+bool check_status(std::function<::arrow::Status()> const& fn) {
     auto st = fn();
     auto ret = st.ok();
     if(! ret) {
@@ -113,7 +113,7 @@ void arrow_writer::new_row_group() {
     array_builders_.clear();
     array_builders_.reserve(meta_->field_count());
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-        array_builders_.emplace_back(create_array_builder(meta_->at(i), schema_->field(i)->type()));
+        array_builders_.emplace_back(create_array_builder(meta_->at(i), schema_->field(static_cast<int>(i))->type()));
     }
 }
 
@@ -131,7 +131,7 @@ bool arrow_writer::init(std::string_view path) {
         arrow::ipc::IpcWriteOptions options = arrow::ipc::IpcWriteOptions::Defaults();
         // FIXME fill options
         check_status([&]() {
-            ARROW_ASSIGN_OR_RAISE(record_batch_writer_, ::arrow::ipc::MakeFileWriter(fs_, schema, options));
+            ARROW_ASSIGN_OR_RAISE(record_batch_writer_, ::arrow::ipc::MakeFileWriter(fs_, schema_, options));
             return ::arrow::Status::OK();
         });
         new_row_group();
@@ -148,7 +148,7 @@ bool arrow_writer::write(accessor::record_ref ref) {
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
             bool null = ref.is_null(meta_->nullity_offset(i)) && meta_->nullable(i);
             if(null) {
-                array_builders_[i]->AppendNull();
+                (void) array_builders_[i]->AppendNull();
                 continue;
             }
             bool success{false};
@@ -187,84 +187,84 @@ bool write_null(T* writer) {
 }
 
 bool arrow_writer::write_int1(std::size_t colidx, int32_t v) {
-    auto& builder = static_cast<arrow::Int8Builder&>(*array_builders_[colidx]);
-    builder.Append(v);
+    auto& builder = static_cast<arrow::Int8Builder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(static_cast<std::int8_t>(v));
     return true;
 }
 
 bool arrow_writer::write_int2(std::size_t colidx, int32_t v) {
-    auto& builder = static_cast<arrow::Int16Builder&>(*array_builders_[colidx]);
-    builder.Append(v);
+    auto& builder = static_cast<arrow::Int16Builder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(static_cast<std::int16_t>(v));
     return true;
 }
 
 bool arrow_writer::write_int4(std::size_t colidx, int32_t v) {
-    auto& builder = static_cast<arrow::Int32Builder&>(*array_builders_[colidx]);
-    builder.Append(v);
+    auto& builder = static_cast<arrow::Int32Builder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(v);
     return true;
 }
 
 bool arrow_writer::write_int8(std::size_t colidx, std::int64_t v) {
-    auto& builder = static_cast<arrow::Int64Builder&>(*array_builders_[colidx]);
-    builder.Append(v);
+    auto& builder = static_cast<arrow::Int64Builder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(v);
     return true;
 }
 
 bool arrow_writer::write_float4(std::size_t colidx, float v) {
-    auto& builder = static_cast<arrow::FloatBuilder&>(*array_builders_[colidx]);
-    builder.Append(v);
+    auto& builder = static_cast<arrow::FloatBuilder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(v);
     return true;
 }
 
 bool arrow_writer::write_float8(std::size_t colidx, double v) {
-    auto& builder = static_cast<arrow::DoubleBuilder&>(*array_builders_[colidx]);
-    builder.Append(v);
+    auto& builder = static_cast<arrow::DoubleBuilder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(v);
     return true;
 }
 
 bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt) {
     if(colopt.varying_) {
-        auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);
+        auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
-        builder.Append(arrow::util::string_view{sv.data(), sv.size()});
+        (void) builder.Append(arrow::util::string_view{sv.data(), sv.size()});
         return true;
     }
-    auto& builder = static_cast<arrow::FixedSizeBinaryBuilder&>(*array_builders_[colidx]);
+    auto& builder = static_cast<arrow::FixedSizeBinaryBuilder&>(*array_builders_[colidx]);  //NOLINT
     auto sv = static_cast<std::string_view>(v);
-    builder.Append(arrow::util::string_view{sv.data(), sv.size()});
+    (void) builder.Append(arrow::util::string_view{sv.data(), sv.size()});
     return true;
 }
 
 bool arrow_writer::write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, details::column_option const& colopt) {
     (void) colopt;
-    auto& builder = static_cast<arrow::Decimal128Builder&>(*array_builders_[colidx]);
+    auto& builder = static_cast<arrow::Decimal128Builder&>(*array_builders_[colidx]);  //NOLINT
     arrow::BasicDecimal128 d{arrow::Decimal128::WordArray{v.coefficient_low(), v.coefficient_high()}};
     if(v.sign() < 0) {
         d.Negate();
     }
-    builder.Append(d);
+    (void) builder.Append(d);
     return true;
 }
 
 bool arrow_writer::write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v) {
     auto d = static_cast<std::int32_t>(v.days_since_epoch());
-    auto& builder = static_cast<arrow::Date32Builder&>(*array_builders_[colidx]);
-    builder.Append(d);
+    auto& builder = static_cast<arrow::Date32Builder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(d);
     return true;
 }
 
 bool arrow_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v) {
     auto ns = static_cast<std::int64_t>(v.time_since_epoch().count());
-    auto& builder = static_cast<arrow::Time64Builder&>(*array_builders_[colidx]);
-    builder.Append(ns);
+    auto& builder = static_cast<arrow::Time64Builder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(ns);
     return true;
 }
 
 bool arrow_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v) {
     auto secs = static_cast<std::int64_t>(v.seconds_since_epoch().count());
     auto subsecs = static_cast<std::int64_t>(v.subsecond().count());
-    auto& builder = static_cast<arrow::TimestampBuilder&>(*array_builders_[colidx]);
-    builder.Append(secs*1000*1000*1000 + subsecs);
+    auto& builder = static_cast<arrow::TimestampBuilder&>(*array_builders_[colidx]);  //NOLINT
+    (void) builder.Append(secs*1000*1000*1000 + subsecs);
     return true;
 }
 
@@ -340,7 +340,7 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
                 if(! opt->length_.has_value()) {
                     throw_exception(std::logic_error{"no length for char field"});
                 }
-                type = arrow::fixed_size_binary(*opt->length_);
+                type = arrow::fixed_size_binary(static_cast<std::int32_t>(*opt->length_));
                 break;
             }
             case meta::field_type_kind::octet: {

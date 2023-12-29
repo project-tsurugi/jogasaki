@@ -54,6 +54,9 @@ public:
         return length_;
     }
 
+    [[nodiscard]] bool varying() const noexcept {
+        return varying_;
+    }
 private:
     bool varying_{true};
     std::optional<std::size_t> length_{};  //NOLINT

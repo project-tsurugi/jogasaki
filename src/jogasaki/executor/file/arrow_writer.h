@@ -122,7 +122,7 @@ private:
     bool write_int8(std::size_t colidx, std::int64_t v);
     bool write_float4(std::size_t colidx, float v);
     bool write_float8(std::size_t colidx, double v);
-    bool write_character(std::size_t colidx, accessor::text v);
+    bool write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt);
     bool write_decimal(std::size_t colidx, runtime_t<meta::field_type_kind::decimal> v, details::column_option const& colopt = {});
     bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v);
     bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v);

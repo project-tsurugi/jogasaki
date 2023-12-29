@@ -28,6 +28,7 @@ public:
 
     using option_type = std::variant<
         std::monostate,
+        std::shared_ptr<character_field_option>,
         std::shared_ptr<decimal_field_option>,
         std::shared_ptr<time_of_day_field_option>,
         std::shared_ptr<time_point_field_option>
@@ -47,6 +48,13 @@ public:
      * @brief getter for type kind
      */
     [[nodiscard]] api::field_type_kind kind() const noexcept override;;
+
+    /**
+     * @brief accessor to character field option
+     * @return character type field option if the field type is character
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] std::shared_ptr<character_field_option> const& character_option() const noexcept override;
 
     /**
      * @brief accessor to decimal field option

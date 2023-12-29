@@ -170,16 +170,16 @@ TEST_F(record_printer_test, text) {
     record_meta meta{
         std::vector<field_type>{
             field_type(field_enum_tag<kind::int4>),
-            field_type(field_enum_tag<kind::character>),
+            field_type(std::make_shared<meta::character_field_option>()),
             field_type(field_enum_tag<kind::int8>),
-            field_type(field_enum_tag<kind::character>),
+            field_type(std::make_shared<meta::character_field_option>()),
         },
         boost::dynamic_bitset<std::uint64_t>{4}};
     EXPECT_EQ(4, meta.field_count());
 
     std::stringstream ss{};
     ss << r << meta;
-    ASSERT_EQ("(0:int4)[1] (1:character)[A234567890123456] (2:int8)[3] (3:character)[A23456789012345]", ss.str());
+    ASSERT_EQ("(0:int4)[1] (1:character varying(*))[A234567890123456] (2:int8)[3] (3:character varying(*))[A23456789012345]", ss.str());
 }
 
 TEST_F(record_printer_test, nullable) {

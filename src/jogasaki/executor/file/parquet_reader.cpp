@@ -266,7 +266,7 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
     switch(c->logical_type()->type()) {
         case parquet::LogicalType::Type::STRING:
             if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
-                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::character>};
+                return meta::field_type{std::make_shared<meta::character_field_option>()};
             }
             break;
         case parquet::LogicalType::Type::INT:

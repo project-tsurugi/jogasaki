@@ -48,7 +48,7 @@ TEST_F(record_layout_creator_test, non_nullables) {
                     field_type(field_enum_tag<kind::int4>),
                     field_type(field_enum_tag<kind::int8>),
                     field_type(field_enum_tag<kind::int4>),
-                    field_type(field_enum_tag<kind::character>),
+                    field_type(std::make_shared<meta::character_field_option>()),
             },
             boost::dynamic_bitset<std::uint64_t>{4}};
     EXPECT_EQ(8,  c.record_alignment());
@@ -145,7 +145,7 @@ TEST_F(record_layout_creator_test, type_variaties) {
                     field_type(field_enum_tag<kind::int1>),
                     field_type(field_enum_tag<kind::int2>),
                     field_type(field_enum_tag<kind::int8>),
-                    field_type(field_enum_tag<kind::character>),
+                    field_type(std::make_shared<meta::character_field_option>()),
                     field_type(field_enum_tag<kind::float4>),
                     field_type(field_enum_tag<kind::float8>),
                     field_type(std::make_shared<decimal_field_option>()),

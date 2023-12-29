@@ -26,6 +26,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_option.h>
+#include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
@@ -67,7 +68,7 @@ public:
         std::monostate, // float4
         std::monostate, // float8
         std::shared_ptr<decimal_field_option>, // decimal
-        std::monostate, // character
+        std::shared_ptr<character_field_option>, // character
         std::monostate, // octet
         std::monostate, // bit
         std::monostate, // date
@@ -234,6 +235,7 @@ public:
         using kind = field_type_kind;
         auto k = value.kind();
         switch (k) {
+            case kind::character: return out << *value.option<kind::character>();
             case kind::decimal: return out << *value.option<kind::decimal>();
             case kind::time_of_day: return out << *value.option<kind::time_of_day>();
             case kind::time_point: return out << *value.option<kind::time_point>();
@@ -282,6 +284,7 @@ inline bool operator==(field_type const& a, field_type const& b) noexcept {
     }
     using kind = field_type_kind;
     switch (a.kind()) {
+        case kind::character: return impl::eq<kind::character>()(a, b);
         case kind::decimal: return impl::eq<kind::decimal>()(a, b);
         case kind::time_of_day: return impl::eq<kind::time_of_day>()(a, b);
         case kind::time_point: return impl::eq<kind::time_point>()(a, b);

@@ -48,7 +48,7 @@ TEST_F(record_meta_test, non_nullables) {
                     field_type(field_enum_tag<kind::int4>),
                     field_type(field_enum_tag<kind::int8>),
                     field_type(field_enum_tag<kind::int4>),
-                    field_type(field_enum_tag<kind::character>),
+                    field_type(std::make_shared<meta::character_field_option>()),
             },
             boost::dynamic_bitset<std::uint64_t>{4}};
     EXPECT_EQ(4, meta.field_count());
@@ -85,7 +85,7 @@ TEST_F(record_meta_test, type_variaties) {
             field_type(field_enum_tag<kind::int1>),
             field_type(field_enum_tag<kind::int2>),
             field_type(field_enum_tag<kind::int8>),
-            field_type(field_enum_tag<kind::character>),
+            field_type(std::make_shared<meta::character_field_option>()),
             field_type(field_enum_tag<kind::float4>),
             field_type(field_enum_tag<kind::float8>),
             field_type(std::make_shared<meta::decimal_field_option>()),
@@ -113,7 +113,7 @@ TEST_F(record_meta_test, type_variaties) {
     EXPECT_EQ(field_type(field_enum_tag<kind::int1>), meta[2]);
     EXPECT_EQ(field_type(field_enum_tag<kind::int2>), meta[3]);
     EXPECT_EQ(field_type(field_enum_tag<kind::int8>), meta[4]);
-    EXPECT_EQ(field_type(field_enum_tag<kind::character>), meta[5]);
+    EXPECT_EQ(field_type(std::make_shared<meta::character_field_option>()), meta[5]);
     EXPECT_EQ(field_type(field_enum_tag<kind::float4>), meta[6]);
     EXPECT_EQ(field_type(field_enum_tag<kind::float8>), meta[7]);
     EXPECT_EQ(field_type(std::make_shared<meta::decimal_field_option>()), meta[8]);

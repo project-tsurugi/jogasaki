@@ -725,7 +725,7 @@ TEST_F(coder_test, text_ordering) {
     data::any c3b{std::in_place_type<accessor::text>, text{"AAB"}};
     data::any c5{std::in_place_type<accessor::text>, text{"BB"}};
 
-    meta::field_type type{meta::field_enum_tag<kind::character>};
+    meta::field_type type{std::make_shared<meta::character_field_option>()};
     { SCOPED_TRACE("c0 < c2"); verify_order(type, c0, c2); }
     { SCOPED_TRACE("c2 < c3a"); verify_order(type, c2, c3a); }
     { SCOPED_TRACE("c3a < c3b"); verify_order(type, c3a, c3b); }

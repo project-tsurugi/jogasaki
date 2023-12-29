@@ -1227,7 +1227,7 @@ void service::execute_dump(
     {
         auto m = std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{
-                meta::field_type(meta::field_enum_tag<meta::field_type_kind::character>),
+                meta::field_type(std::make_shared<meta::character_field_option>()),
             },
             boost::dynamic_bitset<std::uint64_t>{1}.flip()
         );

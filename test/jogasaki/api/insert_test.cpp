@@ -23,6 +23,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/data/any.h>
 
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -38,6 +39,7 @@ namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::meta;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -278,14 +280,18 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::character, kind::character>(text("1  "),text("10 "))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(false, 3), character_type(false, 3)},
+            std::forward_as_tuple(text("1  "),text("10 ")))), result[0]);
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES ('12', 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::character, kind::character>(text("10 "), text("12 "))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(false, 3), character_type(false, 3)},
+            std::forward_as_tuple(text("10 "), text("12 ")))), result[0]);
     }
     execute_statement("drop table T");
 
@@ -296,14 +302,18 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::character, kind::character>(text("1"),text("10"))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 3), character_type(true, 3)},
+            std::forward_as_tuple(text("1"),text("10")))), result[0]);
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES ('12', 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::character, kind::character>(text("10"), text("12"))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 3), character_type(true, 3)},
+            std::forward_as_tuple(text("10"), text("12")))), result[0]);
     }
     execute_statement("drop table T");
 
@@ -314,14 +324,18 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::character, kind::character>(text("1"),text("12345678901234567890"))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 20), character_type(true, 20)},
+            std::forward_as_tuple(text("1"),text("12345678901234567890")))), result[0]);
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES ('12', 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::character, kind::character>(text("12345678901234567890"), text("12"))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 20), character_type(true, 20)},
+            std::forward_as_tuple(text("12345678901234567890"), text("12")))), result[0]);
     }
     execute_statement("drop table T");
 }

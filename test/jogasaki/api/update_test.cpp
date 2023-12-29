@@ -23,6 +23,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/data/any.h>
 
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -38,6 +39,7 @@ namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::meta;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -145,14 +147,20 @@ TEST_F(update_test, update_char_columns) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CH, VC FROM CHAR_TAB", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_record<kind::character, kind::character>(accessor::text{"000  "sv}, accessor::text{"000"sv})), result[0]);
+        // TODO test with non-nullable record
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(false, 5), character_type(true, 5)},
+            std::forward_as_tuple(accessor::text{"000  "sv}, accessor::text{"000"sv}))), result[0]);
     }
     execute_statement("UPDATE CHAR_TAB SET CH='11', VC='11' WHERE C0=0");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CH, VC FROM CHAR_TAB", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_record<kind::character, kind::character>(accessor::text{"11   "sv}, accessor::text{"11"sv})), result[0]);
+        // TODO test with non-nullable record
+        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(false, 5), character_type(true, 5)},
+            std::forward_as_tuple(accessor::text{"11   "sv}, accessor::text{"11"sv}))), result[0]);
     }
 }
 

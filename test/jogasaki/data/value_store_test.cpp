@@ -207,7 +207,7 @@ TEST_F(value_store_test, type_character) {
     memory::monotonic_paged_memory_resource resource{&pool};
     mock_memory_resource varlen_resource{};
     value_store store{
-        meta::field_type{meta::field_enum_tag<kind::character>},
+        meta::field_type{std::make_shared<meta::character_field_option>()},
         &resource,
         &varlen_resource
     };

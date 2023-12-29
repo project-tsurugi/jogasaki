@@ -58,7 +58,7 @@ void parameter_set::set_float8(std::string_view name, runtime_t<kind::float8> va
 void parameter_set::set_character(std::string_view name, runtime_t<kind::character> value) {
     add(std::string(name),
         {
-            meta::field_type{meta::field_enum_tag<kind::character>},
+            meta::field_type{std::make_shared<meta::character_field_option>()},
             data::value{std::in_place_type<std::string>, static_cast<std::string_view>(value)}
             // use std::string so that the content is copied from accessor::text
         }

@@ -23,6 +23,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/data/any.h>
 
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -38,6 +39,7 @@ namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::meta;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -129,10 +131,18 @@ TEST_F(sql_test, cross_join_pkless_with_varchar) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM TT0, TT1 ORDER BY TT0.C0, TT1.C0", result);
     ASSERT_EQ(4, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"abcd"}, accessor::text{"AAAAA"})), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"abcd"}, accessor::text{"BBBBBBB"})), result[1]);
-    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"efgh"}, accessor::text{"AAAAA"})), result[2]);
-    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character>(accessor::text{"efgh"}, accessor::text{"BBBBBBB"})), result[3]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
+        std::tuple{character_type(true, 12), character_type(true, 12)},
+        std::forward_as_tuple(accessor::text{"abcd"}, accessor::text{"AAAAA"}))), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
+        std::tuple{character_type(true, 12), character_type(true, 12)},
+        std::forward_as_tuple(accessor::text{"abcd"}, accessor::text{"BBBBBBB"}))), result[1]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
+        std::tuple{character_type(true, 12), character_type(true, 12)},
+        std::forward_as_tuple(accessor::text{"efgh"}, accessor::text{"AAAAA"}))), result[2]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
+        std::tuple{character_type(true, 12), character_type(true, 12)},
+        std::forward_as_tuple(accessor::text{"efgh"}, accessor::text{"BBBBBBB"}))), result[3]);
 }
 
 TEST_F(sql_test, outer_join) {
@@ -285,7 +295,7 @@ TEST_F(sql_test, concat) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0 || C1 FROM T", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::character>(accessor::text{"AAABBB"})), result[0]);
+    EXPECT_EQ((typed_nullable_record<kind::character>(std::tuple{meta::field_type{std::make_shared<meta::character_field_option>(true, 20)}}, {accessor::text{"AAABBB"}})), result[0]);
 }
 
 // LENGTH not registered yet

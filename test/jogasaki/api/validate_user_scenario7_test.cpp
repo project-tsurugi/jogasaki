@@ -23,6 +23,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/scheduler/dag_controller.h>
 
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -37,6 +38,7 @@ namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::meta;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -106,7 +108,10 @@ TEST_F(validate_user_scenario7_test, fixing_update_degrades_perf) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT recipient_phone_number, time_secs, charge, df FROM history", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::character, kind::int4, kind::int4, kind::int4>(accessor::text{"X"}, 1,1,1)), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::int4, kind::int4, kind::int4>(
+        std::tuple{character_type(true, 15), int4_type(), int4_type(), int4_type()},
+        std::forward_as_tuple(accessor::text{"X"}, 1,1,1))), result[0]);
+
 }
 
 }

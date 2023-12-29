@@ -25,6 +25,7 @@
 
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -39,6 +40,7 @@ namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::meta;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -160,7 +162,9 @@ TEST_F(host_variables_test, insert_varieties_of_types) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T1", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(1, 10, 100.0, 1000.0, accessor::text{"10000"})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
+        std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
+        std::forward_as_tuple(1, 10, 100.0, 1000.0, accessor::text{"10000"}))), result[0]);
 }
 
 TEST_F(host_variables_test, update_varieties_of_types) {
@@ -184,7 +188,9 @@ TEST_F(host_variables_test, update_varieties_of_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T1", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(2, 20, 200.0, 2000.0, accessor::text{"20000"})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
+            std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
+            std::forward_as_tuple(2, 20, 200.0, 2000.0, accessor::text{"20000"}))), result[0]);
     }
     execute_statement( "DELETE FROM T1");
     execute_statement( "INSERT INTO T1 (C0, C1, C2, C3, C4) VALUES (1, 10, 100.0, 1000.0, '10000')");
@@ -200,7 +206,9 @@ TEST_F(host_variables_test, update_varieties_of_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T1", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(2, 10, 100.0, 1000.0, accessor::text{"10000"})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
+            std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
+            std::forward_as_tuple(2, 10, 100.0, 1000.0, accessor::text{"10000"}))), result[0]);
     }
 }
 
@@ -223,7 +231,9 @@ TEST_F(host_variables_test, query_varieties_of_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T1 WHERE C0 = :p0 AND C1 = :p1 AND C2 = :p2 AND C3 = :p3 AND C4 = :p4", variables, *ps, result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(1, 10, 100.0, 1000.0, accessor::text{"10000"})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
+            std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
+            std::forward_as_tuple(1, 10, 100.0, 1000.0, accessor::text{"10000"}))), result[0]);
     }
 }
 

@@ -31,6 +31,18 @@ struct column_option {
     constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
 
     /**
+     * @brief length for character field
+     * @details this property is mandatory for character field, and undefined for other types
+     */
+    std::size_t length_{undefined};
+
+    /**
+     * @brief varying flag for for character field
+     * @details this property is mandatory for character field, and undefined for other types
+     */
+    bool varying_{false};
+
+    /**
      * @brief precision for decimal field
      * @details this property is mandatory for decimal field, and undefined for other types
      */

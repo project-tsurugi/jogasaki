@@ -71,7 +71,7 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
             case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case sql::common::AtomType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+            case sql::common::AtomType::CHARACTER: fields.emplace_back(std::make_shared<meta::character_field_option>()); break;
             case sql::common::AtomType::OCTET: fields.emplace_back(meta::field_enum_tag<kind::octet>); break;
             case sql::common::AtomType::DECIMAL: fields.emplace_back(std::make_shared<meta::decimal_field_option>()); break;
             case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
@@ -99,7 +99,7 @@ inline jogasaki::meta::record_meta create_record_meta(sql::response::ResultSetMe
             case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case sql::common::AtomType::CHARACTER: fields.emplace_back(meta::field_enum_tag<kind::character>); break;
+            case sql::common::AtomType::CHARACTER: fields.emplace_back(std::make_shared<meta::character_field_option>()); break;
             case sql::common::AtomType::OCTET: fields.emplace_back(meta::field_enum_tag<kind::octet>); break;
             case sql::common::AtomType::DECIMAL: fields.emplace_back(std::make_shared<meta::decimal_field_option>()); break;
             case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;

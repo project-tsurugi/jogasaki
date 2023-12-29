@@ -165,8 +165,8 @@ TEST_F(comparator_test, text) {
     } a, b, c;
     auto meta = std::make_shared<record_meta>(
         std::vector<field_type>{
-            field_type(field_enum_tag<kind::character>),
-            field_type(field_enum_tag<kind::character>),
+            field_type(std::make_shared<meta::character_field_option>()),
+            field_type(std::make_shared<meta::character_field_option>()),
         },
         boost::dynamic_bitset<std::uint64_t>{"00"s},
         std::vector<std::size_t>{

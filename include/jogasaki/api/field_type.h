@@ -16,6 +16,7 @@
 #pragma once
 
 #include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/character_field_option.h>
 #include <jogasaki/api/decimal_field_option.h>
 #include <jogasaki/api/time_of_day_field_option.h>
 #include <jogasaki/api/time_point_field_option.h>
@@ -55,6 +56,13 @@ public:
     [[nodiscard]] explicit operator bool() const noexcept {
         return kind() != field_type_kind::undefined;
     }
+
+    /**
+     * @brief accessor to character field option
+     * @return character type field option if the field type is character
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] virtual std::shared_ptr<character_field_option> const& character_option() const noexcept = 0;
 
     /**
      * @brief accessor to decimal field option

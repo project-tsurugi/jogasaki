@@ -59,6 +59,10 @@ api::field_type_kind from(meta::field_type_kind k) noexcept {
 field_type::option_type create_option(meta::field_type const& type) noexcept {
     switch(type.kind()) {
         using t = decltype(type.kind());
+        case t::character: {
+            auto& opt = type.option_unsafe<meta::field_type_kind::character>();
+            return std::make_shared<character_field_option>(opt->varying_, opt->length_);
+        }
         case t::decimal: {
             auto& opt = type.option_unsafe<meta::field_type_kind::decimal>();
             return std::make_shared<decimal_field_option>(opt->precision_, opt->scale_);
@@ -84,6 +88,12 @@ field_type::field_type(meta::field_type type) noexcept:
 
 api::field_type_kind field_type::kind() const noexcept {
     return from(type_.kind());
+}
+
+std::shared_ptr<character_field_option> const& field_type::character_option() const noexcept {
+    static std::shared_ptr<character_field_option> nullopt{};
+    if(type_.kind() != meta::field_type_kind::character) return nullopt;
+    return *std::get_if<std::shared_ptr<character_field_option>>(std::addressof(option_));
 }
 
 std::shared_ptr<decimal_field_option> const& field_type::decimal_option() const noexcept {

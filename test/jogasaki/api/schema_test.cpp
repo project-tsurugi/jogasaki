@@ -32,6 +32,7 @@
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/data/any.h>
 
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
@@ -47,6 +48,7 @@ namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::meta;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -151,10 +153,11 @@ TEST_F(schema_test, variety_types) {
                   "V6 = 1 AND "
                   "C0 = 1 ", result);
     ASSERT_EQ(1, result.size());
-    auto exp = mock::create_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
-        boost::dynamic_bitset<std::uint64_t>{"00000000000"s},  // note right most is position 0
+    // TODO test with non-nullable record
+    auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+        std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
         std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), text("1"), 1, 1.0, text("1"), 1, 1.0),
-        {false, false, false, false, false, false, false, false, false, false, false }
+        {false, false, false, false, false, false, false, false, false, false, false}
     );
     EXPECT_EQ(exp, result[0]);
 }
@@ -205,7 +208,8 @@ TEST_F(schema_test, nullables) {
         execute_query("SELECT C0, V1, V2, V3, V4, V5, V6 FROM TEST WHERE "
                       "C0 = 3", result);
         ASSERT_EQ(1, result.size());
-        auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+            std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
             std::forward_as_tuple(3, text("3"), 3, 3.0, text("3"), 3, 3.0),
             {false, true, true, true, true, true, true}
         );
@@ -222,7 +226,8 @@ TEST_F(schema_test, nullables) {
                       "V6 = 1 AND "
                       "C0 = 1", result);
         ASSERT_EQ(1, result.size());
-        auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+            std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
             std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0),
             {false, false, false, false, false, false, false}
         );
@@ -286,7 +291,8 @@ TEST_F(schema_test, descending_keys) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, K1, K2, K3, K4, K5, K6, V1, V2, V3, V4, V5, V6 FROM TEST WHERE C0 = 1", result);
     ASSERT_EQ(1, result.size());
-    auto exp = mock::create_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+    auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
+        std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
         std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0),
         {false, false, false, false, false, false, false, false, false, false, false, false, false}
     );
@@ -546,8 +552,9 @@ TEST_F(schema_test, default_value_with_variety_of_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE C0=10", result);
         ASSERT_EQ(1, result.size());
-        auto exp = mock::create_record<kind::int8, kind::character, kind::int4, kind::float4>(
-            boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
+        // TODO test with non-nullable record
+        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int4, kind::float4>(
+            std::tuple{int8_type(), character_type(false, 5), int4_type(), float4_type()},
             std::forward_as_tuple(10, text("ABC  "), 2, 3.0),
             {false, false, false, false}
         );
@@ -558,8 +565,9 @@ TEST_F(schema_test, default_value_with_variety_of_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE K2=20", result);
         ASSERT_EQ(1, result.size());
-        auto exp = mock::create_record<kind::int8, kind::character, kind::int4, kind::float4>(
-            boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
+        // TODO test with non-nullable record
+        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int4, kind::float4>(
+            std::tuple{int8_type(), character_type(false, 5), int4_type(), float4_type()},
             std::forward_as_tuple(0, text("ABC  "), 20, 3.0),
             {false, false, false, false}
         );

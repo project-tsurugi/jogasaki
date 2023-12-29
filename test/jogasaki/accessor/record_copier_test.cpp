@@ -155,8 +155,8 @@ TEST_F(record_copier_test, text) {
     auto meta = std::make_shared<meta::record_meta>(
         std::vector<field_type>{
             field_type(field_enum_tag<kind::int4>),
-            field_type(field_enum_tag<kind::character>),
-            field_type(field_enum_tag<kind::character>),
+            field_type(std::make_shared<meta::character_field_option>()),
+            field_type(std::make_shared<meta::character_field_option>()),
         },
         boost::dynamic_bitset<std::uint64_t>{"000"s},
         std::vector<size_t>{

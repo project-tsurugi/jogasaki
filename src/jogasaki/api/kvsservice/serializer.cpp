@@ -112,7 +112,11 @@ status serialize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data
                 }
                 accessor::text txt {view.data(), view.size()};
                 data::any data{std::in_place_type<accessor::text>, txt};
-                auto type = meta::field_type{meta::field_enum_tag<kind::character>};
+                auto ctype = cd.column()->optional_type();
+                auto character_type = dynamic_cast<takatori::type::character const *>(ctype.get());
+                auto type = meta::field_type{std::make_shared<meta::character_field_option>(
+                    character_type->varying(), character_type->length()
+                )};
                 // TODO spec should have storage_spec(padding, length)
                 s = encode(nullable, data, type, spec, results);
                 break;
@@ -184,10 +188,13 @@ static inline status decode(bool nullable, jogasaki::kvs::readable_stream &strea
     return s == jogasaki::status::ok ? status::ok : status::err_invalid_argument;
 }
 
-static status decode_character(jogasaki::kvs::coding_spec const &spec, bool nullable,
+static status decode_character(jogasaki::kvs::coding_spec const &spec, yugawara::storage::column const &column,
+                               bool nullable,
                                jogasaki::kvs::readable_stream &stream, tateyama::proto::kvs::data::Value *value) {
     data::any dest{};
-    auto type = meta::field_type{meta::field_enum_tag<kind::character>};
+    auto character_type = dynamic_cast<const takatori::type::character *>(&column.type());
+    auto type{meta::field_type{std::make_shared<meta::character_field_option>(
+            character_type->varying(), character_type->length())}};
     jogasaki::memory::page_pool pool{};
     jogasaki::memory::lifo_paged_memory_resource mem{&pool};
     jogasaki::status st{};
@@ -329,7 +336,7 @@ status deserialize(jogasaki::kvs::coding_spec const &spec, yugawara::storage::co
             break;
         }
         case takatori::type::type_kind::character: {
-            s = decode_character(spec, nullable, stream, value);
+            s = decode_character(spec, column, nullable, stream, value);
             break;
         }
         case takatori::type::type_kind::boolean: {

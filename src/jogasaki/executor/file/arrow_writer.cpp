@@ -33,6 +33,7 @@
 #include <arrow/util/decimal.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/exception.h>
 #include <takatori/decimal/triple.h>
 
 #include <jogasaki/constants.h>
@@ -45,6 +46,7 @@
 namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::throw_exception;
 
 arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta) :
     meta_(std::move(meta))
@@ -60,7 +62,12 @@ std::shared_ptr<arrow::ArrayBuilder> create_array_builder(meta::field_type const
         case k::int8: return std::make_shared<arrow::Int64Builder>(pool);
         case k::float4: return std::make_shared<arrow::FloatBuilder>(pool);
         case k::float8: return std::make_shared<arrow::DoubleBuilder>(pool);
-        case k::character: return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool); //FIXME
+        case k::character: {
+            if(type.option_unsafe<k::character>()->varying_) {
+                return std::make_shared<arrow::StringBuilder>(pool);
+            }
+            return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool);
+        }
         case k::octet: return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool); //TODO
         case k::decimal: return std::make_shared <arrow::Decimal128Builder> (arrow_type, pool);
         case k::date: return std::make_shared <arrow::Date32Builder>(pool);
@@ -152,7 +159,7 @@ bool arrow_writer::write(accessor::record_ref ref) {
                 case k::int8: success = write_int8(i, ref.get_value<std::int64_t>(meta_->value_offset(i))); break;
                 case k::float4: success = write_float4(i, ref.get_value<float>(meta_->value_offset(i))); break;
                 case k::float8: success = write_float8(i, ref.get_value<double>(meta_->value_offset(i))); break;
-                case k::character: success = write_character(i, ref.get_value<accessor::text>(meta_->value_offset(i))); break;
+                case k::character: success = write_character(i, ref.get_value<accessor::text>(meta_->value_offset(i)), column_options_[i]); break;
                 case k::decimal: success = write_decimal(i, ref.get_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i)), column_options_[i]); break;
                 case k::date: success = write_date(i, ref.get_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i))); break;
                 case k::time_of_day: success = write_time_of_day(i, ref.get_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i))); break;
@@ -215,7 +222,13 @@ bool arrow_writer::write_float8(std::size_t colidx, double v) {
     return true;
 }
 
-bool arrow_writer::write_character(std::size_t colidx, accessor::text v) {
+bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt) {
+    if(colopt.varying_) {
+        auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);
+        auto sv = static_cast<std::string_view>(v);
+        builder.Append(arrow::util::string_view{sv.data(), sv.size()});
+        return true;
+    }
     auto& builder = static_cast<arrow::FixedSizeBinaryBuilder&>(*array_builders_[colidx]);
     auto sv = static_cast<std::string_view>(v);
     builder.Append(arrow::util::string_view{sv.data(), sv.size()});
@@ -317,8 +330,17 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
                 break;
             }
             case meta::field_type_kind::character: {
-                // FIXME get length and varying flag to distinguish CHAR/VARCHAR
-                type = arrow::fixed_size_binary(10);
+                auto opt = meta_->at(i).option<meta::field_type_kind::character>();
+                options[i].varying_ = opt->varying_;
+                options[i].length_ = opt->length_.has_value() ? opt->length_.value() : details::column_option::undefined;
+                if(opt->varying_) {
+                    type = arrow::utf8();
+                    break;
+                }
+                if(! opt->length_.has_value()) {
+                    throw_exception(std::logic_error{"no length for char field"});
+                }
+                type = arrow::fixed_size_binary(*opt->length_);
                 break;
             }
             case meta::field_type_kind::octet: {

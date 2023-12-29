@@ -23,6 +23,7 @@
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/character.h>
 #include <takatori/descriptor/variable.h>
 
 #include <jogasaki/constants.h>
@@ -49,7 +50,10 @@ meta::field_type type_for(takatori::type::data const& type) {
             auto& typ = static_cast<::takatori::type::decimal const&>(type);  //NOLINT
             return meta::field_type(std::make_shared<meta::decimal_field_option>(typ.precision(), typ.scale()));
         }
-        case t::character: return meta::field_type(meta::field_enum_tag<k::character>);
+        case t::character: {
+            auto& typ = static_cast<::takatori::type::character const&>(type);  //NOLINT
+            return meta::field_type(std::make_shared<meta::character_field_option>(typ.varying(), typ.length()));
+        }
         case t::octet: return meta::field_type(meta::field_enum_tag<k::octet>);
         case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);
         case t::date: return meta::field_type(meta::field_enum_tag<k::date>);

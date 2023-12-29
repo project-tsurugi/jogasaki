@@ -30,6 +30,7 @@
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/executor/tables.h>
 #include "api_test_base.h"
 #include <jogasaki/test_utils/secondary_index.h>
@@ -39,6 +40,7 @@ namespace jogasaki::testing {
 
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+using namespace jogasaki::meta;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
@@ -131,7 +133,8 @@ TEST_F(ddl_test, create_table_varieties_types) {
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
         auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
+        auto exp = mock::typed_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
+            std::tuple{int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5), character_type(true, 6)},
             std::forward_as_tuple(1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")),
             {false, false, false, false, false, false, false}
         );
@@ -224,7 +227,8 @@ TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
         auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
+        auto exp = mock::typed_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
+            std::tuple{int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5), character_type(true, 6)},
             std::forward_as_tuple(1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")),
             {false, false, false, false, false, false, false}
         );
@@ -475,7 +479,8 @@ TEST_F(ddl_test, long_char_data) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::character, kind::character, kind::character, kind::character>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character, kind::character, kind::character>(
+            std::tuple{character_type(false, len), character_type(true, len), character_type(false, len), character_type(true, len)},
             std::forward_as_tuple(accessor::text{c0}, accessor::text{c1}, accessor::text{c2}, accessor::text{c3}), {false, false, false, false})), result[0]);
     }
 }
@@ -491,7 +496,8 @@ TEST_F(ddl_test, max_key_len) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T WHERE C0='"+c0+"'", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::character>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+            std::tuple{character_type(true, len)},
             std::forward_as_tuple(accessor::text{c0}), {false})), result[0]);
     }
     execute_statement("UPDATE T SET C0='"+c1+"' WHERE C0='"+c0+"'");
@@ -499,7 +505,8 @@ TEST_F(ddl_test, max_key_len) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T WHERE C0='"+c1+"'", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::character>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+            std::tuple{character_type(true, len)},
             std::forward_as_tuple(accessor::text{c1}), {false})), result[0]);
     }
     execute_statement("DELETE FROM T WHERE C0='"+c1+"'");

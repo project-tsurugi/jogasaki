@@ -70,6 +70,8 @@ public:
 
     void add_to_waitlist(element_type arg);
 
+    bool instant_update_if_waitlist_empty(marker_type marker);
+
 private:
     tbb::concurrent_priority_queue<element_type, details::less> heap_{details::less{}};
     std::atomic_bool current_set_{false};

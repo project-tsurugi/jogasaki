@@ -32,6 +32,25 @@ durability_manager::marker_type durability_manager::current_marker() const {
     return current_;
 }
 
+bool durability_manager::instant_update_if_waitlist_empty(marker_type marker) {
+    bool v{false};
+    if(! heap_in_use_.compare_exchange_strong(v, true)) {
+        // already in use
+        return false;
+    }
+    if(! heap_.empty()) {
+        heap_in_use_ = false;
+        return false;
+    }
+
+    if(! current_set_ || current_ < marker) {
+        current_ = marker;
+    }
+    current_set_ = true;
+    heap_in_use_ = false;
+    return true;
+}
+
 bool durability_manager::update_current_marker(
     marker_type marker,
     callback cb  //NOLINT(performance-unnecessary-value-param)

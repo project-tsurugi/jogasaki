@@ -41,6 +41,11 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     if(db_->config()->profile_commits()) {
         durability_callback_invoked = commit_profile::clock::now();
     }
+
+    if(manager_->instant_update_if_waitlist_empty(marker)) {
+        // wait-list is empty and marker is updated quickly
+        return;
+    }
     scheduler_->schedule_task(
         scheduler::create_custom_task(
             request_ctx.get(),

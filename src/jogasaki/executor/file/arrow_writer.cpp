@@ -227,7 +227,7 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
     if(colopt.varying_) {
         auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
-        (void) builder.Append(sv.data(), sv.size());
+        (void) builder.Append(sv.data(), static_cast<int>(sv.size()));
         return true;
     }
     auto& builder = static_cast<arrow::FixedSizeBinaryBuilder&>(*array_builders_[colidx]);  //NOLINT

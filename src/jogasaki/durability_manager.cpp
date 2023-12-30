@@ -36,10 +36,11 @@ bool durability_manager::update_current_marker(
     marker_type marker,
     callback cb  //NOLINT(performance-unnecessary-value-param)
 ) {
-    if(heap_in_use_) {
+    bool v{false};
+    if(! heap_in_use_.compare_exchange_strong(v, true)) {
+        // already in use
         return false;
     }
-    heap_in_use_ = true;
     element_type top{};
     while(heap_.try_pop(top)) {
         if(top->transaction()->durability_marker() > marker) {

@@ -33,6 +33,7 @@
 #include <takatori/decimal/triple.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
@@ -44,6 +45,7 @@
 namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
+using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
 arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta) :
@@ -225,12 +227,19 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
     if(colopt.varying_) {
         auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
-        (void) builder.Append(arrow::util::string_view{sv.data(), sv.size()});
+        (void) builder.Append(sv.data(), sv.size());
         return true;
     }
     auto& builder = static_cast<arrow::FixedSizeBinaryBuilder&>(*array_builders_[colidx]);  //NOLINT
     auto sv = static_cast<std::string_view>(v);
-    (void) builder.Append(arrow::util::string_view{sv.data(), sv.size()});
+    // arrow assumes the buffer has enough length, so check length first
+    if(sv.size() != colopt.length_) {
+        throw_exception(std::logic_error{
+            string_builder{} << "invalid length(" << sv.size() << ") for character field with length "
+                             << colopt.length_ << string_builder::to_string
+        });
+    }
+    (void) builder.Append(sv.data());
     return true;
 }
 

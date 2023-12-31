@@ -38,6 +38,9 @@ enum class request_detail_kind {
     explain,
     describe_table,
     batch,
+
+    // internal
+    process_durability_callback,
 };
 
 /**
@@ -61,6 +64,7 @@ enum class request_detail_kind {
         case kind::explain: return "explain"sv;
         case kind::describe_table: return "describe_table"sv;
         case kind::batch: return "batch"sv;
+        case kind::process_durability_callback: return "process_durability_callback"sv;
     }
     std::abort();
 }

@@ -18,12 +18,13 @@
 #include <atomic>
 #include <memory>
 
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/scheduler/task_factory.h>
-#include <jogasaki/api/impl/request_context_factory.h>
-#include <jogasaki/api/impl/database.h>
 #include <jogasaki/utils/use_counter.h>
 
 namespace jogasaki {
@@ -32,20 +33,25 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     // Avoid tracing entry. This function is called frequently. Trace only effective calls below.
     [[maybe_unused]] auto cnt = db_->requests_inprocess();
     if(db_->stop_requested()) return;
-    auto request_ctx = api::impl::create_request_context(*db_, nullptr, nullptr, nullptr);
-    request_ctx->job()->callback([request_ctx](){
-        (void) request_ctx;
-    });
-
     commit_profile::time_point durability_callback_invoked{};
     if(db_->config()->profile_commits()) {
         durability_callback_invoked = commit_profile::clock::now();
     }
-
     if(manager_->instant_update_if_waitlist_empty(marker)) {
         // wait-list is empty and marker is updated quickly
         return;
     }
+    auto request_ctx = api::impl::create_request_context(
+        *db_,
+        nullptr,
+        nullptr,
+        nullptr,
+        std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::process_durability_callback)
+    );
+    request_ctx->job()->callback([request_ctx](){
+        (void) request_ctx;
+    });
+
     scheduler_->schedule_task(
         scheduler::create_custom_task(
             request_ctx.get(),

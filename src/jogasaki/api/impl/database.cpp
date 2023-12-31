@@ -1147,6 +1147,9 @@ void database::print_diagnostic(std::ostream &os) {
     if(task_scheduler_) {
         task_scheduler_->print_diagnostic(os);
     }
+    if(durability_manager_) {
+        durability_manager_->print_diagnostic(os);
+    }
     os << "/:jogasaki print diagnostics end" << std::endl;
 }
 

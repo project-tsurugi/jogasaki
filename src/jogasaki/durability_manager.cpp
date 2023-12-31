@@ -21,6 +21,8 @@
 
 #include <takatori/util/exception.h>
 
+#include <jogasaki/utils/hex.h>
+
 namespace jogasaki {
 
 using takatori::util::throw_exception;
@@ -79,5 +81,43 @@ bool durability_manager::update_current_marker(
 void durability_manager::add_to_waitlist(durability_manager::element_type arg) {
     heap_.emplace(std::move(arg));
 }
+
+void durability_manager::print_diagnostic(std::ostream& os) {
+    auto sz = heap_.size();
+    os << "durable_wait_count: " << sz << std::endl;
+    if(sz == 0) {
+        return;
+    }
+    std::vector<durability_manager::element_type> backup{};
+    backup.reserve(sz);
+    durability_manager::element_type elem{};
+    while(heap_.try_pop(elem)) {
+        backup.emplace_back(std::move(elem));
+    }
+    os << "durable_waits:" << sz << std::endl;
+    for(auto&& e : backup) {
+        auto tx = e->transaction();
+        os << "  - transaction id: " << (tx ? tx->transaction_id() : "na" ) << std::endl;
+        auto job = e->job();
+        os << "    job_id: ";
+        if(job) {
+            os << utils::hex(job->id());
+        } else {
+            os << "na";
+        }
+        os << std::endl;
+        os << "    marker: ";
+        if(! tx || ! tx->durability_marker().has_value()) {
+            os << "na";
+        } else {
+            os << std::to_string(tx->durability_marker().value());
+        }
+        os << std::endl;
+    }
+
+    for(auto&& e : backup) {
+        heap_.emplace(std::move(e));
+    }
 }
 
+}  // namespace jogasaki

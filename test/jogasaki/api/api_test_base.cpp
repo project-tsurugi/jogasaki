@@ -56,8 +56,22 @@ void api_test_base::db_create(std::shared_ptr<configuration> cfg) {
     db_ = std::shared_ptr{api::create_database(cfg)};
 }
 
+static takatori::util::maybe_shared_ptr<jogasaki::api::database> static_db;  //NOLINT
+
+static void sighup_handler([[maybe_unused]] int sig) {
+    api::impl::get_impl(*static_db).print_diagnostic(std::cerr);
+}
+
+void setup_signal_handler(takatori::util::maybe_shared_ptr<jogasaki::api::database> db) {
+    static_db = db;
+    if (signal(SIGHUP, sighup_handler) == SIG_ERR) {
+        LOG(ERROR) << "cannot register signal handler";
+    }
+}
+
 void api_test_base::db_setup(std::shared_ptr<configuration> cfg) {
     db_create(cfg);
+    setup_signal_handler(db_);
     db_->start();
 }
 

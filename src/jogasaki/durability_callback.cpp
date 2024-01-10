@@ -33,13 +33,13 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     // Avoid tracing entry. This function is called frequently. Trace only effective calls below.
     [[maybe_unused]] auto cnt = db_->requests_inprocess();
     if(db_->stop_requested()) return;
-    commit_profile::time_point durability_callback_invoked{};
-    if(db_->config()->profile_commits()) {
-        durability_callback_invoked = commit_profile::clock::now();
-    }
     if(manager_->instant_update_if_waitlist_empty(marker)) {
         // wait-list is empty and marker is updated quickly
         return;
+    }
+    commit_profile::time_point durability_callback_invoked{};
+    if(db_->config()->profile_commits()) {
+        durability_callback_invoked = commit_profile::clock::now();
     }
     auto request_ctx = api::impl::create_request_context(
         *db_,

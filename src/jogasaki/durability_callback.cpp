@@ -33,7 +33,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     // Avoid tracing entry. This function is called frequently. Trace only effective calls below.
     [[maybe_unused]] auto cnt = db_->requests_inprocess();
     if(db_->stop_requested()) return;
-    if(manager_->instant_update_if_waitlist_empty(marker)) {
+    if(db_->config()->omit_task_when_idle() && manager_->instant_update_if_waitlist_empty(marker)) {
         // wait-list is empty and marker is updated quickly
         return;
     }

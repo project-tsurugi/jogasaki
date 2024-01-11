@@ -343,6 +343,15 @@ public:
     [[nodiscard]] bool return_os_pages() const noexcept {
         return return_os_pages_;
     }
+
+    void omit_task_when_idle(bool arg) noexcept {
+        omit_task_when_idle_ = arg;
+    }
+
+    [[nodiscard]] bool omit_task_when_idle() const noexcept {
+        return omit_task_when_idle_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -373,6 +382,7 @@ public:
             "profile_commits:" << cfg.profile_commits() << " " <<
             "skip_smv_check:" << cfg.skip_smv_check() << " " <<
             "return_os_pages:" << cfg.return_os_pages() << " " <<
+            "omit_task_when_idle:" << cfg.omit_task_when_idle() << " " <<
             "";
     }
 
@@ -409,6 +419,7 @@ private:
     bool profile_commits_ = false;
     bool skip_smv_check_ = false;
     bool return_os_pages_ = false;
+    bool omit_task_when_idle_ = true;
 };
 
 }

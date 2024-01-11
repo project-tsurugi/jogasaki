@@ -65,8 +65,7 @@ private:
 flat_task create_custom_task(
     request_context* rctx,
     task_body_type body,
-    bool has_transaction_io = false,
-    bool delayed = false
+    bool has_transaction_io = false
 );
 
 } // namespace jogasaki::scheduler

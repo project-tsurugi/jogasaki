@@ -75,7 +75,6 @@ void print_task_diagnostic(const flat_task &t, std::ostream &os) {
     os << "        - id: " << utils::hex(t.id()) << std::endl;
     os << "          kind: " << t.kind() << std::endl;
     os << "          sticky: " << t.sticky() << std::endl;
-    os << "          delayed: " << t.delayed() << std::endl;
     if(t.req_context() && t.req_context()->job()) {
         os << "          job_id: " << utils::hex(t.req_context()->job()->id()) << std::endl;
     }
@@ -240,14 +239,12 @@ flat_task::identity_type flat_task::id() const {
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::wrapped>,
     request_context* rctx,
-    std::shared_ptr<model::task> origin,
-    bool delayed
+    std::shared_ptr<model::task> origin
 ) noexcept:
     kind_(flat_task_kind::wrapped),
     req_context_(rctx),
     origin_(std::move(origin)),
-    sticky_(origin_->has_transactional_io()),
-    delayed_(delayed)
+    sticky_(origin_->has_transactional_io())
 {}
 
 flat_task::flat_task(

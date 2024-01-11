@@ -1029,13 +1029,6 @@ database::database(std::shared_ptr<class configuration> cfg, sharksfin::Database
     kvs_db_(std::make_unique<kvs::database>(db))
 {}
 
-void submit_task_begin_wait(request_context* rctx, scheduler::task_body_type&& body) {
-    // wait task does not need to be sticky because multiple begin operation for a transaction doesn't happen concurrently
-    auto t = scheduler::create_custom_task(rctx, std::move(body), false, true);
-    auto& ts = *rctx->scheduler();
-    ts.schedule_task(std::move(t));
-}
-
 scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option

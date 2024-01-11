@@ -94,7 +94,7 @@ void durability_manager::print_diagnostic(std::ostream& os) {
     while(heap_.try_pop(elem)) {
         backup.emplace_back(std::move(elem));
     }
-    os << "durable_waits:" << sz << std::endl;
+    os << "durable_waits:" << std::endl;
     for(auto&& e : backup) {
         auto tx = e->transaction();
         os << "  - transaction id: " << (tx ? tx->transaction_id() : "na" ) << std::endl;

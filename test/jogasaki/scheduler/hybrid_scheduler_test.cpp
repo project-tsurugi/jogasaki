@@ -79,7 +79,7 @@ TEST_F(hybrid_scheduler_test, basic) {
     request_context rctx{};
     rctx.job(maybe_shared_ptr{&jctx});
     s.start();
-    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task, false});
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task});
     ASSERT_TRUE(wait(executed, 1000));
     s.stop();
 }
@@ -98,7 +98,7 @@ TEST_F(hybrid_scheduler_test, non_transactional_request_runs_serial_scheduler) {
     rctx.job(maybe_shared_ptr{&jctx});
     auto jobid = jctx.id();
     s.start();
-    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task, false});
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task});
     ASSERT_TRUE(wait(executed, 1000));
     s.stop();
     ASSERT_TRUE(executed);
@@ -118,7 +118,7 @@ TEST_F(hybrid_scheduler_test, simple_request_runs_serial_scheduler) {
     rctx.lightweight(true);
     rctx.job(maybe_shared_ptr{&jctx});
     s.start();
-    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task, false});
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task});
     ASSERT_TRUE(wait(executed, 1000));
     s.stop();
     ASSERT_TRUE(executed);
@@ -148,13 +148,12 @@ TEST_F(hybrid_scheduler_test, serial_scheduler_called_recursively) {
         s.schedule_task(flat_task{
             task_enum_tag<scheduler::flat_task_kind::wrapped>,
             &rctx,
-            task1,
-            false
+            task1
         });
     });
 
     s.start();
-    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task0, false});
+    s.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, task0});
     ASSERT_TRUE(wait(executed0, 1000));
     ASSERT_TRUE(wait(executed1, 1000));
     s.stop();

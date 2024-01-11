@@ -58,7 +58,7 @@ TEST_F(task_scheduler_test, single) {
     request_context rctx{};
     rctx.job(maybe_shared_ptr{&jctx});
     auto jobid = jctx.id();
-    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, t, false});
+    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, t});
     executor.wait_for_progress(jobid);
     ASSERT_TRUE(run);
 }
@@ -78,7 +78,7 @@ TEST_F(task_scheduler_test, DISABLED_multi) {
     });
     auto jobid = jctx.id();
     executor.start();
-    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, t, false});
+    executor.schedule_task(flat_task{task_enum_tag<scheduler::flat_task_kind::wrapped>, &rctx, t});
     executor.wait_for_progress(jobid);
     executor.stop();
     ASSERT_TRUE(run.test_and_set());

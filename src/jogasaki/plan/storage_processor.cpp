@@ -18,6 +18,8 @@
 #include <atomic>
 
 #include <takatori/type/int.h>
+#include <takatori/type/decimal.h>
+#include <takatori/util/downcast.h>
 #include <yugawara/storage/index.h>
 #include <yugawara/storage/table.h>
 #include <yugawara/schema/declaration.h>
@@ -32,6 +34,7 @@ namespace jogasaki::plan {
 using ::yugawara::storage::index;
 using ::yugawara::storage::table;
 namespace schema = ::yugawara::schema;
+using ::takatori::util::unsafe_downcast;
 
 bool contains(std::vector<index::key>& keys, yugawara::storage::column& c) {
     bool contained = false;
@@ -81,6 +84,12 @@ bool storage_processor::ensure(
 
     std::vector<yugawara::storage::index::column_ref> cols{};
     for(auto&& cc : table_prototype.columns()) {
+        if(cc.type().kind() == ::takatori::type::type_kind::decimal) {
+            auto& t = unsafe_downcast<::takatori::type::decimal>(cc.type());
+            if(! t.precision().has_value()) {
+                cc.type(std::make_shared<takatori::type::decimal>(decimal_default_precision, t.scale()));
+            }
+        }
         if(! contains(primary_index_prototype.keys(), cc)) {
             cols.emplace_back(cc);
         }

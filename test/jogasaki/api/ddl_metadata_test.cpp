@@ -163,7 +163,11 @@ TEST_F(ddl_metadata_test, decimal_wo_ps) {
 }
 
 TEST_F(ddl_metadata_test, decimal_wildcard) {
-    test_decimal("DECIMAL(*)", false, true, -1, 0);
+    test_decimal("DECIMAL(*)", true, true, 38, 0);
+}
+
+TEST_F(ddl_metadata_test, decimal_precision_wildcard) {
+    test_decimal("DECIMAL(*, 3)", true, true, 38, 3);
 }
 
 TEST_F(ddl_metadata_test, decimal_ps_wildcards) {

@@ -651,7 +651,7 @@ bool validate_type(
     std::string_view reason{};
     if(! typ.scale()) {
         reason = "invalid scale";
-    } else if(typ.precision() && ! (typ.precision().value() >= 1 && typ.precision().value() <= 38)) {
+    } else if(typ.precision() && ! (typ.precision().value() >= decimal_min_precision && typ.precision().value() <= decimal_max_precision)) {
         reason = "invalid precision";
     } else if(typ.precision() && typ.scale() && ! (typ.scale().value() <= typ.precision().value())) {
         reason = "scale out of range for the precision";

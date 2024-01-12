@@ -416,12 +416,51 @@ TEST_F(ddl_test, unsupported_types) {
 }
 
 TEST_F(ddl_test, decimal_args) {
+    // verify decimal args variation doesn't hit compiler error
+    // this is to test compiler behavior, run-time behavior will be tested separate cases below
+    // TODO re-org. similar cases covered in ddl_metadata_test.cpp.
     api::statement_handle prepared{};
     std::unordered_map<std::string, api::field_type_kind> variables{};
     EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT0 (C0 DECIMAL PRIMARY KEY)", variables, prepared));
     EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT1 (C0 DECIMAL(*,*) PRIMARY KEY)", variables, prepared));
     EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT2 (C0 DECIMAL(*,3) PRIMARY KEY)", variables, prepared));
     EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT3 (C0 DECIMAL(3,*) PRIMARY KEY)", variables, prepared));
+}
+
+TEST_F(ddl_test, decimal_with_no_arg) {
+    // verify decimal without arg will be DECIMAL(38,0)
+    execute_statement("CREATE TABLE T (C0 DECIMAL PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES(CAST('1' AS DECIMAL))");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
+        std::tuple{decimal_type(38, 0)},
+        std::forward_as_tuple(decimal_v{1, 0, 1, 0}))), result[0]);
+}
+
+TEST_F(ddl_test, decimal_with_aster_aster) {
+    // verify DDL with decimal(*, *) will be an error
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(*,*) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
+}
+
+TEST_F(ddl_test, decimal_with_aster_prec) {
+    // verify decimal(*, 3) will be DECIMAL(38,0)
+    execute_statement("CREATE TABLE T (C0 DECIMAL(*, 3) PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES(CAST('1' AS DECIMAL(*,3)))");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
+        std::tuple{decimal_type(38, 3)},
+        std::forward_as_tuple(decimal_v{1, 0, 1, 0}))), result[0]);
+}
+
+TEST_F(ddl_test, decimal_with_aster_scale) {
+    // verify DDL with decimal(3, *) will be an error
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(3,*) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(ddl_test, string_args) {

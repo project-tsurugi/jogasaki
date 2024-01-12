@@ -74,10 +74,22 @@ constexpr std::size_t default_record_buffer_size = 1024;
 constexpr static std::string_view generated_pkey_column_prefix = "__generated_rowid_";
 
 /**
+ * @brief max precision for decimal
+ * @details max precision allowed for decimal types
+ */
+constexpr std::size_t decimal_max_precision = 38;
+
+/**
+ * @brief min precision for decimal
+ * @details min precision allowed for decimal types
+ */
+constexpr std::size_t decimal_min_precision = 1;
+
+/**
  * @brief default precision for decimal
  * @details default precision for decimal types that has no precision information defined (e.g. DECIMAL(*, 0))
  */
-constexpr std::size_t decimal_default_precision = 38;
+constexpr std::size_t decimal_default_precision = decimal_max_precision;
 
 /**
  * @brief default precision for scale for dump

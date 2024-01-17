@@ -16,22 +16,26 @@
 #include "create_index.h"
 
 #include <takatori/util/string_builder.h>
+#include <takatori/util/exception.h>
 #include <yugawara/binding/extract.h>
 
-#include <jogasaki/plan/storage_processor.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
-#include <jogasaki/utils/storage_metadata_serializer.h>
-
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
+#include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/abort_transaction.h>
 
 namespace jogasaki::executor::common {
 
 using takatori::util::string_builder;
+using takatori::util::throw_exception;
 
 create_index::create_index(
     takatori::statement::create_index& ct
@@ -41,6 +45,35 @@ create_index::create_index(
 
 model::statement_kind create_index::kind() const noexcept {
     return model::statement_kind::create_index;
+}
+
+// return false if table is not empty, or error with kvs
+bool create_index::validate_empty_table(request_context& context, std::string_view table_name) const {
+    auto stg = context.database()->get_or_create_storage(table_name);
+    std::unique_ptr<kvs::iterator> it{};
+    if(auto res = stg->scan(*context.transaction(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);
+       res != status::ok) {
+        handle_kvs_errors(context, res);
+        handle_generic_error(context, res, error_code::sql_execution_exception);
+        return false;
+    }
+    auto st = it->next();
+    if(st == status::ok) {
+        set_error(
+            context,
+            error_code::unsupported_runtime_feature_exception,
+            string_builder{} << "Records exist in the table \"" << table_name << "\" and creating index is not supported for tables with existing records" << string_builder::to_string,
+            status::err_unsupported
+        );
+        it.reset();
+        utils::abort_transaction(*context.transaction());
+        return false;
+    }
+    if(st == status::not_found) {
+        return true;
+    }
+    handle_kvs_errors(context, st);
+    return false;
 }
 
 bool create_index::operator()(request_context& context) const {
@@ -55,6 +88,9 @@ bool create_index::operator()(request_context& context) const {
             string_builder{} << "Index \"" << i->simple_name() << "\" already exists." << string_builder::to_string,
             status::err_already_exists
         );
+        return false;
+    }
+    if(! validate_empty_table(context, i->table().simple_name())) {
         return false;
     }
 

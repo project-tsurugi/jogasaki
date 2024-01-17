@@ -53,6 +53,7 @@ public:
 private:
     takatori::statement::create_index* ct_{};
 
+    bool validate_empty_table(request_context& context, std::string_view table_name) const;
 };
 
 }

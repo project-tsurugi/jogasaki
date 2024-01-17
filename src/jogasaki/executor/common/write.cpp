@@ -39,6 +39,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/coder.h>
@@ -459,19 +460,13 @@ model::statement_kind write::kind() const noexcept {
     return model::statement_kind::write;
 }
 
-void abort_transaction(transaction_context& tx) {
-    if (auto res = tx.abort(); res != status::ok) {
-        throw_exception(std::logic_error{"abort failed unexpectedly"});
-    }
-}
-
 bool write::operator()(request_context& context) {
     auto res = process(context);
     if(! res) {
         // Ensure tx aborts on any error. Though tx might be already aborted due to kvs errors,
         // aborting again will do no harm since sharksfin tx manages is_active flag and omits aborting again.
         auto& tx = context.transaction();
-        abort_transaction(*tx);
+        utils::abort_transaction(*tx);
     }
     return res;
 }

@@ -15,22 +15,39 @@
  */
 #include "create_index.h"
 
-#include <takatori/util/string_builder.h>
-#include <takatori/util/exception.h>
-#include <yugawara/binding/extract.h>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <type_traits>
+#include <utility>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
 
-#include <jogasaki/constants.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/string_builder.h>
+#include <yugawara/binding/extract.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/table.h>
+#include <sharksfin/StorageOptions.h>
+
 #include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/sequence/metadata_store.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/plan/storage_processor.h>
-#include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
-#include <jogasaki/utils/storage_metadata_serializer.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_transaction.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/storage_metadata_serializer.h>
 
 namespace jogasaki::executor::common {
 
@@ -51,7 +68,8 @@ model::statement_kind create_index::kind() const noexcept {
 bool create_index::validate_empty_table(request_context& context, std::string_view table_name) const {
     auto stg = context.database()->get_or_create_storage(table_name);
     std::unique_ptr<kvs::iterator> it{};
-    if(auto res = stg->scan(*context.transaction(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);
+    if(auto res =
+           stg->scan(*context.transaction(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);
        res != status::ok) {
         handle_kvs_errors(context, res);
         handle_generic_error(context, res, error_code::sql_execution_exception);
@@ -62,7 +80,9 @@ bool create_index::validate_empty_table(request_context& context, std::string_vi
         set_error(
             context,
             error_code::unsupported_runtime_feature_exception,
-            string_builder{} << "Records exist in the table \"" << table_name << "\" and creating index is not supported for tables with existing records" << string_builder::to_string,
+            string_builder{} << "Records exist in the table \"" << table_name
+                             << "\" and creating index is not supported for tables with existing records"
+                             << string_builder::to_string,
             status::err_unsupported
         );
         it.reset();
@@ -134,4 +154,4 @@ bool create_index::operator()(request_context& context) const {
     return true;
 }
 
-}
+}  // namespace jogasaki::executor::common

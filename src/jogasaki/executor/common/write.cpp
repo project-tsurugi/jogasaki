@@ -15,41 +15,69 @@
  */
 #include "write.h"
 
+#include <cstring>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <stdexcept>
+#include <cstdint>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <boost/assert.hpp>
+
+#include <takatori/descriptor/element.h>
+#include <takatori/descriptor/reference.h>
+#include <takatori/descriptor/variable.h>
+#include <takatori/relation/sort_direction.h>
+#include <takatori/tree/tree_element_vector.h>
+#include <takatori/tree/tree_fragment_vector.h>
+#include <takatori/type/data.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/optional_ptr.h>
+#include <takatori/util/sequence_view.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/column_value.h>
+#include <yugawara/storage/column_value_kind.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/constants.h>
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/any.h>
-#include <jogasaki/error.h>
 #include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/common/step.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/index/primary_context.h>
-#include <jogasaki/index/secondary_context.h>
+#include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/sequence/exception.h>
+#include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/index/secondary_target.h>
 #include <jogasaki/index/utils.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
-#include <jogasaki/model/statement.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/coder.h>
 #include <jogasaki/utils/convert_any.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/storage_utils.h>
 
 namespace jogasaki::executor::common {
 

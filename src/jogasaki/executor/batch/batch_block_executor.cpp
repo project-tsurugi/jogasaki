@@ -28,6 +28,7 @@
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/file/parquet_reader.h>
 
 #include "batch_executor.h"
 #include "batch_file_executor.h"
@@ -65,7 +66,7 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
     }
 }
 
-file::parquet_reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan::parameter_set> const& pset) {
+file::reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan::parameter_set> const& pset) {
     for(auto&& [n, e] : *pset) {
         if(name != n) continue;
         if(e.type().kind() == meta::field_type_kind::reference_column_position) {
@@ -85,12 +86,12 @@ void create_reader_option_and_maping(
     api::parameter_set const& ps,
     api::statement_handle prepared,
     std::unordered_map<std::string, file::parameter>& mapping,
-    file::parquet_reader_option& out
+    file::reader_option& out
 ) {
     auto pset = static_cast<api::impl::parameter_set const&>(ps).body();  //NOLINT
     auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
     auto vinfo = stmt->body()->mirrors()->host_variable_info();
-    std::vector<file::parquet_reader_field_locator> locs{};
+    std::vector<file::reader_field_locator> locs{};
 
     // create mapping
     mapping.clear();
@@ -120,7 +121,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
     // read records, assign host variables, submit tasks
     auto ps = std::shared_ptr<api::parameter_set>{info_.parameters()->clone()};
     if(! reader_) {
-        file::parquet_reader_option opt{};
+        file::reader_option opt{};
         create_reader_option_and_maping(*info_.parameters(), info_.prepared(), mapping_, opt);
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {

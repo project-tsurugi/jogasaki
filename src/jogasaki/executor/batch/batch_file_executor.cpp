@@ -16,6 +16,7 @@
 #include "batch_file_executor.h"
 
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/executor/file/parquet_reader.h>
 
 #include "batch_executor.h"
 #include "batch_block_executor.h"

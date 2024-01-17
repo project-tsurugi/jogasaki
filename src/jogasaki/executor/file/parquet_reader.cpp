@@ -225,8 +225,8 @@ maybe_shared_ptr<meta::external_record_meta> const& parquet_reader::meta() {
     return meta_;
 }
 
-parquet_reader_option create_default(meta::record_meta const& meta) {
-    std::vector<parquet_reader_field_locator> locs{};
+reader_option create_default(meta::record_meta const& meta) {
+    std::vector<reader_field_locator> locs{};
     locs.reserve(meta.field_count());
     for(std::size_t i=0, n=meta.field_count(); i < n; ++i) {
         locs.emplace_back("", i);
@@ -236,7 +236,7 @@ parquet_reader_option create_default(meta::record_meta const& meta) {
 
 std::shared_ptr<parquet_reader> parquet_reader::open(
     std::string_view path,
-    parquet_reader_option const* opt,
+    reader_option const* opt,
     std::size_t row_group_index
 ) {
     auto ret = std::make_shared<parquet_reader>();
@@ -409,7 +409,7 @@ std::shared_ptr<meta::external_record_meta> create_meta(
     );
 }
 
-bool validate_option(parquet_reader_option const& opt, parquet::FileMetaData& pmeta) {
+bool validate_option(reader_option const& opt, parquet::FileMetaData& pmeta) {
     for(auto&& l : opt.loc_) {
         if(! l.empty_ && l.index_ != npos && static_cast<std::size_t>(pmeta.schema()->num_columns()) <= l.index_) {
             auto msg = string_builder{} <<
@@ -444,7 +444,7 @@ std::size_t index_in(std::vector<std::string>::value_type const& e, std::vector<
 }
 
 std::vector<std::size_t>
-create_parameter_to_parquet_field(parquet_reader_option const& opt, parquet::FileMetaData& pmeta) {
+create_parameter_to_parquet_field(reader_option const& opt, parquet::FileMetaData& pmeta) {
     std::vector<std::size_t> ret{};
     auto sz = opt.meta_->field_count();
     ret.reserve(sz);
@@ -537,7 +537,7 @@ void dump_file_metadata(parquet::FileMetaData& pmeta) {
 
 bool parquet_reader::init(
     std::string_view path,
-    parquet_reader_option const* opt,
+    reader_option const* opt,
     std::size_t row_group_index
 ) {
     try {
@@ -565,7 +565,7 @@ bool parquet_reader::init(
         } else {
             // this is for testing - create mock option
             meta_ = create_meta(*file_metadata, nullptr, nullptr);
-            parquet_reader_option d = create_default(*meta_->origin());
+            reader_option d = create_default(*meta_->origin());
             parameter_meta_ = maybe_shared_ptr{d.meta_};
             parameter_to_parquet_field_ = create_parameter_to_parquet_field(d, *file_metadata);
         }

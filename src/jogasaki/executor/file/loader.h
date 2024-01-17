@@ -21,7 +21,7 @@
 
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
-#include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -148,7 +148,7 @@ private:
     std::atomic_size_t running_statement_count_{};
     api::statement_handle prepared_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
-    std::shared_ptr<parquet_reader> reader_{};
+    std::shared_ptr<file_reader> reader_{};
     std::shared_ptr<transaction_context> tx_{};
     api::impl::database* db_{};
     std::atomic_size_t records_loaded_{0};

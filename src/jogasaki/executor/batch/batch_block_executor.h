@@ -21,7 +21,7 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_execution_info.h>
 #include <jogasaki/executor/file/loader.h>
@@ -104,7 +104,7 @@ public:
 private:
     std::string file_{};
     std::size_t block_index_{};
-    std::shared_ptr<file::parquet_reader> reader_{};
+    std::shared_ptr<file::file_reader> reader_{};
     batch_execution_info info_{};
     std::shared_ptr<batch_execution_state> state_{};
     batch_file_executor* parent_{};

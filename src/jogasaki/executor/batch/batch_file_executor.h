@@ -21,7 +21,7 @@
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/statement_handle.h>
-#include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_execution_info.h>
 

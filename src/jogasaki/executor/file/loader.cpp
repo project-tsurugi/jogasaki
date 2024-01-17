@@ -25,6 +25,7 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/file/parquet_reader.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/transaction_context.h>
@@ -85,7 +86,7 @@ void set_parameter(
     }
 }
 
-parquet_reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan::parameter_set> const& pset) {
+reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan::parameter_set> const& pset) {
     for(auto&& [n, e] : *pset) {
         if(name != n) continue;
         if(e.type().kind() == meta::field_type_kind::reference_column_position) {
@@ -105,12 +106,12 @@ void create_reader_option_and_maping(
     api::parameter_set const& ps,
     api::statement_handle prepared,
     std::unordered_map<std::string, parameter>& mapping,
-    parquet_reader_option& out
+    reader_option& out
 ) {
     auto pset = static_cast<api::impl::parameter_set const&>(ps).body();  //NOLINT
     auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
     auto vinfo = stmt->body()->mirrors()->host_variable_info();
-    std::vector<parquet_reader_field_locator> locs{};
+    std::vector<reader_field_locator> locs{};
 
     // create mapping
     mapping.clear();
@@ -166,7 +167,7 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
                 return running_statement_count_ != 0 ? loader_result::running : loader_result::ok;
             }
 
-            parquet_reader_option opt{};
+            reader_option opt{};
             create_reader_option_and_maping(*parameters_, prepared_, mapping_, opt);
             reader_ = parquet_reader::open(*next_file_, std::addressof(opt));
             ++next_file_;

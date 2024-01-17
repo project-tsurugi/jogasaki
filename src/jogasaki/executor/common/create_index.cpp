@@ -23,7 +23,6 @@
 #include <boost/assert.hpp>
 #include <glog/logging.h>
 
-#include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
@@ -52,7 +51,6 @@
 namespace jogasaki::executor::common {
 
 using takatori::util::string_builder;
-using takatori::util::throw_exception;
 
 create_index::create_index(
     takatori::statement::create_index& ct

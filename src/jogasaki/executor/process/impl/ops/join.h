@@ -190,8 +190,9 @@ public:
         for(auto&& g : cgrp.groups()) {
             iterators.emplace_back(g.begin(), g.end());
         }
+        // TODO throw exception instead
         BOOST_ASSERT(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2); //NOLINT
-        BOOST_ASSERT(! (has_condition_ && kind_ == join_kind::full_outer)); //NOLINT
+        BOOST_ASSERT(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3)); //NOLINT
         iterator_incrementer incr{std::move(iterators)};
         switch(kind_) {
             case join_kind::full_outer: //fall-thru

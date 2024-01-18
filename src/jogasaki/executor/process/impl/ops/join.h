@@ -34,6 +34,7 @@
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/iterator_pair.h>
 #include <jogasaki/utils/iterator_incrementer.h>
 #include <jogasaki/utils/checkpoint_holder.h>
@@ -190,9 +191,8 @@ public:
         for(auto&& g : cgrp.groups()) {
             iterators.emplace_back(g.begin(), g.end());
         }
-        // TODO throw exception instead
-        BOOST_ASSERT(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2); //NOLINT
-        BOOST_ASSERT(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3)); //NOLINT
+        assert_with_exception(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2, kind_, n); //NOLINT
+        assert_with_exception(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3), has_condition_, kind_, n); //NOLINT
         iterator_incrementer incr{std::move(iterators)};
         switch(kind_) {
             case join_kind::full_outer: //fall-thru

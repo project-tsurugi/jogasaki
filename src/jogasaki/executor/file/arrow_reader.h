@@ -18,10 +18,10 @@
 #include <iomanip>
 #include <string_view>
 #include <arrow/io/file.h>
+#include <arrow/ipc/reader.h>
 #include <arrow/util/logging.h>
 #include <boost/filesystem.hpp>
-#include <parquet/api/reader.h>
-#include <parquet/api/writer.h>
+
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -39,7 +39,7 @@ using takatori::util::maybe_shared_ptr;
  * @details this reader is created with mapping from parquet fields to record_ref fields that represent values for
  * parameters/placeholders. The reader reads the parquet record and fills the fields according to the mapping.
  */
-class parquet_reader : public file_reader {
+class arrow_reader : public file_reader {
 public:
     static constexpr std::size_t index_unspecified = static_cast<std::size_t>(-1);
 
@@ -48,18 +48,18 @@ public:
      * @details this function is intended to be called from open(). Use open() function because it can report error
      * during initialization.
      */
-    parquet_reader() = default;
+    arrow_reader() = default;
 
     /**
      * @brief destruct object
      * @details destruct the object closing the file if any opened
      */
-    ~parquet_reader() noexcept;
+    ~arrow_reader() noexcept;
 
-    parquet_reader(parquet_reader const& other) = delete;
-    parquet_reader& operator=(parquet_reader const& other) = delete;
-    parquet_reader(parquet_reader&& other) noexcept = default;
-    parquet_reader& operator=(parquet_reader&& other) noexcept = default;
+    arrow_reader(arrow_reader const& other) = delete;
+    arrow_reader& operator=(arrow_reader const& other) = delete;
+    arrow_reader(arrow_reader&& other) noexcept = default;
+    arrow_reader& operator=(arrow_reader&& other) noexcept = default;
 
     /**
      * @brief read the parquet record
@@ -97,7 +97,7 @@ public:
     [[nodiscard]] std::size_t row_group_count() const noexcept override;
 
     /**
-     * @brief factory function to construct the new parquet_reader object
+     * @brief factory function to construct the new arrow_reader object
      * @param path the path to the pqrquet file to read
      * @param opt the options for reader
      * @param row_group_index the 0-origin index specifying the row group to read. Specify `undefined` to read the first
@@ -105,7 +105,7 @@ public:
      * @return newly created object on success
      * @return nullptr otherwise
      */
-    static std::shared_ptr<parquet_reader> open(
+    static std::shared_ptr<arrow_reader> open(
         std::string_view path,
         reader_option const* opt = nullptr,
         std::size_t row_group_index = index_unspecified
@@ -114,16 +114,20 @@ public:
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     maybe_shared_ptr<meta::record_meta const> parameter_meta_{};
-    std::unique_ptr<parquet::ParquetFileReader> file_reader_{};
-    std::shared_ptr<parquet::RowGroupReader> row_group_reader_{};
-    std::vector<std::shared_ptr<parquet::ColumnReader>> column_readers_{};
-    std::vector<parquet::ColumnDescriptor const*> columns_{};
+
+    std::shared_ptr<arrow::io::ReadableFile> input_file_{};
+    std::shared_ptr<arrow::ipc::RecordBatchFileReader> file_reader_{};
+    std::shared_ptr<arrow::RecordBatch> record_batch_{};
+
+    // std::vector<parquet::ColumnDescriptor const*> columns_{};
     boost::filesystem::path path_{};
     std::size_t read_count_{};
     data::aligned_buffer buf_{};
-    std::vector<std::size_t> parameter_to_parquet_field_{};
+    std::vector<std::size_t> parameter_to_field_{};
     std::size_t row_group_count_{};
     std::size_t row_group_index_{};
+
+    std::size_t offset_{};
 
     bool init(std::string_view path, reader_option const* opt, std::size_t row_group_index);
 };

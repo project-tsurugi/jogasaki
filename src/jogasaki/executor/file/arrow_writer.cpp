@@ -70,10 +70,10 @@ create_array_builder(meta::field_type const& type, std::shared_ptr<arrow::DataTy
             return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool);
         }
         case k::octet: return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool); //TODO
-        case k::decimal: return std::make_shared <arrow::Decimal128Builder> (arrow_type, pool);
-        case k::date: return std::make_shared <arrow::Date32Builder>(pool);
-        case k::time_of_day: return std::make_shared <arrow::Time64Builder>(arrow_type, pool);
-        case k::time_point: return std::make_shared <arrow::TimestampBuilder>(arrow_type, pool);
+        case k::decimal: return std::make_shared<arrow::Decimal128Builder> (arrow_type, pool);
+        case k::date: return std::make_shared<arrow::Date32Builder>(pool);
+        case k::time_of_day: return std::make_shared<arrow::Time64Builder>(arrow_type, pool);
+        case k::time_point: return std::make_shared<arrow::TimestampBuilder>(arrow_type, pool);
         default:
             break;
     }

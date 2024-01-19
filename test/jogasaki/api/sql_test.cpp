@@ -836,4 +836,16 @@ TEST_F(sql_test, update_string_with_invalid_char) {
 
     test_stmt_err("UPDATE T SET C0 = :p0", variables, *ps, error_code::invalid_runtime_value_exception);
 }
+
+TEST_F(sql_test, select_null) {
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table T (C0 int primary key)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, NULL FROM T", result);
+        ASSERT_EQ(1, result.size());
+        // EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(1, 'a', {false, true})), result[0]);
+    }
+}
 }

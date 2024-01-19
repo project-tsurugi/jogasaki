@@ -1179,6 +1179,9 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                 }
                 column->set_atom_type(sql::common::AtomType::TIME_POINT);
                 break;
+            case jogasaki::api::field_type_kind::unknown:
+                column->set_atom_type(sql::common::AtomType::UNKNOWN);
+                break;
             default:
                 LOG(ERROR) << log_location_prefix << "unsupported data type at field (" << i
                            << "): " << metadata->at(i).kind();

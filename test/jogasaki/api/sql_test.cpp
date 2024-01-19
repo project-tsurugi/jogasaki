@@ -845,7 +845,7 @@ TEST_F(sql_test, select_null) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, NULL FROM T", result);
         ASSERT_EQ(1, result.size());
-        // EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(1, 'a', {false, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(std::tuple{1, '\0'}, {false, true})), result[0]);
     }
 }
 }

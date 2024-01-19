@@ -77,7 +77,7 @@ public:
         std::monostate, // time_interval
         std::shared_ptr<array_field_option>,
         std::shared_ptr<record_field_option>,
-        std::shared_ptr<unknown_field_option>,
+        std::monostate, // unknown
         std::shared_ptr<row_reference_field_option>,
         std::shared_ptr<row_id_field_option>,
         std::shared_ptr<declared_field_option>,

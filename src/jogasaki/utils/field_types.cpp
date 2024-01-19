@@ -68,7 +68,7 @@ meta::field_type type_for(takatori::type::data const& type) {
             return meta::field_type(std::make_shared<meta::time_point_field_option>(with_offset));
         }
         case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);
-        case t::unknown: return meta::field_type(std::shared_ptr<meta::unknown_field_option>{});
+        case t::unknown: return meta::field_type(meta::field_enum_tag<k::unknown>);
 
         case t::array:
         case t::record:

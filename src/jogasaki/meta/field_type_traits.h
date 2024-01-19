@@ -97,7 +97,6 @@ struct field_type_traits<field_type_kind::unknown> {
     // This type actually doesn't store real value, but the trait is defined for compatibility.
     // Treat this type as if it's 0 length character string.
     using runtime_type = char;
-    using option_type = unknown_field_option;
     static constexpr std::size_t size = 0;
     static constexpr std::size_t alignment = 1;
 };

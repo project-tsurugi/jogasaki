@@ -28,7 +28,6 @@ namespace jogasaki::meta {
 // TODO implement for production
 struct array_field_option {}; //NOLINT
 struct record_field_option {};
-struct unknown_field_option {};
 struct row_reference_field_option {};
 struct row_id_field_option {};
 struct declared_field_option {};

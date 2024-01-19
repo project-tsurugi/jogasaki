@@ -351,5 +351,269 @@ TEST_F(join_test, simple) {
     ctx.release();
 }
 
+TEST_F(join_test, left_join_with_condition) {
+    // issue 583 - left join with condition (is null) generated wrong result
+    binding::factory bindings;
+
+    auto&& g0c0 = bindings.exchange_column("g0c0");
+    auto&& g0c2 = bindings.exchange_column("g0c2");
+    ::takatori::plan::group g0{
+        {
+            g0c0,
+            g0c2,
+        },
+        {
+            g0c0,
+        },
+    };
+    auto&& g1c0 = bindings.exchange_column("g1c0");
+    auto&& g1c2 = bindings.exchange_column("g1c2");
+    ::takatori::plan::group g1{
+        {
+            g1c0,
+            g1c2,
+        },
+        {
+            g1c0,
+        },
+    };
+    takatori::plan::graph_type p;
+    auto&& p0 = p.insert(takatori::plan::process {});
+    auto g0v0 = bindings.stream_variable("g0v0");
+    auto g0v2 = bindings.stream_variable("g0v2");
+    auto g1v0 = bindings.stream_variable("g1v0");
+    auto g1v2 = bindings.stream_variable("g1v2");
+
+    auto& r0 = p0.operators().insert(relation::step::take_cogroup {
+        {
+            bindings(g0),
+            {
+                { g0c0, g0v0 },
+                { g0c2, g0v2 },
+            },
+        },
+        {
+            bindings(g1),
+            {
+                { g1c0, g1v0 },
+                { g1c2, g1v2 },
+            },
+        }
+    });
+
+    auto exp0 = varref(g1v0);
+    auto&& r1 = p0.operators().insert(relation::step::join{
+        relation::step::join::operator_kind_type::left_outer,
+        std::make_unique<scalar::unary>(scalar::unary_operator::is_null, std::move(exp0))
+    });
+    r0.output() >> r1.input();
+    ::takatori::plan::forward f1 {
+        bindings.exchange_column("f1g0v0"),
+        bindings.exchange_column("f1g0v2"),
+        bindings.exchange_column("f1g1v0"),
+        bindings.exchange_column("f1g1v2"),
+    };
+    // without offer, the columns are not used and block variables become empty
+    auto&& r2 = p0.operators().insert(relation::step::offer {
+        bindings(f1),
+        {
+            { g0v0, f1.columns()[0] },
+            { g0v2, f1.columns()[1] },
+            { g1v0, f1.columns()[2] },
+            { g1v2, f1.columns()[3] },
+        }
+    });
+    r1.output() >> r2.input(); // connection required by takatori
+    auto vmap = std::make_shared<yugawara::analyzer::variable_mapping>();
+    vmap->bind(g0c0, t::int8{});
+    vmap->bind(g0c2, t::int8{});
+    vmap->bind(g1c0, t::int8{});
+    vmap->bind(g1c2, t::int8{});
+    vmap->bind(g0v0, t::int8{});
+    vmap->bind(g0v2, t::int8{});
+    vmap->bind(g1v0, t::int8{});
+    vmap->bind(g1v2, t::int8{});
+
+    auto emap = std::make_shared<yugawara::analyzer::expression_mapping>();
+    auto& u = static_cast<scalar::unary&>(*r1.condition());
+    emap->bind(u.operand(), t::int8{});
+    emap->bind(*r1.condition(), t::boolean{});
+    yugawara::compiled_info c_info{emap, vmap};
+
+    processor_info p_info{p0.operators(), c_info};
+
+    meta::variable_order order0{
+        variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>,
+        g0.columns(),
+        g0.group_keys()
+    };
+    meta::variable_order order1{
+        variable_ordering_enum_tag<variable_ordering_kind::group_from_keys>,
+        g1.columns(),
+        g1.group_keys()
+    };
+    auto input_meta = std::make_shared<record_meta>(
+        std::vector<field_type>{
+            field_type(field_enum_tag<kind::int8>),
+            field_type(field_enum_tag<kind::int8>),
+        },
+        boost::dynamic_bitset<std::uint64_t>{2}.flip()
+    );
+
+    auto tgt = jogasaki::mock::create_nullable_record<kind::int8, kind::int8, kind::int8, kind::int8>();
+    auto key = jogasaki::mock::create_nullable_record<kind::int8>();
+    auto value = jogasaki::mock::create_nullable_record<kind::int8>();
+    auto key_meta = key.record_meta();
+    auto value_meta = value.record_meta();
+    auto g_meta = group_meta{key_meta, value_meta};
+    auto tmeta = tgt.record_meta();
+    variable_table_info block_info{
+        {
+            { g0v0, { tmeta->value_offset(0), tmeta->nullity_offset(0), 0} },
+            { g0v2, { tmeta->value_offset(1), tmeta->nullity_offset(1), 1} },
+            { g1v0, { tmeta->value_offset(2), tmeta->nullity_offset(2), 2} },
+            { g1v2, { tmeta->value_offset(3), tmeta->nullity_offset(3), 3} },
+        },
+        tmeta,
+    };
+    variable_table variables{block_info};
+
+    std::vector<ops::group_element> groups{};
+    groups.emplace_back(
+        order0,
+        maybe_shared_ptr(&g_meta),
+        r0.groups()[0].columns(),
+        0,
+        block_info
+    );
+    groups.emplace_back(
+        order1,
+        maybe_shared_ptr(&g_meta),
+        r0.groups()[1].columns(),
+        1,
+        block_info
+    );
+
+    using join_kind = relation::step::join::operator_kind_type;
+
+    using iterator = mock::iterable_group_store::iterator;
+    auto d = std::make_unique<verifier>();
+    auto downstream = d.get();
+
+    join<iterator> j{
+        0,
+        p_info,
+        0,
+        join_kind::left_outer,
+        r1.condition(),
+        std::move(d)
+    };
+
+    mock::task_context task_ctx{
+        {},
+        {},
+        {},
+        {},
+    };
+
+    memory::page_pool pool{};
+    memory::lifo_paged_memory_resource resource{&pool};
+    memory::lifo_paged_memory_resource varlen_resource{&pool};
+    join_context ctx(
+        &task_ctx,
+        variables,
+        &resource,
+        &varlen_resource
+    );
+
+    std::vector<jogasaki::mock::basic_record> result{};
+
+    downstream->body([&]() {
+        result.emplace_back(jogasaki::mock::basic_record(variables.store().ref(), tmeta));
+    });
+
+    mock::iterable_group_store ge1{
+        jogasaki::mock::create_nullable_record<kind::int8>(3),
+        {
+            jogasaki::mock::create_nullable_record<kind::int8>(300),
+        }
+    };
+    mock::iterable_group_store ge2{
+        jogasaki::mock::create_nullable_record<kind::int8>(3),
+        {
+            jogasaki::mock::create_nullable_record<kind::int8>(200),
+            jogasaki::mock::create_nullable_record<kind::int8>(201),
+            jogasaki::mock::create_nullable_record<kind::int8>(202),
+        }
+    };
+
+    std::vector<group_field> fields[2];
+    std::size_t tgt_field = 0;
+    for(std::size_t loop = 0; loop < 2; ++loop) { // left then right
+        for(std::size_t i=0, n=key.record_meta()->field_count() ; i < n; ++i) {
+            auto& meta = key.record_meta();
+            fields[loop].emplace_back(
+                meta->at(i),
+                meta->value_offset(i),
+                tgt.record_meta()->value_offset(tgt_field),
+                meta->nullity_offset(i),
+                tgt.record_meta()->nullity_offset(tgt_field),
+                true,
+                true
+            );
+            ++tgt_field;
+        }
+        for(std::size_t i=0, n=value.record_meta()->field_count() ; i < n; ++i) {
+            auto& meta = value.record_meta();
+            fields[loop].emplace_back(
+                meta->at(i),
+                meta->value_offset(i),
+                tgt.record_meta()->value_offset(tgt_field),
+                meta->nullity_offset(i),
+                tgt.record_meta()->nullity_offset(tgt_field),
+                true,
+                false
+            );
+            ++tgt_field;
+        }
+    }
+    using iterator_pair = utils::iterator_pair<iterator>;
+    std::vector<ops::group<iterator>> mygroups{
+        group{
+            iterator_pair{
+                ge1.begin(),
+                ge1.end()
+            },
+            fields[0],
+            ge1.key().ref(),
+            ge1.values()[0].record_meta()->record_size()
+        },
+        group{
+            iterator_pair{
+                ge2.begin(),
+                ge2.end()
+            },
+            fields[1],
+            ge2.key().ref(),
+            value_meta->record_size()
+            // ge2.values()[0].record_meta()->record_size()
+        }
+    };
+    cogroup<iterator> mycgrp{
+        mygroups
+    };
+    j(ctx, mycgrp);
+
+    ASSERT_EQ(1, result.size());
+    std::vector<jogasaki::mock::basic_record> exp{
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int8, kind::int8, kind::int8>(
+            {3,300,-1,-1},
+            {false, false, true, true}),
+    };
+    std::sort(exp.begin(), exp.end());
+    std::sort(result.begin(), result.end());
+    ASSERT_EQ(exp, result);
+    ctx.release();
+}
 }
 

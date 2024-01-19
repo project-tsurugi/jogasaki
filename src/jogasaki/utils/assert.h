@@ -20,6 +20,7 @@
 
 #include <jogasaki/utils/base_filename.h>
 
+//  NOLINTBEGIN(cppcoreguidelines-macro-usage)
 #define assert_with_exception(cond, ...) ::jogasaki::utils::assert_with_exception_impl(#cond, (cond), {stringify_va_args(__VA_ARGS__)}, __VA_ARGS__)
 
 #define utils_details_stringify9(x,...) #x, utils_details_stringify8(__VA_ARGS__)
@@ -38,6 +39,7 @@
 #define utils_details_va_nargs_impl(_1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
 #define utils_details_va_nargs(...) utils_details_va_nargs_impl(__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 #define stringify_va_args(...) utils_details_stringify_impl(utils_details_va_nargs(__VA_ARGS__), __VA_ARGS__)
+//  NOLINTEND(cppcoreguidelines-macro-usage)
 
 namespace jogasaki::utils {
 

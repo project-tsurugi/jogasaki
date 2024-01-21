@@ -51,9 +51,6 @@ void validate_ctype() {
     static_assert(std::is_same_v<c_type, T>);
 }
 
-// template <class T, arrow::Type::type Typeid>
-// T read_data(arrow::Array& array, std::size_t offset) = delete;
-
 // INT8, INT16, INT32, INT64, FLOAT, DOUBLE
 template <class T, arrow::Type::type Typeid>
 std::enable_if_t<
@@ -131,21 +128,6 @@ read_data(arrow::Array& array, std::size_t offset) {
     return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
 }
 
-/*
-template<>
-runtime_t<meta::field_type_kind::time_point>
-read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(
-    parquet::ColumnReader& reader,
-    parquet::ColumnDescriptor const& type,
-    bool& null,
-    bool& nodata
-) {
-    auto x = read_data<std::int64_t, parquet::Int64Reader>(reader, type, null, nodata);
-    return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
-}
-
-*/
-
 bool arrow_reader::next(accessor::record_ref& ref) {
     ref = accessor::record_ref{buf_.data(), buf_.capacity()};
     if(static_cast<std::int64_t>(offset_) >= record_batch_->num_rows()) {
@@ -174,6 +156,7 @@ bool arrow_reader::next(accessor::record_ref& ref) {
                 case arrow::Type::TIME64: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, arrow::Type::TIME64>(array, offset_)); break;
                 case arrow::Type::TIMESTAMP: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, arrow::Type::TIMESTAMP>(array, offset_)); break;
                 case arrow::Type::DECIMAL128: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, arrow::Type::DECIMAL128>(array, offset_)); break;
+                case arrow::Type::FIXED_SIZE_BINARY: ref.set_value<runtime_t<meta::field_type_kind::character>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, arrow::Type::FIXED_SIZE_BINARY>(array, offset_)); break;
                 default: {
                     VLOG_LP(log_error) << "Arrow array saw invalid type: " << parameter_meta_->at(i).kind();
                     return false;
@@ -239,27 +222,6 @@ std::shared_ptr<arrow_reader> arrow_reader::open(
     return {};
 }
 
-/*
-inline constexpr std::string_view to_string_view(parquet::Type::type value) {
-    switch (value) {
-        case parquet::Type::type::BOOLEAN: return "BOOLEAN";
-        case parquet::Type::type::INT32: return "INT32";
-        case parquet::Type::type::INT64: return "INT64";
-        case parquet::Type::type::INT96: return "INT96";
-        case parquet::Type::type::FLOAT: return "FLOAT";
-        case parquet::Type::type::DOUBLE: return "DOUBLE";
-        case parquet::Type::type::BYTE_ARRAY: return "BYTE_ARRAY";
-        case parquet::Type::type::FIXED_LEN_BYTE_ARRAY: return "FIXED_LEN_BYTE_ARRAY";
-        case parquet::Type::type::UNDEFINED: return "UNDEFINED";
-    }
-    std::abort();
-}
-
-inline std::ostream& operator<<(std::ostream& out, parquet::Type::type value) {
-    return out << to_string_view(value);
-}
-*/
-
 static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) { //NOLINT(readability-function-cognitive-complexity)
     (void) parameter_type;
     switch(c.type()->id()) {
@@ -312,6 +274,10 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
             }
             return meta::field_type{std::make_shared<meta::time_point_field_option>(! typ.timezone().empty())};
         }
+        case arrow::Type::FIXED_SIZE_BINARY: {
+            auto& typ = static_cast<arrow::FixedSizeBinaryType&>(*c.type());  //NOLINT
+            return meta::field_type{std::make_shared<meta::character_field_option>(false, typ.byte_width())};
+        }
         default:
             break;
     }
@@ -319,18 +285,6 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
                        << "' is not supported and will be ignored.";
     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::undefined>};
 }
-
-/*
-std::vector<parquet::ColumnDescriptor const*> create_columns_meta(parquet::FileMetaData& pmeta) {
-    std::vector<parquet::ColumnDescriptor const*> ret{};
-    auto sz = static_cast<std::size_t>(pmeta.schema()->num_columns());
-    ret.reserve(sz);
-    for(std::size_t i=0; i < sz; ++i) {
-        ret.emplace_back(pmeta.schema()->Column(static_cast<int>(i)));
-    }
-    return ret;
-}
-*/
 
 static meta::field_type parameter_type(
     std::size_t idx,
@@ -451,14 +405,14 @@ static bool validate_parameter_mapping(
         if(e == npos) continue;
         auto nam = external_meta.field_name(e);
         if(external_meta.at(e).kind() == meta::field_type_kind::undefined) {
-            auto msg = string_builder{} << "Unsupported type - Parquet column '" << (nam.has_value() ? *nam : "") << "'"
+            auto msg = string_builder{} << "Unsupported type - Arrow column '" << (nam.has_value() ? *nam : "") << "'"
                                         << string_builder::to_string;
             VLOG_LP(log_error) << msg;
             return false;
         }
         if(parameter_meta.at(i).kind() != external_meta.at(e).kind()) {
             auto msg = string_builder{} <<
-                "Invalid parameter type - Parquet column '" << (nam.has_value() ? *nam : "") << "' of type " <<
+                "Invalid parameter type - Arrow column '" << (nam.has_value() ? *nam : "") << "' of type " <<
                 external_meta.at(e) << " assigned to parameter of type " << parameter_meta.at(i) <<
                 string_builder::to_string;
             VLOG_LP(log_error) << msg;

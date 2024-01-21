@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor::file {
@@ -442,5 +443,41 @@ TEST_F(arrow_readwrite_test, multi_row_groups) {
     }
 }
 
+TEST_F(arrow_readwrite_test, fixed_length_binary) {
+    boost::filesystem::path p{path()};
+    p = p / "fixed_length_binary.arrow";
+        auto rec = mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{meta::character_type(false, 3), meta::character_type(false, 5)},
+            std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")), {false, false});
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+
+    writer->write(rec.ref());
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = arrow_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::character, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::character>();
+    EXPECT_FALSE(opt0->varying_);
+    EXPECT_EQ(3, opt0->length_);
+    EXPECT_EQ(meta::field_type_kind::character, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::character>();
+    EXPECT_FALSE(opt1->varying_);
+    EXPECT_EQ(5, opt1->length_);
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+    }
+    EXPECT_TRUE(reader->close());
+}
 }
 

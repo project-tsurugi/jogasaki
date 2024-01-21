@@ -102,7 +102,6 @@ void arrow_writer::finish() {
     std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema_, arrays_);
     check_status([&]() {
         ARROW_RETURN_NOT_OK(record_batch_writer_->WriteTable(*table));
-        ARROW_RETURN_NOT_OK(record_batch_writer_->Close());
         return arrow::Status::OK();
     });
 }
@@ -284,8 +283,14 @@ bool arrow_writer::close() {
     if(! array_builders_.empty()) {
         try {
             finish();
+            auto res = record_batch_writer_->Close();
+            if(! res.ok()) {
+                VLOG_LP(log_error) << "Arrow writer close error:" << res;
+                return false;
+            }
+            (void) res;
             // Write the bytes to file
-            DCHECK(fs_->Close().ok());  // do we need this? sample doesn't close output stream
+            DCHECK(fs_->Close().ok());
         } catch (std::exception const& e) {
             VLOG_LP(log_error) << "Arrow writer close error: " << e.what();
             return false;

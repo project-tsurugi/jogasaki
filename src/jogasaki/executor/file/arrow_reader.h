@@ -54,7 +54,7 @@ public:
      * @brief destruct object
      * @details destruct the object closing the file if any opened
      */
-    ~arrow_reader() noexcept;
+    ~arrow_reader() noexcept override;
 
     arrow_reader(arrow_reader const& other) = delete;
     arrow_reader& operator=(arrow_reader const& other) = delete;

@@ -87,7 +87,7 @@ read_data(arrow::Array& array, std::size_t offset) {
     std::int64_t high{};
     std::uint64_t low{};
     std::memcpy(&low, ptr, 8);
-    std::memcpy(&high, ptr + 8, 8);
+    std::memcpy(&high, ptr + 8, 8);  //NOLINT
     arrow::Decimal128 d{high, low};
     bool negative = false;
     if(d < 0) {
@@ -159,11 +159,10 @@ bool arrow_reader::next(accessor::record_ref& ref) {
         for(std::size_t i=0; i<sz; ++i) {
             auto colidx = parameter_to_field_[i];
             if(colidx == npos) continue;
-            auto& array = *record_batch_->column(colidx);
-            auto& field = record_batch_->schema()->field(i);
-            // auto& parameter_type = parameter_meta_->at(i);
-            bool null = array.IsNull(offset_);
-            ref.set_null(parameter_meta_->nullity_offset(i), null);
+            auto& array = *record_batch_->column(static_cast<int>(colidx));
+            auto& field = record_batch_->schema()->field(static_cast<int>(i));
+            bool null = array.IsNull(static_cast<int>(offset_));
+            ref.set_null(parameter_meta_->nullity_offset(static_cast<int>(i)), null);
             if(null) continue;
             switch(field->type()->id()) {
                 case arrow::Type::INT32: ref.set_value<runtime_t<meta::field_type_kind::int4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, arrow::Type::INT32>(array, offset_)); break;
@@ -175,9 +174,6 @@ bool arrow_reader::next(accessor::record_ref& ref) {
                 case arrow::Type::TIME64: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, arrow::Type::TIME64>(array, offset_)); break;
                 case arrow::Type::TIMESTAMP: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, arrow::Type::TIMESTAMP>(array, offset_)); break;
                 case arrow::Type::DECIMAL128: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, arrow::Type::DECIMAL128>(array, offset_)); break;
-
-                // case meta::field_type_kind::octet: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>>(array, type, null, nodata)); break;
-                // case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(array, type, null, nodata)); break;
                 default: {
                     VLOG_LP(log_error) << "Arrow array saw invalid type: " << parameter_meta_->at(i).kind();
                     return false;
@@ -196,7 +192,11 @@ bool arrow_reader::close() {
     // FIXME need closing arrow ipc files/streams?
     if(input_file_) {
         try {
-            // input_file_->Close();
+            auto res = input_file_->Close();
+            if(! res.ok()) {
+                VLOG_LP(log_error) << "Arrow close error: " << res;
+                return false;
+            }
         } catch (std::exception const& e) {
             VLOG_LP(log_error) << "Arrow close error: " << e.what();
             return false;
@@ -278,12 +278,12 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
         case arrow::Type::STRING:
             return meta::field_type{std::make_shared<meta::character_field_option>()};
         case arrow::Type::DECIMAL128: {
-            auto p = static_cast<arrow::Decimal128Type&>(*c.type()).precision();
-            auto s = static_cast<arrow::Decimal128Type&>(*c.type()).scale();
+            auto p = static_cast<arrow::Decimal128Type&>(*c.type()).precision();  //NOLINT
+            auto s = static_cast<arrow::Decimal128Type&>(*c.type()).scale();  //NOLINT
             return meta::field_type{std::make_shared<meta::decimal_field_option>(p, s)};
         }
         case arrow::Type::DATE32: {
-            if(static_cast<arrow::DateType&>(*c.type()).unit() != arrow::DateUnit::DAY) {
+            if(static_cast<arrow::DateType&>(*c.type()).unit() != arrow::DateUnit::DAY) {  //NOLINT
                 VLOG_LP(log_warning) << "Column '" << c.name() << "' data type '" << c.type()->ToString()
                                    << "' has non-day date unit and will be ignored.";
                 break;
@@ -291,7 +291,7 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
             return meta::field_type{meta::field_enum_tag<meta::field_type_kind::date>};
         }
         case arrow::Type::TIME64: {
-            if(static_cast<arrow::Time64Type&>(*c.type()).unit() != arrow::TimeUnit::NANO) {
+            if(static_cast<arrow::Time64Type&>(*c.type()).unit() != arrow::TimeUnit::NANO) { //NOLINT
                 VLOG_LP(log_warning) << "Column '" << c.name() << "' data type '" << c.type()->ToString()
                                    << "' has non-nano time unit and will be ignored.";
                 break;
@@ -299,7 +299,7 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
             return meta::field_type{std::make_shared<meta::time_of_day_field_option>()}; // TODO with offset
         }
         case arrow::Type::TIMESTAMP: {
-            auto& typ = static_cast<arrow::TimestampType&>(*c.type());
+            auto& typ = static_cast<arrow::TimestampType&>(*c.type());  //NOLINT
             if(typ.unit() != arrow::TimeUnit::NANO) {
                 VLOG_LP(log_warning) << "Column '" << c.name() << "' data type '" << c.type()->ToString()
                                    << "' has non-nano time unit and will be ignored.";
@@ -356,7 +356,7 @@ static std::shared_ptr<meta::external_record_meta> create_meta(
     names.reserve(sz);
     types.reserve(sz);
     for(std::size_t i=0; i < sz; ++i) {
-        auto c = schema.field(static_cast<int>(i));
+        auto& c = schema.field(static_cast<int>(i));
         names.emplace_back(c->name());
         if(parameter_meta != nullptr) {
             auto p = parameter_type(i, *parameter_meta, *parameter_to_field);

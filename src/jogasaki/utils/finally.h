@@ -17,14 +17,33 @@
 
 namespace jogasaki::utils {
 
+/**
+ * @brief utility class to ensure function call is made when exiting scope like Java finally
+ */
 class finally {
 public:
     using body_type = std::function<void(void)>;
 
-    finally(body_type body) noexcept :
+    /**
+     * @brief create empty object
+     */
+    finally() = default;
+
+    finally(finally const& other) = delete;
+    finally& operator=(finally const& other) = delete;
+    finally(finally&& other) noexcept = delete;
+    finally& operator=(finally&& other) noexcept = delete;
+
+    /**
+     * @brief create new object
+     */
+    explicit finally(body_type body) noexcept :
         body_(std::move(body))
     {}
 
+    /**
+     * @brief destruct and call the body function
+     */
     ~finally() noexcept {
         body_();
     }
@@ -33,5 +52,4 @@ private:
     body_type body_{};
 };
 
-}  //
-
+}  // namespace jogasaki::utils

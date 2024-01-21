@@ -54,7 +54,7 @@ public:
      * @brief destruct object
      * @details destruct the object closing the file if any opened
      */
-    ~parquet_reader() noexcept;
+    ~parquet_reader() noexcept override;
 
     parquet_reader(parquet_reader const& other) = delete;
     parquet_reader& operator=(parquet_reader const& other) = delete;

@@ -48,8 +48,9 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
-arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta) :
-    meta_(std::move(meta))
+arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta, arrow_writer_option opt) :
+    meta_(std::move(meta)),
+    option_(std::move(opt))
 {}
 
 std::shared_ptr<arrow::ArrayBuilder>
@@ -115,6 +116,89 @@ void arrow_writer::new_row_group() {
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
         array_builders_.emplace_back(create_array_builder(meta_->at(i), schema_->field(static_cast<int>(i))->type()));
     }
+    row_group_write_count_ = 0;
+}
+
+arrow::ipc::IpcWriteOptions create_options(arrow_writer_option const& in) {
+    arrow::ipc::IpcWriteOptions options = arrow::ipc::IpcWriteOptions::Defaults();
+
+    if(in.metadata_version() == "V1") {
+        options.metadata_version = arrow::ipc::MetadataVersion::V1;
+    } else if(in.metadata_version() == "V2") {
+        options.metadata_version = arrow::ipc::MetadataVersion::V2;
+    } else if(in.metadata_version() == "V3") {
+        options.metadata_version = arrow::ipc::MetadataVersion::V3;
+    } else if(in.metadata_version() == "V4") {
+        options.metadata_version = arrow::ipc::MetadataVersion::V4;
+    } else if(in.metadata_version() == "V5") {
+        options.metadata_version = arrow::ipc::MetadataVersion::V5;
+    } else {
+        throw_exception(std::domain_error {
+            string_builder{} << "invalid value '" << in.metadata_version() << "' for option metadata_version"
+                             << string_builder::to_string
+        });
+    }
+
+    options.alignment = in.alignment();
+    if(in.min_space_saving() != 0) {
+        options.min_space_savings = in.min_space_saving();
+    }
+    // TODO validate and pass codec
+    return options;
+}
+
+std::size_t arrow_writer::estimate_avg_record_size() {
+    std::size_t sz{};
+    for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
+        using k = meta::field_type_kind;
+        switch(meta_->at(i).kind()) {
+            case k::int1: sz += 1; break;
+            case k::int2: sz += 2; break;
+            case k::int4: sz += 4; break;
+            case k::int8: sz += 8; break;
+            case k::float4: sz += 4; break;
+            case k::float8: sz += 8; break;
+            case k::character: {
+                std::size_t len{100};  // assuming default max len for varchar(*)/char(*)
+                if(column_options_[i].length_ != details::column_option::undefined) {
+                    len = column_options_[i].length_;
+                }
+                if(column_options_[i].varying_) {
+                    sz += len / 2;
+                } else {
+                    sz += len;
+                }
+                break;
+            }
+            case k::decimal: sz += 16; break;
+            case k::date: sz += 4; break;
+            case k::time_of_day: sz += 8; break;
+            case k::time_point: sz += 8; break;
+            default:
+                break;
+        }
+    }
+    return sz;
+}
+
+void arrow_writer::calculate_batch_size() {
+    constexpr static std::size_t default_batch_size = 4UL * 1024UL * 1024UL;
+    std::size_t avg_record_sz = estimate_avg_record_size();
+    std::size_t size_from_bytes = option_.record_batch_in_bytes() / avg_record_sz;
+    std::size_t size = option_.record_batch_size();
+    if(size_from_bytes == 0 && size == 0) {
+        calculated_batch_size_ = default_batch_size;
+        return;
+    }
+    if(size == 0) {
+        calculated_batch_size_ = size_from_bytes;
+        return;
+    }
+    if(size_from_bytes == 0) {
+        calculated_batch_size_ = size;
+        return;
+    }
+    calculated_batch_size_ = std::min(size_from_bytes, size);
 }
 
 bool arrow_writer::init(std::string_view path) {
@@ -128,12 +212,12 @@ bool arrow_writer::init(std::string_view path) {
         schema_ = schema;
         column_options_ = std::move(colopts);
 
-        arrow::ipc::IpcWriteOptions options = arrow::ipc::IpcWriteOptions::Defaults();
-        // FIXME fill options
+        auto options = create_options(option_);
         check_status([&]() {
             ARROW_ASSIGN_OR_RAISE(record_batch_writer_, ::arrow::ipc::MakeFileWriter(fs_, schema_, options));
             return ::arrow::Status::OK();
         });
+        calculate_batch_size();
         new_row_group();
     } catch (std::exception const& e) {
         VLOG_LP(log_error) << "Arrow writer init error: " << e.what();
@@ -145,6 +229,9 @@ bool arrow_writer::init(std::string_view path) {
 bool arrow_writer::write(accessor::record_ref ref) {
     try {
         using k = meta::field_type_kind;
+        if(row_group_write_count_ >= calculated_batch_size_) {
+            new_row_group();
+        }
         for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
             bool null = ref.is_null(meta_->nullity_offset(i)) && meta_->nullable(i);
             if(null) {
@@ -176,6 +263,7 @@ bool arrow_writer::write(accessor::record_ref ref) {
         return false;
     }
     ++write_count_;
+    ++row_group_write_count_;
     return true;
 }
 
@@ -300,9 +388,12 @@ bool arrow_writer::close() {
     return true;
 }
 
-std::shared_ptr<arrow_writer>
-arrow_writer::open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path) {
-    auto ret = std::make_shared<arrow_writer>(std::move(meta));
+std::shared_ptr<arrow_writer> arrow_writer::open(
+    maybe_shared_ptr<meta::external_record_meta> meta,
+    std::string_view path,
+    arrow_writer_option opt
+) {
+    auto ret = std::make_shared<arrow_writer>(std::move(meta), std::move(opt));
     if(ret->init(path)) {
         return ret;
     }
@@ -413,6 +504,10 @@ std::size_t arrow_writer::write_count() const noexcept {
 
 arrow_writer::~arrow_writer() noexcept {
     close();
+}
+
+std::size_t arrow_writer::calculated_batch_size() const noexcept {
+    return calculated_batch_size_;
 }
 
 }  // namespace jogasaki::executor::file

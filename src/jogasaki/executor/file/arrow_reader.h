@@ -97,6 +97,11 @@ public:
     [[nodiscard]] std::size_t row_group_count() const noexcept override;
 
     /**
+     * @brief accessor to the current record batch
+     */
+    [[nodiscard]] std::shared_ptr<arrow::RecordBatch> const& record_batch() const noexcept;
+
+    /**
      * @brief factory function to construct the new arrow_reader object
      * @param path the path to the pqrquet file to read
      * @param opt the options for reader

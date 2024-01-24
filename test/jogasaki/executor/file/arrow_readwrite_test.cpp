@@ -42,6 +42,8 @@ public:
 
     test::temporary_folder temporary_{};  //NOLINT
     void test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec);
+
+    void verify_single_field_record_size(mock::basic_record const& rec, std::size_t expected_diff_in_bytes);
 };
 
 TEST_F(arrow_readwrite_test, simple) {
@@ -443,6 +445,158 @@ TEST_F(arrow_readwrite_test, multi_row_groups) {
     }
 }
 
+TEST_F(arrow_readwrite_test, set_record_batch_size_from_bytes) {
+    // verify setting record batch size estimated from bytes
+    {
+        // batch size 3, bytes 16 -> calculated to 2
+        boost::filesystem::path p{path()};
+        p = p / "set_record_batch_size_from_bytes.arrow";
+        auto rec = mock::create_nullable_record<kind::int8>(10);
+        arrow_writer_option opt{};
+        opt.record_batch_size(3);
+        opt.record_batch_in_bytes(16);
+        auto writer = arrow_writer::open(
+            std::make_shared<meta::external_record_meta>(
+                rec.record_meta(),
+                std::vector<std::optional<std::string>>{"C0"}
+            ),
+            p.string(),
+            opt
+        );
+        ASSERT_TRUE(writer);
+        EXPECT_EQ(2, writer->calculated_batch_size());
+        EXPECT_TRUE(writer->close());
+    }
+    {
+        // batch size 1, bytes 16 -> calculated to 1
+        boost::filesystem::path p{path()};
+        p = p / "set_record_batch_size_from_bytes.arrow";
+        auto rec = mock::create_nullable_record<kind::int8>(10);
+        arrow_writer_option opt{};
+        opt.record_batch_size(1);
+        opt.record_batch_in_bytes(16);
+        auto writer = arrow_writer::open(
+            std::make_shared<meta::external_record_meta>(
+                rec.record_meta(),
+                std::vector<std::optional<std::string>>{"C0"}
+            ),
+            p.string(),
+            opt
+        );
+        ASSERT_TRUE(writer);
+        EXPECT_EQ(1, writer->calculated_batch_size());
+        EXPECT_TRUE(writer->close());
+    }
+    {
+        // batch size 0, bytes 0 -> default length (4M) used
+        boost::filesystem::path p{path()};
+        p = p / "set_record_batch_size_from_bytes.arrow";
+        auto rec = mock::create_nullable_record<kind::int8>(10);
+        arrow_writer_option opt{};
+        opt.record_batch_size(0);
+        opt.record_batch_in_bytes(0);
+        auto writer = arrow_writer::open(
+            std::make_shared<meta::external_record_meta>(
+                rec.record_meta(),
+                std::vector<std::optional<std::string>>{"C0"}
+            ),
+            p.string(),
+            opt
+        );
+        ASSERT_TRUE(writer);
+        EXPECT_EQ(4*1024*1024, writer->calculated_batch_size());
+        EXPECT_TRUE(writer->close());
+    }
+}
+
+TEST_F(arrow_readwrite_test, set_record_batch_size) {
+    // verify setting record batch size
+    boost::filesystem::path p{path()};
+    p = p / "set_record_batch_size.arrow";
+    auto rec = mock::create_nullable_record<kind::int8>(10);
+    arrow_writer_option opt{};
+    opt.record_batch_size(2);
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0"}
+        ), p.string(), opt);
+    ASSERT_TRUE(writer);
+    EXPECT_EQ(2, writer->calculated_batch_size());
+
+    writer->write(rec.ref());
+    writer->write(rec.ref());
+    writer->write(rec.ref());
+    writer->write(rec.ref());
+    writer->write(rec.ref());
+    writer->close();
+    EXPECT_EQ(p.string(), writer->path());
+    EXPECT_EQ(5, writer->write_count());
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    {
+        auto reader = arrow_reader::open(p.string());
+        ASSERT_TRUE(reader);
+        EXPECT_EQ(3, reader->row_group_count());
+        auto meta = reader->meta();
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_FALSE(reader->next(ref));
+        }
+        EXPECT_EQ(2, reader->read_count());
+        EXPECT_TRUE(reader->close());
+    }
+    {
+        auto reader = arrow_reader::open(p.string(), nullptr, 1);
+        ASSERT_TRUE(reader);
+        EXPECT_EQ(3, reader->row_group_count());
+        auto meta = reader->meta();
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_FALSE(reader->next(ref));
+        }
+        EXPECT_EQ(2, reader->read_count());
+        EXPECT_TRUE(reader->close());
+    }
+    {
+        auto reader = arrow_reader::open(p.string(), nullptr, 2);
+        ASSERT_TRUE(reader);
+        EXPECT_EQ(3, reader->row_group_count());
+        auto meta = reader->meta();
+        {
+            accessor::record_ref ref{};
+            ASSERT_TRUE(reader->next(ref));
+            EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        }
+        {
+            accessor::record_ref ref{};
+            ASSERT_FALSE(reader->next(ref));
+        }
+        EXPECT_EQ(1, reader->read_count());
+        EXPECT_TRUE(reader->close());
+    }
+}
+
 TEST_F(arrow_readwrite_test, fixed_length_binary) {
     boost::filesystem::path p{path()};
     p = p / "fixed_length_binary.arrow";
@@ -478,6 +632,79 @@ TEST_F(arrow_readwrite_test, fixed_length_binary) {
         EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
     }
     EXPECT_TRUE(reader->close());
+}
+
+void write_repeated_recs(boost::filesystem::path const& p, std::size_t num_records, mock::basic_record const& rec) {
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+    for(std::size_t i=0; i<num_records; ++i) {
+        writer->write(rec.ref());
+    }
+    writer->close();
+}
+
+void arrow_readwrite_test::verify_single_field_record_size(mock::basic_record const& rec, std::size_t expected_diff_in_bytes) {
+    boost::filesystem::path p100{path()};
+    p100 = p100 / "estimate_record_batch100.arrow";
+    write_repeated_recs(p100, 100, rec);
+    boost::filesystem::path p200{path()};
+    p200 = p200 / "estimate_record_batch200.arrow";
+    write_repeated_recs(p200, 200, rec);
+    std::size_t record_batch_size_100{};
+    std::size_t record_batch_size_200{};
+    {
+        auto reader = arrow_reader::open(p100.string());
+        ASSERT_TRUE(reader);
+        std::int64_t sz{};
+        if(auto res = arrow::ipc::GetRecordBatchSize(*reader->record_batch(), &sz); res.ok()) {
+            std::cerr << "record batch size with 100 recs:" << sz;
+            record_batch_size_100 = sz;
+        }
+    }
+    {
+        auto reader = arrow_reader::open(p200.string());
+        ASSERT_TRUE(reader);
+        std::int64_t sz{};
+        if(auto res = arrow::ipc::GetRecordBatchSize(*reader->record_batch(), &sz); res.ok()) {
+            std::cerr << "record batch size with 200 recs:" << sz;
+            record_batch_size_200 = sz;
+        }
+    }
+    EXPECT_EQ(expected_diff_in_bytes, (record_batch_size_200 - record_batch_size_100) / 100);
+}
+
+TEST_F(arrow_readwrite_test, record_size_for_types) {
+    // verify the number of bytes used for recrod by creating records with single field
+    // verify_single_field_record_size(mock::create_nullable_record<kind::int1>(10), 1); // there seems to be some optimization
+    verify_single_field_record_size(mock::create_nullable_record<kind::int2>(10), 2);
+    verify_single_field_record_size(mock::create_nullable_record<kind::int4>(10), 4);
+    verify_single_field_record_size(mock::create_nullable_record<kind::int8>(10), 8);
+
+    verify_single_field_record_size(mock::create_nullable_record<kind::float4>(10.0), 4);
+
+    using date_v = takatori::datetime::date;
+    using time_of_day_v = takatori::datetime::time_of_day;
+    using time_point_v = takatori::datetime::time_point;
+    using decimal_v = takatori::decimal::triple;
+
+    auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+    auto v111 = decimal_v{1, 0, 111, 0}; // 111
+    verify_single_field_record_size(mock::typed_nullable_record<kind::decimal>(std::tuple{dec_3_0}, {v111}), 16);
+
+    auto d2000_1_1 = date_v{2000, 1, 1};
+    auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+
+    auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
+    auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
+    auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+    verify_single_field_record_size(mock::typed_nullable_record<kind::date>(std::tuple{dat}, {d2000_1_1}), 4);
+    verify_single_field_record_size(mock::typed_nullable_record<kind::time_of_day>(std::tuple{tod}, {t12_0_0}), 8);
+    verify_single_field_record_size(mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, {tp2000_1_1_12_0_0}), 8);
 }
 }
 

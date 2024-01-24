@@ -521,4 +521,8 @@ arrow_reader::~arrow_reader() noexcept {
     close();
 }
 
+std::shared_ptr<arrow::RecordBatch> const& arrow_reader::record_batch() const noexcept {
+    return record_batch_;
+}
+
 }  // namespace jogasaki::executor::file

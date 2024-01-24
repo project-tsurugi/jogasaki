@@ -33,6 +33,83 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 
+class arrow_writer_option {
+public:
+    arrow_writer_option() = default;
+
+    [[nodiscard]] std::string_view metadata_version() const noexcept {
+        return metadata_version_;
+    }
+
+    arrow_writer_option& metadata_version(std::string_view arg) noexcept {
+        metadata_version_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] std::int32_t alignment() const noexcept {
+        return alignment_;
+    }
+
+    arrow_writer_option& alignment(std::int32_t arg) noexcept {
+        alignment_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] std::int64_t record_batch_size() const noexcept {
+        return record_batch_size_;
+    }
+
+    arrow_writer_option& record_batch_size(std::int64_t arg) noexcept {
+        record_batch_size_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] std::int64_t record_batch_in_bytes() const noexcept {
+        return record_batch_in_bytes_;
+    }
+
+    arrow_writer_option& record_batch_in_bytes(std::int64_t arg) noexcept {
+        record_batch_in_bytes_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] std::string_view codec() const noexcept {
+        return codec_;
+    }
+
+    arrow_writer_option& codec(std::string_view arg) noexcept {
+        codec_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] double min_space_saving() const noexcept {
+        return min_space_saving_;
+    }
+
+    arrow_writer_option& min_space_saving(double arg) noexcept {
+        min_space_saving_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] bool use_fixed_size_binary_for_char() const noexcept {
+        return use_fixed_size_binary_for_char_;
+    }
+
+    arrow_writer_option& use_fixed_size_binary_for_char(bool arg) noexcept {
+        use_fixed_size_binary_for_char_ = arg;
+        return *this;
+    }
+
+private:
+    std::string metadata_version_{"V5"};
+    std::int32_t alignment_{8};
+    std::int64_t record_batch_size_{};
+    std::int64_t record_batch_in_bytes_{};
+    std::string codec_{};
+    double min_space_saving_{};
+    bool use_fixed_size_binary_for_char_{false};
+};
+
 /**
  * @brief arrow file writer
  */
@@ -54,7 +131,7 @@ public:
      * @details this function is intended to be called from open(). Use open() function because it can report error
      * during initialization.
      */
-    explicit arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta);
+    explicit arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta, arrow_writer_option opt = {});
 
     /**
      * @brief destruct object
@@ -96,13 +173,21 @@ public:
      * @brief factory function to construct the new arrow_writer object
      * @param meta metadata of the written records
      * @param path the file path that is to be written
+     * @param opt options for the arrow writer
      * @return newly created object on success
      * @return nullptr otherwise
      */
-    static std::shared_ptr<arrow_writer> open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
+    static std::shared_ptr<arrow_writer>
+    open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path, arrow_writer_option opt = {});
+
+    /**
+     * @brief accessor to the calculated batch size
+     */
+    [[nodiscard]] std::size_t calculated_batch_size() const noexcept;
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
+    arrow_writer_option option_{};
     std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
     std::shared_ptr<arrow::ipc::RecordBatchWriter> record_batch_writer_{};
     std::shared_ptr<arrow::Schema> schema_{};
@@ -112,6 +197,8 @@ private:
     boost::filesystem::path path_{};
     std::size_t write_count_{};
     std::vector<details::column_option> column_options_{};
+    std::size_t calculated_batch_size_{};
+    std::size_t row_group_write_count_{};
 
     std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> create_schema();
     bool write_int1(std::size_t colidx, std::int32_t v);
@@ -131,6 +218,9 @@ private:
     bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v);
     bool init(std::string_view path);
     void finish();
+
+    void calculate_batch_size();
+    std::size_t estimate_avg_record_size();
 };
 
-}
+}  // namespace jogasaki::executor::file

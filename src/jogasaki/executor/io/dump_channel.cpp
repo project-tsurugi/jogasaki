@@ -28,7 +28,7 @@ namespace jogasaki::executor::io {
 dump_channel::dump_channel(
     maybe_shared_ptr<record_channel> channel,
     std::string_view directory,
-    dump_cfg cfg
+    dump_config cfg
 ) noexcept:
     channel_(std::move(channel)),
     file_name_record_meta_(

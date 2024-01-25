@@ -106,6 +106,8 @@ public:
         std::string message{"message"};
         std::atomic_bool run{false};
         test_channel ch{};
+        io::dump_config opts{};
+        opts.max_records_per_file_ = max_records_per_file;
         ASSERT_TRUE(executor::execute_dump(
             *d,
             tx,
@@ -117,7 +119,7 @@ public:
                 message = (info ? info->message() : "");
                 run.store(true);
             },
-            max_records_per_file
+            opts
         ));
         while(! run.load()) {}
         ASSERT_EQ(status::ok, s);

@@ -94,7 +94,7 @@ public:
     void test_dump(
         api::executable_statement& stmt,
         std::string_view path,
-        std::size_t max_records_per_file = -1,
+        std::size_t max_records_per_file = 0,
         bool keep_files_on_error = false,
         status expected = status::ok,
         bool empty_output = false
@@ -106,6 +106,9 @@ public:
         std::string message{"message"};
         std::atomic_bool run{false};
         test_channel ch{};
+        io::dump_config opts{};
+        opts.max_records_per_file_ = max_records_per_file;
+        opts.keep_files_on_error_ = keep_files_on_error;
         ASSERT_TRUE(executor::execute_dump(
             get_impl(*db_),
             tx,
@@ -117,8 +120,7 @@ public:
                 message = (info ? info->message() : "");
                 run.store(true);
             },
-            max_records_per_file,
-            keep_files_on_error
+            opts
         ));
         while(! run.load()) {}
         ASSERT_EQ(expected, s);
@@ -149,7 +151,7 @@ public:
     void test_dump(
         std::string_view sql,
         std::string_view path,
-        std::size_t max_records_per_file = -1,
+        std::size_t max_records_per_file = 0,
         bool keep_files_on_error = false,
         status expected = status::ok,
         bool empty_output = false
@@ -161,7 +163,7 @@ public:
 
     void test_dump(
         std::string_view sql,
-        std::size_t max_records_per_file = -1
+        std::size_t max_records_per_file = 0
     ) {
         return test_dump(sql, path(), max_records_per_file);
     }

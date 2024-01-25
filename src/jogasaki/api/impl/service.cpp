@@ -610,18 +610,27 @@ void service::command_execute_dump(
     auto params = jogasaki::api::create_parameter_set();
     set_params(ed.parameters(), params);
 
-    dump_option opts{};
+    executor::io::dump_config opts{};
     opts.max_records_per_file_ = (ed.has_option() && ed.option().max_record_count_per_file() > 0) ?
-        ed.option().max_record_count_per_file() :
-        max_records_per_file;
+        ed.option().max_record_count_per_file() : 0;
     opts.keep_files_on_error_ = ed.has_option() && ed.option().fail_behavior() == proto::sql::request::KEEP_FILES;
     if(ed.has_option()) {
         auto& opt = ed.option();
         if(opt.has_arrow()) {
-             opts.file_format_ = executor::io::dump_file_format_kind::arrow;
+            opts.file_format_ = executor::io::dump_file_format_kind::arrow;
+            auto& arrw = opt.arrow();
+            opts.record_batch_size_ = arrw.record_batch_size();
+            opts.record_batch_in_bytes_ = arrw.record_batch_in_bytes();
+            opts.arrow_use_fixed_size_binary_for_char_ = arrw.character_field_type() ==
+                ::jogasaki::proto::sql::request::ArrowCharacterFieldType::FIXED_SIZE_BINARY;
         }
         if(opt.has_parquet()) {
              opts.file_format_ = executor::io::dump_file_format_kind::parquet;
+             if(opts.max_records_per_file_ == 0) {
+                // TODO for parquet, spliting to row groups is not implemented yet,
+                // so keep the legacy logic of separating files.
+                opts.max_records_per_file_ = max_records_per_file;
+             }
         }
     }
     execute_dump(
@@ -1195,7 +1204,7 @@ void service::execute_dump(
     details::query_info const& q,
     jogasaki::api::transaction_handle tx,
     std::string_view directory,
-    dump_option const& opts,
+    executor::io::dump_config const& opts,
     details::request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
@@ -1268,9 +1277,7 @@ void service::execute_dump(
                     throw_exception(std::logic_error{"missing callback"});
                 }
             },
-            opts.max_records_per_file_ == 0 ? max_records_per_file : opts.max_records_per_file_,
-            opts.keep_files_on_error_,
-            opts.file_format_
+            opts
     ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         throw_exception(std::logic_error{"execute_dump failed"});

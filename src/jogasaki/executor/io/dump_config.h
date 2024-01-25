@@ -54,14 +54,44 @@ inline std::ostream& operator<<(std::ostream& out, dump_file_format_kind value) 
     return out << to_string_view(value);
 }
 
-struct dump_cfg {
-    constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
+struct dump_config {
 
-    std::size_t max_records_per_file_{undefined};
-    std::size_t max_file_byte_size_{undefined};
+    /**
+     * @brief max number of records written in a result file
+     */
+    std::size_t max_records_per_file_{};
+
+    /**
+     * @brief max number of bytes written in a result file (not implemented yet)
+     */
+    std::size_t max_file_byte_size_{};
+
+    /**
+     * @brief whether the results files are kept or removed when error occurs
+     */
     bool keep_files_on_error_{false};
 
+    /**
+     * @brief dump file format
+     */
     dump_file_format_kind file_format_{dump_file_format_kind::unspecified};
+
+    /**
+     * @brief max number of records written in a row group (record batch)
+     * @details 0 means undefined
+     */
+    std::int64_t record_batch_size_{};
+
+    /**
+     * @brief max number of bytes written in a row group (record batch)
+     * @details 0 means undefined
+     */
+    std::int64_t record_batch_in_bytes_{};
+
+    /**
+     * @brief whether arrow file uses fixed size binary for char data types
+     */
+    bool arrow_use_fixed_size_binary_for_char_{};
 };
 
 }  // namespace jogasaki::executor::io

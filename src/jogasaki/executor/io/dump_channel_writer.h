@@ -56,7 +56,7 @@ public:
         dump_channel& parent,
         maybe_shared_ptr<record_writer> writer,
         std::size_t writer_index,
-        dump_cfg cfg = {}
+        dump_config cfg = {}
     );
 
     /**
@@ -85,9 +85,9 @@ private:
     std::shared_ptr<file::file_writer> file_writer_{};
     std::size_t writer_index_{};
     std::size_t current_sequence_number_{};
-    dump_cfg cfg_{};
+    dump_config cfg_{};
 
-    [[nodiscard]] std::string create_file_name(std::string_view prefix, dump_cfg const& cfg) const;
+    [[nodiscard]] std::string create_file_name(std::string_view prefix, dump_config const& cfg) const;
     void write_file_path(std::string_view path);
     void close_file_writer();
 };

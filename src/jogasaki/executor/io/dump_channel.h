@@ -20,7 +20,7 @@
 
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
-#include <jogasaki/executor/io/dump_option.h>
+#include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
@@ -41,7 +41,7 @@ public:
     explicit dump_channel(
         maybe_shared_ptr<record_channel> channel,
         std::string_view directory,
-        dump_cfg cfg = {}
+        dump_config cfg = {}
     ) noexcept;
 
     /**
@@ -114,7 +114,7 @@ private:
     maybe_shared_ptr<meta::external_record_meta> file_name_record_meta_{};
     std::string directory_{};
     std::string prefix_{};
-    dump_cfg cfg_{};
+    dump_config cfg_{};
     std::atomic_size_t writer_id_src_{0};
     tbb::concurrent_queue<std::string> output_files_{};
 };

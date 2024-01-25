@@ -21,7 +21,7 @@
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
-#include <jogasaki/executor/io/dump_option.h>
+#include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
@@ -207,8 +207,7 @@ constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
  * @param channel the channel to dump out result files list
  * @param directory the directory where the dump result files will be created
  * @param on_completion callback on completion of statement execution
- * @param max_records_per_file max number of records written in a result file
- * @param keep_files_on_error whether the results files are kept or removed when error occurs
+ * @param opts dump setting options
  * @return status::ok when successful
  * @return error otherwise
  */
@@ -219,9 +218,7 @@ bool execute_dump(
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
     error_info_callback on_completion,
-    std::size_t max_records_per_file = undefined,
-    bool keep_files_on_error = false,
-    executor::io::dump_file_format_kind file_format = executor::io::dump_file_format_kind::unspecified
+    executor::io::dump_config const& opts = {}
 );
 
 /**

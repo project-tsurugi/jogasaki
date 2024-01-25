@@ -38,7 +38,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info.h>
-#include <jogasaki/executor/io/dump_option.h>
+#include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
 #include <jogasaki/utils/string_manipulation.h>
@@ -609,18 +609,12 @@ private:
         details::request_info const& req_info
     );
 
-    struct dump_option {
-        std::size_t max_records_per_file_{};
-        bool keep_files_on_error_{};
-        executor::io::dump_file_format_kind file_format_{executor::io::dump_file_format_kind::unspecified};
-    };
-
     void execute_dump(
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
         std::string_view directory,
-        dump_option const& opts,
+        executor::io::dump_config const& opts,
         details::request_info const& req_info
     );
     void execute_load(

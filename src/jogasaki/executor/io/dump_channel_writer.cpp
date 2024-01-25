@@ -37,7 +37,7 @@ dump_channel_writer::dump_channel_writer(
     dump_channel& parent,
     maybe_shared_ptr<record_writer> writer,
     std::size_t writer_index,
-    dump_cfg cfg
+    dump_config cfg
 ) :
     parent_(std::addressof(parent)),
     writer_(std::move(writer)),
@@ -52,7 +52,7 @@ void dump_channel_writer::release() {
     writer_->release();
 }
 
-std::string dump_channel_writer::create_file_name(std::string_view prefix, dump_cfg const& cfg) const {
+std::string dump_channel_writer::create_file_name(std::string_view prefix, dump_config const& cfg) const {
     return
         std::string{prefix} + "_" + std::to_string(writer_index_) + "_" +
         std::to_string(current_sequence_number_) +
@@ -65,7 +65,11 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
         boost::filesystem::path p(std::string{parent_->directory()});
         p = p / fn;
         if(cfg_.file_format_ == dump_file_format_kind::arrow) {
-            file_writer_ = file::arrow_writer::open(parent_->meta(), p.string());
+            file::arrow_writer_option opt{};
+            opt.record_batch_size(cfg_.record_batch_size_);
+            opt.record_batch_in_bytes(cfg_.record_batch_in_bytes_);
+            opt.use_fixed_size_binary_for_char(cfg_.arrow_use_fixed_size_binary_for_char_);
+            file_writer_ = file::arrow_writer::open(parent_->meta(), p.string(), opt);
         } else {
             file_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
         }
@@ -77,7 +81,7 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
     if(auto res = file_writer_->write(rec); ! res) {
         return false;
     }
-    if(cfg_.max_records_per_file_ != dump_cfg::undefined &&
+    if(cfg_.max_records_per_file_ != 0 &&
        file_writer_->write_count() >= cfg_.max_records_per_file_) {
         flush();
     }

@@ -337,4 +337,9 @@ parquet_writer::~parquet_writer() noexcept {
     close();
 }
 
+std::size_t parquet_writer::row_group_max_records() const noexcept {
+    //TODO row group size not used yet
+    return 0;
+}
+
 }  // namespace jogasaki::executor::file

@@ -71,6 +71,12 @@ public:
      * @brief close current row group and move to new one
      */
     virtual void new_row_group() = 0;
+
+    /**
+     * @brief accessor to the (approx.) maximum size stored in a row group
+     * @details 0 is returned if max is not set
+     */
+    [[nodiscard]] virtual std::size_t row_group_max_records() const noexcept = 0;
 };
 
 }  // namespace jogasaki::executor::file

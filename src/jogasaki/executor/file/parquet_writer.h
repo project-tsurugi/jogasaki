@@ -103,6 +103,12 @@ public:
     static std::shared_ptr<parquet_writer>
     open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
 
+    /**
+     * @brief accessor to the (approx.) maximum size stored in a row group
+     * @details 0 is returned if max is not set
+     */
+    [[nodiscard]] std::size_t row_group_max_records() const noexcept override;
+
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::shared_ptr<::arrow::io::FileOutputStream> fs_{};

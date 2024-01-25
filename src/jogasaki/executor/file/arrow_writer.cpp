@@ -202,6 +202,10 @@ void arrow_writer::calculate_batch_size() {
     calculated_batch_size_ = std::min(size_from_bytes, size);
 }
 
+std::size_t arrow_writer::row_group_max_records() const noexcept {
+    return calculated_batch_size_;
+}
+
 bool arrow_writer::init(std::string_view path) {
     try {
         path_ = std::string{path};

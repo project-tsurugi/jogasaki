@@ -185,6 +185,12 @@ public:
      */
     [[nodiscard]] std::size_t calculated_batch_size() const noexcept;
 
+    /**
+     * @brief accessor to the (approx.) maximum size stored in a row group
+     * @details 0 is returned if max is not set
+     */
+    [[nodiscard]] std::size_t row_group_max_records() const noexcept override;
+
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     arrow_writer_option option_{};

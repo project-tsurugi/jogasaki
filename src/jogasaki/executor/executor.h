@@ -207,7 +207,7 @@ constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
  * @param channel the channel to dump out result files list
  * @param directory the directory where the dump result files will be created
  * @param on_completion callback on completion of statement execution
- * @param opts dump setting options
+ * @param cfg dump setting options
  * @return status::ok when successful
  * @return error otherwise
  */
@@ -218,7 +218,7 @@ bool execute_dump(
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
     error_info_callback on_completion,
-    executor::io::dump_config const& opts = {}
+    executor::io::dump_config const& cfg = {}
 );
 
 /**

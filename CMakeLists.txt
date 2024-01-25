@@ -90,7 +90,7 @@ set(ThriftAlt_FIND_QUIETLY TRUE)
 set(zstdAlt_FIND_QUIETLY TRUE)
 
 # Parquet dependencies
-find_package(Arrow REQUIRED)
+find_package(Arrow 14 REQUIRED)
 get_filename_component(MY_SEARCH_DIR ${Arrow_CONFIG} DIRECTORY)
 find_package(Parquet REQUIRED HINTS ${MY_SEARCH_DIR})
 

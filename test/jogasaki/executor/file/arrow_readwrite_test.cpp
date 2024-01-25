@@ -488,7 +488,7 @@ TEST_F(arrow_readwrite_test, set_record_batch_size_from_bytes) {
         EXPECT_TRUE(writer->close());
     }
     {
-        // batch size 0, bytes 0 -> default length (4M) used
+        // batch size 0, bytes 0 -> default size (64MB) used
         boost::filesystem::path p{path()};
         p = p / "set_record_batch_size_from_bytes.arrow";
         auto rec = mock::create_nullable_record<kind::int8>(10);
@@ -504,7 +504,7 @@ TEST_F(arrow_readwrite_test, set_record_batch_size_from_bytes) {
             opt
         );
         ASSERT_TRUE(writer);
-        EXPECT_EQ(4*1024*1024, writer->calculated_batch_size());
+        EXPECT_EQ(64*1024*1024 / 8, writer->calculated_batch_size());
         EXPECT_TRUE(writer->close());
     }
 }

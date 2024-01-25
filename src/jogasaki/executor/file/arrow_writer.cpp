@@ -182,12 +182,13 @@ std::size_t arrow_writer::estimate_avg_record_size() {
 }
 
 void arrow_writer::calculate_batch_size() {
-    constexpr static std::size_t default_batch_size = 4UL * 1024UL * 1024UL;
+    constexpr static std::size_t default_batch_in_bytes = 64UL * 1024UL * 1024UL;
     std::size_t avg_record_sz = estimate_avg_record_size();
     std::size_t size_from_bytes = option_.record_batch_in_bytes() / avg_record_sz;
+    std::size_t default_size_from_bytes = default_batch_in_bytes / avg_record_sz;
     std::size_t size = option_.record_batch_size();
     if(size_from_bytes == 0 && size == 0) {
-        calculated_batch_size_ = default_batch_size;
+        calculated_batch_size_ = default_size_from_bytes;
         return;
     }
     if(size == 0) {

@@ -77,12 +77,23 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
             VLOG_LP(log_error) << "dump file creation failed on path " << p.string();
             return false;
         }
+
+        constexpr static std::size_t max_row_groups_per_file = 16;
+        max_recs_per_file_ = max_row_groups_per_file * file_writer_->row_group_max_records();
+        if(max_recs_per_file_ != 0 && cfg_.max_records_per_file_ != 0) {
+            max_recs_per_file_ = std::min(max_recs_per_file_, cfg_.max_records_per_file_);
+        } else if (max_recs_per_file_ == 0) {
+            max_recs_per_file_ = cfg_.max_records_per_file_;
+        } else {
+            // use max_records_ set above
+        }
     }
     if(auto res = file_writer_->write(rec); ! res) {
         return false;
     }
-    if(cfg_.max_records_per_file_ != 0 &&
-       file_writer_->write_count() >= cfg_.max_records_per_file_) {
+
+    if(max_recs_per_file_ != 0 && file_writer_->write_count() >= max_recs_per_file_) {
+        // max records of file reached, close current and move to next file
         flush();
     }
     return true;

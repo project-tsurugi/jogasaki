@@ -623,14 +623,13 @@ void service::command_execute_dump(
             opts.record_batch_in_bytes_ = arrw.record_batch_in_bytes();
             opts.arrow_use_fixed_size_binary_for_char_ = arrw.character_field_type() ==
                 ::jogasaki::proto::sql::request::ArrowCharacterFieldType::FIXED_SIZE_BINARY;
-        }
-        if(opt.has_parquet()) {
-             opts.file_format_ = executor::io::dump_file_format_kind::parquet;
-             if(opts.max_records_per_file_ == 0) {
+        } else {
+            opts.file_format_ = executor::io::dump_file_format_kind::parquet;
+            if(opts.max_records_per_file_ == 0) {
                 // TODO for parquet, spliting to row groups is not implemented yet,
                 // so keep the legacy logic of separating files.
                 opts.max_records_per_file_ = max_records_per_file;
-             }
+            }
         }
     }
     execute_dump(

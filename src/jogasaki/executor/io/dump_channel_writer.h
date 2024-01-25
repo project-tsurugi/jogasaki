@@ -86,7 +86,7 @@ private:
     std::size_t writer_index_{};
     std::size_t current_sequence_number_{};
     dump_config cfg_{};
-    std::size_t record_batch_size_{};
+    std::size_t max_recs_per_file_{};
 
     [[nodiscard]] std::string create_file_name(std::string_view prefix, dump_config const& cfg) const;
     void write_file_path(std::string_view path);

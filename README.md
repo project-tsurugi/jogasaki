@@ -21,6 +21,9 @@ RUN apt update -y && apt install -y git build-essential cmake ninja-build libboo
 ```
 (see "Additional file installation for Apache Parquet" below if installing `libparquet-dev`, `libparquet-glib-dev` fails)
 
+> [!NOTE]
+> Apache Arrow/Parquet packages with major version 14 are required. Different versions such as 13 or 15 cause cmake build failure.
+
 optional packages:
 
 * `doxygen`

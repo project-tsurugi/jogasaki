@@ -89,8 +89,16 @@ set(lz4Alt_FIND_QUIETLY TRUE)
 set(ThriftAlt_FIND_QUIETLY TRUE)
 set(zstdAlt_FIND_QUIETLY TRUE)
 
-# Parquet dependencies
-find_package(Arrow 14 REQUIRED)
+# Arrow/Parquet dependencies
+find_package(Arrow REQUIRED)
+
+# Be lenient for newer Arrow versions
+# find_package version range selector ... is available on cmake 3.19 or newer
+set(SUPPORTED_ARROW_VERSION 14)
+if(NOT DEFINED Arrow_VERSION_MAJOR OR Arrow_VERSION_MAJOR LESS ${SUPPORTED_ARROW_VERSION})
+    message(FATAL_ERROR "Arrow_VERSION_MAJOR (${Arrow_VERSION_MAJOR}) is not defined or less than the supported version (${SUPPORTED_ARROW_VERSION}). Install Arrow version that is compatible with supported version.")
+endif()
+
 get_filename_component(MY_SEARCH_DIR ${Arrow_CONFIG} DIRECTORY)
 find_package(Parquet REQUIRED HINTS ${MY_SEARCH_DIR})
 

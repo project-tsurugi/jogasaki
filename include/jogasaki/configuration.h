@@ -360,6 +360,14 @@ public:
         return trace_external_log_;
     }
 
+    void external_log_explain(bool arg) noexcept {
+        external_log_explain_ = arg;
+    }
+
+    [[nodiscard]] bool external_log_explain() const noexcept {
+        return external_log_explain_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -392,6 +400,7 @@ public:
             "return_os_pages:" << cfg.return_os_pages() << " " <<
             "omit_task_when_idle:" << cfg.omit_task_when_idle() << " " <<
             "trace_external_log:" << cfg.trace_external_log() << " " <<
+            "external_log_explain:" << cfg.external_log_explain() << " " <<
             "";
     }
 
@@ -430,6 +439,7 @@ private:
     bool return_os_pages_ = false;
     bool omit_task_when_idle_ = true;
     bool trace_external_log_ = false;
+    bool external_log_explain_ = false;
 };
 
 }

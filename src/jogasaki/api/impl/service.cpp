@@ -93,13 +93,13 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     Request msg,
     api::database* db,
     tateyama::api::server::response& res,
-    details::request_info const& req_info
+    request_info const& req_info
 );
 
 void service::command_begin(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     std::vector<std::string> wps{};
@@ -157,7 +157,7 @@ void service::command_begin(
 void service::command_prepare(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     auto& pp = proto_req.prepare();
     auto& phs = pp.placeholders();
@@ -190,7 +190,7 @@ void service::command_prepare(
 void service::command_list_tables(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     (void) proto_req;
     std::vector<std::string> simple_names{};
@@ -205,7 +205,7 @@ void service::command_list_tables(
 void service::command_get_search_path(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     (void) proto_req;
     // return empty for the time being
@@ -215,7 +215,7 @@ void service::command_get_search_path(
 void service::command_get_error_info(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     auto& gei = proto_req.get_error_info();
     auto tx = validate_transaction_handle<sql::response::GetErrorInfo>(gei, db_, *res, req_info);
@@ -240,7 +240,7 @@ void service::command_get_error_info(
 void service::command_dispose_transaction(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     auto& dt = proto_req.dispose_transaction();
     auto tx = validate_transaction_handle<sql::response::ResultOnly>(dt, db_, *res, req_info);
@@ -266,7 +266,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     Request msg,
     api::database* db,
     tateyama::api::server::response& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     if(! msg.has_transaction_handle()) {
         VLOG(log_error) << log_location_prefix << "missing transaction_handle";
@@ -308,7 +308,7 @@ void abort_tx(jogasaki::api::transaction_handle tx, std::shared_ptr<error::error
 void service::command_execute_statement(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_statement();
@@ -341,7 +341,7 @@ void service::command_execute_statement(
 void service::command_execute_query(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& eq = proto_req.execute_query();
@@ -368,7 +368,7 @@ template<class Response, class Request>
 jogasaki::api::statement_handle validate_statement_handle(
     Request msg,
     tateyama::api::server::response& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     if(! msg.has_prepared_statement_handle()) {
         VLOG(log_error) << log_location_prefix << "missing prepared_statement_handle";
@@ -396,7 +396,7 @@ jogasaki::api::statement_handle validate_statement_handle(
 void service::command_execute_prepared_statement(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_statement();
@@ -426,7 +426,7 @@ void service::command_execute_prepared_statement(
 void service::command_execute_prepared_query(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& pq = proto_req.execute_prepared_query();
@@ -459,7 +459,7 @@ commit_response_kind from(::jogasaki::proto::sql::request::CommitStatus st) {
 void service::command_commit(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& cm = proto_req.commit();
@@ -488,7 +488,7 @@ void service::command_commit(
 void service::command_rollback(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     auto& rb = proto_req.rollback();
     auto tx = validate_transaction_handle<sql::response::ResultOnly>(rb, db_, *res, req_info);
@@ -529,7 +529,7 @@ void service::command_rollback(
 void service::command_dispose_prepared_statement(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     auto& ds = proto_req.dispose_prepared_statement();
 
@@ -552,7 +552,7 @@ void service::command_dispose_prepared_statement(
 void service::command_explain(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     auto& ex = proto_req.explain();
     auto handle = validate_statement_handle<sql::response::Explain>(ex, *res, req_info);
@@ -594,7 +594,7 @@ constexpr static std::size_t max_records_per_file = 10000;
 void service::command_execute_dump(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& ed = proto_req.execute_dump();
@@ -645,7 +645,7 @@ void service::command_execute_dump(
 void service::command_execute_load(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto& ed = proto_req.execute_load();
@@ -676,7 +676,7 @@ void service::command_execute_load(
 void service::command_describe_table(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     auto& dt = proto_req.describe_table();
 
@@ -764,7 +764,7 @@ bool service::process(
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
 ) {
     std::size_t reqid = request_id_src_++;
-    details::request_info req_info{reqid, req};
+    request_info req_info{reqid, req};
     sql::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;
     bool enable_performance_counter = false;
@@ -897,7 +897,7 @@ void service::execute_statement(
     std::shared_ptr<tateyama::api::server::response> const& res,
     std::shared_ptr<jogasaki::api::executable_statement> stmt,
     jogasaki::api::transaction_handle tx,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     auto c = std::make_shared<callback_control>(res);
@@ -1012,7 +1012,7 @@ void service::execute_query(
     std::shared_ptr<tateyama::api::server::response> const& res,
     details::query_info const& q,
     jogasaki::api::transaction_handle tx,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     BOOST_ASSERT(tx);  //NOLINT
@@ -1109,7 +1109,7 @@ bool service::shutdown(bool force) {
 void details::reply(
     tateyama::api::server::response& res,
     sql::response::Response& r,
-    details::request_info const& req_info,
+    request_info const& req_info,
     bool body_head
 ) {
     std::string ss{};
@@ -1204,7 +1204,7 @@ void service::execute_dump(
     jogasaki::api::transaction_handle tx,
     std::string_view directory,
     executor::io::dump_config const& opts,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     // beware asynchronous call : stack will be released soon after submitting request
     BOOST_ASSERT(tx);  //NOLINT
@@ -1288,7 +1288,7 @@ void service::execute_load( //NOLINT
     details::query_info const& q,
     jogasaki::api::transaction_handle tx,
     std::vector<std::string> const& files,
-    details::request_info const& req_info
+    request_info const& req_info
 ) {
     for(auto&& f : files) {
         VLOG(log_info) << log_location_prefix << "load processing file: " << f;

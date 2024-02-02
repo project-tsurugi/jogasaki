@@ -39,6 +39,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/io/dump_config.h>
+#include <jogasaki/request_info.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
 #include <jogasaki/utils/string_manipulation.h>
@@ -58,31 +59,6 @@ namespace sql = jogasaki::proto::sql;
 namespace details {
 
 class query_info;
-
-class request_info {
-public:
-    request_info() = default;
-
-    explicit request_info(std::size_t id) :
-        id_(id)
-    {}
-
-    request_info(std::size_t id, std::shared_ptr<tateyama::api::server::request const> src) :
-        id_(id),
-        request_source_(std::move(src))
-    {}
-
-    [[nodiscard]] std::size_t id() const noexcept {
-        return id_;
-    }
-
-    [[nodiscard]] std::shared_ptr<tateyama::api::server::request const> const& request_source() const noexcept {
-        return request_source_;
-    }
-private:
-    std::size_t id_{};
-    std::shared_ptr<tateyama::api::server::request const> request_source_{};
-};
 
 struct cache_align channel_info {
     jogasaki::api::record_meta const* meta_{};  //NOLINT
@@ -517,105 +493,105 @@ private:
     void command_begin(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
 
     void command_prepare(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_execute_statement(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
 
     void command_execute_query(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_execute_prepared_statement(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_execute_prepared_query(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_execute_dump(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_execute_load(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
 
     void command_commit(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
 
     void command_rollback(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_dispose_prepared_statement(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_explain(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
 
     void command_describe_table(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_list_tables(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_get_search_path(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_get_error_info(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void command_dispose_transaction(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
-        details::request_info const& req_info
+        request_info const& req_info
     );
 
     void execute_statement(
         std::shared_ptr<tateyama::api::server::response> const& res,
         std::shared_ptr<jogasaki::api::executable_statement> stmt,
         jogasaki::api::transaction_handle tx,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void execute_query(
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
-        details::request_info const& req_info
+        request_info const& req_info
     );
 
     void execute_dump(
@@ -624,14 +600,14 @@ private:
         jogasaki::api::transaction_handle tx,
         std::string_view directory,
         executor::io::dump_config const& opts,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void execute_load(
         std::shared_ptr<tateyama::api::server::response> const& res,
         details::query_info const& q,
         jogasaki::api::transaction_handle tx,
         std::vector<std::string> const& files,
-        details::request_info const& req_info
+        request_info const& req_info
     );
     void set_params(
         ::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps,

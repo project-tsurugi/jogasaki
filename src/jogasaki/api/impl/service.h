@@ -67,12 +67,21 @@ public:
         id_(id)
     {}
 
+    request_info(std::size_t id, std::shared_ptr<tateyama::api::server::request const> src) :
+        id_(id),
+        request_source_(std::move(src))
+    {}
+
     [[nodiscard]] std::size_t id() const noexcept {
         return id_;
     }
 
+    [[nodiscard]] std::shared_ptr<tateyama::api::server::request const> const& request_source() const noexcept {
+        return request_source_;
+    }
 private:
     std::size_t id_{};
+    std::shared_ptr<tateyama::api::server::request const> request_source_{};
 };
 
 struct cache_align channel_info {

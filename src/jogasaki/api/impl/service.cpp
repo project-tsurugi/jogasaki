@@ -764,7 +764,7 @@ bool service::process(
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
 ) {
     std::size_t reqid = request_id_src_++;
-    details::request_info req_info{reqid};
+    details::request_info req_info{reqid, req};
     sql::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;
     bool enable_performance_counter = false;

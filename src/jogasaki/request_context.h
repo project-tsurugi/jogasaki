@@ -238,12 +238,12 @@ public:
      * @return tateyama request object
      * @return nullptr if not set
      */
-    [[nodiscard]] std::shared_ptr<tateyama::api::server::request> const& request_source() const noexcept;
+    [[nodiscard]] std::shared_ptr<tateyama::api::server::request const> const& request_source() const noexcept;
 
     /**
      * @brief setter for the tateyama request
      */
-    void request_source(std::shared_ptr<tateyama::api::server::request> arg) noexcept;
+    void request_source(std::shared_ptr<tateyama::api::server::request const> arg) noexcept;
 
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
@@ -266,7 +266,7 @@ private:
     std::shared_ptr<error::error_info> error_info_{};
     std::shared_ptr<request_statistics> stats_{};
 
-    std::shared_ptr<tateyama::api::server::request> request_source_{};
+    std::shared_ptr<tateyama::api::server::request const> request_source_{};
 };
 
 /**

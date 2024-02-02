@@ -69,6 +69,7 @@ file(GLOB SOURCES
         "jogasaki/api/resource/*.cpp"
         "jogasaki/data/*.cpp"
         "jogasaki/error/*.cpp"
+        "jogasaki/external_log/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/batch/*.cpp"
         "jogasaki/executor/common/*.cpp"
@@ -105,6 +106,13 @@ file(GLOB SOURCES
         "jogasaki/serializer/*.cpp"
         "jogasaki/utils/*.cpp"
 )
+
+if(ENABLE_ALTIMETER)
+file(GLOB SRC_ALTIMETER_ENABLED
+        "jogasaki/external_log/details/*.cpp"
+)
+list (APPEND SOURCES ${SRC_ALTIMETER_ENABLED})
+endif()
 
 set_source_files_properties(
         ${GENERATED_SQL_PROTO_SRCS}

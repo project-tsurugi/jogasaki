@@ -18,6 +18,7 @@
 #include <atomic>
 
 #include <takatori/util/maybe_shared_ptr.h>
+#include <tateyama/api/server/request.h>
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/iterable_record_store.h>
@@ -232,6 +233,18 @@ public:
      */
     [[nodiscard]] std::shared_ptr<request_statistics> const& stats() const noexcept;
 
+    /**
+     * @brief accessor for the tateyam request object
+     * @return tateyama request object
+     * @return nullptr if not set
+     */
+    [[nodiscard]] std::shared_ptr<tateyama::api::server::request> const& request_source() const noexcept;
+
+    /**
+     * @brief setter for the tateyama request
+     */
+    void request_source(std::shared_ptr<tateyama::api::server::request> arg) noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -252,6 +265,8 @@ private:
     bool lightweight_{};
     std::shared_ptr<error::error_info> error_info_{};
     std::shared_ptr<request_statistics> stats_{};
+
+    std::shared_ptr<tateyama::api::server::request> request_source_{};
 };
 
 /**
@@ -260,5 +275,4 @@ private:
  */
 void prepare_scheduler(request_context& rctx);
 
-}
-
+}  // namespace jogasaki

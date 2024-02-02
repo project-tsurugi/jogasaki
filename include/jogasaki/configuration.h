@@ -352,6 +352,14 @@ public:
         return omit_task_when_idle_;
     }
 
+    void trace_external_log(bool arg) noexcept {
+        trace_external_log_ = arg;
+    }
+
+    [[nodiscard]] bool trace_external_log() const noexcept {
+        return trace_external_log_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -383,6 +391,7 @@ public:
             "skip_smv_check:" << cfg.skip_smv_check() << " " <<
             "return_os_pages:" << cfg.return_os_pages() << " " <<
             "omit_task_when_idle:" << cfg.omit_task_when_idle() << " " <<
+            "trace_external_log:" << cfg.trace_external_log() << " " <<
             "";
     }
 
@@ -420,6 +429,7 @@ private:
     bool skip_smv_check_ = false;
     bool return_os_pages_ = false;
     bool omit_task_when_idle_ = true;
+    bool trace_external_log_ = false;
 };
 
 }

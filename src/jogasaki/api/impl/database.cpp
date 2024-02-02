@@ -28,12 +28,9 @@
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/type/decimal.h>
-#ifdef ENABLE_ALTIMETER
-#include <altimeter/logger.h>
-#include <altimeter/configuration.h>
-#include <altimeter/log_item.h>
-#endif
 
+#include <jogasaki/external_log/events.h>
+#include <jogasaki/external_log/event_logging.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_logging.h>
@@ -180,12 +177,6 @@ status database::start() {
 
 status database::stop() {
     stop_requested_ = true;
-
-#ifdef ENABLE_ALTIMETER
-    altimeter::logger::shutdown();
-#endif
-
-
     std::size_t cnt = 0;
     while(requests_inprocess_.count() != 1) {
         std::this_thread::sleep_for(std::chrono::milliseconds{1});
@@ -217,11 +208,30 @@ status database::stop() {
     return status::ok;
 }
 
+void custom_external_log_cfg(std::shared_ptr<class configuration> const& cfg) {
+    (void) cfg;
+#ifdef ENABLE_ALTIMETER
+    if(cfg) {
+        cfg->external_log_explain(true);
+        cfg->trace_external_log(true);
+    }
+#endif
+}
+
 database::database(
     std::shared_ptr<class configuration> cfg
 ) :
     cfg_(std::move(cfg))
-{}
+{
+    custom_external_log_cfg(cfg_);
+}
+
+database::database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db) :
+    cfg_(std::move(cfg)),
+    kvs_db_(std::make_unique<kvs::database>(db))
+{
+    custom_external_log_cfg(cfg_);
+}
 
 std::shared_ptr<class configuration> const& database::configuration() const noexcept {
     return cfg_;
@@ -500,16 +510,25 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
 status database::do_create_transaction(transaction_handle& handle, transaction_option const& option, std::shared_ptr<api::error_info>& out) {
     std::atomic_bool completed = false;
     status ret{status::ok};
-    auto jobid = do_create_transaction_async([&handle, &completed, &ret, &out](transaction_handle h, status st, std::shared_ptr<api::error_info> info){  //NOLINT(performance-unnecessary-value-param)
-        completed = true;
-        out = info;
-        if(st != status::ok) {
-            ret = st;
-            VLOG(log_error) << log_location_prefix << "do_create_transaction failed with error : " << info->code() << " " << info->message();
-            return;
-        }
-        handle = h;
-    }, option);
+    auto jobid = do_create_transaction_async(
+        [&handle, &completed, &ret, &out](
+            transaction_handle h,
+            status st,
+            std::shared_ptr<api::error_info> info  //NOLINT(performance-unnecessary-value-param)
+        ) {
+            completed = true;
+            out = info;
+            if(st != status::ok) {
+                ret = st;
+                VLOG(log_error) << log_location_prefix << "do_create_transaction failed with error : " << info->code()
+                                << " " << info->message();
+                return;
+            }
+            handle = h;
+        },
+        option,
+        {}
+    );
 
     task_scheduler_->wait_for_progress(jobid);
     utils::backoff_waiter waiter{};
@@ -1036,23 +1055,27 @@ std::shared_ptr<class configuration>& database::config() noexcept {
     return cfg_;
 }
 
-database::database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db) :
-    cfg_(std::move(cfg)),
-    kvs_db_(std::make_unique<kvs::database>(db))
-{}
-
 scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback on_completion,
     transaction_option const& option
 ) {
-    return do_create_transaction_async([on_completion=std::move(on_completion)](transaction_handle tx, status st, std::shared_ptr<api::error_info> info) {  //NOLINT(performance-unnecessary-value-param)
-        on_completion(tx, st, (info ? info->message() : ""));
-    }, option);
+    return do_create_transaction_async(
+        [on_completion = std::move(on_completion)](
+            transaction_handle tx,
+            status st,
+            std::shared_ptr<api::error_info> info  //NOLINT(performance-unnecessary-value-param)
+        ) {
+            on_completion(tx, st, (info ? info->message() : ""));
+        },
+        option,
+        {} //TODO
+    );
 }
 
 scheduler::job_context::job_id_type database::do_create_transaction_async(
     create_transaction_callback_error_info on_completion,
-    transaction_option const& option
+    transaction_option const& option,
+    request_info const& req_info
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::begin);
     req->status(scheduler::request_detail_status::accepted);
@@ -1068,12 +1091,12 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req
     );
+    rctx->request_source(req_info.request_source());
 
-    auto timer = std::make_shared<utils::backoff_timer>();
     auto handle = std::make_shared<transaction_handle>();
     auto jobid = rctx->job()->id();
     auto t = scheduler::create_custom_task(rctx.get(),
-        [this, rctx, option, handle, timer=std::move(timer), jobid]() {
+        [this, rctx, option, handle, jobid]() {
             VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting"
                 << " job_id:"
                 << utils::hex(jobid)
@@ -1129,11 +1152,18 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             );
             return model::task_result::complete;
         }, false);  // create transaction is not sticky task
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
+    std::int64_t tx_type = option.is_long()
+        ? external_log::tx_type_value::ltx
+        : (option.readonly() ? external_log::tx_type_value::rtx : external_log::tx_type_value::occ);
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid, tx_type](){
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:started "
             << (*handle ? handle->transaction_id_unchecked() : "<tx id not available>")
             << " job_id:"
             << utils::hex(jobid);
+        auto txidstr = *handle ? handle->transaction_id_unchecked() : "";
+        if(rctx->status_code() == status::ok) {
+            external_log::tx_start(*rctx, "", txidstr, tx_type);
+        }
         on_completion(
             *handle,
             rctx->status_code(),

@@ -150,7 +150,8 @@ void service::command_begin(
                 details::error<sql::response::Begin>(*res, err_info.get(), req_info);
             }
         },
-        opts
+        opts,
+        req_info
     );
 }
 

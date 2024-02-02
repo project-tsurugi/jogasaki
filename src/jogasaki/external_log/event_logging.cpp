@@ -32,10 +32,10 @@ void tx_start(
 ) {
     if(rctx.configuration() && rctx.configuration()->trace_external_log()) {
         VLOG_LP(log_info) <<
-        "message:\"" << message << "\"" <<
-        " tx_id:" << tx_id <<
-        " tx_type:" << tx_type <<
-        "";
+            "message:\"" << message << "\"" <<
+            " tx_id:" << tx_id <<
+            " tx_type:" << tx_type <<
+            "";
     }
 #ifdef ENABLE_ALTIMETER
     details::tx_start(rctx, message, tx_id, tx_type);

@@ -26,6 +26,7 @@
 #include <yugawara/variable/configurable_provider.h>
 
 #include <jogasaki/status.h>
+#include <jogasaki/request_info.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/durability_callback.h>
@@ -167,7 +168,8 @@ public:
 
     scheduler::job_context::job_id_type do_create_transaction_async(
         create_transaction_callback_error_info on_completion,
-        transaction_option const& option
+        transaction_option const& option,
+        request_info const& req_info
     );
 
     [[nodiscard]] std::shared_ptr<class configuration> const& configuration() const noexcept;

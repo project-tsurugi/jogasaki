@@ -67,4 +67,11 @@ static constexpr int error = 30;
 static constexpr int info = 50;
 } // namespace log_level::event
 
-}  // jogasaki::external_log
+// values for tx_type
+namespace tx_type_value {
+static constexpr std::int64_t occ = 1;
+static constexpr std::int64_t ltx = 2;
+static constexpr std::int64_t rtx = 3;
+}  // namespace tx_type_value
+
+}  // namespace jogasaki::external_log

@@ -127,7 +127,7 @@ status commit(
     return ret;
 }
 
-status abort(
+status abort_transaction(
     std::shared_ptr<transaction_context> tx  //NOLINT(performance-unnecessary-value-param)
 ) {
     std::string txid{tx->transaction_id()};

@@ -102,7 +102,7 @@ status transaction_handle::abort() {  //NOLINT(readability-make-member-function-
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     (void) db;
-    return executor::abort(tx);
+    return executor::abort_transaction(tx);
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)

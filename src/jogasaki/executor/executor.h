@@ -92,7 +92,7 @@ scheduler::job_context::job_id_type commit_async(
  * @return error code otherwise
  * @note this function is synchronous
  */
-status abort(
+status abort_transaction(
     std::shared_ptr<transaction_context> tx
 );
 

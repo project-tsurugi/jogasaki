@@ -69,9 +69,17 @@ static constexpr int info = 50;
 
 // values for tx_type
 namespace tx_type_value {
+static constexpr std::int64_t unknown = 0;
 static constexpr std::int64_t occ = 1;
 static constexpr std::int64_t ltx = 2;
 static constexpr std::int64_t rtx = 3;
 }  // namespace tx_type_value
+
+// values for result
+namespace result_value {
+static constexpr std::int64_t unknown = 0;
+static constexpr std::int64_t success = 1;
+static constexpr std::int64_t fail = 2;
+}  // namespace result_value
 
 }  // namespace jogasaki::external_log

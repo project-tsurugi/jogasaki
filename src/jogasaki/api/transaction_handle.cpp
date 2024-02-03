@@ -72,7 +72,11 @@ void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readab
     });
 }
 
-void transaction_handle::commit_async(error_info_callback on_completion, commit_option opt) {  //NOLINT(readability-make-member-function-const,performance-unnecessary-value-param)
+void transaction_handle::commit_async(
+    error_info_callback on_completion,
+    commit_option opt,  //NOLINT(performance-unnecessary-value-param)
+    request_info const& req_info
+) {  //NOLINT(readability-make-member-function-const,performance-unnecessary-value-param)
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
         auto res = status::err_invalid_argument;
@@ -83,12 +87,15 @@ void transaction_handle::commit_async(error_info_callback on_completion, commit_
         );
         return;
     }
-    executor::commit_async(*db, tx, [on_completion](
-        status st,
-        std::shared_ptr<error::error_info> info
-    ) {
-        on_completion(st, api::impl::error_info::create(std::move(info)));
-    }, opt);
+    executor::commit_async(
+        *db,
+        tx,
+        [on_completion](status st, std::shared_ptr<error::error_info> info) {
+            on_completion(st, api::impl::error_info::create(std::move(info)));
+        },
+        opt,
+        req_info
+    );
 }
 
 status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)

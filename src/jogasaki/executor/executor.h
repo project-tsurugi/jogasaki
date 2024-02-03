@@ -17,6 +17,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/request_info.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
@@ -80,7 +81,8 @@ scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,
     error_info_callback on_completion,
-    api::commit_option option
+    api::commit_option option,
+    request_info const& info
 );
 
 /**
@@ -252,7 +254,7 @@ bool execute_load(
 [[nodiscard]] status create_transaction(
     api::impl::database &db,
     std::shared_ptr<transaction_context>& out,
-    kvs::transaction_option const& options
+    std::shared_ptr<kvs::transaction_option const> options
 );
 
 }  // namespace jogasaki::executor

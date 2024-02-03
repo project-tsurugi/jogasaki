@@ -22,15 +22,16 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/status.h>
-#include <jogasaki/request_statistics.h>
 #include <jogasaki/api/commit_option.h>
-#include <jogasaki/api/executable_statement.h>
-#include <jogasaki/api/error_info.h>
-#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/data_channel.h>
-#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/error_info.h>
+#include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/request_info.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::api {
 
@@ -150,7 +151,11 @@ public:
      * @param opt options for the commit operation
      * @note normal error such as SQL runtime processing failure will be reported by callback
      */
-    void commit_async(error_info_callback on_completion, commit_option opt = commit_option{});
+    void commit_async(
+        error_info_callback on_completion,
+        commit_option opt = commit_option{},
+        request_info const& req_info = request_info{}
+    );
 
     /**
      * @brief abort the transaction and have transaction engine rollback the on-going processing (if it supports rollback)
@@ -320,7 +325,8 @@ inline std::ostream& operator<<(std::ostream& out, transaction_handle value) {
     return out << "transaction_handle[" << value.get() << "]";
 }
 
-}
+}  // namespace jogasaki::api
+
 /**
  * @brief std::hash specialization
  */

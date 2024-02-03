@@ -102,9 +102,11 @@ public:
     /**
      * @brief create new context object
      * @param transaction the kvs transaction used in this context
+     * @param transaction the kvs transaction option that was used to create `transaction`
      */
     explicit transaction_context(
-        std::shared_ptr<kvs::transaction> transaction
+        std::shared_ptr<kvs::transaction> transaction,
+        std::shared_ptr<kvs::transaction_option const> option = nullptr
     );
 
     [[nodiscard]] operator kvs::transaction&() const noexcept;  //NOLINT
@@ -258,6 +260,12 @@ public:
      */
     [[nodiscard]] std::shared_ptr<commit_profile> const& profile() const noexcept;
 
+    /**
+     * @brief accessor for the transaction option
+     * @return the transaction option
+     */
+    [[nodiscard]] std::shared_ptr<kvs::transaction_option const> const& option() const noexcept;
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
@@ -267,6 +275,7 @@ private:
     commit_response_kind commit_response_{commit_response_kind::undefined};
     std::optional<durability_marker_type> durability_marker_{};
     std::shared_ptr<commit_profile> profile_{std::make_shared<commit_profile>()};
+    std::shared_ptr<kvs::transaction_option const> option_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };
@@ -276,7 +285,10 @@ private:
  * @param arg the kvs::transaction object
  * @return the converted context
  */
-std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept;
+std::shared_ptr<transaction_context> wrap(
+    std::unique_ptr<kvs::transaction>&& arg,
+    std::shared_ptr<kvs::transaction_option const> options = nullptr
+) noexcept;
 
 }
 

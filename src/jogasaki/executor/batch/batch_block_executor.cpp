@@ -133,8 +133,17 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
             return {false, false};
         }
 
-        if(auto res = executor::create_transaction(*info_.db(), tx_,
-                {kvs::transaction_option::transaction_type::occ, {}, {}, {}}); res != status::ok) {
+        if(auto res = executor::create_transaction(
+               *info_.db(),
+               tx_,
+               std::make_shared<kvs::transaction_option>(
+                   kvs::transaction_option::transaction_type::occ,
+                   std::vector<std::string>{},
+                   std::vector<std::string>{},
+                   std::vector<std::string>{}
+               )
+           );
+           res != status::ok) {
             state_->set_error_status(
                 res,
                 create_error_info(error_code::sql_execution_exception, "starting new tx failed.", res)

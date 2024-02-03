@@ -31,6 +31,7 @@
 #include <jogasaki/executor/io/null_record_channel.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/external_log/event_logging.h>
 #include <jogasaki/index/index_accessor.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -43,7 +44,7 @@
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/utils/abort_error.h>
-#include <jogasaki/utils/backoff_timer.h>
+#include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
 #include "jogasaki/index/field_factory.h"
 
@@ -88,14 +89,15 @@ bool execute_internal(
 
 status init(
     api::impl::database& database,
-    kvs::transaction_option const& options,
+    std::shared_ptr<kvs::transaction_option const> options,
     std::shared_ptr<transaction_context>& out
 ) {
     std::unique_ptr<kvs::transaction> kvs_tx{};
-    if(auto res = kvs::transaction::create_transaction(*database.kvs_db(), kvs_tx, options); res != status::ok) {
+    if(auto res = kvs::transaction::create_transaction(*database.kvs_db(), kvs_tx, *options); res != status::ok) {
         return res;
     }
-    out = wrap(std::move(kvs_tx));
+    out = wrap(std::move(kvs_tx), std::move(options));
+
     return status::ok;
 }
 
@@ -118,7 +120,8 @@ status commit(
                     VLOG(log_error) << log_location_prefix << (info ? info->message() : "");
                 }
             },
-            option
+            option,
+            request_info{}
     );
     database.task_scheduler()->wait_for_progress(jobid);
     return ret;
@@ -503,7 +506,8 @@ scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx, //NOLINT(performance-unnecessary-value-param)
     error_info_callback on_completion,
-    api::commit_option option
+    api::commit_option option,
+    request_info const& req_info
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);
     req->status(scheduler::request_detail_status::accepted);
@@ -517,6 +521,7 @@ scheduler::job_context::job_id_type commit_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req
     );
+    rctx->request_source(req_info.request_source());
     auto jobid = rctx->job()->id();
     std::string txid{tx->transaction_id()};
 
@@ -552,6 +557,9 @@ scheduler::job_context::job_id_type commit_async(
             << " status:"
             << (rctx->status_code() == status::ok ? "committed" : "aborted");
         rctx->transaction()->profile()->set_commit_job_completed();
+        auto tx_type = utils::tx_type_from(*rctx->transaction());
+        auto result = utils::result_from(rctx->status_code());
+        external_log::tx_end(*rctx, "", txid, tx_type, result);
         on_completion(rctx->status_code(), rctx->error_info());
     });
     std::weak_ptr wrctx{rctx};
@@ -573,10 +581,10 @@ scheduler::job_context::job_id_type commit_async(
 status create_transaction(
     api::impl::database& db,
     std::shared_ptr<transaction_context>& out,
-    kvs::transaction_option const& options
+    std::shared_ptr<kvs::transaction_option const> options
 ) {
     std::shared_ptr<transaction_context> ret{};
-    if(auto res = details::init(db, options, ret); res != status::ok) {
+    if(auto res = details::init(db, std::move(options), ret); res != status::ok) {
         return res;
     }
     out = std::move(ret);

@@ -483,7 +483,8 @@ void service::command_commit(
                 details::error<sql::response::ResultOnly>(*res, info.get(), req_info);
             }
         },
-        opt
+        opt,
+        req_info
     );
 }
 void service::command_rollback(

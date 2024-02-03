@@ -20,9 +20,13 @@
 
 namespace jogasaki {
 
-transaction_context::transaction_context(std::shared_ptr<kvs::transaction> transaction) :
+transaction_context::transaction_context(
+    std::shared_ptr<kvs::transaction> transaction,
+    std::shared_ptr<kvs::transaction_option const> option
+) :
     transaction_(std::move(transaction)),
-    id_(id_source_++)
+    id_(id_source_++),
+    option_(std::move(option))
 {}
 
 transaction_context::operator kvs::transaction&() const noexcept {  //NOLINT
@@ -129,8 +133,15 @@ std::shared_ptr<commit_profile> const& transaction_context::profile() const noex
     return profile_;
 }
 
-std::shared_ptr<transaction_context> wrap(std::unique_ptr<kvs::transaction>&& arg) noexcept {
-    return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)});
+std::shared_ptr<kvs::transaction_option const> const& transaction_context::option() const noexcept {
+    return option_;
+}
+
+std::shared_ptr<transaction_context> wrap(
+    std::unique_ptr<kvs::transaction>&& arg,
+    std::shared_ptr<kvs::transaction_option const> options
+) noexcept {
+    return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)}, std::move(options));
 }
 
 bool details::worker_manager::increment_and_set_on_zero(uint32_t& worker_index) {
@@ -187,5 +198,4 @@ std::uint32_t details::worker_manager::use_count() const noexcept {
     return upper(cur);
 }
 
-}
-
+}  // namespace jogasaki

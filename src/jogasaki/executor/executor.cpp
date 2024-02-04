@@ -348,6 +348,10 @@ void external_log_stmt_start(
     request_info const& req_info,
     maybe_shared_ptr<api::executable_statement> const& statement
 ) {
+    (void) rctx;
+    (void) req_info;
+    (void) statement;
+#ifdef ENABLE_ALTIMETER
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
     auto const& job = rctx.job();
@@ -355,6 +359,7 @@ void external_log_stmt_start(
     auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
     auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();  //NOLINT
     external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt, "");  // TODO stringify parameters
+#endif
 }
 
 void external_log_stmt_end(
@@ -362,6 +367,10 @@ void external_log_stmt_end(
     request_info const& req_info,
     maybe_shared_ptr<api::executable_statement> const& statement
 ) {
+    (void) rctx;
+    (void) req_info;
+    (void) statement;
+#ifdef ENABLE_ALTIMETER
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
     auto const& job = rctx.job();
@@ -405,6 +414,7 @@ void external_log_stmt_end(
         deleted,
         merged
     );
+#endif
 }
 
 void external_log_stmt_explain(
@@ -413,6 +423,11 @@ void external_log_stmt_explain(
     request_info const& req_info,
     maybe_shared_ptr<api::executable_statement> const& statement
 ) {
+    (void) database;
+    (void) rctx;
+    (void) req_info;
+    (void) statement;
+#ifdef ENABLE_ALTIMETER
     auto cfg = global::config_pool();
     if(! cfg || ! cfg->external_log_explain()) {
         return;
@@ -431,6 +446,7 @@ void external_log_stmt_explain(
         jobidstr,
         ss.str()
     );
+#endif
 }
 
 bool execute_async_on_context(

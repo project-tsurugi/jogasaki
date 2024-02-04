@@ -350,10 +350,10 @@ void external_log_stmt_start(
 ) {
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
-    auto job = rctx.job();
+    auto const& job = rctx.job();
     auto jobid = job->id();
     auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
-    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();
+    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();  //NOLINT
     external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt, "");  // TODO stringify parameters
 }
 
@@ -364,10 +364,10 @@ void external_log_stmt_end(
 ) {
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
-    auto job = rctx.job();
+    auto const& job = rctx.job();
     auto jobid = job->id();
     auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
-    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();
+    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();  //NOLINT
     auto result = utils::result_from(rctx.status_code());
     auto state_code =
         rctx.error_info() ? "SQL-" + std::to_string(static_cast<std::int64_t>(rctx.error_info()->code())) : "";
@@ -419,11 +419,11 @@ void external_log_stmt_explain(
     }
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
-    auto job = rctx.job();
+    auto const& job = rctx.job();
     auto jobid = job->id();
     auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
     std::stringstream ss{};
-    database.explain(*statement, ss);
+    (void) database.explain(*statement, ss);
     external_log::stmt_explain(
         req_info,
         tx_id,

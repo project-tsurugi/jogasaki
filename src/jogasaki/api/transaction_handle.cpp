@@ -72,11 +72,11 @@ void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readab
     });
 }
 
-void transaction_handle::commit_async(
-    error_info_callback on_completion,
+void transaction_handle::commit_async(  //NOLINT(readability-make-member-function-const,performance-unnecessary-value-param)
+    error_info_callback on_completion,  //NOLINT(performance-unnecessary-value-param)
     commit_option opt,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
-) {  //NOLINT(readability-make-member-function-const,performance-unnecessary-value-param)
+) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) {
         auto res = status::err_invalid_argument;
@@ -105,10 +105,10 @@ status transaction_handle::abort(request_info const& req_info) {  //NOLINT(reada
     return executor::abort_transaction(tx, req_info);
 }
 
-status transaction_handle::execute(
+status transaction_handle::execute(  //NOLINT(readability-make-member-function-const)
     executable_statement& statement,
     request_info const& req_info
-) {  //NOLINT(readability-make-member-function-const)
+) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     std::unique_ptr<api::result_set> result{};
@@ -117,11 +117,11 @@ status transaction_handle::execute(
     return executor::execute(*db, tx, statement, result, info, stats, req_info);
 }
 
-status transaction_handle::execute(
+status transaction_handle::execute(  //NOLINT(readability-make-member-function-const)
     executable_statement& statement,
     std::unique_ptr<result_set>& result,
     request_info const& req_info
-) {  //NOLINT(readability-make-member-function-const)
+) {
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     std::shared_ptr<error::error_info> info{};

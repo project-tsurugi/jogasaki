@@ -33,6 +33,7 @@
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
 
 namespace jogasaki {
@@ -234,16 +235,15 @@ public:
     [[nodiscard]] std::shared_ptr<request_statistics> const& stats() const noexcept;
 
     /**
-     * @brief accessor for the tateyam request object
-     * @return tateyama request object
-     * @return nullptr if not set
+     * @brief accessor for the request info
+     * @return request_info object
      */
-    [[nodiscard]] std::shared_ptr<tateyama::api::server::request const> const& request_source() const noexcept;
+    [[nodiscard]] request_info const& req_info() const noexcept;
 
     /**
-     * @brief setter for the tateyama request
+     * @brief setter for request info
      */
-    void request_source(std::shared_ptr<tateyama::api::server::request const> arg) noexcept;
+    void req_info(request_info req_info) noexcept;
 
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
@@ -266,7 +266,7 @@ private:
     std::shared_ptr<error::error_info> error_info_{};
     std::shared_ptr<request_statistics> stats_{};
 
-    std::shared_ptr<tateyama::api::server::request const> request_source_{};
+    request_info req_info_{};
 };
 
 /**

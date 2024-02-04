@@ -297,7 +297,8 @@ void flat_task::resolve(tateyama::task_scheduler::context& ctx) {
                 ) { // pass sctx_ to live long enough
                     sctx->callback_(st, std::move(info), std::move(stats));
                 },
-                false
+                false,
+                req_context_->req_info()
         );
     }
     log_exit << *this;

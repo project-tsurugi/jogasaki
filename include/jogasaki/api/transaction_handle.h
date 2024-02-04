@@ -171,7 +171,10 @@ public:
      * @return status::ok when successful
      * @return error code otherwise
      */
-    status execute(executable_statement& statement);
+    status execute(
+        executable_statement& statement,
+        request_info const& req_info = {}
+    );
 
     /**
      * @brief execute the statement in the transaction. The result records are expected.
@@ -183,7 +186,11 @@ public:
      * @return error code otherwise
      * @deprecated kept for testing purpose. record_meta from result doesn't provide column names
      */
-    status execute(executable_statement& statement, std::unique_ptr<result_set>& result);
+    status execute(
+        executable_statement& statement,
+        std::unique_ptr<result_set>& result,
+        request_info const& req_info = {}
+    );
 
     /**
      * @brief resolve and execute the statement in the transaction. The result records are expected.
@@ -199,39 +206,15 @@ public:
     status execute(
         api::statement_handle prepared,
         std::shared_ptr<api::parameter_set> parameters,
-        std::unique_ptr<result_set>& result);
+        std::unique_ptr<result_set>& result,
+        request_info const& req_info = {}
+    );
 
     /**
      * @brief asynchronously execute the statement in the transaction. No result records are expected
      * from the statement (e.g. insert/update/delete).
      * @param statement the statement to be executed. If raw pointer is passed, caller is responsible to ensure it live
      * long by the end of callback.
-     * @param on_completion the callback invoked when async call is completed
-     * @return true when successful
-     * @return false on error in preparing async execution (normally this should not happen)
-     * @note normal error such as SQL runtime processing failure will be reported by callback
-     */
-    bool execute_async(maybe_shared_ptr<executable_statement> const& statement, callback on_completion);
-
-    /**
-     * @brief asynchronously execute the statement in the transaction. No result records are expected
-     * from the statement (e.g. insert/update/delete).
-     * @param statement the statement to be executed. If raw pointer is passed, caller is responsible to ensure it live
-     * long by the end of callback.
-     * @param on_completion the callback invoked when async call is completed
-     * @return true when successful
-     * @return false on error in preparing async execution (normally this should not happen)
-     * @note normal error such as SQL runtime processing failure will be reported by callback
-     */
-    bool execute_async(maybe_shared_ptr<executable_statement> const& statement, error_info_stats_callback on_completion);
-
-    /**
-     * @brief asynchronously execute the statement in the transaction. The result records are expected
-     * to be written to the writers derived from `channel`
-     * @param statement the statement to be executed.
-     * If raw pointer is passed, caller is responsible to ensure it live long by the end of callback.
-     * @param channel the data channel to acquire/release writer to write output data
-     * If raw pointer is passed, caller is responsible to ensure it live long by the end of callback.
      * @param on_completion the callback invoked when async call is completed
      * @return true when successful
      * @return false on error in preparing async execution (normally this should not happen)
@@ -239,8 +222,24 @@ public:
      */
     bool execute_async(
         maybe_shared_ptr<executable_statement> const& statement,
-        maybe_shared_ptr<data_channel> const& channel,
-        callback on_completion
+        callback on_completion,
+        request_info const& req_info = {}
+    );
+
+    /**
+     * @brief asynchronously execute the statement in the transaction. No result records are expected
+     * from the statement (e.g. insert/update/delete).
+     * @param statement the statement to be executed. If raw pointer is passed, caller is responsible to ensure it live
+     * long by the end of callback.
+     * @param on_completion the callback invoked when async call is completed
+     * @return true when successful
+     * @return false on error in preparing async execution (normally this should not happen)
+     * @note normal error such as SQL runtime processing failure will be reported by callback
+     */
+    bool execute_async(
+        maybe_shared_ptr<executable_statement> const& statement,
+        error_info_stats_callback on_completion,
+        request_info const& req_info = {}
     );
 
     /**
@@ -258,7 +257,27 @@ public:
     bool execute_async(
         maybe_shared_ptr<executable_statement> const& statement,
         maybe_shared_ptr<data_channel> const& channel,
-        error_info_stats_callback on_completion
+        callback on_completion,
+        request_info const& req_info = {}
+    );
+
+    /**
+     * @brief asynchronously execute the statement in the transaction. The result records are expected
+     * to be written to the writers derived from `channel`
+     * @param statement the statement to be executed.
+     * If raw pointer is passed, caller is responsible to ensure it live long by the end of callback.
+     * @param channel the data channel to acquire/release writer to write output data
+     * If raw pointer is passed, caller is responsible to ensure it live long by the end of callback.
+     * @param on_completion the callback invoked when async call is completed
+     * @return true when successful
+     * @return false on error in preparing async execution (normally this should not happen)
+     * @note normal error such as SQL runtime processing failure will be reported by callback
+     */
+    bool execute_async(
+        maybe_shared_ptr<executable_statement> const& statement,
+        maybe_shared_ptr<data_channel> const& channel,
+        error_info_stats_callback on_completion,
+        request_info const& req_info = {}
     );
 
     /**

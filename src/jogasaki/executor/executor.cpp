@@ -16,6 +16,7 @@
 #include "executor.h"
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/api/executable_statement.h>
@@ -52,6 +53,7 @@
 namespace jogasaki::executor {
 
 using takatori::util::unsafe_downcast;
+using takatori::util::string_builder;
 
 constexpr static std::string_view log_location_prefix = "/:jogasaki:executor ";
 
@@ -63,7 +65,8 @@ bool execute_internal(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     error_info_stats_callback on_completion, //NOLINT(performance-unnecessary-value-param)
-    bool sync
+    bool sync,
+    request_info const& req_info
 ) {
     BOOST_ASSERT(channel);  //NOLINT
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
@@ -84,7 +87,8 @@ bool execute_internal(
         std::move(rctx),
         statement,
         std::move(on_completion),
-        sync
+        sync,
+        req_info
     );
 }
 
@@ -152,7 +156,8 @@ status execute(
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result,
     std::shared_ptr<error::error_info>& error,
-    std::shared_ptr<request_statistics>& stats
+    std::shared_ptr<request_statistics>& stats,
+    request_info const& req_info
 ) {
     auto store = std::make_unique<data::result_store>();
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
@@ -171,7 +176,8 @@ status execute(
                 error = std::move(info);
                 stats = std::move(statistics);
             },
-            true
+            true,
+            req_info
     );
     auto& s = unsafe_downcast<api::impl::executable_statement&>(statement);
     if (s.body()->is_execute()) {
@@ -187,7 +193,8 @@ status execute(
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<api::result_set>& result,
     std::shared_ptr<error::error_info>& error,
-    std::shared_ptr<request_statistics>& stats
+    std::shared_ptr<request_statistics>& stats,
+    request_info const& req_info
 ) {
     auto store = std::make_unique<data::result_store>();
     auto ch = std::make_shared<api::impl::result_store_channel>(maybe_shared_ptr{store.get()});
@@ -201,7 +208,7 @@ status execute(
             ret = st;
             error = std::move(info);
             stats = std::move(statistics);
-    }, true);
+    }, true, req_info);
     result = std::make_unique<api::impl::result_set>(std::move(store));
     return ret;
 }
@@ -213,7 +220,8 @@ bool execute_async(
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     error_info_stats_callback on_completion,
-    bool sync
+    bool sync,
+    request_info const& req_info
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
@@ -228,6 +236,7 @@ bool execute_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req
     );
+    request_ctx->req_info(req_info);
     request_ctx->lightweight(
         stmt->mirrors()->work_level().value() <=
         static_cast<std::int32_t>(request_ctx->configuration()->lightweight_job_level())
@@ -260,7 +269,8 @@ bool execute_async(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
-    error_info_stats_callback on_completion  //NOLINT(performance-unnecessary-value-param)
+    error_info_stats_callback on_completion,  //NOLINT(performance-unnecessary-value-param)
+    request_info const& req_info
 ) {
     return details::execute_internal(
         database,
@@ -271,7 +281,8 @@ bool execute_async(
                   )}
                 : maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::null_record_channel>()},
         std::move(on_completion),
-        false
+        false,
+        req_info
     );
 }
 
@@ -282,7 +293,8 @@ bool execute_dump(
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
     error_info_callback on_completion,
-    io::dump_config const& cfg
+    io::dump_config const& cfg,
+    request_info const& req_info
 ) {
     auto dump_ch = std::make_shared<executor::io::dump_channel>(
         std::make_shared<executor::io::record_channel_adapter>(channel),
@@ -307,7 +319,8 @@ bool execute_dump(
             }
             on_completion(st, std::move(info));
         },
-        false
+        false,
+        req_info
     );
 }
 
@@ -335,7 +348,8 @@ bool execute_async_on_context(
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
     error_info_stats_callback on_completion, //NOLINT(performance-unnecessary-value-param)
-    bool sync
+    bool sync,
+    request_info const& req_info
 ) {
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
     if(! validate_statement(*s.body(), rctx->record_channel(), on_completion)) {
@@ -345,6 +359,16 @@ bool execute_async_on_context(
     auto& e = s.body();
     auto job = rctx->job();
     auto& ts = *rctx->scheduler();
+
+    {
+        auto tx_id = rctx->transaction()->transaction_id();
+        auto tx_type = utils::tx_type_from(*rctx->transaction());
+        auto jobid = job->id();
+        auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
+        auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();
+        external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt, ""); // TODO stringify parameters
+    }
+
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
@@ -411,8 +435,10 @@ bool execute_load(
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::vector<std::string> files,
-    error_info_callback on_completion
+    error_info_callback on_completion,
+    request_info const& req_info
 ) {
+    (void) req_info;
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
     req->status(scheduler::request_detail_status::accepted);
     req->statement_text(reinterpret_cast<api::impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
@@ -528,7 +554,6 @@ scheduler::job_context::job_id_type commit_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req
     );
-    rctx->request_source(req_info.request_source());
     auto jobid = rctx->job()->id();
     std::string txid{tx->transaction_id()};
 

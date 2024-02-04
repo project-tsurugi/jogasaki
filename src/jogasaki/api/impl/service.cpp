@@ -926,7 +926,8 @@ void service::execute_statement(
                 if(! callbacks_.erase(cbp->id_)) {
                     throw_exception(std::logic_error{"missing callback"});
                 }
-            }
+            },
+            req_info
         );! success) {
         // normally this should not happen
         throw_exception(std::logic_error{"execute_async failed"});
@@ -1092,7 +1093,8 @@ void service::execute_query(
                 if(! callbacks_.erase(cbp->id_)) {
                     throw_exception(std::logic_error{"missing callback"});
                 }
-            }
+            },
+            req_info
         ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         throw_exception(std::logic_error{"execute_async failed"});
@@ -1281,7 +1283,8 @@ void service::execute_dump(
                     throw_exception(std::logic_error{"missing callback"});
                 }
             },
-            opts
+            opts,
+            req_info
     ); ! rc) {
         // for now execute_async doesn't raise error. But if it happens in future, error response should be sent here.
         throw_exception(std::logic_error{"execute_dump failed"});
@@ -1328,7 +1331,8 @@ void service::execute_load( //NOLINT
                     if (!callbacks_.erase(cbp->id_)) {
                         throw_exception(std::logic_error{"missing callback"});
                     }
-                }
+                },
+                req_info
             ); !rc) {
             // for now execute_async doesn't raise error. But if it happens in future,
             // error response should be sent here.

@@ -1091,7 +1091,6 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req
     );
-    rctx->request_source(req_info.request_source());
 
     auto handle = std::make_shared<transaction_handle>();
     auto jobid = rctx->job()->id();

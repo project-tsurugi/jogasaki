@@ -201,12 +201,12 @@ void prepare_scheduler(request_context& rctx) {
     );
 }
 
-std::shared_ptr<tateyama::api::server::request const> const& request_context::request_source() const noexcept {
-    return request_source_;
+request_info const& request_context::req_info() const noexcept {
+    return req_info_;
 }
 
-void request_context::request_source(std::shared_ptr<tateyama::api::server::request const> arg) noexcept {
-    request_source_ = std::move(arg);
+void request_context::req_info(request_info req_info) noexcept {
+    req_info_ = std::move(req_info);
 }
 
 }  // namespace jogasaki

@@ -116,7 +116,8 @@ status execute(
     api::executable_statement& statement,
     std::unique_ptr<api::result_set>& result,
     std::shared_ptr<error::error_info>& error,
-    std::shared_ptr<request_statistics>& stats
+    std::shared_ptr<request_statistics>& stats,
+    request_info const& req_info = {}
 );
 
 /**
@@ -139,7 +140,8 @@ status execute(
     std::shared_ptr<api::parameter_set> parameters,
     std::unique_ptr<api::result_set>& result,
     std::shared_ptr<error::error_info>& error,
-    std::shared_ptr<request_statistics>& stats
+    std::shared_ptr<request_statistics>& stats,
+    request_info const& req_info = {}
 );
 
 /**
@@ -157,7 +159,8 @@ bool execute_async(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
-    error_info_stats_callback on_completion
+    error_info_stats_callback on_completion,
+    request_info const& req_info = {}
 );
 
 /**
@@ -179,7 +182,8 @@ bool execute_async(
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     error_info_stats_callback on_completion,
-    bool sync = false
+    bool sync = false,
+    request_info const& req_info = {}
 );
 
 /**
@@ -197,7 +201,8 @@ bool execute_async_on_context(
     std::shared_ptr<request_context> rctx,
     maybe_shared_ptr<api::executable_statement> const& statement,
     error_info_stats_callback on_completion, //NOLINT(performance-unnecessary-value-param)
-    bool sync
+    bool sync,
+    request_info const& req_info = {}
 );
 
 //@brief indicates undefined for the execute dump arg
@@ -222,7 +227,8 @@ bool execute_dump(
     maybe_shared_ptr<api::data_channel> const& channel,
     std::string_view directory,
     error_info_callback on_completion,
-    executor::io::dump_config const& cfg = {}
+    executor::io::dump_config const& cfg = {},
+    request_info const& req_info = {}
 );
 
 /**
@@ -242,7 +248,8 @@ bool execute_load(
     api::statement_handle prepared,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::vector<std::string> files,
-    error_info_callback on_completion
+    error_info_callback on_completion,
+    request_info const& req_info = {}
 );
 
 /**

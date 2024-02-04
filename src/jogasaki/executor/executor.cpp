@@ -343,6 +343,96 @@ bool validate_statement(
     return true;
 }
 
+void external_log_stmt_start(
+    request_context& rctx,
+    request_info const& req_info,
+    maybe_shared_ptr<api::executable_statement> const& statement
+) {
+    auto tx_id = rctx.transaction()->transaction_id();
+    auto tx_type = utils::tx_type_from(*rctx.transaction());
+    auto job = rctx.job();
+    auto jobid = job->id();
+    auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
+    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();
+    external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt, "");  // TODO stringify parameters
+}
+
+void external_log_stmt_end(
+    request_context& rctx,
+    request_info const& req_info,
+    maybe_shared_ptr<api::executable_statement> const& statement
+) {
+    auto tx_id = rctx.transaction()->transaction_id();
+    auto tx_type = utils::tx_type_from(*rctx.transaction());
+    auto job = rctx.job();
+    auto jobid = job->id();
+    auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
+    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();
+    auto result = utils::result_from(rctx.status_code());
+    auto state_code =
+        rctx.error_info() ? "SQL-" + std::to_string(static_cast<std::int64_t>(rctx.error_info()->code())) : "";
+    std::int64_t inserted{};
+    std::int64_t updated{};
+    std::int64_t deleted{};
+    std::int64_t merged{};
+    if(rctx.stats()) {
+        if(auto cnt = rctx.stats()->counter(counter_kind::inserted).count(); cnt.has_value()) {
+            inserted = cnt.value();
+        }
+        if(auto cnt = rctx.stats()->counter(counter_kind::updated).count(); cnt.has_value()) {
+            updated = cnt.value();
+        }
+        if(auto cnt = rctx.stats()->counter(counter_kind::deleted).count(); cnt.has_value()) {
+            deleted = cnt.value();
+        }
+        if(auto cnt = rctx.stats()->counter(counter_kind::merged).count(); cnt.has_value()) {
+            merged = cnt.value();
+        }
+    }
+    external_log::stmt_end(
+        req_info,
+        "",
+        tx_id,
+        tx_type,
+        jobidstr,
+        stmt,
+        "",  // TODO stringify parameters
+        result,
+        state_code,
+        0, //TODO fetched
+        inserted,
+        updated,
+        deleted,
+        merged
+    );
+}
+
+void external_log_stmt_explain(
+    api::impl::database& database,
+    request_context& rctx,
+    request_info const& req_info,
+    maybe_shared_ptr<api::executable_statement> const& statement
+) {
+    auto cfg = global::config_pool();
+    if(! cfg || ! cfg->external_log_explain()) {
+        return;
+    }
+    auto tx_id = rctx.transaction()->transaction_id();
+    auto tx_type = utils::tx_type_from(*rctx.transaction());
+    auto job = rctx.job();
+    auto jobid = job->id();
+    auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
+    std::stringstream ss{};
+    database.explain(*statement, ss);
+    external_log::stmt_explain(
+        req_info,
+        tx_id,
+        tx_type,
+        jobidstr,
+        ss.str()
+    );
+}
+
 bool execute_async_on_context(
     api::impl::database& database,
     std::shared_ptr<request_context> rctx,  //NOLINT
@@ -360,21 +450,16 @@ bool execute_async_on_context(
     auto job = rctx->job();
     auto& ts = *rctx->scheduler();
 
-    {
-        auto tx_id = rctx->transaction()->transaction_id();
-        auto tx_type = utils::tx_type_from(*rctx->transaction());
-        auto jobid = job->id();
-        auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
-        auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();
-        external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt, ""); // TODO stringify parameters
-    }
+    external_log_stmt_start(*rctx, req_info, statement);
+    external_log_stmt_explain(database, *rctx, req_info, statement);
 
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
-        job->callback([statement, on_completion, rctx](){  // callback is copy-based
+        job->callback([statement, on_completion, rctx, job, req_info](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
+            external_log_stmt_end(*rctx, req_info, statement);
             on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
         });
 
@@ -396,9 +481,10 @@ bool execute_async_on_context(
     if(!e->is_ddl() && !e->is_empty()) {
         // write on tasked mode
         auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
-        job->callback([statement, on_completion, rctx](){  // callback is copy-based
+        job->callback([statement, on_completion, rctx, req_info](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
+            external_log_stmt_end(*rctx, req_info, statement);
             on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
         });
 
@@ -420,6 +506,7 @@ bool execute_async_on_context(
     // DDL
     scheduler::statement_scheduler sched{ database.configuration(), *database.task_scheduler()};
     sched.schedule(*e->operators(), *rctx);
+    external_log_stmt_end(*rctx, req_info, statement);
     on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
     if(auto req = job->request()) {
         req->status(scheduler::request_detail_status::finishing);

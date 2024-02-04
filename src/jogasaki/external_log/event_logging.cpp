@@ -41,6 +41,7 @@ void tx_start(
             " tx_type:" << tx_type <<
             "";
     }
+    (void) req_info;
 #ifdef ENABLE_ALTIMETER
     details::tx_start(req_info, message, tx_id, tx_type);
 #endif
@@ -62,6 +63,7 @@ void tx_end(
         " result:" << result <<
         "";
     }
+    (void) req_info;
 #ifdef ENABLE_ALTIMETER
     details::tx_end(req_info, message, tx_id, tx_type, result);
 #endif
@@ -87,6 +89,7 @@ void stmt_start(
         " parameter:\"" << parameter << "\"" <<
         "";
     }
+    (void) req_info;
 #ifdef ENABLE_ALTIMETER
     details::stmt_start(req_info, message, tx_id, tx_type, job_id, statement, parameter);
 #endif
@@ -126,6 +129,7 @@ void stmt_end(
         " merged:" << merged <<
         "";
     }
+    (void) req_info;
 #ifdef ENABLE_ALTIMETER
     details::stmt_end(
         req_info,
@@ -162,6 +166,7 @@ void stmt_explain(
         " data:" << data <<
         "";
     }
+    (void) req_info;
 #ifdef ENABLE_ALTIMETER
     details::stmt_explain(req_info, tx_id, tx_type, job_id, data);
 #endif

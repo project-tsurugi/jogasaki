@@ -98,11 +98,11 @@ void transaction_handle::commit_async(
     );
 }
 
-status transaction_handle::abort() {  //NOLINT(readability-make-member-function-const)
+status transaction_handle::abort(request_info const& req_info) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     (void) db;
-    return executor::abort_transaction(tx);
+    return executor::abort_transaction(tx, req_info);
 }
 
 status transaction_handle::execute(executable_statement& statement) {  //NOLINT(readability-make-member-function-const)

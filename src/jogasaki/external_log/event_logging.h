@@ -15,19 +15,19 @@
  */
 #pragma once
 
-#include <jogasaki/request_context.h>
+#include <jogasaki/request_info.h>
 
 namespace jogasaki::external_log {
 
 void tx_start(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type
 );
 
 void tx_end(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
@@ -35,7 +35,7 @@ void tx_end(
 );
 
 void stmt_start(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
@@ -45,7 +45,7 @@ void stmt_start(
 );
 
 void stmt_end(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
@@ -62,7 +62,7 @@ void stmt_end(
 );
 
 void stmt_explain(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view tx_id,
     std::int64_t tx_type,
     std::string_view job_id,

@@ -1152,7 +1152,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             );
             return model::task_result::complete;
         }, false);  // create transaction is not sticky task
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid](){
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid, req_info](){
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:started "
             << (*handle ? handle->transaction_id_unchecked() : "<tx id not available>")
             << " job_id:"
@@ -1161,7 +1161,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         if(rctx->status_code() == status::ok) {
             auto* tx = reinterpret_cast<transaction_context*>(handle->get());  //NOLINT
             auto tx_type = utils::tx_type_from(*tx);
-            external_log::tx_start(*rctx, "", txidstr, tx_type);
+            external_log::tx_start(req_info, "", txidstr, tx_type);
         }
         on_completion(
             *handle,

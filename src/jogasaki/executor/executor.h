@@ -88,12 +88,14 @@ scheduler::job_context::job_id_type commit_async(
 /**
  * @brief abort the transaction
  * @param tx the transaction to abort
+ * @param req_info the request info. used to external logging
  * @return status::ok when successful
  * @return error code otherwise
  * @note this function is synchronous
  */
 status abort_transaction(
-    std::shared_ptr<transaction_context> tx
+    std::shared_ptr<transaction_context> tx,
+    request_info const& req_info = {}
 );
 
 /**

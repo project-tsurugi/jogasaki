@@ -162,7 +162,7 @@ public:
      * @return status::ok when successful
      * @return error code otherwise
      */
-    status abort();
+    status abort(request_info const& req_info = {});
 
     /**
      * @brief execute the statement in the transaction. No result records are expected

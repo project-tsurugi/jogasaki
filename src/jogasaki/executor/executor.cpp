@@ -32,6 +32,7 @@
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/external_log/event_logging.h>
+#include <jogasaki/external_log/events.h>
 #include <jogasaki/index/index_accessor.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -128,7 +129,8 @@ status commit(
 }
 
 status abort_transaction(
-    std::shared_ptr<transaction_context> tx  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
+    request_info const& req_info
 ) {
     std::string txid{tx->transaction_id()};
     auto ret = tx->object()->abort();
@@ -136,6 +138,11 @@ status abort_transaction(
         << txid
         << " status:"
         << (ret == status::ok ? "aborted" : "error"); // though we do not expect abort fails
+    if(ret == status::ok) {
+        // TODO abort is almost always successful. distinguish "real abort"
+        auto tx_type = utils::tx_type_from(*tx);
+        external_log::tx_end(req_info, "", txid, tx_type, external_log::result_value::fail);
+    }
     return ret;
 }
 
@@ -547,7 +554,7 @@ scheduler::job_context::job_id_type commit_async(
             });
         return model::task_result::complete;
     }, true);
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid](){  // callback is copy-based
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid, req_info](){  // callback is copy-based
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committed "
             << txid
             << " job_id:"
@@ -559,7 +566,7 @@ scheduler::job_context::job_id_type commit_async(
         rctx->transaction()->profile()->set_commit_job_completed();
         auto tx_type = utils::tx_type_from(*rctx->transaction());
         auto result = utils::result_from(rctx->status_code());
-        external_log::tx_end(*rctx, "", txid, tx_type, result);
+        external_log::tx_end(req_info, "", txid, tx_type, result);
         on_completion(rctx->status_code(), rctx->error_info());
     });
     std::weak_ptr wrctx{rctx};

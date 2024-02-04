@@ -21,18 +21,18 @@
 #include <altimeter/log_item.h>
 #endif
 
-#include <jogasaki/request_context.h>
+#include <jogasaki/request_info.h>
 #include <jogasaki/external_log/events.h>
 
 namespace jogasaki::external_log::details {
 
 void fill_common_properties(
-    request_context const& rctx,
+    request_info const& req_info,
     ::altimeter::log_item& item
 ) {
     item.category(log_category::event);
     item.level(log_level::event::info);
-    auto req = rctx.request_source();
+    auto req = req_info.request_source();
     if(! req) {
         return;
     }
@@ -55,7 +55,7 @@ void fill_common_properties(
 }
 
 void tx_start(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type
@@ -63,9 +63,12 @@ void tx_start(
     if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
         return;
     }
+    if(! req_info.request_source()) {
+        return;
+    }
     ::altimeter::log_item item{};
     item.type(log_type::event::tx_start);
-    fill_common_properties(rctx, item);
+    fill_common_properties(req_info, item);
     if(! message.empty()) {
         item.add(log_item::event::message, message);
     }
@@ -75,7 +78,7 @@ void tx_start(
 }
 
 void tx_end(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
@@ -84,9 +87,12 @@ void tx_end(
     if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
         return;
     }
+    if(! req_info.request_source()) {
+        return;
+    }
     ::altimeter::log_item item{};
     item.type(log_type::event::tx_end);
-    fill_common_properties(rctx, item);
+    fill_common_properties(req_info, item);
     if(! message.empty()) {
         item.add(log_item::event::message, message);
     }
@@ -97,7 +103,7 @@ void tx_end(
 }
 
 void stmt_start(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
@@ -108,9 +114,12 @@ void stmt_start(
     if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
         return;
     }
+    if(! req_info.request_source()) {
+        return;
+    }
     ::altimeter::log_item item{};
     item.type(log_type::event::stmt_start);
-    fill_common_properties(rctx, item);
+    fill_common_properties(req_info, item);
     if(! message.empty()) {
         item.add(log_item::event::message, message);
     }
@@ -123,7 +132,7 @@ void stmt_start(
 }
 
 void stmt_end(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
@@ -141,9 +150,12 @@ void stmt_end(
     if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
         return;
     }
+    if(! req_info.request_source()) {
+        return;
+    }
     ::altimeter::log_item item{};
     item.type(log_type::event::stmt_end);
-    fill_common_properties(rctx, item);
+    fill_common_properties(req_info, item);
     if(! message.empty()) {
         item.add(log_item::event::message, message);
     }
@@ -163,7 +175,7 @@ void stmt_end(
 }
 
 void stmt_explain(
-    request_context const& rctx,
+    request_info const& req_info,
     std::string_view tx_id,
     std::int64_t tx_type,
     std::string_view job_id,
@@ -172,9 +184,12 @@ void stmt_explain(
     if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
         return;
     }
+    if(! req_info.request_source()) {
+        return;
+    }
     ::altimeter::log_item item{};
     item.type(log_type::event::stmt_explain);
-    fill_common_properties(rctx, item);
+    fill_common_properties(req_info, item);
     item.add(log_item::event::tx_id, tx_id);
     item.add(log_item::event::tx_type, tx_type);
     item.add(log_item::event::job_id, job_id);

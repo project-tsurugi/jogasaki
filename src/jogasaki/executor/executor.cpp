@@ -351,6 +351,7 @@ void external_log_stmt_start(
     (void) rctx;
     (void) req_info;
     (void) statement;
+    (void) string_builder{};
 #ifdef ENABLE_ALTIMETER
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
@@ -370,6 +371,7 @@ void external_log_stmt_end(
     (void) rctx;
     (void) req_info;
     (void) statement;
+    (void) string_builder{};
 #ifdef ENABLE_ALTIMETER
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
@@ -427,6 +429,7 @@ void external_log_stmt_explain(
     (void) rctx;
     (void) req_info;
     (void) statement;
+    (void) string_builder{};
 #ifdef ENABLE_ALTIMETER
     auto cfg = global::config_pool();
     if(! cfg || ! cfg->external_log_explain()) {

@@ -215,6 +215,9 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<bool>("dev_omit_task_when_idle")) {
         ret->omit_task_when_idle(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("external_log_explain")) {
+        ret->external_log_explain(v.value());
+    }
     return ret;
 }
 

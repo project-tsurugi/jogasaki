@@ -112,6 +112,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_profile_commits) " << cfg.profile_commits() << " : whether to profile commit/durability callbacks";
     LOGCFG << "(dev_return_os_pages) " << cfg.return_os_pages() << " : whether to return released memory pages to operating system";
     LOGCFG << "(dev_omit_task_when_idle) " << cfg.omit_task_when_idle() << " : whether to stop scheduling tasks to process durability callback if there is no transaction waiting for durable";
+    LOGCFG << "(external_log_explain) " << cfg.external_log_explain() << " : whether altimeter to output stmt_explain event log";
 }
 
 status database::start() {
@@ -212,7 +213,6 @@ void custom_external_log_cfg(std::shared_ptr<class configuration> const& cfg) {
     (void) cfg;
 #ifdef ENABLE_ALTIMETER
     if(cfg) {
-        cfg->external_log_explain(true);
         cfg->trace_external_log(true);
     }
 #endif

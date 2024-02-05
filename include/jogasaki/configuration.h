@@ -439,7 +439,7 @@ private:
     bool return_os_pages_ = false;
     bool omit_task_when_idle_ = true;
     bool trace_external_log_ = false;
-    bool external_log_explain_ = false;
+    bool external_log_explain_ = true;
 };
 
 }

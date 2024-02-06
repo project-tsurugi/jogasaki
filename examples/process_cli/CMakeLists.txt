@@ -44,7 +44,9 @@ if(INSTALL_EXAMPLES)
     install_custom(process-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME process-cli
         COMMAND process-cli --minimum
 )
+endif()

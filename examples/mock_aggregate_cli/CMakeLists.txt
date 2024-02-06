@@ -45,7 +45,9 @@ if(INSTALL_EXAMPLES)
     install_custom(mock-aggregate-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME mock-aggregate-cli
         COMMAND mock-aggregate-cli --minimum
 )
+endif()

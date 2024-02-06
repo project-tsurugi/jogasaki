@@ -35,7 +35,9 @@ if(INSTALL_EXAMPLES)
     install_custom(query-bench-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME query-bench-cli
         COMMAND query-bench-cli --minimum --location TMP
 )
+endif()

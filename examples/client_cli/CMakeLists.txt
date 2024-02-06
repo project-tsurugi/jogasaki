@@ -37,7 +37,9 @@ if(INSTALL_EXAMPLES)
     install_custom(client-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME client-cli
         COMMAND client-cli --location TMP
 )
+endif()

@@ -43,7 +43,9 @@ if(INSTALL_EXAMPLES)
     install_custom(group-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME group-cli
         COMMAND group-cli --minimum
 )
+endif()

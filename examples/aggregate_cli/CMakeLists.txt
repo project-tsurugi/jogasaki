@@ -37,7 +37,9 @@ if(INSTALL_EXAMPLES)
     install_custom(aggregate-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME aggregate-cli
         COMMAND aggregate-cli --minimum
 )
+endif()

@@ -41,7 +41,9 @@ if(INSTALL_EXAMPLES)
     install_custom(service-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME service-cli
         COMMAND cli --test_build
 )
+endif()

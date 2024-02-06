@@ -37,7 +37,9 @@ if(INSTALL_EXAMPLES)
 endif()
 
 # disabled as jogasaki-memory frequently freezes on ci env.
+#if(BUILD_TESTS)
 #add_test(
 #        NAME sql-cli
 #        COMMAND sql-cli --v=50 --location TMP "SELECT C0,C1 FROM T0"
 #)
+#endif()

@@ -45,7 +45,9 @@ if(INSTALL_EXAMPLES)
     install_custom(cogroup-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME cogroup-cli
         COMMAND cogroup-cli --minimum
 )
+endif()

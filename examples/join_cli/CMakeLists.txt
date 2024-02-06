@@ -44,7 +44,9 @@ if(INSTALL_EXAMPLES)
     install_custom(join-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME join-cli
         COMMAND join-cli --minimum
 )
+endif()

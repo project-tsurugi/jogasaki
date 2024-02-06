@@ -33,7 +33,9 @@ if(INSTALL_EXAMPLES)
     install_custom(compile-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME compile-cli
         COMMAND compile-cli "SELECT C1 FROM T0"
 )
+endif()

@@ -40,7 +40,9 @@ if(INSTALL_EXAMPLES)
     install_custom(service-benchmark ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME service-benchmark
         COMMAND cli --minimum
 )
+endif()

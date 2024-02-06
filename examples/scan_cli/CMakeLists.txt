@@ -44,7 +44,9 @@ if(INSTALL_EXAMPLES)
     install_custom(scan-cli ${export_name})
 endif()
 
+if(BUILD_TESTS)
 add_test(
         NAME scan-cli
         COMMAND scan-cli --minimum --location TMP
 )
+endif()

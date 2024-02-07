@@ -117,6 +117,9 @@ TEST_F(arrow_readwrite_test, basic_types1) {
     EXPECT_EQ(meta::field_type_kind::float4, meta->at(2).kind());
     EXPECT_EQ(meta::field_type_kind::float8, meta->at(3).kind());
     EXPECT_EQ(meta::field_type_kind::character, meta->at(4).kind());
+    auto opt4 = meta->at(4).option<kind::character>();
+    EXPECT_TRUE(opt4->varying_);
+    EXPECT_FALSE(opt4->length_.has_value());
     {
         accessor::record_ref ref{};
         ASSERT_TRUE(reader->next(ref));
@@ -598,16 +601,20 @@ TEST_F(arrow_readwrite_test, set_record_batch_size) {
 }
 
 TEST_F(arrow_readwrite_test, fixed_length_binary) {
+    // verify writing char columns data as FIXED_SIZE_BINARY
     boost::filesystem::path p{path()};
     p = p / "fixed_length_binary.arrow";
         auto rec = mock::typed_nullable_record<kind::character, kind::character>(
             std::tuple{meta::character_type(false, 3), meta::character_type(false, 5)},
             std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")), {false, false});
+
+    arrow_writer_option opt{};
+    opt.use_fixed_size_binary_for_char(true);
     auto writer = arrow_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     writer->write(rec.ref());
@@ -630,6 +637,56 @@ TEST_F(arrow_readwrite_test, fixed_length_binary) {
         accessor::record_ref ref{};
         ASSERT_TRUE(reader->next(ref));
         EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+    }
+    EXPECT_TRUE(reader->close());
+}
+
+TEST_F(arrow_readwrite_test, char_utf8_string) {
+    // verify writing char columns data as STRING
+    boost::filesystem::path p{path()};
+    p = p / "char_utf8_string.arrow";
+    auto rec = mock::typed_nullable_record<kind::character, kind::character>(
+        std::tuple{meta::character_type(false, 3), meta::character_type(false, 5)},
+        std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")),
+        {false, false}
+    );
+
+    arrow_writer_option opt{};
+    opt.use_fixed_size_binary_for_char(false);
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string(), opt);
+    ASSERT_TRUE(writer);
+
+    writer->write(rec.ref());
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = arrow_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    // originally the columns are char(n), but when reading they become varchar(*)
+    // because char/varchar are mapped to arrow type STRING
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::character, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::character>();
+    EXPECT_TRUE(opt0->varying_);
+    EXPECT_FALSE(opt0->length_.has_value());
+    EXPECT_EQ(meta::field_type_kind::character, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::character>();
+    EXPECT_TRUE(opt1->varying_);
+    EXPECT_FALSE(opt1->length_.has_value());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        auto exp = mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{meta::character_type(true), meta::character_type(true)},
+            std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")),
+            {false, false}
+        );
+        EXPECT_EQ(exp, mock::basic_record(ref, meta->origin()));
     }
     EXPECT_TRUE(reader->close());
 }

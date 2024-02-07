@@ -53,8 +53,11 @@ arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta, ar
     option_(std::move(opt))
 {}
 
-std::shared_ptr<arrow::ArrayBuilder>
-create_array_builder(meta::field_type const& type, std::shared_ptr<arrow::DataType> const& arrow_type) {
+std::shared_ptr<arrow::ArrayBuilder> create_array_builder(
+    meta::field_type const& type,
+    std::shared_ptr<arrow::DataType> const& arrow_type,
+    arrow_writer_option const& opts
+) {
     using k = meta::field_type_kind;
     arrow::MemoryPool* pool = arrow::default_memory_pool();
     switch(type.kind()) {
@@ -65,7 +68,7 @@ create_array_builder(meta::field_type const& type, std::shared_ptr<arrow::DataTy
         case k::float4: return std::make_shared<arrow::FloatBuilder>(pool);
         case k::float8: return std::make_shared<arrow::DoubleBuilder>(pool);
         case k::character: {
-            if(type.option_unsafe<k::character>()->varying_) {
+            if(type.option_unsafe<k::character>()->varying_ || ! opts.use_fixed_size_binary_for_char()) {
                 return std::make_shared<arrow::StringBuilder>(pool);
             }
             return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool);
@@ -114,7 +117,9 @@ void arrow_writer::new_row_group() {
     array_builders_.clear();
     array_builders_.reserve(meta_->field_count());
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
-        array_builders_.emplace_back(create_array_builder(meta_->at(i), schema_->field(static_cast<int>(i))->type()));
+        array_builders_.emplace_back(
+            create_array_builder(meta_->at(i), schema_->field(static_cast<int>(i))->type(), option_)
+        );
     }
     row_group_write_count_ = 0;
 }
@@ -316,7 +321,7 @@ bool arrow_writer::write_float8(std::size_t colidx, double v) {
 }
 
 bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt) {
-    if(colopt.varying_) {
+    if(colopt.varying_ || ! option_.use_fixed_size_binary_for_char()) {
         auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
         (void) builder.Append(sv.data(), static_cast<int>(sv.size()));
@@ -447,7 +452,7 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
                 options[i].varying_ = opt->varying_;
                 options[i].length_ =
                     opt->length_.has_value() ? opt->length_.value() : details::column_option::undefined;
-                if(opt->varying_) {
+                if(opt->varying_ || ! option_.use_fixed_size_binary_for_char()) {
                     type = arrow::utf8();
                     break;
                 }

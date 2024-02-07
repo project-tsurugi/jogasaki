@@ -323,13 +323,13 @@ TEST_F(dump_channel_test, arrow_both_max_per_file_and_per_rg) {
 
 TEST_F(dump_channel_test, arrow_char_option) {
     // verify correct type when dumping char(n) data
-    // TODO currently char(n) always becomes fixed size binary - fix when char option works correctly
     // TODO currently reader cannot distinguish FIXED_SIZE_BINARY, so manually checking the server log
     //   column name:C0 type:fixed_size_binary[3]
     execute_statement("CREATE TABLE T(C0 CHAR(3) NOT NULL PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES ('000')");
 
     for(std::size_t loop = 0; loop < 2; ++loop) {
+        // first loop: FIXED_SIZE_BINARY, second: STRING
         executor::io::dump_config opts{};
         opts.file_format_ = executor::io::dump_file_format_kind::arrow;
         opts.arrow_use_fixed_size_binary_for_char_ = loop == 0;
@@ -345,8 +345,15 @@ TEST_F(dump_channel_test, arrow_char_option) {
         ASSERT_EQ(meta::field_type_kind::character, f.kind());
 
         auto& o = f.option<meta::field_type_kind::character>();
-        ASSERT_FALSE(o->varying_);
-        ASSERT_EQ(3, o->length_);
+        if(loop == 0) {
+            // FIXED_SIZE_BINARY -> char(3)
+            ASSERT_FALSE(o->varying_);
+            ASSERT_EQ(3, o->length_);
+        } else {
+            // STRING -> varchar(*)
+            ASSERT_TRUE(o->varying_);
+            ASSERT_FALSE(o->length_.has_value());
+        }
     }
 }
 

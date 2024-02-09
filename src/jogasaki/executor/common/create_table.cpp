@@ -134,15 +134,12 @@ bool validate_table_definition(
                 if(! validate_type(context, c.simple_name(), unsafe_downcast<takatori::type::decimal const>(c.type()))) {
                     return false;
                 }
-                break;
+                continue;
             case type_kind::character:
                 if(! validate_type(context, c.simple_name(), unsafe_downcast<takatori::type::character const>(c.type()))) {
                     return false;
                 }
-                break;
-            case type_kind::boolean:
-            case type_kind::int1:
-            case type_kind::int2:
+                continue;
             case type_kind::int4:
             case type_kind::int8:
             case type_kind::float4:
@@ -150,16 +147,30 @@ bool validate_table_definition(
             case type_kind::date:
             case type_kind::time_of_day:
             case type_kind::time_point:
+                continue;
+            case type_kind::octet:
+                if(context.configuration()->support_octet()) {
+                    continue;
+                }
+                break;
+            case type_kind::boolean:
+            case type_kind::int1:
+            case type_kind::int2:
+                if(context.configuration()->support_smallint()) {
+                    continue;
+                }
                 break;
             default:
-                set_error(
-                    context,
-                    error_code::unsupported_runtime_feature_exception,
-                    string_builder{} << "Data type specified for column \"" << c.simple_name() << "\" is unsupported." << string_builder::to_string,
-                    status::err_unsupported
-                );
-                return false;
+                break;
         }
+        set_error(
+            context,
+            error_code::unsupported_runtime_feature_exception,
+            string_builder{} << "Data type specified for column \"" << c.simple_name() << "\" is unsupported."
+                             << string_builder::to_string,
+            status::err_unsupported
+        );
+        return false;
     }
     return true;
 }

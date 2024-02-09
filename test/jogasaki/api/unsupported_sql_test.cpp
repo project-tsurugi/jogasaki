@@ -110,6 +110,20 @@ TEST_F(unsupported_sql_test, ddl_with_binary_type) {
     );
 }
 
+TEST_F(unsupported_sql_test, ddl_with_binary_type_allowed) {
+    // verify ddl when cfg allows
+    db_impl()->configuration()->support_octet(true);
+    execute_statement(
+        "create table T ("
+        "C0 INT NOT NULL PRIMARY KEY,"
+        "C1 binary(3),"
+        "C2 varbinary(3)"
+        ")"
+    );
+    // cast is not yet available TODO
+    // execute_statement("INSERT INTO T VALUES (1, CAST('01' AS BINARY(3)), CAST('01' AS VARBINARY(3)))");
+}
+
 TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {
     test_stmt_err(
         "create table T ("

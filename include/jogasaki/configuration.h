@@ -376,6 +376,22 @@ public:
         return try_insert_on_upserting_secondary_;
     }
 
+    void support_octet(bool arg) noexcept {
+        support_octet_ = arg;
+    }
+
+    [[nodiscard]] bool support_octet() const noexcept {
+        return support_octet_;
+    }
+
+    void support_smallint(bool arg) noexcept {
+        support_smallint_ = arg;
+    }
+
+    [[nodiscard]] bool support_smallint() const noexcept {
+        return support_smallint_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -410,6 +426,8 @@ public:
             "trace_external_log:" << cfg.trace_external_log() << " " <<
             "external_log_explain:" << cfg.external_log_explain() << " " <<
             "try_insert_on_upserting_secondary:" << cfg.try_insert_on_upserting_secondary() << " " <<
+            "support_octet:" << cfg.support_octet() << " " <<
+            "support_smallint:" << cfg.support_smallint() << " " <<
             "";
     }
 
@@ -450,6 +468,8 @@ private:
     bool trace_external_log_ = false;
     bool external_log_explain_ = true;
     bool try_insert_on_upserting_secondary_ = true;
+    bool support_octet_ = false;
+    bool support_smallint_ = false;
 };
 
 }

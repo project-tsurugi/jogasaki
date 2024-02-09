@@ -112,6 +112,21 @@ TEST_F(stats_api_test, insert_replace) {
     EXPECT_EQ(1, stats->counter(counter_kind::merged).count());
 }
 
+TEST_F(stats_api_test, insert_replace_with_secondary) {
+    // test code path for INSERT OR REPLACE with a secondary index
+    std::shared_ptr<request_statistics> stats{};
+    execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T(C1)");
+    execute_statement_with_stats("INSERT OR REPLACE INTO T VALUES (1,10)", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_EQ(1, stats->counter(counter_kind::merged).count());
+    execute_statement_with_stats("INSERT OR REPLACE INTO T VALUES (1,10)", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_EQ(1, stats->counter(counter_kind::merged).count());
+}
+
 TEST_F(stats_api_test, update) {
     std::shared_ptr<request_statistics> stats{};
     execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY)");

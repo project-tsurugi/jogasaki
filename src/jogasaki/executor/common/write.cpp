@@ -515,6 +515,31 @@ std::vector<secondary_context> create_secondary_contexts(
     return ret;
 }
 
+bool write::try_insert_primary(
+    write_context& wctx,
+    bool& primary_already_exists,
+    std::string_view& encoded_primary_key
+) {
+    primary_already_exists = false;
+    if(auto res = primary_.encode_put(
+        wctx.primary_context_,
+        *wctx.request_context_->transaction(),
+        kvs::put_option::create,
+        wctx.key_store_.ref(),
+        wctx.value_store_.ref(),
+        encoded_primary_key
+    ); res != status::ok) {
+        if (res == status::already_exists) {
+            primary_already_exists = true;
+            return true;
+        }
+        handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
+        return false;
+    }
+    wctx.request_context_->enable_stats()->counter(counter_kind::merged).count(1);
+    return true;
+}
+
 bool write::put_primary(
     write_context& wctx,
     bool& skip_error,
@@ -599,18 +624,31 @@ bool write::put_secondaries(
 }
 
 bool write::update_secondaries_before_upsert(
-    write_context& wctx
+    write_context& wctx,
+    std::string_view encoded_primary_key,
+    bool primary_already_exists
 ) {
-    std::string_view encoded_primary_key{};
-    auto res = primary_.encode_find(
-        wctx.primary_context_,
-        *wctx.request_context_->transaction(),
-        wctx.key_store_.ref(),
-        resource_,
-        wctx.primary_context_.extracted_key(),
-        wctx.primary_context_.extracted_value(),
-        encoded_primary_key
-    );
+    status res{};
+    if(encoded_primary_key.empty()) {
+        res = primary_.encode_find(
+            wctx.primary_context_,
+            *wctx.request_context_->transaction(),
+            wctx.key_store_.ref(),
+            resource_,
+            wctx.primary_context_.extracted_key(),
+            wctx.primary_context_.extracted_value(),
+            encoded_primary_key
+        );
+    } else {
+        res = primary_.find_by_encoded_key(
+            wctx.primary_context_,
+            *wctx.request_context_->transaction(),
+            encoded_primary_key,
+            resource_,
+            wctx.primary_context_.extracted_key(),
+            wctx.primary_context_.extracted_value()
+        );
+    }
     if(res != status::ok && res != status::not_found) {
         handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
         return false;
@@ -618,11 +656,12 @@ bool write::update_secondaries_before_upsert(
 
     data::aligned_buffer buf_i{};
     data::aligned_buffer buf_e{};
+    //TODO remove found_primary which is always true if dev_try_insert_on_upserting_secondary=true
     bool found_primary = res != status::not_found;
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
         auto& e = secondaries_[i];
         auto& c = wctx.secondary_contexts_[i];
-        if (found_primary) {
+        if (found_primary && primary_already_exists) {
             // try update existing secondary entry
             std::string_view encoded_i{};
             if(auto res = e.create_secondary_key(
@@ -715,11 +754,23 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         }
 
         if(kind_ == write_kind::insert_overwrite && ! secondaries_.empty()) {
-            if(! update_secondaries_before_upsert(wctx)) {
+            bool primary_already_exists = true; // default true
+            std::string_view encoded_primary_key{};
+            if(wctx.request_context_->configuration()->try_insert_on_upserting_secondary()) {
+                if(! try_insert_primary(wctx, primary_already_exists, encoded_primary_key)) {
+                    return false;
+                }
+            }
+            if(! update_secondaries_before_upsert(wctx, encoded_primary_key, primary_already_exists)) {
                 return false;
             }
+            if(! primary_already_exists) {
+                // there was no entry conflicting with insert, so there is nothing to update
+                continue;
+            }
         }
-
+        // TODO consider to re-use `encoded_primary_key` above to optimize cost,
+        // though value part encoding is still required
         std::string_view encoded_primary_key{};
         bool skip_error = false;
         if(! put_primary(wctx, skip_error, encoded_primary_key)) {

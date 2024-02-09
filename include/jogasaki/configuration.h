@@ -368,6 +368,14 @@ public:
         return external_log_explain_;
     }
 
+    void try_insert_on_upserting_secondary(bool arg) noexcept {
+        try_insert_on_upserting_secondary_ = arg;
+    }
+
+    [[nodiscard]] bool try_insert_on_upserting_secondary() const noexcept {
+        return try_insert_on_upserting_secondary_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -401,6 +409,7 @@ public:
             "omit_task_when_idle:" << cfg.omit_task_when_idle() << " " <<
             "trace_external_log:" << cfg.trace_external_log() << " " <<
             "external_log_explain:" << cfg.external_log_explain() << " " <<
+            "try_insert_on_upserting_secondary:" << cfg.try_insert_on_upserting_secondary() << " " <<
             "";
     }
 
@@ -440,6 +449,7 @@ private:
     bool omit_task_when_idle_ = true;
     bool trace_external_log_ = false;
     bool external_log_explain_ = true;
+    bool try_insert_on_upserting_secondary_ = true;
 };
 
 }

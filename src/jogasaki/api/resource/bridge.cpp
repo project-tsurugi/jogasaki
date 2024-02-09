@@ -218,6 +218,9 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<bool>("external_log_explain")) {
         ret->external_log_explain(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_try_insert_on_upserting_secondary")) {
+        ret->try_insert_on_upserting_secondary(v.value());
+    }
     return ret;
 }
 

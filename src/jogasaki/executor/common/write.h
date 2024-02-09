@@ -162,8 +162,13 @@ private:
     std::vector<secondary_target> secondaries_{};
 
     bool put_primary(write_context& wctx, bool& skip_error, std::string_view& encoded_primary_key);
+    bool try_insert_primary(write_context& wctx, bool& primary_already_exists, std::string_view& encoded_primary_key);
     bool put_secondaries(write_context& wctx, std::string_view encoded_primary_key);
-    bool update_secondaries_before_upsert(write_context& wctx);
+    bool update_secondaries_before_upsert(
+        write_context& wctx,
+        std::string_view encoded_primary_key,
+        bool primary_already_exists
+    );
 };
 
 }  // namespace jogasaki::executor::common

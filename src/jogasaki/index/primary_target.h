@@ -183,6 +183,27 @@ public:
     );
 
     /**
+     * @brief find the record and fill dest key/value records
+     * @param ctx context
+     * @param tx transaction context
+     * @param encoded_key encoded key to find the entry
+     * @param varlen_resource resource for variable length data
+     * @param dest_key [out] extracted key record
+     * @param dest_value [out] extracted value record
+     * @returns status::ok when successful
+     * @returns status::not_found if record is not found
+     * @returns any other error otherwise
+     */
+    status find_by_encoded_key(
+        primary_context& ctx,
+        transaction_context& tx,
+        std::string_view encoded_key,
+        memory_resource* varlen_resource,
+        accessor::record_ref dest_key,
+        accessor::record_ref dest_value
+    );
+
+    /**
      * @brief encode key (store in context), and remove the record
      * @returns status::ok when successful
      * @returns status::not_found if record is not found

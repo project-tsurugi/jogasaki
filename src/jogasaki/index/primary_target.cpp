@@ -95,19 +95,14 @@ status primary_target::encode_find(
     return encode_find(ctx, tx, key, varlen_resource, dest_key, dest_value, k);
 }
 
-status primary_target::encode_find(
+status primary_target::find_by_encoded_key(
     primary_context& ctx,
     transaction_context& tx,
-    accessor::record_ref key,
+    std::string_view encoded_key,
     memory_resource* varlen_resource,
     accessor::record_ref dest_key,
-    accessor::record_ref dest_value,
-    std::string_view& encoded_key
+    accessor::record_ref dest_value
 ) {
-    if(auto res = prepare_encoded_key(ctx, key, encoded_key); res != status::ok) {
-        handle_encode_errors(*ctx.req_context(), res);
-        return res;
-    }
     std::string_view v{};
     if(auto res = ctx.stg_->get(tx, encoded_key, v); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
@@ -126,6 +121,21 @@ status primary_target::encode_find(
         return res;
     }
     return status::ok;
+}
+status primary_target::encode_find(
+    primary_context& ctx,
+    transaction_context& tx,
+    accessor::record_ref key,
+    memory_resource* varlen_resource,
+    accessor::record_ref dest_key,
+    accessor::record_ref dest_value,
+    std::string_view& encoded_key
+) {
+    if(auto res = prepare_encoded_key(ctx, key, encoded_key); res != status::ok) {
+        handle_encode_errors(*ctx.req_context(), res);
+        return res;
+    }
+    return find_by_encoded_key(ctx, tx, encoded_key, varlen_resource, dest_key, dest_value);
 }
 
 status primary_target::encode_remove(

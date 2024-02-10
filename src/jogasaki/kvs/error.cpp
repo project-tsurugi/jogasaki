@@ -35,6 +35,7 @@ status resolve(sharksfin::StatusCode code) noexcept {
         case sharksfin::StatusCode::ALREADY_EXISTS: return status::already_exists;
         case sharksfin::StatusCode::USER_ROLLBACK: return status::user_rollback;
         case sharksfin::StatusCode::PREMATURE: return status::err_invalid_state;
+        case sharksfin::StatusCode::CONCURRENT_OPERATION: return status::concurrent_operation;
         case sharksfin::StatusCode::ERR_UNKNOWN: return status::err_unknown;
         case sharksfin::StatusCode::ERR_IO_ERROR: return status::err_io_error;
         case sharksfin::StatusCode::ERR_INVALID_ARGUMENT: return status::err_invalid_argument;

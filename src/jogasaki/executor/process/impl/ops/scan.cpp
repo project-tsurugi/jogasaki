@@ -141,14 +141,14 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         std::string_view k{};
         std::string_view v{};
         if((st = ctx.it_->key(k)) != status::ok) {
-            if (st == status::not_found) {
+            if (st == status::not_found || st == status::concurrent_operation) {
                 continue;
             }
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
         if((st = ctx.it_->value(v)) != status::ok) {
-            if (st == status::not_found) {
+            if (st == status::not_found || st == status::concurrent_operation) {
                 continue;
             }
             handle_kvs_errors(*ctx.req_context(), st);

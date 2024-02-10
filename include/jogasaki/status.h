@@ -32,6 +32,7 @@ enum class status : std::int64_t {
     not_found = 1,
     already_exists = 2,
     user_rollback = 3,
+    concurrent_operation = 4,
 
     // errors
     err_unknown = -1,
@@ -85,6 +86,7 @@ enum class status : std::int64_t {
         case status::not_found: return "not_found"sv;
         case status::already_exists: return "already_exists"sv;
         case status::user_rollback: return "user_rollback"sv;
+        case status::concurrent_operation: return "concurrent_operation"sv;
 
         case status::err_unknown: return "err_unknown"sv;
         case status::err_io_error: return "err_io_error"sv;

@@ -126,6 +126,9 @@ public:
      * The data pointed by the returned value gets invalidated after any other api call.
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry for the key is not found
+     * @return status::concurrent_operation if other concurrent operation is observed and the request is rejected.
+     * The transaction is still active (i.e. not aborted). Retrying the request might be successful if the concurrent
+     * operation complete, or doesn't exist any more.
      * @return status::err_serialization_failure on early abort
      * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
@@ -145,6 +148,9 @@ public:
      * @return status::ok if the operation is successful
      * @return status::already_exists if the option is `create` and record already exists for the key
      * @return status::not_found if the option is `update` and the record doesn't exist for the key
+     * @return status::concurrent_operation if `option` is `create` and other concurrent operation is observed.
+     * The transaction is still active (i.e. not aborted). Retrying the request might be successful if the concurrent
+     * operation complete, or doesn't exist any more.
      * @return status::err_serialization_failure on early abort
      * @return status::err_write_operation_by_rtx if transaction is read-only
      * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs

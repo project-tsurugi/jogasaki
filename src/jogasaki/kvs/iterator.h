@@ -63,6 +63,9 @@ public:
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry on the iterator position is deleted or not found.
      * Caller can proceed the iterator with next() to move to next entry.
+     * @return status::concurrent_operation if other concurrent operation is observed and the request is rejected.
+     * The transaction is still active (i.e. not aborted). Retrying the request might be successful if the concurrent
+     * operation complete, or doesn't exist any more.
      * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
@@ -76,6 +79,9 @@ public:
      * @return status::ok if the operation is successful
      * @return status::not_found if the entry on the iterator position is deleted or not found.
      * Caller can proceed the iterator with next() to move to next entry.
+     * @return status::concurrent_operation if other concurrent operation is observed and the request is rejected.
+     * The transaction is still active (i.e. not aborted). Retrying the request might be successful if the concurrent
+     * operation complete, or doesn't exist any more.
      * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */

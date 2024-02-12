@@ -147,7 +147,8 @@ public:
     void test_stmt_err(
         std::string_view stmt,
         api::transaction_handle& tx,
-        error_code expected
+        error_code expected,
+        std::string_view msg = {}
     );
     void test_stmt_err(
         api::statement_handle stmt,

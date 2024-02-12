@@ -66,20 +66,20 @@ TEST_F(scan_handle_test, commit_without_releasing_scan_handle) {
         {
             std::string s{"a"};
             auto tx = db_->create_transaction();
-            ASSERT_EQ(status::ok, t1->put(*tx, {s.data(), s.size()}, ""));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, {s.data(), s.size()}, ""));
             ASSERT_EQ(status::ok, tx->commit());
         }
         {
             auto tx = wrap(db_->create_transaction());
             std::unique_ptr<iterator> it{};
-            ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+            ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
             ASSERT_EQ(status::ok, it->next());
 
             std::string_view key{};
             std::string_view value{};
-            ASSERT_EQ(status::ok, it->key(key));
+            ASSERT_EQ(status::ok, it->read_key(key));
             ASSERT_EQ("a", key);
-            ASSERT_EQ(status::ok, it->value(value));
+            ASSERT_EQ(status::ok, it->read_value(value));
             ASSERT_EQ("", value);
 //            it.reset();  // forget releasing iterator here
             ASSERT_EQ(status::ok, tx->commit());
@@ -87,20 +87,20 @@ TEST_F(scan_handle_test, commit_without_releasing_scan_handle) {
         {
             std::string s{"a"};
             auto tx = db_->create_transaction();
-            ASSERT_EQ(status::ok, t1->put(*tx, {s.data(), s.size()}, "A"));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, {s.data(), s.size()}, "A"));
             ASSERT_EQ(status::ok, tx->commit());
         }
         {
             auto tx = wrap(db_->create_transaction());
             std::unique_ptr<iterator> it{};
-            ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+            ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
             ASSERT_EQ(status::ok, it->next());
 
             std::string_view key{};
             std::string_view value{};
-            ASSERT_EQ(status::ok, it->key(key));
+            ASSERT_EQ(status::ok, it->read_key(key));
             ASSERT_EQ("a", key);
-            ASSERT_EQ(status::ok, it->value(value));
+            ASSERT_EQ(status::ok, it->read_value(value));
             ASSERT_EQ("A", value);
             it.reset();
             ASSERT_EQ(status::ok, tx->commit());

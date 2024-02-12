@@ -159,7 +159,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     std::string_view k{static_cast<char*>(ctx.key_.data()), len};
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
-        if(auto res = stg.get(*ctx.tx_, k, v); res != status::ok) {
+        if(auto res = stg.content_get(*ctx.tx_, k, v); res != status::ok) {
             finish(context);
             if (res == status::not_found) {
                 return {};
@@ -177,7 +177,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     }
     auto& stg = *ctx.secondary_stg_;
     std::unique_ptr<kvs::iterator> it{};
-    if(auto res = stg.scan(*ctx.tx_,
+    if(auto res = stg.content_scan(*ctx.tx_,
             k, kvs::end_point_kind::prefixed_inclusive,
             k, kvs::end_point_kind::prefixed_inclusive,
             it
@@ -195,7 +195,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
-        if(auto res = it->key(k); res != status::ok) {
+        if(auto res = it->read_key(k); res != status::ok) {
             // shirakami returns error here even if next() above returns ok
             // (e.g. not_found for concurrently deleted entry or concurrent_operation for concurrently inserted)
             // skip the record and continue to next

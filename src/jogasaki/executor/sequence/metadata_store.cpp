@@ -52,7 +52,7 @@ void metadata_store::put(std::size_t def_id, std::size_t id) {
         (void) tx_->abort();
         throw_exception(exception{res, "encode_nullable failed"});
     }
-    if (auto res = stg_->put(
+    if (auto res = stg_->content_put(
             *tx_,
             {key.data(), key.size()},
             {value.data(), value.size()}
@@ -67,14 +67,14 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
 ) {
     std::string_view k{};
     std::string_view v{};
-    if (auto r = it->key(k); r != status::ok) {
+    if (auto r = it->read_key(k); r != status::ok) {
         if(r == status::not_found) {
             return {{}, {}, false};
         }
         (void) tx.abort();
         throw_exception(exception{r});
     }
-    if (auto r = it->value(v); r != status::ok) {
+    if (auto r = it->read_value(v); r != status::ok) {
         if(r == status::not_found) {
             return {{}, {}, false};
         }
@@ -104,7 +104,7 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
 
 void metadata_store::scan(metadata_store::scan_consumer_type const& consumer) {
     std::unique_ptr<kvs::iterator> it{};
-    if(auto res = stg_->scan(
+    if(auto res = stg_->content_scan(
             *tx_,
             "",
             kvs::end_point_kind::unbound,
@@ -142,7 +142,7 @@ bool metadata_store::remove(std::size_t def_id) {
         (void) tx_->abort();
         throw_exception(exception{res, "encode failed"});
     }
-    if (auto res = stg_->remove(*tx_, {key.data(), key.size()}); res != status::ok) {
+    if (auto res = stg_->content_delete(*tx_, {key.data(), key.size()}); res != status::ok) {
         if(res == status::not_found) {
             return false;
         }

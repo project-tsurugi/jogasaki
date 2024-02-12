@@ -38,7 +38,7 @@ status iterator::next() {
     return resolve(res);
 }
 
-status iterator::key(std::string_view& k) const {
+status iterator::read_key(std::string_view& k) const {
     sharksfin::Slice slice{};
     auto res = sharksfin::iterator_get_key(handle_, &slice);
     if(res == sharksfin::StatusCode::OK) {
@@ -47,7 +47,7 @@ status iterator::key(std::string_view& k) const {
     return resolve(res);
 }
 
-status iterator::value(std::string_view& v) const {
+status iterator::read_value(std::string_view& v) const {
     sharksfin::Slice slice{};
     auto res = sharksfin::iterator_get_value(handle_, &slice);
     if(res == sharksfin::StatusCode::OK) {

@@ -121,7 +121,7 @@ status index_field_mapper::find_primary_index(
     std::string_view& value_out
 ) {
     std::string_view v{};
-    if(auto res = stg.get(tx, key, v); res != status::ok) {
+    if(auto res = stg.content_get(tx, key, v); res != status::ok) {
         if (res == status::not_found) {
             // primary key not found. Inconsistency between primary/secondary indices.
             res = status::err_inconsistent_index;

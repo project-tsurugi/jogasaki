@@ -55,8 +55,8 @@ TEST_F(kvs_iterator_test, compare_and_print) {
     auto tx = db_->create_transaction();
     std::unique_ptr<iterator> it1{};
     std::unique_ptr<iterator> it2{};
-    ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it1));
-    ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it2));
+    ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it1));
+    ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it2));
     std::cout << *it1 << std::endl;
     std::cout << *it2 << std::endl;
     ASSERT_TRUE(*it1 == *it1);
@@ -70,9 +70,9 @@ TEST_F(kvs_iterator_test, full_scan) {
     {
         auto tx = db_->create_transaction();
         {
-            ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v1"));
-            ASSERT_EQ(status::ok, t1->put(*tx, "k2", "v2"));
-            ASSERT_EQ(status::ok, t1->put(*tx, "k3", "v3"));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, "k1", "v1"));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, "k2", "v2"));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, "k3", "v3"));
         }
         ASSERT_EQ(status::ok, tx->commit());
     }
@@ -81,22 +81,22 @@ TEST_F(kvs_iterator_test, full_scan) {
         std::string_view k;
         std::string_view v;
         std::unique_ptr<iterator> it{};
-        ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+        ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
         ASSERT_TRUE(it);
         //ASSERT_FALSE(it->key(k)); // UB until first next() call
         ASSERT_EQ(status::ok, it->next());
-        ASSERT_EQ(status::ok, it->key(k));
-        ASSERT_EQ(status::ok, it->value(v));
+        ASSERT_EQ(status::ok, it->read_key(k));
+        ASSERT_EQ(status::ok, it->read_value(v));
         EXPECT_EQ("k1", k);
         EXPECT_EQ("v1", v);
         ASSERT_EQ(status::ok, it->next());
-        ASSERT_EQ(status::ok, it->key(k));
-        ASSERT_EQ(status::ok, it->value(v));
+        ASSERT_EQ(status::ok, it->read_key(k));
+        ASSERT_EQ(status::ok, it->read_value(v));
         EXPECT_EQ("k2", k);
         EXPECT_EQ("v2", v);
         ASSERT_EQ(status::ok, it->next());
-        ASSERT_EQ(status::ok, it->key(k));
-        ASSERT_EQ(status::ok, it->value(v));
+        ASSERT_EQ(status::ok, it->read_key(k));
+        ASSERT_EQ(status::ok, it->read_value(v));
         EXPECT_EQ("k3", k);
         EXPECT_EQ("v3", v);
         ASSERT_EQ(status::not_found, it->next());

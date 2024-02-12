@@ -87,7 +87,7 @@ void concurrent_op_test::test_scan_err(
     std::string buf{};
     auto tctx = api::get_transaction_context(tx);
     if(status::ok !=
-       index->scan(*tctx->object(), buf, kvs::end_point_kind::unbound, buf, kvs::end_point_kind::unbound, it)) {
+       index->content_scan(*tctx->object(), buf, kvs::end_point_kind::unbound, buf, kvs::end_point_kind::unbound, it)) {
         fail();
     };
     std::size_t cnt = 0;
@@ -95,23 +95,23 @@ void concurrent_op_test::test_scan_err(
         std::string_view key{};
         std::string_view value{};
         if(cnt == error_record_index) {
-            if(expected != it->key(key)) {
+            if(expected != it->read_key(key)) {
                 std::cerr << "cnt:" << cnt << std::endl;
                 FAIL();
             };
         } else {
-            if(status::ok != it->key(key)) {
+            if(status::ok != it->read_key(key)) {
                 std::cerr << "cnt:" << cnt << std::endl;
                 FAIL();
             };
         }
         if(cnt == error_record_index) {
-            if(expected != it->value(value)) {
+            if(expected != it->read_value(value)) {
                 std::cerr << "cnt:" << cnt << std::endl;
                 FAIL();
             };
         } else {
-            if(status::ok != it->value(value)) {
+            if(status::ok != it->read_value(value)) {
                 std::cerr << "cnt:" << cnt << std::endl;
                 FAIL();
             };

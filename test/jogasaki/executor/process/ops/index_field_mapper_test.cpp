@@ -86,8 +86,8 @@ TEST_F(index_field_mapper_test, simple) {
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
 
             auto tx = db_->create_transaction();
-            ASSERT_EQ(status::ok, i2->put(*tx, {s.data(), s.size()}, ""));
-            ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
+            ASSERT_EQ(status::ok, i2->content_put(*tx, {s.data(), s.size()}, ""));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
             ASSERT_EQ(status::ok, tx->commit());
         }
         {
@@ -129,13 +129,13 @@ TEST_F(index_field_mapper_test, simple) {
             {
                 auto tx = wrap(db_->create_transaction());
                 std::unique_ptr<iterator> it{};
-                ASSERT_EQ(status::ok, i2->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+                ASSERT_EQ(status::ok, i2->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());
 
                 std::string_view key{};
                 std::string_view value{};
-                ASSERT_EQ(status::ok, it->key(key));
-                ASSERT_EQ(status::ok, it->value(value));
+                ASSERT_EQ(status::ok, it->read_key(key));
+                ASSERT_EQ(status::ok, it->read_value(value));
                 ASSERT_EQ(status::ok, mapper(key, value, result.ref(), *t1, *tx, &resource));
                 it.reset();
                 ASSERT_EQ(status::ok, tx->commit());
@@ -164,7 +164,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
             encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
 
             auto tx = db_->create_transaction();
-            ASSERT_EQ(status::ok, t1->put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));
             ASSERT_EQ(status::ok, tx->commit());
         }
         {
@@ -194,13 +194,13 @@ TEST_F(index_field_mapper_test, without_secondary) {
             {
                 auto tx = wrap(db_->create_transaction());
                 std::unique_ptr<iterator> it{};
-                ASSERT_EQ(status::ok, t1->scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+                ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());
 
                 std::string_view key{};
                 std::string_view value{};
-                ASSERT_EQ(status::ok, it->key(key));
-                ASSERT_EQ(status::ok, it->value(value));
+                ASSERT_EQ(status::ok, it->read_key(key));
+                ASSERT_EQ(status::ok, it->read_value(value));
                 ASSERT_EQ(status::ok, mapper(key, value, result.ref(), *t1, *tx, &resource));
                 it.reset();
                 ASSERT_EQ(status::ok, tx->commit());

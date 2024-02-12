@@ -111,7 +111,7 @@ public:
      * @return otherwise, other status code
      * @note this function just prepares iterator without starting scan, so status::not_found is not returned.
      */
-    [[nodiscard]] status scan(
+    [[nodiscard]] status content_scan(
         transaction& tx,
         std::string_view begin_key, end_point_kind begin_kind,
         std::string_view end_key, end_point_kind end_kind,
@@ -133,7 +133,7 @@ public:
      * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
      */
-    [[nodiscard]] status get(
+    [[nodiscard]] status content_get(
         transaction& tx,
         std::string_view key,
         std::string_view& value
@@ -156,7 +156,7 @@ public:
      * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
      */
-    [[nodiscard]] status put(
+    [[nodiscard]] status content_put(
         transaction& tx,
         std::string_view key,
         std::string_view value,
@@ -174,7 +174,7 @@ public:
      * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
      */
-    [[nodiscard]] status remove(
+    [[nodiscard]] status content_delete(
         transaction& tx,
         std::string_view key
     );

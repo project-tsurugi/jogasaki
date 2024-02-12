@@ -91,7 +91,7 @@ bool matcher::operator()(
     std::string_view value{};
 
     if (! use_secondary_) {
-        auto res = primary_stg.get(tx, key, value);
+        auto res = primary_stg.content_get(tx, key, value);
         status_ = res;
         if (res != status::ok) {
             return false;
@@ -99,7 +99,7 @@ bool matcher::operator()(
         return field_mapper_(key, value, output_variables.store().ref(), primary_stg, tx, resource) == status::ok;
     }
     auto& stg = *secondary_stg;
-    if(auto res = stg.scan(tx,
+    if(auto res = stg.content_scan(tx,
             key, kvs::end_point_kind::prefixed_inclusive,
             key, kvs::end_point_kind::prefixed_inclusive,
             it_
@@ -130,7 +130,7 @@ bool matcher::next() {
         }
         std::string_view key{};
         std::string_view value{};
-        if(auto r = it_->key(key); r != status::ok) {
+        if(auto r = it_->read_key(key); r != status::ok) {
             if(r == status::not_found) {
                 continue;
             }
@@ -138,7 +138,7 @@ bool matcher::next() {
             it_.reset();
             return false;
         }
-        if(auto r = it_->value(value); r != status::ok) {
+        if(auto r = it_->read_value(value); r != status::ok) {
             if(r == status::not_found) {
                 continue;
             }

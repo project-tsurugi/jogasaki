@@ -43,14 +43,14 @@ public:
         std::unique_ptr<iterator> it{};
         if (!cont_) {
             cont_ = true;
-            check(stg->scan(
+            check(stg->content_scan(
                 tx,
                 "", end_point_kind::unbound,
                 "", end_point_kind::unbound,
                 it
             ));
         } else {
-            check(stg->scan(
+            check(stg->content_scan(
                 tx,
                 last_key_, end_point_kind::exclusive,
                 "", end_point_kind::unbound,
@@ -72,13 +72,13 @@ public:
             }
             std::string_view key{};
             std::string_view value{};
-            if (auto r = it->key(key); r != status::ok) {
+            if (auto r = it->read_key(key); r != status::ok) {
                 if (r == status::not_found) {
                     continue;
                 }
                 fail();
             }
-            if (auto r = it->value(value); r != status::ok) {
+            if (auto r = it->read_value(value); r != status::ok) {
                 if (r == status::not_found) {
                     continue;
                 }
@@ -127,7 +127,7 @@ public:
                 eof_ = true;
                 break;
             }
-            check(stg->put(
+            check(stg->content_put(
                 tx,
                 key_buffer_,
                 value_buffer_

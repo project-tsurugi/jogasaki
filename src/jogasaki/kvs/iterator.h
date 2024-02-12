@@ -69,7 +69,7 @@ public:
      * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
-    [[nodiscard]] status key(std::string_view& k) const;
+    [[nodiscard]] status read_key(std::string_view& k) const;
 
     /**
      * @brief retrieve the value of the current iterator position
@@ -85,7 +85,7 @@ public:
      * @return any other error otherwise
      * @pre next() is called beforehand successfully to place the iterator on correct entry
      */
-    [[nodiscard]] status value(std::string_view& v) const;
+    [[nodiscard]] status read_value(std::string_view& v) const;
 
     /**
      * @brief return the native handle in the transaction layer

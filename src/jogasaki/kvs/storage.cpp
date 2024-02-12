@@ -33,7 +33,7 @@ status storage::delete_storage() {
     return resolve(res);
 }
 
-status storage::get(
+status storage::content_get(
     transaction& tx,
     std::string_view key,
     std::string_view& value
@@ -55,7 +55,7 @@ status storage::get(
     return resolve(res);
 }
 
-status storage::put(
+status storage::content_put(
     transaction& tx,
     std::string_view key,
     std::string_view value,
@@ -86,7 +86,7 @@ status storage::put(
     return resolve(res);
 }
 
-status storage::remove(
+status storage::content_delete(
     transaction& tx,
     std::string_view key
 ) {
@@ -100,7 +100,7 @@ status storage::remove(
     return resolve(res);
 }
 
-status storage::scan(transaction &tx,
+status storage::content_scan(transaction &tx,
     std::string_view begin_key, end_point_kind begin_kind,
     std::string_view end_key, end_point_kind end_kind,
     std::unique_ptr<iterator>& it

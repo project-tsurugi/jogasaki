@@ -67,7 +67,7 @@ bool create_index::validate_empty_table(request_context& context, std::string_vi
     auto stg = context.database()->get_or_create_storage(table_name);
     std::unique_ptr<kvs::iterator> it{};
     if(auto res =
-           stg->scan(*context.transaction(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);
+           stg->content_scan(*context.transaction(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);
        res != status::ok) {
         handle_kvs_errors(context, res);
         handle_generic_error(context, res, error_code::sql_execution_exception);

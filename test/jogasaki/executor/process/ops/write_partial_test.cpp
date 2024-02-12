@@ -105,10 +105,10 @@ public:
         std::unique_ptr<kvs::iterator> it{};
         std::string_view k{};
         std::string_view v{};
-        ASSERT_EQ(status::ok, stg->scan(*tx, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, it));
+        ASSERT_EQ(status::ok, stg->content_scan(*tx, "", kvs::end_point_kind::unbound, "", kvs::end_point_kind::unbound, it));
         while(it->next() == status::ok) {
-            (void)it->key(k);
-            (void)it->value(v);
+            (void)it->read_key(k);
+            (void)it->read_value(v);
             show_record(key_meta, k);
             show_record(value_meta, v);
         }

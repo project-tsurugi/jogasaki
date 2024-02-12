@@ -383,16 +383,16 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
 
             auto tx = wrap(get_impl(*db_).kvs_db()->create_transaction());
             std::unique_ptr<kvs::iterator> it{};
-            if(status::ok != index->scan(*tx, buf, end_point_kind::prefixed_inclusive, buf, end_point_kind::prefixed_inclusive, it)) {
+            if(status::ok != index->content_scan(*tx, buf, end_point_kind::prefixed_inclusive, buf, end_point_kind::prefixed_inclusive, it)) {
                 fail();
             };
             while(status::ok == it->next()) {
                 std::string_view key{};
                 std::string_view value{};
-                if(status::ok != it->key(key)) {
+                if(status::ok != it->read_key(key)) {
                     fail();
                 };
-                if(status::ok != it->value(value)) {
+                if(status::ok != it->read_value(value)) {
                     fail();
                 }
                 if(status::ok != mapper(key, value, result.ref(), *table, *tx, &resource)) {

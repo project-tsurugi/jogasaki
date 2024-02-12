@@ -140,14 +140,14 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         utils::checkpoint_holder cp{resource};
         std::string_view k{};
         std::string_view v{};
-        if((st = ctx.it_->key(k)) != status::ok) {
+        if((st = ctx.it_->read_key(k)) != status::ok) {
             if (st == status::not_found || st == status::concurrent_operation) {
                 continue;
             }
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
-        if((st = ctx.it_->value(v)) != status::ok) {
+        if((st = ctx.it_->read_value(v)) != status::ok) {
             if (st == status::not_found || st == status::concurrent_operation) {
                 continue;
             }
@@ -227,7 +227,7 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     if(auto res = details::encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_, elen); res != status::ok) {
         return res;
     }
-    if(auto res = stg.scan(
+    if(auto res = stg.content_scan(
             *ctx.tx_,
             {static_cast<char*>(ctx.key_begin_.data()), blen},
             be,

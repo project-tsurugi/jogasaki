@@ -77,11 +77,11 @@ std::string kvs_test_utils::put(
             kvs::encode(value.ref(), val_meta->value_offset(i), val_meta->at(i), spec_val, val_stream);
         }
     }
-    if(auto res = stg->put(*tx,
+    if(auto res = stg->content_put(*tx,
             std::string_view{key_buf.data(), key_stream.size()},
             std::string_view{val_buf.data(), val_stream.size()}
         ); res != status::ok) {
-        LOG(ERROR) << "put returned: " << res;
+        LOG(ERROR) << "content_put returned: " << res;
         fail();
     }
     if(auto res = tx->commit(true); res != status::ok) {
@@ -115,11 +115,11 @@ void kvs_test_utils::put_secondary(
         kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, key_stream);
     }
     key_stream.write(encoded_primary_key.data(), encoded_primary_key.size());
-    if(auto res = stg->put(*tx,
+    if(auto res = stg->content_put(*tx,
             std::string_view{key_buf.data(), key_stream.size()},
             std::string_view{}
         ); res != status::ok) {
-        LOG(ERROR) << "put returned: " << res;
+        LOG(ERROR) << "content_put returned: " << res;
         fail();
     }
     if(auto res = tx->commit(true); res != status::ok) {
@@ -139,12 +139,12 @@ void kvs_test_utils::get(
     auto tx = db.create_transaction();
 
     std::unique_ptr<kvs::iterator> it{};
-    if(auto res = stg->scan(*tx,
+    if(auto res = stg->content_scan(*tx,
             "", kvs::end_point_kind::unbound,
             "", kvs::end_point_kind::unbound,
             it
         ); res != status::ok) {
-        LOG(ERROR) << "scan returned: " << res;
+        LOG(ERROR) << "content_scan returned: " << res;
         fail();
     }
     std::string key_buf(1000, '\0');
@@ -156,11 +156,11 @@ void kvs_test_utils::get(
     while(it->next() == status::ok) {
         std::string_view k{};
         std::string_view v{};
-        if (auto r = it->key(k); r != status::ok) {
+        if (auto r = it->read_key(k); r != status::ok) {
             LOG(ERROR) << "key returned: " << r;
             fail();
         }
-        if (auto r = it->value(v); r != status::ok) {
+        if (auto r = it->read_value(v); r != status::ok) {
             LOG(ERROR) << "value returned: " << r;
             fail();
         }

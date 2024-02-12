@@ -69,14 +69,14 @@ TEST_F(kvs_transaction_test, commit) {
     {
         auto tx = db_->create_transaction();
         {
-            ASSERT_EQ(status::ok, t1->put(*tx, "k1", "v1"));
+            ASSERT_EQ(status::ok, t1->content_put(*tx, "k1", "v1"));
         }
         ASSERT_EQ(status::ok, tx->commit());
     }
     {
         auto tx = db_->create_transaction();
         std::string_view v;
-        ASSERT_EQ(status::ok, t1->get(*tx, "k1", v));
+        ASSERT_EQ(status::ok, t1->content_get(*tx, "k1", v));
         EXPECT_EQ("v1", v);
         ASSERT_EQ(status::ok, tx->abort());
     }
@@ -88,14 +88,14 @@ TEST_F(kvs_transaction_test, abort) {
     {
         auto tx = db_->create_transaction();
         {
-            ASSERT_EQ(status::ok, t10->put(*tx, "k1", "v1"));
+            ASSERT_EQ(status::ok, t10->content_put(*tx, "k1", "v1"));
         }
         ASSERT_EQ(status::ok, tx->abort());
     }
     {
         auto tx = db_->create_transaction();
         std::string_view v;
-//        ASSERT_FALSE(t10->get(*tx, "k1", v)); // abort/rollback depends on sharksfin implementation
+//        ASSERT_FALSE(t10->content_get(*tx, "k1", v)); // abort/rollback depends on sharksfin implementation
         ASSERT_EQ(status::ok, tx->abort());
     }
 }

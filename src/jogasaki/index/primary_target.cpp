@@ -104,7 +104,7 @@ status primary_target::find_by_encoded_key(
     accessor::record_ref dest_value
 ) {
     std::string_view v{};
-    if(auto res = ctx.stg_->get(tx, encoded_key, v); res != status::ok) {
+    if(auto res = ctx.stg_->content_get(tx, encoded_key, v); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }
@@ -155,7 +155,7 @@ status primary_target::remove_by_encoded_key(
     transaction_context& tx,
     std::string_view encoded_key
 ) {
-    if(auto res = ctx.stg_->remove(tx, encoded_key); res != status::ok) {
+    if(auto res = ctx.stg_->content_delete(tx, encoded_key); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }
@@ -220,7 +220,7 @@ status primary_target::encode_put(
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
-    if(auto res = ctx.stg_->put(tx, k, v, opt); res != status::ok) {
+    if(auto res = ctx.stg_->content_put(tx, k, v, opt); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }

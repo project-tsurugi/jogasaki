@@ -97,7 +97,7 @@ status secondary_target::encode_put(
     if(auto res = encode_secondary_key(ctx, primary_key, primary_value, encoded_primary_key, k); res != status::ok) {
         return res;
     }
-    if(auto res = ctx.stg_->put(tx, k, {}, kvs::put_option::create_or_update); res != status::ok) {
+    if(auto res = ctx.stg_->content_put(tx, k, {}, kvs::put_option::create_or_update); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         handle_generic_error(*ctx.req_context(), res, error_code::sql_execution_exception);
         return res;
@@ -110,7 +110,7 @@ status secondary_target::remove_by_encoded_key(
     transaction_context& tx,
     std::string_view encoded_secondary_key
 ) const {
-    if(auto res = ctx.stg_->remove(tx, encoded_secondary_key); ! is_ok(res)) {
+    if(auto res = ctx.stg_->content_delete(tx, encoded_secondary_key); ! is_ok(res)) {
         handle_kvs_errors(*ctx.req_context(), res);
         handle_generic_error(*ctx.req_context(), res, error_code::sql_execution_exception);
         return res;

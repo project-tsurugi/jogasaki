@@ -17,26 +17,28 @@
 
 #include <vector>
 
-#include <takatori/util/downcast.h>
 #include <takatori/relation/find.h>
+#include <takatori/util/downcast.h>
 #include <yugawara/binding/factory.h>
 
-#include <jogasaki/executor/process/step.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/index/field_info.h>
+#include <jogasaki/executor/process/step.h>
 #include <jogasaki/index/field_factory.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/kvs/coder.h>
+#include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
-#include "operator_base.h"
+
 #include "context_helper.h"
-#include "find_context.h"
-#include "operator_builder.h"
 #include "details/encode_key.h"
 #include "details/error_abort.h"
+#include "find_context.h"
+#include "operator_base.h"
+#include "operator_builder.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -162,6 +164,10 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
+            if (res == status::concurrent_operation) {
+                utils::abort_transaction(*ctx.tx_);
+                res = status::err_serialization_failure;
+            }
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
@@ -190,9 +196,10 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             return error_abort(ctx, res);
         }
         if(auto res = it->key(k); res != status::ok) {
-            // shirakami returns not_found here even if next() above returns ok (e.g. concurrently deleted entry)
+            // shirakami returns error here even if next() above returns ok
+            // (e.g. not_found for concurrently deleted entry or concurrent_operation for concurrently inserted)
             // skip the record and continue to next
-            if (res == status::not_found) {
+            if (res == status::not_found || res == status::concurrent_operation) {
                 continue;
             }
             finish(context);

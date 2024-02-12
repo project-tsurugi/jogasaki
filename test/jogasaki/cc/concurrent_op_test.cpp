@@ -131,7 +131,7 @@ TEST_F(concurrent_op_test, occ_scan_see_concurrent_insert) {
         execute_statement("INSERT INTO T VALUES (1)", *tx0);
 
         auto tx1 = utils::create_transaction(*db_, false, false);
-        // test_scan_err(*tx1, "T", status::concurrent_operation, 1);
+        test_scan_err(*tx1, "T", status::concurrent_operation, 1);
 
         ASSERT_EQ(status::ok, tx1->commit());
         ASSERT_EQ(status::ok, tx0->commit());
@@ -153,10 +153,36 @@ TEST_F(concurrent_op_test, occ_scan_see_concurrent_insert_commit_fail) {
         execute_statement("INSERT INTO T VALUES (1)", *tx0);
 
         auto tx1 = utils::create_transaction(*db_, false, false);
-        // test_scan_err(*tx1, "T", status::concurrent_operation, 1); //TODO
+        test_scan_err(*tx1, "T", status::concurrent_operation, 1); //TODO
 
         ASSERT_EQ(status::ok, tx0->commit());
-        // ASSERT_EQ(status::err_serialization_failure, tx1->commit()); //TODO
+        ASSERT_EQ(status::err_serialization_failure, tx1->commit()); //TODO
+    }
+}
+
+TEST_F(concurrent_op_test, occ_scan_op_skips_concurrent_insert) {
+    // scan op uses kvs scan and skips concurrently inserted uncommitted records as if they don't exist
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (2)");
+    {
+        auto tx0 = utils::create_transaction(*db_, false, false);
+        execute_statement("INSERT INTO T VALUES (1)", *tx0);
+
+        auto tx1 = utils::create_transaction(*db_, false, false);
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx1, result);
+            EXPECT_EQ(2, result.size());
+        }
+
+        ASSERT_EQ(status::ok, tx1->commit());
+        ASSERT_EQ(status::ok, tx0->commit());
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", result);
+            EXPECT_EQ(3, result.size());
+        }
     }
 }
 
@@ -180,15 +206,37 @@ TEST_F(concurrent_op_test, occ_get_see_concurrent_insert) {
     }
 }
 
+TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_on_secondary) {
+    // occ find op uses kvs scan, observes concurrently inserted record on secodary, and skips it
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T(C1)");
+    {
+        auto tx0 = utils::create_transaction(*db_, false, false);
+        execute_statement("INSERT INTO T VALUES (1, 10)", *tx0);
+        auto tx1 = utils::create_transaction(*db_, false, false);
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", *tx1, result);
+            EXPECT_EQ(0, result.size());
+        }
+
+        ASSERT_EQ(status::ok, tx1->commit());
+        ASSERT_EQ(status::ok, tx0->commit());
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", result);
+            EXPECT_EQ(1, result.size());
+        }
+    }
+}
+
 TEST_F(concurrent_op_test, occ_insert_not_see_concurrent_insert) {
     // occ insert doesn't see concurrently inserted uncommitted records
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
     {
         auto tx0 = utils::create_transaction(*db_, false, false);
         execute_statement("INSERT INTO T VALUES (1)", *tx0);
-
         auto tx1 = utils::create_transaction(*db_, false, false);
-
         execute_statement("INSERT INTO T VALUES (1)", *tx1);
 
         ASSERT_EQ(status::ok, tx0->commit());
@@ -207,9 +255,7 @@ TEST_F(concurrent_op_test, occ_insert_not_see_concurrent_insert_reversed_commit_
     {
         auto tx0 = utils::create_transaction(*db_, false, false);
         execute_statement("INSERT INTO T VALUES (1)", *tx0);
-
         auto tx1 = utils::create_transaction(*db_, false, false);
-
         execute_statement("INSERT INTO T VALUES (1)", *tx1);
 
         ASSERT_EQ(status::ok, tx1->commit());

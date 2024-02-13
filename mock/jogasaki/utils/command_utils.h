@@ -604,6 +604,7 @@ inline std::string encode_batch() {
     // currently empty TODO
     sql::request::Request r{};
     auto* bt = r.mutable_batch();
+    (void) bt;
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_batch();

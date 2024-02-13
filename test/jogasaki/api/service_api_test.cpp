@@ -1810,4 +1810,18 @@ TEST_F(service_api_test, stats_wo_change) {
     }
 }
 
+TEST_F(service_api_test, batch_unsupported) {
+    auto s = encode_batch();
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto err = res->error_;
+    ASSERT_EQ(::tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, err.code());
+}
+
 }

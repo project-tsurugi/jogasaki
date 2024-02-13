@@ -600,6 +600,16 @@ inline std::string encode_get_search_path() {
     return s;
 }
 
+inline std::string encode_batch() {
+    // currently empty TODO
+    sql::request::Request r{};
+    auto* bt = r.mutable_batch();
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_batch();
+    return s;
+}
+
 inline std::string encode_get_error_info(std::uint64_t handle) {
     sql::request::Request r{};
     r.mutable_get_error_info()->mutable_transaction_handle()->set_handle(handle);

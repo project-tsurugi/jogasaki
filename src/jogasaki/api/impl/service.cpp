@@ -865,6 +865,12 @@ bool service::process(
             command_describe_table(proto_req, res, req_info);
             break;
         }
+        case sql::request::Request::RequestCase::kBatch: {
+            auto msg = string_builder{} << "batch request is unsupported (rid=" << reqid
+                                        << ") body:" << utils::to_debug_string(proto_req) << string_builder::to_string;
+            report_error(*res, tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, msg, reqid);
+            break;
+        }
         case sql::request::Request::RequestCase::kListTables: {
             trace_scope_name("cmd-list_tables");  //NOLINT
             command_list_tables(proto_req, res, req_info);

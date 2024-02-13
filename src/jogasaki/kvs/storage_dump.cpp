@@ -73,13 +73,13 @@ public:
             std::string_view key{};
             std::string_view value{};
             if (auto r = it->read_key(key); r != status::ok) {
-                if (r == status::not_found) {
+                if (r == status::not_found || r == status::concurrent_operation) {
                     continue;
                 }
                 fail();
             }
             if (auto r = it->read_value(value); r != status::ok) {
-                if (r == status::not_found) {
+                if (r == status::not_found || r == status::concurrent_operation) {
                     continue;
                 }
                 fail();

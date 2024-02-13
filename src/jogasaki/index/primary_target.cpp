@@ -29,6 +29,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_encode_errors.h>
@@ -105,6 +106,10 @@ status primary_target::find_by_encoded_key(
 ) {
     std::string_view v{};
     if(auto res = ctx.stg_->content_get(tx, encoded_key, v); res != status::ok) {
+        if (res == status::concurrent_operation) {
+            utils::abort_transaction(tx);
+            res = status::err_serialization_failure;
+        }
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }

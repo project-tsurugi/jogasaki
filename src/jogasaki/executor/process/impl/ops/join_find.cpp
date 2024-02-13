@@ -29,6 +29,7 @@
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include "operator_base.h"
@@ -92,6 +93,10 @@ bool matcher::operator()(
 
     if (! use_secondary_) {
         auto res = primary_stg.content_get(tx, key, value);
+        if (res == status::concurrent_operation) {
+            utils::abort_transaction(tx);
+            res = status::err_serialization_failure;
+        }
         status_ = res;
         if (res != status::ok) {
             return false;
@@ -131,7 +136,7 @@ bool matcher::next() {
         std::string_view key{};
         std::string_view value{};
         if(auto r = it_->read_key(key); r != status::ok) {
-            if(r == status::not_found) {
+            if(r == status::not_found || r == status::concurrent_operation) {
                 continue;
             }
             status_ = r;

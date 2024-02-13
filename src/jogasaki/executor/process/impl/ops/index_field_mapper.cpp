@@ -20,6 +20,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/index/index_accessor.h>
+#include <jogasaki/utils/abort_transaction.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -126,6 +127,11 @@ status index_field_mapper::find_primary_index(
             // primary key not found. Inconsistency between primary/secondary indices.
             res = status::err_inconsistent_index;
             VLOG_LP(log_error) << res << " missing record detected in the secondary index";
+        } else if (res == status::concurrent_operation) {
+            // primary key access is not possible due to concurrent operation. Abort the transaction.
+            VLOG_LP(log_error) << res << " finding primary entry failed due to concurrent operation";
+            utils::abort_transaction(tx);
+            res = status::err_serialization_failure;
         }
         return res;
     }

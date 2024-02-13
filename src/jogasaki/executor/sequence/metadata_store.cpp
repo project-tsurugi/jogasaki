@@ -68,14 +68,14 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
     std::string_view k{};
     std::string_view v{};
     if (auto r = it->read_key(k); r != status::ok) {
-        if(r == status::not_found) {
+        if(r == status::not_found || r == status::concurrent_operation) {
             return {{}, {}, false};
         }
         (void) tx.abort();
         throw_exception(exception{r});
     }
     if (auto r = it->read_value(v); r != status::ok) {
-        if(r == status::not_found) {
+        if(r == status::not_found || r == status::concurrent_operation) {
             return {{}, {}, false};
         }
         (void) tx.abort();

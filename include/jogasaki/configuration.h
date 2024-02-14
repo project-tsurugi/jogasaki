@@ -392,6 +392,22 @@ public:
         return support_smallint_;
     }
 
+    void scan_concurrent_operation_as_not_found(bool arg) noexcept {
+        scan_concurrent_operation_as_not_found_ = arg;
+    }
+
+    [[nodiscard]] bool scan_concurrent_operation_as_not_found() const noexcept {
+        return scan_concurrent_operation_as_not_found_;
+    }
+
+    void point_read_concurrent_operation_as_not_found(bool arg) noexcept {
+        point_read_concurrent_operation_as_not_found_ = arg;
+    }
+
+    [[nodiscard]] bool point_read_concurrent_operation_as_not_found() const noexcept {
+        return point_read_concurrent_operation_as_not_found_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -428,6 +444,8 @@ public:
             "try_insert_on_upserting_secondary:" << cfg.try_insert_on_upserting_secondary() << " " <<
             "support_octet:" << cfg.support_octet() << " " <<
             "support_smallint:" << cfg.support_smallint() << " " <<
+            "scan_concurrent_operation_as_not_found:" << cfg.scan_concurrent_operation_as_not_found() << " " <<
+            "point_read_concurrent_operation_as_not_found:" << cfg.point_read_concurrent_operation_as_not_found() << " " <<
             "";
     }
 
@@ -470,6 +488,9 @@ private:
     bool try_insert_on_upserting_secondary_ = true;
     bool support_octet_ = false;
     bool support_smallint_ = false;
+    bool scan_concurrent_operation_as_not_found_ = true;
+    bool point_read_concurrent_operation_as_not_found_ = true;
+
 };
 
 }

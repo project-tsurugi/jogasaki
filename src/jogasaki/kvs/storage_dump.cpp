@@ -22,6 +22,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/iterator.h>
+#include <jogasaki/utils/modify_status.h>
 
 namespace jogasaki::kvs {
 
@@ -73,14 +74,20 @@ public:
             std::string_view key{};
             std::string_view value{};
             if (auto r = it->read_key(key); r != status::ok) {
-                if (r == status::not_found || r == status::concurrent_operation) {
+                if (r == status::not_found) {
                     continue;
+                }
+                if(! utils::modify_concurrent_operation_status(tx, r, true)) {
+                     continue;
                 }
                 fail();
             }
             if (auto r = it->read_value(value); r != status::ok) {
-                if (r == status::not_found || r == status::concurrent_operation) {
+                if (r == status::not_found) {
                     continue;
+                }
+                if(! utils::modify_concurrent_operation_status(tx, r, true)) {
+                     continue;
                 }
                 fail();
             }

@@ -32,6 +32,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/modify_status.h>
 
 #include "context_helper.h"
 #include "details/encode_key.h"
@@ -164,9 +165,8 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 return {};
             }
-            if (res == status::concurrent_operation) {
-                utils::abort_transaction(*ctx.tx_);
-                res = status::err_serialization_failure;
+            if(! utils::modify_concurrent_operation_status(*ctx.tx_, res, false)) {
+                return {};
             }
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
@@ -199,7 +199,10 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             // shirakami returns error here even if next() above returns ok
             // (e.g. not_found for concurrently deleted entry or concurrent_operation for concurrently inserted)
             // skip the record and continue to next
-            if (res == status::not_found || res == status::concurrent_operation) {
+            if (res == status::not_found) {
+                continue;
+            }
+            if(! utils::modify_concurrent_operation_status(*ctx.tx_, res, true)) {
                 continue;
             }
             finish(context);

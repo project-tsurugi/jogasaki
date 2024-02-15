@@ -19,6 +19,7 @@
 
 namespace jogasaki::utils {
 
+void abort_transaction(kvs::transaction& tx);
 void abort_transaction(transaction_context& tx);
 
 }

@@ -65,7 +65,7 @@ public:
     void TearDown() override {
         db_teardown();
     }
-    void test_scan_err(
+    void test_content_scan_err(
         api::transaction_handle tx,
         std::string_view index_name,
         status expected,
@@ -75,7 +75,7 @@ public:
 
 using namespace std::string_view_literals;
 
-void concurrent_op_test::test_scan_err(
+void concurrent_op_test::test_content_scan_err(
     api::transaction_handle tx,
     std::string_view index_name,
     status expected,
@@ -121,8 +121,9 @@ void concurrent_op_test::test_scan_err(
     it.reset();
 }
 
-TEST_F(concurrent_op_test, occ_scan_see_concurrent_insert) {
-    // scan can skip concurrently inserted uncommitted records as if they don't exist
+TEST_F(concurrent_op_test, content_scan_see_concurrent_op_status) {
+    // content_scan can skip status::concurrent_operation caused by uncommitted records as if they don't exist
+    global::config_pool()->scan_concurrent_operation_as_not_found(true);
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (0)");
     execute_statement("INSERT INTO T VALUES (2)");
@@ -131,7 +132,7 @@ TEST_F(concurrent_op_test, occ_scan_see_concurrent_insert) {
         execute_statement("INSERT INTO T VALUES (1)", *tx0);
 
         auto tx1 = utils::create_transaction(*db_, false, false);
-        test_scan_err(*tx1, "T", status::concurrent_operation, 1);
+        test_content_scan_err(*tx1, "T", status::concurrent_operation, 1);
 
         ASSERT_EQ(status::ok, tx1->commit());
         ASSERT_EQ(status::ok, tx0->commit());
@@ -143,8 +144,9 @@ TEST_F(concurrent_op_test, occ_scan_see_concurrent_insert) {
     }
 }
 
-TEST_F(concurrent_op_test, occ_scan_see_concurrent_insert_commit_fail) {
-    // scan can skip concurrently inserted uncommitted records, but scan must commit before insert tx
+TEST_F(concurrent_op_test, content_scan_see_concurrent_op_status_commit_fail) {
+    // same as content_scan_see_concurrent_op_status, but scan tx must commit before insert tx
+    global::config_pool()->scan_concurrent_operation_as_not_found(true);
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (0)");
     execute_statement("INSERT INTO T VALUES (2)");
@@ -153,15 +155,16 @@ TEST_F(concurrent_op_test, occ_scan_see_concurrent_insert_commit_fail) {
         execute_statement("INSERT INTO T VALUES (1)", *tx0);
 
         auto tx1 = utils::create_transaction(*db_, false, false);
-        test_scan_err(*tx1, "T", status::concurrent_operation, 1); //TODO
+        test_content_scan_err(*tx1, "T", status::concurrent_operation, 1);
 
         ASSERT_EQ(status::ok, tx0->commit());
-        ASSERT_EQ(status::err_serialization_failure, tx1->commit()); //TODO
+        ASSERT_EQ(status::err_serialization_failure, tx1->commit());
     }
 }
 
-TEST_F(concurrent_op_test, occ_scan_op_skips_concurrent_insert) {
-    // scan op uses kvs scan and skips concurrently inserted uncommitted records as if they don't exist
+TEST_F(concurrent_op_test, scan_op_skips_concurrent_insert) {
+    // scan op uses content_scan and skips concurrently inserted uncommitted records as if they don't exist
+    global::config_pool()->scan_concurrent_operation_as_not_found(true);
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (0)");
     execute_statement("INSERT INTO T VALUES (2)");
@@ -186,8 +189,55 @@ TEST_F(concurrent_op_test, occ_scan_op_skips_concurrent_insert) {
     }
 }
 
-TEST_F(concurrent_op_test, occ_get_see_concurrent_insert) {
-    // occ get aborts if it sees concurrently inserted uncommitted records
+TEST_F(concurrent_op_test, scan_op_skips_concurrent_insert_abort) {
+    // same as scan_op_skips_concurrent_insert, but configured to abort
+    global::config_pool()->scan_concurrent_operation_as_not_found(false);
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (0)");
+    execute_statement("INSERT INTO T VALUES (2)");
+    {
+        auto tx0 = utils::create_transaction(*db_, false, false);
+        execute_statement("INSERT INTO T VALUES (1)", *tx0);
+
+        auto tx1 = utils::create_transaction(*db_, false, false);
+        test_stmt_err("SELECT * FROM T", *tx1, error_code::cc_exception, "serialization failed transaction:TID-0000000100000002 shirakami response Status=OK {reason_code:USER_ABORT, storage_name is not available, no key information} ");
+
+        ASSERT_EQ(status::ok, tx0->commit());
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", result);
+            EXPECT_EQ(3, result.size());
+        }
+    }
+}
+
+TEST_F(concurrent_op_test, find_op_skips_concurrent_insert) {
+    // find op treats as "not found" if it sees concurrently inserted uncommitted records
+    global::config_pool()->point_read_concurrent_operation_as_not_found(true);
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
+    {
+        auto tx0 = utils::create_transaction(*db_, false, false);
+        execute_statement("INSERT INTO T VALUES (1)", *tx0);
+
+        auto tx1 = utils::create_transaction(*db_, false, false);
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T WHERE C0=1", *tx1, result);
+            EXPECT_EQ(0, result.size());
+        }
+        ASSERT_EQ(status::ok, tx1->commit());
+        ASSERT_EQ(status::ok, tx0->commit());
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T", result);
+            EXPECT_EQ(1, result.size());
+        }
+    }
+}
+
+TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_abort) {
+    // find_op_skips_concurrent_insert_abort, but configured to abort
+    global::config_pool()->point_read_concurrent_operation_as_not_found(false);
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
     {
         auto tx0 = utils::create_transaction(*db_, false, false);
@@ -207,7 +257,8 @@ TEST_F(concurrent_op_test, occ_get_see_concurrent_insert) {
 }
 
 TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_on_secondary) {
-    // occ find op uses kvs scan, observes concurrently inserted record on secodary, and skips it
+    // find op observes concurrently inserted record on secodary, and skips it
+    global::config_pool()->scan_concurrent_operation_as_not_found(true);
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
     execute_statement("CREATE INDEX I ON T(C1)");
     {
@@ -216,7 +267,7 @@ TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_on_secondary) {
         auto tx1 = utils::create_transaction(*db_, false, false);
         {
             std::vector<mock::basic_record> result{};
-            execute_query("SELECT * FROM T", *tx1, result);
+            execute_query("SELECT * FROM T WHERE C1=10", *tx1, result);
             EXPECT_EQ(0, result.size());
         }
 
@@ -230,8 +281,29 @@ TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_on_secondary) {
     }
 }
 
+TEST_F(concurrent_op_test, find_op_skips_concurrent_insert_on_secondary_abort) {
+    // same as find_op_skips_concurrent_insert_on_secondary_abort, but configured to abort
+    global::config_pool()->scan_concurrent_operation_as_not_found(false);
+    execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE INDEX I ON T(C1)");
+    {
+        auto tx0 = utils::create_transaction(*db_, false, false);
+        execute_statement("INSERT INTO T VALUES (1, 10)", *tx0);
+        auto tx1 = utils::create_transaction(*db_, false, false);
+        test_stmt_err("SELECT * FROM T WHERE C1=10", *tx1, error_code::cc_exception, "serialization failed transaction:TID-0000000100000003 shirakami response Status=OK {reason_code:USER_ABORT, storage_name is not available, no key information} ");
+
+        ASSERT_EQ(status::ok, tx0->commit());
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT * FROM T WHERE C1=10", result);
+            EXPECT_EQ(1, result.size());
+        }
+    }
+}
+
+
 TEST_F(concurrent_op_test, occ_insert_not_see_concurrent_insert) {
-    // occ insert doesn't see concurrently inserted uncommitted records
+    // occ insert doesn't see concurrently inserted uncommitted records (why? TODO)
     execute_statement("CREATE TABLE T(C0 INT PRIMARY KEY)");
     {
         auto tx0 = utils::create_transaction(*db_, false, false);

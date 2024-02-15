@@ -35,6 +35,7 @@
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/modify_status.h>
 
 namespace jogasaki::index {
 
@@ -106,9 +107,8 @@ status primary_target::find_by_encoded_key(
 ) {
     std::string_view v{};
     if(auto res = ctx.stg_->content_get(tx, encoded_key, v); res != status::ok) {
-        if (res == status::concurrent_operation) {
-            utils::abort_transaction(tx);
-            res = status::err_serialization_failure;
+        if(! utils::modify_concurrent_operation_status(tx, res, false)) {
+            return res;
         }
         handle_kvs_errors(*ctx.req_context(), res);
         return res;

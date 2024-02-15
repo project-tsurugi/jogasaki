@@ -32,6 +32,7 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/modify_status.h>
 #include <jogasaki/kvs/coder.h>
 #include "operator_base.h"
 #include "context_helper.h"
@@ -141,14 +142,20 @@ operation_status scan::operator()(scan_context& ctx, abstract::task_context* con
         std::string_view k{};
         std::string_view v{};
         if((st = ctx.it_->read_key(k)) != status::ok) {
-            if (st == status::not_found || st == status::concurrent_operation) {
+            if(st == status::not_found) {
+                continue;
+            }
+            if(! utils::modify_concurrent_operation_status(*ctx.transaction(), st, true)) {
                 continue;
             }
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
         if((st = ctx.it_->read_value(v)) != status::ok) {
-            if (st == status::not_found || st == status::concurrent_operation) {
+            if (st == status::not_found) {
+                continue;
+            }
+            if(! utils::modify_concurrent_operation_status(*ctx.transaction(), st, true)) {
                 continue;
             }
             handle_kvs_errors(*ctx.req_context(), st);

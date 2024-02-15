@@ -30,6 +30,7 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/abort_transaction.h>
+#include <jogasaki/utils/modify_status.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include "operator_base.h"
@@ -93,12 +94,11 @@ bool matcher::operator()(
 
     if (! use_secondary_) {
         auto res = primary_stg.content_get(tx, key, value);
-        if (res == status::concurrent_operation) {
-            utils::abort_transaction(tx);
-            res = status::err_serialization_failure;
-        }
         status_ = res;
         if (res != status::ok) {
+            if(! utils::modify_concurrent_operation_status(tx, res, false)) {
+                status_ = res;
+            }
             return false;
         }
         return field_mapper_(key, value, output_variables.store().ref(), primary_stg, tx, resource) == status::ok;
@@ -136,7 +136,10 @@ bool matcher::next() {
         std::string_view key{};
         std::string_view value{};
         if(auto r = it_->read_key(key); r != status::ok) {
-            if(r == status::not_found || r == status::concurrent_operation) {
+            if(r == status::not_found) {
+                continue;
+            }
+            if(! utils::modify_concurrent_operation_status(*tx_, r, true)) {
                 continue;
             }
             status_ = r;
@@ -145,6 +148,9 @@ bool matcher::next() {
         }
         if(auto r = it_->read_value(value); r != status::ok) {
             if(r == status::not_found) {
+                continue;
+            }
+            if(! utils::modify_concurrent_operation_status(*tx_, r, true)) {
                 continue;
             }
             status_ = r;

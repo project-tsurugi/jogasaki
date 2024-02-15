@@ -15,12 +15,13 @@
  */
 #include "index_field_mapper.h"
 
+#include <jogasaki/index/index_accessor.h>
+#include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/kvs/readable_stream.h>
-#include <jogasaki/index/index_accessor.h>
 #include <jogasaki/utils/abort_transaction.h>
+#include <jogasaki/utils/modify_status.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -123,15 +124,19 @@ status index_field_mapper::find_primary_index(
 ) {
     std::string_view v{};
     if(auto res = stg.content_get(tx, key, v); res != status::ok) {
+        status orig = res;
+        if(utils::modify_concurrent_operation_status(tx, res, false)) {
+            return res;
+        }
         if (res == status::not_found) {
             // primary key not found. Inconsistency between primary/secondary indices.
             res = status::err_inconsistent_index;
-            VLOG_LP(log_error) << res << " missing record detected in the secondary index";
-        } else if (res == status::concurrent_operation) {
-            // primary key access is not possible due to concurrent operation. Abort the transaction.
-            VLOG_LP(log_error) << res << " finding primary entry failed due to concurrent operation";
-            utils::abort_transaction(tx);
-            res = status::err_serialization_failure;
+            if(orig == status::not_found) {
+                VLOG_LP(log_error) << orig << " missing primary index entry corresponding to the secondary index entry";
+            } else {
+                // orig == status::concurrent_operation
+                VLOG_LP(log_error) << orig << " finding primary entry failed due to concurrent operation";
+            }
         }
         return res;
     }

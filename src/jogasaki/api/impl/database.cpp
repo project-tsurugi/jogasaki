@@ -114,6 +114,8 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_omit_task_when_idle) " << cfg.omit_task_when_idle() << " : whether to stop scheduling tasks to process durability callback if there is no transaction waiting for durable";
     LOGCFG << "(external_log_explain) " << cfg.external_log_explain() << " : whether altimeter to output stmt_explain event log";
     LOGCFG << "(dev_try_insert_on_upserting_secondary) " << cfg.try_insert_on_upserting_secondary() << " : whether to try insert first when INSERT OR REPLACE is exected for tables with secondary index";
+    LOGCFG << "(dev_scan_concurrent_operation_as_not_found) " << cfg.scan_concurrent_operation_as_not_found() << " : whether scan to treat status::concurrent_operation as status::not_found";
+    LOGCFG << "(dev_point_read_concurrent_operation_as_not_found) " << cfg.point_read_concurrent_operation_as_not_found() << " : whether point read to treat status::concurrent_operation as status::not_found";
 }
 
 status database::start() {

@@ -227,6 +227,12 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<bool>("dev_support_smallint")) {
         ret->support_smallint(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_scan_concurrent_operation_as_not_found")) {
+        ret->scan_concurrent_operation_as_not_found(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("dev_point_read_concurrent_operation_as_not_found")) {
+        ret->point_read_concurrent_operation_as_not_found(v.value());
+    }
     return ret;
 }
 

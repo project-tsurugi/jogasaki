@@ -117,7 +117,10 @@ operation_status scan::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
-operation_status scan::operator()(scan_context& ctx, abstract::task_context* context) {
+operation_status scan::operator()(  //NOLINT(readability-function-cognitive-complexity)
+    scan_context& ctx,
+    abstract::task_context* context
+) {
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }

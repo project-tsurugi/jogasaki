@@ -37,7 +37,7 @@ public:
         batch_size_(batch_size)
     {}
 
-    status operator()(transaction& tx) {
+    status operator()(transaction& tx) {  //NOLINT(readability-function-cognitive-complexity)
         auto* db = tx.database();
         auto stg = db->get_or_create_storage(storage_key_);
 

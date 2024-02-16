@@ -145,20 +145,16 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
         std::string_view k{};
         std::string_view v{};
         if((st = ctx.it_->read_key(k)) != status::ok) {
+            utils::modify_concurrent_operation_status(*ctx.transaction(), st, true);
             if(st == status::not_found) {
-                continue;
-            }
-            if(! utils::modify_concurrent_operation_status(*ctx.transaction(), st, true)) {
                 continue;
             }
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
         if((st = ctx.it_->read_value(v)) != status::ok) {
+            utils::modify_concurrent_operation_status(*ctx.transaction(), st, true);
             if (st == status::not_found) {
-                continue;
-            }
-            if(! utils::modify_concurrent_operation_status(*ctx.transaction(), st, true)) {
                 continue;
             }
             handle_kvs_errors(*ctx.req_context(), st);

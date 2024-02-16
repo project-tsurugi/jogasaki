@@ -22,14 +22,13 @@ namespace jogasaki::utils {
 
 /**
  * @brief common routine to modify status when status::concurrent_operation is returned
- * @details depending on the configuration, concurrent_operation is treated as not_found or serialization_failure
+ * @details depending on the configuration, concurrent_operation is modifed to status::not_found or
+ *  status::err_serialization_failure (with aborting tx)
  * @param tx transaction
- * @param res status code
+ * @param res status code to modify
  * @param scan whether the call is to modify return code from scan related functions
- * @return true if the modified status is handled as an error (i.e. serialization_failure)
- * @return false otherwise
  */
-bool modify_concurrent_operation_status(
+void modify_concurrent_operation_status(
     transaction_context& tx,
     status& res,
     bool scan
@@ -38,7 +37,7 @@ bool modify_concurrent_operation_status(
 /**
  * @see modify_concurrent_operation_status(transaction_context&, status&, bool)
  */
-bool modify_concurrent_operation_status(
+void modify_concurrent_operation_status(
     kvs::transaction& tx,
     status& res,
     bool scan

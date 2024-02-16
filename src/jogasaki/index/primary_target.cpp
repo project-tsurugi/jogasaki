@@ -107,9 +107,7 @@ status primary_target::find_by_encoded_key(
 ) {
     std::string_view v{};
     if(auto res = ctx.stg_->content_get(tx, encoded_key, v); res != status::ok) {
-        if(! utils::modify_concurrent_operation_status(tx, res, false)) {
-            return res;
-        }
+        utils::modify_concurrent_operation_status(tx, res, false);
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }

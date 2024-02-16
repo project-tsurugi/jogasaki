@@ -162,10 +162,8 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         auto& stg = *ctx.stg_;
         if(auto res = stg.content_get(*ctx.tx_, k, v); res != status::ok) {
             finish(context);
+            utils::modify_concurrent_operation_status(*ctx.tx_, res, false);
             if (res == status::not_found) {
-                return {};
-            }
-            if(! utils::modify_concurrent_operation_status(*ctx.tx_, res, false)) {
                 return {};
             }
             handle_kvs_errors(*ctx.req_context(), res);
@@ -196,13 +194,11 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             return error_abort(ctx, res);
         }
         if(auto res = it->read_key(k); res != status::ok) {
+            utils::modify_concurrent_operation_status(*ctx.tx_, res, true);
             // shirakami returns error here even if next() above returns ok
             // (e.g. not_found for concurrently deleted entry or concurrent_operation for concurrently inserted)
             // skip the record and continue to next
             if (res == status::not_found) {
-                continue;
-            }
-            if(! utils::modify_concurrent_operation_status(*ctx.tx_, res, true)) {
                 continue;
             }
             finish(context);

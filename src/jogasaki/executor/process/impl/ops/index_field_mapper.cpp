@@ -125,12 +125,11 @@ status index_field_mapper::find_primary_index(
     std::string_view v{};
     if(auto res = stg.content_get(tx, key, v); res != status::ok) {
         status orig = res;
-        if(utils::modify_concurrent_operation_status(tx, res, false)) {
-            return res;
-        }
+        utils::modify_concurrent_operation_status(tx, res, false);
         if (res == status::not_found) {
             // primary key not found. Inconsistency between primary/secondary indices.
             res = status::err_inconsistent_index;
+            utils::abort_transaction(tx);
             if(orig == status::not_found) {
                 VLOG_LP(log_error) << orig << " missing primary index entry corresponding to the secondary index entry";
             } else {

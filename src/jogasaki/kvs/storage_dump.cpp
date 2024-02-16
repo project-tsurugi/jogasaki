@@ -74,20 +74,16 @@ public:
             std::string_view key{};
             std::string_view value{};
             if (auto r = it->read_key(key); r != status::ok) {
+                utils::modify_concurrent_operation_status(tx, r, true);
                 if (r == status::not_found) {
                     continue;
-                }
-                if(! utils::modify_concurrent_operation_status(tx, r, true)) {
-                     continue;
                 }
                 fail();
             }
             if (auto r = it->read_value(value); r != status::ok) {
+                utils::modify_concurrent_operation_status(tx, r, true);
                 if (r == status::not_found) {
                     continue;
-                }
-                if(! utils::modify_concurrent_operation_status(tx, r, true)) {
-                     continue;
                 }
                 fail();
             }

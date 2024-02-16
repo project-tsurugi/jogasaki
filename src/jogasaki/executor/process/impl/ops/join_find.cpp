@@ -96,9 +96,8 @@ bool matcher::operator()(
         auto res = primary_stg.content_get(tx, key, value);
         status_ = res;
         if (res != status::ok) {
-            if(! utils::modify_concurrent_operation_status(tx, res, false)) {
-                status_ = res;
-            }
+            utils::modify_concurrent_operation_status(tx, res, false);
+            status_ = res;
             return false;
         }
         return field_mapper_(key, value, output_variables.store().ref(), primary_stg, tx, resource) == status::ok;
@@ -136,10 +135,8 @@ bool matcher::next() {
         std::string_view key{};
         std::string_view value{};
         if(auto r = it_->read_key(key); r != status::ok) {
+            utils::modify_concurrent_operation_status(*tx_, r, true);
             if(r == status::not_found) {
-                continue;
-            }
-            if(! utils::modify_concurrent_operation_status(*tx_, r, true)) {
                 continue;
             }
             status_ = r;
@@ -147,10 +144,8 @@ bool matcher::next() {
             return false;
         }
         if(auto r = it_->read_value(value); r != status::ok) {
+            utils::modify_concurrent_operation_status(*tx_, r, true);
             if(r == status::not_found) {
-                continue;
-            }
-            if(! utils::modify_concurrent_operation_status(*tx_, r, true)) {
                 continue;
             }
             status_ = r;

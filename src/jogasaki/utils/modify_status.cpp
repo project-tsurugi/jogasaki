@@ -21,34 +21,30 @@
 
 namespace jogasaki::utils {
 
-bool modify_concurrent_operation_status(
+void modify_concurrent_operation_status(
     kvs::transaction& tx,
     status& res,
     bool scan
 ) {
-    if(res == status::ok || res == status::not_found) {
-        return false;
-    }
     if(res != status::concurrent_operation) {
-        return true;
+        return;
     }
     auto treat_as_not_found = scan ? global::config_pool()->scan_concurrent_operation_as_not_found()
                                    : global::config_pool()->point_read_concurrent_operation_as_not_found();
     if(treat_as_not_found) {
         res = status::not_found;
-        return false;
+        return;
     }
     utils::abort_transaction(tx);
     res = status::err_serialization_failure;
-    return true;
 }
 
-bool modify_concurrent_operation_status(
+void modify_concurrent_operation_status(
     transaction_context& tx,
     status& res,
     bool scan
 ) {
-    return modify_concurrent_operation_status(*tx.object(), res, scan);
+    modify_concurrent_operation_status(*tx.object(), res, scan);
 }
 
 }  // namespace jogasaki::utils

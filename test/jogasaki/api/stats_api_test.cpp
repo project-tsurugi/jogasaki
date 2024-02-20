@@ -187,4 +187,28 @@ TEST_F(stats_api_test, delete_wo_change) {
     EXPECT_EQ(0, stats->counter(counter_kind::deleted).count());
     EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
 }
+
+TEST_F(stats_api_test, fetched) {
+    std::shared_ptr<request_statistics> stats{};
+    execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    execute_statement("INSERT INTO T VALUES (3)");
+    execute_statement_with_stats("select * from T", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_EQ(2, stats->counter(counter_kind::fetched).count());
+}
+
+TEST_F(stats_api_test, fetched_multi_partitions) {
+    // verify fetched count when emit runs on multiple partitions
+    std::shared_ptr<request_statistics> stats{};
+    execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    execute_statement("INSERT INTO T VALUES (2)");
+    execute_statement("INSERT INTO T VALUES (3)");
+    execute_statement("INSERT INTO T VALUES (4)");
+    execute_statement("INSERT INTO T VALUES (5)");
+    execute_statement_with_stats("select DISTINCT C0 from T", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_EQ(5, stats->counter(counter_kind::fetched).count());
+}
 }

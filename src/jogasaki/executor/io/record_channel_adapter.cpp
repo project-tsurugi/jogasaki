@@ -18,6 +18,7 @@
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/io/data_channel_writer.h>
 
 namespace jogasaki::executor::io {
 
@@ -30,7 +31,7 @@ status record_channel_adapter::acquire(std::shared_ptr<record_writer>& wrt) {
     if(auto res = channel_->acquire(writer); res != status::ok) {
         return res;
     }
-    wrt = std::make_shared<data_channel_writer>(*channel_, std::move(writer), meta_->origin());
+    wrt = std::make_shared<data_channel_writer>(*this, std::move(writer), meta_->origin());
     return status::ok;
 }
 
@@ -41,6 +42,10 @@ api::data_channel& record_channel_adapter::channel() {
 status record_channel_adapter::meta(maybe_shared_ptr<meta::external_record_meta> m) {
     meta_ = std::move(m);
     return status::ok;
+}
+
+record_channel_stats& record_channel_adapter::statistics() {
+    return stats_;
 }
 
 }  // namespace jogasaki::executor::io

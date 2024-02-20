@@ -27,6 +27,8 @@ namespace jogasaki::executor::io {
 
 using takatori::util::maybe_shared_ptr;
 
+class record_channel_adapter;
+
 /**
  * @brief the writer writes output records into api::data_channel in result set encoding
  */
@@ -48,7 +50,7 @@ public:
      * @brief create new object
      */
     data_channel_writer(
-        api::data_channel& channel,
+        record_channel_adapter& parent,
         std::shared_ptr<api::writer> writer,
         maybe_shared_ptr<meta::record_meta> meta
     );
@@ -74,10 +76,11 @@ public:
     void release() override;
 
 private:
-    api::data_channel* channel_{};
+    record_channel_adapter* parent_{};
     std::shared_ptr<api::writer> writer_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
     std::shared_ptr<value_writer> value_writer_{};
+    std::size_t write_record_count_{};
 };
 
 }  // namespace jogasaki::executor::io

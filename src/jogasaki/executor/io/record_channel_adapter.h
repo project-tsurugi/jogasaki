@@ -21,6 +21,7 @@
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
 
 namespace jogasaki::executor::io {
 
@@ -57,9 +58,15 @@ public:
      */
     status meta(maybe_shared_ptr<meta::external_record_meta> m) override;
 
+    /**
+     * @brief accessor for channel stats
+     */
+    record_channel_stats& statistics() override;
+
 private:
     maybe_shared_ptr<api::data_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
+    record_channel_stats stats_{};
 };
 
 }  // namespace jogasaki::executor::io

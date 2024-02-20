@@ -108,6 +108,13 @@ public:
             boost::filesystem::remove(p);
         }
     }
+
+    /**
+     * @brief accessor for channel stats
+     */
+    executor::io::record_channel_stats& statistics() override {
+        return stats_;
+    }
 private:
     maybe_shared_ptr<record_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
@@ -117,6 +124,7 @@ private:
     dump_config cfg_{};
     std::atomic_size_t writer_id_src_{0};
     tbb::concurrent_queue<std::string> output_files_{};
+    executor::io::record_channel_stats stats_{};
 };
 
 }  // namespace jogasaki::executor::io

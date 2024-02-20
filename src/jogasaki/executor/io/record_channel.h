@@ -19,6 +19,7 @@
 
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/status.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
 
 #include "record_writer.h"
 
@@ -69,6 +70,11 @@ public:
      * @param m the metadata with that the writer uses for the output data
      */
     virtual status meta(maybe_shared_ptr<meta::external_record_meta> m) = 0;
+
+    /**
+     * @brief accessor for channel stats
+     */
+    virtual record_channel_stats& statistics() = 0;
 };
 
 }  // namespace jogasaki::executor::io

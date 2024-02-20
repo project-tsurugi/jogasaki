@@ -22,6 +22,7 @@
 
 #include <jogasaki/common.h>
 #include <jogasaki/utils/trace_log.h>
+#include <jogasaki/executor/io/record_channel_adapter.h>
 
 namespace jogasaki::executor::io {
 
@@ -79,6 +80,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
             }
         }
     }
+    ++write_record_count_;
     {
         trace_scope_name("writer::commit");  //NOLINT
         writer_->commit();
@@ -96,18 +98,20 @@ void data_channel_writer::flush() {
 void data_channel_writer::release() {
     {
         trace_scope_name("data_channel::release");  //NOLINT
-        channel_->release(*writer_);
+        parent_->channel().release(*writer_);
     }
     writer_ = nullptr;
     value_writer_.reset();
+    parent_->statistics().add_total_record(write_record_count_);
+    write_record_count_ = 0;
 }
 
 data_channel_writer::data_channel_writer(
-    api::data_channel& channel,
+    record_channel_adapter& parent,
     std::shared_ptr<api::writer> writer,
     maybe_shared_ptr<meta::record_meta> meta
 ) :
-    channel_(std::addressof(channel)),
+    parent_(std::addressof(parent)),
     writer_(std::move(writer)),
     meta_(std::move(meta)),
     value_writer_(std::make_shared<value_writer>(*writer_))

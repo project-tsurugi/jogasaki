@@ -58,9 +58,16 @@ public:
         return status::ok;
     }
 
+    /**
+     * @brief accessor for channel stats
+     */
+    executor::io::record_channel_stats& statistics() override {
+        return stats_;
+    }
 private:
     std::vector<std::shared_ptr<null_record_channel_writer>> writers_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
+    executor::io::record_channel_stats stats_{};
 };
 
 }  // namespace jogasaki::executor::io

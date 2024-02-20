@@ -19,6 +19,7 @@
 
 #include <gtest/gtest.h>
 
+#include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
 #include <jogasaki/utils/msgbuf_utils.h>
@@ -44,9 +45,10 @@ TEST_F(data_channel_writer_test, basic) {
     auto meta = create_meta<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>();
 
     api::test_channel ch{};
+    executor::io::record_channel_adapter record_ch{maybe_shared_ptr<api::data_channel>{&ch}};
     std::shared_ptr<api::writer> wr{};
     ASSERT_EQ(status::ok, ch.acquire(wr));
-    data_channel_writer writer{ch, std::move(wr), meta};
+    data_channel_writer writer{record_ch, std::move(wr), meta};
 
     auto rec1 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(1, 10.0, 100, 1000.0, accessor::text{"111"});
     auto rec2 = create_record<kind::int4, kind::float8, kind::int8, kind::float4, kind::character>(2, 20.0, 200, 2000.0, accessor::text{"222"});
@@ -70,9 +72,10 @@ TEST_F(data_channel_writer_test, temporal_types) {
     auto meta = create_meta<kind::int4, kind::date, kind::time_of_day, kind::time_point>();
 
     api::test_channel ch{};
+    executor::io::record_channel_adapter record_ch{maybe_shared_ptr<api::data_channel>{&ch}};
     std::shared_ptr<api::writer> wr{};
     ASSERT_EQ(status::ok, ch.acquire(wr));
-    data_channel_writer writer{ch, std::move(wr), meta};
+    data_channel_writer writer{record_ch, std::move(wr), meta};
 
     auto rec1 = create_record<kind::int4, kind::date, kind::time_of_day, kind::time_point>(1, rtype<ft::date>{10}, rtype<ft::time_of_day>{100ns}, rtype<ft::time_point>{1000ns});
     auto rec2 = create_record<kind::int4, kind::date, kind::time_of_day, kind::time_point>(2, rtype<ft::date>{20}, rtype<ft::time_of_day>{200ns}, rtype<ft::time_point>{2000ns});

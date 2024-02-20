@@ -32,6 +32,7 @@ enum counter_kind : std::int32_t {
     updated,
     merged,
     deleted,
+    fetched,
 };
 
 /**
@@ -48,6 +49,7 @@ enum counter_kind : std::int32_t {
         case kind::updated: return "updated"sv;
         case kind::merged: return "merged"sv;
         case kind::deleted: return "deleted"sv;
+        case kind::fetched: return "fetched"sv;
     }
     std::abort();
 }

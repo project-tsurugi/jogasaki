@@ -40,11 +40,16 @@ std::size_t result_store_channel_writer::index() const noexcept {
 }
 
 void result_store_channel_writer::release() {
-    //no-op
+    parent_->statistics().add_total_record(write_count());
 }
 
 void result_store_channel_writer::flush() {
     // no-op
+}
+
+std::size_t result_store_channel_writer::write_count() const noexcept {
+    auto& st = parent_->store().partition(index_);
+    return st.count();
 }
 
 result_store_channel::result_store_channel(maybe_shared_ptr<data::result_store> store) noexcept:
@@ -64,6 +69,10 @@ data::result_store& result_store_channel::store() {
 status result_store_channel::meta(maybe_shared_ptr<meta::external_record_meta> m) {
     store_->initialize(m->origin());
     return status::ok;
+}
+
+executor::io::record_channel_stats& result_store_channel::statistics() {
+    return stats_;
 }
 
 }

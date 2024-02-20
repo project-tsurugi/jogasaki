@@ -386,6 +386,7 @@ void external_log_stmt_end(
     std::int64_t updated{};
     std::int64_t deleted{};
     std::int64_t merged{};
+    std::int64_t fetched{};
     if(rctx.stats()) {
         if(auto cnt = rctx.stats()->counter(counter_kind::inserted).count(); cnt.has_value()) {
             inserted = cnt.value();
@@ -399,6 +400,9 @@ void external_log_stmt_end(
         if(auto cnt = rctx.stats()->counter(counter_kind::merged).count(); cnt.has_value()) {
             merged = cnt.value();
         }
+        if(auto cnt = rctx.stats()->counter(counter_kind::fetched).count(); cnt.has_value()) {
+            fetched = cnt.value();
+        }
     }
     external_log::stmt_end(
         req_info,
@@ -410,7 +414,7 @@ void external_log_stmt_end(
         "",  // TODO stringify parameters
         result,
         state_code,
-        0, //TODO fetched
+        fetched,
         inserted,
         updated,
         deleted,
@@ -478,6 +482,10 @@ bool execute_async_on_context(
         job->callback([statement, on_completion, rctx, job, req_info](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
+            if(rctx->record_channel()) {
+                auto fetched = static_cast<std::int64_t>(rctx->record_channel()->statistics().total_record_count());
+                rctx->stats()->counter(counter_kind::fetched).count(fetched);
+            }
             external_log_stmt_end(*rctx, req_info, statement);
             on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
         });

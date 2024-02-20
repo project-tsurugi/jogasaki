@@ -67,6 +67,12 @@ private:
     std::unique_ptr<data::small_record_store> store_{};
 };
 
-}
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+std::ostream& operator<<(std::ostream& out, variable_table const& value);
 
-
+}  // namespace jogasaki::executor::process::impl

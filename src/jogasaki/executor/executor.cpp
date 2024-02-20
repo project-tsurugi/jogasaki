@@ -378,7 +378,8 @@ void external_log_stmt_end(
     auto const& job = rctx.job();
     auto jobid = job->id();
     auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
-    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();  //NOLINT
+
+    auto& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body();  //NOLINT
     auto result = utils::result_from(rctx.status_code());
     auto state_code =
         rctx.error_info() ? "SQL-" + std::to_string(static_cast<std::int64_t>(rctx.error_info()->code())) : "";
@@ -404,14 +405,18 @@ void external_log_stmt_end(
             fetched = cnt.value();
         }
     }
+    std::string params{};
+    if(stmt->host_variables()) {
+        params = string_builder{} << *stmt->host_variables() << string_builder::to_string;
+    }
     external_log::stmt_end(
         req_info,
         "",
         tx_id,
         tx_type,
         jobidstr,
-        stmt,
-        "",  // TODO stringify parameters
+        stmt->sql_text(),
+        params,
         result,
         state_code,
         fetched,

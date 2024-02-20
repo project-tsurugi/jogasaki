@@ -15,6 +15,8 @@
  */
 #include "variable_table.h"
 
+#include <jogasaki/accessor/record_printer.h>
+
 namespace jogasaki::executor::process::impl {
 
 variable_table::variable_table(
@@ -38,6 +40,27 @@ variable_table_info const& variable_table::info() const noexcept {
 
 variable_table::operator bool() const noexcept {
     return info_ != nullptr;
+}
+
+std::ostream& operator<<(std::ostream& out, variable_table const& value) {
+    auto rec = value.store().ref();
+    auto meta = value.meta();
+    bool is_first = true;
+    for(auto b = value.info().name_list_begin(), e = value.info().name_list_end(); b != e; ++b) {
+        if(! is_first) {
+            out << " ";
+        }
+        is_first = false;
+        auto& name = b->first;
+        auto& vinfo = b->second;
+        out << name << ":";
+        if(rec.is_null(vinfo.nullity_offset())) {
+            out << "<null>";
+            continue;
+        }
+        accessor::print_field(out, rec, meta->at(vinfo.index()), vinfo.value_offset());
+    }
+    return out;
 }
 
 }

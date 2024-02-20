@@ -207,6 +207,8 @@ public:
 
     [[nodiscard]] bool all_released() const noexcept;
 
+    [[nodiscard]] bool check_cancel() const override;
+
     std::string body_{};  //NOLINT
     std::string body_head_{};  //NOLINT
     std::shared_ptr<test_channel> channel_{};  //NOLINT

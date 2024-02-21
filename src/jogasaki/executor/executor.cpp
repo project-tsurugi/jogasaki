@@ -381,8 +381,13 @@ void external_log_stmt_end(
 
     auto& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body();  //NOLINT
     auto result = utils::result_from(rctx.status_code());
-    auto state_code =
-        rctx.error_info() ? "SQL-" + std::to_string(static_cast<std::int64_t>(rctx.error_info()->code())) : "";
+
+    std::string state_code{};
+    if(rctx.error_info()) {
+        state_code = string_builder{} << "SQL-" << std::setw(5) << std::setfill('0')
+                                     << static_cast<std::int64_t>(rctx.error_info()->code())
+                                     << string_builder::to_string;
+    }
     std::int64_t inserted{};
     std::int64_t updated{};
     std::int64_t deleted{};

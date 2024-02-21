@@ -418,10 +418,13 @@ inline void success<sql::response::ExecuteResult>(
     er.set_allocated_success(&s);
     r.set_allocated_execute_result(&er);
     stats->each_counter([&](auto&& kind, auto&& counter){
-        if(counter.count().has_value()) {
-            auto* c = s.add_counters();
-            c->set_type(from(kind));
-            c->set_value(*counter.count());
+        auto knd = from(kind);
+        if(knd != sql::response::ExecuteResult::COUNTER_TYPE_UNSPECIFIED) {
+            if(counter.count().has_value()) {
+                auto* c = s.add_counters();
+                c->set_type(knd);
+                c->set_value(*counter.count());
+            }
         }
     });
     reply(res, r, req_info);

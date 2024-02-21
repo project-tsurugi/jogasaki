@@ -167,6 +167,20 @@ public:
     [[nodiscard]] bool exists(std::string_view name) const;
 
     /**
+     * @brief returns begin iterator for the non-named variables
+     */
+    [[nodiscard]] auto variable_list_begin() const noexcept {
+        return map_.begin();
+    }
+
+    /**
+     * @brief returns end iterator for the non-named variables
+     */
+    [[nodiscard]] auto variable_list_end() const noexcept {
+        return map_.end();
+    }
+
+    /**
      * @brief returns begin iterator for the named variables
      */
     [[nodiscard]] auto name_list_begin() const noexcept {
@@ -178,6 +192,34 @@ public:
      */
     [[nodiscard]] auto name_list_end() const noexcept {
         return named_map_.end();
+    }
+
+    /**
+     * @brief returns size for the named variables
+     */
+    [[nodiscard]] std::size_t name_list_size() const noexcept {
+        return named_map_.size();
+    }
+
+    /**
+     * @brief returns whether the named variables is empty or not
+     */
+    [[nodiscard]] bool name_list_empty() const noexcept {
+        return named_map_.empty();
+    }
+
+    /**
+     * @brief returns size for the non-named variables
+     */
+    [[nodiscard]] std::size_t variable_list_size() const noexcept {
+        return map_.size();
+    }
+
+    /**
+     * @brief returns whether the non-named variables is empty or not
+     */
+    [[nodiscard]] bool variable_list_empty() const noexcept {
+        return map_.empty();
     }
 
     /**

@@ -42,23 +42,38 @@ variable_table::operator bool() const noexcept {
     return info_ != nullptr;
 }
 
+void print(
+    std::ostream& out,
+    bool& is_first,
+    std::string_view name,
+    accessor::record_ref rec,
+    meta::record_meta const& meta,
+    value_info const& vinfo
+) {
+    if(! is_first) { out << " "; }
+    is_first = false;
+    out << name << ":";
+    if(rec.is_null(vinfo.nullity_offset())) {
+        out << "<null>";
+        return;
+    }
+    accessor::print_field(out, rec, meta.at(vinfo.index()), vinfo.value_offset());
+}
 std::ostream& operator<<(std::ostream& out, variable_table const& value) {
     auto rec = value.store().ref();
-    auto meta = value.meta();
+    auto& meta = value.meta();
     bool is_first = true;
-    for(auto b = value.info().name_list_begin(), e = value.info().name_list_end(); b != e; ++b) {
-        if(! is_first) {
-            out << " ";
+    if(value.info().name_list_empty()) {
+        // no name for field, so use "#0", "#1", ... for field name
+        auto cnt = 0;
+        for(auto b = value.info().variable_list_begin(), e = value.info().variable_list_end(); b != e; ++b) {
+            print(out, is_first, "#"+std::to_string(cnt), rec, *meta, b->second);
+            ++cnt;
         }
-        is_first = false;
-        auto& name = b->first;
-        auto& vinfo = b->second;
-        out << name << ":";
-        if(rec.is_null(vinfo.nullity_offset())) {
-            out << "<null>";
-            continue;
+    } else {
+        for(auto b = value.info().name_list_begin(), e = value.info().name_list_end(); b != e; ++b) {
+            print(out, is_first, b->first, rec, *meta, b->second);
         }
-        accessor::print_field(out, rec, meta->at(vinfo.index()), vinfo.value_offset());
     }
     return out;
 }

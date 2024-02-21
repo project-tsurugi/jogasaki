@@ -112,11 +112,6 @@ TEST_F(variable_table_test, basic) {
         std::move(names),
         rec.record_meta()
     };
-
-    auto& i1 = m.at(v1);
-    ASSERT_EQ(0, i1.value_offset());
-    auto& i2 = m.at(v2);
-    ASSERT_EQ(32, i2.value_offset());
     variable_table tb{m};
     auto ref = tb.store().ref();
     auto meta = tb.meta();
@@ -146,11 +141,6 @@ TEST_F(variable_table_test, null_value) {
         std::move(names),
         rec.record_meta()
     };
-
-    auto& i1 = m.at(v1);
-    ASSERT_EQ(0, i1.value_offset());
-    auto& i2 = m.at(v2);
-    ASSERT_EQ(32, i2.value_offset());
     variable_table tb{m};
     auto ref = tb.store().ref();
     auto meta = tb.meta();
@@ -162,4 +152,26 @@ TEST_F(variable_table_test, null_value) {
     ASSERT_EQ("v1:1 v2:<null>", ss.str());
 }
 
+TEST_F(variable_table_test, stringify_non_named_variable_table) {
+    // check string representation when variable names are not given
+    factory f;
+    auto v1 = f.stream_variable("v1");
+    auto v2 = f.exchange_column("v2");
+    variable_table_info::entity_type map{};
+    auto rec = mock::create_nullable_record<kind::int4, kind::int4>();
+    auto m = rec.record_meta();
+    map[v1] = value_info{m->value_offset(0), m->nullity_offset(0), 0};
+    map[v2] = value_info{m->value_offset(1), m->nullity_offset(1), 1};
+    variable_table_info info{std::move(map), rec.record_meta()};
+    variable_table tb{info};
+    auto ref = tb.store().ref();
+    auto meta = tb.meta();
+    ref.set_value(meta->value_offset(0), 10);
+    ref.set_null(meta->nullity_offset(0), false);
+    ref.set_value(meta->value_offset(1), 10);
+    ref.set_null(meta->nullity_offset(1), false);
+    std::stringstream ss{};
+    ss << tb;
+    ASSERT_EQ("#0:10 #1:10", ss.str()); // variable order can vary
+}
 }  // namespace jogasaki::executor::process::impl

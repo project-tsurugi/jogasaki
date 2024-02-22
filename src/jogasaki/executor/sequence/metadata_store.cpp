@@ -118,10 +118,14 @@ void metadata_store::scan(metadata_store::scan_consumer_type const& consumer) {
         res != status::ok || !it) {
         throw_exception(exception{res, "scan failed"});
     }
-    while(status::ok == it->next()) {
+    status res{};
+    while(status::ok == (res = it->next())) {
         auto [def_id, seq_id, found] = read_entry(it, *tx_);
         if (! found) continue;
         consumer(def_id, seq_id);
+    }
+    if(res != status::not_found) {
+        throw_exception(exception{res, "scan next failed"});
     }
 }
 

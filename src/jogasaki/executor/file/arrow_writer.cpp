@@ -84,30 +84,28 @@ std::shared_ptr<arrow::ArrayBuilder> create_array_builder(
     std::abort();
 }
 
-bool check_status(std::function<::arrow::Status()> const& fn) {
-    auto st = fn();
-    auto ret = st.ok();
-    if(! ret) {
-        VLOG_LP(log_error) << "Arrow writer error: " << st;
-    }
-    return ret;
-}
-
+/**
+ * @throw std::domain_error if arrow returns error
+*/
 void arrow_writer::finish() {
     arrays_.clear();
     arrays_.reserve(meta_->field_count());
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
         auto& e = arrays_.emplace_back();
-        check_status([&](){
-            ARROW_RETURN_NOT_OK(array_builders_[i]->Finish(&e));
-            return arrow::Status::OK();
-        });
+        auto st = array_builders_[i]->Finish(&e);
+        if(! st.ok()) {
+            throw_exception(std::domain_error{
+                string_builder{} << "finishing Arrow file failed with error: " << st << string_builder::to_string
+            });
+        }
     }
     std::shared_ptr<arrow::Table> table = arrow::Table::Make(schema_, arrays_);
-    check_status([&]() {
-        ARROW_RETURN_NOT_OK(record_batch_writer_->WriteTable(*table));
-        return arrow::Status::OK();
-    });
+    auto st = record_batch_writer_->WriteTable(*table);
+    if(! st.ok()) {
+        throw_exception(std::domain_error{
+            string_builder{} << "writing Arrow table failed with error: " << st << string_builder::to_string
+        });
+    }
 }
 
 void arrow_writer::new_row_group() {
@@ -214,19 +212,33 @@ std::size_t arrow_writer::row_group_max_records() const noexcept {
 bool arrow_writer::init(std::string_view path) {
     try {
         path_ = std::string{path};
-        check_status([&]() {
-            ARROW_ASSIGN_OR_RAISE(fs_ , ::arrow::io::FileOutputStream::Open(path_.string()));
-            return ::arrow::Status::OK();
-        });
+        {
+            auto res = ::arrow::io::FileOutputStream::Open(path_.string());
+            if(! res.ok()) {
+                throw_exception(std::domain_error{
+                    string_builder{} << "opening Arrow file failed with error: " << res.status()
+                                     << string_builder::to_string
+                });
+            }
+            fs_ = res.ValueUnsafe();
+        }
         auto [schema, colopts] = create_schema();
         schema_ = schema;
         column_options_ = std::move(colopts);
 
         auto options = create_options(option_);
-        check_status([&]() {
-            ARROW_ASSIGN_OR_RAISE(record_batch_writer_, ::arrow::ipc::MakeFileWriter(fs_, schema_, options));
-            return ::arrow::Status::OK();
-        });
+
+        {
+            auto res = ::arrow::ipc::MakeFileWriter(fs_, schema_, options);
+            if(! res.ok()) {
+                throw_exception(std::domain_error{
+                    string_builder{} << "creating Arrow file writer failed with error: " << res.status()
+                                     << string_builder::to_string
+                });
+            }
+            record_batch_writer_ = res.ValueUnsafe();
+        }
+
         calculate_batch_size();
         new_row_group();
     } catch (std::exception const& e) {

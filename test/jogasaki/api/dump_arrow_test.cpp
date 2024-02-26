@@ -264,4 +264,15 @@ TEST_F(dump_arrow_test, many_types) {
     test_dump("select * from T");
 }
 
+TEST_F(dump_arrow_test, bad_path) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    test_dump("select * from T0", "/dummy_directory_name", -1, false, status::err_io_error);
+}
+
+TEST_F(dump_arrow_test, dump_error) {
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 0.0)");
+    test_dump("select 20/C1 from T0", path(), -1, false, status::err_expression_evaluation_failure);
+}
+
 }  // namespace jogasaki::api

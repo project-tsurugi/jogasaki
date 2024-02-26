@@ -166,6 +166,7 @@ public:
 
     /**
      * @brief close current row group and move to new one
+     * @throws std::domain_error when arrow returns any error
      */
     void new_row_group() override;
 

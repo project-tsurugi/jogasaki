@@ -30,6 +30,7 @@
 #include <arrow/util/decimal.h>
 #include <glog/logging.h>
 
+#include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
@@ -44,6 +45,7 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
+using takatori::util::throw_exception;
 
 template <class T, arrow::Type::type Typeid>
 void validate_ctype() {
@@ -442,15 +444,6 @@ static void dump_file_metadata(arrow::ipc::RecordBatchFileReader& reader) {
     VLOG_LP(log_debug) << "*** end dump metadata for arrow file ***";
 }
 
-static bool check_status(std::function<::arrow::Status()> const& fn) {
-    auto st = fn();
-    auto ret = st.ok();
-    if(! ret) {
-        VLOG_LP(log_error) << "Arrow reader error: " << st;
-    }
-    return ret;
-}
-
 bool arrow_reader::init(
     std::string_view path,
     reader_option const* opt,
@@ -458,14 +451,24 @@ bool arrow_reader::init(
 ) {
     try {
         path_ = std::string{path};
-        check_status([&]() {
-            ARROW_ASSIGN_OR_RAISE(input_file_, arrow::io::ReadableFile::Open(path_.string(), arrow::default_memory_pool()));
-            return arrow::Status::OK();
-        });
-        check_status([&]() {
-            ARROW_ASSIGN_OR_RAISE(file_reader_, arrow::ipc::RecordBatchFileReader::Open(input_file_));
-            return arrow::Status::OK();
-        });
+        {
+            auto res = arrow::io::ReadableFile::Open(path_.string(), arrow::default_memory_pool());
+            if(! res.ok()) {
+                throw_exception(std::domain_error{
+                    string_builder{} << "opening Arrow file failed with error: " << res.status() << string_builder::to_string
+                });
+            }
+            input_file_ = res.ValueUnsafe();
+        }
+        {
+            auto res = arrow::ipc::RecordBatchFileReader::Open(input_file_);
+            if(! res.ok()) {
+                throw_exception(std::domain_error{
+                    string_builder{} << "opening Arrow file reader failed with error: " << res.status() << string_builder::to_string
+                });
+            }
+            file_reader_ = res.ValueUnsafe();
+        }
 
         dump_file_metadata(*file_reader_);
         row_group_count_ = file_reader_->num_record_batches();
@@ -502,10 +505,16 @@ bool arrow_reader::init(
         buf_ = data::aligned_buffer{parameter_meta_->record_size(), parameter_meta_->record_alignment()};
         buf_.resize(parameter_meta_->record_size());
 
-        check_status([&]() {
-            ARROW_ASSIGN_OR_RAISE(record_batch_, file_reader_->ReadRecordBatch(row_group_index_));
-            return arrow::Status::OK();
-        });
+        {
+            auto res = file_reader_->ReadRecordBatch(static_cast<int>(row_group_index_));
+            if(! res.ok()) {
+                throw_exception(std::domain_error{
+                    string_builder{} << "reading from Arrow file reader failed with error: " << res.status()
+                                     << string_builder::to_string
+                });
+            }
+            record_batch_ = res.ValueUnsafe();
+        }
     } catch (std::exception const& e) {
         VLOG_LP(log_error) << "Arrow reader init error: " << e.what();
         return false;

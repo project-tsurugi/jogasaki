@@ -110,10 +110,6 @@ void test_response::session_id(std::size_t id) {
     session_id_ = id;
 }
 
-bool test_response::check_cancel() const {
-    return false;
-}
-
 bool test_channel::all_released() const noexcept {
     return buffers_.size() == released_;
 }

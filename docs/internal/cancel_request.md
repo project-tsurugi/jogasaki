@@ -41,21 +41,23 @@ service.cppのレイヤでこのコードをdiagnosticsコード(OPERATION_CANCE
     - condition taskの条件確認時にcheck_cancel()も一緒に確認する
     - wait開始以前にエラーを戻すパスが追加になる
     - キャンセル対象： LTX/RTXに対するトランザクション開始の要求
+- precommitに関するもの
+    - トランザクションエンジンへのprecommit要求を行った後、コールバック前の状態でもjogasakiレベルでキャンセルを可能にする
+    - トランザクションエンジンがコールバックを呼び出せる状態を維持しつつ、`request`と`response`に関連するリソースを破棄する
+    - precommit結果は無視するのでキャンセル後のトランザクション状態は不定
+    - キャンセル対象： precommit完了前のコミットリクエスト
 - durable waitに関するもの
-    - precommitは中断できないが、durable waitは中断できる
     - precommit後にdurable waitしているトランザクションをキャンセルする
         - commitリクエストを紐づけて、durability managerにキャンセルを指示する
+    - キャンセル対象： precommit完了後、永続化前のコミットリクエスト
 
 ### キャンセル対象外の処理
 
 現状では下記の処理に対してはキャンセルが実装されておらず、キャンセル要求を行っても `OPERATION_CANCELED` が戻ることはない
 
-- precommit
-  - トランザクションエンジンへprecommit要求を投げて戻るまでは処理ができないのでキャンセルできない
-
 - insert
-  - VALUES句を持つinsertは単独のwriteタスクになるが、スケジューラーへ投入後にこれを捕捉する手段が現時点ではないのでキャンセルできない
-  - insert - selectについてはselect部分がキャンセル可能になる
+  - VALUES句を持つinsert(でサブクエリが使われていないもの)は単独のwriteタスクになるが、スケジューラーへ投入後にこれを捕捉する手段が現時点ではないのでキャンセルできない
+  - insert-selectやサブクエリを含むinsert処理についてはselect部分がキャンセル可能になる
 
 - explain, DDL
   - リクエストスレッドで迅速に処理が完了するのでキャンセルを実装していない

@@ -358,8 +358,12 @@ void external_log_stmt_start(
     auto const& job = rctx.job();
     auto jobid = job->id();
     auto jobidstr = string_builder{} << utils::hex(jobid) << string_builder::to_string;
-    auto stmt = static_cast<api::impl::executable_statement*>(statement.get())->body()->sql_text();  //NOLINT
-    external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt, "");  // TODO stringify parameters
+    auto& stmt = static_cast<api::impl::executable_statement*>(statement.get())->body();  //NOLINT
+    std::string params{};
+    if(stmt->host_variables()) {
+        params = string_builder{} << *stmt->host_variables() << string_builder::to_string;
+    }
+    external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt->sql_text(), params);
 #endif
 }
 

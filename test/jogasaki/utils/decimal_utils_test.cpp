@@ -119,11 +119,46 @@ TEST_F(decimal_utils_test, negative_min_represented_by_8_bytes) {
     EXPECT_EQ(8, sz);
 }
 
-TEST_F(decimal_utils_test, negative_max_represented_by_8_bytes_minus_one) {
+TEST_F(decimal_utils_test, negative_min_represented_by_8_bytes_minus_one) {
     auto [hi, lo, sz] = utils::make_signed_coefficient_full({-1, 0, 0x8000000000000001UL, 0});
     EXPECT_EQ(0xFFFFFFFFFFFFFFFFUL, hi);
     EXPECT_EQ(0x7FFFFFFFFFFFFFFFUL, lo);
     EXPECT_EQ(9, sz);
+}
+
+TEST_F(decimal_utils_test, positive_max_representable_by_9_bytes) {
+    auto [hi, lo, sz] = utils::make_signed_coefficient_full({1, 0x7FUL, 0xFFFFFFFFFFFFFFFFUL, 0});
+    EXPECT_EQ(0x000000000000007FUL, hi);
+    EXPECT_EQ(0xFFFFFFFFFFFFFFFFUL, lo);
+    EXPECT_EQ(9, sz);
+}
+
+TEST_F(decimal_utils_test, positive_max_representable_by_9_bytes_negated) {
+    auto [hi, lo, sz] = utils::make_signed_coefficient_full({-1, 0x7FUL, 0xFFFFFFFFFFFFFFFFUL, 0});
+    EXPECT_EQ(0xFFFFFFFFFFFFFF80UL, hi);
+    EXPECT_EQ(0x0000000000000001UL, lo);
+    EXPECT_EQ(9, sz);
+}
+
+TEST_F(decimal_utils_test, positive_max_representable_by_9_bytes_plus_one) {
+    auto [hi, lo, sz] = utils::make_signed_coefficient_full({1, 0x80UL, 0x0000000000000000UL, 0});
+    EXPECT_EQ(0x0000000000000080UL, hi);
+    EXPECT_EQ(0x0000000000000000UL, lo);
+    EXPECT_EQ(10, sz);
+}
+
+TEST_F(decimal_utils_test, negative_min_represented_by_9_bytes) {
+    auto [hi, lo, sz] = utils::make_signed_coefficient_full({-1, 0x80UL, 0x0000000000000000UL, 0});
+    EXPECT_EQ(0xFFFFFFFFFFFFFF80UL, hi);
+    EXPECT_EQ(0x0000000000000000UL, lo);
+    EXPECT_EQ(9, sz);
+}
+
+TEST_F(decimal_utils_test, negative_min_represented_by_9_bytes_minus_one) {
+    auto [hi, lo, sz] = utils::make_signed_coefficient_full({-1, 0x80UL, 0x0000000000000001UL, 0});
+    EXPECT_EQ(0xFFFFFFFFFFFFFF7FUL, hi);
+    EXPECT_EQ(0xFFFFFFFFFFFFFFFFUL, lo);
+    EXPECT_EQ(10, sz);
 }
 
 TEST_F(decimal_utils_test, positive_max_representable_by_16_bytes) {
@@ -154,7 +189,7 @@ TEST_F(decimal_utils_test, negative_min_represented_by_16_bytes) {
     EXPECT_EQ(16, sz);
 }
 
-TEST_F(decimal_utils_test, negative_max_represented_by_16_bytes_minus_one) {
+TEST_F(decimal_utils_test, negative_min_represented_by_16_bytes_minus_one) {
     auto [hi, lo, sz] = utils::make_signed_coefficient_full({-1, 0x8000000000000000UL, 0x0000000000000001UL, 0});
     EXPECT_EQ(0x7FFFFFFFFFFFFFFFUL, hi);
     EXPECT_EQ(0xFFFFFFFFFFFFFFFFUL, lo);

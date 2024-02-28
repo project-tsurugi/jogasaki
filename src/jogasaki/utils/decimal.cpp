@@ -26,11 +26,18 @@ namespace jogasaki::utils {
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-std::pair<std::size_t, bool> most_significant_non_zero_offset(std::uint64_t v, std::uint64_t zero) {
+/**
+ * @brief find the most significant non-zero byte offset in the 64-bit value
+ * @param v the source value to check
+ * @param zero what should be treated as "zero" byte, specify 0x00UL (for positive value) or 0xFFUL (for negative value)
+ * @return the byte offset (ranging from 0 to 7) of the most significant non-zero byte in `v`
+ * and the flag to indicate if the most significant bit is "non-zero"
+ */
+std::pair<std::size_t, bool> most_significant_non_zero_byte_offset(std::uint64_t v, std::uint64_t zero) {
     for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
         std::uint64_t octet = (v >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
         if (octet != zero) {
-            if ((octet & 0x80U) != 0) {
+            if ((octet & 0x80U) != (zero & 0x80U)) {
                 return {offset, true};
             }
             return {offset, false};
@@ -44,21 +51,21 @@ std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_fu
     std::uint64_t c_lo = value.coefficient_low();
 
     if (value.sign() >= 0) {
-        if(auto [offset, expanded] = most_significant_non_zero_offset(c_hi, 0); offset != npos) {
+        if(auto [offset, msb] = most_significant_non_zero_byte_offset(c_hi, 0); offset != npos) {
             std::size_t size { sizeof(std::uint64_t) * 2 - offset };
-            if(expanded) {
+            if(msb) {
                 ++size;
             }
             return { c_hi, c_lo, size };
         }
-        if(auto [offset, expanded] = most_significant_non_zero_offset(c_lo, 0); offset != npos) {
+        if(auto [offset, msb] = most_significant_non_zero_byte_offset(c_lo, 0); offset != npos) {
             std::size_t size { sizeof(std::uint64_t) - offset };
-            if(expanded) {
+            if(msb) {
                 ++size;
             }
             return { c_hi, c_lo, size };
         }
-        // all values zero
+        // all bits unset (i.e. zero)
         return { c_hi, c_lo, 1 };
     }
 
@@ -72,20 +79,21 @@ std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_fu
         }
     }
 
-    if(auto [offset, expanded] = most_significant_non_zero_offset(c_hi, 0xffU); offset != npos) {
+    if(auto [offset, msb] = most_significant_non_zero_byte_offset(c_hi, 0xffU); offset != npos) {
         std::size_t size { sizeof(std::uint64_t) * 2 - offset };
-        if(expanded) {
+        if(msb) {
             ++size;
         }
         return { c_hi, c_lo, size };
     }
-    if(auto [offset, expanded] = most_significant_non_zero_offset(c_lo, 0xffU); offset != npos) {
+    if(auto [offset, msb] = most_significant_non_zero_byte_offset(c_lo, 0xffU); offset != npos) {
         std::size_t size { sizeof(std::uint64_t) - offset };
-        if(expanded) {
+        if(msb) {
             ++size;
         }
         return { c_hi, c_lo, size };
     }
+    // all bits set (i.e. -1)
     return { c_hi, c_lo, 1 };
 }
 

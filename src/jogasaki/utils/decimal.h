@@ -25,15 +25,21 @@
 namespace jogasaki::utils {
 
 /**
- * @brief create signed coefficient from triple that has unsigned components
+ * @brief create signed coefficient from triple
  * @param value source triple
  * @return `hi`, `lo` and `sz` return values:
  * hi - more significant 64-bit
- * lo - less significant 64 bit
+ * lo - less significant 64-bit
  * sz - min size in bytes to represent the signed coefficient. The `sz` bytes from the least significant byte in
  * result 128-bit (concatenated `hi` with `lo`) represents the result. For valid input, `sz` ranges from 1 to 17.
  * The `sz` being 17 is the special case where most significant byte (not part of `hi` or `lo`) is 0x00 or 0xFF
  * to represent only sign.
+ * @note even when `sz` is less than 16 or 8, bytes outside `sz` length (in concatednated `hi` and `lo`) is valid and
+ * `lo` or concatenated `hi` and `lo` can be used to represent the signed 64-bit or 128-bit coefficient.
+ * @note if `sz` is 17, the most significant byte is not provided by `hi` and `lo`. Caller should check the sign of
+ * input `value` to determine the most significant byte.
+ * @note this function is partly borrowed from original in value_output.cpp, and extended to support
+ * decimal values whose coeffient is smaller than 64-bit.
  */
 std::tuple<std::uint64_t, std::uint64_t, std::size_t> make_signed_coefficient_full(takatori::decimal::triple value);
 

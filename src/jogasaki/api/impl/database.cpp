@@ -58,6 +58,7 @@
 #include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/utils/storage_metadata_exception.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/external_log_utils.h>
@@ -944,17 +945,6 @@ status database::initialize_from_providers() {
             return status::err_io_error;
         }
     }
-    return status::ok;
-}
-
-status database::recover_table(proto::metadata::storage::IndexDefinition const& idef) {
-    utils::storage_metadata_serializer ser{};
-
-    auto deserialized = std::make_shared<yugawara::storage::configurable_provider>();
-    if(! ser.deserialize(idef, *tables_, *deserialized)) {
-        return status::err_inconsistent_index;
-    }
-
     return status::ok;
 }
 

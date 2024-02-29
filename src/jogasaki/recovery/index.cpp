@@ -24,6 +24,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/storage_metadata_exception.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
@@ -37,8 +38,11 @@ bool deserialize_into_provider(
 ) {
     utils::storage_metadata_serializer ser{};
     auto deserialized = std::make_shared<yugawara::storage::configurable_provider>();
-    if(! ser.deserialize(idef, src, target, overwrite)) {
-        VLOG_LP(log_error) << "deserialization error";
+    try {
+        ser.deserialize(idef, src, target, overwrite);
+    } catch(utils::storage_metadata_exception const& e) {
+        // FIXME create error info
+        VLOG_LP(log_error) << "deserialization error:" << e.what();
         return false;
     }
     return true;
@@ -51,8 +55,11 @@ bool serialize_index(
 ) {
     idef = {};
     utils::storage_metadata_serializer ser{};
-    if(! ser.serialize(i, idef, option)) {
-        VLOG_LP(log_error) << "serialization error";
+    try {
+        ser.serialize(i, idef, option);
+    } catch (utils::storage_metadata_exception const& e) {
+        // FIXME create error info
+        VLOG_LP(log_error) << "serialization error: " << e.what();
         return false;
     }
     return true;

@@ -63,20 +63,18 @@ public:
      * @param idx the primary index
      * @param out [out] to be filled with result serialized string
      * @details the index, base table and dependant sequences (if any) are serialized and stored in the output string
-     * @return true when successful
-     * @return false otherwise
+     * @throws storage_metadadata_exception to report errors
      */
-    bool serialize(yugawara::storage::index const& idx, std::string& out, metadata_serializer_option const& option = {});
+    void serialize(yugawara::storage::index const& idx, std::string& out, metadata_serializer_option const& option = {});
 
     /**
      * @brief serialize index as jogasaki::proto::metadata::storage::IndexDefinition
      * @param idx the primary index
      * @param idef [out] to be filled with result serialized object
      * @details the index, base table and dependant sequences (if any) are serialized and stored in the output string
-     * @return true when successful
-     * @return false otherwise
+     * @throws storage_metadadata_exception to report errors
      */
-    bool serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef, metadata_serializer_option const& option = {});
+    void serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef, metadata_serializer_option const& option = {});
 
     /**
      * @brief deserialize protobuf msg for index
@@ -85,10 +83,9 @@ public:
      * contain the base table definition.
      * @param out [out] to be filled with result objects (index, table, sequence, etc.)
      * @param overwrite whether overwrite existing entries in `out`
-     * @return true when successful
-     * @return false otherwise
+     * @throws storage_metadadata_exception to report errors
      */
-    bool deserialize(
+    void deserialize(
         std::string_view src,
         yugawara::storage::configurable_provider const& in,
         yugawara::storage::configurable_provider& out,
@@ -102,10 +99,9 @@ public:
      * contain the base table definition.
      * @param out [out] to be filled with result objects (index, table, sequence, etc.)
      * @param overwrite whether overwrite existing entries in `out`
-     * @return true when successful
-     * @return false otherwise
+     * @throws storage_metadadata_exception to report errors
      */
-    bool deserialize(
+    void deserialize(
         proto::metadata::storage::IndexDefinition const& idef,
         yugawara::storage::configurable_provider const& in,
         yugawara::storage::configurable_provider& out,

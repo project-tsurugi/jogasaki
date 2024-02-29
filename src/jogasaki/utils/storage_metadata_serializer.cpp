@@ -17,7 +17,8 @@
 
 #include <initializer_list>
 
-#include <takatori/util/fail.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
 #include <takatori/type/boolean.h>
 #include <takatori/type/int.h>
 #include <takatori/type/float.h>
@@ -50,12 +51,14 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/utils/storage_metadata_exception.h>
 
 #include <jogasaki/proto/metadata/storage.pb.h>
 
 namespace jogasaki::utils {
 
-using takatori::util::fail;
+using takatori::util::throw_exception;
+using takatori::util::string_builder;
 
 storage_metadata_serializer::storage_metadata_serializer() noexcept = default;
 
@@ -83,7 +86,7 @@ proto::metadata::common::AtomType from(takatori::type::data const& t) {
         case k::unknown: return AtomType::UNKNOWN;
         default: return AtomType::TYPE_UNSPECIFIED;
     }
-    fail();
+    std::abort();
 }
 
 void set_column_features(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
@@ -168,6 +171,14 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
                 case k::float4: col->set_float4_value(static_cast<takatori::value::float4 const&>(*value).get()); break; //NOLINT
                 case k::float8: col->set_float8_value(static_cast<takatori::value::float8 const&>(*value).get()); break; //NOLINT
                 case k::decimal: {
+                    auto kind = value->kind();
+                    if(kind != takatori::value::value_kind::decimal) {
+                        throw_exception(storage_metadata_exception{
+                            status::err_unsupported,
+                            error_code::unsupported_runtime_feature_exception,
+                            string_builder{} << "default value provided for column \"" << col->name() << "\" has invalid type:" << kind << string_builder::to_string
+                        });
+                    }
                     auto p = static_cast<takatori::value::decimal const&>(*value).get();  //NOLINT
                     utils::decimal_buffer out{};
                     auto [hi, lo, sz] = utils::make_signed_coefficient_full(p);
@@ -228,7 +239,7 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
     }
 }
 
-bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage::TableDefinition& tbl) {
+void serialize_table(yugawara::storage::table const& t, proto::metadata::storage::TableDefinition& tbl) {
     if(t.definition_id().has_value()) {
         tbl.set_definition_id(*t.definition_id());
     }
@@ -242,7 +253,6 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         set_default(col, c);
         set_column_features(col, c);
     }
-    return true;
 }
 
 ::jogasaki::proto::metadata::storage::Direction from(yugawara::storage::sort_direction direction) {
@@ -250,7 +260,7 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         case takatori::relation::sort_direction::ascendant: return ::jogasaki::proto::metadata::storage::Direction::ASCEND;
         case takatori::relation::sort_direction::descendant: return ::jogasaki::proto::metadata::storage::Direction::DESCEND;
     }
-    fail();
+    std::abort();
 }
 
 ::jogasaki::proto::metadata::storage::IndexFeature from(yugawara::storage::index_feature f) {
@@ -261,10 +271,10 @@ bool serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         case yugawara::storage::index_feature::unique: return ::jogasaki::proto::metadata::storage::IndexFeature::UNIQUE;
         case yugawara::storage::index_feature::unique_constraint: return ::jogasaki::proto::metadata::storage::IndexFeature::UNIQUE_CONSTRAINT;
     }
-    fail();
+    std::abort();
 }
 
-bool serialize_index(
+void serialize_index(
     yugawara::storage::index const& idx,
     proto::metadata::storage::IndexDefinition& idef,
     metadata_serializer_option const& option
@@ -292,12 +302,11 @@ bool serialize_index(
     for(auto&& f : idx.features()) {
         features->Add(from(f));
     }
-    return true;
 }
 
 } // namespace details
 
-bool storage_metadata_serializer::serialize(
+void storage_metadata_serializer::serialize(
     yugawara::storage::index const& idx,
     proto::metadata::storage::IndexDefinition& idef,
     metadata_serializer_option const& option
@@ -306,39 +315,31 @@ bool storage_metadata_serializer::serialize(
     if(is_primary) {
         auto* tdef = idef.mutable_table_definition();
         auto& t = idx.table();
-        if(! details::serialize_table(t, *tdef)) {
-            return false;
-        }
-        if(! details::serialize_index(idx, idef, option)) {
-            return false;
-        }
+        details::serialize_table(t, *tdef);
+        details::serialize_index(idx, idef, option);
     } else {
-        if(! details::serialize_index(idx, idef, option)) {
-            return false;
-        }
+        details::serialize_index(idx, idef, option);
         idef.mutable_table_reference()->mutable_name()->mutable_element_name()->assign(idx.table().simple_name());
     }
-    return true;
 }
 
-bool storage_metadata_serializer::serialize(
+void storage_metadata_serializer::serialize(
     yugawara::storage::index const& idx,
     std::string& out,
     metadata_serializer_option const& option
 ) {
     proto::metadata::storage::IndexDefinition idef{};
-    if(! serialize(idx, idef, option)) {
-        VLOG_LP(log_error) << "serialization failed";
-        return false;
-    }
+    serialize(idx, idef, option);
 
     std::stringstream ss{};
     if (! idef.SerializeToOstream(&ss)) {
-        VLOG_LP(log_error) << "serialization failed";
-        return false;
+        throw_exception(storage_metadata_exception{
+            status::err_unknown,
+            error_code::sql_execution_exception,
+            "serialization failed",
+        });
     }
     out = ss.str();
-    return true;
 }
 
 std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::storage::TableColumn const& column) {
@@ -518,7 +519,7 @@ yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn
 }
 
 // deserialize table and add its depending definitions (base table, and sequence) to the provider
-bool deserialize_table(
+void deserialize_table(
     ::jogasaki::proto::metadata::storage::TableDefinition const& tdef,
     std::shared_ptr<yugawara::storage::table>& out,
     yugawara::storage::configurable_provider& provider,
@@ -533,7 +534,11 @@ bool deserialize_table(
         columns.emplace_back(from(c, provider));
     }
     if(! tdef.has_name()) {
-        return false;
+        throw_exception(storage_metadata_exception{
+            status::err_unknown,
+            error_code::sql_execution_exception,
+            "missing table name in the definition"
+        });
     }
     try {
         out = provider.add_table(std::make_shared<yugawara::storage::table>(
@@ -542,10 +547,12 @@ bool deserialize_table(
             std::move(columns)
         ), overwrite);
     } catch (std::invalid_argument& e) {
-        VLOG_LP(log_error) << "deserialize_table: table already exists";
-        return false;
+        throw_exception(storage_metadata_exception{
+            status::err_unknown,
+            error_code::sql_execution_exception,
+            "deserialize_table: table already exists"
+        });
     }
-    return true;
 }
 
 takatori::relation::sort_direction direction(::jogasaki::proto::metadata::storage::Direction dir) {
@@ -554,7 +561,7 @@ takatori::relation::sort_direction direction(::jogasaki::proto::metadata::storag
         case proto::metadata::storage::DESCEND: return takatori::relation::sort_direction::descendant;
         default: return takatori::relation::sort_direction::ascendant;
     }
-    fail();
+    std::abort();
 }
 
 yugawara::storage::column const* find_column(yugawara::storage::table const& tbl, std::string_view name) {
@@ -581,7 +588,7 @@ yugawara::storage::index_feature_set features(::jogasaki::proto::metadata::stora
     return ret;
 }
 
-bool deserialize_index(
+void deserialize_index(
     ::jogasaki::proto::metadata::storage::IndexDefinition const& idef,
     std::shared_ptr<yugawara::storage::table const> tbl,
     std::shared_ptr<yugawara::storage::index>& out
@@ -595,8 +602,11 @@ bool deserialize_index(
     for(auto&& k : idef.keys()) {
         auto* c = find_column(*tbl, k.name());
         if(c == nullptr) {
-            VLOG_LP(log_error) << "key column '" << k.name() << "' not found in the base table";
-            return false;
+            throw_exception(storage_metadata_exception{
+                status::err_unknown,
+                error_code::sql_execution_exception,
+                string_builder{} << "key column '" << k.name() << "' not found in the base table" << string_builder::to_string
+            });
         }
         keys.emplace_back(*c ,direction(k.direction()));
     }
@@ -605,8 +615,11 @@ bool deserialize_index(
     for(auto&& v : idef.values()) {
         auto* c = find_column(*tbl, v);
         if(c == nullptr) {
-            VLOG_LP(log_error) << "value column '" << v << "' not found in the base table";
-            return false;
+            throw_exception(storage_metadata_exception{
+                status::err_unknown,
+                error_code::sql_execution_exception,
+                string_builder{} << "value column '" << v << "' not found in the base table" << string_builder::to_string
+            });
         }
         values.emplace_back(*c);
     }
@@ -621,10 +634,9 @@ bool deserialize_index(
         std::move(values),
         features(idef)
     );
-    return true;
 }
 
-bool storage_metadata_serializer::deserialize(
+void storage_metadata_serializer::deserialize(
     std::string_view src,
     yugawara::storage::configurable_provider const& in,
     yugawara::storage::configurable_provider& out,
@@ -632,13 +644,16 @@ bool storage_metadata_serializer::deserialize(
 ) {
     proto::metadata::storage::IndexDefinition idef{};
     if (! idef.ParseFromArray(src.data(), static_cast<int>(src.size()))) {
-        VLOG_LP(log_error) << "storage metadata deserialize: parse error";
-        return false;
+        throw_exception(storage_metadata_exception{
+            status::err_unknown,
+            error_code::sql_execution_exception,
+            "storage metadata deserialize: parse error",
+        });
     }
-    return deserialize(idef, in, out, overwrite);
+    deserialize(idef, in, out, overwrite);
 }
 
-bool storage_metadata_serializer::deserialize(
+void storage_metadata_serializer::deserialize(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& in,
     yugawara::storage::configurable_provider& out,
@@ -648,43 +663,50 @@ bool storage_metadata_serializer::deserialize(
         // primary index
         auto& tdef = idef.table_definition();
         std::shared_ptr<yugawara::storage::table> tbl{};
-        if(! deserialize_table(tdef, tbl, out, overwrite)) {
-            return false;
-        }
+        deserialize_table(tdef, tbl, out, overwrite);
         std::shared_ptr<yugawara::storage::index> idx{};
-        if(! deserialize_index(idef, tbl, idx)) {
-            return false;
-        }
+        deserialize_index(idef, tbl, idx);
         try {
             out.add_index(idx, overwrite);
         } catch (std::invalid_argument& e) {
-            VLOG_LP(log_error) << "storage metadata deserialize: index already exists";
-            return false;
+            throw_exception(storage_metadata_exception{
+                status::err_unknown,
+                error_code::sql_execution_exception,
+                "storage metadata deserialize: index already exists",
+            });
         }
-        return true;
+        return;
     }
     // secondary index
     if(! idef.has_table_reference()) {
-        return false;
+        throw_exception(storage_metadata_exception{
+            status::err_unknown,
+            error_code::sql_execution_exception,
+            "missing table reference in the index definition",
+        });
     }
     auto& tabname = idef.table_reference().name().element_name();
     std::shared_ptr<yugawara::storage::table const> t{};
     if(t = out.find_table(tabname); t == nullptr) {
         if(t = in.find_table(idef.table_reference().name().element_name()); t == nullptr) {
-            return false;
+            throw_exception(storage_metadata_exception{
+                status::err_unknown,
+                error_code::sql_execution_exception,
+                "missing table",
+            });
         }
     }
     std::shared_ptr<yugawara::storage::index> idx{};
-    if(! deserialize_index(idef, t, idx)) {
-        return false;
-    }
+    deserialize_index(idef, t, idx);
     try {
         out.add_index(idx, overwrite);
     } catch (std::invalid_argument& e) {
-        VLOG_LP(log_error) << "storage metadata deserialize: index already exists";
-        return false;
+        throw_exception(storage_metadata_exception{
+            status::err_unknown,
+            error_code::sql_execution_exception,
+            "storage metadata deserialize: index already exists",
+        });
     }
-    return true;
 }
 }
 

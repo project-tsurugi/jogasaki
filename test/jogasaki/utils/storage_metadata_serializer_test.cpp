@@ -105,24 +105,24 @@ TEST_F(storage_metadata_serializer_test, simple) {
 
     storage_metadata_serializer ser{};
     std::string out{};
-    ASSERT_TRUE(ser.serialize(*primary, out));
+    ASSERT_NO_THROW(ser.serialize(*primary, out));
     std::string sec{};
-    ASSERT_TRUE(ser.serialize(*secondary, sec));
+    ASSERT_NO_THROW(ser.serialize(*secondary, sec));
     std::cerr << "sec : " << readable(sec) << std::endl;
 
     auto deserialized = std::make_shared<storage::configurable_provider>();
-    ASSERT_TRUE(ser.deserialize(out, provider_, *deserialized));
+    ASSERT_NO_THROW(ser.deserialize(out, provider_, *deserialized));
     auto i = deserialized->find_index("TT");
     ASSERT_TRUE(i);
     auto deserialized2 = std::make_shared<storage::configurable_provider>();
-    ASSERT_TRUE(ser.deserialize(sec, provider_, *deserialized2));
+    ASSERT_NO_THROW(ser.deserialize(sec, provider_, *deserialized2));
     auto i2 = deserialized2->find_index("TT_SECONDARY");
     ASSERT_TRUE(i2);
     std::string out2{};
-    ASSERT_TRUE(ser.serialize(*i, out2));
+    ASSERT_NO_THROW(ser.serialize(*i, out2));
     EXPECT_EQ(readable(out2), readable(out));
     std::string sec2{};
-    ASSERT_TRUE(ser.serialize(*secondary, sec2));
+    ASSERT_NO_THROW(ser.serialize(*secondary, sec2));
     EXPECT_EQ(readable(sec2), readable(sec));
 }
 
@@ -133,13 +133,13 @@ void test_index(
 ) {
     storage_metadata_serializer ser{};
     std::string out{};
-    ASSERT_TRUE(ser.serialize(primary, out));
+    ASSERT_NO_THROW(ser.serialize(primary, out));
     std::cerr << "out : " << readable(out) << std::endl;
-    ASSERT_TRUE(ser.deserialize(out, provider, deserialized));
+    ASSERT_NO_THROW(ser.deserialize(out, provider, deserialized));
     auto i = deserialized.find_index(primary.simple_name());
     ASSERT_TRUE(i);
     std::string out2{};
-    ASSERT_TRUE(ser.serialize(*i, out2));
+    ASSERT_NO_THROW(ser.serialize(*i, out2));
     EXPECT_EQ(readable(out2), readable(out));
 }
 
@@ -406,12 +406,12 @@ TEST_F(storage_metadata_serializer_test, synthesized_flag) {
     storage_metadata_serializer ser{};
     {
         proto::metadata::storage::IndexDefinition idef{};
-        ASSERT_TRUE(ser.serialize(*primary, idef, metadata_serializer_option{true}));
+        ASSERT_NO_THROW(ser.serialize(*primary, idef, metadata_serializer_option{true}));
         ASSERT_TRUE(idef.synthesized());
     }
     {
         proto::metadata::storage::IndexDefinition idef{};
-        ASSERT_TRUE(ser.serialize(*primary, idef, metadata_serializer_option{false}));
+        ASSERT_NO_THROW(ser.serialize(*primary, idef, metadata_serializer_option{false}));
         ASSERT_FALSE(idef.synthesized());
     }
 }

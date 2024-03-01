@@ -489,7 +489,7 @@ TEST_F(ddl_test, negative_default_value) {
 
 TEST_F(ddl_test, decimal_default_value) {
     // decimal literal is not supported and integer is not handled correctly as decimal
-    test_prepare_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5) DEFAULT 1)", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5) DEFAULT 1)", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(ddl_test, drop_indices_cascade) {

@@ -21,6 +21,7 @@
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 
@@ -28,14 +29,14 @@
 
 namespace jogasaki::recovery {
 
-bool deserialize_into_provider(
+std::shared_ptr<error::error_info> deserialize_into_provider(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& src,
     yugawara::storage::configurable_provider& target,
     bool overwrite = false
 );
 
-bool serialize_index(
+std::shared_ptr<error::error_info> serialize_index(
     yugawara::storage::index const& i,
     proto::metadata::storage::IndexDefinition& idef,
     utils::metadata_serializer_option const& option

@@ -820,13 +820,19 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     }
 
     std::string storage{};
-    if(auto res = recovery::create_storage_option(*index, storage, utils::metadata_serializer_option{true}); ! res) {
-        return status::err_already_exists;
+    if(auto err = recovery::create_storage_option(*index, storage, utils::metadata_serializer_option{true})) {
+        if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
+            VLOG_LP(log_error) << "error_info:" << *err;
+        }
+        return err->status();
     }
 
     auto target = std::make_shared<yugawara::storage::configurable_provider>();
-    if(auto res = recovery::deserialize_storage_option_into_provider(storage, *tables_, *target, false); ! res) {
-        return status::err_unknown;
+    if(auto err = recovery::deserialize_storage_option_into_provider(storage, *tables_, *target, false)) {
+        if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
+            VLOG_LP(log_error) << "error_info:" << *err;
+        }
+        return err->status();
     }
 
     sharksfin::StorageOptions opt{storage_id};
@@ -838,7 +844,12 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     }
 
     // only after successful update for kvs, merge metadata
-    recovery::merge_deserialized_storage_option(*target, *tables_, true);
+    if(auto err = recovery::merge_deserialized_storage_option(*target, *tables_, true)) {
+        if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
+            VLOG_LP(log_error) << "error_info:" << *err;
+        }
+        return err->status();
+    }
     return status::ok;
 }
 
@@ -969,18 +980,18 @@ status database::recover_index_metadata(
             continue;
         }
         proto::metadata::storage::IndexDefinition idef{};
-        if(! recovery::validate_extract(payload, idef)) {
-            LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata";
-            return status::err_unknown;
+        if(auto err = recovery::validate_extract(payload, idef)) {
+            LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata: " << *err;
+            return err->status();
         }
         if(primary_only && ! idef.has_table_definition()) {
             skipped.emplace_back(n);
             continue;
         }
         LOG_LP(INFO) << "Recovering metadata \"" << n << "\": " << utils::to_debug_string(idef);
-        if(! recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
-            LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata";
-            return status::err_unknown;
+        if(auto err = recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
+            LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata:" << *err;
+            return err->status();
         }
     }
     return status::ok;
@@ -999,8 +1010,11 @@ status database::setup_system_storage() {
     provider->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& i) {
         if(! success) return;
         std::string storage{};
-        if(! recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{true})) {
+        if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{true})) {
             success = false;
+            if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
+                VLOG_LP(log_error) << "error_info:" << *err;
+            }
             return;
         }
         ::sharksfin::StorageOptions options{};

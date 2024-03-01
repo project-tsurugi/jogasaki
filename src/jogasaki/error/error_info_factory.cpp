@@ -15,6 +15,9 @@
  */
 #include "error_info_factory.h"
 
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+
 #include <sstream>
 #include <takatori/util/stacktrace.h>
 
@@ -30,6 +33,7 @@ std::shared_ptr<error_info> create_error_info_with_stack_impl(
 ) {
     auto info = std::make_shared<error_info>(code, message, filepath, position, stacktrace);
     info->status(st);
+    VLOG_LP(log_trace) << "error_info:" << *info;
     return info;
 }
 
@@ -49,17 +53,14 @@ std::shared_ptr<error_info> create_error_info_impl(
     return create_error_info_with_stack_impl(code, message, filepath, position, st, ss.str());
 }
 
-void set_error_impl(
+void set_error_info(
     request_context& rctx,
-    jogasaki::error_code code,
-    std::string_view message,
-    std::string_view filepath,
-    std::string_view position,
-    status st,
-    bool append_stacktrace
+    std::shared_ptr<error_info> const& info
 ) {
-    auto info = create_error_info_impl(code, message, filepath, position, st, append_stacktrace);
-    rctx.status_code(st, message);
+    if(! info) return;
+    auto st = info->status();
+    auto code = info->code();
+    rctx.status_code(st, info->message());
     if(rctx.error_info(info)) {
         if(rctx.transaction()) {
             if(code == error_code::inactive_transaction_exception || st == status::err_inactive_transaction) {
@@ -74,6 +75,18 @@ void set_error_impl(
             rctx.transaction()->error_info(info);
         }
     }
+}
+
+void set_error_impl(
+    request_context& rctx,
+    jogasaki::error_code code,
+    std::string_view message,
+    std::string_view filepath,
+    std::string_view position,
+    status st,
+    bool append_stacktrace
+) {
+    set_error_info(rctx, create_error_info_impl(code, message, filepath, position, st, append_stacktrace));
 }
 
 }

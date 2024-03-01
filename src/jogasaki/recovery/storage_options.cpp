@@ -16,12 +16,13 @@
 #include "storage_options.h"
 
 #include <yugawara/storage/configurable_provider.h>
-#include <takatori/util/fail.h>
+#include <takatori/util/string_builder.h>
 
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/proto_debug_string.h>
@@ -32,7 +33,9 @@
 
 namespace jogasaki::recovery {
 
-bool create_storage_option(
+using takatori::util::string_builder;
+
+std::shared_ptr<error::error_info> create_storage_option(
     yugawara::storage::index const&i,
     std::string &storage,
     utils::metadata_serializer_option const& option
@@ -40,8 +43,8 @@ bool create_storage_option(
     storage.clear();
     proto::metadata::storage::IndexDefinition idef{};
 
-    if(! recovery::serialize_index(i, idef, option)) {
-        return false;
+    if(auto err = recovery::serialize_index(i, idef, option)) {
+        return err;
     }
     proto::metadata::storage::Storage stg{};
     stg.set_message_version(metadata_format_version);
@@ -49,48 +52,58 @@ bool create_storage_option(
 
     std::stringstream ss{};
     if (!stg.SerializeToOstream(&ss)) {
-        return false;
+        return create_error_info(
+            error_code::sql_execution_exception,
+            "creating storage option failed",
+            status::err_unknown
+        );
     }
     storage = ss.str();
     VLOG_LP(log_trace) << "storage_option:" << utils::to_debug_string(stg);
     (void)stg.release_index();
-    return true;
+    return {};
 }
 
-bool validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
+std::shared_ptr<error::error_info> validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
     proto::metadata::storage::Storage st{};
     if (! st.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
-        VLOG_LP(log_error) << "Invalid metadata data is detected in the storage.";
-        return false;
+        return create_error_info(
+            error_code::sql_execution_exception,
+            "invalid metadata is detected in the storage",
+            status::err_unknown
+        );
     }
     if(st.message_version() != metadata_format_version) {
-        VLOG_LP(log_error) << "Incompatible metadata version (" << st.message_version() <<
-            ") is stored in the storage. This version is not supported.";
-        return false;
+        return create_error_info(
+            error_code::sql_execution_exception,
+            string_builder{} << "Incompatible metadata version (" << st.message_version() <<
+                ") is stored in the storage. This version is not supported." << string_builder::to_string,
+            status::err_unknown
+        );
     }
     if(st.has_index()) {
         out = st.index();
     }
-    return true;
+    return {};
 }
 
-bool deserialize_storage_option_into_provider(
+std::shared_ptr<error::error_info> deserialize_storage_option_into_provider(
     std::string_view payload,
     yugawara::storage::configurable_provider const &src,
     yugawara::storage::configurable_provider& target,
     bool overwrite
 ) {
     proto::metadata::storage::IndexDefinition idef{};
-    if(! recovery::validate_extract(payload, idef)) {
-        return false;
+    if(auto err = recovery::validate_extract(payload, idef)) {
+        return err;
     }
-    if(! recovery::deserialize_into_provider(idef, src, target, overwrite)) {
-        return false;
+    if(auto err = recovery::deserialize_into_provider(idef, src, target, overwrite)) {
+        return err;
     }
-    return true;
+    return {};
 }
 
-bool merge_deserialized_storage_option(
+std::shared_ptr<error::error_info> merge_deserialized_storage_option(
     yugawara::storage::configurable_provider& src,
     yugawara::storage::configurable_provider& target,
     bool overwrite
@@ -102,8 +115,11 @@ bool merge_deserialized_storage_option(
         ++cnt;
     });
     if(cnt != 1) {
-        VLOG_LP(log_error) << "deserialization error: too many indices";
-        return false;
+        return create_error_info(
+            error_code::sql_execution_exception,
+            "deserialization error: too many indices",
+            status::err_unknown
+        );
     }
 
     std::vector<std::shared_ptr<yugawara::storage::sequence const>> sequences{};
@@ -115,8 +131,11 @@ bool merge_deserialized_storage_option(
         try {
             target.add_sequence(s, overwrite);
         } catch(std::invalid_argument& e) {
-            VLOG_LP(log_error) << "sequence " << s->simple_name() << " already exists";
-            return false;
+            return create_error_info(
+                error_code::sql_execution_exception,
+                string_builder{} << "sequence " << s->simple_name() << " already exists" << string_builder::to_string,
+                status::err_unknown
+            );
         }
     }
 
@@ -124,18 +143,24 @@ bool merge_deserialized_storage_option(
     try {
         target.add_table(idx->shared_table(), overwrite);
     } catch(std::invalid_argument& e) {
-        VLOG_LP(log_error) << "table " << idx->shared_table()->simple_name() << " already exists";
-        return false;
+        return create_error_info(
+            error_code::sql_execution_exception,
+            string_builder{} << "table " << idx->shared_table()->simple_name() << " already exists" << string_builder::to_string,
+            status::err_unknown
+        );
     }
 
     src.remove_index(idx->simple_name());
     try {
         target.add_index(idx, overwrite);
     } catch(std::invalid_argument& e) {
-        VLOG_LP(log_error) << "primary index " << idx->simple_name() << " already exists";
-        return false;
+        return create_error_info(
+            error_code::sql_execution_exception,
+            string_builder{} << "primary index " << idx->simple_name() << " already exists" << string_builder::to_string,
+            status::err_unknown
+        );
     }
-    return true;
+    return {};
 }
 
 }

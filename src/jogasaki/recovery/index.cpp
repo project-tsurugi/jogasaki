@@ -22,6 +22,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/storage_metadata_exception.h>
@@ -30,7 +31,7 @@
 
 namespace jogasaki::recovery {
 
-bool deserialize_into_provider(
+std::shared_ptr<error::error_info> deserialize_into_provider(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& src,
     yugawara::storage::configurable_provider& target,
@@ -41,14 +42,12 @@ bool deserialize_into_provider(
     try {
         ser.deserialize(idef, src, target, overwrite);
     } catch(utils::storage_metadata_exception const& e) {
-        // FIXME create error info
-        VLOG_LP(log_error) << "deserialization error:" << e.what();
-        return false;
+        return create_error_from_exception(e);
     }
-    return true;
+    return {};
 }
 
-bool serialize_index(
+std::shared_ptr<error::error_info> serialize_index(
     const yugawara::storage::index &i,
     proto::metadata::storage::IndexDefinition &idef,
     utils::metadata_serializer_option const& option
@@ -58,11 +57,9 @@ bool serialize_index(
     try {
         ser.serialize(i, idef, option);
     } catch (utils::storage_metadata_exception const& e) {
-        // FIXME create error info
-        VLOG_LP(log_error) << "serialization error: " << e.what();
-        return false;
+        return create_error_from_exception(e);
     }
-    return true;
+    return {};
 }
 
 }

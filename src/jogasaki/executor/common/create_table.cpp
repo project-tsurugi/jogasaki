@@ -205,25 +205,15 @@ bool create_table::operator()(request_context& context) const {
     std::string storage{};
     yugawara::storage::configurable_provider target{};
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
-    if(! recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false})) {
+    if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false})) {
         // error should not happen normally
-        set_error(
-            context,
-            error_code::target_already_exists_exception,
-            string_builder{} << "Table already exists." << string_builder::to_string,
-            status::err_already_exists
-        );
+        set_error_info(context, err);
         return false;
     }
-    if(! recovery::deserialize_storage_option_into_provider(storage, provider, provider, true)) {
+    if(auto err = recovery::deserialize_storage_option_into_provider(storage, provider, provider, true)) {
         // error should not happen normally
         // validating version failure does not happen as serialization is just done above.
-        set_error(
-            context,
-            error_code::sql_execution_exception,
-            "Unexpected error occurred.",
-            status::err_unknown
-        );
+        set_error_info(context, err);
         return false;
     }
 

@@ -113,30 +113,19 @@ bool create_index::operator()(request_context& context) const {
     }
 
     std::string storage{};
-    if(auto res = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false}); ! res) {
-        set_error(
-            context,
-            error_code::target_already_exists_exception,
-            string_builder{} << "Index already exists." << string_builder::to_string,
-            status::err_already_exists
-        );
-        return res;
+    if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false})) {
+        set_error_info(context, err);
+        return false;
     }
     auto target = std::make_shared<yugawara::storage::configurable_provider>();
-    if(auto res = recovery::deserialize_storage_option_into_provider(storage, provider, *target, false); ! res) {
-        set_error(
-            context,
-            error_code::sql_execution_exception,
-            string_builder{} << "Unexpected error." << string_builder::to_string,
-            status::err_unknown
-        );
+    if(auto err = recovery::deserialize_storage_option_into_provider(storage, provider, *target, false)) {
+        set_error_info(context, err);
         return false;
     }
 
     sharksfin::StorageOptions options{};
     options.payload(std::move(storage));
     if(auto stg = context.database()->create_storage(i->simple_name(), options);! stg) {
-        VLOG_LP(log_info) << "storage " << i->simple_name() << " already exists ";
         // something went wrong. Storage already exists. // TODO recreate storage with new storage option
         VLOG_LP(log_warning) << "storage " << i->simple_name() << " already exists ";
         set_error(
@@ -148,7 +137,12 @@ bool create_index::operator()(request_context& context) const {
         return false;
     }
     // only after successful update for kvs, merge metadata
-    recovery::merge_deserialized_storage_option(*target, provider, true);
+    if(auto err = recovery::merge_deserialized_storage_option(*target, provider, true)) {
+        if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
+            VLOG_LP(log_error) << "error_info:" << *err;
+        }
+        return false;
+    }
     return true;
 }
 

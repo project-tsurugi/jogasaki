@@ -152,6 +152,11 @@ void set_type(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::
     }
 }
 
+/**
+ * @brief set default
+ * @throws storage_metadata_exception with error_code::unsupported_runtime_feature_exception if the default value
+ * data type is not supported
+ */
 void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
     switch(c.default_value().kind()) {
         case yugawara::storage::column_value_kind::nothing: {
@@ -176,7 +181,9 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
                         throw_exception(storage_metadata_exception{
                             status::err_unsupported,
                             error_code::unsupported_runtime_feature_exception,
-                            string_builder{} << "default value provided for column \"" << col->name() << "\" has invalid type:" << kind << string_builder::to_string
+                            string_builder{} << "unsupported type mapping to " << c.type().kind()
+                                             << " from default value type " << kind << " provided for column \""
+                                             << col->name() << "\"" << string_builder::to_string
                         });
                     }
                     auto p = static_cast<takatori::value::decimal const&>(*value).get();  //NOLINT
@@ -239,6 +246,10 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
     }
 }
 
+/**
+ * @throws storage_metadata_exception with error_code::unsupported_runtime_feature_exception if the default value
+ * data type is not supported
+*/
 void serialize_table(yugawara::storage::table const& t, proto::metadata::storage::TableDefinition& tbl) {
     if(t.definition_id().has_value()) {
         tbl.set_definition_id(*t.definition_id());
@@ -670,9 +681,9 @@ void storage_metadata_serializer::deserialize(
             out.add_index(idx, overwrite);
         } catch (std::invalid_argument& e) {
             throw_exception(storage_metadata_exception{
-                status::err_unknown,
-                error_code::sql_execution_exception,
-                "storage metadata deserialize: index already exists",
+                status::err_already_exists,
+                error_code::target_already_exists_exception,
+                "metadata error: index already exists",
             });
         }
         return;
@@ -682,7 +693,7 @@ void storage_metadata_serializer::deserialize(
         throw_exception(storage_metadata_exception{
             status::err_unknown,
             error_code::sql_execution_exception,
-            "missing table reference in the index definition",
+            "metadata error: missing table reference in the index definition",
         });
     }
     auto& tabname = idef.table_reference().name().element_name();
@@ -692,7 +703,7 @@ void storage_metadata_serializer::deserialize(
             throw_exception(storage_metadata_exception{
                 status::err_unknown,
                 error_code::sql_execution_exception,
-                "missing table",
+                "metadata error: missing table",
             });
         }
     }
@@ -702,9 +713,9 @@ void storage_metadata_serializer::deserialize(
         out.add_index(idx, overwrite);
     } catch (std::invalid_argument& e) {
         throw_exception(storage_metadata_exception{
-            status::err_unknown,
-            error_code::sql_execution_exception,
-            "storage metadata deserialize: index already exists",
+            status::err_already_exists,
+            error_code::target_already_exists_exception,
+            "metadata error: index already exists",
         });
     }
 }

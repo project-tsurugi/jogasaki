@@ -29,21 +29,60 @@
 
 namespace jogasaki::recovery {
 
+/**
+ * @brief create storage option by serializing an index
+ * @param idx the index to serialize
+ * @param out [out] the output serialized string
+ * @param option the serialization option
+ * @return an error_info if the creation fails
+ * Known error codes:
+ *   error_code::unsupported_runtime_feature_exception if the default value data type is not supported
+ * @return nullptr if successful
+ */
 std::shared_ptr<error::error_info> create_storage_option(
-    yugawara::storage::index const& i,
-    std::string& storage,
+    yugawara::storage::index const& idx,
+    std::string& out,
     utils::metadata_serializer_option const& option
 );
 
+/**
+ * @brief deserialize storage option into a configurable provider
+ * @param payload the storage option string
+ * @param src the source configurable provider that the deserialized index definition depends on
+ * @param out [out] the target configurable provider to extract the storage option into
+ * @param overwrite whether to overwrite the objects in the target configurable provider
+ * @return an error_info if the creation fails
+ * Known error codes:
+ *   error_code::target_already_exists_exception, if the deserialized object already exists (and `overwrite` is false)
+ * @return nullptr if successful
+ */
 std::shared_ptr<error::error_info> deserialize_storage_option_into_provider(
     std::string_view payload,
     yugawara::storage::configurable_provider const &src,
-    yugawara::storage::configurable_provider& target,
+    yugawara::storage::configurable_provider& out,
     bool overwrite
 );
 
-std::shared_ptr<error::error_info> validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out);
+/**
+ * @brief validate and extract the storage option
+ * @param payload the storage option string
+ * @param out [out] the output index definition
+ * @return an error_info if the validation or extraction fails
+ * @return nullptr if successful
+ */
+std::shared_ptr<error::error_info>
+validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out);
 
+/**
+ * @brief merge the deserialized storage option into target configurable provider and remove from source
+ * @param src the source configurable provider
+ * @param target the target configurable provider
+ * @param overwrite whether to overwrite the objects in the target configurable provider
+ * @return an error_info if the operation fails
+ * Known error codes:
+ *   error_code::target_already_exists_exception, if the deserialized object already exists (and `overwrite` is false)
+ * @return nullptr if successful
+ */
 std::shared_ptr<error::error_info> merge_deserialized_storage_option(
     yugawara::storage::configurable_provider& src,
     yugawara::storage::configurable_provider& target,

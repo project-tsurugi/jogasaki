@@ -36,14 +36,14 @@ namespace jogasaki::recovery {
 using takatori::util::string_builder;
 
 std::shared_ptr<error::error_info> create_storage_option(
-    yugawara::storage::index const&i,
-    std::string &storage,
+    yugawara::storage::index const& idx,
+    std::string& out,
     utils::metadata_serializer_option const& option
 ) {
-    storage.clear();
+    out.clear();
     proto::metadata::storage::IndexDefinition idef{};
 
-    if(auto err = recovery::serialize_index(i, idef, option)) {
+    if(auto err = recovery::serialize_index(idx, idef, option)) {
         return err;
     }
     proto::metadata::storage::Storage stg{};
@@ -58,18 +58,19 @@ std::shared_ptr<error::error_info> create_storage_option(
             status::err_unknown
         );
     }
-    storage = ss.str();
+    out = ss.str();
     VLOG_LP(log_trace) << "storage_option:" << utils::to_debug_string(stg);
     (void)stg.release_index();
     return {};
 }
 
-std::shared_ptr<error::error_info> validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
+std::shared_ptr<error::error_info>
+validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
     proto::metadata::storage::Storage st{};
     if (! st.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
         return create_error_info(
             error_code::sql_execution_exception,
-            "invalid metadata is detected in the storage",
+            "invalid metadata detected in the storage",
             status::err_unknown
         );
     }
@@ -90,14 +91,14 @@ std::shared_ptr<error::error_info> validate_extract(std::string_view payload, pr
 std::shared_ptr<error::error_info> deserialize_storage_option_into_provider(
     std::string_view payload,
     yugawara::storage::configurable_provider const &src,
-    yugawara::storage::configurable_provider& target,
+    yugawara::storage::configurable_provider& out,
     bool overwrite
 ) {
     proto::metadata::storage::IndexDefinition idef{};
     if(auto err = recovery::validate_extract(payload, idef)) {
         return err;
     }
-    if(auto err = recovery::deserialize_into_provider(idef, src, target, overwrite)) {
+    if(auto err = recovery::deserialize_into_provider(idef, src, out, overwrite)) {
         return err;
     }
     return {};
@@ -132,9 +133,9 @@ std::shared_ptr<error::error_info> merge_deserialized_storage_option(
             target.add_sequence(s, overwrite);
         } catch(std::invalid_argument& e) {
             return create_error_info(
-                error_code::sql_execution_exception,
+                error_code::target_already_exists_exception,
                 string_builder{} << "sequence " << s->simple_name() << " already exists" << string_builder::to_string,
-                status::err_unknown
+                status::err_already_exists
             );
         }
     }
@@ -144,9 +145,9 @@ std::shared_ptr<error::error_info> merge_deserialized_storage_option(
         target.add_table(idx->shared_table(), overwrite);
     } catch(std::invalid_argument& e) {
         return create_error_info(
-            error_code::sql_execution_exception,
+            error_code::target_already_exists_exception,
             string_builder{} << "table " << idx->shared_table()->simple_name() << " already exists" << string_builder::to_string,
-            status::err_unknown
+            status::already_exists
         );
     }
 
@@ -155,9 +156,9 @@ std::shared_ptr<error::error_info> merge_deserialized_storage_option(
         target.add_index(idx, overwrite);
     } catch(std::invalid_argument& e) {
         return create_error_info(
-            error_code::sql_execution_exception,
+            error_code::target_already_exists_exception,
             string_builder{} << "primary index " << idx->simple_name() << " already exists" << string_builder::to_string,
-            status::err_unknown
+            status::already_exists
         );
     }
     return {};

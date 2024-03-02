@@ -64,17 +64,27 @@ public:
      * @param out [out] to be filled with result serialized string
      * @details the index, base table and dependant sequences (if any) are serialized and stored in the output string
      * @throws storage_metadadata_exception to report errors
+     * Known errors:
+     * error_code::unsupported_runtime_feature_exception if the default value data type is not supported
      */
-    void serialize(yugawara::storage::index const& idx, std::string& out, metadata_serializer_option const& option = {});
+    void
+    serialize(yugawara::storage::index const& idx, std::string& out, metadata_serializer_option const& option = {});
 
     /**
      * @brief serialize index as jogasaki::proto::metadata::storage::IndexDefinition
      * @param idx the primary index
      * @param idef [out] to be filled with result serialized object
-     * @details the index, base table and dependant sequences (if any) are serialized and stored in the output string
+     * @details the index, base table and dependant sequences (if any) are serialized and stored in the output
+     * index definition
      * @throws storage_metadadata_exception to report errors
+     * Known errors:
+     * error_code::unsupported_runtime_feature_exception if the default value data type is not supported
      */
-    void serialize(yugawara::storage::index const& idx, proto::metadata::storage::IndexDefinition& idef, metadata_serializer_option const& option = {});
+    void serialize(
+        yugawara::storage::index const& idx,
+        proto::metadata::storage::IndexDefinition& idef,
+        metadata_serializer_option const& option = {}
+    );
 
     /**
      * @brief deserialize protobuf msg for index
@@ -84,6 +94,8 @@ public:
      * @param out [out] to be filled with result objects (index, table, sequence, etc.)
      * @param overwrite whether overwrite existing entries in `out`
      * @throws storage_metadadata_exception to report errors
+     * Known errors:
+     * error_code::target_already_exists_exception, if the deserialized object already exists (and `overwrite` is false)
      */
     void deserialize(
         std::string_view src,
@@ -100,6 +112,8 @@ public:
      * @param out [out] to be filled with result objects (index, table, sequence, etc.)
      * @param overwrite whether overwrite existing entries in `out`
      * @throws storage_metadadata_exception to report errors
+     * Known errors:
+     * error_code::target_already_exists_exception, if the deserialized object already exists (and `overwrite` is false)
      */
     void deserialize(
         proto::metadata::storage::IndexDefinition const& idef,

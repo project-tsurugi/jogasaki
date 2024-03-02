@@ -34,6 +34,7 @@
 #include <takatori/util/string_builder.h>
 #include <yugawara/storage/configurable_provider.h>
 
+#include <jogasaki/utils/storage_metadata_exception.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/utils/proto_debug_string.h>
 
@@ -416,6 +417,40 @@ TEST_F(storage_metadata_serializer_test, synthesized_flag) {
     }
 }
 
+TEST_F(storage_metadata_serializer_test, default_int_for_decimal) {
+    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+        "TT",
+        {
+            { "C0", type::int8(), nullity{false} },
+            { "C1", type::decimal(5), nullity{true}, column_value{std::make_shared<takatori::value::int4 const>(100)}},
+        },
+    });
+    auto primary = provider_.add_index({
+        t,
+        t->simple_name(),
+        {
+            t->columns()[0],
+        },
+        {
+            t->columns()[1],
+        },
+        index_features_
+    });
 
+    storage_metadata_serializer ser{};
+    {
+        bool caught = false;
+        proto::metadata::storage::IndexDefinition idef{};
+        try {
+            ser.serialize(*primary, idef, metadata_serializer_option{true});
+        } catch (storage_metadata_exception const& e) {
+            caught = true;
+            EXPECT_EQ(status::err_unsupported, e.get_status());
+            EXPECT_EQ(error_code::unsupported_runtime_feature_exception, e.get_code());
+            EXPECT_EQ("unsupported type mapping to decimal from default value type int4 provided for column \"C1\"", std::string{e.what()});
+        }
+        ASSERT_TRUE(caught);
+    }
+}
 
 }

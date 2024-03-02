@@ -34,13 +34,12 @@ namespace jogasaki::recovery {
 std::shared_ptr<error::error_info> deserialize_into_provider(
     proto::metadata::storage::IndexDefinition const& idef,
     yugawara::storage::configurable_provider const& src,
-    yugawara::storage::configurable_provider& target,
+    yugawara::storage::configurable_provider& out,
     bool overwrite
 ) {
     utils::storage_metadata_serializer ser{};
-    auto deserialized = std::make_shared<yugawara::storage::configurable_provider>();
     try {
-        ser.deserialize(idef, src, target, overwrite);
+        ser.deserialize(idef, src, out, overwrite);
     } catch(utils::storage_metadata_exception const& e) {
         return create_error_from_exception(e);
     }
@@ -48,14 +47,14 @@ std::shared_ptr<error::error_info> deserialize_into_provider(
 }
 
 std::shared_ptr<error::error_info> serialize_index(
-    const yugawara::storage::index &i,
-    proto::metadata::storage::IndexDefinition &idef,
+    const yugawara::storage::index &idx,
+    proto::metadata::storage::IndexDefinition &out,
     utils::metadata_serializer_option const& option
 ) {
-    idef = {};
+    out = {};
     utils::storage_metadata_serializer ser{};
     try {
-        ser.serialize(i, idef, option);
+        ser.serialize(idx, out, option);
     } catch (utils::storage_metadata_exception const& e) {
         return create_error_from_exception(e);
     }

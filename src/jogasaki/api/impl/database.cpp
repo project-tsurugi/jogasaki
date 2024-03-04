@@ -845,6 +845,7 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
 
     // only after successful update for kvs, merge metadata
     if(auto err = recovery::merge_deserialized_storage_option(*target, *tables_, true)) {
+        // normally the error should not happen because overwrite=true
         if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
             VLOG_LP(log_error) << "error_info:" << *err;
         }

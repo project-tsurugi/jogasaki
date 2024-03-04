@@ -134,7 +134,7 @@ std::shared_ptr<error::error_info> merge_deserialized_storage_option(
         } catch(std::invalid_argument& e) {
             return create_error_info(
                 error_code::target_already_exists_exception,
-                string_builder{} << "sequence " << s->simple_name() << " already exists" << string_builder::to_string,
+                string_builder{} << "sequence \"" << s->simple_name() << "\" already exists" << string_builder::to_string,
                 status::err_already_exists
             );
         }
@@ -146,8 +146,8 @@ std::shared_ptr<error::error_info> merge_deserialized_storage_option(
     } catch(std::invalid_argument& e) {
         return create_error_info(
             error_code::target_already_exists_exception,
-            string_builder{} << "table " << idx->shared_table()->simple_name() << " already exists" << string_builder::to_string,
-            status::already_exists
+            string_builder{} << "table \"" << idx->shared_table()->simple_name() << "\" already exists" << string_builder::to_string,
+            status::err_already_exists
         );
     }
 
@@ -157,8 +157,8 @@ std::shared_ptr<error::error_info> merge_deserialized_storage_option(
     } catch(std::invalid_argument& e) {
         return create_error_info(
             error_code::target_already_exists_exception,
-            string_builder{} << "primary index " << idx->simple_name() << " already exists" << string_builder::to_string,
-            status::already_exists
+            string_builder{} << "primary index \"" << idx->simple_name() << "\" already exists" << string_builder::to_string,
+            status::err_already_exists
         );
     }
     return {};

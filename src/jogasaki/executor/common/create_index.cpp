@@ -138,6 +138,7 @@ bool create_index::operator()(request_context& context) const {
     }
     // only after successful update for kvs, merge metadata
     if(auto err = recovery::merge_deserialized_storage_option(*target, provider, true)) {
+        // normally the error should not happen because overwrite=true
         if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
             VLOG_LP(log_error) << "error_info:" << *err;
         }

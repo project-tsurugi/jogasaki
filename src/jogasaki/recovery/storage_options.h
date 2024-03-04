@@ -81,7 +81,11 @@ validate_extract(std::string_view payload, proto::metadata::storage::IndexDefini
  * @return an error_info if the operation fails
  * Known error codes:
  *   error_code::target_already_exists_exception, if the deserialized object already exists (and `overwrite` is false)
+ * In case of error, `src` and `target` will be an undefined state. Avoid using them after the error.
  * @return nullptr if successful
+ * @note intended to use in pair with deserialize_storage_option_into_provider to merge the deserialized storage option
+ * after successful processing of the storage option
+ * @note currently only supports merging a single index in `src`, multiple sequences, and tables underlying the index
  */
 std::shared_ptr<error::error_info> merge_deserialized_storage_option(
     yugawara::storage::configurable_provider& src,

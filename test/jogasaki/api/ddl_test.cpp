@@ -489,7 +489,63 @@ TEST_F(ddl_test, negative_default_value) {
 
 TEST_F(ddl_test, decimal_default_value) {
     // decimal literal is not supported and integer is not handled correctly as decimal
-    test_stmt_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5) DEFAULT 1)", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err(
+        "CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5) DEFAULT 1)",
+        error_code::unsupported_runtime_feature_exception,
+        "unsupported type mapping to decimal from default value type int4 provided for column \"C1\""
+    );
+    test_stmt_err(
+        "CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5,2) DEFAULT 2.22)",
+        error_code::unsupported_runtime_feature_exception,
+        "unsupported type mapping to decimal from default value type float8 provided for column \"C1\""
+    );
+}
+
+TEST_F(ddl_test, type_difference_between_default_value_and_column_type) {
+    // verify no crash with default values
+    // TODO check the value after mapping is fixed
+    {
+        // float8 value for int4 column
+        execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT DEFAULT 1.1)");
+        execute_statement("INSERT INTO T (C0) VALUES(0)");
+        execute_statement("DROP TABLE T");
+    }
+    {
+        // float8 value for int8 column
+        execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 BIGINT DEFAULT 1.1)");
+        execute_statement("INSERT INTO T (C0) VALUES(0)");
+        execute_statement("DROP TABLE T");
+    }
+    {
+        // int4 value for float4 column
+        execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 REAL DEFAULT 1)");
+        execute_statement("INSERT INTO T (C0) VALUES(0)");
+        execute_statement("DROP TABLE T");
+    }
+    {
+        // int4 value for float8 column
+        execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 DOUBLE DEFAULT 1)");
+        execute_statement("INSERT INTO T (C0) VALUES(0)");
+        execute_statement("DROP TABLE T");
+    }
+}
+
+TEST_F(ddl_test, default_numeric_for_char_column) {
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 VARCHAR(3) DEFAULT 1)", error_code::type_analyze_exception);
+      test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 VARCHAR(3) DEFAULT 1)", error_code::type_analyze_exception);
+}
+
+TEST_F(ddl_test, default_char_values_for_numeric_column) {
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT DEFAULT '0')", error_code::type_analyze_exception);
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 BIGINT DEFAULT '0')", error_code::type_analyze_exception);
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 REAL DEFAULT '0')", error_code::type_analyze_exception);
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 DOUBLE DEFAULT '0')", error_code::type_analyze_exception);
+}
+
+TEST_F(ddl_test, default_numeric_for_temporal_column) {
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 DATE DEFAULT 1)", error_code::type_analyze_exception);
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 TIME DEFAULT 1)", error_code::type_analyze_exception);
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 TIMESTAMP DEFAULT 1)", error_code::type_analyze_exception);
 }
 
 TEST_F(ddl_test, drop_indices_cascade) {

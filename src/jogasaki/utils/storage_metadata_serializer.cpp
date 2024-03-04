@@ -559,9 +559,10 @@ void deserialize_table(
         ), overwrite);
     } catch (std::invalid_argument& e) {
         throw_exception(storage_metadata_exception{
-            status::err_unknown,
-            error_code::sql_execution_exception,
-            "deserialize_table: table already exists"
+            status::err_already_exists,
+            error_code::target_already_exists_exception,
+            string_builder{} << "table \"" << tdef.name().element_name()
+                             << "\" already exists" << string_builder::to_string
         });
     }
 }
@@ -683,7 +684,8 @@ void storage_metadata_serializer::deserialize(
             throw_exception(storage_metadata_exception{
                 status::err_already_exists,
                 error_code::target_already_exists_exception,
-                "metadata error: index already exists",
+                string_builder{} << "index \"" << idx->simple_name() << "\" already exists"
+                                 << string_builder::to_string
             });
         }
         return;
@@ -715,7 +717,8 @@ void storage_metadata_serializer::deserialize(
         throw_exception(storage_metadata_exception{
             status::err_already_exists,
             error_code::target_already_exists_exception,
-            "metadata error: index already exists",
+            string_builder{} << "index \"" << idx->simple_name() << "\" already exists"
+                                << string_builder::to_string
         });
     }
 }

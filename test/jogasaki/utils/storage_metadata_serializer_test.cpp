@@ -453,4 +453,46 @@ TEST_F(storage_metadata_serializer_test, default_int_for_decimal) {
     }
 }
 
+TEST_F(storage_metadata_serializer_test, already_exists_error) {
+    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+        "TT",
+        {
+            { "C0", type::int8(), nullity{false} },
+        },
+    });
+    auto primary = provider_.add_index({
+        t,
+        t->simple_name(),
+        {
+            t->columns()[0],
+        },
+        {},
+        index_features_
+    });
+
+    storage_metadata_serializer ser{};
+    proto::metadata::storage::IndexDefinition idef{};
+    ASSERT_NO_THROW(ser.serialize(*primary, idef, metadata_serializer_option{true}));
+
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    t = deserialized->add_table({
+        "TT",
+        {
+            { "C0", type::int8(), nullity{false} },
+        },
+    });
+    bool caught = false;
+    try {
+        (ser.deserialize(idef, provider_, *deserialized));
+    } catch (storage_metadata_exception const& e) {
+        caught = true;
+        EXPECT_EQ(status::err_already_exists, e.get_status());
+        EXPECT_EQ(error_code::target_already_exists_exception, e.get_code());
+        EXPECT_EQ("table \"TT\" already exists", std::string{e.what()});
+    }
+    ASSERT_TRUE(caught);
+    auto i = deserialized->find_index("TT");
+}
+
+
 }

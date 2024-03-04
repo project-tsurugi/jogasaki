@@ -36,6 +36,8 @@ namespace jogasaki::recovery {
  * @param out [out] the target configurable provider to extract the index definition into
  * @param overwrite whether to overwrite the objects in the target configurable provider
  * @return an error_info if the deserialization fails
+ * Known error codes:
+     * error_code::target_already_exists_exception, if the deserialized object already exists (and `overwrite` is false)
  * @return nullptr if successful
  */
 std::shared_ptr<error::error_info> deserialize_into_provider(
@@ -51,6 +53,7 @@ std::shared_ptr<error::error_info> deserialize_into_provider(
  * @param out [out] the output serialized index definition
  * @param option the serialization option
  * @return an error_info if the serialization fails
+ * Known error codes:
  *   error_code::unsupported_runtime_feature_exception if the default value data type is not supported
  * @return nullptr if successful
 */

@@ -15,7 +15,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(jogasaki
-    VERSION 0.0.1
+    VERSION 1.0.0
     DESCRIPTION "Jogasaki SQL Execution Engine"
     LANGUAGES CXX)
 

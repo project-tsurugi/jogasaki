@@ -68,6 +68,7 @@
 #include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
 #include <jogasaki/executor/process/impl/expression/details/common.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
 
 #include <jogasaki/test_utils/to_field_type_kind.h>
 
@@ -315,6 +316,7 @@ TEST_F(cast_expression_test, is_prefix) {
 
 TEST_F(cast_expression_test, bad_format) {
     evaluator_context ctx{};
+    decimal::context = executor::process::impl::expression::details::standard_decimal_context();
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), details::to_int4("++1", ctx));
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), details::to_int4("", ctx));
 }

@@ -39,6 +39,7 @@
 
 #include "details/cast_evaluation.h"
 #include "details/common.h"
+#include "details/decimal_context.h"
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -624,6 +625,7 @@ any evaluator::operator()(
     variable_table& variables,
     evaluator::memory_resource* resource
 ) const {
+    details::ensure_decimal_context();
     details::engine e{ctx, variables, *info_, host_variables_, resource};
     return takatori::scalar::dispatch(e, *expression_);
 }

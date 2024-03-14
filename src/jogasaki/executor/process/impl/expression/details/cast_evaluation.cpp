@@ -27,6 +27,7 @@
 #include <takatori/type/float.h>
 #include <takatori/type/character.h>
 
+#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -137,7 +138,7 @@ any to_float8(std::string_view s, evaluator_context& ctx) {
 
 any to_decimal(std::string_view s, evaluator_context& ctx) {
     (void) ctx;
-    decimal::context = decimal::IEEEContext(128);
+    decimal::context.clear_status();
     decimal::Decimal value{std::string{s}};
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
         return any{std::in_place_type<error>, error(error_kind::format_error)};
@@ -154,7 +155,7 @@ any to_decimal(std::string_view s, evaluator_context& ctx) {
 any to_decimal(takatori::decimal::triple dec, evaluator_context& ctx, std::optional<std::size_t> precision, std::optional<std::size_t> scale) {
     (void) ctx;
     (void) precision;
-    decimal::context = decimal::IEEEContext(128);
+    decimal::context.clear_status();
     decimal::Decimal value{dec};
     if(scale.has_value()) {
         decimal::context.clear_status();

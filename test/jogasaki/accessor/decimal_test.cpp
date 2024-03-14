@@ -15,12 +15,16 @@
  */
 #include <decimal.hh>
 #include <takatori/value/decimal.h>
+#include <takatori/decimal/triple.h>
+
+#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
 
 #include <gtest/gtest.h>
 
 namespace jogasaki::testing {
 
 using namespace std::string_view_literals;
+using takatori::decimal::triple;
 
 class decimal_test : public ::testing::Test {};
 
@@ -29,6 +33,18 @@ TEST_F(decimal_test, build) {
     decimal::Decimal d{"3.14", ctx};
     decimal::Decimal exp{mpd_uint128_triple_t{MPD_TRIPLE_NORMAL, 0, 0, 314, -2} }; // sign=0 means positive
     ASSERT_EQ(exp, d);
+}
+
+TEST_F(decimal_test, individable) {
+    decimal::context = executor::process::impl::expression::details::standard_decimal_context();
+    decimal::Decimal ten{triple{1,0,10,0}};
+    decimal::Decimal three{triple{1,0,3,0}};
+    auto result = ten/three;
+    std::cerr << "result:" << result << std::endl;
+    std::cerr << "digit:" << (result.coeff().adjexp()+1) << std::endl;
+    auto t = result.as_uint128_triple();
+    std::cerr << "tag:" << t.tag << std::endl;
+    EXPECT_EQ((static_cast<triple>(decimal::Decimal{"3.3333333333333333333333333333333333333"})), static_cast<triple>(result));
 }
 
 TEST_F(decimal_test, from_triple) {

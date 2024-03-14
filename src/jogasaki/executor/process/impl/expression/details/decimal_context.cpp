@@ -17,7 +17,7 @@
 
 namespace jogasaki::executor::process::impl::expression::details {
 
-decimal::Context standard_decimal_context() noexcept {
+decimal::Context standard_decimal_context() {
     // we support (via takatori::decimal::triple) up to 38 precision for sql decimal type, but decimal128 has precision
     // up to 34. So we choose next smallest parameter (arg for IEEEContext needs to be multiples of 32)
     // for enough precision.
@@ -27,14 +27,14 @@ decimal::Context standard_decimal_context() noexcept {
     return c;
 }
 
-void ensure_decimal_context() noexcept {
+void ensure_decimal_context() {
     thread_local bool initialized = false;
     if(initialized) return;
     decimal::context = standard_decimal_context();
     initialized = true;
 }
 
-std::uint32_t reset_decimal_status() noexcept {
+std::uint32_t reset_decimal_status() {
     auto ret = decimal::context.status();
     decimal::context.clear_status();
     return ret;

@@ -24,7 +24,7 @@ namespace jogasaki::executor::process::impl::expression::details {
  * @details this is a factory function to decimal context commonly used in jogasaki.
  * This function choose deciman context with enough properties for decimal processing (e.g. precision, exponent range, etc.)
 */
-decimal::Context standard_decimal_context() noexcept;
+decimal::Context standard_decimal_context();
 
 /**
  * @brief ensure decimal context set for the current thread
@@ -37,11 +37,11 @@ decimal::Context standard_decimal_context() noexcept;
  * even if we set decimal::context_template before the first use of decimal::context (e.g. global constructor).
  * So we created this function.
 */
-void ensure_decimal_context() noexcept;
+void ensure_decimal_context();
 
 /**
  * @brief fetch and reset the status of decimal context for current thread
 */
-std::uint32_t reset_decimal_status() noexcept;
+std::uint32_t reset_decimal_status();
 
 }  // namespace jogasaki::executor::process::impl::expression::details

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <sstream>
+#include <iomanip>
 
 namespace jogasaki::utils {
 
@@ -28,6 +29,7 @@ namespace jogasaki::utils {
 template <class T>
 std::string to_string(T const& arg) {
     std::stringstream ss{};
+    ss << std::uppercase;
     ss << arg;
     return ss.str();
 }

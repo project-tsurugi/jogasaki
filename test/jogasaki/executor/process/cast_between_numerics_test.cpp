@@ -374,7 +374,7 @@ TEST_F(cast_between_numerics_test, float4_to_decimal) {
         EXPECT_EQ(-1, d.sign());
         EXPECT_LE(38, d.adjexp());
     }
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(1.17549e-38f, ctx, {}, {}));
+    EXPECT_EQ((any_triple(1, 0, 117549, -43)), from_float4::to_decimal(1.17549e-38f, ctx, {}, {}));
     EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(1.17549e-38f, ctx, {}, 0));
 
     // verify on decimal min/max
@@ -412,7 +412,7 @@ TEST_F(cast_between_numerics_test, float8_to_decimal) {
         EXPECT_EQ(-1, d.sign());
         EXPECT_LE(308, d.adjexp());
     }
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(2.22507e-308, ctx, {}, {}));  // DBL_MIN
+    EXPECT_EQ((any_triple(1, 0, 222507, -313)), from_float8::to_decimal(2.22507e-308, ctx, {}, {}));  // DBL_MIN
     EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(2.22507e-308, ctx, {}, 0));  // DBL_MIN
 
     // verify on decimal min/max

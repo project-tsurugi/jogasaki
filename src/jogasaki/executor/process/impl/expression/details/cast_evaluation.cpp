@@ -39,6 +39,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/to_string.h>
 #include <jogasaki/utils/variant.h>
 
 #include "common.h"
@@ -864,7 +865,7 @@ any float_to_decimal(
     if(std::isinf(src)) {
         return any{std::in_place_type<triple>, (std::signbit(src) ? triple_min : triple_max)};
     }
-    auto str = std::to_string(src);
+    auto str = utils::to_string(src);
     decimal::context.clear_status();
     decimal::Decimal d{str};
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
@@ -1106,7 +1107,7 @@ any to_character(float src, evaluator_context& ctx, std::optional<std::size_t> l
         auto str = std::signbit(src) ? string_negative_infinity : string_positive_infinity;
         return handle_length(str, ctx, len, add_padding, false);
     }
-    auto res = std::to_string(src);
+    auto res = utils::to_string(src);
     return handle_length(res, ctx, len, add_padding, false);
 }
 
@@ -1206,7 +1207,7 @@ any to_character(double src, evaluator_context& ctx, std::optional<std::size_t> 
         auto str = std::signbit(src) ? string_negative_infinity : string_positive_infinity;
         return handle_length(str, ctx, len, add_padding, false);
     }
-    auto res = std::to_string(src);
+    auto res = utils::to_string(src);
     return handle_length(res, ctx, len, add_padding, false);
 }
 

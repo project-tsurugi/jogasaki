@@ -253,11 +253,10 @@ TEST_F(cast_to_string_test, from_decimal_large) {
 }
 
 TEST_F(cast_to_string_test, from_float) {
-    // TODO is there better scientific representation for float?
     evaluator_context ctx{&resource_};
-    EXPECT_EQ(any_text("1.000000"), details::from_float4::to_character(1.0f, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("340282001837565597733306976381245063168.000000"), details::from_float4::to_character(3.40282e+38f, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("0.000000"), details::from_float4::to_character(FLT_MIN, ctx, std::nullopt, false));  // FLT_MIN is 1.17549e-38
+    EXPECT_EQ(any_text("1"), details::from_float4::to_character(1.0f, ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("3.40282e+38"), details::from_float4::to_character(3.40282e+38f, ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("1.17549e-38"), details::from_float4::to_character(FLT_MIN, ctx, std::nullopt, false));  // FLT_MIN is 1.17549e-38
     EXPECT_EQ(any_text("Infinity"), details::from_float4::to_character(std::numeric_limits<float>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("-Infinity"), details::from_float4::to_character(-std::numeric_limits<float>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float4::to_character(std::numeric_limits<float>::quiet_NaN(), ctx, std::nullopt, false));
@@ -267,11 +266,10 @@ TEST_F(cast_to_string_test, from_float) {
 }
 
 TEST_F(cast_to_string_test, from_double) {
-    // TODO is there better scientific representation for double?
     evaluator_context ctx{&resource_};
-    EXPECT_EQ(any_text("1.000000"), details::from_float8::to_character(1.0, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000"), details::from_float8::to_character(DBL_MAX, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("0.000000"), details::from_float8::to_character(DBL_MIN, ctx, std::nullopt, false)); // DBL_MIN is 2.22507e-308
+    EXPECT_EQ(any_text("1"), details::from_float8::to_character(1.0, ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("1.79769e+308"), details::from_float8::to_character(DBL_MAX, ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("2.22507e-308"), details::from_float8::to_character(DBL_MIN, ctx, std::nullopt, false)); // DBL_MIN is 2.22507e-308
     EXPECT_EQ(any_text("Infinity"), details::from_float8::to_character(std::numeric_limits<double>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("-Infinity"), details::from_float8::to_character(-std::numeric_limits<double>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float8::to_character(std::numeric_limits<double>::quiet_NaN(), ctx, std::nullopt, false));

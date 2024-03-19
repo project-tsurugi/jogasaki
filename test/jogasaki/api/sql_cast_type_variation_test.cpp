@@ -316,7 +316,7 @@ TEST_F(sql_cast_type_variation_test, float4_to_char) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::character>(
            std::tuple{character_type(false, 15)},
-           std::forward_as_tuple(accessor::text{"-123.000000    "}))), result[0]);
+           std::forward_as_tuple(accessor::text{"-123           "}))), result[0]);
     }
 }
 
@@ -329,7 +329,7 @@ TEST_F(sql_cast_type_variation_test, float4_to_varchar) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::character>(
            std::tuple{character_type(true, 15)},
-           std::forward_as_tuple(accessor::text{"-123.000000"}))), result[0]);
+           std::forward_as_tuple(accessor::text{"-123"}))), result[0]);
     }
 }
 
@@ -402,7 +402,7 @@ TEST_F(sql_cast_type_variation_test, float8_to_char) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::character>(
            std::tuple{character_type(false, 15)},
-           std::forward_as_tuple(accessor::text{"-123.000000    "}))), result[0]);
+           std::forward_as_tuple(accessor::text{"-123           "}))), result[0]);
     }
 }
 
@@ -415,7 +415,7 @@ TEST_F(sql_cast_type_variation_test, float8_to_varchar) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::character>(
            std::tuple{character_type(true, 15)},
-           std::forward_as_tuple(accessor::text{"-123.000000"}))), result[0]);
+           std::forward_as_tuple(accessor::text{"-123"}))), result[0]);
     }
 }
 

@@ -418,4 +418,263 @@ TEST_F(sql_cast_type_variation_test, float8_to_varchar) {
            std::forward_as_tuple(accessor::text{"-123.000000"}))), result[0]);
     }
 }
+
+// from decimal
+
+TEST_F(sql_cast_type_variation_test, decimal_to_int4) {
+    execute_statement("create table TT (C0 DECIMAL(6,3) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST(-123 AS DECIMAL(6,3)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS INT) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>({-123}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, decimal_to_int8) {
+    execute_statement("create table TT (C0 DECIMAL(6,3) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST(-123 AS DECIMAL(6,3)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS BIGINT) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>({-123}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, decimal_to_float4) {
+    execute_statement("create table TT (C0 DECIMAL(6,3) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST(-123 AS DECIMAL(6,3)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS REAL) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::float4>({-123.0}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, decimal_to_float8) {
+    execute_statement("create table TT (C0 DECIMAL(6,3) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST(-123 AS DECIMAL(6,3)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS DOUBLE) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::float8>({-123.0}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, decimal_to_decimal) {
+    execute_statement("create table TT (C0 DECIMAL(6,3) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST(-123 AS DECIMAL(6,3)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS DECIMAL(6,3)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(6, 3)}, triple{-1, 0, 123, 0})),
+            result[0]
+        );
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, decimal_to_char) {
+    execute_statement("create table TT (C0 DECIMAL(6,3) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST(-123 AS DECIMAL(6,3)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS CHAR(15)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(false, 15)},
+           std::forward_as_tuple(accessor::text{"-123.000       "}))), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, decimal_to_varchar) {
+    execute_statement("create table TT (C0 DECIMAL(6,3) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST(-123 AS DECIMAL(6,3)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS VARCHAR(15)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(true, 15)},
+           std::forward_as_tuple(accessor::text{"-123.000"}))), result[0]);
+    }
+}
+
+// from char
+
+TEST_F(sql_cast_type_variation_test, char_to_int4) {
+    execute_statement("create table TT (C0 CHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS INT) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>({-123}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, char_to_int8) {
+    execute_statement("create table TT (C0 CHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS BIGINT) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>({-123}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, char_to_float4) {
+    execute_statement("create table TT (C0 CHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS REAL) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::float4>({-123.0}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, char_to_float8) {
+    execute_statement("create table TT (C0 CHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS DOUBLE) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::float8>({-123.0}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, char_to_decimal) {
+    execute_statement("create table TT (C0 CHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS DECIMAL(6,3)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(6, 3)}, triple{-1, 0, 123, 0})),
+            result[0]
+        );
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, char_to_char) {
+    execute_statement("create table TT (C0 CHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS CHAR(15)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(false, 15)},
+           std::forward_as_tuple(accessor::text{"-123           "}))), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, char_to_varchar) {
+    execute_statement("create table TT (C0 CHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS VARCHAR(15)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(true, 15)},
+           std::forward_as_tuple(accessor::text{"-123      "}))), result[0]);
+    }
+}
+
+// from varchar
+
+TEST_F(sql_cast_type_variation_test, varchar_to_int4) {
+    execute_statement("create table TT (C0 VARCHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS INT) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>({-123}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, varchar_to_int8) {
+    execute_statement("create table TT (C0 VARCHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS BIGINT) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>({-123}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, varchar_to_float4) {
+    execute_statement("create table TT (C0 VARCHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS REAL) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::float4>({-123.0}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, varchar_to_float8) {
+    execute_statement("create table TT (C0 VARCHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS DOUBLE) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::float8>({-123.0}, {false})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, varchar_to_decimal) {
+    execute_statement("create table TT (C0 VARCHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS DECIMAL(6,3)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(6, 3)}, triple{-1, 0, 123, 0})),
+            result[0]
+        );
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, varchar_to_char) {
+    execute_statement("create table TT (C0 VARCHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS CHAR(15)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(false, 15)},
+           std::forward_as_tuple(accessor::text{"-123           "}))), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, varchar_to_varchar) {
+    execute_statement("create table TT (C0 VARCHAR(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES ('-123')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS VARCHAR(15)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(true, 15)},
+           std::forward_as_tuple(accessor::text{"-123"}))), result[0]);
+    }
+}
+
 }  // namespace jogasaki::testing

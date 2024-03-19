@@ -255,8 +255,8 @@ TEST_F(cast_to_string_test, from_decimal_large) {
 TEST_F(cast_to_string_test, from_float) {
     evaluator_context ctx{&resource_};
     EXPECT_EQ(any_text("1"), details::from_float4::to_character(1.0f, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("3.40282e+38"), details::from_float4::to_character(3.40282e+38f, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("1.17549e-38"), details::from_float4::to_character(FLT_MIN, ctx, std::nullopt, false));  // FLT_MIN is 1.17549e-38
+    EXPECT_EQ(any_text("3.40282e+38"), details::from_float4::to_character(std::numeric_limits<float>::max(), ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("1.17549e-38"), details::from_float4::to_character(std::numeric_limits<float>::min(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("Infinity"), details::from_float4::to_character(std::numeric_limits<float>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("-Infinity"), details::from_float4::to_character(-std::numeric_limits<float>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float4::to_character(std::numeric_limits<float>::quiet_NaN(), ctx, std::nullopt, false));
@@ -268,8 +268,8 @@ TEST_F(cast_to_string_test, from_float) {
 TEST_F(cast_to_string_test, from_double) {
     evaluator_context ctx{&resource_};
     EXPECT_EQ(any_text("1"), details::from_float8::to_character(1.0, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("1.79769e+308"), details::from_float8::to_character(DBL_MAX, ctx, std::nullopt, false));
-    EXPECT_EQ(any_text("2.22507e-308"), details::from_float8::to_character(DBL_MIN, ctx, std::nullopt, false)); // DBL_MIN is 2.22507e-308
+    EXPECT_EQ(any_text("1.79769e+308"), details::from_float8::to_character(std::numeric_limits<double>::max(), ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("2.22507e-308"), details::from_float8::to_character(std::numeric_limits<double>::min(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("Infinity"), details::from_float8::to_character(std::numeric_limits<double>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("-Infinity"), details::from_float8::to_character(-std::numeric_limits<double>::infinity(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float8::to_character(std::numeric_limits<double>::quiet_NaN(), ctx, std::nullopt, false));

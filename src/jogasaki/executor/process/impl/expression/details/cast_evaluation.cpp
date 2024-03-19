@@ -1130,15 +1130,15 @@ any to_float4(float src, evaluator_context& ctx) {
     // this function almost does nothing, but to standardize nan
     (void) ctx;
     if(std::isnan(src)) {
-        return any{std::in_place_type<float>, static_cast<float>(std::numeric_limits<float>::quiet_NaN())};
+        src = std::numeric_limits<float>::quiet_NaN();
     }
-    return any{std::in_place_type<float>, static_cast<float>(src)};
+    return any{std::in_place_type<float>, src};
 }
 
 any to_float8(float src, evaluator_context& ctx) {
     (void) ctx;
     if(std::isnan(src)) {
-        src = std::numeric_limits<float>::quiet_NaN();
+        return any{std::in_place_type<double>, std::numeric_limits<double>::quiet_NaN()};
     }
     return any{std::in_place_type<double>, static_cast<double>(src)};
 }
@@ -1257,9 +1257,9 @@ any to_float8(double src, evaluator_context& ctx) {
     (void) ctx;
     // this function almost does nothing, but to standardize nan
     if(std::isnan(src)) {
-        return any{std::in_place_type<double>, std::numeric_limits<double>::quiet_NaN()};
+        src = std::numeric_limits<double>::quiet_NaN();
     }
-    return any{std::in_place_type<float>, static_cast<float>(src)};
+    return any{std::in_place_type<double>, src};
 }
 
 any to_decimal(

@@ -41,10 +41,11 @@ namespace jogasaki::meta {
 template <field_type_kind Kind>
 struct field_type_traits;
 
-template <class T1, class T2 = void>
+template <class T1, class T2 = void, class T3 = T1>
 struct simple_field_type_traits {
     using runtime_type = T1;
     using option_type = T2;
+    using value_range = T3;
     static constexpr std::size_t size = sizeof(runtime_type);
     static constexpr std::size_t alignment = alignof(runtime_type);
 };
@@ -56,10 +57,10 @@ template <>
 struct field_type_traits<field_type_kind::int4> : simple_field_type_traits<std::int32_t> {};
 
 template <>
-struct field_type_traits<field_type_kind::int1> : field_type_traits<field_type_kind::int4> {};
+struct field_type_traits<field_type_kind::int1> : simple_field_type_traits<std::int32_t, void, std::int8_t> {};
 
 template <>
-struct field_type_traits<field_type_kind::int2> : field_type_traits<field_type_kind::int4> {};
+struct field_type_traits<field_type_kind::int2> : simple_field_type_traits<std::int32_t, void, std::int16_t> {};
 
 template <>
 struct field_type_traits<field_type_kind::int8> : simple_field_type_traits<std::int64_t> {};

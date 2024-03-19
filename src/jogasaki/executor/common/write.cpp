@@ -178,7 +178,7 @@ status fill_evaluated_value(
 ) {
     evaluator eval{t.elements()[f.index_], info, host_variables};
     process::impl::variable_table empty{};
-    process::impl::expression::evaluator_context c{};
+    process::impl::expression::evaluator_context c{std::addressof(resource)};
     auto res = eval(c, empty, &resource);
     if (res.error()) {
         auto rc = status::err_expression_evaluation_failure;

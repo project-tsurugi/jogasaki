@@ -15,9 +15,10 @@
  */
 #pragma once
 
-#include <jogasaki/status.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/status.h>
+
 #include "search_key_field_info.h"
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -30,5 +31,4 @@ status encode_key(
     std::size_t& length
 );
 
-}
-
+}  // namespace jogasaki::executor::process::impl::ops::details

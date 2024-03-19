@@ -54,6 +54,7 @@
 #include <takatori/util/exception.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/constants.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/record_meta.h>
@@ -449,8 +450,8 @@ status prepare(
         ctx.aggregate_provider(),
         ctx.variable_provider()
     };
-    // used when DDL has no parenthesis for decimal: "create table T (c0 decimal)"
-    options.default_decimal_precision() = 38;
+    // used when SQL has no parenthesis for decimal: "create table T (c0 decimal)" or "CAST(... AS decimal)"
+    options.default_decimal_precision() = decimal_default_precision_no_parenthesis;
 
     yugawara::runtime_feature_set runtime_features {
         //TODO enable features

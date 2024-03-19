@@ -202,7 +202,7 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
     )) {
         do {
             if (condition_) {
-                expression::evaluator_context c{};
+                expression::evaluator_context c{resource};
                 auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                 if (r.error()) {
                     return handle_expression_error(ctx, r);

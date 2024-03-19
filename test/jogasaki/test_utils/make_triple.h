@@ -13,14 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "error.h"
+#pragma once
 
-namespace jogasaki::executor::process::impl::expression {
+#include <cstddef>
+#include <decimal.hh>
 
-error::error(error_kind kind) noexcept: kind_(kind) {}
+#include <takatori/decimal/triple.h>
 
-error_kind error::kind() const noexcept {
-    return kind_;
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+
+namespace jogasaki {
+
+using takatori::decimal::triple;
+
+triple make_triple(std::string_view str, std::optional<std::size_t> precision ={}, std::optional<std::size_t> scale ={}) {
+    decimal::Decimal value{std::string{str}};
+    return static_cast<triple>(value);
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki

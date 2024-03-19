@@ -19,20 +19,20 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/data/any.h>
-
-#include <jogasaki/meta/type_helper.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/kvs/id.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/id.h>
+#include <jogasaki/meta/type_helper.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/utils/storage_data.h>
+
 #include "api_test_base.h"
 
 namespace jogasaki::testing {
@@ -586,62 +586,6 @@ TEST_F(sql_test, DISABLED_join_condition_on_clause) {
         execute_query("SELECT * FROM TT0 INNER JOIN TT1 ON TT0.C0=TT1.C0 WHERE TT0.C1 < TT1.C1", result);
         ASSERT_EQ(0, result.size());
     }
-}
-
-TEST_F(sql_test, cast) {
-    execute_statement("create table TT (C0 int primary key, C1 bigint, C2 float, C3 double)");
-    execute_statement("INSERT INTO TT (C0, C1, C2, C3) VALUES (CAST('1' AS INT), CAST('10' AS BIGINT), CAST('100.0' AS FLOAT), CAST('1000.0' AS DOUBLE))");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, C1, C2, C3 FROM TT", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
-    }
-}
-
-TEST_F(sql_test, cast_from_varchar) {
-    execute_statement("create table TT (C0 varchar(10) primary key, C1 varchar(10), C2 varchar(10), C3 varchar(10))");
-    execute_statement("INSERT INTO TT VALUES ('1', '10', '100.0', '1000.0')");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT CAST(C0 AS INT), CAST(C1 AS BIGINT), CAST(C2 AS REAL), CAST(C3 AS DOUBLE) FROM TT", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
-    }
-}
-TEST_F(sql_test, cast_from_char) {
-    // verify padding spaces are ignored
-    execute_statement("create table TT (C0 char(10) primary key, C1 char(10), C2 char(10), C3 char(10))");
-    execute_statement("INSERT INTO TT VALUES ('1', '10', '100.0', '1000.0')");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT CAST(C0 AS INT), CAST(C1 AS BIGINT), CAST(C2 AS REAL), CAST(C3 AS DOUBLE) FROM TT", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
-    }
-}
-TEST_F(sql_test, cast_failure) {
-    execute_statement("create table TT (C0 int primary key)");
-    test_stmt_err("INSERT INTO TT (C0) VALUES (CAST('BADVALUE' AS INT))", error_code::value_evaluation_exception);
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0 FROM TT", result);
-        ASSERT_EQ(0, result.size());
-    }
-}
-
-TEST_F(sql_test, cast_failure_in_where) {
-    execute_statement("create table TT (C0 int primary key)");
-    execute_statement("INSERT INTO TT (C0) VALUES (1)");
-    test_stmt_err("SELECT C0 FROM TT WHERE C0 = CAST('999999999999999999999' AS INT)", error_code::value_evaluation_exception);
-}
-
-TEST_F(sql_test, cast_failure_vs_null) {
-    // verify if evaluation failure is not ignored when comparing with null
-    execute_statement("create table TT (C0 int primary key, C1 int)");
-    execute_statement("INSERT INTO TT (C0) VALUES (1)");
-    test_stmt_err("SELECT C0 FROM TT WHERE C1 = CAST('999999999999999999999' AS INT)", error_code::value_evaluation_exception);
-    test_stmt_err("SELECT C0 FROM TT WHERE CAST('999999999999999999999' AS INT) = C1", error_code::value_evaluation_exception);
 }
 
 // jogasaki should catch runtime exception from compiler

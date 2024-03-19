@@ -151,7 +151,7 @@ public:
         assign_values(ctx, cgrp, incr, false);
         auto resource = ctx.varlen_resource();
         auto& vars = ctx.input_variables();
-        expression::evaluator_context c{};
+        expression::evaluator_context c{resource};
         if(!has_condition_) {
             return data::any{std::in_place_type<bool>, true};
         }

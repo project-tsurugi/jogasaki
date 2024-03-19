@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include <type_traits>
-#include <string_view>
 #include <ostream>
+#include <string_view>
+#include <type_traits>
 
 #include <takatori/util/enum_set.h>
 
@@ -27,11 +27,22 @@ namespace jogasaki::executor::process::impl::expression {
  * @brief error kind
  */
 enum class error_kind : std::size_t {
+    ///@brief error kind is undefined or unknown
     undefined = 0,
+
+    ///@brief error on arithmetic operation during evaluation
     arithmetic_error,
+
+    ///@brief value overflows
     overflow,
-    cast_failure,
+
+    ///@brief cast failure due to the cast policy
+    lost_precision,
+
+    ///@brief string or other representation's format error
     format_error,
+
+    ///@brief unsupported features used in the expression
     unsupported,
 };
 
@@ -47,7 +58,7 @@ enum class error_kind : std::size_t {
         case kind::undefined: return "undefined"sv;
         case kind::arithmetic_error: return "arithmetic_error"sv;
         case kind::overflow: return "overflow"sv;
-        case kind::cast_failure: return "cast_failure"sv;
+        case kind::lost_precision: return "lost_precision"sv;
         case kind::format_error: return "format_error"sv;
         case kind::unsupported: return "unsupported"sv;
     }
@@ -119,4 +130,4 @@ inline bool operator!=(error const& a, error const& b) noexcept {
     return !(a == b);
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::expression

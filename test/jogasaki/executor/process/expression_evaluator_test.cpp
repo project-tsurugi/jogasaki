@@ -13,59 +13,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-
-#include <gtest/gtest.h>
-#include <glog/logging.h>
 #include <boost/dynamic_bitset.hpp>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 
-#include <jogasaki/executor/partitioner.h>
-#include <jogasaki/executor/comparator.h>
-
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/runtime_feature.h>
-#include <yugawara/compiler.h>
-#include <yugawara/compiler_options.h>
-
-#include <mizugaki/translator/shakujo_translator.h>
-
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/step/take_flat.h>
-#include <takatori/relation/step/offer.h>
+#include <takatori/plan/forward.h>
+#include <takatori/plan/process.h>
 #include <takatori/relation/buffer.h>
-#include <takatori/relation/scan.h>
+#include <takatori/relation/emit.h>
 #include <takatori/relation/filter.h>
 #include <takatori/relation/project.h>
-#include <takatori/statement/write.h>
-#include <takatori/statement/execute.h>
-#include <takatori/scalar/immediate.h>
-#include <takatori/plan/process.h>
-#include <takatori/plan/forward.h>
-#include <takatori/serializer/json_printer.h>
+#include <takatori/relation/scan.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_flat.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/binary_operator.h>
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
+#include <takatori/scalar/immediate.h>
+#include <takatori/serializer/json_printer.h>
+#include <takatori/statement/execute.h>
+#include <takatori/statement/write.h>
+#include <takatori/type/float.h>
+#include <takatori/type/int.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/string_builder.h>
+#include <takatori/value/float.h>
+#include <takatori/value/int.h>
+#include <yugawara/binding/factory.h>
+#include <yugawara/compiler.h>
+#include <yugawara/compiler_options.h>
+#include <yugawara/runtime_feature.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <mizugaki/translator/shakujo_translator.h>
 
-#include <jogasaki/utils/field_types.h>
-#include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/test_utils.h>
-#include <jogasaki/test_root.h>
-
-#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/partitioner.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils.h>
 #include <jogasaki/test_utils/to_field_type_kind.h>
+#include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -206,14 +200,14 @@ public:
         {
             set_values<In1, In2>(c1, c2, false, false);
             utils::checkpoint_holder cph{&resource_};
-            evaluator_context c{};
+            evaluator_context c{&resource_};
             auto result = evaluator_(c, vars_, &resource_).to<out_type>();
             ASSERT_EQ(exp, result);
         }
         {
             set_values<In1, In2>(c1, c2, true, false);
             utils::checkpoint_holder cph{&resource_};
-            evaluator_context c{};
+            evaluator_context c{&resource_};
             auto result = evaluator_(c, vars_, &resource_);
             ASSERT_TRUE(result.empty());
             ASSERT_FALSE(result.error());
@@ -221,7 +215,7 @@ public:
         {
             set_values<In1, In2>(c1, c2, false, true);
             utils::checkpoint_holder cph{&resource_};
-            evaluator_context c{};
+            evaluator_context c{&resource_};
             auto result = evaluator_(c, vars_, &resource_);
             ASSERT_TRUE(result.empty());
             ASSERT_FALSE(result.error());
@@ -354,7 +348,7 @@ TEST_F(expression_evaluator_test, binary_expression) {
 
     set_values<t::int8, t::int8>(10, 20, false, false);
 
-    evaluator_context c{};
+    evaluator_context c{nullptr};
     auto result = evaluator_(c, vars_).to<std::int64_t>();
     ASSERT_EQ(-40, result);
 }
@@ -380,7 +374,7 @@ TEST_F(expression_evaluator_test, unary_expression) {
     expression::evaluator ev{expr, c_info};
 
     variable_table vars{};
-    evaluator_context c{};
+    evaluator_context c{nullptr};
     auto result = ev(c, vars).to<std::int64_t>();
     ASSERT_EQ(-30, result);
 }
@@ -397,7 +391,7 @@ TEST_F(expression_evaluator_test, conditional_not) {
     expression::evaluator ev{expr, c_info};
 
     variable_table vars{};
-    evaluator_context c{};
+    evaluator_context c{nullptr};
     ASSERT_TRUE(ev(c, vars).to<bool>());
 }
 
@@ -434,7 +428,7 @@ TEST_F(expression_evaluator_test, text_length) {
     ref.set_null(meta->nullity_offset(0), false);
     compiled_info c_info{ expressions_, variables_ };
     expression::evaluator ev{expr, c_info};
-    evaluator_context c{};
+    evaluator_context c{&resource};
     ASSERT_EQ(30, ev(c, vars, &resource).to<std::int32_t>());
 }
 
@@ -556,7 +550,7 @@ TEST_F(expression_evaluator_test, arithmetic_error) {
     {
         set_values<t::float8, t::float8>(10.0, 0.0, false, false);
         utils::checkpoint_holder cph{&resource_};
-        evaluator_context c{};
+        evaluator_context c{&resource_};
         auto result = evaluator_(c, vars_, &resource_);
         ASSERT_FALSE(result);
         ASSERT_FALSE(result.empty());

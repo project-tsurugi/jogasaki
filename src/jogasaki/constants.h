@@ -87,9 +87,15 @@ constexpr std::size_t decimal_min_precision = 1;
 
 /**
  * @brief default precision for decimal
- * @details default precision for decimal types that has no precision information defined (e.g. DECIMAL(*, 0))
+ * @details default precision for decimal types that has no precision information defined (e.g. DECIMAL(*, 0) in column definition)
  */
 constexpr std::size_t decimal_default_precision = decimal_max_precision;
+
+/**
+ * @brief default precision for decimal
+ * @details default precision for decimal types that has no precision/scale information provided at all (e.g. DECIMAL without parenthesis)
+ */
+constexpr std::size_t decimal_default_precision_no_parenthesis = decimal_max_precision;
 
 /**
  * @brief default precision for scale for dump

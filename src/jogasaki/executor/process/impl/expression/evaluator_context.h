@@ -15,13 +15,13 @@
  */
 #pragma once
 
-#include <type_traits>
-#include <string_view>
 #include <ostream>
-
-#include "jogasaki/executor/diagnostic_record.h"
+#include <string_view>
+#include <type_traits>
 
 #include <takatori/util/enum_set.h>
+
+#include "jogasaki/executor/diagnostic_record.h"
 
 #include "error.h"
 
@@ -31,13 +31,27 @@ namespace jogasaki::executor::process::impl::expression {
 /**
  * @brief cast loss policy
  */
-enum class cast_loss_policy : std::size_t {
+enum class loss_precision_policy : std::size_t {
+    ///@brief ignore the loss of precision
     ignore,
+
+    ///@brief round down the value
     floor,
+
+    ///@brief round up the value
     ceil,
+
+    ///@brief fill null value when precision is lost
     unknown,
+
+    ///@brief warn and continue when precision is lost
     warn,
+
+    ///@brief raise error when precision is lost
     error,
+
+    ///@brief implicit cast policy (almost always same as error)
+    implicit,
 };
 
 /**
@@ -45,15 +59,16 @@ enum class cast_loss_policy : std::size_t {
  * @param value the target value
  * @return the corresponded string representation
  */
-[[nodiscard]] constexpr inline std::string_view to_string_view(cast_loss_policy value) noexcept {
+[[nodiscard]] constexpr inline std::string_view to_string_view(loss_precision_policy value) noexcept {
     using namespace std::string_view_literals;
     switch (value) {
-        case cast_loss_policy::ignore: return "ignore"sv;
-        case cast_loss_policy::floor: return "floor"sv;
-        case cast_loss_policy::ceil: return "ceil"sv;
-        case cast_loss_policy::unknown: return "unknown"sv;
-        case cast_loss_policy::warn: return "warn"sv;
-        case cast_loss_policy::error: return "error"sv;
+        case loss_precision_policy::ignore: return "ignore"sv;
+        case loss_precision_policy::floor: return "floor"sv;
+        case loss_precision_policy::ceil: return "ceil"sv;
+        case loss_precision_policy::unknown: return "unknown"sv;
+        case loss_precision_policy::warn: return "warn"sv;
+        case loss_precision_policy::error: return "error"sv;
+        case loss_precision_policy::implicit: return "implicit"sv;
     }
     std::abort();
 }
@@ -64,7 +79,7 @@ enum class cast_loss_policy : std::size_t {
  * @param value the target value
  * @return the output
  */
-inline std::ostream& operator<<(std::ostream& out, cast_loss_policy value) {
+inline std::ostream& operator<<(std::ostream& out, loss_precision_policy value) {
     return out << to_string_view(value);
 }
 
@@ -111,23 +126,29 @@ class evaluator_context {
 public:
     using error_type = diagnostic_record<error_kind>;
 
+    using memory_resource = memory::paged_memory_resource;
+
     /**
-     * @brief create undefined object
+     * @brief create new object
      */
-    evaluator_context() = default;
+    explicit evaluator_context(
+        memory_resource* resource
+    ) :
+        resource_(resource)
+    {}
 
     /**
      * @brief accessor for cast loss policy
      */
-    [[nodiscard]] cast_loss_policy get_cast_loss_policy() const noexcept {
-        return cast_loss_policy_;
+    [[nodiscard]] loss_precision_policy get_loss_precision_policy() const noexcept {
+        return loss_precision_policy_;
     }
 
     /**
      * @brief setter for cast loss policy
      */
-    evaluator_context& set_cast_loss_policy(cast_loss_policy arg) noexcept {
-        cast_loss_policy_ = arg;
+    evaluator_context& set_loss_precision_policy(loss_precision_policy arg) noexcept {
+        loss_precision_policy_ = arg;
         return *this;
     }
 
@@ -147,11 +168,10 @@ public:
     }
 
     /**
-     * @brief add error for reporting
+     * @brief create new error record and returns the reference, which is available until next call of this method
      */
-    evaluator_context& add_error(error_type arg) {
-        errors_.emplace_back(std::move(arg));
-        return *this;
+    error_type& add_error(error_type arg) {
+        return errors_.emplace_back(std::move(arg));
     }
 
     /**
@@ -160,10 +180,34 @@ public:
     [[nodiscard]] std::vector<error_type> const& errors() const noexcept {
         return errors_;
     }
+
+    /**
+     * @brief accessor for memory resource
+     */
+    [[nodiscard]] memory_resource* resource() const noexcept {
+        return resource_;
+    }
+
+    /**
+     * @brief accessor whether the precision is lost
+     */
+    [[nodiscard]] bool lost_precision() const noexcept {
+        return lost_precision_;
+    }
+
+    /**
+     * @brief set whether the precision is lost
+     */
+    void lost_precision(bool arg) noexcept {
+        lost_precision_ = arg;
+    }
+
 private:
-    cast_loss_policy cast_loss_policy_{cast_loss_policy::ignore};
+    memory_resource* resource_{};
+    loss_precision_policy loss_precision_policy_{loss_precision_policy::ignore};
     range_error_policy range_error_policy_{range_error_policy::ignore};
     std::vector<error_type> errors_{};
+    bool lost_precision_{};
 };
 
 /**
@@ -174,7 +218,7 @@ private:
  */
 inline std::ostream& operator<<(std::ostream& out, evaluator_context const& value) {
     out <<
-        "evaluator_context(" << value.get_cast_loss_policy() <<
+        "evaluator_context(" << value.get_loss_precision_policy() <<
         ", " << value.get_range_error_policy();
     for(auto&& e : value.errors()) {
         out << ", " << e;
@@ -183,4 +227,4 @@ inline std::ostream& operator<<(std::ostream& out, evaluator_context const& valu
     return out;
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::expression

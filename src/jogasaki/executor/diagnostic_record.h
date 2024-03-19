@@ -19,8 +19,32 @@
 #include <string_view>
 #include <string>
 #include <ostream>
+#include <sstream>
+#include <vector>
 
 namespace jogasaki::executor {
+
+class diagnostic_argument {
+public:
+    diagnostic_argument() = default;
+
+    std::stringstream& entity() {
+        return entity_;
+    }
+
+    std::string str() const {
+        return entity_.str();
+    }
+
+private:
+    std::stringstream entity_{};
+};
+
+template <class T>
+inline diagnostic_argument& operator<<(diagnostic_argument& out, T&& value) {
+    out.entity() << value;
+    return out;
+}
 
 /**
  * @brief diagnostic information.
@@ -33,6 +57,8 @@ public:
     using code_type = T;
     /// @brief the diagnostic message type.
     using message_type = std::string;
+    /// @brief the argument list type.
+    using arguments_type = std::vector<diagnostic_argument>;
 
     /**
      * @brief creates a new empty instance.
@@ -45,8 +71,8 @@ public:
      * @param message the optional diagnostic message
      */
     diagnostic_record(code_type code, message_type message) noexcept :
-    code_(std::move(code)),
-    message_(std::move(message))
+        code_(std::move(code)),
+        message_(std::move(message))
     {}
 
     /**
@@ -55,7 +81,7 @@ public:
      */
     explicit diagnostic_record(code_type code) noexcept :
         diagnostic_record(std::move(code), {})
-        {}
+    {}
 
     /**
      * @brief returns the diagnostic code.
@@ -73,9 +99,26 @@ public:
         return message_;
     }
 
+    /**
+     * @brief create new argument and returns the reference
+     * @return the reference to the argument, which is available until next call of this method
+     */
+    [[nodiscard]] diagnostic_argument& new_argument() noexcept {
+        auto& a = arguments_.emplace_back();
+        return a;
+    }
+
+    /**
+     * @brief accessor for arguments
+     * @return the list of arguments
+     */
+    [[nodiscard]] arguments_type const& arguments() const noexcept {
+        return arguments_;
+    }
 private:
-    code_type code_ {};
-    message_type message_ {};
+    code_type code_{};
+    message_type message_{};
+    arguments_type arguments_{};
 };
 
 /**
@@ -86,9 +129,23 @@ private:
  */
 template<class T>
 inline std::ostream& operator<<(std::ostream& out, diagnostic_record<T> const& value) {
-    return out << "diagnostic("
+    out << "diagnostic("
         << "code=" << value.code() << ", "
-        << "message='" << value.message() << "')";
+        << "message='" << value.message() << "'";
+        if(! value.arguments().empty()) {
+            out << ", args=[";
+            bool first = true;
+            for(auto&& e : value.arguments()) {
+                if(! first) {
+                    out << ", ";
+                }
+                out << "'" << e.str() << "'";
+                first = false;
+            }
+            out << "]";
+        }
+        out << ")";
+    return out;
 }
 
 } // namespace jogasaki::executor

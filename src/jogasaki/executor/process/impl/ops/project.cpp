@@ -76,7 +76,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& v = variables_[i];
         auto info = vars.info().at(variables_[i]);
         auto& ev = evaluators_[i];
-        expression::evaluator_context c{};
+        expression::evaluator_context c{ctx.varlen_resource()};
         auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {

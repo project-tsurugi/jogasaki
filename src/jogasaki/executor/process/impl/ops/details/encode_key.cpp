@@ -15,10 +15,10 @@
  */
 #include "encode_key.h"
 
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/convert_any.h>
 
@@ -36,7 +36,7 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
         kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
         for(auto&& k : keys) {
-            expression::evaluator_context ctx{};
+            expression::evaluator_context ctx{std::addressof(resource)};
             auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {
                 VLOG_LP(log_error) << "evaluation error: " << a.to<expression::error>();
@@ -74,5 +74,4 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     return status::ok;
 }
 
-}
-
+}  // namespace jogasaki::executor::process::impl::ops::details

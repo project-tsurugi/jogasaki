@@ -18,25 +18,25 @@
 #include <cstddef>
 #include <functional>
 
-#include <takatori/scalar/expression.h>
-#include <takatori/scalar/cast.h>
-#include <takatori/scalar/match.h>
 #include <takatori/scalar/binary.h>
+#include <takatori/scalar/cast.h>
 #include <takatori/scalar/coalesce.h>
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/conditional.h>
+#include <takatori/scalar/expression.h>
 #include <takatori/scalar/extension.h>
 #include <takatori/scalar/function_call.h>
 #include <takatori/scalar/immediate.h>
 #include <takatori/scalar/let.h>
+#include <takatori/scalar/match.h>
 #include <takatori/scalar/unary.h>
 #include <takatori/scalar/variable_reference.h>
 #include <yugawara/compiled_info.h>
 
-#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/data/any.h>
-#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 
 #include "evaluator_context.h"
 
@@ -101,7 +101,7 @@ takatori::decimal::triple triple_from_int(std::int64_t arg);
 
 double triple_to_double(takatori::decimal::triple arg);
 
-} // namespace details
+}  // namespace details
 
 /**
  * @brief expression evaluator
@@ -170,4 +170,4 @@ private:
     memory::lifo_paged_memory_resource* resource = nullptr
 );
 
-} // namespace
+}  // namespace jogasaki::executor::process::impl::expression

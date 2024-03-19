@@ -15,27 +15,27 @@
  */
 #include "evaluator.h"
 
+#include <charconv>
 #include <cstddef>
 #include <functional>
-#include <charconv>
 
 #include <takatori/scalar/expression.h>
 #include <takatori/scalar/walk.h>
-#include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
 #include <takatori/type/character.h>
+#include <takatori/type/float.h>
+#include <takatori/type/int.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/string_builder.h>
 
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/data/any.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/utils/as_any.h>
-#include <jogasaki/utils/variant.h>
-#include <jogasaki/accessor/text.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/variant.h>
 
 #include "details/cast_evaluation.h"
 #include "details/common.h"
@@ -45,7 +45,7 @@ namespace jogasaki::executor::process::impl::expression {
 
 using jogasaki::data::any;
 using takatori::decimal::triple;
-using takatori::util::fail;
+using takatori::util::string_builder;
 
 namespace details {
 
@@ -545,16 +545,16 @@ any engine::operator()(takatori::scalar::immediate const& exp) {
     return utils::as_any(exp.value(), type, resource_);
 }
 
-cast_loss_policy from(takatori::scalar::cast_loss_policy t) {
+loss_precision_policy from(takatori::scalar::cast_loss_policy t) {
     switch(t) {
-        case takatori::scalar::cast_loss_policy::ignore: return cast_loss_policy::ignore;
-        case takatori::scalar::cast_loss_policy::floor: return cast_loss_policy::floor;
-        case takatori::scalar::cast_loss_policy::ceil: return cast_loss_policy::ceil;
-        case takatori::scalar::cast_loss_policy::unknown: return cast_loss_policy::unknown;
-        case takatori::scalar::cast_loss_policy::warn: return cast_loss_policy::warn;
-        case takatori::scalar::cast_loss_policy::error: return cast_loss_policy::error;
+        case takatori::scalar::cast_loss_policy::ignore: return loss_precision_policy::ignore;
+        case takatori::scalar::cast_loss_policy::floor: return loss_precision_policy::floor;
+        case takatori::scalar::cast_loss_policy::ceil: return loss_precision_policy::ceil;
+        case takatori::scalar::cast_loss_policy::unknown: return loss_precision_policy::unknown;
+        case takatori::scalar::cast_loss_policy::warn: return loss_precision_policy::warn;
+        case takatori::scalar::cast_loss_policy::error: return loss_precision_policy::error;
     }
-    fail();
+    std::abort();
 }
 
 any engine::operator()(takatori::scalar::cast const& exp) {
@@ -563,10 +563,10 @@ any engine::operator()(takatori::scalar::cast const& exp) {
     auto& src_type = info_.type_of(exp.operand());
     auto& tgt_type = exp.type();
 
-    auto original = ctx_.get_cast_loss_policy();
-    ctx_.set_cast_loss_policy(from(exp.loss_policy()));
+    auto original = ctx_.get_loss_precision_policy();
+    ctx_.set_loss_precision_policy(from(exp.loss_policy()));
     auto ret = details::conduct_cast(ctx_, src_type, tgt_type, v);
-    ctx_.set_cast_loss_policy(original);
+    ctx_.set_loss_precision_policy(original);
     return ret;
 }
 
@@ -608,7 +608,7 @@ evaluator_context& engine::context() noexcept {
     return ctx_;
 }
 
-}
+}  // namespace details
 
 evaluator::evaluator(
     takatori::scalar::expression const& expression,
@@ -625,9 +625,20 @@ any evaluator::operator()(
     variable_table& variables,
     evaluator::memory_resource* resource
 ) const {
-    details::ensure_decimal_context();
-    details::engine e{ctx, variables, *info_, host_variables_, resource};
-    return takatori::scalar::dispatch(e, *expression_);
+    try {
+        details::ensure_decimal_context();
+        details::engine e{ctx, variables, *info_, host_variables_, resource};
+        return takatori::scalar::dispatch(e, *expression_);
+    } catch (std::exception const& e) {
+        // catch unexpected error during mpdecimal operation such as MallocError or ValueError
+        // this should not happen normally, even but in that case we stop the evaluation simply stops
+        ctx.add_error(
+            {error_kind::undefined,
+             string_builder{} << "unexpected error occurred during expression evaluation:" << e.what()
+                              << string_builder::to_string}
+        );
+        return any{std::in_place_type<class error>, error_kind::undefined};
+    }
 }
 
 any evaluate_bool(
@@ -644,4 +655,4 @@ any evaluate_bool(
     return any{std::in_place_type<bool>, a && a.to<bool>()};
 }
 
-} // namespace
+}  // namespace jogasaki::executor::process::impl::expression

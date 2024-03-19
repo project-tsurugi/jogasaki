@@ -15,6 +15,8 @@
  */
 #include "decimal_context.h"
 
+#include <jogasaki/executor/process/impl/expression/details/constants.h>
+
 namespace jogasaki::executor::process::impl::expression::details {
 
 decimal::Context standard_decimal_context() {
@@ -23,7 +25,7 @@ decimal::Context standard_decimal_context() {
     // for enough precision.
     auto c = decimal::IEEEContext(160);
     // in order to avoid out of range that triple can represent, we set the precision to 38
-    c.prec(38);
+    c.prec(max_triple_digits);
     return c;
 }
 

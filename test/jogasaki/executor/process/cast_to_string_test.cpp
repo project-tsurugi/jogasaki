@@ -238,6 +238,12 @@ TEST_F(cast_to_string_test, from_decimal) {
     EXPECT_EQ(any_text("0"), details::from_decimal::to_character(triple{}, ctx, std::nullopt, false));
     EXPECT_EQ(any_text("1.23"), details::from_decimal::to_character(triple{1, 0, 123, -2}, ctx, std::nullopt, false));
     EXPECT_EQ(any_text("-12345.67890"), details::from_decimal::to_character(triple{-1, 0, 1234567890, -5}, ctx, std::nullopt, false));
+
+    // scientific representation if exp > 0 or adjexp < -6
+    EXPECT_EQ(any_text("-1234567890"), details::from_decimal::to_character(triple{-1, 0, 1234567890, 0}, ctx, std::nullopt, false)); // exp = 0, adjexp = 9
+    EXPECT_EQ(any_text("-1.23456789E+9"), details::from_decimal::to_character(triple{-1, 0, 123456789, 1}, ctx, std::nullopt, false)); // exp = 1, adjexp = 9
+    EXPECT_EQ(any_text("-0.00000123456789"), details::from_decimal::to_character(triple{-1, 0, 123456789, -14}, ctx, std::nullopt, false)); // adjexp = -6
+    EXPECT_EQ(any_text("-1.23456789E-7"), details::from_decimal::to_character(triple{-1, 0, 123456789, -15}, ctx, std::nullopt, false)); // adjexp = -7
 }
 
 TEST_F(cast_to_string_test, from_decimal_min_max) {
@@ -265,6 +271,8 @@ TEST_F(cast_to_string_test, from_float) {
     EXPECT_EQ(any_text("NaN"), details::from_float4::to_character(-std::numeric_limits<float>::quiet_NaN(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float4::to_character(std::numeric_limits<float>::signaling_NaN(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float4::to_character(-std::numeric_limits<float>::signaling_NaN(), ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("0"), details::from_float4::to_character(0.0F, ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("-0"), details::from_float4::to_character(-0.0F, ctx, std::nullopt, false));
 }
 
 TEST_F(cast_to_string_test, from_double) {
@@ -280,6 +288,8 @@ TEST_F(cast_to_string_test, from_double) {
     EXPECT_EQ(any_text("NaN"), details::from_float8::to_character(-std::numeric_limits<double>::quiet_NaN(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float8::to_character(std::numeric_limits<double>::signaling_NaN(), ctx, std::nullopt, false));
     EXPECT_EQ(any_text("NaN"), details::from_float8::to_character(-std::numeric_limits<double>::signaling_NaN(), ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("0"), details::from_float8::to_character(0.0, ctx, std::nullopt, false));
+    EXPECT_EQ(any_text("-0"), details::from_float8::to_character(-0.0, ctx, std::nullopt, false));
 }
 
 }  // namespace jogasaki::executor::process::impl::expression

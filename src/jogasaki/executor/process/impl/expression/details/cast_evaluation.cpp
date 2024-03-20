@@ -70,6 +70,7 @@ any supports_small_integers() {
  */
 template <class Target, class TargetEffective = Target, class Source>
 any handle_precision_lost(Source src, Target modified, evaluator_context& ctx) {
+    ctx.lost_precision(true);
     switch(ctx.get_loss_precision_policy()) {
         case loss_precision_policy::ignore: break;
         case loss_precision_policy::floor: return {std::in_place_type<error>, error(error_kind::unsupported)};
@@ -116,6 +117,19 @@ any validate_integer_range_from_integer(Source src, evaluator_context& ctx) {
     return any{std::in_place_type<TargetEffective>, static_cast<TargetEffective>(src)};
 }
 
+// fwd decl
+any handle_inexact_conversion(
+    evaluator_context& ctx,
+    decimal::Decimal const& d,
+    decimal::Decimal const& dd
+);
+
+// fwd decl
+namespace from_decimal {
+template <class T>
+T to(decimal::Decimal const& d);
+}
+
 /**
  * @brief validate integer is in the valid range
  * @tparam Target target type to validate the src against
@@ -132,20 +146,6 @@ any validate_integer_range_from_decimal(decimal::Decimal const& src, evaluator_c
         e.new_argument() << src;
         return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
     }
-    decimal::context.clear_status();
-    decimal::Decimal rounded{};
-    {
-        decimal_context_guard guard{};
-        guard.round(MPD_ROUND_DOWN);
-        decimal::context.clear_status();
-        rounded = src.to_integral();
-        if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
-            auto& e = ctx.add_error({error_kind::undefined, "unexpected error in converting decimal to integer"});
-            e.new_argument() << src;
-            e.new_argument() << rounded;
-            return any{std::in_place_type<error>, error(error_kind::undefined)};
-        }
-    }
     static const decimal::Decimal maxTgt{std::numeric_limits<Target>::max()};
     static const decimal::Decimal minTgt{std::numeric_limits<Target>::min()};
     // src can be +INF/-INF
@@ -155,10 +155,24 @@ any validate_integer_range_from_decimal(decimal::Decimal const& src, evaluator_c
     if(src < minTgt) {
         return handle_precision_lost<Target, TargetEffective>(src, std::numeric_limits<Target>::min(), ctx);
     }
-    if(! src.isinteger()) {
-        return handle_precision_lost<Target, TargetEffective>(src, static_cast<Target>(rounded.i64()), ctx);
+    decimal::context.clear_status();
+    decimal::Decimal rounded{};
+    {
+        decimal_context_guard guard{};
+        guard.round(MPD_ROUND_DOWN);
+        decimal::context.clear_status();
+        rounded = src.to_integral_exact();
+        if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
+            auto& e = ctx.add_error({error_kind::undefined, "unexpected error in converting decimal to integer"});
+            e.new_argument() << src;
+            e.new_argument() << rounded;
+            return any{std::in_place_type<error>, error(error_kind::undefined)};
+        }
+        if(auto a = handle_inexact_conversion(ctx, src, rounded); a.error()) {
+            return a;
+        }
     }
-    return any{std::in_place_type<TargetEffective>, static_cast<TargetEffective>(rounded.i64())};
+    return any{std::in_place_type<TargetEffective>, from_decimal::to<TargetEffective>(rounded)};
 }
 
 template <kind SrcKind, kind TargetKind, class Target, class TargetEffective = Target, class Source>
@@ -188,21 +202,18 @@ any validate_integer_range_from_float(Source const& src, evaluator_context& ctx)
 any handle_inexact_conversion(
     evaluator_context& ctx,
     decimal::Decimal const& d,
-    decimal::Decimal const& dd,
-    bool& error_return
+    decimal::Decimal const& dd
 ) {
-    error_return = false;
     if((decimal::context.status() & MPD_Inexact) != 0) {
         // inexact operation
+        ctx.lost_precision(true);
         switch(ctx.get_loss_precision_policy()) {
             case loss_precision_policy::ignore: break;
             case loss_precision_policy::floor:
-                error_return = true;
                 return {std::in_place_type<error>, error(error_kind::unsupported)};
             case loss_precision_policy::ceil:
-                error_return = true;
                 return {std::in_place_type<error>, error(error_kind::unsupported)};
-            case loss_precision_policy::unknown: error_return = true; return {};  // null to indicate inexact conversion
+            case loss_precision_policy::unknown: return {};  // null to indicate inexact conversion
             case loss_precision_policy::warn: {
                 auto& e = ctx.add_error({error_kind::lost_precision, "warning: conversion loses precision"});
                 e.new_argument() << d;
@@ -211,7 +222,6 @@ any handle_inexact_conversion(
             }
             case loss_precision_policy::implicit: //fallthrough
             case loss_precision_policy::error:
-                error_return = true;
                 auto& e = ctx.add_error({error_kind::lost_precision, "conversion loses precision"});
                 e.new_argument() << d;
                 e.new_argument() << dd;
@@ -323,8 +333,7 @@ any handle_ps(
             return any{std::in_place_type<error>, error(error_kind::undefined)};
         }
     }
-    bool error_return{false};
-    if(auto a = handle_inexact_conversion(ctx, d, rescaled, error_return); error_return) {
+    if(auto a = handle_inexact_conversion(ctx, d, rescaled); a.error()) {
         return a;
     }
     d = rescaled;
@@ -510,8 +519,9 @@ any to_decimal_internal(
     evaluator_context& ctx,
     decimal::Decimal& out
 ) {
+    auto trimmed = trim_spaces(s);
     decimal::context.clear_status();
-    decimal::Decimal value{std::string{s}};
+    decimal::Decimal value{std::string{trimmed}};
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
         auto& e = ctx.add_error({error_kind::format_error, "invalid string passed for conversion"});
         e.new_argument() << s;
@@ -531,7 +541,16 @@ any to_decimal_internal(
         {
             decimal_context_guard guard{};
             guard.round(MPD_ROUND_DOWN);
-            value = value.rescale(exp+diff);
+            decimal::context.clear_status();
+            auto rescaled = value.rescale(exp+diff);
+            if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
+                auto& e = ctx.add_error({error_kind::undefined, "unexpected error in rescaling decimal value"});
+                e.new_argument() << s;
+                e.new_argument() << value;
+                e.new_argument() << rescaled;
+                return any{std::in_place_type<error>, error(error_kind::undefined)};
+            }
+            value = rescaled;
         }
     }
     if(value.isspecial()) {
@@ -539,6 +558,13 @@ any to_decimal_internal(
         return {};
     }
     if(decimal_context_emax < value.adjexp() || value.adjexp() < decimal_context_emin) {
+        auto& e = ctx.add_error(
+            {error_kind::format_error,
+             string_builder{} << "adjusted exponent:" << value.adjexp() << " is out of range [" << decimal_context_emin
+                              << ", " << decimal_context_emax << "]" << string_builder::to_string}
+        );
+        e.new_argument() << s;
+        e.new_argument() << value;
         return any{std::in_place_type<error>, error(error_kind::format_error)};
     }
     if(auto a = reduce_decimal(value, value, ctx); a.error()) {
@@ -565,26 +591,7 @@ any to_int(std::string_view s, evaluator_context& ctx) {
         e.new_argument() << d;
         return any{std::in_place_type<error>, error(error_kind::format_error)};
     }
-    decimal::context.clear_status();
-    auto dd = d.rescale(0);
-    if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
-        auto& e = ctx.add_error({error_kind::undefined, "unexpected error in rescaling decimal value"});
-        e.new_argument() << d;
-        e.new_argument() << dd;
-        return any{std::in_place_type<error>, error(error_kind::undefined)};
-    }
-
-    bool error_return{false};
-    if(auto a = handle_inexact_conversion(ctx, d, dd, error_return); error_return) {
-        return a;
-    }
-    if(dd < int_min<T>) {
-        return handle_precision_lost<T, E>(s, std::numeric_limits<T>::min(), ctx);
-    }
-    if(int_max<T> < dd) {
-        return handle_precision_lost<T, E>(s, std::numeric_limits<T>::max(), ctx);
-    }
-    return {std::in_place_type<E>, from_decimal::to<E>(dd)};
+    return validate_integer_range_from_decimal<T, E>(d, ctx);
 }
 
 any to_float4(std::string_view s, evaluator_context& ctx) {
@@ -636,10 +643,11 @@ any to_decimal(
 
 any to_boolean(std::string_view s, evaluator_context& ctx) {
     (void) ctx;
+    auto trimmed = trim_spaces(s);
     runtime_t<meta::field_type_kind::boolean> value{};
-    if(is_prefix_of_case_insensitive(s, "true")) {
+    if(is_prefix_of_case_insensitive(trimmed, "true")) {
         value = 1;
-    } else if (is_prefix_of_case_insensitive(s, "false")) {
+    } else if (is_prefix_of_case_insensitive(trimmed, "false")) {
         value = 0;
     } else {
         return any{std::in_place_type<error>, error(error_kind::format_error)};
@@ -683,18 +691,17 @@ any cast_from_character(evaluator_context& ctx,
     using k = takatori::type::type_kind;
     auto txt = a.to<runtime_t<meta::field_type_kind::character>>();
     auto sv = static_cast<std::string_view>(txt);
-    auto trimmed = trim_spaces(sv);
     switch(tgt.kind()) {
-        case k::boolean: return from_character::to_boolean(trimmed, ctx);
-        case k::int1: return from_character::to_int1(trimmed, ctx);
-        case k::int2: return from_character::to_int2(trimmed, ctx);
-        case k::int4: return from_character::to_int4(trimmed, ctx);
-        case k::int8: return from_character::to_int8(trimmed, ctx);
-        case k::float4: return from_character::to_float4(trimmed, ctx);
-        case k::float8: return from_character::to_float8(trimmed, ctx);
+        case k::boolean: return from_character::to_boolean(sv, ctx);
+        case k::int1: return from_character::to_int1(sv, ctx);
+        case k::int2: return from_character::to_int2(sv, ctx);
+        case k::int4: return from_character::to_int4(sv, ctx);
+        case k::int8: return from_character::to_int8(sv, ctx);
+        case k::float4: return from_character::to_float4(sv, ctx);
+        case k::float8: return from_character::to_float8(sv, ctx);
         case k::decimal: {
             auto& t = static_cast<takatori::type::decimal const&>(tgt);  //NOLINT
-            return from_character::to_decimal(trimmed, ctx, t.precision(), t.scale());
+            return from_character::to_decimal(sv, ctx, t.precision(), t.scale());
         }
         case k::character: {
             auto& typ = unsafe_downcast<takatori::type::character>(tgt);

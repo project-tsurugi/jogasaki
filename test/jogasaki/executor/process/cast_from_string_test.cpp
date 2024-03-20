@@ -112,35 +112,9 @@ public:
         details::ensure_decimal_context();
     }
 
-    yugawara::analyzer::variable_mapping& variables() noexcept {
-        return *variables_;
-    }
-
-    yugawara::analyzer::expression_mapping& expressions() noexcept {
-        return *expressions_;
-    }
-
-    std::shared_ptr<yugawara::analyzer::variable_mapping> variables_ = std::make_shared<yugawara::analyzer::variable_mapping>();
-    std::shared_ptr<yugawara::analyzer::expression_mapping> expressions_ = std::make_shared<yugawara::analyzer::expression_mapping>();
-
-    factory f_{};
-    maybe_shared_ptr<meta::record_meta> meta_{};
-    variable_table_info info_{};
-    variable_table vars_{};
-
-    compiled_info c_info_{};
-    expression::evaluator evaluator_{};
     memory::page_pool pool_{};
     memory::lifo_paged_memory_resource resource_{&pool_};
 };
-
-inline immediate constant(int v, type::data&& type = type::int8()) {
-    return immediate { value::int8(v), std::move(type) };
-}
-
-inline immediate constant_bool(bool v, type::data&& type = type::boolean()) {
-    return immediate { value::boolean(v), std::move(type) };
-}
 
 using namespace details::from_character;
 
@@ -151,8 +125,18 @@ TEST_F(cast_from_string_test, to_int) {
     EXPECT_EQ((any{std::in_place_type<std::int32_t>, 1}), to_int4("1", ctx));
     EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), to_int8("1", ctx));
 
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), to_int8("1.5", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, -1}), to_int8("-1.5", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 2}), to_int8("2.5", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, -2}), to_int8("-2.5", ctx));
+
     EXPECT_EQ((any{std::in_place_type<std::int64_t>, 1}), to_int8("+1", ctx));
     EXPECT_EQ((any{std::in_place_type<std::int64_t>, -1}), to_int8("-1", ctx));
+
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 0}), to_int8("+0", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 0}), to_int8("-0", ctx));
+
+    EXPECT_EQ((any{std::in_place_type<std::int64_t>, 20}), to_int8(" 20  ", ctx));
 }
 
 TEST_F(cast_from_string_test, to_int1_min_max) {
@@ -248,6 +232,7 @@ TEST_F(cast_from_string_test, to_boolean) {
     EXPECT_EQ((any{std::in_place_type<std::int8_t>, 0}), to_boolean("F", ctx));
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_boolean("", ctx));
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_boolean("wrong text", ctx));
+    EXPECT_EQ((any{std::in_place_type<std::int8_t>, 1}), to_boolean(" true  ", ctx));
 }
 
 TEST_F(cast_from_string_test, to_decimal) {
@@ -256,8 +241,15 @@ TEST_F(cast_from_string_test, to_decimal) {
     EXPECT_EQ((any{std::in_place_type<triple>, -1}), to_decimal("-1", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, 0}), to_decimal("+0", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, 0}), to_decimal("-0", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, -1}}), to_decimal(".1", ctx));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 1, -1}}), to_decimal("-.1", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123, -2}}), to_decimal("1.23", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 123456789, -4}}), to_decimal("-12345.67890", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_decimal("Infinity", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_decimal("-Infinity", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_decimal("NaN", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_decimal("sNaN", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_decimal("bad", ctx));
 }
 
 TEST_F(cast_from_string_test, to_decimal_exceeding_digits) {
@@ -323,6 +315,10 @@ TEST_F(cast_from_string_test, to_float) {
     EXPECT_EQ((any{std::in_place_type<float>, -1.17550e-38}), to_float4("-1.17550e-38", ctx));  // -(FLT_MIN(1.17549e-38) + alpha)
     EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), to_float4("3.40283e+38", ctx));  // FLT_MAX + alpha
     EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), to_float4("-3.40283e+38", ctx));  // -(FLT_MAX + alpha)
+    EXPECT_EQ((any{std::in_place_type<float>, 0.0F}), to_float4("0", ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 0.0F}), to_float4("0.0", ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, -0.0F}), to_float4("-0", ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, -0.0F}), to_float4("-0.0", ctx));
     {
         auto a = to_float4("1.17549e-38", ctx); // FLT_MIN (underflows)
         EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), a);
@@ -354,6 +350,7 @@ TEST_F(cast_from_string_test, to_float) {
         EXPECT_FALSE(std::signbit(f));
     }
     {
+        // even if minus sign is specified, it is ignored
         auto a = to_float4("-NaN", ctx);
         ASSERT_TRUE(a);
         auto f = a.to<float>();
@@ -362,10 +359,12 @@ TEST_F(cast_from_string_test, to_float) {
     }
     {
         // nan with diagnostic code is not supported
+        EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float4("NaN0", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float4("NaN0000", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float4("infi", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float4("Infinity_", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float4("++inf", ctx));
+        EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float4("sNaN", ctx));
     }
 }
 
@@ -378,6 +377,10 @@ TEST_F(cast_from_string_test, to_double) {
     EXPECT_EQ((any{std::in_place_type<double>, -2.22508e-308}), to_float8("-2.22508e-308", ctx)); // -(DBL_MIN(2.22507e-308) + alpha)
     EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<double>::infinity()}), to_float8("1.79770e+308", ctx)); // DBL_MAX + alpha
     EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<double>::infinity()}), to_float8("-1.79770e+308", ctx)); // -(DBL_MAX + alpha)
+    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), to_float8("0", ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), to_float8("0.0", ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, -0.0}), to_float8("-0", ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, -0.0}), to_float8("-0.0", ctx));
     {
         auto a = to_float8("2.22507e-308", ctx); // DBL_MIN - alpha (underflows)
         EXPECT_EQ((any{std::in_place_type<double>, 0.0}), a);
@@ -409,6 +412,7 @@ TEST_F(cast_from_string_test, to_double) {
         EXPECT_FALSE(std::signbit(f));
     }
     {
+        // even if minus sign is specified, it is ignored
         auto a = to_float8("-NaN", ctx);
         ASSERT_TRUE(a);
         auto f = a.to<double>();
@@ -417,10 +421,12 @@ TEST_F(cast_from_string_test, to_double) {
     }
     {
         // nan with diagnostic code is not supported
+        EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float8("NaN0", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float8("NaN0000", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float8("infi", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float8("Infinity_", ctx));
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float8("++inf", ctx));
+        EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float8("sNaN", ctx));
     }
 }
 }

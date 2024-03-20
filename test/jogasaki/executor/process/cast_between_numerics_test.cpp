@@ -18,18 +18,12 @@
 #include <gtest/gtest.h>
 
 #include <takatori/decimal/triple.h>
-#include <takatori/scalar/immediate.h>
-#include <takatori/type/float.h>
-#include <takatori/type/int.h>
-#include <takatori/util/downcast.h>
 #include <takatori/util/string_builder.h>
-#include <takatori/value/float.h>
-#include <takatori/value/int.h>
 
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
 #include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
 #include <jogasaki/executor/process/impl/expression/details/common.h>
 #include <jogasaki/executor/process/impl/expression/details/constants.h>
+#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -46,21 +40,9 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace meta;
 using namespace takatori::util;
+using namespace jogasaki::executor::process::impl::expression::details;
 
 using namespace testing;
-
-namespace type = ::takatori::type;
-namespace value = ::takatori::value;
-namespace scalar = ::takatori::scalar;
-
-using binary = takatori::scalar::binary;
-using binary_operator = takatori::scalar::binary_operator;
-using compare = takatori::scalar::compare;
-using comparison_operator = takatori::scalar::comparison_operator;
-using unary = takatori::scalar::unary;
-using unary_operator = takatori::scalar::unary_operator;
-using immediate = takatori::scalar::immediate;
-using compiled_info = yugawara::compiled_info;
 
 using takatori::decimal::triple;
 using accessor::text;
@@ -89,14 +71,6 @@ public:
     template <class Target, class RangeTarget = Target>
     void test_decimal_to_int(std::function<any(triple, evaluator_context&)> fn);
 };
-
-inline immediate constant(int v, type::data&& type = type::int8()) {
-    return immediate { value::int8(v), std::move(type) };
-}
-
-inline immediate constant_bool(bool v, type::data&& type = type::boolean()) {
-    return immediate { value::boolean(v), std::move(type) };
-}
 
 any any_triple(
     std::int64_t coefficient,
@@ -148,6 +122,16 @@ std::string int_min_minus_one_str() {
 template <class T, class E>
 E int_min_positive() {
     return static_cast<E>(-(std::numeric_limits<T>::min()+1))+1;
+}
+
+void check_lost_precision(bool expected, evaluator_context& ctx) {
+    EXPECT_EQ(expected, ctx.lost_precision());
+    ctx.lost_precision(false);
+}
+
+#define lost_precision(arg) {   \
+    SCOPED_TRACE("check_lost_precision");   \
+    check_lost_precision(arg, ctx); \
 }
 
 template <class Source, class RangeTarget, class RangeTargetUnsigned>
@@ -206,27 +190,38 @@ TEST_F(cast_between_numerics_test, verify_make_triple) {
 
 TEST_F(cast_between_numerics_test, verify_triples_comparison) {
     EXPECT_EQ((triple{1, 0, 15, -1}), make_triple("1.5"));
+    EXPECT_EQ((triple{1, 0, 150, -2}), make_triple("1.50"));
     EXPECT_NE(make_triple("1.50"), make_triple("1.5"));
 }
 
 template <class Target, class RangeTarget = Target>
 void cast_between_numerics_test::test_decimal_to_int(std::function<any(triple, evaluator_context&)> fn) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(make_triple("1"), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(make_triple("0"), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, 10}), fn(make_triple("10"), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, 123}), fn(make_triple("123"), ctx));
+    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(make_triple("1"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(make_triple("0"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, 10}), fn(make_triple("10"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, 123}), fn(make_triple("123"), ctx)); lost_precision(false);
 
     // the numbers under decimal point will be truncated
-    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(make_triple("1.5"), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, 2}), fn(make_triple("2.5"), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, -1}), fn(make_triple("-1.5"), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, -2}), fn(make_triple("-2.5"), ctx));
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(make_triple("0.1"), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(make_triple("1.5"), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, 2}), fn(make_triple("2.5"), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(make_triple("-0.1"), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, -1}), fn(make_triple("-1.5"), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, -2}), fn(make_triple("-2.5"), ctx)); lost_precision(true);
 
-    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget>()}), fn(make_triple(std::to_string(int_max<RangeTarget, std::int64_t>())), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget>()}), fn(make_triple(int_max_plus_one_str<RangeTarget>()), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget>()}), fn(make_triple(std::to_string(int_min<RangeTarget, std::int64_t>())), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget>()}), fn(make_triple(int_min_minus_one_str<RangeTarget>()), ctx));
+    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget>()}), fn(make_triple(std::to_string(int_max<RangeTarget, std::int64_t>())), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget>()}), fn(make_triple(int_max_plus_one_str<RangeTarget>()), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget>()}), fn(make_triple(std::to_string(int_min<RangeTarget, std::int64_t>())), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget>()}), fn(make_triple(int_min_minus_one_str<RangeTarget>()), ctx)); lost_precision(true);
+
+    // extreme triple
+    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget>()}), fn(triple_max, ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget>()}), fn(triple_min, ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(make_triple("99999999999999999999999999999999999999E-38"), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(make_triple("-99999999999999999999999999999999999999E-38"), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(triple{1, 0, 1, decimal_context_emin}, ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(triple{-1, 0, 1, decimal_context_emin}, ctx)); lost_precision(true);
 }
 
 TEST_F(cast_between_numerics_test, decimal_to_int1) {
@@ -324,30 +319,70 @@ TEST_F(cast_between_numerics_test, decimal_to_float4) {
     evaluator_context ctx{&resource_};
     EXPECT_EQ((any{std::in_place_type<float>, 1}), from_decimal::to_float4(make_triple("1"), ctx));
     EXPECT_EQ((any{std::in_place_type<float>, 0}), from_decimal::to_float4(make_triple("0"), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, -1}), from_decimal::to_float4(make_triple("-1"), ctx));
     EXPECT_EQ((any{std::in_place_type<float>, 123}), from_decimal::to_float4(make_triple("123"), ctx));
     EXPECT_EQ((any{std::in_place_type<float>, 1.23}), from_decimal::to_float4(make_triple("1.23"), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 100}), from_decimal::to_float4(make_triple("100"), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 1000}), from_decimal::to_float4(make_triple("1E+3"), ctx));
 
     // verify (approx.) boundaries
     EXPECT_EQ((any{std::in_place_type<float>, 3.40282e+38}), from_decimal::to_float4(make_triple("3.40282e+38"), ctx)); // FLT_MAX
     EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_decimal::to_float4(make_triple("3.4029e+38"), ctx)); // FLT_MAX + alpha
+    EXPECT_EQ((any{std::in_place_type<float>, -3.40282e+38}), from_decimal::to_float4(make_triple("-3.40282e+38"), ctx)); // -FLT_MAX
+    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_decimal::to_float4(make_triple("-3.4029e+38"), ctx)); // -FLT_MAX - alpha
     EXPECT_EQ((any{std::in_place_type<float>, 1.17550e-38}), from_decimal::to_float4(make_triple("1.17550e-38"), ctx)); // FLT_MIN + alpha (because FLT_MIN underflows)
-    EXPECT_EQ((any{std::in_place_type<float>, 0.0}), from_decimal::to_float4(make_triple("1.1754e-38"), ctx)); // FLT_MIN - alpha
-    EXPECT_EQ((any{std::in_place_type<float>, -0.0}), from_decimal::to_float4(make_triple("-1.1754e-38"), ctx)); // negative (FLT_MIN - alpha)
+    {
+        // FLT_MIN - alpha will be +0.0
+        auto a = from_decimal::to_float4(make_triple("1.1754e-38"), ctx);
+        ASSERT_TRUE(a);
+        auto f = a.to<float>();
+        EXPECT_EQ(0, f);
+        EXPECT_FALSE(std::signbit(f));
+    }
+    {
+        // - FLT_MIN + alpha will be -0.0
+        auto a = from_decimal::to_float4(make_triple("-1.1754e-38"), ctx);
+        ASSERT_TRUE(a);
+        auto f = a.to<float>();
+        EXPECT_EQ(0, f);
+        EXPECT_TRUE(std::signbit(f));
+    }
 }
 
 TEST_F(cast_between_numerics_test, decimal_to_float8) {
     evaluator_context ctx{&resource_};
     EXPECT_EQ((any{std::in_place_type<double>, 1}), from_decimal::to_float8(make_triple("1"), ctx));
     EXPECT_EQ((any{std::in_place_type<double>, 0}), from_decimal::to_float8(make_triple("0"), ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, -1}), from_decimal::to_float8(make_triple("-1"), ctx));
     EXPECT_EQ((any{std::in_place_type<double>, 123}), from_decimal::to_float8(make_triple("123"), ctx));
     EXPECT_EQ((any{std::in_place_type<double>, 1.23}), from_decimal::to_float8(make_triple("1.23"), ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, 100}), from_decimal::to_float8(make_triple("100"), ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, 1000}), from_decimal::to_float8(make_triple("1E+3"), ctx));
 
     // verify (approx.) boundaries
     EXPECT_EQ((any{std::in_place_type<double>, 1.79769e+308}), from_decimal::to_float8(make_triple("1.79769e+308"), ctx)); // DBL_MAX
     EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<double>::infinity()}), from_decimal::to_float8(make_triple("1.7977e+308"), ctx)); // DBL_MAX + alpha
+    EXPECT_EQ((any{std::in_place_type<double>, -1.79769e+308}), from_decimal::to_float8(make_triple("-1.79769e+308"), ctx)); // - DBL_MAX
+    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<double>::infinity()}), from_decimal::to_float8(make_triple("-1.7977e+308"), ctx)); // - DBL_MAX - alpha
     EXPECT_EQ((any{std::in_place_type<double>, 2.22508e-308}), from_decimal::to_float8(make_triple("2.22508e-308"), ctx)); // DBL_MIN + alpha (because DBL_MIN underflows)
     EXPECT_EQ((any{std::in_place_type<double>, 0.0}), from_decimal::to_float8(make_triple("2.22506e-308"), ctx)); // DBL_MIN - alpha
     EXPECT_EQ((any{std::in_place_type<double>, -0.0}), from_decimal::to_float8(make_triple("-2.22506e-308"), ctx)); // negative (DBL_MIN - alpha)
+    {
+        // DBL_MIN - alpha will be +0.0
+        auto a = from_decimal::to_float8(make_triple("2.22506e-308"), ctx);
+        ASSERT_TRUE(a);
+        auto d = a.to<double>();
+        EXPECT_EQ(0, d);
+        EXPECT_FALSE(std::signbit(d));
+    }
+    {
+        // - DBL_MIN + alpha will be +0.0
+        auto a = from_decimal::to_float8(make_triple("-2.22506e-308"), ctx);
+        ASSERT_TRUE(a);
+        auto d = a.to<double>();
+        EXPECT_EQ(0, d);
+        EXPECT_TRUE(std::signbit(d));
+    }
 }
 
 TEST_F(cast_between_numerics_test, float4_to_decimal) {
@@ -479,7 +514,7 @@ TEST_F(cast_between_numerics_test, verify_float4_int4_constants) {
 }
 
 TEST_F(cast_between_numerics_test, verify_float4_int8_constants) {
-    // verify int8 max - 256G is the maximum that is safe to convert between int4/float4
+    // verify int8 max - 256G is the maximum that is safe to convert between int8/float4
     test_verify_constants<kind::int8, kind::float4>();
 }
 
@@ -488,7 +523,7 @@ TEST_F(cast_between_numerics_test, verify_float8_int4_constants) {
 }
 
 TEST_F(cast_between_numerics_test, verify_float8_int8_constants) {
-    // verify int8 max - 256G is the maximum that is safe to convert between int4/float4
+    // verify int8 max - 256G is the maximum that is safe to convert between int8/float8
     test_verify_constants<kind::int8, kind::float8>();
 }
 

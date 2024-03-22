@@ -87,12 +87,11 @@ TEST_F(coder_float_test, inf) {
     EXPECT_EQ("000fffffffffffff", to_hex(write_float(-std::numeric_limits<double>::infinity(), asc)));
 }
 
-// TODO normalize negative zero
 TEST_F(coder_float_test, zeros) {
     EXPECT_EQ("80000000", to_hex(write_float(0.0F, asc)));
-    // EXPECT_EQ("80000000", to_hex(write_float(-0.0F, asc)));
+    EXPECT_EQ("80000000", to_hex(write_float(-0.0F, asc)));
     EXPECT_EQ("8000000000000000", to_hex(write_float(0.0, asc)));
-    // EXPECT_EQ("8000000000000000", to_hex(write_float(-0.0, asc)));
+    EXPECT_EQ("8000000000000000", to_hex(write_float(-0.0, asc)));
 }
 
 TEST_F(coder_float_test, order_float4) {

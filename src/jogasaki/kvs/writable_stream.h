@@ -45,7 +45,10 @@ static inline uint_t<N> key_encode(int_t<N> data, order odr) {
 // encode and decode logic for double with considering the key is ascending or not
 template<std::size_t N>
 static inline uint_t<N> key_encode(float_t<N> data, order odr) {
-    auto u = type_change<uint_t<N>>(std::isnan(data) ? std::numeric_limits<float_t<N>>::quiet_NaN() : data);
+    auto f = std::isnan(data) ? std::numeric_limits<float_t<N>>::quiet_NaN() : data;
+
+    // eliminate -0.0
+    auto u = type_change<uint_t<N>>(f == static_cast<float_t<N>>(0.0) ? static_cast<float_t<N>>(0.0) : f);
     if ((u & SIGN_BIT<N>) == 0) {
         u ^= SIGN_BIT<N>;
     } else {

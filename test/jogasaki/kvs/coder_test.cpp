@@ -254,7 +254,26 @@ TEST_F(coder_test, f32_desc) {
     EXPECT_EQ('\x00', buf[7]);
 }
 
+std::string to_hex(float f) {
+    std::uint32_t tmp{};
+    std::memcpy(&tmp, &f, sizeof(tmp));
+    std::stringstream ss{};
+    ss << std::setprecision(8) << std::hex;
+    ss << tmp;
+    return ss.str();
+}
+
+std::string to_hex(double f) {
+    std::uint64_t tmp{};
+    std::memcpy(&tmp, &f, sizeof(tmp));
+    std::stringstream ss{};
+    ss << std::setprecision(16) << std::hex;
+    ss << tmp;
+    return ss.str();
+}
+
 TEST_F(coder_test, float_nan) {
+    // verify nan are normaliezed and diagnostic code are removed
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     float_t<32> f1{std::nanf("1")};
@@ -267,11 +286,26 @@ TEST_F(coder_test, float_nan) {
     EXPECT_EQ(status::ok, s.write(f4, desc));
 
     auto rs = s.readable();
-
-    ASSERT_TRUE(std::isnan(rs.read<float>(asc, false)));
-    ASSERT_TRUE(std::isnan(rs.read<float>(desc, false)));
-    ASSERT_TRUE(std::isnan(rs.read<double>(asc, false)));
-    ASSERT_TRUE(std::isnan(rs.read<double>(desc, false)));
+    {
+        auto f = rs.read<float>(asc, false);
+        EXPECT_TRUE(std::isnan(f));
+        EXPECT_EQ("7fc00000", to_hex(f));
+    }
+    {
+        auto f = rs.read<float>(desc, false);
+        EXPECT_TRUE(std::isnan(f));
+        EXPECT_EQ("7fc00000", to_hex(f));
+    }
+    {
+        auto f = rs.read<double>(asc, false);
+        EXPECT_TRUE(std::isnan(f));
+        EXPECT_EQ("7ff8000000000000", to_hex(f));
+    }
+    {
+        auto f = rs.read<double>(desc, false);
+        EXPECT_TRUE(std::isnan(f));
+        EXPECT_EQ("7ff8000000000000", to_hex(f));
+    }
 }
 
 TEST_F(coder_test, f64_asc) {

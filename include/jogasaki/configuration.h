@@ -408,6 +408,14 @@ public:
         return point_read_concurrent_operation_as_not_found_;
     }
 
+    void normalize_float(bool arg) noexcept {
+        normalize_float_ = arg;
+    }
+
+    [[nodiscard]] bool normalize_float() const noexcept {
+        return normalize_float_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -446,6 +454,7 @@ public:
             "support_smallint:" << cfg.support_smallint() << " " <<
             "scan_concurrent_operation_as_not_found:" << cfg.scan_concurrent_operation_as_not_found() << " " <<
             "point_read_concurrent_operation_as_not_found:" << cfg.point_read_concurrent_operation_as_not_found() << " " <<
+            "normalize_float:" << cfg.normalize_float() << " " <<
             "";
     }
 
@@ -490,6 +499,7 @@ private:
     bool support_smallint_ = false;
     bool scan_concurrent_operation_as_not_found_ = true;
     bool point_read_concurrent_operation_as_not_found_ = true;
+    bool normalize_float_ = true;
 
 };
 

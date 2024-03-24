@@ -4,7 +4,7 @@
 
 ## 本文書について
 
-TsurugiにおけるDECIMAL型についての仕様詳細と実装上のメモ
+TsurugiにおけるDECIMAL型についての実装上のメモ
 
 ## DECIMALとmpdecimal
 
@@ -18,30 +18,8 @@ TsurugiにおけるDECIMAL型についての仕様詳細と実装上のメモ
 
 ## TsurugiのDECIMALの仕様
 
-- 桁数が限定された十進数を扱う型
-- 型パラメーターとして`p`(precision), `s`(scale)を持つ
-  - `p` は `[1,38]` の範囲の整数で桁数を表す
-  - `s`は `[0, p]` の範囲の整数で小数点以下の桁数を表す
-- `DECIMAL(p,s)`は`[-(10^p-1)*10^(-s), (10^p-1)*10^(-s)]` の範囲の値を表現可能
+[data_type.md](data_types.md) を参照
 
-- precisionとscaleに任意長 `*` を指定することも可能
-  - precision/scale両方が `*` のとき
-    - 実装が既定する可能な限り広い範囲の型
-      - 実装上は `takatori::decimal::triple` で表現される
-      - 係数の桁数は最大38まで
-      - 調整後指数(adjusted exponent)が `[-24575, 24576]` の範囲
-    - 表定義における列の型としては使用不可、キャスト先の型としては可能
-  - precisionが `*` でscaleが `*` でない場合
-    - precisionは最大の38となる
-      - `DECIMAL(*, s)` == `DECIMAL(38, s)`
-  - precisionが `*` でなくscaleが `*` の場合
-    - エラーになる(浮動小数点数に対して桁数を固定することは意味がない)
-
-- precisionのみ指定されscaleが省略された場合は `0` が指定されたものとみなす
-  - `DECIMAL(p)` == `DECIMAL(p, 0)`
-- カッコが省略された場合は既定の最大桁の整数となる
-  - `DECIMAL` == `DECIMAL(38, 0)`
-- 「`DECIMAL(*,*)` がキャスト式のみで使用可能」という点以外は列定義とキャストで共通
 
 ## TsurugiのDECIMALの実装
 

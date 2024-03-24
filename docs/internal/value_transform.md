@@ -98,36 +98,6 @@
       - float4/float8から `DECIMAL(*,*)` : `std::stringstream::operator<<` および `decimal::Decimal`コンストラクタを使用する
         - std::to_stringは不要なroundingなどの問題があるため使用しない
 
-### 型の長さについて
-
-変換先の型が長さをもつ場合の意味について記載する
-
-#### `CHAR(*)`
-
-- `CHAR`に任意長 `*` を指定することはできない
-  - パディング長をきめられないため
-  - 列定義とキャストで共通
-
-#### `CHAR`
-
-- カッコなしの`CHAR`を指定すると `CHAR(1)`の意味となる
-  - 列定義とキャストで共通
-
-#### `VARCHAR(*)`
-
-- `VARCHAR`には任意長 `*` を指定することができる
-  - キャスト式の場合、長さに制限のない文字列型
-  - 列定義の場合、既定の最大長で置き換えられる(ストレージサイズの制約)
-
-#### `VARCHAR`
-
-- カッコなしの`VARCHAR`を指定するとコンパイルエラー
-  - 列定義とキャストで共通
-
-#### `DECIMAL(p,s)`, `DECIMAL`
-
-- 文書[SQL DECIMAL](decimal_impl.md)を参照
-
 ### 浮動小数点数の文字列表現
 
 IEEE754-2008は浮動小数点数を文字列に変換可能であることを規定しているがその詳細なフォーマットは決めていない。mpdecimalが準拠する [General Decimal Arithmetic](https://www.speleotrove.com/decimal/) は詳細仕様を提供しており、jogasakiも文字列からの変換時や `DECIMAL`の文字列化はmpdecimal経由であり、これを利用している。

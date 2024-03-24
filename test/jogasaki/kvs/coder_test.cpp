@@ -1236,4 +1236,27 @@ TEST_F(coder_test, decimal_max_boundary_values) {
     EXPECT_EQ(decimal::Decimal{v4}, decimal::Decimal{rs.read<rtype<ft::decimal>>(asc, false, *opt)});
     EXPECT_EQ(0, decimal::context.status());
 }
+
+TEST_F(coder_test, different_triple_for_same_value) {
+    // triple has multiple representations for the same value, but they will be same after serialization
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto opt = std::make_shared<meta::decimal_field_option>(6, 3);
+    auto v0 = rtype<ft::decimal>{-1, 0, 1, 2}; // -100
+    auto v1 = rtype<ft::decimal>{-1, 0, 10, 1};
+    auto v2 = rtype<ft::decimal>{-1, 0, 100, 0};
+
+    EXPECT_EQ(status::ok, s.write(v0, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v1, asc, *opt));
+    EXPECT_EQ(status::ok, s.write(v2, asc, *opt));
+
+    auto rs = s.readable();
+    // writing and reading triple is not round-trip equal. Create Decimal to check equivalence.
+    auto r0 = rs.read<rtype<ft::decimal>>(asc, false, *opt);
+    auto r1 = rs.read<rtype<ft::decimal>>(asc, false, *opt);
+    auto r2 = rs.read<rtype<ft::decimal>>(asc, false, *opt);
+    EXPECT_EQ(r0, r1);
+    EXPECT_EQ(r1, r2);
+    EXPECT_EQ(0, decimal::context.status());
+}
 }

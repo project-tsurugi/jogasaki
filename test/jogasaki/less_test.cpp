@@ -67,6 +67,30 @@ TEST_F(less_test, simple_types) {
     EXPECT_TRUE(less<rtype<ft::float8>>(1, 2));
 }
 
+TEST_F(less_test, float_values) {
+    auto pinf = std::numeric_limits<float>::infinity();
+    auto pnan = std::numeric_limits<float>::quiet_NaN();
+    auto nnan = -std::numeric_limits<float>::quiet_NaN();
+    float pzero = 0.0F;
+    float nzero = -0.0F;
+    auto ninf = -std::numeric_limits<float>::infinity();
+
+    EXPECT_TRUE(less<rtype<ft::float4>>(1.0F, pinf));
+    EXPECT_TRUE(less<rtype<ft::float4>>(ninf, 1.0F));
+
+    EXPECT_FALSE(less<rtype<ft::float4>>(pnan, 1.0F));
+    EXPECT_FALSE(less<rtype<ft::float4>>(1.0F, pnan));
+
+    EXPECT_FALSE(less<rtype<ft::float4>>(pnan, pnan));
+    EXPECT_FALSE(less<rtype<ft::float4>>(nnan, nnan));
+
+    EXPECT_FALSE(less<rtype<ft::float4>>(nnan, pnan));
+    EXPECT_FALSE(less<rtype<ft::float4>>(pnan, nnan));
+
+    EXPECT_FALSE(less<rtype<ft::float4>>(nzero, pzero));
+    EXPECT_FALSE(less<rtype<ft::float4>>(pzero, nzero));
+}
+
 TEST_F(less_test, character) {
     EXPECT_TRUE(less<rtype<ft::character>>(text(""), text("A")));
     EXPECT_TRUE(less<rtype<ft::character>>(text("A"), text("B")));

@@ -98,7 +98,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "max_datachannel_buffers=256\n"
 
     "[stream_endpoint]\n"
-        "port=12345\n"
+        "port=41234\n" // choosing a random port that doesn't conflit frequently
         "threads=104\n"
 
     "[cc]\n"

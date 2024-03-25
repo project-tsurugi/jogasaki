@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cmath>
 #include <cstddef>
 #include <functional>
 
@@ -30,6 +31,34 @@ using kind = meta::field_type_kind;
 template <class T>
 bool less(T const& x, T const& y) {
     return std::less<T>{}(x, y);
+}
+
+template <class T>
+bool float_less(T const& x, T const& y) {
+    if(std::isnan(y)) {
+        return ! std::isnan(x);
+    }
+    if(std::isnan(x)) {
+        return false;
+    }
+    // +INF/-INF/+0/-0 are handled correctly by std::less
+    return std::less<T>{}(x, y);
+}
+
+template <>
+inline bool less<runtime_t<meta::field_type_kind::float4>>(
+    runtime_t<meta::field_type_kind::float4> const& x,
+    runtime_t<meta::field_type_kind::float4> const& y
+) {
+    return float_less(x, y);
+}
+
+template <>
+inline bool less<runtime_t<meta::field_type_kind::float8>>(
+    runtime_t<meta::field_type_kind::float8> const& x,
+    runtime_t<meta::field_type_kind::float8> const& y
+) {
+    return float_less(x, y);
 }
 
 template <>

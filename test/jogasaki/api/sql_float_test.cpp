@@ -126,7 +126,33 @@ TEST_F(sql_float_test, join_on_nans) {
     {
         std::vector<mock::basic_record> result{};
         execute_query("select * from t where c0 = c0", result);
-        EXPECT_EQ(0, result.size()); // FIXME
+        EXPECT_EQ(1, result.size());
+    }
+}
+
+TEST_F(sql_float_test, order_float_values) {
+    execute_statement("create table t (c0 DOUBLE)");
+    execute_statement("insert into t values (CAST('-Infinity' AS DOUBLE))");
+    execute_statement("insert into t values (CAST('0' AS DOUBLE))");
+    execute_statement("insert into t values (CAST('+Infinity' AS DOUBLE))");
+    execute_statement("insert into t values (CAST('NaN' AS DOUBLE))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select CAST(c0 AS VARCHAR(*)) from t order by c0", result);
+        ASSERT_EQ(4, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"-Infinity"}}, {false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"0"}}, {false})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"Infinity"}}, {false})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"NaN"}}, {false})), result[3]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select CAST(c0 AS VARCHAR(*)) from t order by c0 desc", result);
+        ASSERT_EQ(4, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"NaN"}}, {false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"Infinity"}}, {false})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"0"}}, {false})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"-Infinity"}}, {false})), result[3]);
     }
 }
 

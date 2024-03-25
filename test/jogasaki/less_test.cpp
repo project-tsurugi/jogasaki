@@ -32,7 +32,12 @@ using namespace meta;
 using namespace takatori::util;
 using namespace jogasaki::mock;
 
-class less_test : public ::testing::Test {};
+class less_test : public ::testing::Test {
+public:
+
+    template <class Float>
+    void test_float_values();
+};
 
 using kind = field_type_kind;
 using text = accessor::text;
@@ -67,28 +72,46 @@ TEST_F(less_test, simple_types) {
     EXPECT_TRUE(less<rtype<ft::float8>>(1, 2));
 }
 
-TEST_F(less_test, float_values) {
-    auto pinf = std::numeric_limits<float>::infinity();
-    auto pnan = std::numeric_limits<float>::quiet_NaN();
-    auto nnan = -std::numeric_limits<float>::quiet_NaN();
-    float pzero = 0.0F;
-    float nzero = -0.0F;
-    auto ninf = -std::numeric_limits<float>::infinity();
 
-    EXPECT_TRUE(less<rtype<ft::float4>>(1.0F, pinf));
-    EXPECT_TRUE(less<rtype<ft::float4>>(ninf, 1.0F));
+template <class Float>
+void less_test::test_float_values() {
+    auto pinf = std::numeric_limits<Float>::infinity();
+    auto pnan = std::numeric_limits<Float>::quiet_NaN();
+    auto nnan = -std::numeric_limits<Float>::quiet_NaN();
+    auto pzero = static_cast<Float>(0.0);
+    auto nzero = static_cast<Float>(-0.0);
+    auto ninf = -std::numeric_limits<Float>::infinity();
+    // ninf < nzero = pzero < pinf < nnan = pnan
 
-    EXPECT_FALSE(less<rtype<ft::float4>>(pnan, 1.0F));
-    EXPECT_FALSE(less<rtype<ft::float4>>(1.0F, pnan));
+    EXPECT_TRUE(less<Float>(ninf, nzero));
+    EXPECT_TRUE(less<Float>(1.0F, pinf));
+    EXPECT_TRUE(less<Float>(ninf, 1.0F));
 
-    EXPECT_FALSE(less<rtype<ft::float4>>(pnan, pnan));
-    EXPECT_FALSE(less<rtype<ft::float4>>(nnan, nnan));
+    EXPECT_FALSE(less<Float>(pnan, 1.0F));
+    EXPECT_TRUE(less<Float>(1.0F, pnan));
 
-    EXPECT_FALSE(less<rtype<ft::float4>>(nnan, pnan));
-    EXPECT_FALSE(less<rtype<ft::float4>>(pnan, nnan));
+    EXPECT_FALSE(less<Float>(pnan, pnan));
+    EXPECT_FALSE(less<Float>(nnan, nnan));
 
-    EXPECT_FALSE(less<rtype<ft::float4>>(nzero, pzero));
-    EXPECT_FALSE(less<rtype<ft::float4>>(pzero, nzero));
+    EXPECT_FALSE(less<Float>(nnan, pnan));
+    EXPECT_FALSE(less<Float>(pnan, nnan));
+
+    EXPECT_FALSE(less<Float>(nzero, pzero));
+    EXPECT_FALSE(less<Float>(pzero, nzero));
+
+    EXPECT_TRUE(less<Float>(pzero, 1.0F));
+    EXPECT_TRUE(less<Float>(1.0F, pinf));
+
+    EXPECT_TRUE(less<Float>(pinf, pnan));
+    EXPECT_TRUE(less<Float>(pinf, nnan));
+}
+
+TEST_F(less_test, float4_values) {
+    test_float_values<float>();
+}
+
+TEST_F(less_test, float8_values) {
+    test_float_values<double>();
 }
 
 TEST_F(less_test, character) {

@@ -29,6 +29,8 @@
 
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/equal_to.h>
+#include <jogasaki/executor/less.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -459,65 +461,12 @@ any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
     using optype = takatori::scalar::comparison_operator;
     bool result = false;
     switch(op) {
-        case optype::equal: result = l == r; break;
-        case optype::not_equal: result = l != r; break;
-        case optype::greater: result = l > r; break;
-        case optype::greater_equal: result = l >= r; break;
-        case optype::less: result = l < r; break;
-        case optype::less_equal: result = l <= r; break;
-        default: return return_unsupported();
-    }
-    return any{std::in_place_type<bool>, result};
-}
-
-template <>
-any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
-    // TODO use context status
-    using optype = takatori::scalar::comparison_operator;
-    bool result = false;
-    decimal::Decimal ll{l};
-    decimal::Decimal rr{r};
-    switch(op) {
-        case optype::equal: result = ll == rr; break;
-        case optype::not_equal: result = ll != rr; break;
-        case optype::greater: result = ll > rr; break;
-        case optype::greater_equal: result = ll >= rr; break;
-        case optype::less: result = ll < rr; break;
-        case optype::less_equal: result = ll <= rr; break;
-        default: return return_unsupported();
-    }
-    return any{std::in_place_type<bool>, result};
-}
-
-template <>
-any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::date> const& l, runtime_t<meta::field_type_kind::date> const& r) {
-    auto ll{l.days_since_epoch()};
-    auto rr{r.days_since_epoch()};
-    return compare(op, ll, rr);
-}
-
-template <>
-any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::time_of_day> const& l, runtime_t<meta::field_type_kind::time_of_day> const& r) {
-    auto ll{l.time_since_epoch()};
-    auto rr{r.time_since_epoch()};
-    return compare(op, ll, rr);
-}
-
-template <>
-any compare(takatori::scalar::comparison_operator op, runtime_t<meta::field_type_kind::time_point> const& l, runtime_t<meta::field_type_kind::time_point> const& r) {
-    using optype = takatori::scalar::comparison_operator;
-    bool result = false;
-    auto l0{l.seconds_since_epoch()};
-    auto r0{r.seconds_since_epoch()};
-    auto l1{l.subsecond()};
-    auto r1{r.subsecond()};
-    switch(op) {
-        case optype::equal: result = l0 == r0 && l1 == r1; break;
-        case optype::not_equal: result = l0 != r0 || l1 != r1; break;
-        case optype::greater: result = l0 > r0 || (l0 == r0 && l1 > r1); break;
-        case optype::greater_equal: result = (l0 == r0 && l1 == r1) || (l0 > r0 || (l0 == r0 && l1 > r1)); break;
-        case optype::less: result = l0 < r0 || (l0 == r0 && l1 < r1); break;
-        case optype::less_equal: result = (l0 == r0 && l1 == r1) || (l0 < r0 || (l0 == r0 && l1 < r1)); break;
+        case optype::equal: result = equal_to(l, r); break;
+        case optype::not_equal: result = ! equal_to(l, r); break;
+        case optype::greater: result = less(r, l); break;
+        case optype::greater_equal: result = ! less(l, r); break;
+        case optype::less: result = less(l, r); break;
+        case optype::less_equal: result = ! less(r, l); break;
         default: return return_unsupported();
     }
     return any{std::in_place_type<bool>, result};

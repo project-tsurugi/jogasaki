@@ -28,43 +28,41 @@ namespace jogasaki::executor {
 using kind = meta::field_type_kind;
 
 template <class T>
-bool less(T const& x, T const& y) {
-    return std::less<T>{}(x, y);
+bool equal_to(T const& x, T const& y) {
+    return std::equal_to<T>{}(x, y);
 }
 
 template <>
-inline bool less<runtime_t<meta::field_type_kind::decimal>>(
+inline bool equal_to<runtime_t<meta::field_type_kind::decimal>>(
     runtime_t<meta::field_type_kind::decimal> const& x,
     runtime_t<meta::field_type_kind::decimal> const& y
 ) {
     // Decimal can be safely created from triple and comparared without context
-    return static_cast<decimal::Decimal>(x) < static_cast<decimal::Decimal>(y);
+    return static_cast<decimal::Decimal>(x) == static_cast<decimal::Decimal>(y);
 }
 
 template <>
-inline bool less<runtime_t<meta::field_type_kind::date>>(
+inline bool equal_to<runtime_t<meta::field_type_kind::date>>(
     runtime_t<meta::field_type_kind::date> const& x,
     runtime_t<meta::field_type_kind::date> const& y
 ) {
-    return x.days_since_epoch() < y.days_since_epoch();
+    return x.days_since_epoch() == y.days_since_epoch();
 }
 
 template <>
-inline bool less<runtime_t<meta::field_type_kind::time_of_day>>(
+inline bool equal_to<runtime_t<meta::field_type_kind::time_of_day>>(
     runtime_t<meta::field_type_kind::time_of_day> const& x,
     runtime_t<meta::field_type_kind::time_of_day> const& y
 ) {
-    return x.time_since_epoch().count() < y.time_since_epoch().count();
+    return x.time_since_epoch().count() == y.time_since_epoch().count();
 }
 
 template <>
-inline bool less<runtime_t<meta::field_type_kind::time_point>>(
+inline bool equal_to<runtime_t<meta::field_type_kind::time_point>>(
     runtime_t<meta::field_type_kind::time_point> const& x,
     runtime_t<meta::field_type_kind::time_point> const& y
 ) {
-    if(x.seconds_since_epoch().count() != y.seconds_since_epoch().count()) {
-        return x.seconds_since_epoch().count() < y.seconds_since_epoch().count();
-    }
-    return x.subsecond() < y.subsecond();
+    return x.seconds_since_epoch().count() == y.seconds_since_epoch().count() && x.subsecond() == y.subsecond();
 }
-}
+
+}  // namespace jogasaki::executor

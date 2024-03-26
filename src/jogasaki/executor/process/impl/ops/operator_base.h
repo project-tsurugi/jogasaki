@@ -15,12 +15,18 @@
  */
 #pragma once
 
-#include <takatori/util/sequence_view.h>
+#include <cstddef>
 
-#include <jogasaki/executor/process/processor_info.h>
+#include <takatori/util/sequence_view.h>
+#include <yugawara/compiled_info.h>
+
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/cogroup.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/processor_info.h>
+
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {

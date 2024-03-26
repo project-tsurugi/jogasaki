@@ -15,12 +15,25 @@
  */
 #include "variable_table_info.h"
 
+#include <cstdint>
+#include <type_traits>
+#include <unordered_set>
+#include <boost/assert.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
+
 #include <takatori/util/fail.h>
-#include <yugawara/analyzer/block_builder.h>
-#include <yugawara/analyzer/variable_liveness_analyzer.h>
+#include <takatori/util/optional_ptr.h>
+#include <yugawara/analyzer/block.h>
 #include <yugawara/analyzer/block_algorithm.h>
+#include <yugawara/analyzer/block_builder.h>
+#include <yugawara/analyzer/details/block_expression_iterator.h>
+#include <yugawara/analyzer/variable_liveness_analyzer.h>
+#include <yugawara/analyzer/variable_liveness_info.h>
 #include <yugawara/compiled_info.h>
 
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/validation.h>

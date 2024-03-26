@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 #include <decimal.hh>
+#include <exception>
+#include <string_view>
 #include <gtest/gtest.h>
 
 #include <takatori/decimal/triple.h>
-#include <takatori/value/decimal.h>
 
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
 #include <jogasaki/executor/process/impl/expression/details/constants.h>
+#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
+
 
 namespace jogasaki::testing {
 

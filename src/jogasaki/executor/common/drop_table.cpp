@@ -15,14 +15,42 @@
  */
 #include "drop_table.h"
 
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/reference_list_view.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
 
+#include <jogasaki/constants.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/executor/sequence/exception.h>
+#include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/handle_generic_error.h>
-#include <jogasaki/executor/sequence/exception.h>
+#include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::executor::common {
 

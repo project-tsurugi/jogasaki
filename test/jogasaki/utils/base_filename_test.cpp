@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <memory>
+#include <ostream>
+#include <gtest/gtest.h>
+
 #include <jogasaki/utils/base_filename.h>
 
-#include <gtest/gtest.h>
 
 namespace jogasaki::utils {
 
@@ -24,19 +27,19 @@ class base_filename_test : public ::testing::Test {};
 TEST_F(base_filename_test, simple) {
     std::stringstream ss{};
     ss << basename_("/test1/test2/test3.cpp");
-    EXPECT_EQ("test3.cpp:26", ss.str());
+    EXPECT_EQ("test3.cpp:29", ss.str());
 }
 
 TEST_F(base_filename_test, test_file_name) {
     std::stringstream ss{};
     ss << base_filename();
-    EXPECT_EQ("base_filename_test.cpp:32", ss.str());
+    EXPECT_EQ("base_filename_test.cpp:35", ss.str());
 }
 
 TEST_F(base_filename_test, only_file_name) {
     std::stringstream ss{};
     ss << basename_("test3.cpp");
-    EXPECT_EQ("test3.cpp:38", ss.str());
+    EXPECT_EQ("test3.cpp:41", ss.str());
 }
 }
 

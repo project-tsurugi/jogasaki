@@ -15,6 +15,8 @@
  */
 #include "operator_base.h"
 
+#include <utility>
+
 #include <jogasaki/executor/process/processor_info.h>
 
 namespace jogasaki::executor::process::impl::ops {

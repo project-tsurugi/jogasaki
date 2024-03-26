@@ -13,10 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-
-#include <gtest/gtest.h>
+#include <array>
+#include <memory>
+#include <string>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
+#include <gtest/gtest.h>
+
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
 
 const std::size_t loop =  50;
 

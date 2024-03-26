@@ -15,15 +15,26 @@
  */
 #pragma once
 
+#include <assert.h>
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <boost/container/pmr/global_resource.hpp>
+#include <boost/container/pmr/memory_resource.hpp>
 #include <boost/container/pmr/vector.hpp>
+#include <boost/container/vector.hpp>
 
-#include <takatori/util/sequence_view.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/io/record_reader.h>
-#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 

@@ -15,7 +15,11 @@
  */
 #include "flow_repository.h"
 
+#include <utility>
+
 #include <takatori/util/fail.h>
+
+#include <jogasaki/model/flow.h>
 
 namespace jogasaki::model {
 

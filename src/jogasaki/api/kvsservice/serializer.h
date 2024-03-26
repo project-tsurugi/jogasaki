@@ -15,16 +15,20 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
-#include <tateyama/proto/kvs/data.pb.h>
-#include <jogasaki/api/kvsservice/status.h>
-#include <sharksfin/api.h>
-#include <jogasaki/serializer/value_input.h>
 #include <takatori/type/data.h>
 #include <takatori/type/type_kind.h>
+#include <yugawara/storage/column.h>
+#include <tateyama/proto/kvs/data.pb.h>
+#include <sharksfin/api.h>
+
+#include <jogasaki/api/kvsservice/status.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/serializer/value_input.h>
 
 #include "column_data.h"
 

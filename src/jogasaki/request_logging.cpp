@@ -15,13 +15,17 @@
  */
 #include "request_logging.h"
 
+#include <cstddef>
+#include <ostream>
+#include <string>
 #include <string_view>
 #include <glog/logging.h>
 
 #include <jogasaki/logging.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/scheduler/request_detail.h>
-#include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/convert_control_characters.h>
+#include <jogasaki/utils/hex.h>
 
 namespace jogasaki {
 

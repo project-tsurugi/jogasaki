@@ -15,9 +15,12 @@
  */
 #include "serial_task_scheduler.h"
 
+#include <stdexcept>
 #include <thread>
-#include <unordered_set>
+#include <utility>
+
 #include <takatori/util/exception.h>
+#include <tateyama/task_scheduler/context.h>
 
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/task_scheduler.h>

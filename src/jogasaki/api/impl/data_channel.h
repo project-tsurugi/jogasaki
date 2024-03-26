@@ -15,12 +15,15 @@
  */
 #pragma once
 
-#include <string_view>
 #include <memory>
+#include <string_view>
 
-#include <tateyama/status.h>
 #include <tateyama/api/server/data_channel.h>
+#include <tateyama/status.h>
+
 #include <jogasaki/api/data_channel.h>
+#include <jogasaki/api/writer.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::api::impl {
 

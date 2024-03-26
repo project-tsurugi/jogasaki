@@ -17,10 +17,18 @@
 
 #include <atomic>
 #include <memory>
-#include <queue>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/utils/hex.h>
 
 namespace jogasaki {

@@ -15,15 +15,19 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::index {

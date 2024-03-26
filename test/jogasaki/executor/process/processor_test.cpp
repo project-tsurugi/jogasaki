@@ -13,16 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/processor.h>
-
 #include <string>
-
+#include <string_view>
+#include <vector>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/test_root.h>
+#include <takatori/util/meta_type.h>
 
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/impl/processor.h>
+#include <jogasaki/executor/process/mock/record_reader.h>
+#include <jogasaki/executor/process/mock/record_writer.h>
 #include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/executor/process/mock/process_executor.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::process::impl {
 

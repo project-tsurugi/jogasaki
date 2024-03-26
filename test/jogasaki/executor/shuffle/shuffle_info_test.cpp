@@ -14,10 +14,25 @@
  * limitations under the License.
  */
 
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
+
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/exchange/group/group_info.h>
+#include <jogasaki/executor/hash.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::group {
 

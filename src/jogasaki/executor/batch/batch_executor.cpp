@@ -15,8 +15,14 @@
  */
 #include "batch_executor.h"
 
+#include <functional>
+#include <limits>
+
+#include <jogasaki/executor/batch/batch_execution_info.h>
+#include <jogasaki/executor/batch/batch_execution_state.h>
+#include <jogasaki/executor/batch/batch_executor_option.h>
+
 #include "batch_file_executor.h"
-#include "batch_block_executor.h"
 
 namespace jogasaki::executor::batch {
 

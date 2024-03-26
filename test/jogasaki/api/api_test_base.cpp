@@ -15,25 +15,23 @@
  */
 #include "api_test_base.h"
 
+#include <iostream>
+#include <map>
 #include <regex>
+#include <signal.h>
+#include <sstream>
+#include <type_traits>
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/transaction_handle.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/executor/tables.h>
-#include <jogasaki/test_base.h>
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_utils/temporary_folder.h>
-#include <jogasaki/scheduler/task_scheduler.h>
-#include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/executor/sequence/sequence.h>
-#include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/runner.h>
 
 namespace jogasaki::testing {

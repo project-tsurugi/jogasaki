@@ -14,15 +14,23 @@
  * limitations under the License.
  */
 
-#include <jogasaki/data/record_store.h>
-
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/util/fail.h>
+
 #include <jogasaki/accessor/record_ref.h>
-
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/mock_memory_resource.h>
-
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::data {
 

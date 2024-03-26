@@ -15,16 +15,20 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <takatori/graph/graph.h>
 #include <takatori/plan/graph.h>
 #include <yugawara/compiler_result.h>
 
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
-#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/relation_io_map.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/compiler_context.h>
 
 namespace jogasaki::executor::process::impl {

@@ -19,11 +19,13 @@
 
 #include <takatori/util/sequence_view.h>
 
-#include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/mock/record_reader.h>
+#include <jogasaki/executor/process/step.h>
 
 namespace jogasaki::executor::process::mock {
 

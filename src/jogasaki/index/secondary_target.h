@@ -15,6 +15,10 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <takatori/relation/write.h>
@@ -23,10 +27,18 @@
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/index.h>
 
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/interference_size.h>
 
 #include "secondary_context.h"
 

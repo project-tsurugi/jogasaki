@@ -15,19 +15,27 @@
  */
 #include "storage_options.h"
 
-#include <yugawara/storage/configurable_provider.h>
-#include <takatori/util/string_builder.h>
+#include <cstddef>
+#include <ostream>
+#include <stdexcept>
+#include <vector>
+#include <glog/logging.h>
 
-#include <jogasaki/plan/storage_processor.h>
+#include <takatori/util/string_builder.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
+
+#include <jogasaki/constants.h>
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/sequence/metadata_store.h>
-#include <jogasaki/utils/storage_metadata_serializer.h>
-#include <jogasaki/utils/proto_debug_string.h>
-
 #include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/status.h>
+#include <jogasaki/utils/proto_debug_string.h>
+#include <jogasaki/utils/storage_metadata_serializer.h>
 
 #include "index.h"
 

@@ -15,6 +15,13 @@
  */
 #include "monotonic_paged_memory_resource.h"
 
+#include <algorithm>
+#include <memory>
+#include <new>
+
+#include <jogasaki/memory/details/page_allocation_info.h>
+#include <jogasaki/memory/page_pool.h>
+
 namespace jogasaki::memory {
 
 monotonic_paged_memory_resource::~monotonic_paged_memory_resource() {

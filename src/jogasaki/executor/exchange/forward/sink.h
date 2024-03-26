@@ -15,11 +15,14 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
-#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+
 #include "source.h"
 
 namespace jogasaki::executor::exchange::forward {

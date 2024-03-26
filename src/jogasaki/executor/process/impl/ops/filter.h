@@ -15,19 +15,24 @@
  */
 #pragma once
 
+#include <memory>
 #include <vector>
 
-#include <takatori/scalar/expression.h>
 #include <takatori/relation/filter.h>
+#include <takatori/scalar/expression.h>
 
-#include <jogasaki/executor/process/step.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/ops/operation_status.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/executor/process/step.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include "operator_base.h"
+#include <jogasaki/utils/copy_field_data.h>
+
 #include "filter_context.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

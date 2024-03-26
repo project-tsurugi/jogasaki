@@ -16,12 +16,15 @@
 #include "storage.h"
 
 #include <memory>
-#include <sharksfin/api.h>
+
 #include <sharksfin/Slice.h>
-#include "transaction.h"
-#include "iterator.h"
+#include <sharksfin/StatusCode.h>
+#include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>
+
+#include "iterator.h"
+#include "transaction.h"
 
 namespace jogasaki::kvs {
 

@@ -19,8 +19,8 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::meta {
 

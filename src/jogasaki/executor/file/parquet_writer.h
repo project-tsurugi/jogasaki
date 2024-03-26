@@ -15,18 +15,32 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <iomanip>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/path.hpp>
 #include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
+#include <parquet/column_writer.h>
+#include <parquet/file_writer.h>
+#include <parquet/schema.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/file_writer.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 
 #include "column_option.h"
 

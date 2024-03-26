@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <string>
 #include <gtest/gtest.h>
-#include <jogasaki/plan/statement_work_level.h>
 
+#include <jogasaki/plan/statement_work_level.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::plan {

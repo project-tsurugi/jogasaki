@@ -15,8 +15,15 @@
  */
 #include "reader.h"
 
+#include <ostream>
+#include <type_traits>
+#include <utility>
 #include <glog/logging.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/executor/exchange/mock/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
 #include <jogasaki/logging.h>
 
 namespace jogasaki::executor::exchange::mock::aggregate {

@@ -15,12 +15,21 @@
  */
 #pragma once
 
-#include <jogasaki/model/step.h>
-#include <jogasaki/model/graph.h>
+#include <cstddef>
+#include <iosfwd>
+#include <memory>
+#include <vector>
+
+#include <takatori/util/sequence_view.h>
+
 #include <jogasaki/callback.h>
 #include <jogasaki/executor/common/port.h>
-#include <jogasaki/model/step_kind.h>
 #include <jogasaki/model/flow.h>
+#include <jogasaki/model/graph.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/step_kind.h>
+#include <jogasaki/model/task.h>
 
 namespace jogasaki::executor::common {
 

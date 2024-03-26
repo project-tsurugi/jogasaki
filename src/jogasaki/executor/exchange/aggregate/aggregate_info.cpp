@@ -15,18 +15,25 @@
  */
 #include "aggregate_info.h"
 
-#include <vector>
 #include <memory>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
+#include <boost/move/utility_core.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
 #include <takatori/util/sequence_view.h>
 
-#include <jogasaki/constants.h>
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 

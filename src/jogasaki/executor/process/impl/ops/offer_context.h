@@ -15,8 +15,15 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/meta/record_meta.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

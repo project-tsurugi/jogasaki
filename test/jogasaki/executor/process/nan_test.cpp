@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <boost/dynamic_bitset.hpp>
-#include <glog/logging.h>
+#include <cstdint>
+#include <decimal.hh>
+#include <limits>
+#include <mpdecimal.h>
+#include <string>
 #include <gtest/gtest.h>
 
-#include <jogasaki/test_root.h>
 #include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
-#include <type_traits>
+#include <jogasaki/test_root.h>
 
-#include <decimal.hh>
 
 namespace jogasaki::executor::process::impl::expression {
 

@@ -18,6 +18,8 @@
 #include <cstddef>
 #include <cstring>
 #include <optional>
+#include <type_traits>
+#include <boost/assert.hpp>
 
 #include <takatori/util/assertion.h>
 

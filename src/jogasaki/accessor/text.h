@@ -16,11 +16,14 @@
 
 #pragma once
 
-#include <limits>
-#include <memory>
 #include <cstddef>
 #include <cstring>
+#include <iosfwd>
+#include <limits>
+#include <memory>
+#include <string>
 #include <string_view>
+#include <type_traits>
 
 #include <jogasaki/memory/paged_memory_resource.h>
 

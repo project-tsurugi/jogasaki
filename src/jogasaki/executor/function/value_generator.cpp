@@ -15,11 +15,15 @@
  */
 #include "value_generator.h"
 
+#include <boost/assert.hpp>
+
 #include <takatori/util/fail.h>
 
-#include <jogasaki/meta/field_type_traits.h>
-#include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::executor::function {
 

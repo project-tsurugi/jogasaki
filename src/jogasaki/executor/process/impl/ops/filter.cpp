@@ -15,16 +15,23 @@
  */
 #include "filter.h"
 
-#include <takatori/util/downcast.h>
-#include <takatori/relation/filter.h>
+#include <utility>
+#include <boost/assert.hpp>
 
-#include <jogasaki/executor/process/step.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/infect_qualifier.h>
+
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
-#include <jogasaki/utils/checkpoint_holder.h>
-#include "operator_base.h"
-#include "filter_context.h"
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+
 #include "context_helper.h"
+#include "filter_context.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <cstddef>
+
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/round.h>
 

@@ -15,10 +15,14 @@
  */
 #pragma once
 
-#include <jogasaki/executor/global.h>
-#include <jogasaki/api/result_set.h>
+#include <memory>
+
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/record_meta.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/api/result_set_iterator.h>
 #include <jogasaki/data/result_store.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::api::impl {

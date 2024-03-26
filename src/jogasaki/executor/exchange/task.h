@@ -16,12 +16,11 @@
 #pragma once
 
 #include <memory>
-
 #include <glog/logging.h>
 
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::exchange {

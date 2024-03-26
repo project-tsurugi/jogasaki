@@ -15,12 +15,20 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
-#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/descriptor/element.h>
+#include <takatori/descriptor/variable.h>
 #include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
 #include <takatori/relation/graph.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/record_meta.h>

@@ -13,23 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/service/bridge.h>
-
-#include <functional>
 #include <memory>
-#include <type_traits>
+#include <ostream>
+#include <utility>
+#include <vector>
+#include <glog/logging.h>
 
-#include <tateyama/framework/service.h>
-#include <tateyama/framework/repository.h>
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
-#include <tateyama/framework/environment.h>
-#include <tateyama/framework/component_ids.h>
 #include <tateyama/diagnostic/resource/diagnostic_resource.h>
+#include <tateyama/framework/boot_mode.h>
+#include <tateyama/framework/environment.h>
+#include <tateyama/framework/repository.h>
 
+#include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/api/resource/bridge.h>
-#include <jogasaki/logging_helper.h>
+#include <jogasaki/api/service/bridge.h>
 #include <jogasaki/logging.h>
 
 namespace jogasaki::api::service {

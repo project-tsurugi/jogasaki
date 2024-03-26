@@ -15,7 +15,16 @@
  */
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <vector>
+
 #include <jogasaki/data/value_store.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

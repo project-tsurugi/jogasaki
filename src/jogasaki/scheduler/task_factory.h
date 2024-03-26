@@ -15,9 +15,17 @@
  */
 #pragma once
 
+#include <atomic>
+#include <functional>
+#include <iosfwd>
 #include <memory>
+#include <string_view>
 
+#include <jogasaki/model/task.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/status.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
 

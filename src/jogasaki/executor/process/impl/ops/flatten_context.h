@@ -15,6 +15,10 @@
  */
 #pragma once
 
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

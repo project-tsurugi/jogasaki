@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/file/parquet_reader.h>
-
 #include <gtest/gtest.h>
-#include <jogasaki/test_utils/temporary_folder.h>
 
-#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/test_utils/temporary_folder.h>
 
 namespace jogasaki::executor::file {
 

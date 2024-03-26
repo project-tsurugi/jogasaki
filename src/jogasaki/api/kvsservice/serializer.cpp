@@ -14,15 +14,47 @@
  * limitations under the License.
  */
 
-#include <array>
-
-#include <jogasaki/utils/decimal.h>
-#include <jogasaki/memory/page_pool.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <takatori/type/decimal.h>
-#include <takatori/type/character.h>
-#include <takatori/util/exception.h>
 #include "serializer.h"
+
+#include <cmath>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/type/character.h>
+#include <takatori/type/data.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/buffer_view.h>
+#include <takatori/util/optional_ptr.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
+#include <tateyama/proto/kvs/data.pb.h>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/api/kvsservice/column_data.h>
+#include <jogasaki/api/kvsservice/status.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/status.h>
+#include <jogasaki/utils/decimal.h>
 
 using buffer = takatori::util::buffer_view;
 using kind = jogasaki::meta::field_type_kind;

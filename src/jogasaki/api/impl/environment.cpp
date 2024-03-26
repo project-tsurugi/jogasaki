@@ -17,6 +17,8 @@
 
 #include <memory>
 
+#include <jogasaki/api/environment.h>
+
 namespace jogasaki::api {
 
 /**

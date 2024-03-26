@@ -15,16 +15,28 @@
  */
 #pragma once
 
+#include <atomic>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 #include <tbb/concurrent_hash_map.h>
+#include <tbb/concurrent_queue.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
 #include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::executor::io {
 

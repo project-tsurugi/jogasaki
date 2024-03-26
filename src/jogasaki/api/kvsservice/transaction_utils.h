@@ -15,8 +15,18 @@
  */
 #pragma once
 
+#include <memory>
+#include <string_view>
+
 #include <takatori/util/exception.h>
+#include <yugawara/storage/table.h>
+#include <tateyama/proto/kvs/data.pb.h>
+#include <sharksfin/Slice.h>
+
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/kvsservice/status.h>
+#include <jogasaki/kvs/coder.h>
+
 #include "record_columns.h"
 
 namespace jogasaki::api::kvsservice {

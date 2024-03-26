@@ -15,8 +15,12 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
+#include <takatori/descriptor/element.h>
 #include <takatori/descriptor/variable.h>
 
 namespace jogasaki::plan {

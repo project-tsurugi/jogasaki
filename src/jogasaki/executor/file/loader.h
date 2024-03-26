@@ -16,12 +16,23 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
+#include <cstdlib>
+#include <iosfwd>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/executor/file/file_reader.h>
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/interference_size.h>
 

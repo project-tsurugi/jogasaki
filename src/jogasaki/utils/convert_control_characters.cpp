@@ -15,6 +15,7 @@
  */
 #include "convert_control_characters.h"
 
+#include <cstddef>
 #include <sstream>
 
 namespace jogasaki::utils {

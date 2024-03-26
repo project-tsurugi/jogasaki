@@ -15,17 +15,33 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/request_info.h>
+#include <jogasaki/api/commit_option.h>
+#include <jogasaki/api/data_channel.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/kvs/transaction_option.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/request_info.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/latch.h>
 

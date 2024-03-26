@@ -15,7 +15,10 @@
  */
 #include "handle_encode_errors.h"
 
-#include <jogasaki/utils/abort_error.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::utils {
 

@@ -16,7 +16,12 @@
 #include "context_helper.h"
 
 #include <takatori/util/downcast.h>
+
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

@@ -13,14 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/sequence/manager.h>
-
+#include <chrono>
+#include <cstdint>
+#include <limits>
+#include <memory>
+#include <string>
+#include <string_view>
 #include <thread>
+#include <unordered_map>
 #include <gtest/gtest.h>
 
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/relation_kind.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/util/maybe_shared_lock.h>
+
+#include <jogasaki/common_types.h>
+#include <jogasaki/executor/sequence/info.h>
+#include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/id.h>
+#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs_test_base.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::executor::sequence {
 

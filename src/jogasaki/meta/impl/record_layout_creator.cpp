@@ -15,6 +15,11 @@
  */
 #include "record_layout_creator.h"
 
+#include <algorithm>
+#include <boost/assert.hpp>
+
+#include <jogasaki/constants.h>
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/round.h>
 

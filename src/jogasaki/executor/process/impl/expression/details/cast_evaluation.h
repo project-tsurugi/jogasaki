@@ -16,10 +16,14 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <decimal.hh>
 #include <functional>
+#include <optional>
+#include <string_view>
 
-#include <takatori/type/data.h>
 #include <takatori/decimal/triple.h>
+#include <takatori/type/data.h>
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>

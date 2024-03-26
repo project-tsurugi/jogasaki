@@ -13,57 +13,75 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/plan/compiler.h>
-
+#include <string>
+#include <vector>
 #include <gtest/gtest.h>
-#include <glog/logging.h>
-#include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/partitioner.h>
-#include <jogasaki/executor/comparator.h>
-
-#include <shakujo/parser/Parser.h>
-#include <shakujo/common/core/Type.h>
-#include <shakujo/model/IRFactory.h>
-
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/aggregate/configurable_provider.h>
-#include <yugawara/aggregate/declaration.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/binding/variable_info.h>
-#include <yugawara/runtime_feature.h>
-#include <yugawara/compiler.h>
-#include <yugawara/compiler_options.h>
-
-#include <mizugaki/translator/shakujo_translator.h>
-
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/filter.h>
-#include <takatori/relation/project.h>
-#include <takatori/statement/write.h>
-#include <takatori/statement/execute.h>
-#include <takatori/scalar/immediate.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/graph_iterator.h>
+#include <takatori/plan/exchange.h>
+#include <takatori/plan/graph.h>
 #include <takatori/plan/process.h>
-#include <takatori/serializer/json_printer.h>
-
-#include <jogasaki/utils/field_types.h>
-#include <takatori/relation/step/offer.h>
-#include <jogasaki/plan/compiler_context.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
-#include <jogasaki/executor/function/incremental/builtin_functions.h>
-#include <yugawara/binding/extract.h>
-#include <takatori/relation/step/take_cogroup.h>
-#include <takatori/relation/step/join.h>
+#include <takatori/relation/details/cogroup_element.h>
+#include <takatori/relation/emit.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/filter.h>
+#include <takatori/relation/graph.h>
+#include <takatori/relation/project.h>
+#include <takatori/relation/scan.h>
+#include <takatori/relation/sort_direction.h>
 #include <takatori/relation/step/flatten.h>
+#include <takatori/relation/step/join.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_cogroup.h>
 #include <takatori/relation/step/take_group.h>
+#include <takatori/relation/write_kind.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/scalar/immediate.h>
+#include <takatori/statement/details/write_tuple.h>
+#include <takatori/statement/execute.h>
+#include <takatori/statement/statement_kind.h>
+#include <takatori/statement/write.h>
+#include <takatori/tree/tree_element_vector.h>
+#include <takatori/tree/tree_fragment_vector.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/reference_list_view.h>
+#include <takatori/value/primitive.h>
+#include <takatori/value/value_kind.h>
+#include <yugawara/aggregate/configurable_provider.h>
+#include <yugawara/binding/extract.h>
+#include <yugawara/binding/factory.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/index_feature.h>
+#include <yugawara/storage/relation.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/util/object_cache.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
+#include <mizugaki/placeholder_entry.h>
+#include <mizugaki/translator/shakujo_translator.h>
+#include <mizugaki/translator/shakujo_translator_code.h>
+#include <mizugaki/translator/shakujo_translator_options.h>
+#include <shakujo/common/core/Type.h>
+
+#include <jogasaki/executor/function/incremental/builtin_functions.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/relation_io_map.h>
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/utils/field_types.h>
+
 #include "test_utils.h"
 
 namespace jogasaki::plan {

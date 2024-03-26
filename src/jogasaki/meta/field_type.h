@@ -16,18 +16,21 @@
 #pragma once
 
 #include <cstddef>
-#include <type_traits>
-#include <variant>
+#include <cstdlib>
+#include <memory>
 #include <ostream>
+#include <type_traits>
+#include <utility>
+#include <variant>
 
 #include <takatori/util/comparable_traits.h>
 
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/meta/field_type_traits.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/meta/field_type_option.h>
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_option.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 

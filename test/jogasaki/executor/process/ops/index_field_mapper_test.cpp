@@ -13,21 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
-
+#include <cstdint>
+#include <memory>
 #include <string>
+#include <type_traits>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/executor/process/impl/ops/find_context.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/memory/page_pool.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/kvs/transaction_option.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs_test_base.h>
+#include <jogasaki/kvs_test_utils.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/status.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

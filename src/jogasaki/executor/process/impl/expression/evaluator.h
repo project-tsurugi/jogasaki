@@ -16,12 +16,15 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 
+#include <takatori/decimal/triple.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/cast.h>
 #include <takatori/scalar/coalesce.h>
 #include <takatori/scalar/compare.h>
+#include <takatori/scalar/comparison_operator.h>
 #include <takatori/scalar/conditional.h>
 #include <takatori/scalar/expression.h>
 #include <takatori/scalar/extension.h>

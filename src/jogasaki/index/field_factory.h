@@ -16,13 +16,23 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
+#include <unordered_map>
+#include <vector>
 
+#include <takatori/descriptor/variable.h>
+#include <takatori/relation/sort_direction.h>
 #include <takatori/util/sequence_view.h>
-#include <yugawara/storage/index.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/index/field_info.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::index {

@@ -16,10 +16,14 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
+#include <iosfwd>
 #include <memory>
+#include <optional>
 #include <tbb/concurrent_priority_queue.h>
 
 #include <jogasaki/request_context.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki {
 

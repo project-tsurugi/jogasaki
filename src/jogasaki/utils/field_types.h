@@ -17,13 +17,14 @@
 
 #include <cstddef>
 
-#include <yugawara/compiled_info.h>
-#include <takatori/type/type_kind.h>
+#include <takatori/descriptor/variable.h>
+#include <takatori/type/data.h>
 #include <takatori/type/date.h>
+#include <takatori/type/decimal.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
-#include <takatori/type/decimal.h>
-#include <takatori/descriptor/variable.h>
+#include <takatori/type/type_kind.h>
+#include <yugawara/compiled_info.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/meta/field_type.h>

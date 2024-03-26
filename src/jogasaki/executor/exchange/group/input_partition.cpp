@@ -15,10 +15,19 @@
  */
 #include "input_partition.h"
 
-#include <jogasaki/request_context.h>
+#include <algorithm>
+#include <type_traits>
+#include <utility>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/configuration.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::exchange::group {
 

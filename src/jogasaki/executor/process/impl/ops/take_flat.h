@@ -15,14 +15,25 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <vector>
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/sequence_view.h>
 #include <takatori/relation/step/take_flat.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
 
 #include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operation_status.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/interference_size.h>
+
 #include "operator_base.h"
 #include "take_flat_context.h"
 

@@ -15,6 +15,10 @@
  */
 #include "mirror_container.h"
 
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/plan/statement_work_level.h>
+
 namespace jogasaki::plan {
 
 void mirror_container::set(mirror_container::step_index index, mirror_container::variable_definition def) noexcept {

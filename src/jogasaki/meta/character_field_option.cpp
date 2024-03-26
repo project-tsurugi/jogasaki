@@ -15,6 +15,8 @@
  */
 #include "character_field_option.h"
 
+#include <string>
+
 namespace jogasaki::meta {
 
 bool operator==(character_field_option const& a, character_field_option const& b) noexcept {

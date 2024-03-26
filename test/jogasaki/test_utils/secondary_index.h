@@ -15,18 +15,20 @@
  */
 #pragma once
 
-#include <vector>
-#include <memory>
+#include <cstddef>
 #include <initializer_list>
+#include <memory>
 #include <string_view>
+#include <utility>
+#include <vector>
 
-#include <yugawara/storage/table.h>
 #include <yugawara/storage/index.h>
+#include <yugawara/storage/table.h>
 
-#include <jogasaki/kvs/storage.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::utils {
 

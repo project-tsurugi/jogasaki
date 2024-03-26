@@ -15,14 +15,14 @@
  */
 #include "writable_stream.h"
 
-#include <cmath>
-#include <array>
-#include <map>
-#include <boost/endian/conversion.hpp>
-#include <takatori/decimal/triple.h>
+#include <algorithm>
 #include <decimal.hh>
 
+#include <takatori/decimal/triple.h>
+
+#include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/coder.h>
 #include <jogasaki/utils/decimal.h>
 

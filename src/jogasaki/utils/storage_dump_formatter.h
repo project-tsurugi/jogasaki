@@ -15,7 +15,11 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <sstream>
+#include <string>
+#include <utility>
+
 #include <takatori/util/fail.h>
 
 #include <jogasaki/kvs/storage_dump.h>

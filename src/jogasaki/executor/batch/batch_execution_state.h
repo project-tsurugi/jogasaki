@@ -15,13 +15,13 @@
  */
 #pragma once
 
-#include <cstddef>
 #include <atomic>
-#include <string>
+#include <cstddef>
 #include <memory>
+#include <string>
 
-#include <jogasaki/status.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::executor::batch {
 

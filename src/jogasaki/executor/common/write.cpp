@@ -15,13 +15,12 @@
  */
 #include "write.h"
 
+#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <stdexcept>
-#include <cstdint>
-#include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <boost/assert.hpp>
@@ -48,6 +47,7 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/configuration.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/error/error_info_factory.h>

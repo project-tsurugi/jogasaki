@@ -19,6 +19,12 @@
 
 #include <takatori/util/fail.h>
 
+#include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 

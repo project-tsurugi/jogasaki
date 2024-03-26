@@ -15,6 +15,12 @@
  */
 #include "compare_info.h"
 
+#include <utility>
+#include <boost/assert.hpp>
+
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/record_meta.h>
+
 namespace jogasaki::executor {
 
 compare_info::compare_info(

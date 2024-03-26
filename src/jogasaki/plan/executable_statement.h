@@ -17,17 +17,20 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
+#include <string>
+#include <string_view>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/statement/statement.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/compiled_info.h>
 
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/model/statement.h>
-#include <jogasaki/utils/interference_size.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/model/statement.h>
 #include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::plan {
 

@@ -15,6 +15,7 @@
  */
 #include "port.h"
 
+#include <utility>
 #include <vector>
 
 #include <jogasaki/model/port.h>

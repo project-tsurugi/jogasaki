@@ -16,10 +16,12 @@
 #include "primary_context.h"
 
 #include <memory>
-#include <vector>
+#include <utility>
 
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/step.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::index {
 

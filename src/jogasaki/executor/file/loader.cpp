@@ -16,18 +16,36 @@
 #include "loader.h"
 
 #include <atomic>
+#include <cstddef>
+#include <ostream>
+#include <type_traits>
 #include <glog/logging.h>
 
 #include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/plan/parameter_set.h>
+#include <jogasaki/plan/prepared_statement.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 
 namespace jogasaki::executor::file {

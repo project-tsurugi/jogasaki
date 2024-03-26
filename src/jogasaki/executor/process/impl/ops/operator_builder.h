@@ -15,47 +15,53 @@
  */
 #pragma once
 
-#include <takatori/util/fail.h>
-#include <takatori/relation/graph.h>
-#include <takatori/relation/scan.h>
+#include <memory>
+
+#include <takatori/relation/buffer.h>
 #include <takatori/relation/emit.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
 #include <takatori/relation/filter.h>
 #include <takatori/relation/find.h>
+#include <takatori/relation/graph.h>
+#include <takatori/relation/identify.h>
 #include <takatori/relation/join_find.h>
 #include <takatori/relation/join_scan.h>
 #include <takatori/relation/project.h>
-#include <takatori/relation/buffer.h>
-#include <takatori/relation/write.h>
-#include <takatori/relation/values.h>
-#include <takatori/relation/identify.h>
-#include <takatori/relation/step/take_group.h>
-#include <takatori/relation/step/take_cogroup.h>
-#include <takatori/relation/step/offer.h>
-#include <takatori/relation/step/take_flat.h>
-#include <takatori/relation/step/join.h>
-#include <takatori/relation/step/flatten.h>
+#include <takatori/relation/scan.h>
 #include <takatori/relation/step/aggregate.h>
-#include <takatori/relation/step/intersection.h>
 #include <takatori/relation/step/difference.h>
-#include <takatori/relation/expression.h>
+#include <takatori/relation/step/flatten.h>
+#include <takatori/relation/step/intersection.h>
+#include <takatori/relation/step/join.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_cogroup.h>
+#include <takatori/relation/step/take_flat.h>
+#include <takatori/relation/step/take_group.h>
+#include <takatori/relation/values.h>
+#include <takatori/relation/write.h>
+#include <takatori/util/fail.h>
+#include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
 #include <yugawara/compiler_result.h>
-#include <yugawara/binding/factory.h>
+#include <yugawara/storage/index.h>
 
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
-#include <jogasaki/executor/process/io_exchange_map.h>
-#include <jogasaki/executor/process/relation_io_map.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/compiler_context.h>
-#include "operator_container.h"
+
 #include "details/search_key_field_info.h"
+#include "operator_container.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

@@ -16,6 +16,8 @@
 #include "watch.h"
 
 #include <chrono>
+#include <cstdlib>
+#include <utility>
 
 namespace jogasaki::utils {
 

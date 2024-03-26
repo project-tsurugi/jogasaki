@@ -14,19 +14,30 @@
  * limitations under the License.
  */
 
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
-#include <tateyama/framework/server.h>
+#include <tateyama/framework/boot_mode.h>
+#include <tateyama/framework/component.h>
 #include <tateyama/framework/component_ids.h>
+#include <tateyama/framework/server.h>
+#include <tateyama/loopback/buffered_response.h>
 #include <tateyama/loopback/loopback_client.h>
-
-#include <jogasaki/api/kvsservice/service.h>
-#include <jogasaki/api/kvsservice/resource.h>
-
 #include <tateyama/proto/kvs/data.pb.h>
-#include <tateyama/proto/kvs/transaction.pb.h>
 #include <tateyama/proto/kvs/request.pb.h>
 #include <tateyama/proto/kvs/response.pb.h>
+#include <tateyama/proto/kvs/transaction.pb.h>
+
+#include <jogasaki/api/kvsservice/resource.h>
+#include <jogasaki/api/kvsservice/service.h>
+#include <jogasaki/api/resource/bridge.h>
 
 #include "test_utils.h"
 

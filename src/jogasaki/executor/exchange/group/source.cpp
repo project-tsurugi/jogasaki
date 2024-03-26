@@ -15,7 +15,15 @@
  */
 #include "source.h"
 
+#include <utility>
+
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
+#include <jogasaki/executor/exchange/group/input_partition.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/request_context.h>
+
 #include "priority_queue_reader.h"
 #include "sorted_vector_reader.h"
 

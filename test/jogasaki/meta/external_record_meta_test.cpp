@@ -13,10 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/meta/external_record_meta.h>
-
+#include <cstdint>
+#include <memory>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
+
+#include <takatori/util/fail.h>
+
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::meta {
 

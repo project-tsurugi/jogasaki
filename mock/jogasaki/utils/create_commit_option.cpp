@@ -15,6 +15,10 @@
  */
 #include "create_commit_option.h"
 
+#include <memory>
+
+#include <jogasaki/api/commit_option.h>
+
 namespace jogasaki::utils {
 
 std::unique_ptr<api::commit_option> g_commit_option{std::make_unique<api::commit_option>()};

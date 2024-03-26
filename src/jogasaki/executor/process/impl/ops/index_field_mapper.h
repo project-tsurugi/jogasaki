@@ -15,14 +15,18 @@
  */
 #pragma once
 
+#include <string_view>
 #include <vector>
 
-#include <jogasaki/kvs/storage.h>
-#include <jogasaki/transaction_context.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/status.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

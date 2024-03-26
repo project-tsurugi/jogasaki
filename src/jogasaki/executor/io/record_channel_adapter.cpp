@@ -15,10 +15,15 @@
  */
 #include "record_channel_adapter.h"
 
+#include <type_traits>
+#include <utility>
+
 #include <jogasaki/api/data_channel.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/api/writer.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 namespace jogasaki::executor::io {
 

@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <vector>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/meta/group_meta.h>

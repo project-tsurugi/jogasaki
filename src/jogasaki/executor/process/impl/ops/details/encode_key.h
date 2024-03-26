@@ -15,7 +15,12 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <vector>
+
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/status.h>
 

@@ -15,14 +15,15 @@
  */
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <cstdlib>
-#include <atomic>
-#include <string_view>
-#include <ostream>
-#include <unordered_map>
 #include <functional>
 #include <optional>
+#include <ostream>
+#include <string_view>
+#include <type_traits>
+#include <unordered_map>
 
 namespace jogasaki {
 

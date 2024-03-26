@@ -15,9 +15,10 @@
  */
 #pragma once
 
+#include <jogasaki/data/any.h>
 #include <jogasaki/data/value.h>
 #include <jogasaki/meta/field_type.h>
-#include <jogasaki/data/any.h>
+#include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::plan {
 

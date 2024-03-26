@@ -15,7 +15,10 @@
  */
 #include "aggregate_function_info.h"
 
-#include <vector>
+#include <utility>
+
+#include <jogasaki/executor/function/aggregate_function_kind.h>
+#include <jogasaki/executor/function/value_generator.h>
 
 namespace jogasaki::executor::function {
 

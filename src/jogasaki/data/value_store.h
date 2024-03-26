@@ -16,14 +16,25 @@
 #pragma once
 
 #include <array>
-#include <vector>
+#include <cstdint>
+#include <cstdlib>
 #include <cstring>
+#include <iterator>
+#include <memory>
+#include <ostream>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
 
-#include <takatori/util/print_support.h>
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/print_support.h>
 
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {

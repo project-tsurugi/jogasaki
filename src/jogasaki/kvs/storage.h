@@ -15,10 +15,18 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <ostream>
+#include <string_view>
 #include <glog/logging.h>
+
 #include <takatori/util/fail.h>
+#include <sharksfin/StorageOptions.h>
 #include <sharksfin/api.h>
+
+#include <jogasaki/status.h>
+
 #include "transaction.h"
 
 namespace jogasaki::kvs {

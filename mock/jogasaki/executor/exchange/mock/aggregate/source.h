@@ -15,11 +15,15 @@
  */
 #pragma once
 
-#include <jogasaki/request_context.h>
-#include <jogasaki/executor/exchange/source.h>
-#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
+#include <memory>
+#include <vector>
+
 #include <jogasaki/executor/exchange/mock/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
+#include <jogasaki/executor/exchange/source.h>
 #include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::exchange::mock::aggregate {
 

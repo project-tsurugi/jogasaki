@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <chrono>
+#include <utility>
+#include <gtest/gtest.h>
+
 #include <jogasaki/utils/use_counter.h>
 
-#include <future>
-#include <thread>
-
-#include <gtest/gtest.h>
 
 namespace jogasaki::utils {
 

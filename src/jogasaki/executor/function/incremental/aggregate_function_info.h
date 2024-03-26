@@ -15,17 +15,18 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
 #include <memory>
+#include <set>
+#include <vector>
 
+#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/fail.h>
 
-#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::function::incremental {
 

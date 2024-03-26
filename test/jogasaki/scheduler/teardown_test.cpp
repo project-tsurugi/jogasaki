@@ -13,14 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/scheduler/stealing_task_scheduler.h>
-
+#include <atomic>
+#include <cstddef>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <type_traits>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/common/task.h>
-#include <jogasaki/scheduler/task_factory.h>
-#include <jogasaki/test_root.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/request_context_factory.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/scheduler/task_factory.h>
+#include <jogasaki/scheduler/task_scheduler.h>
+
 #include "../api/api_test_base.h"
 
 namespace jogasaki::scheduler {

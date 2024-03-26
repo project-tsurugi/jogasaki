@@ -16,7 +16,10 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <jogasaki/utils/performance_tools.h>
+
+#include "cli_constants.h"
 #include "show_producer_perf_info.h"
 
 namespace jogasaki::common_cli {

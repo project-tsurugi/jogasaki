@@ -15,29 +15,41 @@
  */
 #include "evaluator.h"
 
-#include <charconv>
-#include <cstddef>
-#include <functional>
+#include <cstdlib>
+#include <decimal.hh>
+#include <exception>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <boost/assert.hpp>
 
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/scalar/binary_operator.h>
+#include <takatori/scalar/cast_loss_policy.h>
+#include <takatori/scalar/dispatch.h>
 #include <takatori/scalar/expression.h>
-#include <takatori/scalar/walk.h>
-#include <takatori/type/character.h>
-#include <takatori/type/float.h>
-#include <takatori/type/int.h>
-#include <takatori/util/downcast.h>
+#include <takatori/scalar/unary_operator.h>
+#include <takatori/type/data.h>
+#include <takatori/type/type_kind.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/equal_to.h>
 #include <jogasaki/executor/less.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/variant.h>
 
 #include "details/cast_evaluation.h"
 #include "details/common.h"

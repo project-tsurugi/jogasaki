@@ -15,6 +15,13 @@
  */
 #include "record_store.h"
 
+#include <cstdlib>
+#include <type_traits>
+#include <utility>
+
+#include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+
 namespace jogasaki::data {
 
 record_store::record_pointer record_store::append(accessor::record_ref record) {

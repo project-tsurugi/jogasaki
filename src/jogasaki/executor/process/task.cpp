@@ -15,12 +15,24 @@
  */
 #include "task.h"
 
+#include <functional>
+#include <ostream>
+#include <type_traits>
+#include <utility>
+#include <glog/logging.h>
+
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/callback.h>
+#include <jogasaki/event.h>
+#include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/common/utils.h>
+#include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/executor/process/impl/task_context.h>
-#include <jogasaki/executor/process/impl/process_executor.h>
-#include <jogasaki/callback.h>
-#include <jogasaki/executor/common/utils.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/flat_task.h>
 
 namespace jogasaki::executor::process {
 

@@ -15,6 +15,13 @@
  */
 #include "process_executor.h"
 
+#include <utility>
+
+#include <jogasaki/executor/process/abstract/process_executor.h>
+#include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/task_context_pool.h>
+
 namespace jogasaki::executor::process::impl {
 
 abstract::process_executor_factory& default_process_executor_factory() {

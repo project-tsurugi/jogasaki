@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 #include <cstdlib>
-
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
+
 
 namespace jogasaki::testing {
 

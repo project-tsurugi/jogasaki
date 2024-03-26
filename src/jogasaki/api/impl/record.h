@@ -15,11 +15,18 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <iosfwd>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/api/record.h>
-#include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/field_type_traits.h>
+#include <jogasaki/api/record.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::api::impl {
 

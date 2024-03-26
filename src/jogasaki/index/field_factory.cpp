@@ -15,12 +15,15 @@
  */
 #include "field_factory.h"
 
+#include <cstddef>
+#include <type_traits>
+
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/binding/factory.h>
 
-#include <cstddef>
-
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/index/utils.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::index {
 

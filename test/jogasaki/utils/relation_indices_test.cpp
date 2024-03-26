@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/relation_indices.h>
-
+#include <memory>
 #include <gtest/gtest.h>
+
 #include <takatori/plan/forward.h>
 #include <takatori/plan/process.h>
 #include <yugawara/binding/factory.h>
+
+#include <jogasaki/utils/relation_indices.h>
+
 
 namespace jogasaki::utils {
 

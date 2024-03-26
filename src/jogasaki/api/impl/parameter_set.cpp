@@ -15,6 +15,12 @@
  */
 #include "parameter_set.h"
 
+#include <utility>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/plan/parameter_set.h>
+
 namespace jogasaki::api::impl {
 
 parameter_set::parameter_set(std::shared_ptr<plan::parameter_set> body) noexcept: body_(std::move(body)) {}

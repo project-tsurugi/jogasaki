@@ -15,9 +15,15 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+#include <string_view>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/field_type_traits.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/plan/parameter_set.h>
-#include <jogasaki/accessor/text.h>
 
 namespace jogasaki::api::impl {
 

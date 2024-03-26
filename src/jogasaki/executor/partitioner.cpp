@@ -16,12 +16,13 @@
 #include "partitioner.h"
 
 #include <cstddef>
+#include <utility>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/hash.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::executor {
 

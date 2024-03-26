@@ -14,10 +14,28 @@
  * limitations under the License.
  */
 
-#include <jogasaki/executor/exchange/group/step.h>
-
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
+
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/meta_type.h>
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/executor/common/port.h>
+#include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
 
 //#include <jogasaki/executor/exchange/group/shuffle_info.h>
 

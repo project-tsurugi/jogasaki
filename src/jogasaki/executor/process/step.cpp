@@ -16,13 +16,27 @@
 #include "step.h"
 
 #include <memory>
-#include <takatori/util/fail.h>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
-#include <jogasaki/executor/common/graph.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/sequence_view.h>
+
 #include <jogasaki/executor/exchange/forward/step.h>
-#include <jogasaki/executor/exchange/group/step.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/executor/exchange/shuffle/step.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/abstract/process_executor.h>
+#include <jogasaki/executor/process/impl/ops/io_info.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/model/flow.h>
+#include <jogasaki/model/port.h>
+
 #include "flow.h"
 
 namespace jogasaki::executor::process {

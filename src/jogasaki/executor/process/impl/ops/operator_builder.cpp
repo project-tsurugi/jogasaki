@@ -15,27 +15,54 @@
  */
 #include "operator_builder.h"
 
+#include <cstddef>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
+
+#include <takatori/descriptor/element.h>
+#include <takatori/relation/details/cogroup_element.h>
+#include <takatori/relation/graph.h>
 #include <takatori/relation/step/dispatch.h>
+#include <takatori/relation/write_kind.h>
+#include <takatori/tree/tree_fragment_vector.h>
 #include <takatori/util/exception.h>
-#include <yugawara/binding/factory.h>
+#include <takatori/util/optional_ptr.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/sequence_view.h>
 #include <yugawara/binding/extract.h>
-#include <yugawara/binding/relation_info.h>
+#include <yugawara/storage/table.h>
+
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
+#include <jogasaki/executor/process/impl/ops/io_info.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_container.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/relation_io_map.h>
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 #include "aggregate_group.h"
-#include "scan.h"
-#include "find.h"
-#include "join_find.h"
 #include "emit.h"
 #include "filter.h"
-#include "project.h"
-#include "take_group.h"
-#include "take_cogroup.h"
-#include "offer.h"
-#include "take_flat.h"
-#include "join.h"
+#include "find.h"
 #include "flatten.h"
-#include "write_partial.h"
+#include "join.h"
+#include "join_find.h"
+#include "offer.h"
+#include "project.h"
+#include "scan.h"
+#include "take_cogroup.h"
+#include "take_flat.h"
+#include "take_group.h"
 #include "write_kind.h"
+#include "write_partial.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

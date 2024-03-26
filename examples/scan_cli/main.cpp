@@ -14,56 +14,52 @@
  * limitations under the License.
  */
 #include <iostream>
-#include <vector>
-#include <random>
 #include <numa.h>
-
-#include <glog/logging.h>
-#include <boost/thread/latch.hpp>
-#include <boost/thread.hpp>
-#include <boost/algorithm/string/split.hpp>
+#include <random>
+#include <vector>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/latch.hpp>
+#include <glog/logging.h>
 
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/compiler.h>
-#include <yugawara/binding/factory.h>
-
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/filter.h>
-#include <takatori/statement/execute.h>
-#include <takatori/scalar/immediate.h>
-#include <takatori/scalar/compare.h>
-#include <takatori/scalar/binary.h>
-#include <takatori/scalar/variable_reference.h>
 #include <takatori/plan/process.h>
+#include <takatori/relation/emit.h>
+#include <takatori/relation/filter.h>
+#include <takatori/relation/scan.h>
+#include <takatori/scalar/binary.h>
+#include <takatori/scalar/compare.h>
+#include <takatori/scalar/immediate.h>
+#include <takatori/scalar/variable_reference.h>
 #include <takatori/statement/execute.h>
+#include <takatori/type/character.h>
+#include <takatori/type/float.h>
+#include <takatori/type/int.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/string_builder.h>
+#include <takatori/value/float.h>
+#include <takatori/value/int.h>
+#include <yugawara/binding/factory.h>
+#include <yugawara/compiler.h>
+#include <yugawara/storage/configurable_provider.h>
 
-#include <performance-tools/synchronizer.h>
-
-#include "params.h"
-#include "cli_constants.h"
-
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/utils/random.h>
-#include <jogasaki/utils/performance_tools.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/coder.h>
 #include <jogasaki/api/impl/result_store_channel.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/plan/compiler.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/utils/performance_tools.h>
+#include <jogasaki/utils/random.h>
+#include <jogasaki/utils/storage_data.h>
 
 #include "../common/load.h"
 #include "../common/temporary_folder.h"
+#include "cli_constants.h"
+#include "params.h"
+
+#include <performance-tools/synchronizer.h>
 
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(partitions, 1, "Number of partitions");  //NOLINT

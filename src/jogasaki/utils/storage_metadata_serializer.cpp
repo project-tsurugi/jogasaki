@@ -15,45 +15,72 @@
  */
 #include "storage_metadata_serializer.h"
 
-#include <initializer_list>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ratio>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
 
-#include <takatori/util/exception.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/type/boolean.h>
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/type/octet.h>
-#include <takatori/type/decimal.h>
-#include <takatori/type/date.h>
-#include <takatori/type/time_of_day.h>
-#include <takatori/type/time_point.h>
-#include <takatori/value/boolean.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/value/character.h>
-#include <takatori/value/octet.h>
-#include <takatori/value/decimal.h>
-#include <takatori/value/date.h>
-#include <takatori/value/time_of_day.h>
-#include <takatori/value/time_point.h>
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
-
+#include <takatori/decimal/triple.h>
+#include <takatori/relation/sort_direction.h>
+#include <takatori/type/character.h>
+#include <takatori/type/data.h>
+#include <takatori/type/date.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/type/varying.h>
+#include <takatori/type/with_time_zone.h>
+#include <takatori/util/details/enum_set_enumerator.h>
+#include <takatori/util/enum_set.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/reference_list_view.h>
+#include <takatori/util/reference_vector.h>
+#include <takatori/util/string_builder.h>
+#include <takatori/value/character.h>
+#include <takatori/value/data.h>
+#include <takatori/value/date.h>
+#include <takatori/value/decimal.h>
+#include <takatori/value/octet.h>
+#include <takatori/value/primitive.h>
+#include <takatori/value/time_of_day.h>
+#include <takatori/value/time_point.h>
+#include <takatori/value/value_kind.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/column_feature.h>
+#include <yugawara/storage/column_value.h>
+#include <yugawara/storage/column_value_kind.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/storage/index_feature.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
 #include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
+#include <jogasaki/error_code.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/data/any.h>
-#include <jogasaki/utils/decimal.h>
-#include <jogasaki/utils/string_manipulation.h>
-#include <jogasaki/utils/storage_metadata_exception.h>
-
+#include <jogasaki/proto/metadata/common.pb.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/status.h>
+#include <jogasaki/utils/decimal.h>
+#include <jogasaki/utils/storage_metadata_exception.h>
 
 namespace jogasaki::utils {
 

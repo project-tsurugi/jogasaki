@@ -15,9 +15,10 @@
  */
 #pragma once
 
-#include <jogasaki/executor/exchange/source.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
+#include <jogasaki/executor/exchange/source.h>
 #include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/io/reader_container.h>
 
 namespace jogasaki::executor::exchange::deliver {
 

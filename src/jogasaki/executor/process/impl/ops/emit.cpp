@@ -15,19 +15,37 @@
  */
 #include "emit.h"
 
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
 
-#include <takatori/relation/emit.h>
+#include <takatori/relation/details/emit_element.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
 
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/utils/validation.h>
-#include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
-#include "operator_base.h"
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/status.h>
+#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/utils/validation.h>
+
 #include "emit_context.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

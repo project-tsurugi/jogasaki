@@ -15,15 +15,26 @@
  */
 #include "secondary_target.h"
 
+#include <memory>
+#include <stdexcept>
+#include <type_traits>
 #include <vector>
 
+#include <takatori/relation/sort_direction.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/optional_ptr.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
 #include <jogasaki/error.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>

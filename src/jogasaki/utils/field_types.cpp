@@ -15,21 +15,23 @@
  */
 #include "field_types.h"
 
-#include <cstddef>
+#include <memory>
 
-#include <yugawara/compiled_info.h>
-#include <takatori/type/type_kind.h>
-#include <takatori/type/date.h>
+#include <takatori/descriptor/variable.h>
+#include <takatori/type/character.h>
+#include <takatori/type/decimal.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
-#include <takatori/type/decimal.h>
-#include <takatori/type/character.h>
-#include <takatori/descriptor/variable.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/fail.h>
+#include <yugawara/compiled_info.h>
 
-#include <jogasaki/constants.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/meta/field_type_option.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 
 namespace jogasaki::utils {
 

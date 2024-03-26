@@ -15,15 +15,32 @@
  */
 #include "flow.h"
 
+#include <functional>
 #include <memory>
+#include <type_traits>
+#include <utility>
 
 #include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/process/impl/task_context.h>
-#include <jogasaki/executor/process/impl/work_context.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/exchange/shuffle/flow.h>
+#include <jogasaki/executor/exchange/shuffle/run_info.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
+#include <jogasaki/executor/process/impl/process_executor.h>
+#include <jogasaki/executor/process/impl/processor.h>
+#include <jogasaki/executor/process/impl/task_context.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/impl/work_context.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/executor/process/task.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::process {
 

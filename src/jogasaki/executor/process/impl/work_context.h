@@ -15,13 +15,17 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <vector>
+
 #include <jogasaki/executor/process/abstract/work_context.h>
-#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/request_context.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::executor::process::impl {
 

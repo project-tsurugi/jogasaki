@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/file/parquet_writer.h>
-
+#include <optional>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <jogasaki/test_utils/temporary_folder.h>
-#include <jogasaki/meta/decimal_field_option.h>
-#include <jogasaki/meta/time_of_day_field_option.h>
-#include <jogasaki/meta/time_point_field_option.h>
 
+#include <jogasaki/executor/file/parquet_writer.h>
+#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_utils/temporary_folder.h>
 
 namespace jogasaki::executor::file {
 

@@ -14,10 +14,17 @@
  * limitations under the License.
  */
 
-#include <jogasaki/data/aligned_buffer.h>
-
+#include <cstring>
+#include <iostream>
+#include <string>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/util/fail.h>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::data {

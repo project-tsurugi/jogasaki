@@ -15,9 +15,12 @@
  */
 #include "storage_utils.h"
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
+#include <memory>
+#include <string_view>
+#include <type_traits>
 
+#include <takatori/util/optional_ptr.h>
+#include <yugawara/storage/index.h>
 #include <yugawara/storage/provider.h>
 
 namespace jogasaki::utils {

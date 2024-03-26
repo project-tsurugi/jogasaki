@@ -18,8 +18,8 @@
 #include <cstddef>
 #include <vector>
 
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor {
 

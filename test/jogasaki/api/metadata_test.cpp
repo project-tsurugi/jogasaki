@@ -13,24 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api.h>
-
-#include <gtest/gtest.h>
+#include <cstddef>
+#include <initializer_list>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 
-#include <takatori/type/int.h>
-#include <takatori/type/octet.h>
-#include <takatori/type/decimal.h>
-#include <takatori/type/character.h>
 #include <takatori/type/bit.h>
+#include <takatori/type/character.h>
+#include <takatori/type/data.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/type/varying.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/column_value.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/index_feature.h>
+#include <yugawara/storage/relation_kind.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
 #include <yugawara/variable/nullity.h>
+#include <sharksfin/StorageOptions.h>
 
-#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/scheduler/task_scheduler.h>
-#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/api/record.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/api/result_set_iterator.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/proto_debug_string.h>
+
 #include "api_test_base.h"
 
 namespace jogasaki::testing {

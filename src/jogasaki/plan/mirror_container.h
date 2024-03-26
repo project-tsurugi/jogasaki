@@ -15,10 +15,14 @@
  */
 #pragma once
 
+#include <memory>
+#include <unordered_map>
+#include <utility>
+
 #include <takatori/plan/process.h>
 
-#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/plan/statement_work_level.h>
 
 namespace jogasaki::plan {

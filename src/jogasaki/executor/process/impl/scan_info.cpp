@@ -15,6 +15,11 @@
  */
 #include "scan_info.h"
 
+#include <utility>
+
+#include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
+#include <jogasaki/kvs/storage.h>
+
 namespace jogasaki::executor::process::impl {
 
 scan_info::scan_info(

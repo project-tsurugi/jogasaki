@@ -13,15 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstddef>
 #include <iostream>
-#include <vector>
-
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <gflags/gflags.h>
 #include <glog/logging.h>
+
 #include <takatori/util/fail.h>
 
-#include <jogasaki/api.h>
+#include <jogasaki/api/database.h>
 #include <jogasaki/api/environment.h>
+#include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/field_type.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/record.h>
+#include <jogasaki/api/record_meta.h>
 #include <jogasaki/api/result_set.h>
+#include <jogasaki/api/result_set_iterator.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
 
 #include "../common/temporary_folder.h"

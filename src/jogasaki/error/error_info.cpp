@@ -15,15 +15,16 @@
  */
 #include "error_info.h"
 
-#include <glog/logging.h>
-#include "../../third_party/nlohmann/json.hpp"
-
 #include <string>
 #include <string_view>
+#include <glog/logging.h>
 
-#include <jogasaki/status.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/status.h>
+
+#include "../../third_party/nlohmann/json.hpp"
 
 namespace jogasaki::error {
 

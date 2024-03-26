@@ -1,7 +1,11 @@
-#include <jogasaki/serializer/value_input_exception.h>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 
 #include <takatori/util/exception.h>
 #include <takatori/util/string_builder.h>
+
+#include <jogasaki/serializer/value_input_exception.h>
 
 #include "details/value_io_constants.h"
 

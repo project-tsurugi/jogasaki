@@ -15,13 +15,14 @@
  */
 #pragma once
 
-#include <sharksfin/StatusCode.h>
+#include <string_view>
 
 #include <takatori/util/string_builder.h>
+#include <sharksfin/StatusCode.h>
 
-#include <jogasaki/status.h>
-#include <jogasaki/request_context.h>
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::utils {
 

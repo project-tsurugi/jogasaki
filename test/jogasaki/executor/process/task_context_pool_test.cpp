@@ -13,17 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/task_context_pool.h>
-
 #include <string>
-
+#include <string_view>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/test_root.h>
+#include <takatori/util/fail.h>
 
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/process/impl/task_context_pool.h>
 #include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/executor/process/mock/process_executor.h>
-#include <jogasaki/executor/process/mock/processor.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::process::impl {
 

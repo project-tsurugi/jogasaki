@@ -15,7 +15,15 @@
  */
 #pragma once
 
+#include <memory>
+#include <variant>
+
+#include <jogasaki/api/character_field_option.h>
+#include <jogasaki/api/decimal_field_option.h>
 #include <jogasaki/api/field_type.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/time_of_day_field_option.h>
+#include <jogasaki/api/time_point_field_option.h>
 #include <jogasaki/meta/field_type.h>
 
 namespace jogasaki::api::impl {

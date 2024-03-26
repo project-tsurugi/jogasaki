@@ -15,11 +15,13 @@
  */
 #pragma once
 
-#include <vector>
+#include <cstddef>
 #include <memory>
+#include <vector>
 
 #include <takatori/util/downcast.h>
 
+#include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl::ops {

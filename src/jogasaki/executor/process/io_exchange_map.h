@@ -15,9 +15,12 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <unordered_map>
+#include <vector>
 
 #include <takatori/descriptor/relation.h>
+
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 

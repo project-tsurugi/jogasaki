@@ -13,7 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <ostream>
+#include <vector>
+#include <glog/logging.h>
+
+#include <tateyama/framework/boot_mode.h>
+#include <tateyama/framework/repository.h>
+
 #include <jogasaki/api/kvsservice/resource.h>
+#include <jogasaki/api/kvsservice/store.h>
+#include <jogasaki/api/resource/bridge.h>
 
 namespace jogasaki::api::kvsservice {
 

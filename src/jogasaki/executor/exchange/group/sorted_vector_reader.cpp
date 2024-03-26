@@ -16,6 +16,18 @@
  */
 #include "sorted_vector_reader.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
+#include <iterator>
+#include <optional>
+#include <ostream>
+#include <utility>
+#include <glog/logging.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/watch.h>

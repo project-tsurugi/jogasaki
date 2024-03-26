@@ -15,10 +15,14 @@
  */
 #pragma once
 
-#include <yugawara/storage/index.h>
-#include <yugawara/storage/table.h>
+#include <memory>
+
 #include <yugawara/schema/declaration.h>
 #include <yugawara/storage/basic_prototype_processor.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/prototype_processor.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
 
 namespace jogasaki::plan {
 

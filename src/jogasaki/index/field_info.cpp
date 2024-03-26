@@ -15,6 +15,11 @@
  */
 #include "field_info.h"
 
+#include <utility>
+
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/meta/field_type.h>
+
 namespace jogasaki::index {
 
 field_info::field_info(

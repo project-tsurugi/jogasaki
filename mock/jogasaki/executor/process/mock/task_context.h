@@ -15,19 +15,24 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <utility>
+#include <vector>
 #include <glog/logging.h>
 
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
 #include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
 
+#include "external_writer.h"
+#include "group_reader.h"
 #include "record_reader.h"
 #include "record_writer.h"
-#include "group_reader.h"
-#include "external_writer.h"
 
 namespace jogasaki::executor::process::mock {
 

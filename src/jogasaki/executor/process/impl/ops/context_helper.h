@@ -15,14 +15,21 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+#include <utility>
 #include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/request_context.h>
-#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/context_base.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/task_context.h>
+#include <jogasaki/executor/process/impl/work_context.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

@@ -13,10 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/meta/impl/record_layout_creator.h>
-
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
+
+#include <takatori/util/meta_type.h>
+
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/impl/record_layout_creator.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 
 namespace jogasaki::meta::impl {
 

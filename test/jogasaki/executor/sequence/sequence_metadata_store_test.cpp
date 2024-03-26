@@ -13,11 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/sequence/metadata_store.h>
-
-#include <thread>
+#include <cstddef>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 #include <gtest/gtest.h>
 
+#include <takatori/util/fail.h>
+#include <yugawara/storage/sequence.h>
+
+#include <jogasaki/executor/sequence/metadata_store.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::sequence {

@@ -15,11 +15,25 @@
  */
 #include "flow.h"
 
-#include <takatori/util/downcast.h>
-#include <jogasaki/executor/exchange/aggregate/writer.h>
-
+#include <utility>
 #include <vector>
-#include <jogasaki/data/aligned_buffer.h>
+#include <boost/assert.hpp>
+
+#include <takatori/util/downcast.h>
+#include <takatori/util/universal_extractor.h>
+
+#include <jogasaki/executor/exchange/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/aggregate/sink.h>
+#include <jogasaki/executor/exchange/aggregate/source.h>
+#include <jogasaki/executor/exchange/aggregate/writer.h>
+#include <jogasaki/executor/exchange/shuffle/run_info.h>
+#include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/exchange/source.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/exchange/task.h>
+#include <jogasaki/status.h>
+
+#include <ext/alloc_traits.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 

@@ -15,9 +15,13 @@
  */
 #pragma once
 
+#include <ostream>
+#include <string_view>
+
 #include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::kvs {
 

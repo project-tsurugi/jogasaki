@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstddef>
+#include <iosfwd>
 #include <string_view>
 
 #include <jogasaki/utils/aligned_unique_ptr.h>

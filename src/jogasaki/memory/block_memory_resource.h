@@ -16,12 +16,17 @@
 #pragma once
 
 #include <bitset>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 #include <map>
+#include <new>
 #include <stdexcept>
 #include <utility>
-#include <cassert>
+#include <boost/container/pmr/memory_resource.hpp>
 
 #include <jogasaki/utils/interference_size.h>
+
 #include "page_pool.h"
 #include "paged_memory_resource.h"
 

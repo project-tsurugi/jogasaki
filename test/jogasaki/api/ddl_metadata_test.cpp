@@ -14,26 +14,49 @@
  * limitations under the License.
  */
 
-#include <regex>
+#include <cstddef>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
 #include <gtest/gtest.h>
 
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/type/character.h>
+#include <takatori/type/data.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/enum_set.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/reference_list_view.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/column_feature.h>
+#include <yugawara/storage/table.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/data/any.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/executor/tables.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+
 #include "api_test_base.h"
-#include <jogasaki/test_utils/secondary_index.h>
-#include <jogasaki/kvs/id.h>
 
 namespace jogasaki::testing {
 

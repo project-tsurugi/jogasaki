@@ -15,21 +15,34 @@
  */
 #include "parquet_writer.h"
 
-#include <array>
-#include <iomanip>
+#include <decimal.hh>
+#include <exception>
+#include <optional>
+#include <ostream>
+#include <type_traits>
 #include <arrow/io/file.h>
-#include <arrow/util/logging.h>
+#include <arrow/result.h>
 #include <glog/logging.h>
-#include <parquet/api/writer.h>
+#include <parquet/exception.h>
+#include <parquet/platform.h>
+#include <parquet/properties.h>
+#include <parquet/types.h>
 
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/executor/file/column_option.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::executor::file {

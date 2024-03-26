@@ -13,21 +13,52 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/kvs/coder.h>
-
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <decimal.hh>
+#include <initializer_list>
+#include <iomanip>
+#include <memory>
+#include <optional>
+#include <ostream>
+#include <ratio>
 #include <string>
-
+#include <string_view>
+#include <tuple>
+#include <vector>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/kvs/readable_stream.h>
-#include <jogasaki/data/any.h>
-#include <jogasaki/kvs/environment.h>
-#include <jogasaki/utils/coder.h>
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/status.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 #include <jogasaki/test_utils/types.h>
+#include <jogasaki/utils/coder.h>
 
 namespace jogasaki::kvs {
 

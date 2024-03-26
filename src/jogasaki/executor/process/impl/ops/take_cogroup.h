@@ -15,25 +15,34 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <queue>
+#include <vector>
 #include <glog/logging.h>
-
-#include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/sequence_view.h>
 
 #include <takatori/relation/step/take_cogroup.h>
 #include <takatori/relation/step/take_group.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
 
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/cogroup.h>
+#include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/utils/iterator_pair.h>
+
 #include "take_cogroup_context.h"
 
 namespace jogasaki::executor::process::impl::ops {

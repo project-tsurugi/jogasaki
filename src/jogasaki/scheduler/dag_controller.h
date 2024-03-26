@@ -15,8 +15,11 @@
  */
 #pragma once
 
-#include <jogasaki/model/graph.h>
+#include <memory>
+
 #include <jogasaki/configuration.h>
+#include <jogasaki/model/graph.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::scheduler {
@@ -81,8 +84,9 @@ public:
      * @brief accessor to task scheduler
      */
     task_scheduler& get_task_scheduler() noexcept;
-    
+
     class impl;
+
     friend impl;
 private:
     std::unique_ptr<impl> impl_;

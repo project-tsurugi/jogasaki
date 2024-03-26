@@ -16,6 +16,10 @@
 
 #include <jogasaki/api/kvsservice/transaction_option.h>
 
+#include <utility>
+
+#include <jogasaki/api/kvsservice/transaction_type.h>
+
 namespace jogasaki::api::kvsservice {
 
 transaction_option::transaction_option(enum transaction_type type, table_areas write_preserves) noexcept :

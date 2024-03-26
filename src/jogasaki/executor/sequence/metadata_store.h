@@ -16,11 +16,12 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <functional>
+#include <memory>
 
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/transaction.h>
 
 namespace jogasaki::executor::sequence {
 

@@ -16,7 +16,10 @@
 #include "aligned_buffer.h"
 
 #include <cstring>
+#include <memory>
+#include <ostream>
 
+#include <jogasaki/utils/aligned_unique_ptr.h>
 #include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::data {

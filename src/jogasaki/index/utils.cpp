@@ -15,13 +15,25 @@
  */
 #include "utils.h"
 
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <utility>
 #include <vector>
-#include <boost/dynamic_bitset.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 
-#include <yugawara/binding/factory.h>
+#include <takatori/type/character.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/downcast.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/details/index_key_element.h>
 
-#include <jogasaki/logging.h>
-#include <jogasaki/error.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::index {

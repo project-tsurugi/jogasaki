@@ -15,6 +15,9 @@
  */
 #include "decimal_context_guard.h"
 
+#include <decimal.hh>
+#include <exception>
+#include <ostream>
 #include <glog/logging.h>
 
 namespace jogasaki::executor::process::impl::expression::details {

@@ -15,8 +15,12 @@
  */
 #pragma once
 
-#include <jogasaki/model/step.h>
+#include <memory>
+
+#include <takatori/util/sequence_view.h>
+
 #include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
 
 namespace jogasaki::utils {
 

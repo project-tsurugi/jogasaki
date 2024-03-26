@@ -13,19 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/function/builtin_functions.h>
-
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
 
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/value_store.h>
-#include <jogasaki/memory/page_pool.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor::function {

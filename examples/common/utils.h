@@ -15,8 +15,12 @@
  */
 #pragma once
 
-#include "gflags/gflags.h"
-#include "jogasaki/api.h"
+#include <string>
+#include <vector>
+#include <gflags/gflags.h>
+
+#include <jogasaki/api.h>
+#include <jogasaki/api/database.h>
 
 DECLARE_int32(dump_batch_size);  //NOLINT
 DECLARE_int32(load_batch_size);  //NOLINT

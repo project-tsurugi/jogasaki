@@ -15,8 +15,9 @@
  */
 #pragma once
 
-#include <vector>
+#include <cstddef>
 #include <memory>
+#include <vector>
 
 #include <takatori/util/downcast.h>
 

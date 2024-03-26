@@ -16,8 +16,11 @@
 #include "external_log_utils.h"
 
 #include <cstdlib>
+#include <memory>
 
 #include <jogasaki/external_log/events.h>
+#include <jogasaki/kvs/transaction_option.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::utils {
 

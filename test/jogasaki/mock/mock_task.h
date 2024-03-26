@@ -15,13 +15,20 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <glog/logging.h>
 
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
+#include <takatori/util/reference_list_view.h>
+#include <takatori/util/universal_extractor.h>
+
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/utils/port_indices.h>
 
 namespace jogasaki::executor {

@@ -15,6 +15,10 @@
  */
 #include "aggregate_group_context.h"
 
+#include <utility>
+
+#include <jogasaki/data/value_store.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

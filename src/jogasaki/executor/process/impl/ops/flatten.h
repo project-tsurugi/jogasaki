@@ -15,12 +15,18 @@
  */
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include <takatori/util/downcast.h>
 
-#include "operator_base.h"
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operation_status.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/processor_info.h>
+
 #include "flatten_context.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

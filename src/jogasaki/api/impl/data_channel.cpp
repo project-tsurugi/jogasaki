@@ -15,14 +15,14 @@
  */
 #include "data_channel.h"
 
-#include <string_view>
 #include <memory>
+#include <utility>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
-
-#include <tateyama/status.h>
 #include <tateyama/api/server/data_channel.h>
+#include <tateyama/api/server/writer.h>
+#include <tateyama/status.h>
 
 #include <jogasaki/api/impl/data_writer.h>
 

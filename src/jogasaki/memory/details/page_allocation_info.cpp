@@ -15,6 +15,8 @@
  */
 #include "page_allocation_info.h"
 
+#include <jogasaki/memory/page_pool.h>
+
 namespace jogasaki::memory::details {
 
 std::size_t page_allocation_info::remaining(std::size_t alignment) const noexcept {

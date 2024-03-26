@@ -15,23 +15,20 @@
  */
 #include "as_any.h"
 
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
+#include <utility>
+
+#include <takatori/type/type_kind.h>
+#include <takatori/util/fail.h>
 #include <takatori/value/character.h>
-#include <takatori/value/decimal.h>
 #include <takatori/value/data.h>
+#include <takatori/value/decimal.h>
 #include <takatori/value/time_of_day.h>
 #include <takatori/value/time_point.h>
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/type/decimal.h>
-#include <takatori/type/date.h>
-#include <takatori/type/time_of_day.h>
-#include <takatori/type/time_point.h>
-#include <takatori/util/fail.h>
 
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::utils {
 

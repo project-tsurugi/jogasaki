@@ -15,7 +15,12 @@
  */
 #include "page_pool.h"
 
+#include <string>
+#include <type_traits>
 #include <glog/logging.h>
+#include <sys/mman.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>

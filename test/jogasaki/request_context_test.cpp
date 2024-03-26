@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/request_context.h>
-
 #include <gtest/gtest.h>
 
-#include <jogasaki/error_code.h>
-#include <jogasaki/scheduler/serial_task_scheduler.h>
-#include <jogasaki/executor/common/task.h>
+#include <takatori/util/fail.h>
+
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
 
 namespace jogasaki {
 

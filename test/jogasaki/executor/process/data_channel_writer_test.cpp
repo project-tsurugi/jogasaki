@@ -13,17 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/io/data_channel_writer.h>
-
+#include <array>
+#include <chrono>
 #include <string>
-
+#include <string_view>
+#include <utility>
+#include <vector>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/util/fail.h>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/api/data_channel.h>
+#include <jogasaki/executor/io/data_channel_writer.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
-#include <jogasaki/utils/msgbuf_utils.h>
+#include <jogasaki/status.h>
 #include <jogasaki/test_utils/types.h>
+#include <jogasaki/utils/msgbuf_utils.h>
 
 namespace jogasaki::executor::io {
 

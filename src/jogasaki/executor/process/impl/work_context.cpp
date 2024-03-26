@@ -15,6 +15,14 @@
  */
 #include "work_context.h"
 
+#include <utility>
+#include <boost/assert.hpp>
+
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/request_context.h>
+
 namespace jogasaki::executor::process::impl {
 
 work_context::work_context(

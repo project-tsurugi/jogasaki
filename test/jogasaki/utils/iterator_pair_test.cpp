@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/iterator_pair.h>
-
+#include <vector>
 #include <gtest/gtest.h>
+
+#include <jogasaki/utils/iterator_pair.h>
 
 namespace jogasaki::testing {
 

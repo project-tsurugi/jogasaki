@@ -15,13 +15,18 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <iomanip>
+#include <memory>
+#include <string>
 #include <string_view>
+#include <vector>
 #include <arrow/io/file.h>
 #include <arrow/ipc/reader.h>
+#include <arrow/record_batch.h>
 #include <arrow/util/logging.h>
 #include <boost/filesystem.hpp>
-
+#include <boost/filesystem/path.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -29,6 +34,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::file {
 

@@ -15,32 +15,48 @@
  */
 #include "arrow_writer.h"
 
-#include <array>
-#include <iomanip>
-#include <arrow/array.h>
+#include <algorithm>
+#include <cstdlib>
+#include <exception>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <type_traits>
+#include <variant>
+#include <arrow/array/builder_base.h>
+#include <arrow/array/builder_binary.h>
 #include <arrow/array/builder_decimal.h>
 #include <arrow/array/builder_primitive.h>
-#include <arrow/io/api.h>
 #include <arrow/io/file.h>
-#include <arrow/ipc/api.h>
+#include <arrow/ipc/options.h>
+#include <arrow/ipc/type_fwd.h>
+#include <arrow/memory_pool.h>
 #include <arrow/result.h>
 #include <arrow/status.h>
 #include <arrow/table.h>
+#include <arrow/type.h>
+#include <arrow/util/basic_decimal.h>
 #include <arrow/util/decimal.h>
-#include <arrow/util/logging.h>
+#include <arrow/util/string_builder.h>
 #include <glog/logging.h>
 
-#include <takatori/decimal/triple.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/executor/file/column_option.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/utils/decimal.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 
 namespace jogasaki::executor::file {
 

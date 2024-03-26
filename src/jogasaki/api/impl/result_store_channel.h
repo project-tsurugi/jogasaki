@@ -15,13 +15,20 @@
  */
 #pragma once
 
-#include <jogasaki/executor/io/record_channel.h>
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/meta/external_record_meta.h>
+#include <cstddef>
+#include <memory>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/data/result_store.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_channel_stats.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::api::impl {
 

@@ -15,11 +15,15 @@
  */
 #include "sink.h"
 
+#include <utility>
+
 #include <takatori/util/fail.h>
 
 #include <jogasaki/executor/io/record_writer.h>
-#include "input_partition.h"
+#include <jogasaki/request_context.h>
+
 #include "group_info.h"
+#include "input_partition.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::group {

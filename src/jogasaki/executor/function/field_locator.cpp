@@ -15,6 +15,10 @@
  */
 #include "field_locator.h"
 
+#include <utility>
+
+#include <jogasaki/meta/field_type.h>
+
 namespace jogasaki::executor::function {
 
 field_locator::field_locator(

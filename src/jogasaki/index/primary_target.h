@@ -15,17 +15,28 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <string>
+#include <string_view>
 #include <vector>
 
+#include <takatori/descriptor/variable.h>
 #include <takatori/relation/write.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
 #include <yugawara/storage/index.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 
 #include "primary_context.h"
 

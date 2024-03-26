@@ -15,12 +15,15 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/model/statement.h>
 #include <jogasaki/configuration.h>
-#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/model/statement.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::scheduler {
 
@@ -89,13 +92,14 @@ public:
         model::statement const& s,
         request_context& context
     );
-    
+
     /**
      * @brief accessor to task scheduler
      */
     task_scheduler& get_task_scheduler() noexcept;
-    
+
     class impl;
+
     friend impl;
 private:
     std::unique_ptr<impl> impl_;

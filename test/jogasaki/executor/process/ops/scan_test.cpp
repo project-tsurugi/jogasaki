@@ -13,30 +13,71 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/scan.h>
-
+#include <algorithm>
+#include <cstddef>
+#include <initializer_list>
 #include <string>
-
+#include <tuple>
+#include <unordered_map>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <takatori/plan/forward.h>
+#include <takatori/descriptor/element.h>
+#include <takatori/descriptor/variable.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/buffer.h>
+#include <takatori/relation/details/search_key_element.h>
+#include <takatori/relation/endpoint_kind.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_flat.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/scalar/immediate.h>
+#include <takatori/scalar/variable_reference.h>
+#include <takatori/tree/tree_fragment_vector.h>
 #include <takatori/type/character.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/varying.h>
+#include <takatori/util/exception.h>
 #include <takatori/value/character.h>
+#include <takatori/value/primitive.h>
+#include <yugawara/analyzer/expression_mapping.h>
 #include <yugawara/binding/factory.h>
-#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_builder.h>
+#include <jogasaki/executor/process/impl/ops/scan.h>
+#include <jogasaki/executor/process/impl/ops/scan_context.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs_test_base.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/operator_test_utils.h>
+#include <jogasaki/plan/compiler_context.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/kvs_test_base.h>
-#include <jogasaki/executor/process/impl/ops/scan_context.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/transaction_context.h>
 
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/plan/compiler.h>
-#include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include "verifier.h"
-#include <jogasaki/operator_test_utils.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

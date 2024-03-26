@@ -15,9 +15,8 @@
  */
 #include "find_context.h"
 
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/iterator.h>
+#include <utility>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

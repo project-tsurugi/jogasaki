@@ -15,6 +15,8 @@
  */
 #include "iterator.h"
 
+#include <sharksfin/Slice.h>
+#include <sharksfin/StatusCode.h>
 #include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>

@@ -15,10 +15,11 @@
  */
 #pragma once
 
+#include <functional>
 #include <memory>
 
-#include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/function/field_locator.h>
 
 namespace jogasaki::executor::function {
 

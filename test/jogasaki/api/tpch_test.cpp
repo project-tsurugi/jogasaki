@@ -14,21 +14,32 @@
  * limitations under the License.
  */
 
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
 #include <gtest/gtest.h>
 
+#include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/api/database.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/tables.h>
-#include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/utils/storage_data.h>
+
 #include "api_test_base.h"
-#include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki::testing {
 

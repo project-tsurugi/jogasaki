@@ -16,12 +16,15 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <deque>
+#include <boost/container/pmr/memory_resource.hpp>
 
 #include <jogasaki/utils/interference_size.h>
-#include "paged_memory_resource.h"
-#include "page_pool.h"
+
 #include "details/page_allocation_info.h"
+#include "page_pool.h"
+#include "paged_memory_resource.h"
 
 namespace jogasaki::memory {
 

@@ -13,55 +13,94 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
 #include <iostream>
+#include <memory>
+#include <string>
+#include <utility>
 #include <vector>
-#include <random>
-#include <numa.h>
-
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <boost/thread/latch.hpp>
-#include <boost/thread.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
 
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/compiler.h>
-#include <yugawara/binding/factory.h>
-
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
+#include <takatori/plan/exchange.h>
+#include <takatori/plan/graph.h>
+#include <takatori/plan/group.h>
+#include <takatori/plan/process.h>
+#include <takatori/plan/step.h>
+#include <takatori/plan/step_kind.h>
 #include <takatori/relation/emit.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/sort_direction.h>
 #include <takatori/relation/step/join.h>
 #include <takatori/relation/step/take_cogroup.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/filter.h>
 #include <takatori/statement/execute.h>
-#include <takatori/scalar/immediate.h>
-#include <takatori/scalar/compare.h>
-#include <takatori/scalar/binary.h>
-#include <takatori/scalar/variable_reference.h>
-#include <takatori/plan/process.h>
-#include <takatori/statement/execute.h>
+#include <takatori/type/character.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/type/varying.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/meta_type.h>
+#include <takatori/util/sequence_view.h>
+#include <yugawara/analyzer/variable_mapping.h>
+#include <yugawara/binding/factory.h>
+#include <yugawara/compiled_info.h>
+#include <yugawara/util/maybe_shared_lock.h>
+#include <yugawara/variable/nullity.h>
 
-#include "params.h"
-#include "cli_constants.h"
-
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/utils/random.h>
-#include <jogasaki/utils/performance_tools.h>
+#include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/api/impl/result_store_channel.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/plan/compiler.h>
+#include <jogasaki/callback.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/data/result_store.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/port.h>
+#include <jogasaki/executor/common/step.h>
+#include <jogasaki/executor/exchange/forward/source.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
+#include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/ops/default_value_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/step.h>
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/coder.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/statement.h>
+#include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/plan/executable_statement.h>
+#include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/latch_set.h>
+#include <jogasaki/utils/performance_tools.h>
+
+#include "../common/producer_constants.h"
 #include "../common/show_producer_perf_info.h"
+#include "cli_constants.h"
+#include "params.h"
+#include "producer_params.h"
 #include "producer_process.h"
 
 DEFINE_int32(thread_pool_size, 100, "Thread pool size");  //NOLINT

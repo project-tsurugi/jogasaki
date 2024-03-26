@@ -15,25 +15,21 @@
  */
 #include "primary_target.h"
 
+#include <memory>
+#include <ostream>
+#include <utility>
 #include <vector>
+#include <glog/logging.h>
 
-#include <takatori/relation/write.h>
-#include <yugawara/binding/factory.h>
-
-#include <jogasaki/error.h>
-#include <jogasaki/index/field_factory.h>
-#include <jogasaki/index/utils.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/index/primary_context.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/request_context.h>
-#include <jogasaki/utils/abort_transaction.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_encode_errors.h>
-#include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
 

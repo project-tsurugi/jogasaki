@@ -17,26 +17,30 @@
 
 #include <memory>
 #include <queue>
-#include <glog/logging.h>
+#include <type_traits>
+#include <utility>
+#include <boost/assert.hpp>
 
+#include <takatori/relation/details/mapping_element.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/infect_qualifier.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
 
-#include <takatori/relation/step/take_cogroup.h>
-#include <takatori/relation/step/take_group.h>
-
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/meta/variable_order.h>
-#include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/executor/comparator.h>
-#include <jogasaki/utils/iterator_pair.h>
-#include <jogasaki/utils/validation.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include "take_cogroup_context.h"
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/validation.h>
+
 #include "context_helper.h"
+#include "take_cogroup_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

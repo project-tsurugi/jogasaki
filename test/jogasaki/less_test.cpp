@@ -13,13 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/less.h>
-
+#include <limits>
+#include <string>
+#include <string_view>
+#include <type_traits>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/partitioner.h>
-#include <jogasaki/executor/comparator.h>
+#include <takatori/util/exception.h>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/less.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_utils/types.h>
 

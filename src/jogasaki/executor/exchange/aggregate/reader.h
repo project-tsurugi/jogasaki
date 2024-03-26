@@ -15,11 +15,21 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <queue>
+#include <type_traits>
+#include <vector>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/aggregate/input_partition.h>
+#include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/iterator_pair.h>
 

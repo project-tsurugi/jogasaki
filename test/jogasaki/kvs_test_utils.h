@@ -15,22 +15,29 @@
  */
 #pragma once
 
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 #include <gtest/gtest.h>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/storage.h>
-#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/test_utils/record.h>
+#include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/status.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki {
 

@@ -16,10 +16,12 @@
 #include "write_partial_context.h"
 
 #include <memory>
+#include <utility>
 #include <vector>
 
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/index/primary_context.h>
+#include <jogasaki/index/secondary_context.h>
+#include <jogasaki/kvs/storage.h>
 
 #include "context_base.h"
 

@@ -14,11 +14,30 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <utility>
+#include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/common/port.h>
+#include <jogasaki/executor/common/task.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/serial_task_scheduler.h>
 #include <jogasaki/scheduler/stealing_task_scheduler.h>
-#include <jogasaki/executor/common/task.h>
+#include <jogasaki/scheduler/thread_params.h>
+#include <jogasaki/utils/latch.h>
 
 namespace jogasaki::testing {
 

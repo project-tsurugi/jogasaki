@@ -13,34 +13,51 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
-
-#include <regex>
+#include <cstdint>
+#include <initializer_list>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/decimal/triple.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/storage/basic_configurable_provider.h>
 
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/data/any.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/api/database.h>
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/iterator.h>
-#include <jogasaki/executor/tables.h>
-#include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
-#include <jogasaki/executor/process/impl/ops/details/encode_key.h>
-#include "api_test_base.h"
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/status.h>
+#include <jogasaki/test_utils/secondary_index.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/coder.h>
+
 #include "../kvs_test_utils.h"
-#include "jogasaki/utils/coder.h"
-#include "jogasaki/test_utils/secondary_index.h"
+#include "api_test_base.h"
 
 namespace jogasaki::api::impl {
 

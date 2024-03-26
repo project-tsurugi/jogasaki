@@ -15,12 +15,19 @@
  */
 #pragma once
 
-#include <jogasaki/request_context.h>
+#include <cstddef>
+#include <memory>
+#include <vector>
+
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
-#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/shuffle/pointer_table.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 

@@ -13,56 +13,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/data/any.h>
-
+#include <iostream>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
-#include <glog/logging.h>
-#include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/partitioner.h>
-#include <jogasaki/executor/comparator.h>
-
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/binding/factory.h>
-#include <yugawara/runtime_feature.h>
-#include <yugawara/compiler.h>
-#include <yugawara/compiler_options.h>
-
-#include <mizugaki/translator/shakujo_translator.h>
-
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/step/take_flat.h>
-#include <takatori/relation/step/offer.h>
 #include <takatori/relation/buffer.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/filter.h>
-#include <takatori/relation/project.h>
-#include <takatori/statement/write.h>
-#include <takatori/statement/execute.h>
-#include <takatori/scalar/immediate.h>
-#include <takatori/scalar/unary.h>
-#include <takatori/scalar/unary_operator.h>
-#include <takatori/plan/process.h>
-#include <takatori/plan/forward.h>
-#include <takatori/serializer/json_printer.h>
+#include <takatori/relation/graph.h>
+#include <takatori/relation/sort_direction.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_flat.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/binary_operator.h>
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/scalar/immediate.h>
+#include <takatori/scalar/unary.h>
+#include <takatori/scalar/unary_operator.h>
+#include <takatori/statement/statement_kind.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/value/value_kind.h>
+#include <yugawara/binding/factory.h>
+#include <yugawara/compiled_info.h>
+#include <mizugaki/placeholder_entry.h>
+#include <mizugaki/translator/shakujo_translator.h>
+#include <mizugaki/translator/shakujo_translator_code.h>
+#include <mizugaki/translator/shakujo_translator_options.h>
 
-#include <jogasaki/utils/field_types.h>
-#include <jogasaki/test_utils.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/test_root.h>
-
-#include <jogasaki/executor/process/processor_info.h>
-#include <jogasaki/executor/process/impl/ops/operator_builder.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/test_utils.h>
 
 namespace jogasaki::executor::process::impl::expression {
 

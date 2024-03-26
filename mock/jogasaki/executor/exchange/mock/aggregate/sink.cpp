@@ -15,8 +15,12 @@
  */
 #include "sink.h"
 
-#include <jogasaki/executor/global.h>
+#include <cstdlib>
+#include <utility>
+
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/request_context.h>
+
 #include "input_partition.h"
 #include "shuffle_info.h"
 #include "writer.h"

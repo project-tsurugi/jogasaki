@@ -15,14 +15,17 @@
  */
 #pragma once
 
-#include <vector>
 #include <cstring>
+#include <iosfwd>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::data {
 

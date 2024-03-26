@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/durability_manager.h>
-
+#include <string>
+#include <utility>
 #include <gtest/gtest.h>
-#include <jogasaki/error_code.h>
-#include <jogasaki/error/error_info_factory.h>
+
+#include <jogasaki/durability_manager.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki {
 

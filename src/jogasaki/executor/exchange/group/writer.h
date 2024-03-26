@@ -15,10 +15,18 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+#include <vector>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include "input_partition.h"
+#include <jogasaki/executor/partitioner.h>
+#include <jogasaki/utils/interference_size.h>
+
 #include "group_info.h"
+#include "input_partition.h"
 #include "sink.h"
 
 namespace jogasaki::executor::exchange::group {

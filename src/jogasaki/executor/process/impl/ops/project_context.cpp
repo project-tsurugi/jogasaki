@@ -15,6 +15,8 @@
  */
 #include "project_context.h"
 
+#include <jogasaki/executor/process/impl/ops/context_base.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 project_context::project_context(

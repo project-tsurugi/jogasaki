@@ -15,9 +15,11 @@
  */
 #include "result_store_writer.h"
 
+#include <utility>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::process {

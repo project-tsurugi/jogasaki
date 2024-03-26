@@ -15,6 +15,11 @@
  */
 #pragma once
 
+#include <initializer_list>
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
 #include <takatori/util/exception.h>
 #include <takatori/util/string_builder.h>
 

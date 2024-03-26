@@ -16,11 +16,10 @@
 #include "task_context_pool.h"
 
 #include <memory>
+#include <utility>
 #include <vector>
 
-#include <tbb/concurrent_queue.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process::impl {
 

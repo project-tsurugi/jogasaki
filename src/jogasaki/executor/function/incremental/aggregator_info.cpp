@@ -15,7 +15,9 @@
  */
 #include "aggregator_info.h"
 
-#include <takatori/util/fail.h>
+#include <utility>
+
+#include <jogasaki/executor/function/value_generator.h>
 
 namespace jogasaki::executor::function::incremental {
 

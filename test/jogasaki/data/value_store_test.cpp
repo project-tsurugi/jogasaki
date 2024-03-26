@@ -13,13 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/data/value_store.h>
-
+#include <chrono>
+#include <iostream>
+#include <string>
+#include <string_view>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/mock_memory_resource.h>
-#include <jogasaki/accessor/text.h>
+#include <takatori/util/meta_type.h>
 
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/value_store.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils/types.h>
 

@@ -15,12 +15,10 @@
  */
 #include "writer.h"
 
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/utils/interference_size.h>
-#include "input_partition.h"
+#include <utility>
+
 #include "aggregate_info.h"
+#include "input_partition.h"
 #include "sink.h"
 
 namespace jogasaki::executor::exchange::aggregate {

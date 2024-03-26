@@ -15,12 +15,13 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <string_view>
 #include <vector>
 
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::utils {
 

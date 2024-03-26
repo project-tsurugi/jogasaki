@@ -16,15 +16,16 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
+#include <ostream>
 #include <type_traits>
 #include <variant>
-#include <ostream>
-#include <memory>
 
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/meta/field_type_option.h>
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 

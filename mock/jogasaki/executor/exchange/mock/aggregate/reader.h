@@ -15,9 +15,16 @@
  */
 #pragma once
 
-#include <jogasaki/executor/io/group_reader.h>
+#include <algorithm>
+#include <cstddef>
+#include <memory>
+#include <vector>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/exchange/mock/aggregate/input_partition.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/utils/interference_size.h>
+
 #include "shuffle_info.h"
 
 namespace jogasaki::executor::exchange::mock::aggregate {

@@ -15,16 +15,22 @@
  */
 #include "statement_scheduler_impl.h"
 
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
 
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/executor/common/execute.h>
-#include <jogasaki/executor/common/write.h>
-#include <jogasaki/executor/common/create_table.h>
-#include <jogasaki/executor/common/drop_table.h>
 #include <jogasaki/executor/common/create_index.h>
+#include <jogasaki/executor/common/create_table.h>
 #include <jogasaki/executor/common/drop_index.h>
+#include <jogasaki/executor/common/drop_table.h>
+#include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/model/statement_kind.h>
+#include <jogasaki/scheduler/dag_controller.h>
+
 #include "statement_scheduler.h"
 
 namespace jogasaki::scheduler {

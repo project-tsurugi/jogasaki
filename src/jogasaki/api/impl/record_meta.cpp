@@ -17,10 +17,12 @@
 
 #include <algorithm>
 #include <type_traits>
+#include <utility>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/impl/field_type.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 namespace jogasaki::api::impl {
 

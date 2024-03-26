@@ -15,15 +15,43 @@
  */
 #include "secondary_index.h"
 
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <takatori/util/exception.h>
-#include <takatori/util/string_builder.h>
 
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/kvs/storage.h>
-#include <jogasaki/kvs/readable_stream.h>
-#include <jogasaki/index/index_accessor.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_list_view.h>
+#include <takatori/util/string_builder.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/index_feature.h>
+
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/index/field_factory.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/index/index_accessor.h>
+#include <jogasaki/index/utils.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/copy_field_data.h>
 
 namespace jogasaki::utils {
 

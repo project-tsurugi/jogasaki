@@ -14,13 +14,32 @@
  * limitations under the License.
  */
 
-#include <jogasaki/executor/exchange/group/sink.h>
-
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
 
+#include <takatori/util/fail.h>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
+#include <jogasaki/executor/exchange/group/sink.h>
 #include <jogasaki/executor/exchange/group/writer.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::exchange::group {
 

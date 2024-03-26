@@ -15,13 +15,22 @@
  */
 #include "dump_channel.h"
 
-#include <jogasaki/api/data_channel.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/executor/io/data_channel_writer.h>
+#include <chrono>
+#include <cstdint>
+#include <optional>
+#include <type_traits>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+
 #include <jogasaki/executor/io/dump_channel_writer.h>
+#include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::io {
 

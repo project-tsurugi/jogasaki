@@ -15,13 +15,27 @@
  */
 #include "drop_index.h"
 
+#include <memory>
+#include <ostream>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <glog/logging.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/index.h>
 
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::executor::common {
 

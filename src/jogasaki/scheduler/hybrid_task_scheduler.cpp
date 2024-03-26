@@ -15,6 +15,17 @@
  */
 #include "hybrid_task_scheduler.h"
 
+#include <atomic>
+#include <mutex>
+#include <utility>
+
+#include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/scheduler/serial_task_scheduler.h>
+#include <jogasaki/scheduler/stealing_task_scheduler.h>
+#include <jogasaki/transaction_context.h>
+
 namespace jogasaki::scheduler {
 
 hybrid_task_scheduler::hybrid_task_scheduler(thread_params params) :

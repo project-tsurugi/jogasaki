@@ -18,8 +18,11 @@
 #include <atomic>
 #include <memory>
 
-#include <jogasaki/scheduler/task_scheduler.h>
+#include <sharksfin/api.h>
+
 #include <jogasaki/durability_manager.h>
+#include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 
 namespace jogasaki {
 

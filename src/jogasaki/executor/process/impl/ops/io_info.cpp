@@ -15,6 +15,12 @@
  */
 #include "io_info.h"
 
+#include <utility>
+
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::maybe_shared_ptr;

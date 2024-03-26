@@ -15,11 +15,20 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <cstring>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+
 #include <takatori/util/exception.h>
-#include <jogasaki/status.h>
-#include <jogasaki/meta/field_type.h>
+
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::kvs {
 

@@ -15,6 +15,11 @@
  */
 #include "secondary_context.h"
 
+#include <utility>
+
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/request_context.h>
+
 namespace jogasaki::index {
 
 secondary_context::secondary_context(

@@ -15,10 +15,16 @@
  */
 #pragma once
 
-#include <takatori/util/maybe_shared_ptr.h>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
+
 #include <takatori/statement/statement.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/compiled_info.h>
 #include <yugawara/variable/configurable_provider.h>
+
 #include <jogasaki/plan/mirror_container.h>
 
 namespace jogasaki::plan {

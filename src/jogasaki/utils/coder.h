@@ -15,12 +15,14 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <initializer_list>
 
 #include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/kvs/coder.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::utils {
 

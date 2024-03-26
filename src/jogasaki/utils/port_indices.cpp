@@ -15,7 +15,12 @@
  */
 #include "port_indices.h"
 
+#include <stdexcept>
+
 #include <takatori/util/sequence_view.h>
+
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
 
 namespace jogasaki::utils {
 

@@ -15,9 +15,12 @@
  */
 #include "scan_context.h"
 
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/iterator.h>
+#include <utility>
+
 #include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/transaction_context.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

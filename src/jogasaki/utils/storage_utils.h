@@ -15,9 +15,10 @@
  */
 #pragma once
 
+#include <cstddef>
+
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
-
 #include <yugawara/storage/table.h>
 
 namespace jogasaki::utils {

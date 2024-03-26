@@ -15,11 +15,33 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 #include <gtest/gtest.h>
 
-#include <jogasaki/mock/basic_record.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/status.h>
 #include <jogasaki/test_base.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 

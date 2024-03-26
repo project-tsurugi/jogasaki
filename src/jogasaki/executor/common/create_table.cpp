@@ -15,25 +15,51 @@
  */
 #include "create_table.h"
 
-#include <yugawara/binding/extract.h>
-#include <takatori/util/downcast.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/type/decimal.h>
+#include <any>
+#include <cstddef>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <boost/assert.hpp>
+
 #include <takatori/type/character.h>
+#include <takatori/type/data.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/reference_list_view.h>
+#include <takatori/util/string_builder.h>
+#include <yugawara/binding/extract.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
+#include <sharksfin/StorageOptions.h>
 
-#include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/plan/storage_processor.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
+#include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/sequence/metadata_store.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/sequence/exception.h>
-#include <jogasaki/utils/storage_metadata_serializer.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/handle_generic_error.h>
-
-#include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/executor/sequence/metadata_store.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/recovery/storage_options.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/storage_metadata_serializer.h>
 
 namespace jogasaki::executor::common {
 

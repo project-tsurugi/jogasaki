@@ -13,11 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/expression/details/decimal_context_guard.h>
-#include <glog/logging.h>
+#include <decimal.hh>
+#include <exception>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
+#include <jogasaki/executor/process/impl/expression/details/decimal_context_guard.h>
 #include <jogasaki/test_root.h>
+
 
 namespace jogasaki::executor::process::impl::expression::details {
 

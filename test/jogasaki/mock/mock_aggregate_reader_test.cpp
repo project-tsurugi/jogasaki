@@ -14,16 +14,36 @@
  * limitations under the License.
  */
 
-#include <jogasaki/executor/exchange/mock/aggregate/reader.h>
-
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
-#include <jogasaki/accessor/record_ref.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/executor/exchange/mock/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/mock/aggregate/reader.h>
+#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::executor::exchange::mock::aggregate {
 

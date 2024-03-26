@@ -15,10 +15,14 @@
  */
 #pragma once
 
+#include <iosfwd>
 #include <memory>
+#include <string_view>
 
 #include <jogasaki/api/error_info.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::api::impl {
 

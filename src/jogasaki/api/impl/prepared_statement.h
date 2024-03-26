@@ -15,7 +15,10 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/record_meta.h>
 #include <jogasaki/plan/prepared_statement.h>
 
 /**

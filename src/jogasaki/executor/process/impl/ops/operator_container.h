@@ -15,9 +15,12 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

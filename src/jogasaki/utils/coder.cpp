@@ -15,13 +15,19 @@
  */
 #include "coder.h"
 
+#include <array>
 #include <cmath>
 #include <map>
-#include <array>
+#include <stdexcept>
+#include <boost/assert.hpp>
+
 #include <takatori/util/exception.h>
 
-#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/meta/field_type.h>
 
 namespace jogasaki::utils {
 

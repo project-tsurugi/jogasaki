@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <decimal.hh>
 
 namespace jogasaki::executor::process::impl::expression::details {

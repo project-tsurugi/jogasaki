@@ -13,10 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "flow.h"
+
+#include <algorithm>
 #include <vector>
 
 #include <takatori/util/downcast.h>
-#include "flow.h"
+#include <takatori/util/universal_extractor.h>
+
+#include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/exchange/source.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/exchange/task.h>
+#include <jogasaki/model/step.h>
+
 #include "sink.h"
 #include "source.h"
 

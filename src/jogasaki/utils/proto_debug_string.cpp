@@ -15,7 +15,7 @@
  */
 #include "proto_debug_string.h"
 
-#include <google/protobuf/text_format.h>
+#include <google/protobuf/stubs/status.h>
 #include <google/protobuf/util/json_util.h>
 
 namespace jogasaki::utils {

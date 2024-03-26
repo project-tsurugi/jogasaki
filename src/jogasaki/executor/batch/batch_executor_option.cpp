@@ -15,13 +15,7 @@
  */
 #include "batch_executor_option.h"
 
-#include <atomic>
-
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/statement_handle.h>
-#include <jogasaki/executor/file/file_reader.h>
+#include <utility>
 
 namespace jogasaki::executor::batch {
 

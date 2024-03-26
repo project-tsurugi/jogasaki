@@ -15,12 +15,17 @@
  */
 #pragma once
 
-#include <tateyama/framework/service.h>
-#include <tateyama/framework/repository.h>
+#include <memory>
+#include <string_view>
+
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
-#include <tateyama/framework/environment.h>
+#include <tateyama/framework/component.h>
 #include <tateyama/framework/component_ids.h>
+#include <tateyama/framework/environment.h>
+#include <tateyama/framework/repository.h>
+#include <tateyama/framework/resource.h>
+#include <tateyama/framework/service.h>
 
 #include <jogasaki/api/kvsservice/store.h>
 

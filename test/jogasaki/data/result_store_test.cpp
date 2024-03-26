@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
-#include <jogasaki/data/result_store.h>
-
+#include <string>
+#include <string_view>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/accessor/record_ref.h>
+#include <takatori/util/fail.h>
 
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/data/result_store.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::data {
 

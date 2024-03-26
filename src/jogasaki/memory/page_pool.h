@@ -15,14 +15,15 @@
  */
 #pragma once
 
+#include <cstdlib>
 #include <iostream>
-#include <vector>
 #include <mutex>
-#include <sys/mman.h>
 #include <numa.h>
 #include <sched.h>
-
+#include <utility>
+#include <vector>
 #include <boost/container/pmr/memory_resource.hpp>
+#include <sys/mman.h>
 #include <tbb/concurrent_queue.h>
 
 #include <jogasaki/utils/interference_size.h>

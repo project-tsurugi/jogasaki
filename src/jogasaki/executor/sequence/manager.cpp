@@ -15,24 +15,29 @@
  */
 #include "manager.h"
 
-#include <atomic>
+#include <cstdint>
+#include <optional>
+#include <ostream>
+#include <type_traits>
 #include <unordered_set>
+#include <utility>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
 
 #include <takatori/util/exception.h>
 #include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/sequence.h>
 
+#include <jogasaki/common_types.h>
+#include <jogasaki/executor/sequence/exception.h>
+#include <jogasaki/executor/sequence/info.h>
+#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/readable_stream.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/data/any.h>
-
-#include <jogasaki/executor/sequence/sequence.h>
-#include <jogasaki/executor/sequence/info.h>
-#include <jogasaki/executor/sequence/exception.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/status.h>
 
 #include "metadata_store.h"
 

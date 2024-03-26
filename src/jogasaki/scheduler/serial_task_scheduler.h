@@ -15,13 +15,19 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <deque>
+#include <iosfwd>
 #include <memory>
+#include <tbb/concurrent_hash_map.h>
 
 #include <jogasaki/model/task.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/conditional_task.h>
+#include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/schedule_option.h>
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
 

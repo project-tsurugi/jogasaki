@@ -13,32 +13,67 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/aggregate_group.h>
-
+#include <cstdint>
+#include <cstdlib>
+#include <functional>
 #include <string>
-
+#include <string_view>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/descriptor/element.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
 #include <takatori/plan/forward.h>
-#include <takatori/relation/step/offer.h>
-#include <takatori/relation/step/aggregate.h>
+#include <takatori/plan/graph.h>
 #include <takatori/plan/group.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/step/aggregate.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_group.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/scalar/immediate.h>
+#include <takatori/statement/statement_kind.h>
+#include <takatori/type/data.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/reference_list_view.h>
+#include <takatori/value/value_kind.h>
+#include <yugawara/aggregate/basic_configurable_provider.h>
+#include <yugawara/aggregate/configurable_provider.h>
+#include <yugawara/aggregate/declaration.h>
+#include <yugawara/analyzer/expression_mapping.h>
+#include <yugawara/analyzer/variable_mapping.h>
 #include <yugawara/binding/factory.h>
-#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/binding/variable_info_kind.h>
+#include <yugawara/compiled_info.h>
+#include <yugawara/storage/relation_kind.h>
 
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/data/value_store.h>
+#include <jogasaki/executor/function/aggregate_function_kind.h>
+#include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/impl/ops/aggregate_group.h>
+#include <jogasaki/executor/process/impl/ops/aggregate_group_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/executor/process/impl/ops/offer_context.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/exchange/group/step.h>
-#include <jogasaki/executor/function/builtin_functions.h>
-#include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/executor/process/impl/ops/take_group.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
 
 #include "verifier.h"
-#include "../../../mock_memory_resource.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

@@ -15,10 +15,14 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <ostream>
+#include <string_view>
 #include <type_traits>
+#include <variant>
 
 #include <takatori/util/maybe_shared_ptr.h>
 

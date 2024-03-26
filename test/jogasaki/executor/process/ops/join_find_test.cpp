@@ -13,26 +13,55 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/join_find.h>
-
+#include <algorithm>
+#include <cstddef>
+#include <unordered_map>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <glog/logging.h>
 
-#include <takatori/type/character.h>
-#include <takatori/value/character.h>
+#include <takatori/descriptor/element.h>
+#include <takatori/descriptor/variable.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/details/search_key_element.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
 #include <takatori/relation/join_find.h>
+#include <takatori/relation/join_kind.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_flat.h>
+#include <takatori/scalar/compare.h>
+#include <takatori/scalar/comparison_operator.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/scalar/variable_reference.h>
+#include <takatori/type/primitive.h>
+#include <takatori/util/exception.h>
+#include <yugawara/analyzer/expression_mapping.h>
 #include <yugawara/binding/factory.h>
-#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
-#include <jogasaki/kvs_test_base.h>
-
-#include <jogasaki/meta/variable_order.h>
-#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/ops/join_find.h>
+#include <jogasaki/executor/process/impl/ops/join_find_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs_test_base.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/operator_test_utils.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils.h>
 
 #include "verifier.h"
 

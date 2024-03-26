@@ -13,8 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstddef>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <boost/container/pmr/vector.hpp>
+#include <boost/move/utility_core.hpp>
+#include <gtest/gtest.h>
+
+#include <takatori/util/exception.h>
+
 #include <jogasaki/executor/process/mock/record_reader.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
 
 #include "test_root.h"
 

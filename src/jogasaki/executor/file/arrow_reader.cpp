@@ -16,29 +16,51 @@
 #include "arrow_reader.h"
 
 #include <algorithm>
-#include <iomanip>
+#include <chrono>
+#include <cstdint>
+#include <cstring>
+#include <exception>
+#include <iterator>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 #include <arrow/array.h>
-#include <arrow/array/builder_decimal.h>
-#include <arrow/array/builder_primitive.h>
-#include <arrow/io/api.h>
-#include <arrow/ipc/api.h>
-#include <arrow/pretty_print.h>
+#include <arrow/array/array_base.h>
 #include <arrow/result.h>
 #include <arrow/status.h>
-#include <arrow/table.h>
+#include <arrow/type.h>
 #include <arrow/type_traits.h>
+#include <arrow/util/basic_decimal.h>
 #include <arrow/util/decimal.h>
+#include <arrow/util/string_builder.h>
+#include <boost/assert.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <glog/logging.h>
 
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/decimal/triple.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/utils/decimal.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/finally.h>
 
 namespace jogasaki::executor::file {

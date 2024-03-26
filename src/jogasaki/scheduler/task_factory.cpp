@@ -15,6 +15,13 @@
  */
 #include "task_factory.h"
 
+#include <memory>
+#include <ostream>
+#include <string>
+#include <utility>
+
+#include <jogasaki/scheduler/flat_task.h>
+
 namespace jogasaki::scheduler {
 
 details::custom_task::custom_task() = default;

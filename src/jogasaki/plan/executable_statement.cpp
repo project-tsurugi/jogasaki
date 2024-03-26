@@ -15,10 +15,15 @@
  */
 #include "executable_statement.h"
 
-#include <yugawara/compiler_result.h>
+#include <type_traits>
+#include <utility>
 
-#include <jogasaki/meta/record_meta.h>
+#include <takatori/statement/statement_kind.h>
+
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/model/statement.h>
+#include <jogasaki/plan/mirror_container.h>
 
 namespace jogasaki::plan {
 

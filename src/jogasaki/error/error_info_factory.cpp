@@ -15,11 +15,17 @@
  */
 #include "error_info_factory.h"
 
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <boost/stacktrace/stacktrace.hpp>
+
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-
-#include <sstream>
-#include <takatori/util/stacktrace.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::error {
 

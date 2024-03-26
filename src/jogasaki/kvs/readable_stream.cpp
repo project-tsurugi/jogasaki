@@ -15,10 +15,12 @@
  */
 #include "readable_stream.h"
 
-#include <boost/endian/conversion.hpp>
+#include <array>
+#include <cstddef>
+
+#include <jogasaki/utils/base_filename.h>
 #include <jogasaki/utils/coder.h>
 #include <jogasaki/utils/decimal.h>
-#include <jogasaki/utils/base_filename.h>
 
 #include "coder.h"
 

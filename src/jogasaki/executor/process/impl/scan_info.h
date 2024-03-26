@@ -15,9 +15,11 @@
  */
 #pragma once
 
+#include <vector>
+
 #include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/kvs/storage.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
+#include <jogasaki/kvs/storage.h>
 
 namespace jogasaki::executor::process::impl {
 

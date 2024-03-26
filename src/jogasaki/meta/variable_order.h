@@ -16,7 +16,12 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
+#include <takatori/descriptor/element.h>
 #include <takatori/descriptor/variable.h>
 #include <takatori/util/sequence_view.h>
 

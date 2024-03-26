@@ -15,12 +15,22 @@
  */
 #include "step.h"
 
+#include <utility>
 #include <vector>
 
-#include <jogasaki/meta/record_meta.h>
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/constants.h>
+#include <jogasaki/executor/exchange/shuffle/step.h>
 #include <jogasaki/executor/process/step.h>
-#include "group_info.h"
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/model/flow.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
+
 #include "flow.h"
+#include "group_info.h"
 
 namespace jogasaki::executor::exchange::group {
 

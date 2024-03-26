@@ -15,7 +15,18 @@
  */
 #include "take_cogroup_context.h"
 
+#include <type_traits>
+#include <utility>
+#include <boost/assert.hpp>
+
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

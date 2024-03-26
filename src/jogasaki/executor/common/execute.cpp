@@ -15,6 +15,11 @@
  */
 #include "execute.h"
 
+#include <utility>
+
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/model/statement_kind.h>
+
 namespace jogasaki::executor::common {
 
 execute::execute(std::shared_ptr<common::graph> graph) noexcept:

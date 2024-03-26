@@ -15,18 +15,20 @@
  */
 #include "task.h"
 
-#include <memory>
-
+#include <ostream>
+#include <type_traits>
 #include <glog/logging.h>
 
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/event.h>
+#include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/common/utils.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/common/utils.h>
-#include <jogasaki/scheduler/stealing_task_scheduler.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/flat_task.h>
 
 namespace jogasaki::executor::exchange {
 

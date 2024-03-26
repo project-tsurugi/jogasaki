@@ -16,13 +16,15 @@
 #pragma once
 
 #include <cstddef>
-#include <string>
 #include <functional>
+#include <string>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/statement_handle.h>
+#include "jogasaki/api/parameter_set.h"
+
 #include "batch_executor_option.h"
 
 namespace jogasaki::executor::batch {

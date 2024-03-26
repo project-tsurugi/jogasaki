@@ -16,8 +16,8 @@
 #include "step_state_table.h"
 
 #include <algorithm>
+#include <stdexcept>
 
-#include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/step_state.h>
 

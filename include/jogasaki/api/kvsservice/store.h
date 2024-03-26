@@ -15,11 +15,16 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <future>
+#include <memory>
 #include <tbb/concurrent_hash_map.h>
 
-#include <jogasaki/api/resource/bridge.h>
 #include <sharksfin/api.h>
+
+#include <jogasaki/api/resource/bridge.h>
+#include <jogasaki/api/database.h>
+#include <jogasaki/api/kvsservice/status.h>
 
 #include "transaction.h"
 #include "transaction_option.h"

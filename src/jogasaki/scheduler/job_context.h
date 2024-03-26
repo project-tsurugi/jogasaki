@@ -16,12 +16,16 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
+#include <functional>
+#include <memory>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/utils/latch.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/latch.h>
 
 namespace jogasaki {
 class request_context;

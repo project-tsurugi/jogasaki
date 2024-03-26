@@ -15,9 +15,16 @@
  */
 #include "record.h"
 
+#include <type_traits>
+#include <utility>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::api::impl {
 

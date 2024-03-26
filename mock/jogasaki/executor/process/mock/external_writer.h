@@ -15,17 +15,23 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+#include <utility>
+#include <vector>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::executor::process::mock {
 

@@ -15,7 +15,12 @@
  */
 #pragma once
 
+#include <string_view>
+#include <utility>
+
 #include <takatori/util/fail.h>
+#include <sharksfin/Slice.h>
+#include <sharksfin/StatusCode.h>
 #include <sharksfin/api.h>
 
 namespace jogasaki::kvs {

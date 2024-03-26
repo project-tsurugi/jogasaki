@@ -15,12 +15,14 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <unordered_map>
+#include <vector>
 
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
-#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/scheduler/step_state.h>
+#include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {

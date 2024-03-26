@@ -15,25 +15,34 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <functional>
 #include <memory>
 #include <queue>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
 #include <glog/logging.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/common/task.h>
+#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/comparator.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/data/small_record_store.h>
-#include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/iterator_pair.h>
 
 namespace jogasaki::executor::process::mock {
 

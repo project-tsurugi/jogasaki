@@ -15,9 +15,11 @@
  */
 #include "aggregate_function_repository.h"
 
-#include <vector>
+#include <utility>
 
 #include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 
 namespace jogasaki::executor::function::incremental {
 

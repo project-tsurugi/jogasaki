@@ -15,6 +15,8 @@
  */
 #include "sink.h"
 
+#include <jogasaki/executor/io/record_writer.h>
+
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::forward {

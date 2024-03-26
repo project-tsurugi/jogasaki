@@ -13,31 +13,65 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/join.h>
-
+#include <algorithm>
+#include <cstdint>
+#include <initializer_list>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <boost/container/container_fwd.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <glog/logging.h>
 
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
 #include <takatori/plan/forward.h>
-#include <takatori/type/character.h>
-#include <takatori/value/character.h>
-#include <takatori/relation/step/take_cogroup.h>
-#include <takatori/relation/step/offer.h>
-#include <takatori/relation/step/join.h>
+#include <takatori/plan/graph.h>
 #include <takatori/plan/group.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/step/join.h>
+#include <takatori/relation/step/offer.h>
+#include <takatori/relation/step/take_cogroup.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/scalar/unary.h>
+#include <takatori/scalar/unary_operator.h>
+#include <takatori/type/primitive.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/sequence_view.h>
+#include <yugawara/analyzer/expression_mapping.h>
+#include <yugawara/analyzer/variable_mapping.h>
 #include <yugawara/binding/factory.h>
-#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/sequence.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
-
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/ops/join.h>
+#include <jogasaki/executor/process/impl/ops/join_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/take_cogroup.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/mock/group_reader.h>
+#include <jogasaki/executor/process/mock/iterable_group_store.h>
+#include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/process/impl/ops/join.h>
-#include <jogasaki/executor/process/impl/ops/take_cogroup.h>
-#include <jogasaki/executor/process/mock/group_reader.h>
-#include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/executor/process/mock/iterable_group_store.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils.h>
+#include <jogasaki/utils/iterator_pair.h>
 
 #include "verifier.h"
 

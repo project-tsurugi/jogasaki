@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/decimal.h>
-
+#include <memory>
 #include <gtest/gtest.h>
+
+#include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::testing {
 

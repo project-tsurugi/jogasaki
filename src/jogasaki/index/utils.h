@@ -15,16 +15,18 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/type/character.h>
+#include <takatori/type/data.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <yugawara/storage/index.h>
 
-#include <jogasaki/logging.h>
 #include <jogasaki/error.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::index {

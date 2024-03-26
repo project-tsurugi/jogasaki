@@ -15,12 +15,17 @@
  */
 #include "aggregate_function_info.h"
 
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
 
+#include <takatori/util/reference_iterator.h>
 #include <takatori/util/sequence_view.h>
 
 #include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
+#include <jogasaki/executor/function/value_generator.h>
+#include <jogasaki/meta/field_type_kind.h>
 
 #include "builtin_functions.h"
 

@@ -16,36 +16,57 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <memory>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
 #include <tbb/concurrent_hash_map.h>
 
+#include <takatori/type/data.h>
+#include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/reference_list_view.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/table.h>
 #include <tateyama/api/configuration.h>
 #include <tateyama/api/server/data_channel.h>
+#include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/writer.h>
 #include <tateyama/framework/service.h>
 #include <tateyama/status.h>
+#include <tateyama/utils/cache_align.h>
 
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/error_info.h>
+#include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/impl/data_channel.h>
 #include <jogasaki/api/impl/data_writer.h>
 #include <jogasaki/api/impl/error_info.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/record_meta.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/io/dump_config.h>
+#include <jogasaki/proto/sql/common.pb.h>
+#include <jogasaki/proto/sql/request.pb.h>
+#include <jogasaki/proto/sql/response.pb.h>
 #include <jogasaki/request_info.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
 #include <jogasaki/utils/string_manipulation.h>
-#include "jogasaki/proto/sql/common.pb.h"
-#include "jogasaki/proto/sql/request.pb.h"
-#include "jogasaki/proto/sql/response.pb.h"
 
 #include "map_error_code.h"
 

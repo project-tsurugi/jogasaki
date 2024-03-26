@@ -15,8 +15,15 @@
  */
 #include "record_writer.h"
 
+#include <algorithm>
+#include <utility>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor::process::mock {
 

@@ -15,6 +15,10 @@
  */
 #include "info.h"
 
+#include <utility>
+
+#include "jogasaki/common_types.h"
+
 namespace jogasaki::executor::sequence {
 
 info::info(

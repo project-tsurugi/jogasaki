@@ -14,22 +14,36 @@
  * limitations under the License.
  */
 
+#include <cstddef>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/scheduler/dag_controller_impl.h>
-#include <jogasaki/scheduler/statement_scheduler.h>
-#include <jogasaki/scheduler/statement_scheduler_impl.h>
-#include <jogasaki/executor/exchange/deliver/step.h>
-#include <jogasaki/executor/exchange/group/step.h>
-#include <jogasaki/executor/exchange/forward/step.h>
-#include <jogasaki/executor/common/task.h>
-#include <jogasaki/executor/common/execute.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/mock/simple_scan_process.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/port.h>
+#include <jogasaki/executor/common/step.h>
+#include <jogasaki/executor/exchange/deliver/step.h>
+#include <jogasaki/executor/exchange/forward/step.h>
+#include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/mock/simple_cogroup_process.h>
 #include <jogasaki/mock/simple_emit_process.h>
+#include <jogasaki/mock/simple_scan_process.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::scheduler {

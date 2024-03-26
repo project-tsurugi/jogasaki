@@ -15,19 +15,25 @@
  */
 #include "dump_channel_writer.h"
 
-#include <boost/filesystem.hpp>
+#include <algorithm>
+#include <ostream>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <boost/filesystem/path.hpp>
 #include <glog/logging.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/arrow_writer.h>
+#include <jogasaki/executor/file/file_writer.h>
 #include <jogasaki/executor/file/parquet_writer.h>
 #include <jogasaki/executor/io/dump_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/utils/interference_size.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 namespace jogasaki::executor::io {
 

@@ -15,10 +15,14 @@
  */
 #pragma once
 
-#include <takatori/plan/step.h>
-#include <takatori/plan/graph.h>
+#include <cstddef>
+
 #include <takatori/descriptor/relation.h>
+#include <takatori/plan/exchange.h>
+#include <takatori/plan/graph.h>
+#include <takatori/plan/step.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/optional_ptr.h>
 #include <yugawara/binding/extract.h>
 
 namespace jogasaki::utils {

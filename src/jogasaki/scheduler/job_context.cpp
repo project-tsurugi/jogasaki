@@ -15,6 +15,9 @@
  */
 #include "job_context.h"
 
+#include <utility>
+
+#include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/utils/latch.h>
 
 namespace jogasaki::scheduler {

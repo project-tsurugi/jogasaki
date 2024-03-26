@@ -15,16 +15,21 @@
  */
 #pragma once
 
-#include <unordered_set>
+#include <cstddef>
+#include <memory>
 #include <optional>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
-#include <takatori/util/optional_ptr.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/optional_ptr.h>
 #include <takatori/util/sequence_view.h>
 
-#include <jogasaki/model/graph.h>
-#include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
+#include <jogasaki/model/graph.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::common {
 

@@ -14,45 +14,41 @@
  * limitations under the License.
  */
 
-#include <sstream>
-#include <future>
-#include <thread>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
 #include <gtest/gtest.h>
-#include <google/protobuf/text_format.h>
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/decimal/triple.h>
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <tateyama/api/configuration.h>
+#include <tateyama/api/server/database_info.h>
+#include <tateyama/api/server/mock/request_response.h>
+#include <tateyama/proto/diagnostics.pb.h>
 
-#include <jogasaki/kvs/id.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/utils/command_utils.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/impl/service.h>
-#include <jogasaki/executor/tables.h>
-#include <jogasaki/executor/sequence/sequence.h>
-#include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/utils/binary_printer.h>
-#include <jogasaki/utils/latch.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/constants.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/kvs/id.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/proto/sql/common.pb.h>
+#include <jogasaki/proto/sql/request.pb.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/test_utils/temporary_folder.h>
+#include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/command_utils.h>
 
-#include <tateyama/api/server/mock/request_response.h>
 #include "api_test_base.h"
-#include <jogasaki/utils/msgbuf_utils.h>
-
-#include "jogasaki/proto/sql/request.pb.h"
-#include "jogasaki/proto/sql/response.pb.h"
-#include "jogasaki/proto/sql/common.pb.h"
-#include "tateyama/proto/diagnostics.pb.h"
 
 namespace jogasaki::api {
 

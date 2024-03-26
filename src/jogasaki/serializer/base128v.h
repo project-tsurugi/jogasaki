@@ -1,8 +1,8 @@
 #pragma once
 
-#include <optional>
-
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 
 #include <takatori/util/buffer_view.h>
 

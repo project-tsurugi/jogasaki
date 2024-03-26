@@ -15,11 +15,13 @@
  */
 #include "result_store.h"
 
+#include <utility>
+#include <boost/assert.hpp>
+
 #include <takatori/util/fail.h>
 
-#include <jogasaki/executor/global.h>
 #include <jogasaki/data/iterable_record_store.h>
-#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 namespace jogasaki::data {

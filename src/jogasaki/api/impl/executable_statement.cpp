@@ -15,6 +15,14 @@
  */
 #include "executable_statement.h"
 
+#include <utility>
+
+#include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/plan/executable_statement.h>
+#include <jogasaki/plan/mirror_container.h>
+
 namespace jogasaki::api::impl {
 
 executable_statement::executable_statement(

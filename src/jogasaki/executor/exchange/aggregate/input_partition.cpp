@@ -15,6 +15,23 @@
  */
 #include "input_partition.h"
 
+#include <functional>
+#include <type_traits>
+
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
+#include <jogasaki/executor/function/incremental/aggregator_info.h>
+#include <jogasaki/executor/hash.h>
+#include <jogasaki/utils/copy_field_data.h>
+
 namespace jogasaki::executor::exchange::aggregate {
 
 input_partition::input_partition(

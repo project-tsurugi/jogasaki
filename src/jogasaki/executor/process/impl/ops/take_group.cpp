@@ -15,13 +15,33 @@
  */
 #include "take_group.h"
 
+#include <type_traits>
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
 
+#include <takatori/relation/details/mapping_element.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/infect_qualifier.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
 
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/take_group_context.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
+
 #include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {

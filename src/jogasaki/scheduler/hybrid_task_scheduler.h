@@ -15,8 +15,19 @@
  */
 #pragma once
 
-#include <jogasaki/scheduler/stealing_task_scheduler.h>
+#include <cstddef>
+#include <iosfwd>
+#include <memory>
+
+#include <jogasaki/scheduler/conditional_task.h>
+#include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/schedule_option.h>
 #include <jogasaki/scheduler/serial_task_scheduler.h>
+#include <jogasaki/scheduler/stealing_task_scheduler.h>
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/thread_params.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
 

@@ -15,12 +15,20 @@
  */
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/transaction_context.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

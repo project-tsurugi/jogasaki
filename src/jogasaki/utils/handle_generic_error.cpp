@@ -13,9 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "handle_kvs_errors.h"
+#include <memory>
+#include <string>
+#include <string_view>
 
 #include <takatori/util/string_builder.h>
+
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::utils {
 

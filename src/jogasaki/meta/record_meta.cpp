@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 #include "record_meta.h"
+
+#include <utility>
+#include <boost/assert.hpp>
+
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/impl/record_layout_creator.h>
 
 namespace jogasaki::meta {

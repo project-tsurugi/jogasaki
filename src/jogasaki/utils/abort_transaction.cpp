@@ -15,7 +15,13 @@
  */
 #include "abort_transaction.h"
 
+#include <memory>
+#include <stdexcept>
+
 #include <takatori/util/exception.h>
+
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::utils {
 

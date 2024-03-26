@@ -20,9 +20,10 @@
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/executor/hash.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor {
 

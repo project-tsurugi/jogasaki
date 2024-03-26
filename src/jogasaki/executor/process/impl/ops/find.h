@@ -15,17 +15,35 @@
  */
 #pragma once
 
+#include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <takatori/relation/find.h>
+#include <takatori/tree/tree_fragment_vector.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
+#include <yugawara/storage/index.h>
 
-#include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/kvs/coder.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include "operator_base.h"
+#include <jogasaki/executor/process/impl/ops/context_base.h>
+#include <jogasaki/executor/process/impl/ops/operation_status.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/utils/checkpoint_holder.h>
+
+#include "details/search_key_field_info.h"
 #include "find_context.h"
 #include "index_field_mapper.h"
-#include "details/search_key_field_info.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

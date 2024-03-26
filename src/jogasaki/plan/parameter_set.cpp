@@ -15,6 +15,23 @@
  */
 #include "parameter_set.h"
 
+#include <memory>
+#include <utility>
+
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+
+#include <jogasaki/data/value.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/plan/parameter_entry.h>
+
 namespace jogasaki::plan {
 
 using kind = meta::field_type_kind;

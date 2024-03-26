@@ -15,9 +15,23 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <ostream>
+#include <string_view>
+#include <utility>
+
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
 #include <takatori/util/fail.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/binary_printer.h>
 

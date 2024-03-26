@@ -13,14 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/result_store_writer.h>
-
+#include <chrono>
+#include <memory>
 #include <string>
-
+#include <string_view>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/mock_memory_resource.h>
+#include <takatori/util/fail.h>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/result_store_writer.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::executor::process {

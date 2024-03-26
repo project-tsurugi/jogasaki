@@ -15,14 +15,16 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
+#include <cstddef>
+#include <functional>
 #include <memory>
+#include <set>
+#include <vector>
 
 #include <takatori/util/sequence_view.h>
 
-#include <jogasaki/data/value_store.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/value_store.h>
 #include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/value_generator.h>

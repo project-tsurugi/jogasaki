@@ -15,26 +15,59 @@
  */
 #include "storage_data.h"
 
+#include <chrono>
+#include <cstdint>
 #include <fstream>
+#include <functional>
+#include <optional>
+#include <sstream>
+#include <utility>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <glog/logging.h>
-#include <boost/filesystem.hpp>
 
-#include <takatori/util/fail.h>
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/relation/sort_direction.h>
 #include <takatori/type/character.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/reference_list_view.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/column.h>
 #include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/logging.h>
-#include <jogasaki/data/value.h>
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/utils/random.h>
-#include <jogasaki/utils/field_types.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/kvs/storage_dump.h>
+#include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/data/value.h>
 #include <jogasaki/error.h>
-#include <jogasaki/api.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/random.h>
 
 namespace jogasaki::utils {
 

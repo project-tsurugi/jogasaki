@@ -16,6 +16,7 @@
 #include "use_counter.h"
 
 #include <memory>
+#include <utility>
 
 namespace jogasaki::utils {
 

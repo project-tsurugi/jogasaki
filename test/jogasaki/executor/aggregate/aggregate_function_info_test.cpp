@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/function/aggregate_function_info.h>
-
+#include <memory>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/global.h>
-#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
+#include <takatori/util/exception.h>
+
+#include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/value_generator.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::executor::function {
 

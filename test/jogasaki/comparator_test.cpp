@@ -14,11 +14,32 @@
  * limitations under the License.
  */
 
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <boost/dynamic_bitset.hpp>
 
-#include <jogasaki/executor/partitioner.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
 
 namespace jogasaki::executor {

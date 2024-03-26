@@ -15,21 +15,24 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
+#include <cstddef>
 #include <memory>
+#include <set>
+#include <vector>
 
+#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/fail.h>
 
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 

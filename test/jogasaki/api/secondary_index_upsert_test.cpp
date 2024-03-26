@@ -14,35 +14,35 @@
  * limitations under the License.
  */
 
-#include <regex>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/value/character.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/value/value_kind.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/index_feature.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/data/any.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/api/database.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/executor/tables.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/index/index_accessor.h>
-#include <jogasaki/index/field_factory.h>
-#include <jogasaki/index/utils.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/test_utils/secondary_index.h>
+
 #include "api_test_base.h"
 
 namespace jogasaki::testing {

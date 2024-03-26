@@ -1,6 +1,11 @@
 #pragma once
 
+#include <cstdint>
+#include <cstdlib>
+#include <iosfwd>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 namespace jogasaki::serializer {
 

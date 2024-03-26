@@ -15,11 +15,17 @@
  */
 #include "event_logging.h"
 
+#include <ostream>
+#include <type_traits>
 #include <glog/logging.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/request_info.h>
 
 #ifdef ENABLE_ALTIMETER
 #include "details/altimeter_event_logging.h"

@@ -15,7 +15,9 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <memory>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
 // attention: making globals depend on lower domain slows down compile time

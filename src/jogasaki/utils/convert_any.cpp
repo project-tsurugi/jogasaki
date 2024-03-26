@@ -15,7 +15,17 @@
  */
 #include "convert_any.h"
 
-#include <takatori/util/fail.h>
+#include <cstdint>
+#include <utility>
+
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::utils {
 

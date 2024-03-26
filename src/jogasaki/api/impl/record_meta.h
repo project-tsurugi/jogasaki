@@ -15,15 +15,19 @@
  */
 #pragma once
 
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
+#include <optional>
+#include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/impl/field_type.h>
 #include <jogasaki/api/record_meta.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::api::impl {
 

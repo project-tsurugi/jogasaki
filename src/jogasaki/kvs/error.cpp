@@ -15,8 +15,11 @@
  */
 #include "error.h"
 
+#include <cstdlib>
+#include <ostream>
+#include <boost/stacktrace/stacktrace.hpp>
 #include <glog/logging.h>
-#include <takatori/util/stacktrace.h>
+
 #include <sharksfin/StatusCode.h>
 
 #include <jogasaki/logging.h>

@@ -13,13 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstddef>
+#include <initializer_list>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <type_traits>
+#include <vector>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+#include <boost/move/utility_core.hpp>
+#include <gtest/gtest.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/parquet_reader.h>
 #include <jogasaki/executor/file/parquet_writer.h>
-
-#include <gtest/gtest.h>
-#include <jogasaki/test_utils/temporary_folder.h>
-
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_utils/temporary_folder.h>
 
 namespace jogasaki::executor::file {
 

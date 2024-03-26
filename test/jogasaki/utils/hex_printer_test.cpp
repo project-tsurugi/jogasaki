@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/hex.h>
-
+#include <cstdint>
+#include <memory>
+#include <ostream>
 #include <gtest/gtest.h>
+
+#include <jogasaki/utils/hex.h>
 
 namespace jogasaki::utils {
 

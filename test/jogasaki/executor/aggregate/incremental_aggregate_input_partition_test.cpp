@@ -14,18 +14,40 @@
  * limitations under the License.
  */
 
-#include <jogasaki/executor/exchange/aggregate/input_partition.h>
-
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <iterator>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/executor/function/incremental/builtin_functions.h>
-#include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
+#include <jogasaki/executor/exchange/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_info.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 

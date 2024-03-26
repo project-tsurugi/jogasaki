@@ -15,11 +15,15 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <iosfwd>
+#include <memory>
 #include <glog/logging.h>
 
 #include <jogasaki/model/task.h>
-#include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/conditional_task.h>
+#include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/schedule_option.h>
 #include <jogasaki/utils/interference_size.h>

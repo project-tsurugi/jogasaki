@@ -15,7 +15,11 @@
  */
 #include "context_base.h"
 
+#include <utility>
+
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

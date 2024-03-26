@@ -13,48 +13,82 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <boost/dynamic_bitset.hpp>
-#include <glog/logging.h>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <decimal.hh>
+#include <float.h>
+#include <limits>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <gtest/gtest.h>
 
-#include <takatori/plan/forward.h>
-#include <takatori/plan/process.h>
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/descriptor/element.h>
+#include <takatori/descriptor/variable.h>
 #include <takatori/relation/buffer.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/filter.h>
-#include <takatori/relation/project.h>
-#include <takatori/relation/scan.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/graph.h>
 #include <takatori/relation/step/offer.h>
 #include <takatori/relation/step/take_flat.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/binary_operator.h>
 #include <takatori/scalar/compare.h>
 #include <takatori/scalar/comparison_operator.h>
+#include <takatori/scalar/expression_kind.h>
 #include <takatori/scalar/immediate.h>
-#include <takatori/serializer/json_printer.h>
-#include <takatori/statement/execute.h>
-#include <takatori/statement/write.h>
-#include <takatori/type/float.h>
-#include <takatori/type/int.h>
-#include <takatori/util/downcast.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/value/float.h>
-#include <takatori/value/int.h>
+#include <takatori/scalar/unary.h>
+#include <takatori/scalar/unary_operator.h>
+#include <takatori/statement/statement_kind.h>
+#include <takatori/type/character.h>
+#include <takatori/type/data.h>
+#include <takatori/type/date.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/type/varying.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/value/primitive.h>
+#include <takatori/value/value_kind.h>
+#include <yugawara/analyzer/expression_mapping.h>
+#include <yugawara/analyzer/variable_mapping.h>
 #include <yugawara/binding/factory.h>
-#include <yugawara/compiler.h>
-#include <yugawara/compiler_options.h>
-#include <yugawara/runtime_feature.h>
-#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/compiled_info.h>
+#include <mizugaki/placeholder_entry.h>
 #include <mizugaki/translator/shakujo_translator.h>
+#include <mizugaki/translator/shakujo_translator_code.h>
+#include <mizugaki/translator/shakujo_translator_options.h>
 
-#include <jogasaki/executor/comparator.h>
-#include <jogasaki/executor/partitioner.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_utils/to_field_type_kind.h>
@@ -98,6 +132,7 @@ using unary = takatori::scalar::unary;
 using unary_operator = takatori::scalar::unary_operator;
 using immediate = takatori::scalar::immediate;
 using compiled_info = yugawara::compiled_info;
+using variable = takatori::descriptor::variable;
 
 class expression_evaluator_test : public test_root {
 public:

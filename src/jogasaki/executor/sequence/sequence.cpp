@@ -16,11 +16,12 @@
 #include "sequence.h"
 
 #include <atomic>
+#include <utility>
 
 #include <jogasaki/common_types.h>
-#include <jogasaki/kvs/transaction.h>
-
+#include <jogasaki/executor/sequence/info.h>
 #include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/kvs/transaction.h>
 
 namespace jogasaki::executor::sequence {
 

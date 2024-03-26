@@ -17,11 +17,13 @@
 
 #include <cstddef>
 #include <cstring>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::accessor {
 

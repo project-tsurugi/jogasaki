@@ -16,15 +16,33 @@
 #pragma once
 
 #include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <type_traits>
 #include <boost/endian/conversion.hpp>
+#include <glog/logging.h>
 
 #include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::kvs {

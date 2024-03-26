@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <string_view>
-#include <string>
 #include <map>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
 #include <jogasaki/kvs/database.h>

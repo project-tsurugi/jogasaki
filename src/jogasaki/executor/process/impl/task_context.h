@@ -15,20 +15,25 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/abstract/work_context.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
-#include <jogasaki/executor/process/io_exchange_map.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
-#include <jogasaki/executor/process/impl/ops/emit.h>
-#include <jogasaki/executor/exchange/step.h>
-#include <jogasaki/executor/exchange/group/flow.h>
 #include <jogasaki/executor/exchange/aggregate/flow.h>
 #include <jogasaki/executor/exchange/forward/flow.h>
+#include <jogasaki/executor/exchange/group/flow.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/abstract/work_context.h>
+#include <jogasaki/executor/process/impl/ops/emit.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::process::impl {
 

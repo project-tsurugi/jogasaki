@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 

@@ -15,10 +15,12 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
-#include <type_traits>
-#include <ostream>
 #include <functional>
+#include <ostream>
+#include <string_view>
+#include <type_traits>
 
 #include <jogasaki/api/record_meta.h>
 

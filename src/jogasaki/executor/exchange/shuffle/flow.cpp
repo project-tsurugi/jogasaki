@@ -15,6 +15,10 @@
  */
 #include "flow.h"
 
+#include <boost/assert.hpp>
+
+#include <jogasaki/executor/exchange/shuffle/run_info.h>
+
 namespace jogasaki::executor::exchange::shuffle {
 
 run_info flow::info() const noexcept {

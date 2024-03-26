@@ -14,16 +14,36 @@
  * limitations under the License.
  */
 
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <limits>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #include <gtest/gtest.h>
 
-#include <tateyama/proto/kvs/data.pb.h>
 #include <takatori/type/character.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/simple_type.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
-#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/type/varying.h>
+#include <takatori/type/with_time_zone.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/variable/nullity.h>
+#include <tateyama/proto/kvs/data.pb.h>
+
+#include <jogasaki/api/kvsservice/column_data.h>
 #include <jogasaki/api/kvsservice/serializer.h>
+#include <jogasaki/api/kvsservice/status.h>
 #include <jogasaki/api/kvsservice/transaction_utils.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/writable_stream.h>
 
 namespace jogasaki::api::kvsservice {
 

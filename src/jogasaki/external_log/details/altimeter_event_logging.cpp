@@ -17,12 +17,18 @@
 
 #ifdef ENABLE_ALTIMETER
 #include <altimeter/logger.h>
-#include <altimeter/configuration.h>
 #include <altimeter/log_item.h>
 #endif
 
-#include <jogasaki/request_info.h>
+#include <memory>
+#include <sys/types.h>
+
+#include <tateyama/api/server/database_info.h>
+#include <tateyama/api/server/request.h>
+#include <tateyama/api/server/session_info.h>
+
 #include <jogasaki/external_log/events.h>
+#include <jogasaki/request_info.h>
 
 namespace jogasaki::external_log::details {
 

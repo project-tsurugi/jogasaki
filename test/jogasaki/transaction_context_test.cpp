@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/transaction_context.h>
-
+#include <string>
 #include <gtest/gtest.h>
-#include <jogasaki/error_code.h>
+
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki {
 

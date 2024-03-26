@@ -15,15 +15,18 @@
  */
 #include "group_info.h"
 
-#include <vector>
-#include <set>
 #include <memory>
+#include <set>
+#include <type_traits>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
+#include <boost/move/utility_core.hpp>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/constants.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::group {
 

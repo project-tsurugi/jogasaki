@@ -15,12 +15,26 @@
  */
 #pragma once
 
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/api/database.h>
+#include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::utils {
 

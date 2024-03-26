@@ -16,7 +16,9 @@
 #pragma once
 
 #include <cstdlib>
+#include <iosfwd>
 #include <memory>
+#include <string_view>
 #include <variant>
 
 #include <takatori/util/fail.h>

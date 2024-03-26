@@ -15,10 +15,21 @@
  */
 #include "flow.h"
 
-#include <takatori/util/downcast.h>
-#include <jogasaki/executor/exchange/forward/writer.h>
-
+#include <algorithm>
+#include <utility>
 #include <vector>
+
+#include <takatori/util/downcast.h>
+#include <takatori/util/universal_extractor.h>
+
+#include <jogasaki/constants.h>
+#include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/exchange/forward/sink.h>
+#include <jogasaki/executor/exchange/forward/source.h>
+#include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/exchange/source.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::forward {
 

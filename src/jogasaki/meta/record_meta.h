@@ -15,14 +15,21 @@
  */
 #pragma once
 
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <ostream>
 #include <type_traits>
-
+#include <vector>
+#include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 
-#include <jogasaki/meta/field_type.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 
 namespace jogasaki::meta {
 

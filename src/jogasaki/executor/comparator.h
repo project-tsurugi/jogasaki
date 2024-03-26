@@ -18,8 +18,9 @@
 #include <cstddef>
 #include <functional>
 
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/meta/record_meta.h>
+
 #include "compare_info.h"
 
 namespace jogasaki::executor {

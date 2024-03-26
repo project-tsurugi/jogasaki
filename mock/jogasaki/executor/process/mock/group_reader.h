@@ -15,14 +15,22 @@
  */
 #pragma once
 
-#include <takatori/util/sequence_view.h>
-#include <takatori/util/maybe_shared_ptr.h>
+#include <cstddef>
+#include <memory>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
-#include <jogasaki/meta/group_meta.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/sequence_view.h>
+
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 

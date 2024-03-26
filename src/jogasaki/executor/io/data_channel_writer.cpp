@@ -16,13 +16,30 @@
 #include "data_channel_writer.h"
 
 #include <memory>
+#include <ostream>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <variant>
 #include <glog/logging.h>
 
 #include <takatori/util/fail.h>
+#include <tateyama/common.h>
 
-#include <jogasaki/common.h>
-#include <jogasaki/utils/trace_log.h>
+#include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/api/data_channel.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/serializer/value_writer.h>
+#include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::executor::io {
 

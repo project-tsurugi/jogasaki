@@ -13,14 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/mock/cogroup.h>
-
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
-#include <glog/logging.h>
 
-#include <jogasaki/test_root.h>
+#include <takatori/util/fail.h>
 
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/process/mock/cogroup.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::process::mock {
 

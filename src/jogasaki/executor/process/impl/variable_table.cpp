@@ -15,7 +15,17 @@
  */
 #include "variable_table.h"
 
+#include <ostream>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+
 #include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::process::impl {
 

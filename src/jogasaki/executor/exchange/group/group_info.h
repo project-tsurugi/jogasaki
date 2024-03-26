@@ -15,19 +15,22 @@
  */
 #pragma once
 
-#include <vector>
-#include <set>
+#include <cstddef>
 #include <memory>
 #include <optional>
+#include <set>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/partitioner.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/partitioner.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::group {
 

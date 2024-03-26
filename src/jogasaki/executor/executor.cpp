@@ -15,40 +15,75 @@
  */
 #include "executor.h"
 
+#include <atomic>
+#include <cstdint>
+#include <iomanip>
+#include <optional>
+#include <sstream>
+#include <type_traits>
+#include <utility>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
+
 #include <takatori/util/downcast.h>
 #include <takatori/util/string_builder.h>
+#include <sharksfin/ErrorCode.h>
+#include <sharksfin/StatusCode.h>
+#include <sharksfin/api.h>
 
-#include <jogasaki/accessor/record_printer.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/impl/executable_statement.h>
+#include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/api/impl/result_set.h>
 #include <jogasaki/api/impl/result_store_channel.h>
-#include <jogasaki/constants.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/commit_profile.h>
+#include <jogasaki/commit_response.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/data/result_store.h>
+#include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/write.h>
+#include <jogasaki/executor/file/loader.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/dump_channel.h>
+#include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/executor/io/null_record_channel.h>
+#include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
-#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/external_log/event_logging.h>
 #include <jogasaki/external_log/events.h>
-#include <jogasaki/index/index_accessor.h>
-#include <jogasaki/index/utils.h>
-#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/error.h>
+#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/plan/compiler.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/plan/executable_statement.h>
+#include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/plan/prepared_statement.h>
+#include <jogasaki/plan/statement_work_level.h>
+#include <jogasaki/request_info.h>
 #include <jogasaki/request_logging.h>
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_error.h>
 #include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
-#include "jogasaki/index/field_factory.h"
 
 namespace jogasaki::executor {
 

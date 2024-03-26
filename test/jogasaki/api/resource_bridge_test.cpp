@@ -13,27 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/resource/bridge.h>
-
-#include <regex>
+#include <memory>
 #include <sstream>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
+#include <tateyama/api/configuration.h>
 
+#include <jogasaki/api/resource/bridge.h>
+#include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-#include <jogasaki/data/any.h>
-
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
-#include <jogasaki/executor/tables.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+
 #include "api_test_base.h"
 
 namespace jogasaki::api::resource {

@@ -15,7 +15,16 @@
  */
 #include "source.h"
 
+#include <utility>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/executor/exchange/mock/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/mock/aggregate/shuffle_info.h>
+#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/request_context.h>
+
 #include "reader.h"
 
 namespace jogasaki::executor::exchange::mock::aggregate {

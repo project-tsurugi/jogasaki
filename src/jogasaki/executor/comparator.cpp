@@ -15,7 +15,18 @@
  */
 #include "comparator.h"
 
+#include <cstdlib>
+#include <utility>
+
+#include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/less.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor {
 

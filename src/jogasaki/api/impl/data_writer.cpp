@@ -15,17 +15,16 @@
  */
 #include "data_writer.h"
 
-#include <string_view>
-#include <atomic>
 #include <memory>
+#include <ostream>
+#include <utility>
 #include <glog/logging.h>
 
 #include <takatori/util/fail.h>
-
-#include <tateyama/status.h>
 #include <tateyama/api/server/writer.h>
-#include <jogasaki/api/writer.h>
-#include <jogasaki/logging.h>
+#include <tateyama/status.h>
+
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::api::impl {

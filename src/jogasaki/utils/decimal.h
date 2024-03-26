@@ -15,12 +15,19 @@
  */
 #pragma once
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <initializer_list>
+#include <string_view>
+#include <tuple>
+
+#include <takatori/decimal/triple.h>
 
 #include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/kvs/coder.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/meta/field_type.h>
 
 namespace jogasaki::utils {
 

@@ -16,7 +16,10 @@
 #include "text.h"
 
 #include <cassert>
+#include <cstring>
 #include <ostream>
+
+#include <jogasaki/memory/paged_memory_resource.h>
 
 namespace jogasaki::accessor {
 

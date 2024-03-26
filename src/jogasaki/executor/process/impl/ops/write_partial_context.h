@@ -22,10 +22,15 @@
 
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/secondary_context.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/transaction.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/transaction_context.h>
 
 #include "context_base.h"
 

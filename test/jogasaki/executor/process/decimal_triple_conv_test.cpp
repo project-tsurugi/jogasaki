@@ -13,28 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <boost/dynamic_bitset.hpp>
-#include <glog/logging.h>
+#include <decimal.hh>
+#include <iostream>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
 #include <takatori/decimal/triple.h>
 
-#include <jogasaki/executor/comparator.h>
-#include <jogasaki/executor/partitioner.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
 #include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
-#include <jogasaki/executor/process/impl/expression/details/common.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/executor/process/impl/ops/operator_builder.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
-#include <jogasaki/test_utils/to_field_type_kind.h>
-#include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/field_types.h>
 
 namespace jogasaki::executor::process::impl::expression {
 

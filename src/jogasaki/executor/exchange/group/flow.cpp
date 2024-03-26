@@ -15,10 +15,23 @@
  */
 #include "flow.h"
 
-#include <takatori/util/downcast.h>
-#include <jogasaki/executor/exchange/group/writer.h>
-
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
+
+#include <takatori/util/downcast.h>
+#include <takatori/util/universal_extractor.h>
+
+#include <jogasaki/executor/exchange/group/input_partition.h>
+#include <jogasaki/executor/exchange/group/sink.h>
+#include <jogasaki/executor/exchange/group/source.h>
+#include <jogasaki/executor/exchange/group/writer.h>
+#include <jogasaki/executor/exchange/shuffle/run_info.h>
+#include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/exchange/source.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/exchange/task.h>
+#include <jogasaki/model/step_kind.h>
 
 namespace jogasaki::executor::exchange::group {
 

@@ -15,10 +15,18 @@
  */
 #include "result_set.h"
 
-#include <jogasaki/executor/global.h>
-#include <jogasaki/api/result_set.h>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/impl/result_set_iterator.h>
 #include <jogasaki/data/result_store.h>
+#include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::api::impl {
 

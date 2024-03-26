@@ -15,8 +15,16 @@
  */
 #include "request_context_factory.h"
 
+#include <utility>
+
+#include <jogasaki/api/database.h>
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::api::impl {
 

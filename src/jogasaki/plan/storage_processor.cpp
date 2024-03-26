@@ -15,19 +15,31 @@
  */
 #include "storage_processor.h"
 
-#include <atomic>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
-#include <takatori/type/int.h>
+#include <takatori/tree/tree_element_vector.h>
+#include <takatori/type/data.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
-#include <yugawara/storage/index.h>
-#include <yugawara/storage/table.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
 #include <yugawara/schema/declaration.h>
-#include <yugawara/storage/basic_prototype_processor.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/column_feature.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/index_feature.h>
 #include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/nullity.h>
 
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/sequence/sequence.h>
 
 namespace jogasaki::plan {
 

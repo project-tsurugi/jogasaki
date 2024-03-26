@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <vector>
+
 #include <jogasaki/utils/iterator_pair.h>
 
 namespace jogasaki::utils {

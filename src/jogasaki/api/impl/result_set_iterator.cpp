@@ -15,11 +15,12 @@
  */
 #include "result_set_iterator.h"
 
-#include <vector>
+#include <utility>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/impl/record.h>
+#include <jogasaki/data/result_store.h>
 
 namespace jogasaki::api::impl {
 

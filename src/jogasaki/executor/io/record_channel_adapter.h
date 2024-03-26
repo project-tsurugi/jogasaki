@@ -15,13 +15,18 @@
  */
 #pragma once
 
+#include <memory>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/api/data_channel.h>
 #include <jogasaki/executor/io/data_channel_writer.h>
 #include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/meta/external_record_meta.h>
-#include <jogasaki/executor/io/record_channel_stats.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::executor::io {
 

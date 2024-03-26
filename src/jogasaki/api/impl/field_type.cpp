@@ -15,9 +15,16 @@
  */
 #include "field_type.h"
 
+#include <utility>
+
 #include <takatori/util/fail.h>
 
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 
 namespace jogasaki::api::impl {
 

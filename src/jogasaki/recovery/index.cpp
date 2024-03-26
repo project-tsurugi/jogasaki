@@ -15,19 +15,11 @@
  */
 #include "index.h"
 
-#include <yugawara/binding/extract.h>
-#include <takatori/util/fail.h>
-
-#include <jogasaki/plan/storage_processor.h>
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
-#include <jogasaki/constants.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/sequence/metadata_store.h>
-#include <jogasaki/utils/storage_metadata_serializer.h>
-#include <jogasaki/utils/storage_metadata_exception.h>
-
 #include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/utils/storage_metadata_exception.h>
+#include <jogasaki/utils/storage_metadata_serializer.h>
 
 namespace jogasaki::recovery {
 

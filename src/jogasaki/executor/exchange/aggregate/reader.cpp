@@ -15,9 +15,22 @@
  */
 #include "reader.h"
 
+#include <cstdlib>
+#include <functional>
+#include <ostream>
+#include <utility>
 #include <glog/logging.h>
+
+#include <takatori/util/fail.h>
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/exchange/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
+#include <jogasaki/executor/function/incremental/aggregator_info.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 

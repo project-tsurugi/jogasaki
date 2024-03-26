@@ -13,10 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/accessor/record_printer.h>
-
+#include <chrono>
+#include <cstdint>
+#include <iosfwd>
+#include <memory>
+#include <string>
+#include <vector>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <gtest/gtest.h>
-#include <takatori/util/string_builder.h>
+
+#include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/constants.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_utils/types.h>
 

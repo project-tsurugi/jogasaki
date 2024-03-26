@@ -15,12 +15,15 @@
  */
 #pragma once
 
+#include <functional>
+
 #include <takatori/util/sequence_view.h>
 #include <yugawara/aggregate/configurable_provider.h>
 
-#include <jogasaki/executor/function/field_locator.h>
-#include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/value_store.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/field_locator.h>
 
 namespace jogasaki::executor::function {
 

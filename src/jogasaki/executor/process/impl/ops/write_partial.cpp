@@ -15,23 +15,52 @@
  */
 #include "write_partial.h"
 
+#include <algorithm>
+#include <functional>
+#include <memory>
+#include <stdexcept>
+#include <tuple>
+#include <type_traits>
+#include <unordered_map>
 #include <vector>
+#include <boost/assert.hpp>
 
+#include <takatori/descriptor/element.h>
+#include <takatori/descriptor/variable.h>
+#include <takatori/relation/details/mapping_element.h>
 #include <takatori/relation/write.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/optional_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/error.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/ops/write_kind.h>
+#include <jogasaki/executor/process/impl/ops/write_partial_context.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/index/primary_context.h>
+#include <jogasaki/index/primary_target.h>
+#include <jogasaki/index/secondary_context.h>
+#include <jogasaki/index/secondary_target.h>
 #include <jogasaki/index/utils.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/readable_stream.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/logging.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
-#include "jogasaki/logging_helper.h"
 
 #include "context_helper.h"
 #include "details/error_abort.h"

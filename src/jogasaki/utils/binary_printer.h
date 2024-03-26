@@ -15,7 +15,11 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <iomanip>
+#include <ostream>
+#include <string_view>
 
 #include <takatori/util/fail.h>
 

@@ -15,10 +15,26 @@
  */
 #include "task_context.h"
 
-#include <takatori/util/fail.h>
+#include <utility>
+#include <boost/assert.hpp>
 
-#include <jogasaki/executor/process/result_store_writer.h>
-#include <jogasaki/executor/io/data_channel_writer.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/reference_list_view.h>
+
+#include <jogasaki/executor/exchange/aggregate/flow.h>
+#include <jogasaki/executor/exchange/forward/flow.h>
+#include <jogasaki/executor/exchange/group/flow.h>
+#include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/exchange/source.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/model/flow.h>
+#include <jogasaki/model/step_kind.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::executor::process::impl {
 

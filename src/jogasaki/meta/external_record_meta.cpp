@@ -16,16 +16,13 @@
 #include "external_record_meta.h"
 
 #include <cstddef>
-#include <algorithm>
 #include <type_traits>
-
-#include <boost/dynamic_bitset.hpp>
+#include <utility>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
-#include <jogasaki/constants.h>
 
 namespace jogasaki::meta {
 

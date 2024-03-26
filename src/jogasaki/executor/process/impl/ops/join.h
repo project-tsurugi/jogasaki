@@ -15,33 +15,52 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <utility>
+#include <vector>
+#include <boost/assert.hpp>
 #include <glog/logging.h>
 
+#include <takatori/relation/join_kind.h>
 #include <takatori/relation/step/join.h>
+#include <takatori/scalar/expression.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/infect_qualifier.h>
+#include <takatori/util/optional_ptr.h>
+#include <yugawara/compiled_info.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/any.h>
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/data/iterable_record_store.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/ops/cogroup.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
+#include <jogasaki/executor/process/impl/ops/operation_status.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/iterator_pair.h>
-#include <jogasaki/utils/iterator_incrementer.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include "join_context.h"
+#include <jogasaki/utils/iterator_incrementer.h>
+#include <jogasaki/utils/iterator_pair.h>
+
 #include "context_helper.h"
+#include "join_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

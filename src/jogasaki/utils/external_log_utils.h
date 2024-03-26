@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <cstdint>
+
+#include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 
 namespace jogasaki::utils {

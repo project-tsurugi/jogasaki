@@ -15,24 +15,32 @@
  */
 #pragma once
 
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/value/character.h>
-#include <takatori/value/decimal.h>
-#include <takatori/value/date.h>
-#include <takatori/value/time_of_day.h>
-#include <takatori/value/time_point.h>
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
+#include <stdexcept>
+
 #include <takatori/type/character.h>
-#include <takatori/type/decimal.h>
+#include <takatori/type/data.h>
 #include <takatori/type/date.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/float.h>
+#include <takatori/type/int.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
+#include <takatori/value/character.h>
+#include <takatori/value/data.h>
+#include <takatori/value/date.h>
+#include <takatori/value/decimal.h>
+#include <takatori/value/float.h>
+#include <takatori/value/int.h>
+#include <takatori/value/primitive.h>
+#include <takatori/value/simple_value.h>
+#include <takatori/value/time_of_day.h>
+#include <takatori/value/time_point.h>
+#include <takatori/value/value_kind.h>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 
 namespace jogasaki::utils {
 

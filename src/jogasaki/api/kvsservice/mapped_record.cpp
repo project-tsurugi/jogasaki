@@ -16,6 +16,10 @@
 
 #include "mapped_record.h"
 
+#include <utility>
+
+#include <tateyama/proto/kvs/data.pb.h>
+
 namespace jogasaki::api::kvsservice {
 
 mapped_record::mapped_record(tateyama::proto::kvs::data::Record const &record) {

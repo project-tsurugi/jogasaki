@@ -15,32 +15,38 @@
  */
 #include "cast_evaluation.h"
 
-#include <charconv>
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
-#include <functional>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <limits>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <utility>
 
-#include <takatori/scalar/expression.h>
-#include <takatori/scalar/walk.h>
 #include <takatori/type/character.h>
-#include <takatori/type/float.h>
-#include <takatori/type/int.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
 #include <jogasaki/executor/process/impl/expression/details/decimal_context_guard.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/as_any.h>
-#include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/to_string.h>
-#include <jogasaki/utils/variant.h>
 
 #include "common.h"
 #include "constants.h"

@@ -15,19 +15,36 @@
  */
 #include "project.h"
 
-#include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/util/downcast.h>
+#include <ostream>
+#include <utility>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
+
 #include <takatori/relation/project.h>
+#include <takatori/scalar/details/variable_declarator.h>
+#include <takatori/type/data.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/infect_qualifier.h>
+#include <yugawara/compiled_info.h>
+
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/ops/details/error_abort.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/ops/details/error_abort.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
-#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/status.h>
 
+#include "context_helper.h"
 #include "operator_base.h"
 #include "project_context.h"
-#include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

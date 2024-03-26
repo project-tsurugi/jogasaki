@@ -15,9 +15,19 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <iosfwd>
+#include <limits>
+#include <string>
+#include <string_view>
+#include <utility>
+
 #include <takatori/util/fail.h>
 
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::kvs {
 

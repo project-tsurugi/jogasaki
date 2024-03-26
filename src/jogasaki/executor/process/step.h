@@ -15,17 +15,23 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+
 #include <takatori/util/sequence_view.h>
 
 #include <jogasaki/constants.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/model/graph.h>
-#include <jogasaki/model/task.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/abstract/process_executor.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/model/graph.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/step_kind.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/request_context.h>
+
 #include "flow.h"
 
 namespace jogasaki::executor::process {

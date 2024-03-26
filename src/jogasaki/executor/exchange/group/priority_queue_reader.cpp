@@ -14,6 +14,19 @@
  * limitations under the License.
  */
 #include "priority_queue_reader.h"
+
+#include <cstdlib>
+#include <optional>
+#include <ostream>
+#include <type_traits>
+#include <utility>
+#include <glog/logging.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/exchange/group/input_partition.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 

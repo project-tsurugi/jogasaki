@@ -57,6 +57,8 @@ namespace relation = ::takatori::relation;
 namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
+namespace binding = yugawara::binding;
+namespace descriptor = takatori::descriptor;
 
 using yugawara::variable::nullity;
 using yugawara::variable::criteria;
@@ -184,7 +186,7 @@ public:
         varlen_resource_(&pool_),
         verifier_varlen_resource_(&pool_)
     {}
-    
+
     std::shared_ptr<yugawara::analyzer::variable_mapping> variable_map_ =  //NOLINT
         std::make_shared<yugawara::analyzer::variable_mapping>();
     std::shared_ptr<yugawara::analyzer::expression_mapping> expression_map_ =  //NOLINT

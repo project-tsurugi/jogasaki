@@ -15,14 +15,9 @@
  */
 #include "graph.h"
 
-#include <unordered_set>
-#include <optional>
-
-#include <takatori/util/optional_ptr.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/optional_ptr.h>
 
-#include <jogasaki/model/graph.h>
-#include <jogasaki/request_context.h>
 #include <jogasaki/executor/common/step.h>
 
 namespace jogasaki::executor::common {

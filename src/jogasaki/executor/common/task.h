@@ -19,8 +19,10 @@
 #include <ostream>
 #include <string_view>
 
+#include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/utils/interference_size.h>
+
 #include "step.h"
 
 namespace jogasaki::executor::common {

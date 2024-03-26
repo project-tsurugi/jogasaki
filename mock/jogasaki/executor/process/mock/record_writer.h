@@ -15,20 +15,24 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <memory>
-#include <glog/logging.h>
-
-#include <boost/container/pmr/vector.hpp>
+#include <type_traits>
+#include <boost/container/pmr/global_resource.hpp>
 #include <boost/container/pmr/memory_resource.hpp>
+#include <boost/container/pmr/vector.hpp>
+#include <glog/logging.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/interference_size.h>
 

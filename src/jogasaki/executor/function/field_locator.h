@@ -15,9 +15,11 @@
  */
 #pragma once
 
+#include <cstddef>
+
+#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/meta/field_type.h>
 

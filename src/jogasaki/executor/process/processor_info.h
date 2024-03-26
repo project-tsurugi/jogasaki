@@ -17,7 +17,12 @@
 
 #include <takatori/graph/graph.h>
 #include <takatori/plan/graph.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/graph.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/compiled_info.h>
 #include <yugawara/compiler_result.h>
+
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/plan/parameter_set.h>

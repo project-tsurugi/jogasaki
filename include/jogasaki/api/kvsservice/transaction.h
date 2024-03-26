@@ -18,14 +18,17 @@
 #include <future>
 #include <map>
 #include <mutex>
+#include <cstdint>
+#include <string_view>
 
-#include <sharksfin/api.h>
 #include <tateyama/proto/kvs/data.pb.h>
 #include <tateyama/proto/kvs/response.pb.h>
+#include <sharksfin/api.h>
+
 #include <jogasaki/api/database.h>
 
-#include "index.h"
 #include "commit_option.h"
+#include "index.h"
 #include "put_option.h"
 #include "remove_option.h"
 #include "status.h"

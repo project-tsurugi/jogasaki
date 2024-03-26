@@ -15,6 +15,11 @@
  */
 #include "variable_order.h"
 
+#include <boost/assert.hpp>
+
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+
 namespace jogasaki::meta {
 
 using takatori::descriptor::variable;

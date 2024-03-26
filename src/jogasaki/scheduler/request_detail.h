@@ -16,12 +16,17 @@
 #pragma once
 
 #include <atomic>
+#include <cstdlib>
+#include <iosfwd>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/utils/interference_size.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
 

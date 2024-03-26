@@ -15,15 +15,20 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+#include <vector>
+
 #include <jogasaki/constants.h>
-#include <jogasaki/request_context.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
-#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/partitioner.h>
-#include "input_partition.h"
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/request_context.h>
+
 #include "aggregate_info.h"
+#include "input_partition.h"
 #include "source.h"
 
 namespace jogasaki::executor::exchange::aggregate {

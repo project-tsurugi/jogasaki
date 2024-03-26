@@ -16,16 +16,17 @@
 #pragma once
 
 #include <initializer_list>
+#include <string>
+#include <string_view>
 
-#include <yugawara/storage/table.h>
-#include <yugawara/storage/index.h>
 #include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/table.h>
 
 #include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/kvs/coder.h>
 #include <jogasaki/data/any.h>
-
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/meta/field_type.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 
 namespace jogasaki::utils {

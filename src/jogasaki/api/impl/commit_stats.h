@@ -15,9 +15,10 @@
  */
 #pragma once
 
-#include <memory>
 #include <atomic>
+#include <cstddef>
 #include <limits>
+#include <memory>
 
 #include <jogasaki/commit_profile.h>
 

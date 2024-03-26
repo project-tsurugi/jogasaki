@@ -15,10 +15,21 @@
  */
 #pragma once
 
-#include <jogasaki/executor/global.h>
+#include <cstddef>
+#include <iterator>
+#include <memory>
+#include <ostream>
+#include <vector>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/iterable_record_store.h>
-#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 

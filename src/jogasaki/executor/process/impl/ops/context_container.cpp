@@ -15,6 +15,8 @@
  */
 #include "context_container.h"
 
+#include <utility>
+
 #include <takatori/util/fail.h>
 
 #include <jogasaki/executor/process/impl/ops/context_base.h>

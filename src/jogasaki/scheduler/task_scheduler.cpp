@@ -15,13 +15,13 @@
  */
 #include "task_scheduler.h"
 
-#include <glog/logging.h>
+#include <atomic>
+#include <utility>
 
-#include <jogasaki/logging.h>
-#include <jogasaki/model/task.h>
+#include <jogasaki/scheduler/conditional_task.h>
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/job_context.h>
-#include <jogasaki/utils/interference_size.h>
+#include <jogasaki/scheduler/schedule_option.h>
 
 namespace jogasaki::scheduler {
 

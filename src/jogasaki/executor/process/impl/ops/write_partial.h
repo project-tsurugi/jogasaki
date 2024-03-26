@@ -15,15 +15,29 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <takatori/relation/write.h>
+#include <takatori/util/sequence_view.h>
 #include <yugawara/storage/index.h>
 
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_target.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/utils/interference_size.h>
 
 #include "write_kind.h"
 #include "write_partial_context.h"

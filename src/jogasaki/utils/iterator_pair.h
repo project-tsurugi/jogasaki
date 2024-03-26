@@ -16,6 +16,7 @@
 #pragma once
 
 #include <type_traits>
+
 #include <jogasaki/data/iterable_record_store.h>
 
 namespace jogasaki::utils {

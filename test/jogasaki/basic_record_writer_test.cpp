@@ -13,7 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <string>
+#include <string_view>
+#include <boost/container/vector.hpp>
+#include <boost/move/utility_core.hpp>
+#include <gtest/gtest.h>
+
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/executor/process/mock/record_writer.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
 
 #include "test_root.h"
 

@@ -32,6 +32,7 @@
 #include <yugawara/storage/table.h>
 #include <sharksfin/StorageOptions.h>
 
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/kvs/database.h>

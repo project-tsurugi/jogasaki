@@ -13,9 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/mock/group_reader.h>
+#include <string>
+#include <string_view>
+#include <boost/move/utility_core.hpp>
+#include <gtest/gtest.h>
+
+#include <takatori/util/exception.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/exchange/group/group_info.h>
+#include <jogasaki/executor/process/mock/group_reader.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/mock/basic_record.h>
+
 #include "test_root.h"
 
 namespace jogasaki::executor::process::mock {

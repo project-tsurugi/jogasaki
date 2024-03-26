@@ -13,13 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/copy_field_data.h>
-
-#include <jogasaki/mock/basic_record.h>
-
+#include <chrono>
+#include <memory>
+#include <type_traits>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/test_utils/types.h>
+#include <jogasaki/utils/copy_field_data.h>
 
 namespace jogasaki::utils {
 

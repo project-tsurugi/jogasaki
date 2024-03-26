@@ -15,9 +15,12 @@
  */
 #pragma once
 
+#include <string_view>
+
 #include <takatori/statement/create_index.h>
 
 #include <jogasaki/model/statement.h>
+#include <jogasaki/model/statement_kind.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::common {

@@ -15,9 +15,12 @@
  */
 #pragma once
 
+#include <cstddef>
+
 #include <takatori/util/fail.h>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/meta/field_type.h>
 
 namespace jogasaki::utils {
 

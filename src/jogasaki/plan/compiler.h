@@ -15,19 +15,32 @@
  */
 #pragma once
 
+#include <exception>
+#include <memory>
 #include <string_view>
+#include <utility>
 
+#include <takatori/plan/aggregate.h>
 #include <takatori/plan/forward.h>
 #include <takatori/plan/group.h>
-#include <takatori/plan/aggregate.h>
 #include <takatori/plan/process.h>
+#include <takatori/statement/statement.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/compiled_info.h>
+#include <yugawara/variable/configurable_provider.h>
 
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/executor/exchange/aggregate/step.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
-#include <jogasaki/executor/exchange/aggregate/step.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/plan/parameter_set.h>
 #include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/plan/executable_statement.h>
+#include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/plan/parameter_set.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::plan {
 

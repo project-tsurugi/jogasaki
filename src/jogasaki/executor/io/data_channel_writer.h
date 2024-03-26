@@ -15,9 +15,14 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/api/data_channel.h>
+#include <jogasaki/api/writer.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/serializer/value_writer.h>

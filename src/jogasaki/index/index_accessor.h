@@ -16,11 +16,15 @@
 #pragma once
 
 #include <cstddef>
+#include <vector>
 
 #include <yugawara/storage/index.h>
 
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::index {
 

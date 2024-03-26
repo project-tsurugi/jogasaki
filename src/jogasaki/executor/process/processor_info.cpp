@@ -15,11 +15,14 @@
  */
 #include "processor_info.h"
 
-#include <takatori/graph/graph.h>
-#include <takatori/plan/graph.h>
+#include <utility>
+
+#include <takatori/relation/expression.h>
 #include <takatori/relation/write.h>
+#include <takatori/relation/write_kind.h>
 #include <takatori/util/downcast.h>
-#include <yugawara/compiler_result.h>
+
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 
 namespace jogasaki::executor::process {

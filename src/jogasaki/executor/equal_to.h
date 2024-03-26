@@ -15,11 +15,14 @@
  */
 #pragma once
 
+#include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <decimal.hh>
 #include <functional>
 
-#include <decimal.hh>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
 
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>

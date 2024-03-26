@@ -15,10 +15,18 @@
  */
 #include "index_field_mapper.h"
 
+#include <ostream>
+#include <utility>
+#include <glog/logging.h>
+
+#include <jogasaki/index/field_info.h>
 #include <jogasaki/index/index_accessor.h>
+#include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/modify_status.h>

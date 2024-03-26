@@ -17,13 +17,14 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::process {
 

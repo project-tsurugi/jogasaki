@@ -15,10 +15,14 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include <takatori/util/optional_ptr.h>
 
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/plan/parameter_entry.h>
 

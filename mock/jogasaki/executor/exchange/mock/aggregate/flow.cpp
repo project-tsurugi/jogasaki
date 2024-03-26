@@ -15,10 +15,22 @@
  */
 #include "flow.h"
 
-#include <takatori/util/downcast.h>
-#include <jogasaki/executor/exchange/mock/aggregate/writer.h>
-
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
+
+#include <takatori/util/downcast.h>
+#include <takatori/util/universal_extractor.h>
+
+#include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/exchange/mock/aggregate/input_partition.h>
+#include <jogasaki/executor/exchange/mock/aggregate/sink.h>
+#include <jogasaki/executor/exchange/mock/aggregate/source.h>
+#include <jogasaki/executor/exchange/mock/aggregate/writer.h>
+#include <jogasaki/executor/exchange/sink.h>
+#include <jogasaki/executor/exchange/source.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/exchange/task.h>
 
 namespace jogasaki::executor::exchange::mock::aggregate {
 

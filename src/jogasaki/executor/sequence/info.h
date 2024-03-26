@@ -15,6 +15,11 @@
  */
 #pragma once
 
+#include <limits>
+#include <ostream>
+#include <string>
+#include <string_view>
+
 #include <jogasaki/common_types.h>
 
 namespace jogasaki::executor::sequence {

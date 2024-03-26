@@ -15,10 +15,14 @@
  */
 #include "result_store_channel.h"
 
-#include <jogasaki/api/data_channel.h>
-#include <jogasaki/api/impl/record_meta.h>
+#include <type_traits>
+#include <utility>
+
+#include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/data/result_store.h>
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/executor/io/record_channel_stats.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/meta/external_record_meta.h>
 
 namespace jogasaki::api::impl {
 

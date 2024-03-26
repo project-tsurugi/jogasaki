@@ -15,16 +15,24 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <vector>
 
-#include <jogasaki/model/port.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/meta/variable_order.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/executor/exchange/shuffle/step.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/executor/process/step.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/step_kind.h>
+#include <jogasaki/request_context.h>
+
 #include "aggregate_info.h"
 #include "flow.h"
 

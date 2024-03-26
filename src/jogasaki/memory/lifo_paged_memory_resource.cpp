@@ -15,6 +15,14 @@
  */
 #include "lifo_paged_memory_resource.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <memory>
+#include <new>
+
+#include <jogasaki/memory/details/page_allocation_info.h>
+#include <jogasaki/memory/page_pool.h>
+
 namespace jogasaki::memory {
 
 

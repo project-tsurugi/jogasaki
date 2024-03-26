@@ -16,14 +16,21 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
+#include <memory>
+#include <string>
+#include <utility>
 #include <tbb/concurrent_hash_map.h>
+
 #include <takatori/util/maybe_shared_ptr.h>
+#include <tateyama/utils/cache_align.h>
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/statement_handle.h>
-#include <jogasaki/executor/file/file_reader.h>
-#include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_execution_info.h>
+#include <jogasaki/executor/batch/batch_execution_state.h>
+#include <jogasaki/executor/batch/batch_executor_option.h>
+#include <jogasaki/executor/file/file_reader.h>
 
 namespace jogasaki::executor::batch {
 

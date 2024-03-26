@@ -15,10 +15,16 @@
  */
 #include "writer.h"
 
+#include <utility>
+
 #include <jogasaki/executor/global.h>
-#include "input_partition.h"
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+
 #include "group_info.h"
+#include "input_partition.h"
 #include "sink.h"
+
+#include <ext/alloc_traits.h>
 
 namespace jogasaki::executor::exchange::group {
 

@@ -15,6 +15,13 @@
  */
 #include "iterable_record_store.h"
 
+#include <memory>
+#include <type_traits>
+#include <utility>
+
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/record_store.h>
+
 namespace jogasaki::data {
 
 iterable_record_store::iterator &iterable_record_store::iterator::operator++() {

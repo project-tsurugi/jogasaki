@@ -15,11 +15,17 @@
  */
 #include "flatten.h"
 
-#include <takatori/util/downcast.h>
+#include <utility>
+#include <boost/assert.hpp>
 
-#include "operator_base.h"
-#include "flatten_context.h"
+#include <takatori/util/downcast.h>
+#include <takatori/util/infect_qualifier.h>
+
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+
 #include "context_helper.h"
+#include "flatten_context.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

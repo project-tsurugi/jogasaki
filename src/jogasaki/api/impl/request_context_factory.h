@@ -15,13 +15,17 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/transaction_context.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::api::impl {
 

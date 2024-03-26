@@ -15,31 +15,46 @@
  */
 #include "scan.h"
 
+#include <cstddef>
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
 
+#include <takatori/descriptor/element.h>
+#include <takatori/relation/sort_direction.h>
 #include <takatori/util/downcast.h>
-#include <takatori/relation/scan.h>
+#include <takatori/util/infect_qualifier.h>
+#include <takatori/util/reference_iterator.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/details/index_key_element.h>
+#include <yugawara/variable/criteria.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
+#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/field_factory.h>
-#include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/handle_generic_error.h>
-#include <jogasaki/utils/modify_status.h>
 #include <jogasaki/kvs/coder.h>
-#include "operator_base.h"
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/modify_status.h>
+
 #include "context_helper.h"
-#include "scan_context.h"
-#include "operator_builder.h"
 #include "details/encode_key.h"
 #include "details/error_abort.h"
+#include "operator_base.h"
+#include "scan_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

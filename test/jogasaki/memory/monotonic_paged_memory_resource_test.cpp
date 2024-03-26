@@ -13,10 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/memory/monotonic_paged_memory_resource.h>
-
-#include <gtest/gtest.h>
+#include <array>
+#include <memory>
+#include <string>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
+#include <gtest/gtest.h>
+
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
 
 const std::size_t loop =  50;
 
@@ -74,7 +78,7 @@ TEST_F(monotonic_paged_memory_resource_test, basic_2) {
     }
 
     std::size_t max_pages = my_resource->count_pages();
-    
+
     // release in LIFO order
     for(std::size_t i = 0; i < loop; i++) {
         my_allocator.deallocate(blocks[(loop - 1) - i], 1);

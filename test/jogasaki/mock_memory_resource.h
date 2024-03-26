@@ -15,8 +15,10 @@
  */
 #pragma once
 
-#include <vector>
+#include <cstddef>
 #include <memory>
+#include <vector>
+#include <boost/container/pmr/memory_resource.hpp>
 #include <boost/container/pmr/monotonic_buffer_resource.hpp>
 
 #include <jogasaki/memory/paged_memory_resource.h>

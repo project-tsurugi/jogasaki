@@ -15,6 +15,9 @@
  */
 #include "take_flat_context.h"
 
+#include <jogasaki/executor/io/record_reader.h>
+#include <jogasaki/executor/process/impl/ops/context_base.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 take_flat_context::take_flat_context(

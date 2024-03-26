@@ -15,9 +15,17 @@
  */
 #pragma once
 
-#include <jogasaki/utils/interference_size.h>
+#include <memory>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/configuration.h>
+#include <jogasaki/model/statement.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/scheduler/statement_scheduler.h>
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::scheduler {
 

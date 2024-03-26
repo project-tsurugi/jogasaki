@@ -15,6 +15,9 @@
  */
 #include "take_group_context.h"
 
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/process/impl/ops/context_base.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 take_group_context::take_group_context(

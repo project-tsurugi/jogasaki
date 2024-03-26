@@ -15,8 +15,11 @@
  */
 #include "batch_execution_info.h"
 
-#include <cstddef>
-#include <string>
+#include <utility>
+
+#include <jogasaki/api/impl/database.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/executor/batch/batch_executor_option.h>
 
 namespace jogasaki::executor::batch {
 

@@ -15,11 +15,7 @@
  */
 #include "relation_io_map.h"
 
-#include <unordered_map>
-
-#include <jogasaki/executor/exchange/step.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/meta/record_meta.h>
+#include <utility>
 
 namespace jogasaki::executor::process {
 

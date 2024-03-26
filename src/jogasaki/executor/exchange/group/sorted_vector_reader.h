@@ -16,12 +16,20 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <queue>
-
+#include <type_traits>
+#include <vector>
 #include <glog/logging.h>
 
-#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
+#include <jogasaki/executor/exchange/shuffle/pointer_table.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::group {
 

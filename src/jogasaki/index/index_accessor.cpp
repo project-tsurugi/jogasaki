@@ -15,11 +15,10 @@
  */
 #include "index_accessor.h"
 
-#include <cstddef>
-
-#include <yugawara/storage/index.h>
+#include <utility>
 
 #include <jogasaki/index/field_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::index {
 

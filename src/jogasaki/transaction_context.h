@@ -16,12 +16,23 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <string_view>
 
-#include <jogasaki/commit_response.h>
+#include <sharksfin/CallResult.h>
+#include <sharksfin/api.h>
+
 #include <jogasaki/commit_profile.h>
+#include <jogasaki/commit_response.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/kvs/transaction_option.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki {
 

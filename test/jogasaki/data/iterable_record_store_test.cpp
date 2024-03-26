@@ -14,17 +14,24 @@
  * limitations under the License.
  */
 
-#include <jogasaki/data/iterable_record_store.h>
-
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/util/meta_type.h>
+
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/data/record_store.h>
 #include <jogasaki/executor/comparator.h>
-
+#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/mock_memory_resource.h>
-
-#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::testing {
 

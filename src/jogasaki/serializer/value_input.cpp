@@ -1,16 +1,22 @@
-#include <jogasaki/serializer/value_input.h>
-
 #include <algorithm>
+#include <cstring>
+#include <iterator>
+#include <limits>
 #include <optional>
 #include <stdexcept>
+#include <boost/assert.hpp>
+
+#include <takatori/datetime/time_interval.h>
+#include <takatori/util/basic_buffer_view.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
+
+#include <jogasaki/serializer/entry_type.h>
+#include <jogasaki/serializer/value_input.h>
+#include <jogasaki/serializer/value_input_exception.h>
 
 #include "base128v.h"
 #include "details/value_io_constants.h"
-
-#include <takatori/util/assertion.h>
-#include <takatori/util/exception.h>
-#include <takatori/util/fail.h>
-#include <takatori/util/string_builder.h>
 
 namespace jogasaki::serializer {
 

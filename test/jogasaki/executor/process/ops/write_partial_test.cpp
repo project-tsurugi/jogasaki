@@ -13,29 +13,57 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/write_partial.h>
-
+#include <initializer_list>
+#include <iostream>
+#include <memory>
 #include <string>
-
+#include <boost/container/container_fwd.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <takatori/plan/forward.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/step/take_flat.h>
+#include <takatori/relation/write_kind.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/type/primitive.h>
+#include <takatori/util/exception.h>
 #include <yugawara/binding/factory.h>
-#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/relation_kind.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/variable/nullity.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
+#include <jogasaki/accessor/record_printer.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/ops/write_kind.h>
+#include <jogasaki/executor/process/impl/ops/write_partial.h>
 #include <jogasaki/executor/process/impl/ops/write_partial_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/kvs/readable_stream.h>
-#include <jogasaki/kvs/iterator.h>
-
-#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/executor/process/mock/task_context.h>
-#include <jogasaki/operator_test_utils.h>
+#include <jogasaki/index/primary_target.h>
+#include <jogasaki/index/secondary_context.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/iterator.h>
+#include <jogasaki/kvs/readable_stream.h>
+#include <jogasaki/kvs/storage.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/kvs_test_base.h>
+#include <jogasaki/kvs_test_utils.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/operator_test_utils.h>
+#include <jogasaki/status.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils.h>
+#include <jogasaki/transaction_context.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

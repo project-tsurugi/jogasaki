@@ -13,14 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/statement_handle.h>
-
 #include <cstdint>
-#include <type_traits>
-#include <ostream>
-#include <functional>
 
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/api/record_meta.h>
+#include <jogasaki/api/statement_handle.h>
 
 namespace jogasaki::api {
 

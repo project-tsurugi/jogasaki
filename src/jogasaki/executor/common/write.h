@@ -15,17 +15,35 @@
  */
 #pragma once
 
-#include <takatori/statement/write.h>
+#include <cstddef>
+#include <string_view>
+#include <utility>
+#include <vector>
 
+#include <takatori/statement/write.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <yugawara/compiled_info.h>
+#include <yugawara/storage/index.h>
+
+#include <jogasaki/common_types.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
-#include <jogasaki/index/primary_target.h>
-#include <jogasaki/index/secondary_target.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/index/primary_context.h>
+#include <jogasaki/index/primary_target.h>
+#include <jogasaki/index/secondary_context.h>
+#include <jogasaki/index/secondary_target.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/statement.h>
+#include <jogasaki/model/statement_kind.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::common {

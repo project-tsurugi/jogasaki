@@ -15,10 +15,23 @@
  */
 #include "encode_key.h"
 
+#include <ostream>
+#include <utility>
+#include <glog/logging.h>
+
+#include <jogasaki/data/any.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/convert_any.h>
 

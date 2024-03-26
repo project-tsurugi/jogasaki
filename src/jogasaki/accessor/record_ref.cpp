@@ -15,7 +15,7 @@
  */
 #include "record_ref.h"
 
-#include <takatori/util/assertion.h>
+#include <jogasaki/constants.h>
 
 namespace jogasaki::accessor {
 

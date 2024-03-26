@@ -13,10 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <boost/move/utility_core.hpp>
+#include <gtest/gtest.h>
+
+#include <jogasaki/executor/global.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_utils/record.h>
+#include <jogasaki/test_utils/types.h>
 
 #include "test_root.h"
-#include <jogasaki/test_utils/types.h>
 
 namespace jogasaki::testing {
 

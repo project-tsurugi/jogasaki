@@ -15,14 +15,38 @@
  */
 #include "aggregate_group.h"
 
+#include <functional>
+#include <type_traits>
+#include <boost/assert.hpp>
+
+#include <takatori/descriptor/element.h>
+#include <takatori/relation/details/aggregate_element.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/infect_qualifier.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <yugawara/aggregate/declaration.h>
+#include <yugawara/binding/extract.h>
+#include <yugawara/compiled_info.h>
 
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/data/value_store.h>
+#include <jogasaki/executor/function/aggregate_function_info.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
-#include <jogasaki/utils/field_types.h>
-#include "context_helper.h"
-#include "aggregate_group_context.h"
-
 #include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/field_types.h>
+
+#include "aggregate_group_context.h"
+#include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

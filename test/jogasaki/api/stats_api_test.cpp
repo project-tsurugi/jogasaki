@@ -14,22 +14,27 @@
  * limitations under the License.
  */
 
-#include <regex>
+#include <memory>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
+#include <takatori/decimal/triple.h>
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/api/database.h>
-#include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
-#include <jogasaki/api/impl/record.h>
-#include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/kvs/id.h>
-#include <jogasaki/executor/tables.h>
-#include "api_test_base.h"
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/runner.h>
+
+#include "api_test_base.h"
 
 namespace jogasaki::testing {
 

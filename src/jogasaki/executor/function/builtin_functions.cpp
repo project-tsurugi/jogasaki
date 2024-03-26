@@ -15,28 +15,51 @@
  */
 #include "builtin_functions.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <memory>
 #include <sstream>
-
+#include <string>
+#include <string_view>
+#include <variant>
+#include <boost/assert.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
+#include <tsl/hopscotch_hash.h>
 #include <tsl/hopscotch_set.h>
 
-#include <takatori/util/sequence_view.h>
-#include <takatori/util/fail.h>
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/decimal.h>
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/type/character.h>
 #include <takatori/type/date.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/primitive.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
-#include <takatori/type/character.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/type/varying.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/sequence_view.h>
 #include <yugawara/aggregate/configurable_provider.h>
+#include <yugawara/aggregate/declaration.h>
+#include <yugawara/util/maybe_shared_lock.h>
 
-#include <jogasaki/executor/global.h>
-#include <jogasaki/meta/field_type_kind.h>
-#include <jogasaki/utils/copy_field_data.h>
-#include <jogasaki/utils/round.h>
+#include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/executor/function/aggregate_function_kind.h>
+#include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/field_locator.h>
+#include <jogasaki/executor/function/value_generator.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/round.h>
 
 namespace jogasaki::executor::function {
 

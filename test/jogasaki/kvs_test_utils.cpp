@@ -15,22 +15,22 @@
  */
 #include "kvs_test_utils.h"
 
-#include <gtest/gtest.h>
+#include <cstddef>
+#include <ostream>
+#include <type_traits>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
 
-#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/storage.h>
-#include <jogasaki/kvs/iterator.h>
-#include <jogasaki/meta/record_meta.h>
-#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/kvs/transaction.h>
+#include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/mock/basic_record.h>
-#include <jogasaki/test_utils/record.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki {

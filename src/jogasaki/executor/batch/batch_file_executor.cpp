@@ -15,11 +15,17 @@
  */
 #include "batch_file_executor.h"
 
-#include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/file/parquet_reader.h>
+#include <functional>
 
-#include "batch_executor.h"
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/executor/batch/batch_execution_info.h>
+#include <jogasaki/executor/batch/batch_execution_state.h>
+#include <jogasaki/executor/file/parquet_reader.h>
+#include <jogasaki/status.h>
+
 #include "batch_block_executor.h"
+#include "batch_executor.h"
 
 namespace jogasaki::executor::batch {
 

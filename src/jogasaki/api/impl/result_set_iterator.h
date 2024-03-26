@@ -20,9 +20,10 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include <jogasaki/api/result_set_iterator.h>
 #include <jogasaki/api/impl/record.h>
+#include <jogasaki/api/result_set_iterator.h>
 #include <jogasaki/data/result_store.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::api::impl {
 

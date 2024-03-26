@@ -15,7 +15,12 @@
  */
 #pragma once
 
+#include <memory>
+#include <string>
+#include <string_view>
+
 #include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/index.h>
 
 #include <jogasaki/request_context.h>
 #include <jogasaki/transaction_context.h>

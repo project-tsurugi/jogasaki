@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/storage_utils.h>
-
+#include <memory>
 #include <gtest/gtest.h>
 
-#include <takatori/type/int.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index_feature.h>
+#include <yugawara/storage/relation_kind.h>
+#include <yugawara/variable/nullity.h>
+
+#include <jogasaki/utils/storage_utils.h>
+
 
 namespace jogasaki::utils {
 

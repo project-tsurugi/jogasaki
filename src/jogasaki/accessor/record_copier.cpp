@@ -15,6 +15,18 @@
  */
 #include "record_copier.h"
 
+#include <cstring>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <boost/assert.hpp>
+
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/record_meta.h>
+
 namespace jogasaki::accessor {
 
 record_copier::record_copier(

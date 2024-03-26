@@ -15,7 +15,10 @@
  */
 #pragma once
 
+#include <string>
+#include <string_view>
 #include <unordered_map>
+
 #include <tateyama/proto/kvs/data.pb.h>
 
 namespace jogasaki::api::kvsservice {

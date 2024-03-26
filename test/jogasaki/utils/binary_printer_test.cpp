@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/utils/binary_printer.h>
-
+#include <string>
 #include <gtest/gtest.h>
+
+#include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::utils {
 

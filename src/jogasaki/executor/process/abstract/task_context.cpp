@@ -15,6 +15,8 @@
  */
 #include "task_context.h"
 
+#include <jogasaki/executor/process/abstract/work_context.h>
+
 namespace jogasaki::executor::process::abstract {
 
 void task_context::work_context(std::unique_ptr<class work_context> work_context) {

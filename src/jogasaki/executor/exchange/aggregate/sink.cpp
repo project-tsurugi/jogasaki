@@ -15,10 +15,14 @@
  */
 #include "sink.h"
 
-#include <jogasaki/executor/global.h>
+#include <cstdlib>
+#include <utility>
+
 #include <jogasaki/executor/io/record_writer.h>
-#include "input_partition.h"
+#include <jogasaki/request_context.h>
+
 #include "aggregate_info.h"
+#include "input_partition.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::aggregate {

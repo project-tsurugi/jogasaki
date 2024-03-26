@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstdlib>
 #include <ostream>
 #include <string_view>
 #include <type_traits>

@@ -15,6 +15,8 @@
  */
 #include "decimal_field_option.h"
 
+#include <string>
+
 namespace jogasaki::meta {
 
 bool operator==(decimal_field_option const& a, decimal_field_option const& b) noexcept {

@@ -16,11 +16,11 @@
 #pragma once
 
 #include <array>
-#include <vector>
 #include <cstring>
+#include <vector>
 
-#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::shuffle {

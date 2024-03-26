@@ -15,7 +15,10 @@
  */
 #include "emit_context.h"
 
+#include <utility>
+
 #include <jogasaki/data/small_record_store.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

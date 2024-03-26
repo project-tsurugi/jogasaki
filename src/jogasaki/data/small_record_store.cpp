@@ -15,10 +15,18 @@
  */
 #include "small_record_store.h"
 
+#include <algorithm>
+#include <ostream>
+#include <type_traits>
+#include <utility>
+
 #include <takatori/util/fail.h>
 
-#include <jogasaki/utils/interference_size.h>
+#include <jogasaki/accessor/record_copier.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 

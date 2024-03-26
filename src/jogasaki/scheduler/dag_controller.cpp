@@ -14,24 +14,19 @@
  * limitations under the License.
  */
 
-#include <map>
-#include <queue>
-#include <thread>
-#include <glog/logging.h>
+#include "dag_controller.h"
+
+#include <utility>
 
 #include <takatori/util/enum_tag.h>
-#include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/configuration.h>
 #include <jogasaki/model/graph.h>
-#include <jogasaki/event.h>
-#include <jogasaki/internal_event.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/scheduler/step_state_table.h>
-#include <jogasaki/utils/interference_size.h>
-#include "serial_task_scheduler.h"
-#include "step_state.h"
-#include "dag_controller.h"
-#include "thread_params.h"
+#include <jogasaki/scheduler/task_scheduler.h>
+
 #include "dag_controller_impl.h"
 
 namespace jogasaki::scheduler {

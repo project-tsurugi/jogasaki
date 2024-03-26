@@ -15,11 +15,8 @@
  */
 #include "latch.h"
 
-#include <memory>
-#include <mutex>
 #include <condition_variable>
-
-#include <jogasaki/utils/interference_size.h>
+#include <mutex>
 
 namespace jogasaki::utils {
 

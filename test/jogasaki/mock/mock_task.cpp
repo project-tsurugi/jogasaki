@@ -16,13 +16,20 @@
 #include "mock_task.h"
 
 #include <memory>
-#include <glog/logging.h>
+#include <type_traits>
 
-#include <jogasaki/model/task.h>
-#include <jogasaki/model/step.h>
-#include <jogasaki/executor/common/task.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/event.h>
 #include <jogasaki/executor/common/utils.h>
 #include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/model/task.h>
+#include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/utils/port_indices.h>
 
 namespace jogasaki::executor {

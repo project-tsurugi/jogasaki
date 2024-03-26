@@ -15,14 +15,12 @@
  */
 #include "kvs_test_base.h"
 
-#include <string_view>
-#include <string>
 #include <map>
 #include <memory>
-#include <gtest/gtest.h>
+#include <string>
+#include <string_view>
 
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/test_base.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 
 namespace jogasaki::kvs {

@@ -13,9 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/memory/block_memory_resource.h>
-
+#include <string>
+#include <vector>
 #include <gtest/gtest.h>
+
+#include <jogasaki/memory/block_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 
 namespace jogasaki::memory {
 

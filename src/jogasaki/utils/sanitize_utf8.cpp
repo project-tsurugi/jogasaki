@@ -15,6 +15,9 @@
  */
 #include "sanitize_utf8.h"
 
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
 #include <iomanip>
 #include <sstream>
 

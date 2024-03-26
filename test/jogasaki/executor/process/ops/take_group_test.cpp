@@ -13,26 +13,56 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/take_group.h>
-
+#include <cstdint>
 #include <string>
-
+#include <string_view>
+#include <utility>
+#include <boost/container/container_fwd.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
-#include <takatori/plan/group.h>
+#include <takatori/descriptor/variable.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
 #include <takatori/plan/forward.h>
+#include <takatori/plan/graph.h>
+#include <takatori/plan/group.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
 #include <takatori/relation/step/offer.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/type/primitive.h>
+#include <takatori/util/infect_qualifier.h>
+#include <yugawara/analyzer/variable_mapping.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/compiled_info.h>
+#include <yugawara/storage/sequence.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/exchange/group/group_info.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/ops/take_group.h>
 #include <jogasaki/executor/process/impl/ops/take_group_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-#include <jogasaki/executor/exchange/group/group_info.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
+#include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/meta/record_meta.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils.h>
 
 #include "verifier.h"
 

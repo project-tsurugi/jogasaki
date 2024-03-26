@@ -19,8 +19,8 @@
 #include <unordered_set>
 
 #include <jogasaki/common_types.h>
-#include <jogasaki/kvs/transaction.h>
 #include <jogasaki/executor/sequence/info.h>
+#include <jogasaki/kvs/transaction.h>
 
 namespace jogasaki::executor::sequence {
 

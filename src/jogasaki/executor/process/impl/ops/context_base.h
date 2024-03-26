@@ -15,9 +15,11 @@
  */
 #pragma once
 
-#include <jogasaki/request_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/request_context.h>
+
 #include "operator_kind.h"
 
 namespace jogasaki::executor::process::impl {

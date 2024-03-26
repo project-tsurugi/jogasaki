@@ -15,29 +15,36 @@
  */
 #include "join_find.h"
 
+#include <cstddef>
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
 
+#include <takatori/descriptor/element.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/infect_qualifier.h>
+#include <takatori/util/reference_iterator.h>
 
-#include <takatori/relation/join_find.h>
-#include <yugawara/binding/factory.h>
-
-#include <jogasaki/index/field_factory.h>
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/abort_transaction.h>
-#include <jogasaki/utils/modify_status.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/data/any.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
-#include "operator_base.h"
+#include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
+#include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
+#include <jogasaki/index/field_factory.h>
+#include <jogasaki/index/field_info.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/modify_status.h>
+
 #include "context_helper.h"
-#include "join_find_context.h"
 #include "details/encode_key.h"
 #include "details/error_abort.h"
+#include "join_find_context.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

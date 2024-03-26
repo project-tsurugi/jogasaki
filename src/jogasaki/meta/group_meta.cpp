@@ -15,6 +15,11 @@
  */
 #include "group_meta.h"
 
+#include <memory>
+#include <utility>
+
+#include <jogasaki/meta/record_meta.h>
+
 namespace jogasaki::meta {
 
 group_meta::group_meta() :

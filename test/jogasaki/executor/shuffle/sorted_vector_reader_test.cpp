@@ -14,17 +14,30 @@
  * limitations under the License.
  */
 
-#include <jogasaki/executor/exchange/group/sorted_vector_reader.h>
-
+#include <cstdint>
+#include <optional>
+#include <set>
+#include <string>
+#include <string_view>
+#include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/record_store.h>
+#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/input_partition.h>
-#include <jogasaki/accessor/record_ref.h>
-
-#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/executor/exchange/group/sorted_vector_reader.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock_memory_resource.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/record.h>
 
 namespace jogasaki::executor::exchange::group {
 

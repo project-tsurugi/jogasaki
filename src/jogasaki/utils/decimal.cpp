@@ -15,12 +15,10 @@
  */
 #include "decimal.h"
 
-#include <initializer_list>
-
-#include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/data/any.h>
+#include <algorithm>
+#include <limits>
+#include <utility>
+#include <boost/assert.hpp>
 
 namespace jogasaki::utils {
 

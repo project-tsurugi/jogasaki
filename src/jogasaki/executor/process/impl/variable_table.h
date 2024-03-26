@@ -15,11 +15,14 @@
  */
 #pragma once
 
+#include <iosfwd>
+#include <memory>
+
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/meta/record_meta.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::process::impl {
 

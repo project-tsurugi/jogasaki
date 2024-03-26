@@ -15,9 +15,16 @@
  */
 #include "modify_status.h"
 
-#include <jogasaki/utils/abort_transaction.h>
-#include <jogasaki/executor/global.h>
+#include <memory>
+#include <type_traits>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/abort_transaction.h>
 
 namespace jogasaki::utils {
 

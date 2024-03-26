@@ -13,32 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/recovery/storage_options.h>
-
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/type/character.h>
-#include <takatori/type/date.h>
-#include <takatori/type/time_of_day.h>
-#include <takatori/type/time_point.h>
-#include <takatori/type/decimal.h>
-#include <takatori/type/octet.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/value/character.h>
-#include <takatori/value/date.h>
-#include <takatori/value/time_of_day.h>
-#include <takatori/value/time_point.h>
-#include <takatori/value/decimal.h>
-#include <takatori/value/octet.h>
-#include <takatori/util/string_builder.h>
-#include <yugawara/storage/configurable_provider.h>
-
-#include <jogasaki/utils/storage_metadata_exception.h>
-#include <jogasaki/proto/metadata/storage.pb.h>
-#include <jogasaki/utils/proto_debug_string.h>
-
+#include <memory>
+#include <string>
 #include <gtest/gtest.h>
+
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
+#include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/column_value.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/index_feature.h>
+#include <yugawara/storage/table.h>
+#include <yugawara/util/maybe_shared_lock.h>
+#include <yugawara/variable/nullity.h>
+
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/recovery/storage_options.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::recovery {
 

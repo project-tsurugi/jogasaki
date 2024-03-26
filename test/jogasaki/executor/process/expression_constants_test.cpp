@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 #pragma STDC FENV_ACCESS ON
-#include <jogasaki/executor/process/impl/expression/details/constants.h>
-
 #include <cfenv>
+#include <cmath>
+#include <limits>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
+#include <jogasaki/executor/process/impl/expression/details/constants.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::executor::process::impl::expression {

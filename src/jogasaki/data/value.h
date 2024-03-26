@@ -15,14 +15,19 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
-#include <variant>
 #include <string>
+#include <type_traits>
+#include <utility>
+#include <variant>
 
 #include <takatori/util/fail.h>
 
-#include <jogasaki/utils/variant.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/variant.h>
 
 namespace jogasaki::data {
 

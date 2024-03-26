@@ -13,9 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/io/reader_container.h>
-
+#include <memory>
+#include <string>
+#include <type_traits>
 #include <gtest/gtest.h>
+
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_reader.h>
 
 namespace jogasaki::executor {
 

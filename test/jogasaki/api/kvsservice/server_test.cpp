@@ -14,14 +14,22 @@
  * limitations under the License.
  */
 
+#include <memory>
+#include <string>
 #include <gtest/gtest.h>
 
+#include <tateyama/framework/boot_mode.h>
 #include <tateyama/framework/server.h>
 
-#include <jogasaki/api/service/bridge.h>
-#include <jogasaki/api/resource/bridge.h>
-#include <jogasaki/api/kvsservice/service.h>
 #include <jogasaki/api/kvsservice/resource.h>
+#include <jogasaki/api/kvsservice/service.h>
+#include <jogasaki/api/kvsservice/status.h>
+#include <jogasaki/api/kvsservice/store.h>
+#include <jogasaki/api/kvsservice/transaction.h>
+#include <jogasaki/api/kvsservice/transaction_option.h>
+#include <jogasaki/api/kvsservice/transaction_type.h>
+#include <jogasaki/api/resource/bridge.h>
+#include <jogasaki/api/service/bridge.h>
 
 #include "test_utils.h"
 

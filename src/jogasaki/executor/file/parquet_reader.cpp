@@ -16,18 +16,42 @@
 #include "parquet_reader.h"
 
 #include <algorithm>
-#include <iomanip>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <exception>
+#include <iterator>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
+#include <boost/assert.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <glog/logging.h>
-#include <parquet/api/reader.h>
-#include <parquet/api/writer.h>
+#include <parquet/metadata.h>
+#include <parquet/types.h>
 
+#include <takatori/datetime/time_of_day.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/decimal.h>
 
 namespace jogasaki::executor::file {

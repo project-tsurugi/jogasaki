@@ -15,15 +15,20 @@
  */
 #pragma once
 
+#include <takatori/util/maybe_shared_ptr.h>
 #include <tateyama/task_scheduler/basic_conditional_task.h>
 
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/utils/hex.h>
 #include <jogasaki/common.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/job_context.h>
+#include <jogasaki/utils/hex.h>
+#include <jogasaki/utils/interference_size.h>
+
 #include "thread_params.h"
 
 namespace jogasaki::scheduler {
+
+using takatori::util::maybe_shared_ptr;
 
 /**
  * @brief conditional task object

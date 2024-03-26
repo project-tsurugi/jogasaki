@@ -15,16 +15,26 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <queue>
+#include <vector>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/meta/group_meta.h>
-#include <jogasaki/executor/io/group_reader.h>
-#include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/io/group_reader.h>
+#include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/meta/group_meta.h>
+#include <jogasaki/utils/interference_size.h>
+
 #include "context_base.h"
 
 namespace jogasaki::executor::process::impl::ops {

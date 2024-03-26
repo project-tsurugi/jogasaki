@@ -15,23 +15,31 @@
  */
 #pragma once
 
-#include <tsl/hopscotch_map.h>
+#include <algorithm>
+#include <cstddef>
+#include <memory>
+#include <utility>
+#include <vector>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
+#include <tsl/hopscotch_hash.h>
+#include <tsl/hopscotch_map.h>
 
-#include <jogasaki/utils/round.h>
-#include <jogasaki/request_context.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/record_store.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/global.h>
-#include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
-#include <jogasaki/memory/page_pool.h>
-#include <jogasaki/executor/hash.h>
 #include <jogasaki/executor/comparator.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/shuffle/pointer_table.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/executor/hash.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/memory/monotonic_paged_memory_resource.h>
+#include <jogasaki/memory/page_pool.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/interference_size.h>
+#include <jogasaki/utils/round.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 

@@ -15,12 +15,23 @@
  */
 #include "processor.h"
 
+#include <utility>
+#include <vector>
+
 #include <takatori/util/downcast.h>
 
+#include <jogasaki/executor/process/abstract/processor.h>
+#include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
-#include <jogasaki/executor/process/impl/ops/io_info.h>
+#include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/work_context.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/process/relation_io_map.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/request_statistics.h>
+
 #include "variable_table_info.h"
 
 namespace jogasaki::executor::process::impl {

@@ -13,15 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/common/step.h>
-
+#include <set>
+#include <string>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/executor/exchange/deliver/step.h>
+#include <takatori/util/optional_ptr.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
 
-#include <jogasaki/mock/simple_scan_process.h>
+#include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/port.h>
+#include <jogasaki/executor/common/step.h>
+#include <jogasaki/executor/exchange/deliver/step.h>
+#include <jogasaki/executor/exchange/group/step.h>
+#include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/mock/simple_cogroup_process.h>
+#include <jogasaki/mock/simple_scan_process.h>
+#include <jogasaki/model/step.h>
+#include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/test_process.h>
 #include <jogasaki/test_root.h>
 

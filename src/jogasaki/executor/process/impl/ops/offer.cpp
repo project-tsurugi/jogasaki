@@ -15,16 +15,27 @@
  */
 #include "offer.h"
 
+#include <type_traits>
+#include <utility>
 #include <vector>
+#include <boost/assert.hpp>
 
-#include <jogasaki/executor/process/step.h>
+#include <takatori/relation/details/mapping_element.h>
+#include <takatori/util/reference_extractor.h>
+#include <takatori/util/reference_iterator.h>
+
+#include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
-#include "operator_base.h"
-#include "offer_context.h"
+
 #include "context_helper.h"
+#include "offer_context.h"
+#include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
 

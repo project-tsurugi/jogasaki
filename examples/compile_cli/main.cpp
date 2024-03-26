@@ -13,43 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstdlib>
+#include <exception>
 #include <iostream>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
-
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include <shakujo/parser/Parser.h>
-#include <shakujo/common/core/Type.h>
-
+#include <takatori/document/document_map.h>
+#include <takatori/graph/graph.h>
+#include <takatori/serializer/json_printer.h>
+#include <takatori/serializer/object_scanner.h>
+#include <takatori/type/primitive.h>
+#include <takatori/type/type_kind.h>
+#include <takatori/util/fail.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/value/primitive.h>
+#include <takatori/value/value_kind.h>
 #include <yugawara/aggregate/configurable_provider.h>
-#include <yugawara/storage/configurable_provider.h>
-#include <yugawara/runtime_feature.h>
+#include <yugawara/analyzer/index_estimator.h>
 #include <yugawara/compiler.h>
 #include <yugawara/compiler_options.h>
-
-#include <mizugaki/translator/shakujo_translator.h>
-#include <mizugaki/placeholder_map.h>
+#include <yugawara/compiler_result.h>
+#include <yugawara/diagnostic.h>
+#include <yugawara/runtime_feature.h>
+#include <yugawara/serializer/object_scanner.h>
+#include <yugawara/storage/configurable_provider.h>
 #include <mizugaki/placeholder_entry.h>
+#include <mizugaki/placeholder_map.h>
+#include <mizugaki/translator/shakujo_translator.h>
+#include <mizugaki/translator/shakujo_translator_code.h>
+#include <mizugaki/translator/shakujo_translator_options.h>
+#include <mizugaki/translator/shakujo_translator_result.h>
+#include <shakujo/common/core/DocumentRegion.h>
+#include <shakujo/model/program/Program.h>
+#include <shakujo/parser/Parser.h>
 
-#include <takatori/type/int.h>
-#include <takatori/type/float.h>
-#include <takatori/value/int.h>
-#include <takatori/value/float.h>
-#include <takatori/util/string_builder.h>
-#include <takatori/util/downcast.h>
-#include <takatori/relation/emit.h>
-#include <takatori/relation/scan.h>
-#include <takatori/relation/filter.h>
-#include <takatori/relation/project.h>
-#include <takatori/statement/write.h>
-#include <takatori/statement/execute.h>
-#include <takatori/scalar/immediate.h>
-#include <takatori/plan/process.h>
-#include <takatori/serializer/json_printer.h>
-
-#include <jogasaki/executor/global.h>
-#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/tables.h>
 
 namespace jogasaki::compile_cli {

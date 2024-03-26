@@ -13,11 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/meta/field_type_option.h>
-#include <jogasaki/meta/decimal_field_option.h>
-
+#include <cstddef>
+#include <iostream>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <gtest/gtest.h>
+
+#include <jogasaki/meta/decimal_field_option.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/time_of_day_field_option.h>
+#include <jogasaki/meta/time_point_field_option.h>
 
 namespace jogasaki::testing {
 

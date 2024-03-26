@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 #include "value.h"
+
+#include <takatori/datetime/date.h>
+#include <takatori/datetime/time_of_day.h>
+#include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+
+#include <jogasaki/accessor/text.h>
+
 #include "any.h"
 
 namespace jogasaki::data {

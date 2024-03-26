@@ -15,6 +15,7 @@
  */
 #pragma once
 #include <string>
+#include <string_view>
 #ifdef PERFORMANCE_TOOLS
 #include <performance-tools/perf_counter.h>
 #include <performance-tools/lap_counter.h>

@@ -15,6 +15,12 @@
  */
 #include "prepared_statement.h"
 
+#include <utility>
+
+#include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/plan/prepared_statement.h>
+
 namespace jogasaki::api::impl {
 
 std::shared_ptr<plan::prepared_statement> const& prepared_statement::body() const noexcept {

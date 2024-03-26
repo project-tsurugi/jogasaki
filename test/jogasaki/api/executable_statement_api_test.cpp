@@ -13,19 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/api/executable_statement.h>
-
-#include <thread>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
 #include <gtest/gtest.h>
-#include <glog/logging.h>
 
-#include <jogasaki/api.h>
-#include <jogasaki/test_utils.h>
-#include <jogasaki/accessor/record_printer.h>
-#include <jogasaki/executor/tables.h>
-#include <jogasaki/scheduler/task_scheduler.h>
-#include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/executor/sequence/sequence.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/field_type.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/record_meta.h>
+#include <jogasaki/api/statement_handle.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/status.h>
+
 #include "api_test_base.h"
 
 namespace jogasaki::api {

@@ -16,10 +16,12 @@
 #include "global.h"
 
 #include <memory>
-#include <jogasaki/memory/page_pool.h>
+#include <utility>
+
 #include <jogasaki/configuration.h>
-#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/memory/page_pool.h>
 
 namespace jogasaki::global {
 

@@ -15,6 +15,20 @@
  */
 #include "step.h"
 
+#include <utility>
+
+#include <takatori/util/sequence_view.h>
+
+#include <jogasaki/constants.h>
+#include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
+#include <jogasaki/executor/exchange/aggregate/flow.h>
+#include <jogasaki/executor/exchange/shuffle/step.h>
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/model/flow.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
+
 namespace jogasaki::executor::exchange::aggregate {
 
 step::step() : info_(std::make_shared<aggregate_info>()) {}

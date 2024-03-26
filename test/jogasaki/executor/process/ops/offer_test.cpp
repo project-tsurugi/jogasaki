@@ -13,23 +13,55 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/ops/offer.h>
-
+#include <cstdint>
+#include <memory>
 #include <string>
-
+#include <string_view>
+#include <boost/container/container_fwd.hpp>
+#include <boost/container/vector.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/dynamic_bitset/dynamic_bitset.hpp>
+#include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
+#include <takatori/descriptor/variable.h>
+#include <takatori/graph/graph.h>
+#include <takatori/graph/port.h>
 #include <takatori/plan/forward.h>
+#include <takatori/plan/graph.h>
+#include <takatori/plan/process.h>
+#include <takatori/relation/expression.h>
+#include <takatori/relation/expression_kind.h>
+#include <takatori/relation/scan.h>
+#include <takatori/scalar/expression_kind.h>
+#include <takatori/type/primitive.h>
+#include <takatori/util/exception.h>
+#include <yugawara/analyzer/variable_mapping.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/compiled_info.h>
 #include <yugawara/storage/basic_configurable_provider.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/configurable_provider.h>
+#include <yugawara/storage/index.h>
+#include <yugawara/storage/sequence.h>
+#include <yugawara/storage/table.h>
 
-#include <jogasaki/test_root.h>
-#include <jogasaki/test_utils.h>
+#include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/process/impl/ops/offer.h>
 #include <jogasaki/executor/process/impl/ops/offer_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
-
-#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/process/mock/record_writer.h>
 #include <jogasaki/executor/process/mock/task_context.h>
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_root.h>
+#include <jogasaki/test_utils.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

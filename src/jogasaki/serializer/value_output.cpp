@@ -1,16 +1,24 @@
-#include <jogasaki/serializer/value_output.h>
-
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <tuple>
+#include <boost/assert.hpp>
 
-#include <cstdint>
+#include <takatori/datetime/date_interval.h>
+#include <takatori/datetime/time_interval.h>
+#include <takatori/util/basic_bitset_view.h>
+#include <takatori/util/basic_buffer_view.h>
+#include <takatori/util/details/basic_bit_pointer.h>
+#include <takatori/util/details/basic_bit_reference.h>
+#include <takatori/util/exception.h>
+
+#include <jogasaki/serializer/value_output.h>
 
 #include "base128v.h"
 #include "details/value_io_constants.h"
-
-#include <takatori/util/assertion.h>
-#include <takatori/util/exception.h>
 
 namespace jogasaki::serializer {
 

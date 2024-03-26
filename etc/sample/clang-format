@@ -1,0 +1,120 @@
+# format rules to align with existing code
+BasedOnStyle: LLVM
+AccessModifierOffset: -4
+AlignAfterOpenBracket: BlockIndent
+AlignConsecutiveAssignments: None
+AlignOperands: DontAlign
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Always
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
+AlignTrailingComments:
+  Kind: Never
+AlwaysBreakAfterReturnType: None
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: false
+  AfterControlStatement: Never
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: true
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: BeforeColon
+ColumnLimit: 120
+CompactNamespaces: false
+ContinuationIndentWidth: 4
+EmptyLineAfterAccessModifier: Always
+EmptyLineBeforeAccessModifier: Always
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:           '^<takatori/'
+    Priority:        20
+    SortPriority:    20
+    CaseSensitive:   true
+  - Regex:           '^<yugawara/'
+    Priority:        20
+    SortPriority:    22
+    CaseSensitive:   true
+  - Regex:           '^<mizugaki/'
+    Priority:        20
+    SortPriority:    23
+    CaseSensitive:   true
+  - Regex:           '^<shakujo/'
+    Priority:        20
+    SortPriority:    24
+    CaseSensitive:   true
+  - Regex:           '^<tateyama/'
+    Priority:        20
+    SortPriority:    25
+    CaseSensitive:   true
+  - Regex:           '^<sharksfin/'
+    Priority:        20
+    SortPriority:    26
+    CaseSensitive:   true
+  - Regex:           '^<jogasaki/'
+    Priority:        30
+    SortPriority:    30
+    CaseSensitive:   true
+  - Regex:           '^"jogasaki/'
+    Priority:        30
+    SortPriority:    40
+    CaseSensitive:   true
+  - Regex:           '^((<|")(gflags|gtest|glog|google|tbb|tsl|sys|boost|arrow|parquet)/)'
+    Priority:        10
+    SortPriority:    15
+  - Regex:           '<[[:alnum:]._]+>'
+    Priority:        10
+    SortPriority:    13
+  - Regex:           '".*"'
+    Priority:        50
+  - Regex:           '.*'
+    Priority:        60
+    SortPriority:    60
+IndentCaseLabels: true
+IndentPPDirectives: None
+IndentWidth: 4
+KeepEmptyLinesAtTheStartOfBlocks: true
+MaxEmptyLinesToKeep: 2
+NamespaceIndentation: None
+ObjCSpaceAfterProperty: false
+ObjCSpaceBeforeProtocolList: true
+PackConstructorInitializers: CurrentLine
+PointerAlignment: Left
+ReflowComments: false
+SortUsingDeclarations: LexicographicNumeric
+SpaceAfterCStyleCast: true
+SpaceAfterLogicalNot: true
+SpaceAfterTemplateKeyword: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: Never
+SpaceBeforeRangeBasedForLoopColon: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+TabWidth: 4
+UseTab: Never

@@ -20,7 +20,6 @@
 #include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
-#include <takatori/relation/details/aggregate_element.h>
 #include <takatori/util/infect_qualifier.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>

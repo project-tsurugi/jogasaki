@@ -23,7 +23,6 @@
 #include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
-#include <takatori/relation/details/cogroup_element.h>
 #include <takatori/relation/graph.h>
 #include <takatori/relation/step/dispatch.h>
 #include <takatori/relation/write_kind.h>

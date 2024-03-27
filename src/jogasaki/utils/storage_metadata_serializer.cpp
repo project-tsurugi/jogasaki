@@ -45,7 +45,6 @@
 #include <takatori/type/type_kind.h>
 #include <takatori/type/varying.h>
 #include <takatori/type/with_time_zone.h>
-#include <takatori/util/details/enum_set_enumerator.h>
 #include <takatori/util/enum_set.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/reference_extractor.h>
@@ -66,7 +65,6 @@
 #include <yugawara/storage/column_feature.h>
 #include <yugawara/storage/column_value.h>
 #include <yugawara/storage/column_value_kind.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/index_feature.h>
 #include <yugawara/storage/sequence.h>
 #include <yugawara/storage/table.h>

@@ -30,7 +30,6 @@
 #include <takatori/scalar/expression.h>
 #include <takatori/scalar/expression_kind.h>
 #include <takatori/scalar/immediate.h>
-#include <takatori/statement/details/write_tuple.h>
 #include <takatori/tree/tree_element_vector.h>
 #include <takatori/tree/tree_fragment_vector.h>
 #include <takatori/type/character.h>

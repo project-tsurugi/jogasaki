@@ -22,7 +22,6 @@
 #include <takatori/plan/exchange.h>
 #include <takatori/plan/graph.h>
 #include <takatori/plan/process.h>
-#include <takatori/relation/details/cogroup_element.h>
 #include <takatori/relation/emit.h>
 #include <takatori/relation/expression_kind.h>
 #include <takatori/relation/filter.h>
@@ -38,7 +37,6 @@
 #include <takatori/relation/write_kind.h>
 #include <takatori/scalar/expression_kind.h>
 #include <takatori/scalar/immediate.h>
-#include <takatori/statement/details/write_tuple.h>
 #include <takatori/statement/execute.h>
 #include <takatori/statement/statement_kind.h>
 #include <takatori/statement/write.h>

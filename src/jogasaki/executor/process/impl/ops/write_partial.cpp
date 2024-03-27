@@ -27,7 +27,6 @@
 
 #include <takatori/descriptor/element.h>
 #include <takatori/descriptor/variable.h>
-#include <takatori/relation/details/mapping_element.h>
 #include <takatori/relation/write.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
@@ -36,7 +35,6 @@
 #include <takatori/util/reference_iterator.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/column.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/table.h>
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>

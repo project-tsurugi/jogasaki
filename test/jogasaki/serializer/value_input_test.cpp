@@ -10,7 +10,6 @@
 #include <takatori/datetime/time_interval.h>
 #include <takatori/util/basic_bitset_view.h>
 #include <takatori/util/basic_buffer_view.h>
-#include <takatori/util/details/basic_bit_reference.h>
 
 #include <jogasaki/serializer/value_input.h>
 #include <jogasaki/serializer/value_output.h>

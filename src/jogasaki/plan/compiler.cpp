@@ -46,8 +46,6 @@
 #include <takatori/plan/process.h>
 #include <takatori/plan/step.h>
 #include <takatori/plan/step_kind.h>
-#include <takatori/relation/details/aggregate_element.h>
-#include <takatori/relation/details/sort_key_element.h>
 #include <takatori/relation/emit.h>
 #include <takatori/relation/expression.h>
 #include <takatori/relation/expression_kind.h>

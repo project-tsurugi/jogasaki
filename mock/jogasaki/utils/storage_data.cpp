@@ -41,7 +41,6 @@
 #include <yugawara/storage/basic_configurable_provider.h>
 #include <yugawara/storage/column.h>
 #include <yugawara/storage/configurable_provider.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/index.h>
 #include <yugawara/storage/table.h>
 #include <yugawara/variable/criteria.h>

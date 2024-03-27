@@ -29,7 +29,6 @@
 #include <takatori/graph/port.h>
 #include <takatori/plan/process.h>
 #include <takatori/relation/buffer.h>
-#include <takatori/relation/details/search_key_element.h>
 #include <takatori/relation/expression.h>
 #include <takatori/relation/expression_kind.h>
 #include <takatori/relation/step/offer.h>

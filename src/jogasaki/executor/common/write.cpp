@@ -40,7 +40,6 @@
 #include <yugawara/storage/column.h>
 #include <yugawara/storage/column_value.h>
 #include <yugawara/storage/column_value_kind.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/sequence.h>
 #include <yugawara/storage/table.h>
 #include <yugawara/variable/criteria.h>

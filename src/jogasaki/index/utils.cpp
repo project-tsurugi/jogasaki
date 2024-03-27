@@ -29,7 +29,6 @@
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <yugawara/storage/column.h>
-#include <yugawara/storage/details/index_key_element.h>
 
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/meta/field_type.h>

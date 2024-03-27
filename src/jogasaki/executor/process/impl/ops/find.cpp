@@ -27,7 +27,6 @@
 #include <takatori/util/reference_iterator.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/column.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>
 

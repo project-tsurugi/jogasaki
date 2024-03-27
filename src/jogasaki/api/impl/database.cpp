@@ -51,7 +51,6 @@
 #include <yugawara/serializer/object_scanner.h>
 #include <yugawara/storage/basic_configurable_provider.h>
 #include <yugawara/storage/column.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/relation.h>
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>

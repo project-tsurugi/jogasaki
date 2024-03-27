@@ -21,7 +21,6 @@
 #include <glog/logging.h>
 
 #include <takatori/relation/project.h>
-#include <takatori/scalar/details/variable_declarator.h>
 #include <takatori/type/data.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>

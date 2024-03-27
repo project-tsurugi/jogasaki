@@ -25,7 +25,6 @@
 #include <takatori/util/sequence_view.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/column.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/index.h>
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>

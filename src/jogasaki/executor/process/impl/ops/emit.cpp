@@ -26,7 +26,6 @@
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 
-#include <takatori/relation/details/emit_element.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 

@@ -27,7 +27,6 @@
 #include <yugawara/analyzer/block.h>
 #include <yugawara/analyzer/block_algorithm.h>
 #include <yugawara/analyzer/block_builder.h>
-#include <yugawara/analyzer/details/block_expression_iterator.h>
 #include <yugawara/analyzer/variable_liveness_analyzer.h>
 #include <yugawara/analyzer/variable_liveness_info.h>
 #include <yugawara/compiled_info.h>

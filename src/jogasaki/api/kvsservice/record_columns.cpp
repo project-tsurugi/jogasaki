@@ -26,7 +26,6 @@
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/reference_list_view.h>
 #include <yugawara/storage/column.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/index.h>
 #include <yugawara/storage/table.h>
 #include <tateyama/proto/kvs/data.pb.h>

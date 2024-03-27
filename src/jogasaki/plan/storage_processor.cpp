@@ -32,7 +32,6 @@
 #include <yugawara/schema/declaration.h>
 #include <yugawara/storage/column.h>
 #include <yugawara/storage/column_feature.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/index.h>
 #include <yugawara/storage/index_feature.h>
 #include <yugawara/storage/sequence.h>

@@ -20,7 +20,6 @@
 #include <vector>
 #include <boost/assert.hpp>
 
-#include <takatori/relation/details/mapping_element.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 

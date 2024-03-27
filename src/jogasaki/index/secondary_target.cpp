@@ -24,7 +24,6 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/optional_ptr.h>
 #include <yugawara/storage/column.h>
-#include <yugawara/storage/details/index_key_element.h>
 #include <yugawara/storage/table.h>
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>

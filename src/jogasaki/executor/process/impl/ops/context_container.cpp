@@ -17,13 +17,10 @@
 
 #include <utility>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/executor/process/impl/ops/context_base.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::process::impl::ops {
-
-using takatori::util::fail;
 
 context_container::context_container(std::size_t size) :
     contexts_(size)
@@ -32,9 +29,10 @@ context_container::context_container(std::size_t size) :
 std::unique_ptr<context_base>& context_container::set(
     std::size_t idx,
     std::unique_ptr<context_base> ctx
-) noexcept
-{
-    if (idx >= contexts_.size()) fail();
+) {
+    if (idx >= contexts_.size()) {
+        fail_with_exception();
+    }
     contexts_[idx] = std::move(ctx);
     return contexts_[idx];
 }

@@ -21,7 +21,6 @@
 #include <string_view>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <sharksfin/CallResult.h>
 #include <sharksfin/TransactionInfo.h>
 #include <sharksfin/TransactionState.h>
@@ -29,10 +28,9 @@
 
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::kvs {
-
-using ::takatori::util::fail;
 
 class database;
 
@@ -103,7 +101,7 @@ public:
      * @note this is expected to be package private (i.e. callable from code in kvs namespace)
      * @return the handle held by this object
      */
-    [[nodiscard]] sharksfin::TransactionHandle handle() noexcept;
+    [[nodiscard]] sharksfin::TransactionHandle handle();
 
     /**
      * @brief return the parent database object
@@ -115,7 +113,7 @@ public:
      * @brief return the tx state
      * @return the tx state of this object
      */
-    [[nodiscard]] sharksfin::TransactionState check_state() noexcept;
+    [[nodiscard]] sharksfin::TransactionState check_state();
 
     /**
      * @brief return the detailed info for the recent kvs api call

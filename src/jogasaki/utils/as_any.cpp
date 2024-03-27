@@ -18,7 +18,6 @@
 #include <utility>
 
 #include <takatori/type/type_kind.h>
-#include <takatori/util/fail.h>
 #include <takatori/value/character.h>
 #include <takatori/value/data.h>
 #include <takatori/value/decimal.h>
@@ -29,10 +28,9 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::fail;
 
 data::any as_any(
     takatori::value::data const& arg,
@@ -59,9 +57,9 @@ data::any as_any(
         case t::time_of_day: return {std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, value_of<takatori::value::time_of_day>(arg)};
         case t::time_point: return {std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, value_of<takatori::value::time_point>(arg)};
         case t::unknown: return {};
-        default: fail();
+        default: fail_with_exception();
     }
-    fail();
+    std::abort();
 }
 
 }

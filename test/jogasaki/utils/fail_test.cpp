@@ -13,41 +13,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "flow_repository.h"
+#include <iostream>
+#include <string>
+#include <gtest/gtest.h>
 
-#include <utility>
-
-#include <jogasaki/model/flow.h>
 #include <jogasaki/utils/fail.h>
 
-namespace jogasaki::model {
+namespace jogasaki::utils {
 
-flow_repository::flow_repository(std::size_t size) :
-    flows_(size)
-{}
+class fail_test : public ::testing::Test {};
 
-void flow_repository::set(
-    std::size_t idx,
-    std::unique_ptr<flow> arg
-) {
-    if (idx >= flows_.size()) {
+TEST_F(fail_test, basic) {
+    bool caught = false;
+    try {
         fail_with_exception();
+    } catch(std::logic_error const& e) {
+        caught = true;
+        std::cerr << e.what() << std::endl;
     }
-    flows_[idx] = std::move(arg);
+    ASSERT_TRUE(caught);
 }
 
-bool flow_repository::exists(std::size_t idx) const noexcept {
-    return flows_[idx] != nullptr;
+TEST_F(fail_test, no_throw) {
+    ASSERT_NO_THROW({
+        fail_no_exception();
+    });
 }
 
-std::size_t flow_repository::size() const noexcept {
-    return flows_.size();
+TEST_F(fail_test, throw_with_msg) {
+    ASSERT_THROW({
+        fail_with_exception_msg("test");
+    }, std::logic_error);
 }
 
-flow* flow_repository::at(std::size_t idx) const noexcept {
-    if (idx >= flows_.size()) return nullptr;
-    return flows_.at(idx).get();
+TEST_F(fail_test, no_throw_with_msg) {
+    ASSERT_NO_THROW({
+        fail_no_exception_msg("test");
+    });
 }
 
-}
-
+}  // namespace jogasaki::utils

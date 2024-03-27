@@ -24,7 +24,6 @@
 #include <vector>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <sharksfin/StorageOptions.h>
 #include <sharksfin/api.h>
 
@@ -32,12 +31,11 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 
 #include "storage.h"
 
 namespace jogasaki::kvs {
-
-using takatori::util::fail;
 
 using sharksfin::DatabaseHandle;
 class transaction;

@@ -30,7 +30,6 @@
 #include <takatori/relation/details/mapping_element.h>
 #include <takatori/relation/write.h>
 #include <takatori/util/exception.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/optional_ptr.h>
 #include <takatori/util/reference_extractor.h>
@@ -60,6 +59,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 
 #include "context_helper.h"
@@ -70,7 +70,6 @@ namespace jogasaki::executor::process::impl::ops {
 
 using variable = takatori::descriptor::variable;
 using takatori::util::throw_exception;
-using takatori::util::fail;
 
 void write_partial::finish(abstract::task_context* context) {
     if (! context) return;
@@ -98,7 +97,7 @@ operation_status write_partial::operator()(write_partial_context& ctx) {
         case write_kind::delete_:
             return do_delete(ctx);
         default:
-            fail();
+            fail_with_exception();
     }
 }
 

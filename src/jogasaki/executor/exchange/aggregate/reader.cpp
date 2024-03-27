@@ -21,7 +21,6 @@
 #include <utility>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/sequence_view.h>
 
 #include <jogasaki/data/small_record_store.h>
@@ -31,6 +30,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::exchange::aggregate {
 
@@ -146,7 +146,7 @@ accessor::record_ref reader::get_member() const {
         }
         return target;
     }
-    fail();
+    fail_with_exception();
 }
 
 bool reader::next_member() {
@@ -163,7 +163,7 @@ bool reader::next_member() {
 
 accessor::record_ref reader::internal_get_member() const {
     auto p = value_pointer(key_buf_.ref());
-    if(! p) fail();
+    if(! p) fail_with_exception();
     return accessor::record_ref{p, mid_value_size_};
 }
 

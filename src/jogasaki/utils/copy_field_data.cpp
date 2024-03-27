@@ -17,8 +17,6 @@
 
 #include <cstddef>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
@@ -27,10 +25,9 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::fail;
 
 void copy_field(
     const meta::field_type &type,
@@ -93,7 +90,7 @@ void copy_field(
         case k::reference_column_name:
             break;
     }
-    fail();
+    fail_with_exception();
 }
 
 void copy_nullable_field(
@@ -167,13 +164,13 @@ void copy_field(
         case k::extension:
             break;
         case k::pointer:
-            fail();
+            fail_with_exception();
         case k::reference_column_position:
-            fail();
+            fail_with_exception();
         case k::reference_column_name:
-            fail();
+            fail_with_exception();
     }
-    fail();
+    fail_with_exception();
 }
 
 void copy_nullable_field(

@@ -21,15 +21,12 @@
 #include <string_view>
 #include <variant>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/record_reader.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/variant.h>
 
 namespace jogasaki::executor::io {
-
-using takatori::util::fail;
 
 /**
  * @brief reader kind

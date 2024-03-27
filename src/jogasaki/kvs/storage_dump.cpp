@@ -81,14 +81,14 @@ public:
                 if (r == status::not_found) {
                     continue;
                 }
-                fail();
+                fail_with_exception();
             }
             if (auto r = it->read_value(value); r != status::ok) {
                 utils::modify_concurrent_operation_status(tx, r, true);
                 if (r == status::not_found) {
                     continue;
                 }
-                fail();
+                fail_with_exception();
             }
             storage_dump::append(stream_, key, value);
             if (batch_size_ > 0 && i >= batch_size_) {

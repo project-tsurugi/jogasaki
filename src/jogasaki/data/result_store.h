@@ -221,7 +221,7 @@ public:
      * @details the iterator is intended for read-access of the result stores.
      * Iterator becomes invalid if the store is modified (e.g. by store(idx).append()).
      */
-    [[nodiscard]] iterator begin() const noexcept;
+    [[nodiscard]] iterator begin() const;
 
     /**
      * @brief accessor to end iterator

@@ -53,9 +53,9 @@ any value::view() const {
         case index<runtime_t<meta::field_type_kind::time_of_day>>: return any{std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, ref<runtime_t<meta::field_type_kind::time_of_day>>()};
         case index<runtime_t<meta::field_type_kind::time_point>>: return any{std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, ref<runtime_t<meta::field_type_kind::time_point>>()};
         case index<std::size_t>: return any{std::in_place_type<std::size_t>, ref<std::size_t>()};
-        default: fail();
+        default: fail_with_exception();
     }
-    fail();
+    std::abort();
 }
 
 

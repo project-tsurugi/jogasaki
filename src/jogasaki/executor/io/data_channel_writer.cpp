@@ -23,7 +23,6 @@
 #include <variant>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <tateyama/common.h>
 
 #include <jogasaki/accessor/binary.h>
@@ -39,11 +38,10 @@
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/serializer/value_writer.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::executor::io {
-
-using takatori::util::fail;
 
 bool data_channel_writer::write(accessor::record_ref rec) {
     log_entry << "record_size:" << rec.size();
@@ -93,7 +91,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                     break;
                 }
                 default:
-                    fail();
+                    fail_with_exception();
             }
         }
     }

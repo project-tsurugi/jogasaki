@@ -18,14 +18,11 @@
 #include <utility>
 #include <variant>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/record_reader.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::io {
-
-using takatori::util::fail;
 
 reader_container::reader_container(record_reader* reader) noexcept :
     reader_(std::in_place_type<record_reader*>, reader)
@@ -44,7 +41,7 @@ reader_kind reader_container::kind() const noexcept {
         case index_of<group_reader*>:
             return details::to_kind<group_reader>;
     }
-    fail();
+    std::abort();
 }
 
 reader_container::operator bool() const noexcept {
@@ -56,7 +53,7 @@ reader_container::operator bool() const noexcept {
         case index_of<group_reader*>:
             return *std::get_if<group_reader*>(&reader_) != nullptr;
     }
-    fail();
+    std::abort();
 }
 
 void reader_container::release() {
@@ -71,7 +68,7 @@ void reader_container::release() {
             std::get<group_reader*>(reader_)->release();
             return;
     }
-    fail();
+    std::abort();
 }
 
 }  // namespace jogasaki::executor::io

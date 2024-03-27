@@ -23,7 +23,6 @@
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <boost/move/utility_core.hpp>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/optional_ptr.h>
 #include <yugawara/analyzer/block.h>
 #include <yugawara/analyzer/block_algorithm.h>
@@ -35,12 +34,11 @@
 
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/validation.h>
 
 namespace jogasaki::executor::process::impl {
-
-using takatori::util::fail;
 
 std::size_t value_info::value_offset() const noexcept {
     return value_offset_;
@@ -137,7 +135,7 @@ std::pair<std::shared_ptr<variables_info_list>, std::shared_ptr<block_indices>> 
     // FIXME support multiple blocks
     auto b0 = yugawara::analyzer::find_unique_head(bg);
     if (!b0) {
-        fail();
+        fail_with_exception();
     }
     auto&& n0 = analyzer.inspect(*b0);
     auto& killed = n0.kill();

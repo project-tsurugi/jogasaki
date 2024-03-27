@@ -21,7 +21,6 @@
 
 #include <takatori/descriptor/element.h>
 #include <takatori/relation/details/aggregate_element.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/infect_qualifier.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
@@ -43,6 +42,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 
 #include "aggregate_group_context.h"
@@ -51,7 +51,6 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 aggregate_group::aggregate_group(
     operator_base::operator_index_type index,
@@ -143,7 +142,7 @@ void copy_value(
         case kind::date: dest.append(src.get_value<runtime_t<kind::date>>(offset)); break;
         case kind::time_of_day: dest.append(src.get_value<runtime_t<kind::time_of_day>>(offset)); break;
         case kind::time_point: dest.append(src.get_value<runtime_t<kind::time_point>>(offset)); break;
-        default: fail();
+        default: fail_with_exception();
     }
 }
 

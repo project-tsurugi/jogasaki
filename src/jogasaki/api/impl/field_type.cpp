@@ -17,18 +17,15 @@
 
 #include <utility>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::api::impl {
-
-using takatori::util::fail;
 
 api::field_type_kind from(meta::field_type_kind k) noexcept {
     using kind = api::field_type_kind;
@@ -60,7 +57,7 @@ api::field_type_kind from(meta::field_type_kind k) noexcept {
         case meta::field_type_kind::reference_column_name: return kind::reference_column_name;
         case meta::field_type_kind::pointer: return kind::pointer;
     }
-    fail();
+    std::abort();
 }
 
 field_type::option_type create_option(meta::field_type const& type) noexcept {
@@ -85,7 +82,7 @@ field_type::option_type create_option(meta::field_type const& type) noexcept {
         default:
             return std::monostate{};
     }
-    fail();
+    std::abort();
 }
 
 field_type::field_type(meta::field_type type) noexcept:

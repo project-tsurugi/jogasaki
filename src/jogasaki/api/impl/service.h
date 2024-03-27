@@ -28,7 +28,6 @@
 #include <takatori/type/data.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/reference_list_view.h>
@@ -64,6 +63,7 @@
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
 #include <jogasaki/utils/string_manipulation.h>
@@ -73,7 +73,6 @@
 namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 namespace sql = jogasaki::proto::sql;
 

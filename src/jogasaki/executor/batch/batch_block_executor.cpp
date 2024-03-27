@@ -22,7 +22,6 @@
 #include <vector>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/accessor/record_ref.h>
@@ -52,13 +51,12 @@
 #include <jogasaki/plan/prepared_statement.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 
 #include "batch_executor.h"
 #include "batch_file_executor.h"
 
 namespace jogasaki::executor::batch {
-
-using takatori::util::fail;
 
 meta::field_type_kind host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
     auto idx = vinfo.at(name).index();
@@ -84,7 +82,7 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
             case meta::field_type_kind::date: pset->set_date(name, ref.get_value<runtime_t<kind::date>>(param.value_offset_)); break;
             case meta::field_type_kind::time_of_day: pset->set_time_of_day(name, ref.get_value<runtime_t<kind::time_of_day>>(param.value_offset_)); break;
             case meta::field_type_kind::time_point: pset->set_time_point(name, ref.get_value<runtime_t<kind::time_point>>(param.value_offset_)); break;
-            default: fail();
+            default: fail_with_exception();
         }
     }
 }

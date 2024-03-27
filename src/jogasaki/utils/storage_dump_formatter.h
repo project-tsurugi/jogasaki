@@ -20,14 +20,11 @@
 #include <string>
 #include <utility>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/kvs/storage_dump.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::fail;
 
 namespace details {
 
@@ -53,23 +50,23 @@ protected:
                         out_->write(str.data(), str.size());
                     }
                 }
-                if (count != sizeof(size_type)) fail();
+                if (count != sizeof(size_type)) fail_with_exception();
                 buf_.clear();
                 key_len_ = *reinterpret_cast<size_type const*>(s); //NOLINT
                 break;
             case 1:
-                if (count != sizeof(size_type)) fail();
+                if (count != sizeof(size_type)) fail_with_exception();
                 value_len_ = *reinterpret_cast<size_type const*>(s); //NOLINT
                 break;
             case 2: {
-                if (count != key_len_) fail();
+                if (count != key_len_) fail_with_exception();
                 utils::binary_printer p{s, static_cast<std::size_t>(count)};
                 buf_ << "key:";
                 buf_ << p;
                 break;
             }
             case 3: {
-                if (count != value_len_) fail();
+                if (count != value_len_) fail_with_exception();
                 utils::binary_printer p{s, static_cast<std::size_t>(count)};
                 buf_ << " value:";
                 buf_ << p;

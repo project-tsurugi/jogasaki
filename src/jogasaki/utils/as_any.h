@@ -26,7 +26,6 @@
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <takatori/value/character.h>
 #include <takatori/value/data.h>
 #include <takatori/value/date.h>
@@ -41,11 +40,11 @@
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 template<class T>
 inline static typename T::view_type value_of(
@@ -60,7 +59,7 @@ inline static typename T::view_type value_of(
         if (arg.kind() == takatori::value::value_kind::int8) {
             return unsafe_downcast<takatori::value::int8>(arg).get();
         }
-        fail();
+        fail_with_exception();
     } else if constexpr (std::is_same_v<T, takatori::value::float4> || std::is_same_v<T, takatori::value::float8>) { //NOLINT
         if (arg.kind() == takatori::value::value_kind::float4) {
             return unsafe_downcast<takatori::value::float4>(arg).get();
@@ -68,7 +67,7 @@ inline static typename T::view_type value_of(
         if (arg.kind() == takatori::value::value_kind::float8) {
             return unsafe_downcast<takatori::value::float8>(arg).get();
         }
-        fail();
+        fail_with_exception();
     } else if constexpr (std::is_same_v<T, takatori::value::character>) { //NOLINT
         return unsafe_downcast<takatori::value::character>(arg).get();
     } else if constexpr (std::is_same_v<T, takatori::value::decimal>) { //NOLINT

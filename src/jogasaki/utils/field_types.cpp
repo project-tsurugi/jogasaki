@@ -23,7 +23,6 @@
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
-#include <takatori/util/fail.h>
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/meta/character_field_option.h>
@@ -32,10 +31,9 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
-
-using ::takatori::util::fail;
 
 meta::field_type type_for(takatori::type::data const& type) {
     using t = takatori::type::type_kind;
@@ -78,9 +76,9 @@ meta::field_type type_for(takatori::type::data const& type) {
         case t::row_id:
         case t::declared:
         case t::extension:
-            fail();
+            fail_with_exception();
     }
-    fail();
+    std::abort();
 }
 
 meta::field_type type_for(yugawara::compiled_info const& info, takatori::descriptor::variable const& var) {

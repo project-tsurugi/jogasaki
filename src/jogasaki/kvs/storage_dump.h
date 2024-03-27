@@ -23,15 +23,12 @@
 #include <string_view>
 #include <utility>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::kvs {
-
-using takatori::util::fail;
 
 /**
  * @brief utilities of save/load contents of storages.
@@ -104,7 +101,7 @@ private:
  */
 inline void check(status st) {
     if (st != status::ok) {
-        fail();
+        fail_with_exception();
     }
 }
 
@@ -114,7 +111,7 @@ inline void check(status st) {
  */
 inline void check(bool result) {
     if (! result) {
-        fail();
+        fail_with_exception();
     }
 }
 

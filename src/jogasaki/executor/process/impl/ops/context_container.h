@@ -58,7 +58,7 @@ public:
      * @param ctx the context to be stored
      * @return reference to the stored context
      */
-    std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx) noexcept;
+    std::unique_ptr<context_base>& set(std::size_t idx, std::unique_ptr<context_base> ctx);
 
     /**
      * @brief returns whether the context is stored at the given index

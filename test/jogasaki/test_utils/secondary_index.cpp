@@ -22,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include <takatori/util/exception.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/reference_list_view.h>
 #include <takatori/util/string_builder.h>
@@ -52,6 +51,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
 
@@ -182,7 +182,7 @@ std::vector<std::pair<mock::basic_record, mock::basic_record>> get_secondary_ent
             std::unique_ptr<kvs::iterator> it{};
             auto stg = db.get_storage(secondary.simple_name());
             if(status::ok != stg->content_scan(*tx, buf, kvs::end_point_kind::unbound, buf, kvs::end_point_kind::unbound, it)) {
-                fail();
+                fail_with_exception();
             };
 
             auto secondary_key_meta = jogasaki::index::create_meta(secondary, true);
@@ -200,7 +200,7 @@ std::vector<std::pair<mock::basic_record, mock::basic_record>> get_secondary_ent
             while (status::ok == it->next()) {
                 std::string_view key{};
                 if(status::ok != it->read_key(key)) {
-                    fail();
+                    fail_with_exception();
                 };
                 DVLOG(log_trace) << "key: " << binary_printer{key};
                 kvs::readable_stream in{key.data(), key.size()};
@@ -212,7 +212,7 @@ std::vector<std::pair<mock::basic_record, mock::basic_record>> get_secondary_ent
             }
             it.reset();
             if(status::ok != tx->commit()) {
-                fail();
+                fail_with_exception();
             }
         }
         return ret;

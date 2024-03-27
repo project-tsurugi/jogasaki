@@ -21,11 +21,9 @@
 #include <ostream>
 #include <string_view>
 
-#include <takatori/util/fail.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::fail;
 
 /**
  * @brief debug support to print binary value array

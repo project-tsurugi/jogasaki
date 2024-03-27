@@ -19,7 +19,6 @@
 #include <set>
 #include <vector>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 
@@ -27,11 +26,11 @@
 #include <jogasaki/executor/function/incremental/aggregator_info.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::function::incremental {
 
 using takatori::util::sequence_view;
-using takatori::util::fail;
 
 /**
  * @brief aggregate function information interface

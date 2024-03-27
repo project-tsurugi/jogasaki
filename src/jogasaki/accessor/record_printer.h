@@ -24,7 +24,6 @@
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -34,10 +33,9 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::accessor {
-
-using takatori::util::fail;
 
 /**
  * @brief print field value to output stream
@@ -97,7 +95,7 @@ inline void print_field(
 //        case kind::declared: os << record.get_value<runtime_t<kind::declared>>(offset); break;
 //        case kind::extension: os << record.get_value<runtime_t<kind::extension>>(offset); break;
         default:
-            fail();
+            fail_with_exception();
     }
 }
 

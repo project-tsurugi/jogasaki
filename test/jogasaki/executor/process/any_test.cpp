@@ -103,10 +103,10 @@ TEST_F(any_test, simple) {
 
 TEST_F(any_test, fail_on_type_mismatch) {
     any a{};
-    ASSERT_DEATH({ (void)a.to<std::int32_t>(); }, "fail");
+    ASSERT_THROW({ (void)a.to<std::int32_t>(); }, std::logic_error);
 
     a = any{std::in_place_type<std::int64_t>, 1};
-    ASSERT_DEATH({ (void)a.to<std::int32_t>(); }, "fail");
+    ASSERT_THROW({ (void)a.to<std::int32_t>(); }, std::logic_error);
 }
 
 TEST_F(any_test, bool) {

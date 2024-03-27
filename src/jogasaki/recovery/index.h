@@ -17,7 +17,6 @@
 
 #include <memory>
 
-#include <takatori/util/fail.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index.h>
 
@@ -27,6 +26,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 
 namespace jogasaki::recovery {

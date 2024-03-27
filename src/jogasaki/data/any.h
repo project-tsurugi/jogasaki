@@ -78,13 +78,12 @@ public:
      * @brief accessor of the content value in given type
      */
     template<typename T>
-    [[nodiscard]] T to() const noexcept {
+    [[nodiscard]] T to() const {
         using A = std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>;
         if(auto* p = std::get_if<A>(&body_); p != nullptr) {
             return *p;
         }
-        fail_no_exception();
-        return {};
+        fail_with_exception();
     }
 
     /**

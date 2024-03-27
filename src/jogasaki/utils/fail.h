@@ -20,9 +20,9 @@
 #include <jogasaki/utils/line_number_string.h>
 
 #define fail_with_exception() jogasaki::utils::fail_with_exception_impl({}, __FILE__, line_number_string)  //NOLINT
-#define fail_no_exception() jogasaki::utils::fail_no_exception_impl({}, __FILE__, line_number_string)  //NOLINT
-
 #define fail_with_exception_msg(msg) jogasaki::utils::fail_with_exception_impl(msg, __FILE__, line_number_string)  //NOLINT
+
+#define fail_no_exception() jogasaki::utils::fail_no_exception_impl({}, __FILE__, line_number_string)  //NOLINT
 #define fail_no_exception_msg(msg) jogasaki::utils::fail_no_exception_impl(msg, __FILE__, line_number_string)  //NOLINT
 
 namespace jogasaki::utils {

@@ -99,10 +99,10 @@ TEST_F(value_test, simple) {
 
 TEST_F(value_test, fail_on_type_mismatch) {
     data::value v{};
-    ASSERT_DEATH({ (void)v.ref<std::int32_t>(); }, "fail");
+    ASSERT_THROW({ (void)v.ref<std::int32_t>(); }, std::logic_error);
 
     v = data::value{std::in_place_type<std::int64_t>, 1};
-    ASSERT_DEATH({ (void)v.ref<std::int32_t>(); }, "fail");
+    ASSERT_THROW({ (void)v.ref<std::int32_t>(); }, std::logic_error);
 }
 
 TEST_F(value_test, bool) {

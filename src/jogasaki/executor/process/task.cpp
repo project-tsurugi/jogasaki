@@ -21,7 +21,6 @@
 #include <utility>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/callback.h>
@@ -33,6 +32,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/flat_task.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::process {
 
@@ -67,7 +67,9 @@ model::task_result task::operator()() {
         case abstract::status::to_sleep:
         case abstract::status::to_yield:
             // TODO support sleep/yield
-            takatori::util::fail();
+
+            fail_with_exception();
+
     }
     // raise appropriate event if needed
     common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());

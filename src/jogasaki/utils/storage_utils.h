@@ -17,14 +17,9 @@
 
 #include <cstddef>
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <yugawara/storage/table.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 /**
  * @brief count the number of indices defined for the table

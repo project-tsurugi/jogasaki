@@ -22,16 +22,14 @@
 #include <utility>
 #include <variant>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/data/any.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/variant.h>
 
 namespace jogasaki::data {
 
-using takatori::util::fail;
 using jogasaki::data::any;
 
 /**
@@ -80,7 +78,8 @@ public:
         if(auto* p = std::get_if<A>(&body_); p != nullptr) {
             return *p;
         }
-        fail();
+        fail_no_exception();
+        std::abort(); //FIXME
     }
 
     /**

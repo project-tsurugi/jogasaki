@@ -33,7 +33,6 @@
 #include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/type/varying.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/sequence_view.h>
 #include <yugawara/aggregate/configurable_provider.h>
 #include <yugawara/aggregate/declaration.h>
@@ -50,11 +49,11 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::function::incremental {
 
 using takatori::util::sequence_view;
-using takatori::util::fail;
 
 using kind = meta::field_type_kind;
 
@@ -524,7 +523,7 @@ void sum(
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, plus(target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, plus(target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
         case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, plus(target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
-        default: fail();
+        default: fail_with_exception();
     }
 }
 
@@ -634,7 +633,7 @@ void avg_post(
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, div_by_count(source.get_value<runtime_t<kind::float4>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, div_by_count(source.get_value<runtime_t<kind::float8>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
         case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, div_by_count(source.get_value<runtime_t<kind::decimal>>(sum_offset), source.get_value<runtime_t<kind::int8>>(count_offset))); break;
-        default: fail();
+        default: fail_with_exception();
     }
 }
 
@@ -731,7 +730,7 @@ void max(
         case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
         case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
         case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::time_point>>(target_offset), source.get_value<runtime_t<kind::time_point>>(arg_offset))); break;
-        default: fail();
+        default: fail_with_exception();
     }
 }
 
@@ -775,7 +774,7 @@ void min(
         case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
         case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
         case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::time_point>>(target_offset), source.get_value<runtime_t<kind::time_point>>(arg_offset))); break;
-        default: fail();
+        default: fail_with_exception();
     }
 }
 
@@ -807,7 +806,7 @@ void identity_post(
         case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, source.get_value<runtime_t<kind::date>>(offset)); break;
         case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, source.get_value<runtime_t<kind::time_of_day>>(offset)); break;
         case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, source.get_value<runtime_t<kind::time_point>>(offset)); break;
-        default: fail();
+        default: fail_with_exception();
     }
 }
 }

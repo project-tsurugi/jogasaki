@@ -19,7 +19,6 @@
 #include <string>
 #include <string_view>
 
-#include <takatori/util/fail.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index.h>
 

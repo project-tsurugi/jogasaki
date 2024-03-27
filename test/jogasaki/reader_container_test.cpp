@@ -27,7 +27,6 @@ namespace jogasaki::executor {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-using namespace takatori::util;
 
 class reader_container_test : public ::testing::Test {};
 

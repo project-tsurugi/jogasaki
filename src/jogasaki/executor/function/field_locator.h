@@ -17,7 +17,7 @@
 
 #include <cstddef>
 
-#include <takatori/util/fail.h>
+#include <jogasaki/utils/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 

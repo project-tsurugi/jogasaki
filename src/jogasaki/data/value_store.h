@@ -26,7 +26,6 @@
 #include <vector>
 #include <boost/assert.hpp>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/print_support.h>
 
@@ -35,12 +34,12 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::fail;
 
 namespace details {
 
@@ -624,11 +623,11 @@ private:
     void internal_append_null_flag(bool arg) {
         BOOST_ASSERT(nulls_resource_ != nullptr);  //NOLINT
         auto* p = static_cast<null_flag_pointer>(nulls_resource_->allocate(sizeof(null_flag_type), alignof(null_flag_type)));
-        if (!p) fail();
+        if (!p) fail_with_exception();
         if (null_prev_ != nullptr && p != null_prev_ + 1) { //NOLINT
             // currently assuming nulls flags are up to 2M
             // TODO add ranges handling for nulls resource
-            fail();
+            fail_with_exception();
         }
         *p = arg ? static_cast<null_flag_type>(1) : static_cast<null_flag_type>(0);
         null_prev_ = p;
@@ -729,7 +728,7 @@ public:
         } else if constexpr(std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
             base_->append_time_point(value);
         } else {
-            fail();
+            fail_with_exception();
         }
     }
 
@@ -773,7 +772,7 @@ public:
         } else if constexpr(std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
             return base_->begin_time_point();
         } else {
-            fail();
+            fail_with_exception();
         }
     }
 
@@ -805,7 +804,7 @@ public:
         } else if constexpr(std::is_same_v<T, runtime_t<kind::time_point>>) {  //NOLINT
             return base_->end_time_point();
         } else {
-            fail();
+            fail_with_exception();
         }
     }
 
@@ -842,7 +841,7 @@ private:
             case kind::date: return std::make_unique<details::typed_value_store<runtime_t<kind::date>>>(record_resource, varlen_resource, nulls_resource);
             case kind::time_of_day: return std::make_unique<details::typed_value_store<runtime_t<kind::time_of_day>>>(record_resource, varlen_resource, nulls_resource);
             case kind::time_point: return std::make_unique<details::typed_value_store<runtime_t<kind::time_point>>>(record_resource, varlen_resource, nulls_resource);
-            default: fail();
+            default: fail_with_exception();
         }
     }
 };

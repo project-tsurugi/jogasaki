@@ -21,7 +21,6 @@
 #include <vector>
 
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
@@ -36,6 +35,7 @@
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/model/flow.h>
 #include <jogasaki/model/port.h>
+#include <jogasaki/utils/fail.h>
 
 #include "flow.h"
 
@@ -43,7 +43,6 @@ namespace jogasaki::executor::process {
 
 using jogasaki::executor::process::impl::ops::io_info;
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 std::shared_ptr<io_info> step::create_io_info() {
     auto io = std::make_shared<class io_info>();
@@ -71,7 +70,7 @@ std::shared_ptr<io_info> step::create_io_info() {
                 break;
             }
             default:
-                fail();
+                fail_with_exception();
         }
     }
     std::vector<impl::ops::output_info> outputs{};
@@ -89,7 +88,7 @@ std::shared_ptr<io_info> step::create_io_info() {
                 break;
             }
             default:
-                fail();
+                fail_with_exception();
         }
     }
     return std::make_shared<class io_info>(

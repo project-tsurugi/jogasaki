@@ -29,12 +29,9 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/line_number_string.h>
 
 namespace jogasaki::error {
-
-#define stringify1(x) #x //NOLINT
-#define stringify2(x) stringify1(x) //NOLINT
-#define line_number_string stringify2(__LINE__)
 
 #define create_error_info(code, msg, st) jogasaki::error::create_error_info_impl((code), (msg), __FILE__, line_number_string, (st), false) //NOLINT
 #define set_error(rctx, code, msg, st) jogasaki::error::set_error_impl((rctx), (code), (msg), __FILE__, line_number_string, (st), false) //NOLINT

@@ -28,17 +28,16 @@
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
-#include <takatori/util/fail.h>
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/variant.h>
 
 namespace jogasaki::data {
 
-using takatori::util::fail;
 using jogasaki::executor::process::impl::expression::error;
 
 /**
@@ -84,7 +83,8 @@ public:
         if(auto* p = std::get_if<A>(&body_); p != nullptr) {
             return *p;
         }
-        fail();
+        fail_no_exception();
+        return {};
     }
 
     /**

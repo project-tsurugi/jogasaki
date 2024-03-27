@@ -19,17 +19,16 @@
 #include <utility>
 
 #include <takatori/util/downcast.h>
-#include <takatori/util/fail.h>
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/writer.h>
 #include <tateyama/status.h>
 
 #include <jogasaki/api/impl/data_writer.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
-using takatori::util::fail;
 
 data_channel::data_channel(std::shared_ptr<tateyama::api::server::data_channel> origin) :
     origin_(std::move(origin))
@@ -38,7 +37,7 @@ data_channel::data_channel(std::shared_ptr<tateyama::api::server::data_channel> 
 status data_channel::acquire(std::shared_ptr<writer>& wrt) {
     std::shared_ptr<tateyama::api::server::writer> writer{};
     if(auto rc = origin_->acquire(writer); rc != tateyama::status::ok) {
-        fail();
+        fail_with_exception();
     }
     wrt = std::make_shared<data_writer>(std::move(writer));
     return status::ok;
@@ -47,7 +46,7 @@ status data_channel::acquire(std::shared_ptr<writer>& wrt) {
 status data_channel::release(writer& wrt) {
     auto& w = unsafe_downcast<data_writer>(wrt);
     if(auto rc = origin_->release(*w.origin()); rc != tateyama::status::ok) {
-        fail();
+        fail_with_exception();
     }
     return status::ok;
 }

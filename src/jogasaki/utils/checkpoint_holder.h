@@ -15,12 +15,10 @@
  */
 #pragma once
 
-#include <takatori/util/fail.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::fail;
 
 /**
  * @brief create check point for lifo memory resource and release on deconstruction

@@ -40,7 +40,6 @@
 #include <takatori/relation/step/take_group.h>
 #include <takatori/relation/values.h>
 #include <takatori/relation/write.h>
-#include <takatori/util/fail.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
 #include <yugawara/compiler_result.h>
@@ -59,6 +58,7 @@
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/utils/fail.h>
 
 #include "details/search_key_field_info.h"
 #include "operator_container.h"

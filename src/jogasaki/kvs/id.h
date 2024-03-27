@@ -18,14 +18,13 @@
 #include <string_view>
 #include <utility>
 
-#include <takatori/util/fail.h>
 #include <sharksfin/Slice.h>
 #include <sharksfin/StatusCode.h>
 #include <sharksfin/api.h>
 
-namespace jogasaki::kvs {
+#include <jogasaki/utils/fail.h>
 
-using takatori::util::fail;
+namespace jogasaki::kvs {
 
 /**
  * @brief provide kvs implementation id
@@ -34,7 +33,7 @@ using takatori::util::fail;
 inline std::string_view implementation_id() {
     sharksfin::Slice id{};
     if (auto res = sharksfin::implementation_id(std::addressof(id)); res != sharksfin::StatusCode::OK) {
-        fail();
+        fail_with_exception();
     }
     return id.to_string_view();
 }

@@ -20,18 +20,16 @@
 #include <type_traits>
 #include <utility>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/accessor/record_copier.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::data {
 
 using takatori::util::maybe_shared_ptr;
-using takatori::util::fail;
 
 small_record_store::small_record_store(
     maybe_shared_ptr<meta::record_meta> meta,
@@ -49,7 +47,7 @@ small_record_store::small_record_store(
 
 small_record_store::record_pointer small_record_store::set(accessor::record_ref record) {
     auto* p = ref().data();
-    if (!p) fail();
+    if (!p) fail_with_exception();
     copier_(p, record_size_, record);
     return p;
 }

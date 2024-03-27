@@ -26,7 +26,7 @@ class fail_test : public ::testing::Test {};
 TEST_F(fail_test, basic) {
     bool caught = false;
     try {
-        fail_with_exception("test");
+        fail_with_exception();
     } catch(std::logic_error const& e) {
         caught = true;
         std::cerr << e.what() << std::endl;
@@ -36,7 +36,19 @@ TEST_F(fail_test, basic) {
 
 TEST_F(fail_test, no_throw) {
     ASSERT_NO_THROW({
-        fail_no_exception("test");
+        fail_no_exception();
+    });
+}
+
+TEST_F(fail_test, throw_with_msg) {
+    ASSERT_THROW({
+        fail_with_exception_msg("test");
+    }, std::logic_error);
+}
+
+TEST_F(fail_test, no_throw_with_msg) {
+    ASSERT_NO_THROW({
+        fail_no_exception_msg("test");
     });
 }
 

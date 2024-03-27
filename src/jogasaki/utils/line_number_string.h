@@ -15,18 +15,6 @@
  */
 #pragma once
 
-#include <cstddef>
-
-#include <jogasaki/data/any.h>
-#include <jogasaki/meta/field_type.h>
-
-namespace jogasaki::utils {
-
-using data::any;
-
-constexpr static std::size_t npos = static_cast<std::size_t>(-1);
-
-// convert the value type contained in any if necessary
-bool convert_any(any& a, meta::field_type const& type);
-
-}
+#define line_number_stringify1(x) #x //NOLINT
+#define line_number_stringify2(x) line_number_stringify1(x) //NOLINT
+#define line_number_string line_number_stringify2(__LINE__)

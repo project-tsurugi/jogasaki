@@ -39,7 +39,6 @@
 #include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/type/varying.h>
-#include <takatori/util/fail.h>
 #include <takatori/util/sequence_view.h>
 #include <yugawara/aggregate/configurable_provider.h>
 #include <yugawara/aggregate/declaration.h>
@@ -59,12 +58,12 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/round.h>
 
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using takatori::util::fail;
 
 using kind = meta::field_type_kind;
 
@@ -241,7 +240,7 @@ void count_distinct(
         case kind::date: res = details::count_distinct<runtime_t<kind::date>>(store); break;
         case kind::time_of_day: res = details::count_distinct<runtime_t<kind::time_of_day>>(store); break;
         case kind::time_point: res = details::count_distinct<runtime_t<kind::time_point>>(store); break;
-        default: fail();
+        default: fail_with_exception();
     }
     target.set_value<runtime_t<kind::int8>>(target_offset, res);
 }

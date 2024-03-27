@@ -42,7 +42,7 @@ sharksfin::TransactionOptions::TransactionType type(kvs::transaction_option::tra
         case k::ltx: return s::LONG;
         case k::read_only: return s::READ_ONLY;
     }
-    fail();
+    std::abort();
 }
 
 transaction::transaction(
@@ -100,7 +100,8 @@ sharksfin::TransactionControlHandle transaction::control_handle() const noexcept
 sharksfin::TransactionHandle transaction::handle() noexcept {
     if (!handle_) {
         if(auto res = sharksfin::transaction_borrow_handle(tx_, &handle_); res != sharksfin::StatusCode::OK) {
-            fail();
+            fail_no_exception();
+            return {};
         }
     }
     return handle_;
@@ -114,7 +115,8 @@ sharksfin::TransactionState transaction::check_state() noexcept {
     sharksfin::TransactionState result{};
     auto rc = sharksfin::transaction_check(tx_, result);
     if(rc != sharksfin::StatusCode::OK) {
-        fail();
+        fail_no_exception();
+        return {};
     }
     return result;
 }

@@ -18,10 +18,10 @@
 #include <cstddef>
 #include <unordered_map>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/executor/function/aggregate_function_info.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::function {
 

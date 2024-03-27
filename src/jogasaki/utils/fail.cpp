@@ -16,14 +16,17 @@
 #include "fail.h"
 
 #include <initializer_list>
+#include <ostream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#include <ostream>
+#include <glog/logging.h>
 
 #include <takatori/util/exception.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/base_filename.h>
 
 namespace jogasaki::utils {
@@ -31,16 +34,23 @@ namespace jogasaki::utils {
 using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
-void fail_with_exception_impl(bool to_throw, std::string_view msg, std::string_view filepath, std::string_view position) {
+std::string create_fatal_msg(std::string_view msg, std::string_view filepath, std::string_view position) {
     string_builder sb{};
     sb << "fatal internal error at " << filepath << ":" << position << " " << msg;
     std::endl(sb.buffer());
     sb << ::boost::stacktrace::stacktrace{};
-    auto m = sb << string_builder::to_string;
+    return sb << string_builder::to_string;
+}
+
+void fail_with_exception_impl(std::string_view msg, std::string_view filepath, std::string_view position) {
+    auto m = create_fatal_msg(msg, filepath, position);
     LOG_LP(ERROR) << m;
-    if(to_throw) {
-        throw_exception(std::logic_error{m});
-    }
+    throw_exception(std::logic_error{m});
+}
+
+void fail_no_exception_impl(std::string_view msg, std::string_view filepath, std::string_view position) {
+    auto m = create_fatal_msg(msg, filepath, position);
+    LOG_LP(ERROR) << m;
 }
 
 }  // namespace jogasaki::utils

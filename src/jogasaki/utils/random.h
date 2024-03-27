@@ -16,11 +16,9 @@
 #pragma once
 #include <cstdint>
 
-#include <takatori/util/fail.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
-
-using takatori::util::fail;
 
 class xorshift_random32 {
 public:
@@ -28,7 +26,7 @@ public:
 
     explicit xorshift_random32(std::uint32_t seed) : x_{seed} {
         if (seed == 0) {
-            fail();
+            fail_with_exception();
         }
     }
     std::uint32_t operator()() {
@@ -39,7 +37,7 @@ public:
     }
     void seed(std::uint32_t seed) {
         if (seed == 0) {
-            fail();
+            fail_with_exception();
         }
         x_ = seed;
     }
@@ -53,7 +51,7 @@ public:
 
     explicit xorshift_random64(std::uint64_t seed) : x_{seed} {
         if (seed == 0) {
-            fail();
+            fail_with_exception();
         }
     }
     std::uint64_t operator()() {
@@ -64,7 +62,7 @@ public:
     }
     void seed(std::uint64_t seed) {
         if (seed == 0) {
-            fail();
+            fail_with_exception();
         }
         x_ = seed;
     }

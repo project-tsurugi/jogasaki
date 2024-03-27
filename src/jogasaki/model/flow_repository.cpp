@@ -17,13 +17,10 @@
 
 #include <utility>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/model/flow.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::model {
-
-using takatori::util::fail;
 
 flow_repository::flow_repository(std::size_t size) :
     flows_(size)
@@ -33,7 +30,10 @@ void flow_repository::set(
     std::size_t idx,
     std::unique_ptr<flow> arg
 ) noexcept {
-    if (idx >= flows_.size()) fail();
+    if (idx >= flows_.size()) {
+        fail_no_exception();
+        return;
+    }
     flows_[idx] = std::move(arg);
 }
 

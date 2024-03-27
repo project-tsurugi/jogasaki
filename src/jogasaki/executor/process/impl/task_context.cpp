@@ -18,7 +18,6 @@
 #include <utility>
 #include <boost/assert.hpp>
 
-#include <takatori/util/fail.h>
 #include <takatori/util/reference_list_view.h>
 
 #include <jogasaki/executor/exchange/aggregate/flow.h>
@@ -35,10 +34,9 @@
 #include <jogasaki/model/flow.h>
 #include <jogasaki/model/step_kind.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::process::impl {
-
-using takatori::util::fail;
 
 task_context::task_context(std::size_t partition) :
     partition_(partition)
@@ -70,9 +68,9 @@ io::reader_container task_context::reader(task_context::reader_index idx) {
             return unsafe_downcast<exchange::forward::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
             //TODO other exchanges
         default:
-            fail();
+            fail_with_exception();
     }
-    return {};
+    std::abort();
 }
 
 io::record_writer* task_context::downstream_writer(task_context::writer_index idx) {
@@ -87,16 +85,16 @@ io::record_writer* task_context::downstream_writer(task_context::writer_index id
             return &unsafe_downcast<exchange::forward::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
             //TODO other exchanges
         default:
-            fail();
+            fail_with_exception();
     }
-    return {};
+    std::abort();
 }
 
 io::record_writer* task_context::external_writer() {
     BOOST_ASSERT(channel_ != nullptr);  //NOLINT
     if (! external_writer_) {
         if(auto res = channel_->acquire(external_writer_); res != status::ok) {
-            fail();
+            fail_with_exception();
         }
     }
     return external_writer_.get();

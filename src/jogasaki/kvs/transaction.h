@@ -21,7 +21,6 @@
 #include <string_view>
 #include <glog/logging.h>
 
-#include <takatori/util/fail.h>
 #include <sharksfin/CallResult.h>
 #include <sharksfin/TransactionInfo.h>
 #include <sharksfin/TransactionState.h>
@@ -29,10 +28,9 @@
 
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::kvs {
-
-using ::takatori::util::fail;
 
 class database;
 

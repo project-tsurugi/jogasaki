@@ -15,15 +15,25 @@
  */
 #pragma once
 
-#include <jogasaki/error/error_info_factory.h>
+#include <string_view>
 
-#define fail_with_exception(msg) jogasaki::utils::fail_with_exception_impl(true, msg, __FILE__, line_number_string)  //NOLINT
-#define fail_no_exception(msg) jogasaki::utils::fail_with_exception_impl(false, msg, __FILE__, line_number_string)  //NOLINT
+#include <jogasaki/utils/line_number_string.h>
+
+#define fail_with_exception() jogasaki::utils::fail_with_exception_impl({}, __FILE__, line_number_string)  //NOLINT
+#define fail_no_exception() jogasaki::utils::fail_no_exception_impl({}, __FILE__, line_number_string)  //NOLINT
+
+#define fail_with_exception_msg(msg) jogasaki::utils::fail_with_exception_impl(msg, __FILE__, line_number_string)  //NOLINT
+#define fail_no_exception_msg(msg) jogasaki::utils::fail_no_exception_impl(msg, __FILE__, line_number_string)  //NOLINT
 
 namespace jogasaki::utils {
 
-void fail_with_exception_impl(
-    bool to_throw,
+[[noreturn]] void fail_with_exception_impl(
+    std::string_view msg,
+    std::string_view filepath,
+    std::string_view position
+);
+
+void fail_no_exception_impl(
     std::string_view msg,
     std::string_view filepath,
     std::string_view position

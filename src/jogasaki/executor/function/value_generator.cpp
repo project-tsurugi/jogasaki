@@ -17,17 +17,15 @@
 
 #include <boost/assert.hpp>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::function {
 
-using takatori::util::fail;
 using kind = meta::field_type_kind;
 
 void null_generator(
@@ -52,7 +50,7 @@ void zero_generator(
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, 0); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, 0); break;
         case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, {}); break;
-        default: fail();
+        default: fail_with_exception();
     }
 }
 

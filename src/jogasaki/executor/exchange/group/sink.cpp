@@ -17,18 +17,15 @@
 
 #include <utility>
 
-#include <takatori/util/fail.h>
-
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/utils/fail.h>
 
 #include "group_info.h"
 #include "input_partition.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::group {
-
-using takatori::util::fail;
 
 sink::sink(
     std::size_t downstream_partitions,
@@ -49,7 +46,7 @@ io::record_writer& sink::acquire_writer() {
 
 void sink::release_writer(io::record_writer& writer) {
     if (*writer_ != writer) {
-        fail();
+        fail_with_exception();
     }
     writer_.reset();
 }

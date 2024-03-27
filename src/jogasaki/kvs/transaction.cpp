@@ -97,11 +97,10 @@ sharksfin::TransactionControlHandle transaction::control_handle() const noexcept
     return tx_;
 }
 
-sharksfin::TransactionHandle transaction::handle() noexcept {
+sharksfin::TransactionHandle transaction::handle() {
     if (!handle_) {
         if(auto res = sharksfin::transaction_borrow_handle(tx_, &handle_); res != sharksfin::StatusCode::OK) {
-            fail_no_exception();
-            return {};
+            fail_with_exception();
         }
     }
     return handle_;
@@ -111,12 +110,11 @@ kvs::database* transaction::database() const noexcept {
     return database_;
 }
 
-sharksfin::TransactionState transaction::check_state() noexcept {
+sharksfin::TransactionState transaction::check_state() {
     sharksfin::TransactionState result{};
     auto rc = sharksfin::transaction_check(tx_, result);
     if(rc != sharksfin::StatusCode::OK) {
-        fail_no_exception();
-        return {};
+        fail_with_exception();
     }
     return result;
 }

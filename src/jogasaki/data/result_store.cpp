@@ -80,7 +80,7 @@ bool result_store::empty() const noexcept {
     return true;
 }
 
-result_store::iterator result_store::begin() const noexcept {
+result_store::iterator result_store::begin() const {
     if (empty()) {
         return {};
     }
@@ -95,8 +95,7 @@ result_store::iterator result_store::begin() const noexcept {
         }
         ++idx;
     }
-    fail_no_exception();
-    return {};
+    fail_with_exception();
 }
 
 result_store::iterator result_store::end() const noexcept {

@@ -101,7 +101,7 @@ public:
      * @note this is expected to be package private (i.e. callable from code in kvs namespace)
      * @return the handle held by this object
      */
-    [[nodiscard]] sharksfin::TransactionHandle handle() noexcept;
+    [[nodiscard]] sharksfin::TransactionHandle handle();
 
     /**
      * @brief return the parent database object
@@ -113,7 +113,7 @@ public:
      * @brief return the tx state
      * @return the tx state of this object
      */
-    [[nodiscard]] sharksfin::TransactionState check_state() noexcept;
+    [[nodiscard]] sharksfin::TransactionState check_state();
 
     /**
      * @brief return the detailed info for the recent kvs api call

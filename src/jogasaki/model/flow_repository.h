@@ -53,7 +53,7 @@ public:
      * @param idx the index of the context
      * @param arg the context to be stored
      */
-    void set(std::size_t idx, std::unique_ptr<flow> arg) noexcept;
+    void set(std::size_t idx, std::unique_ptr<flow> arg);
 
     /**
      * @brief returns whether the context is stored at the given index

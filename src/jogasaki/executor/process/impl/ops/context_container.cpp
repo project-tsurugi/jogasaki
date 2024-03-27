@@ -29,11 +29,9 @@ context_container::context_container(std::size_t size) :
 std::unique_ptr<context_base>& context_container::set(
     std::size_t idx,
     std::unique_ptr<context_base> ctx
-) noexcept
-{
+) {
     if (idx >= contexts_.size()) {
-        fail_no_exception();
-        std::abort(); //FIXEME
+        fail_with_exception();
     }
     contexts_[idx] = std::move(ctx);
     return contexts_[idx];

@@ -29,10 +29,9 @@ flow_repository::flow_repository(std::size_t size) :
 void flow_repository::set(
     std::size_t idx,
     std::unique_ptr<flow> arg
-) noexcept {
+) {
     if (idx >= flows_.size()) {
-        fail_no_exception();
-        return;
+        fail_with_exception();
     }
     flows_[idx] = std::move(arg);
 }

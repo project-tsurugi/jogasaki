@@ -21,10 +21,10 @@
 
 #include <takatori/util/enum_set.h>
 
-#include "jogasaki/executor/diagnostic_record.h"
+#include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/executor/diagnostic_record.h>
 
 #include "error.h"
-
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -226,5 +226,7 @@ inline std::ostream& operator<<(std::ostream& out, evaluator_context const& valu
     out << ")";
     return out;
 }
+
+std::pair<std::string, std::string> create_conversion_error_message(evaluator_context const& ctx);
 
 }  // namespace jogasaki::executor::process::impl::expression

@@ -123,7 +123,7 @@ TEST_F(sql_write_test, expression_error_handling_with_insert) {
     }
 
     auto ps = api::create_parameter_set();
-    execute_statement("INSERT INTO T VALUES (1)", {}, *ps, *tx, status::err_expression_evaluation_failure);
+    execute_statement("INSERT INTO T VALUES (100)", {}, *ps, *tx, status::err_expression_evaluation_failure);
     EXPECT_EQ(status::err_inactive_transaction, tx->commit());
 
     if (jogasaki::kvs::implementation_id() == "memory") {

@@ -416,6 +416,14 @@ public:
         return normalize_float_;
     }
 
+    void log_msg_user_data(bool arg) noexcept {
+        log_msg_user_data_ = arg;
+    }
+
+    [[nodiscard]] bool log_msg_user_data() const noexcept {
+        return log_msg_user_data_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
         return out << std::boolalpha <<
             "single_thread:" << cfg.single_thread() << " " <<
@@ -455,6 +463,7 @@ public:
             "scan_concurrent_operation_as_not_found:" << cfg.scan_concurrent_operation_as_not_found() << " " <<
             "point_read_concurrent_operation_as_not_found:" << cfg.point_read_concurrent_operation_as_not_found() << " " <<
             "normalize_float:" << cfg.normalize_float() << " " <<
+            "log_msg_user_data:" << cfg.log_msg_user_data() << " " <<
             "";
     }
 
@@ -500,6 +509,7 @@ private:
     bool scan_concurrent_operation_as_not_found_ = true;
     bool point_read_concurrent_operation_as_not_found_ = true;
     bool normalize_float_ = true;
+    bool log_msg_user_data_ = false;
 
 };
 

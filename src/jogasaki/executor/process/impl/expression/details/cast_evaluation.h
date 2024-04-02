@@ -186,14 +186,17 @@ any as_triple(
 
 /**
  * @brief validate, modify and return triple that fits into sql decimal(p,s)
- * @param d decimal to be handled this must be finite value (i.e. not NaN or Inf/-Inf) otherwise the behavior is undefined
+ * @param src decimal to be handled this must be finite value (i.e. not NaN or Inf/-Inf) otherwise the behavior is undefined
+ * @param ctx the evaluator context
+ * @param precision the precision of the target decimal
+ * @param scale the scale of the target decimal
  * @return data::any with reduced (i.e. no trailing zeros in coefficient) triple that fits with the given precision and scale
  * @return data::any with error_kind::unsupported if the given `scale` is nullopt while `precision` is not
  * @note this is private functionality, accessible from outside just for testing
  *
 */
 any handle_ps(
-    decimal::Decimal d,
+    decimal::Decimal const& src,
     evaluator_context& ctx,
     std::optional<std::size_t> precision,
     std::optional<std::size_t> scale

@@ -759,8 +759,8 @@ TEST_F(cast_between_numerics_test, float8_to_float4) {
     EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::min()}), from_float8::to_float4(-std::numeric_limits<float>::min(), ctx));
 
     // larger than float max
-    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::max()}), from_float8::to_float4(std::nextafter(static_cast<double>(std::numeric_limits<float>::max()), std::numeric_limits<double>::infinity()), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::max()}), from_float8::to_float4(std::nextafter(static_cast<double>(-std::numeric_limits<float>::max()), -std::numeric_limits<double>::infinity()), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::nextafter(static_cast<double>(std::numeric_limits<float>::max()), std::numeric_limits<double>::infinity()), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::nextafter(static_cast<double>(-std::numeric_limits<float>::max()), -std::numeric_limits<double>::infinity()), ctx));
 
     // between float min and - float min
     EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(std::nextafter(static_cast<double>(std::numeric_limits<float>::min()), -std::numeric_limits<double>::infinity()), ctx));

@@ -37,14 +37,20 @@ enum class error_kind : std::size_t {
     ///@brief value overflows
     overflow,
 
-    ///@brief cast failure due to the cast policy
+    ///@brief conversion failure due to lost precision and the policy not allowing it
     lost_precision,
+
+    ///@brief special case of lost_precision that has to truncate the variable-length value
+    lost_precision_value_too_long,
 
     ///@brief string or other representation's format error
     format_error,
 
     ///@brief unsupported features used in the expression
     unsupported,
+
+    ///@brief unexpected error in the expression
+    unknown,
 };
 
 /**
@@ -60,8 +66,10 @@ enum class error_kind : std::size_t {
         case kind::arithmetic_error: return "arithmetic_error"sv;
         case kind::overflow: return "overflow"sv;
         case kind::lost_precision: return "lost_precision"sv;
+        case kind::lost_precision_value_too_long: return "lost_precision_value_too_long"sv;
         case kind::format_error: return "format_error"sv;
         case kind::unsupported: return "unsupported"sv;
+        case kind::unknown: return "unknown"sv;
     }
     std::abort();
 }
@@ -80,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& out, error_kind value) {
 using error_kind_set = takatori::util::enum_set<
     error_kind,
     error_kind::undefined,
-    error_kind::unsupported>;
+    error_kind::unknown>;
 
 /**
  * @brief class representing evaluation error

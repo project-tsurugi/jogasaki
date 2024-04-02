@@ -319,7 +319,7 @@ void api_test_base::test_stmt_err(
             .run()
             .report()
     );
-    ASSERT_TRUE(result);
+    ASSERT_TRUE(result); // if this fails, statement was executed successfully
     std::cerr << *result << std::endl;
     ASSERT_EQ(expected, result->code());
     if(! msg.empty()) {

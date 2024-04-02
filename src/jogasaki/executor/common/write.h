@@ -63,22 +63,24 @@ namespace details {
 struct write_field : process::impl::ops::default_value_property {
     write_field(
         std::size_t index,
-        meta::field_type type,
+        takatori::type::data const& target_type,
         kvs::coding_spec spec,
         bool nullable,
         std::size_t offset,
         std::size_t nullity_offset
     ) :
         index_(index),
-        type_(std::move(type)),
+        type_(utils::type_for(target_type)),
         spec_(spec),
         nullable_(nullable),
         offset_(offset),
-        nullity_offset_(nullity_offset) {}
+        nullity_offset_(nullity_offset),
+        target_type_(std::addressof(target_type))
+    {}
 
     write_field(
         std::size_t index,
-        meta::field_type type,
+        takatori::type::data const& target_type,
         kvs::coding_spec spec,
         bool nullable,
         std::size_t offset,
@@ -93,11 +95,13 @@ struct write_field : process::impl::ops::default_value_property {
             def_id
         ),
         index_(index),
-        type_(std::move(type)),
+        type_(utils::type_for(target_type)),
         spec_(spec),
         nullable_(nullable),
         offset_(offset),
-        nullity_offset_(nullity_offset) {}
+        nullity_offset_(nullity_offset),
+        target_type_(std::addressof(target_type))
+    {}
 
     //@brief value position in the tuple. npos if values clause doesn't contain one for this field.
     std::size_t index_{};  //NOLINT
@@ -111,6 +115,8 @@ struct write_field : process::impl::ops::default_value_property {
     std::size_t offset_{};  //NOLINT
     //@brief nullity bit offset
     std::size_t nullity_offset_{};  //NOLINT
+    //@brief original target type
+    takatori::type::data const* target_type_{};  //NOLINT
 };
 
 }  // namespace details

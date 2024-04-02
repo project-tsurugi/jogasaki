@@ -34,6 +34,7 @@
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 #include <yugawara/binding/factory.h>
+#include <yugawara/compiled_info.h>
 #include <yugawara/storage/column.h>
 #include <yugawara/storage/table.h>
 #include <yugawara/variable/criteria.h>
@@ -41,6 +42,9 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/conv/assignment.h>
+#include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_partial_context.h>
@@ -111,25 +115,57 @@ bool update_skips_deletion(write_partial_context& ctx) {
     return ctx.req_context()->configuration()->update_skips_deletion();
 }
 
-void write_partial::update_record(
+status write_partial::update_record(
+    write_partial_context& ctx,
     accessor::record_ref extracted_key_record,
     accessor::record_ref extracted_value_record,
     accessor::record_ref input_variables,
     accessor::record_ref host_variables
 ) {
     for(auto const& f : updates_) {
-        // assuming intermediate fields are nullable. Nullability check is done on encoding.
         auto target = f.key_ ? extracted_key_record : extracted_value_record;
+        if(! f.requires_conversion_) {
+            // assuming intermediate fields are nullable. Nullability check is done on encoding.
+            utils::copy_nullable_field(
+                f.target_ftype_,
+                target,
+                f.target_offset_,
+                f.target_nullity_offset_,
+                f.source_external_ ? host_variables : input_variables,
+                f.source_offset_,
+                f.source_nullity_offset_
+            );
+            continue;
+        }
+        data::any a{};
+        utils::copy_nullable_field_as_any(
+            f.source_ftype_,
+            f.source_external_ ? host_variables : input_variables,
+            f.source_offset_,
+            f.source_nullity_offset_,
+            a
+        );
+        data::any converted{};
+        if(auto res = conv::conduct_assignment_conversion(
+               *f.source_type_,
+               *f.target_type_,
+               a,
+               converted,
+               *ctx.req_context(),
+               ctx.resource()
+           );
+           res != status::ok) {
+            return res;
+        }
         utils::copy_nullable_field(
-            f.type_,
+            f.target_ftype_,
             target,
             f.target_offset_,
             f.target_nullity_offset_,
-            f.source_external_ ? host_variables : input_variables,
-            f.source_offset_,
-            f.source_nullity_offset_
+            converted
         );
     }
+    return status::ok;
 }
 
 bool updates_key(std::vector<details::update_field> const& updates) noexcept {
@@ -184,12 +220,16 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     }
 
     // update extracted key/value in primary target with values from variable table
-    update_record(
-        context.extracted_key(),
-        context.extracted_value(),
-        ctx.input_variables().store().ref(),
-        host_variables() ? host_variables()->store().ref() : accessor::record_ref{}
-    );
+    if(auto res = update_record(
+           ctx,
+           context.extracted_key(),
+           context.extracted_value(),
+           ctx.input_variables().store().ref(),
+           host_variables() ? host_variables()->store().ref() : accessor::record_ref{}
+       ); res != status::ok) {
+            abort_transaction(*ctx.transaction());
+            return error_abort(ctx, res);
+    }
 
     // encode extracted key/value in primary target and send to kvs
     kvs::put_option opt = primary_key_updated_ ? kvs::put_option::create : kvs::put_option::create_or_update;
@@ -328,7 +368,8 @@ std::vector<details::update_field> create_update_fields(
     sequence_view<takatori::relation::write::key const> keys, // keys to identify the updated record, possibly part of idx.keys()
     sequence_view<takatori::relation::write::column const> columns, // columns to be updated
     variable_table_info const* host_variable_info,
-    variable_table_info const& input_variable_info
+    variable_table_info const& input_variable_info,
+    yugawara::compiled_info const& cinfo
 ) {
     std::vector<details::update_field> ret{};
     yugawara::binding::factory bindings{};
@@ -347,15 +388,16 @@ std::vector<details::update_field> create_update_fields(
         for(std::size_t i=0, n=idx.keys().size(); i<n; ++i) {
             auto&& k = idx.keys()[i];
             auto kc = bindings(k.column());
-            auto t = utils::type_for(k.column().type());
             if (key_dest_to_src.count(kc) == 0) {
                 throw_exception(std::logic_error{""}); // TODO update by non-unique keys
             }
             if (column_dest_to_src.count(kc) != 0) {
                 auto&& src = column_dest_to_src.at(kc);
+                auto& src_type = cinfo.type_of(src);
                 auto [os, nos, b] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
                 ret.emplace_back(
-                    t,
+                    src_type,
+                    k.column().type(),
                     os,
                     nos,
                     meta->value_offset(i),
@@ -372,12 +414,13 @@ std::vector<details::update_field> create_update_fields(
         auto&& v = idx.values()[i];
         auto b = bindings(v);
         auto& c = static_cast<yugawara::storage::column const&>(v);
-        auto t = utils::type_for(c.type());
         if (column_dest_to_src.count(b) != 0) {
             auto&& src = column_dest_to_src.at(b);
+            auto& src_type = cinfo.type_of(src);
             auto [os, nos, src_is_external ] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
             ret.emplace_back(
-                t,
+                src_type,
+                c.type(),
                 os,
                 nos,
                 meta->value_offset(i),
@@ -490,7 +533,8 @@ write_partial::write_partial(
             keys,
             columns,
             info.host_variables() ? std::addressof(info.host_variables()->info()) : nullptr,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
+            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
+            info.compiled_info()
         ),
         create_secondary_targets(idx, columns),
         create_secondary_key_updated(idx, columns),

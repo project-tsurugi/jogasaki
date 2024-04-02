@@ -26,6 +26,7 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
@@ -56,7 +57,8 @@ namespace details {
 struct cache_align update_field {
     /**
      * @brief create new object
-     * @param type type of the field
+     * @param source_type type of the source field
+     * @param target_type type of the target field
      * @param source_offset byte offset of the field in the input variables record (in variable table)
      * @param source_nullity_offset bit offset of the field nullity in the input variables record
      * @param target_offset byte offset of the field in the target record in
@@ -68,7 +70,8 @@ struct cache_align update_field {
      * @param key indicates the fieled is part of the key
      */
     update_field(
-        meta::field_type type,
+        takatori::type::data const& source_type,
+        takatori::type::data const& target_type,
         std::size_t source_offset,
         std::size_t source_nullity_offset,
         std::size_t target_offset,
@@ -77,23 +80,31 @@ struct cache_align update_field {
         bool source_external,
         bool key
     ) :
-        type_(std::move(type)),
+        source_type_(std::addressof(source_type)),
+        target_type_(std::addressof(target_type)),
         source_offset_(source_offset),
         source_nullity_offset_(source_nullity_offset),
         target_offset_(target_offset),
         target_nullity_offset_(target_nullity_offset),
         nullable_(nullable),
         source_external_(source_external),
-        key_(key)
+        key_(key),
+        source_ftype_(utils::type_for(source_type)),
+        target_ftype_(utils::type_for(target_type)),
+        requires_conversion_(conv::to_require_conversion(source_type, target_type))
     {}
-    meta::field_type type_{};  //NOLINT
+    takatori::type::data const* source_type_{};  //NOLINT
+    takatori::type::data const* target_type_{};  //NOLINT
     std::size_t source_offset_{};  //NOLINT
     std::size_t source_nullity_offset_{};  //NOLINT
     std::size_t target_offset_{};  //NOLINT
     std::size_t target_nullity_offset_{};  //NOLINT
-    bool nullable_{}; //NOLINT
-    bool source_external_{}; //NOLINT
+    bool nullable_{};  //NOLINT
+    bool source_external_{};  //NOLINT
     bool key_{}; //NOLINT
+    meta::field_type source_ftype_{};  //NOLINT
+    meta::field_type target_ftype_{};  //NOLINT
+    bool requires_conversion_{};  //NOLINT
 };
 
 }  // namespace details
@@ -209,7 +220,8 @@ private:
 
     operation_status do_update(write_partial_context& ctx);
     operation_status do_delete(write_partial_context& ctx);
-    void update_record(
+    status update_record(
+        write_partial_context& ctx,
         accessor::record_ref extracted_key_record,
         accessor::record_ref extracted_value_record,
         accessor::record_ref input_variables,

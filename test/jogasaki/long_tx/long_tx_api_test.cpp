@@ -126,8 +126,8 @@ TEST_F(long_tx_api_test, verify_key_locator_with_char) {
     // same as verify_key_locator tc, but using varlen string for key
     // erroneous key and storage name should be dumped in the server log
     execute_statement("CREATE TABLE T (C0 VARCHAR(100) PRIMARY KEY, C1 INT) ");
-    execute_statement("INSERT INTO T (C0, C1) VALUES ('11111111111111111111111111111111', 1.0)");
-    execute_statement("INSERT INTO T (C0, C1) VALUES ('22222222222222222222222222222222', 2.0)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES ('11111111111111111111111111111111', 1)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES ('22222222222222222222222222222222', 2)");
     auto tx1 = utils::create_transaction(*db_, false, true, {"T"});
     auto tx2 = utils::create_transaction(*db_, false, true, {"T"});
     execute_statement("UPDATE T SET C1=1 WHERE C0='11111111111111111111111111111111'", *tx1);

@@ -51,6 +51,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -72,7 +73,6 @@
 #include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
-#include <jogasaki/utils/convert_any.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_encode_errors.h>
@@ -166,6 +166,7 @@ status fill_default_value(
     return status::ok;
 }
 
+
 status fill_evaluated_value(
     details::write_field const& f,
     request_context& ctx,
@@ -175,6 +176,7 @@ status fill_evaluated_value(
     executor::process::impl::variable_table const* host_variables,
     data::small_record_store& out
 ) {
+    auto& source_type = info.type_of(t.elements()[f.index_]);
     evaluator eval{t.elements()[f.index_], info, host_variables};
     process::impl::variable_table empty{};
     process::impl::expression::evaluator_context c{std::addressof(resource)};
@@ -190,23 +192,26 @@ status fill_evaluated_value(
         );
         return rc;
     }
-    if (!utils::convert_any(res, f.type_)) {
-        auto rc = status::err_expression_evaluation_failure;
-        set_error(
+    data::any converted{res};
+    if(conv::to_require_conversion(source_type, *f.target_type_)) {
+        if(auto st = conv::conduct_assignment_conversion(
+            source_type,
+            *f.target_type_,
+            res,
+            converted,
             ctx,
-            error_code::value_evaluation_exception,
-            string_builder{} << "An error occurred in evaluating values. type mismatch: expected " << f.type_
-                             << ", value index is " << res.type_index() << string_builder::to_string,
-            rc
+            std::addressof(resource)
         );
-        return rc;
+        st != status::ok) {
+            return st;
+        }
     }
     // varlen fields data is already on `resource`, so no need to copy
     auto nocopy = nullptr;
     if (f.nullable_) {
-        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, res, nocopy);
+        utils::copy_nullable_field(f.type_, out.ref(), f.offset_, f.nullity_offset_, converted, nocopy);
     } else {
-        if (!res) {
+        if (!converted) {
             auto rc = status::err_integrity_constraint_violation;
             set_error(
                 ctx,
@@ -215,7 +220,7 @@ status fill_evaluated_value(
                 rc);
             return rc;
         }
-        utils::copy_field(f.type_, out.ref(), f.offset_, res, nocopy);
+        utils::copy_field(f.type_, out.ref(), f.offset_, converted, nocopy);
     }
     return status::ok;
 }
@@ -257,7 +262,6 @@ void create_generated_field(
     using yugawara::storage::column_value_kind;
     sequence_definition_id def_id{};
     data::aligned_buffer buf{};
-    auto t = utils::type_for(type);
     auto knd = process::impl::ops::default_value_kind::nothing;
     data::any immediate_val{};
     switch(dv.kind()) {
@@ -284,7 +288,7 @@ void create_generated_field(
     }
     ret.emplace_back(
         index,
-        t,
+        type,
         spec,
         nullable,
         offset,
@@ -315,7 +319,6 @@ std::vector<details::write_field> create_fields(
         for(auto&& k : idx.keys()) {
             auto kc = bindings(k.column());
             auto& type = k.column().type();
-            auto t = utils::type_for(type);
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
             // pass storage spec with fields for write
@@ -340,7 +343,7 @@ std::vector<details::write_field> create_fields(
             auto pos = out.size();
             out.emplace_back(
                 variable_indices[kc.reference()],
-                t,
+                type,
                 spec,
                 nullable,
                 key_meta->value_offset(pos),
@@ -354,7 +357,6 @@ std::vector<details::write_field> create_fields(
 
             auto& c = static_cast<yugawara::storage::column const&>(v);
             auto& type = c.type();
-            auto t = utils::type_for(type);
             bool nullable = c.criteria().nullity().nullable();
             auto spec = kvs::spec_value;
             // pass storage spec with fields for write
@@ -378,7 +380,7 @@ std::vector<details::write_field> create_fields(
             auto pos = out.size();
             out.emplace_back(
                 variable_indices[b.reference()],
-                t,
+                type,
                 spec,
                 nullable,
                 value_meta->value_offset(pos),

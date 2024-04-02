@@ -102,5 +102,40 @@ void copy_nullable_field(
     memory::paged_memory_resource* resource = nullptr
 );
 
-}
+/**
+ * @brief copy non-nullable field data on source record to data::any value container
+ * @param type type of the record field being read
+ * @param source source record reference
+ * @param source_offset byte offset of the source field in the source record
+ * @param result [OUT] argument to receive the result
+ * @param resource memory resource optionally used to allocate varlen data on the target. Pass nullptr if no new
+ * allocation is needed and the target still references the same varlen buffer as source.
+ */
+void copy_field_as_any(
+    meta::field_type const& type,
+    accessor::record_ref source,
+    std::size_t source_offset,
+    data::any& result,
+    memory::paged_memory_resource* resource = nullptr
+);
 
+/**
+ * @brief copy nullable field data on source record to data::any value container
+ * @param type type of the record field being read
+ * @param source source record reference
+ * @param source_offset byte offset of the source field in the source record
+ * @param source_nullity_offset bit offset of the nullity flags in the source record
+ * @param result [OUT] argument to receive the result
+ * @param resource memory resource optionally used to allocate varlen data on the target. Pass nullptr if no new
+ * allocation is needed and the target still references the same varlen buffer as source.
+ */
+void copy_nullable_field_as_any(
+    meta::field_type const& type,
+    accessor::record_ref source,
+    std::size_t source_offset,
+    std::size_t source_nullity_offset,
+    data::any& result,
+    memory::paged_memory_resource* resource = nullptr
+);
+
+}  // namespace jogasaki::utils

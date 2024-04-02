@@ -47,6 +47,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/status.h>
 #include <jogasaki/test_utils/temporary_folder.h>
+#include <jogasaki/utils/runner.h>
 
 namespace jogasaki::executor::batch {
 
@@ -81,7 +82,8 @@ public:
     void test_bootstrap(
         std::vector<std::vector<std::size_t>> block_def_list,
         std::size_t max_concurrent_files = batch_executor_option::undefined,
-        std::size_t max_concurrent_blocks_per_file = batch_executor_option::undefined
+        std::size_t max_concurrent_blocks_per_file = batch_executor_option::undefined,
+        bool log_records = true
     );
     void test_error(
         std::vector<std::vector<std::size_t>> block_def_list,
@@ -287,7 +289,7 @@ TEST_F(batch_executor_test, many_files) {
     for(std::size_t i=0; i < file_count; ++i) {
         defs.emplace_back(std::vector<std::size_t>{i});
     }
-    test_bootstrap(std::move(defs));
+    test_bootstrap(std::move(defs), batch_executor_option::undefined, batch_executor_option::undefined, false);
 }
 
 TEST_F(batch_executor_test, many_files_with_many_empty_ones) {
@@ -319,7 +321,7 @@ TEST_F(batch_executor_test, many_blocks) {
         blocks.emplace_back(i);
     }
     defs.emplace_back(std::move(blocks));
-    test_bootstrap(std::move(defs));
+    test_bootstrap(std::move(defs), batch_executor_option::undefined, batch_executor_option::undefined, false);
 }
 
 // TODO temporarily disable as CI sometimes fails
@@ -341,7 +343,7 @@ TEST_F(batch_executor_test, DISABLED_many_blocks_with_many_empty_ones) {
     }
 
     defs.emplace_back(std::move(blocks));
-    test_bootstrap(std::move(defs));
+    test_bootstrap(std::move(defs), batch_executor_option::undefined, batch_executor_option::undefined, false);
 }
 
 
@@ -361,7 +363,7 @@ TEST_F(batch_executor_test, DISABLED_many_files_and_blocks) {
     for(std::size_t i=0; i < file_count; ++i) {
         defs.emplace_back(blocks);
     }
-    test_bootstrap(std::move(defs));
+    test_bootstrap(std::move(defs), batch_executor_option::undefined, batch_executor_option::undefined, false);
 }
 
 // TODO sometimes failed by err_serialization_failure
@@ -421,7 +423,8 @@ TEST_F(batch_executor_test, error_on_last_statement_of_long_block) {
 void batch_executor_test::test_bootstrap(
     std::vector<std::vector<std::size_t>> block_def_list,
     std::size_t max_concurrent_files,
-    std::size_t max_concurrent_blocks_per_file
+    std::size_t max_concurrent_blocks_per_file,
+    bool log_records
 ) {
     execute_statement("CREATE TABLE TT (C0 BIGINT NOT NULL PRIMARY KEY)");
 
@@ -482,7 +485,16 @@ void batch_executor_test::test_bootstrap(
 
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TT ORDER BY C0", result);
+        ASSERT_EQ("", utils::runner{}
+            .db(*db_)
+            .show_plan(to_explain())
+            .show_recs(log_records)
+            .text("SELECT * FROM TT ORDER BY C0")
+            .output_records(result)
+            .run()
+            .report()
+        );
+
         ASSERT_EQ(statement_count, result.size());
         for(std::size_t i=0; i < statement_count; ++i) {
             EXPECT_EQ((mock::create_nullable_record<kind::int8>(i)), result[i]);

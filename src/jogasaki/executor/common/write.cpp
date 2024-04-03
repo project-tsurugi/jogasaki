@@ -52,6 +52,7 @@
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/assignment.h>
+#include <jogasaki/executor/conv/create_default_value.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -257,7 +258,8 @@ void create_generated_field(
     bool nullable,
     kvs::coding_spec spec,
     std::size_t offset,
-    std::size_t nullity_offset
+    std::size_t nullity_offset,
+    memory::lifo_paged_memory_resource* resource
 ) {
     using yugawara::storage::column_value_kind;
     sequence_definition_id def_id{};
@@ -269,12 +271,13 @@ void create_generated_field(
             break;
         case column_value_kind::immediate: {
             knd = process::impl::ops::default_value_kind::immediate;
-            immediate_val = utils::as_any(
-                *dv.element<column_value_kind::immediate>(),
-                type,
-                nullptr // varlen data is owned by takatori so resource is not required
-            );
-            break;
+            auto& v = *dv.element<column_value_kind::immediate>();
+            if(auto a = conv::create_immediate_default_value(v, type, resource); ! a.error()) {
+                immediate_val = a;
+                break;
+            }
+            // the value must have been validated when ddl is issued
+            fail_with_exception();
         }
         case column_value_kind::sequence: {
             knd = process::impl::ops::default_value_kind::sequence;
@@ -304,7 +307,8 @@ std::vector<details::write_field> create_fields(
     sequence_view<write::column const> columns,
     maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
     maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
-    bool key
+    bool key,
+    memory::lifo_paged_memory_resource* resource
 ) {
     using reference = takatori::descriptor::variable::reference_type;
     yugawara::binding::factory bindings{};
@@ -336,7 +340,8 @@ std::vector<details::write_field> create_fields(
                     nullable,
                     spec,
                     key_meta->value_offset(pos),
-                    key_meta->nullity_offset(pos)
+                    key_meta->nullity_offset(pos),
+                    resource
                 );
                 continue;
             }
@@ -373,7 +378,8 @@ std::vector<details::write_field> create_fields(
                     nullable,
                     spec,
                     value_meta->value_offset(pos),
-                    value_meta->nullity_offset(pos)
+                    value_meta->nullity_offset(pos),
+                    resource
                 );
                 continue;
             }
@@ -479,8 +485,8 @@ write::write(
     host_variables_(host_variables),
     key_meta_(index::create_meta(*idx_, true)),
     value_meta_(index::create_meta(*idx_, false)),
-    key_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true)),
-    value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false)),
+    key_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true, resource_)),
+    value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false, resource_)),
     primary_(create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_)),
     secondaries_(create_secondary_targets(*idx_, key_meta_, value_meta_))
 {}

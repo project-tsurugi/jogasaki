@@ -190,27 +190,15 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
         }
         case yugawara::storage::column_value_kind::immediate: {
             auto& value = c.default_value().element<yugawara::storage::column_value_kind::immediate>();
-            switch(c.type().kind()) {
+            switch(value->kind()) {
                 using proto::metadata::common::AtomType;
-                using k = takatori::type::type_kind;
+                using k = takatori::value::value_kind;
                 case k::boolean: col->set_boolean_value(static_cast<takatori::value::boolean const&>(*value).get()); break; //NOLINT
-                case k::int1: col->set_int4_value(static_cast<takatori::value::int4 const&>(*value).get()); break;  //TODO verify cast correctness //NOLINT
-                case k::int2: col->set_int4_value(static_cast<takatori::value::int4 const&>(*value).get()); break;  //TODO verify cast correctness //NOLINT
                 case k::int4: col->set_int4_value(static_cast<takatori::value::int4 const&>(*value).get()); break; //NOLINT
                 case k::int8: col->set_int8_value(static_cast<takatori::value::int8 const&>(*value).get()); break; //NOLINT
                 case k::float4: col->set_float4_value(static_cast<takatori::value::float4 const&>(*value).get()); break; //NOLINT
                 case k::float8: col->set_float8_value(static_cast<takatori::value::float8 const&>(*value).get()); break; //NOLINT
                 case k::decimal: {
-                    auto kind = value->kind();
-                    if(kind != takatori::value::value_kind::decimal) {
-                        throw_exception(storage_metadata_exception{
-                            status::err_unsupported,
-                            error_code::unsupported_runtime_feature_exception,
-                            string_builder{} << "unsupported type mapping to " << c.type().kind()
-                                             << " from default value type " << kind << " provided for column \""
-                                             << col->name() << "\"" << string_builder::to_string
-                        });
-                    }
                     auto p = static_cast<takatori::value::decimal const&>(*value).get();  //NOLINT
                     utils::decimal_buffer out{};
                     auto [hi, lo, sz] = utils::make_signed_coefficient_full(p);

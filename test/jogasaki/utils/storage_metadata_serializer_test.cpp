@@ -75,6 +75,11 @@ public:
         ::yugawara::storage::index_feature::find,
         ::yugawara::storage::index_feature::scan,
     };
+
+    void test_default_value_with_type(
+        takatori::type::data&& type,
+        takatori::value::data&& value
+    );
 };
 
 std::string readable(std::string_view serialized) {
@@ -430,40 +435,63 @@ TEST_F(storage_metadata_serializer_test, synthesized_flag) {
     }
 }
 
-TEST_F(storage_metadata_serializer_test, default_int_for_decimal) {
-    std::shared_ptr<::yugawara::storage::table> t = provider_.add_table({
+void storage_metadata_serializer_test::test_default_value_with_type(
+    takatori::type::data&& type,
+    takatori::value::data&& value
+) {
+    storage::configurable_provider provider{};
+    std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
         "TT",
         {
-            { "C0", type::int8(), nullity{false} },
-            { "C1", type::decimal(5), nullity{true}, column_value{std::make_shared<takatori::value::int4 const>(100)}},
+            { "C0", std::move(type), nullity{true}, column_value{std::move(value)} },
         },
     });
-    auto primary = provider_.add_index({
+    auto primary = provider.add_index({
         t,
         t->simple_name(),
         {
             t->columns()[0],
         },
-        {
-            t->columns()[1],
-        },
+        {},
         index_features_
     });
+    auto deserialized = std::make_shared<storage::configurable_provider>();
+    test_index(*primary, provider, *deserialized);
+    auto t2 = deserialized->find_table("TT");
+    EXPECT_EQ(to_string(*t2), to_string(*t));
+}
 
-    storage_metadata_serializer ser{};
-    {
-        bool caught = false;
-        proto::metadata::storage::IndexDefinition idef{};
-        try {
-            ser.serialize(*primary, idef, metadata_serializer_option{true});
-        } catch (storage_metadata_exception const& e) {
-            caught = true;
-            EXPECT_EQ(status::err_unsupported, e.get_status());
-            EXPECT_EQ(error_code::unsupported_runtime_feature_exception, e.get_code());
-            EXPECT_EQ("unsupported type mapping to decimal from default value type int4 provided for column \"C1\"", std::string{e.what()});
-        }
-        ASSERT_TRUE(caught);
-    }
+TEST_F(storage_metadata_serializer_test, varieties_of_default_value_types) {
+    // verify default values rounds trip even if default its type is different from column type
+    test_default_value_with_type(takatori::type::int4(), takatori::value::int4{-11});
+    test_default_value_with_type(takatori::type::int4(), takatori::value::int8{-11});
+    test_default_value_with_type(takatori::type::int4(), takatori::value::float4{-11.0F});
+    test_default_value_with_type(takatori::type::int4(), takatori::value::float8{-11.0});
+    test_default_value_with_type(takatori::type::int4(), takatori::value::decimal{-11});
+
+    test_default_value_with_type(takatori::type::int8(), takatori::value::int4{-11});
+    test_default_value_with_type(takatori::type::int8(), takatori::value::int8{-11});
+    test_default_value_with_type(takatori::type::int8(), takatori::value::float4{-11.0F});
+    test_default_value_with_type(takatori::type::int8(), takatori::value::float8{-11.0});
+    test_default_value_with_type(takatori::type::int8(), takatori::value::decimal{-11});
+
+    test_default_value_with_type(takatori::type::float4(), takatori::value::int4{-11});
+    test_default_value_with_type(takatori::type::float4(), takatori::value::int8{-11});
+    test_default_value_with_type(takatori::type::float4(), takatori::value::float4{-11.0F});
+    test_default_value_with_type(takatori::type::float4(), takatori::value::float8{-11.0});
+    test_default_value_with_type(takatori::type::float4(), takatori::value::decimal{-11});
+
+    test_default_value_with_type(takatori::type::float8(), takatori::value::int4{-11});
+    test_default_value_with_type(takatori::type::float8(), takatori::value::int8{-11});
+    test_default_value_with_type(takatori::type::float8(), takatori::value::float4{-11.0F});
+    test_default_value_with_type(takatori::type::float8(), takatori::value::float8{-11.0});
+    test_default_value_with_type(takatori::type::float8(), takatori::value::decimal{-11});
+
+    test_default_value_with_type(takatori::type::decimal(), takatori::value::int4{-11});
+    test_default_value_with_type(takatori::type::decimal(), takatori::value::int8{-11});
+    test_default_value_with_type(takatori::type::decimal(), takatori::value::float4{-11.0F});
+    test_default_value_with_type(takatori::type::decimal(), takatori::value::float8{-11.0});
+    test_default_value_with_type(takatori::type::decimal(), takatori::value::decimal{-11});
 }
 
 TEST_F(storage_metadata_serializer_test, already_exists_error) {

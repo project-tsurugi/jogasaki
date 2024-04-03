@@ -47,6 +47,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/conv/create_default_value.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
@@ -149,12 +150,35 @@ bool validate_type(
     return false;
 }
 
+bool validate_default_value(
+    request_context& context,
+    yugawara::storage::column const& c
+) {
+    if(c.default_value().kind() == yugawara::storage::column_value_kind::immediate) {
+        auto& dv = c.default_value().element<yugawara::storage::column_value_kind::immediate>();
+        if(auto a = conv::create_immediate_default_value(*dv, c.type(), context.request_resource()); a.error()) {
+            set_error(
+                context,
+                error_code::unsupported_runtime_feature_exception,
+                string_builder{} << "unable to convert default value for column \"" << c.simple_name()
+                                 << "\" to type " << c.type() << string_builder::to_string,
+                status::err_unsupported
+            );
+            return false;
+        }
+    }
+    return true;
+}
+
 bool validate_table_definition(
     request_context& context,
     yugawara::storage::table const& t
 ) {
     using takatori::type::type_kind;
     for(auto&& c : t.columns()) {
+        if(! validate_default_value(context, c)) {
+            return false;
+        }
         switch(c.type().kind()) {
             case type_kind::decimal:
                 if(! validate_type(context, c.simple_name(), unsafe_downcast<takatori::type::decimal const>(c.type()))) {

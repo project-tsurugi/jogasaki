@@ -512,45 +512,94 @@ TEST_F(ddl_test, negative_default_value) {
     test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT DEFAULT -100)", error_code::syntax_exception);
 }
 
-TEST_F(ddl_test, decimal_default_value) {
-    // decimal literal is not supported and integer is not handled correctly as decimal
-    test_stmt_err(
-        "CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5) DEFAULT 1)",
-        error_code::unsupported_runtime_feature_exception,
-        "unsupported type mapping to decimal from default value type int4 provided for column \"C1\""
-    );
-    test_stmt_err(
-        "CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5,2) DEFAULT 2.22)",
-        error_code::unsupported_runtime_feature_exception,
-        "unsupported type mapping to decimal from default value type float8 provided for column \"C1\""
-    );
-}
-
 TEST_F(ddl_test, type_difference_between_default_value_and_column_type) {
-    // verify no crash with default values
-    // TODO check the value after mapping is fixed
+    // verify constant assignment conversion works for DEFAULT values
     {
         // float8 value for int4 column
         execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT DEFAULT 1.1)");
         execute_statement("INSERT INTO T (C0) VALUES(0)");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT C1 FROM T", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
+        }
         execute_statement("DROP TABLE T");
     }
     {
         // float8 value for int8 column
         execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 BIGINT DEFAULT 1.1)");
         execute_statement("INSERT INTO T (C0) VALUES(0)");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT C1 FROM T", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((mock::create_nullable_record<kind::int8>(1)), result[0]);
+        }
         execute_statement("DROP TABLE T");
     }
     {
         // int4 value for float4 column
         execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 REAL DEFAULT 1)");
         execute_statement("INSERT INTO T (C0) VALUES(0)");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT C1 FROM T", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((mock::create_nullable_record<kind::float4>(1.0)), result[0]);
+        }
         execute_statement("DROP TABLE T");
     }
     {
         // int4 value for float8 column
         execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 DOUBLE DEFAULT 1)");
         execute_statement("INSERT INTO T (C0) VALUES(0)");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT C1 FROM T", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((mock::create_nullable_record<kind::float8>(1.0)), result[0]);
+        }
+        execute_statement("DROP TABLE T");
+    }
+}
+
+TEST_F(ddl_test, decimal_default_value) {
+    // decimal literal is not supported yet and integer or float can be used
+    {
+        // int value for decimal column
+        execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5) DEFAULT 1)");
+        execute_statement("INSERT INTO T (C0) VALUES(0)");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT C1 FROM T", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ(
+                (mock::typed_nullable_record<kind::decimal>(
+                    std::tuple{decimal_type(5, 0)},
+                    std::forward_as_tuple(decimal_v{1, 0, 1, 0})
+                )),
+                result[0]
+            );
+        }
+        execute_statement("DROP TABLE T");
+    }
+    {
+        // float value for decimal column
+        execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 DECIMAL(5,2) DEFAULT 2.22)");
+        execute_statement("INSERT INTO T (C0) VALUES(0)");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT C1 FROM T", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ(
+                (mock::typed_nullable_record<kind::decimal>(
+                    std::tuple{decimal_type(5, 2)},
+                    std::forward_as_tuple(decimal_v{1, 0, 222, -2})
+                )),
+                result[0]
+            );
+        }
         execute_statement("DROP TABLE T");
     }
 }

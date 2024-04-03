@@ -236,14 +236,14 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_NE((create_nullable_record<kind::int8, kind::int8>(1,10)), result[0]); //TODO
+        EXPECT_EQ((create_nullable_record<kind::int8, kind::int8>(1,10)), result[0]);
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES (12, 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_NE((create_nullable_record<kind::int8, kind::int8>(10, 12)), result[0]); //TODO
+        EXPECT_EQ((create_nullable_record<kind::int8, kind::int8>(10, 12)), result[0]);
     }
     execute_statement("drop table T");
 
@@ -254,14 +254,14 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_NE((create_nullable_record<kind::float4, kind::float4>(1,10)), result[0]);  //TODO
+        EXPECT_EQ((create_nullable_record<kind::float4, kind::float4>(1,10)), result[0]);
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES (12, 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_NE((create_nullable_record<kind::float4, kind::float4>(10, 12)), result[0]);  //TODO
+        EXPECT_EQ((create_nullable_record<kind::float4, kind::float4>(10, 12)), result[0]);
     }
     execute_statement("drop table T");
 
@@ -272,14 +272,14 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_NE((create_nullable_record<kind::float8, kind::float8>(1,10)), result[0]);  //TODO
+        EXPECT_EQ((create_nullable_record<kind::float8, kind::float8>(1,10)), result[0]);
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES (12, 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_NE((create_nullable_record<kind::float8, kind::float8>(10, 12)), result[0]);  // TODO
+        EXPECT_EQ((create_nullable_record<kind::float8, kind::float8>(10, 12)), result[0]);
     }
     execute_statement("drop table T");
 

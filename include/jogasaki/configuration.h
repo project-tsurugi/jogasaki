@@ -425,46 +425,57 @@ public:
     }
 
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
-        return out << std::boolalpha <<
-            "single_thread:" << cfg.single_thread() << " " <<
-            "thread_pool_size:" << cfg.thread_pool_size() << " " <<
-            "default_partitions:" << cfg.default_partitions() << " " <<
-            "core_affinity:" << cfg.core_affinity() << " " <<
-            "initial_core:" << cfg.initial_core() << " " <<
-            "assign_numa_nodes_uniformly:" << cfg.assign_numa_nodes_uniformly() << " " <<
-            "force_numa_node:" << (cfg.force_numa_node() == numa_node_unspecified ? "unspecified" : std::to_string(cfg.force_numa_node())) << " " <<
-            "prepare_test_tables:" << cfg.prepare_test_tables() << " " <<
-            "prepare_benchmark_tables:" << cfg.prepare_benchmark_tables() << " " <<
-            "prepare_analytics_benchmark_tables:" << cfg.prepare_analytics_benchmark_tables() << " " <<
-            "stealing_enabled:" << cfg.stealing_enabled() << " " <<
-            "db_location:" << cfg.db_location() << " " <<
-            "activate_scheduler:" << cfg.activate_scheduler() << " " <<
-            "enable_index_join:" << cfg.enable_index_join() << " " <<
-            "use_preferred_worker_for_current_thread:" << cfg.use_preferred_worker_for_current_thread() << " " <<
-            "stealing_wait:" << cfg.stealing_wait() << " " <<
-            "task_polling_wait:" << cfg.task_polling_wait() << " " <<
-            "lightweight_job_level:" << cfg.lightweight_job_level() << " " <<
-            "enable_hybrid_scheduler:" << cfg.enable_hybrid_scheduler() << " " <<
-            "busy_worker:" << cfg.busy_worker() << " " <<
-            "watcher_interval:" << cfg.watcher_interval() << " " <<
-            "worker_try_count:" << cfg.worker_try_count() << " " <<
-            "worker_suspend_timeout:" << cfg.worker_suspend_timeout() << " " <<
-            "default_commit_response:" << cfg.default_commit_response() << " " <<
-            "update_skips_deletion:" << cfg.update_skips_deletion() << " " <<
-            "profile_commits:" << cfg.profile_commits() << " " <<
-            "skip_smv_check:" << cfg.skip_smv_check() << " " <<
-            "return_os_pages:" << cfg.return_os_pages() << " " <<
-            "omit_task_when_idle:" << cfg.omit_task_when_idle() << " " <<
-            "trace_external_log:" << cfg.trace_external_log() << " " <<
-            "external_log_explain:" << cfg.external_log_explain() << " " <<
-            "try_insert_on_upserting_secondary:" << cfg.try_insert_on_upserting_secondary() << " " <<
-            "support_octet:" << cfg.support_octet() << " " <<
-            "support_smallint:" << cfg.support_smallint() << " " <<
-            "scan_concurrent_operation_as_not_found:" << cfg.scan_concurrent_operation_as_not_found() << " " <<
-            "point_read_concurrent_operation_as_not_found:" << cfg.point_read_concurrent_operation_as_not_found() << " " <<
-            "normalize_float:" << cfg.normalize_float() << " " <<
-            "log_msg_user_data:" << cfg.log_msg_user_data() << " " <<
-            "";
+
+        //NOLINTBEGIN
+        #define print_non_default(prop)  \
+            if(def.prop() != cfg.prop()) { \
+                out << #prop ":" << cfg.prop() << " "; \
+            }
+        //NOLINTEND
+
+        static const configuration def{};
+        out << std::boolalpha;
+        print_non_default(single_thread);
+        print_non_default(thread_pool_size);
+        print_non_default(default_partitions);
+        print_non_default(core_affinity);
+        print_non_default(initial_core);
+        print_non_default(assign_numa_nodes_uniformly);
+        print_non_default(force_numa_node);
+        print_non_default(prepare_test_tables);
+        print_non_default(prepare_benchmark_tables);
+        print_non_default(prepare_analytics_benchmark_tables);
+        print_non_default(stealing_enabled);
+        print_non_default(db_location);
+        print_non_default(activate_scheduler);
+        print_non_default(enable_index_join);
+        print_non_default(use_preferred_worker_for_current_thread);
+        print_non_default(stealing_wait);
+        print_non_default(task_polling_wait);
+        print_non_default(lightweight_job_level);
+        print_non_default(enable_hybrid_scheduler);
+        print_non_default(busy_worker);
+        print_non_default(watcher_interval);
+        print_non_default(worker_try_count);
+        print_non_default(worker_suspend_timeout);
+        print_non_default(default_commit_response);
+        print_non_default(update_skips_deletion);
+        print_non_default(profile_commits);
+        print_non_default(skip_smv_check);
+        print_non_default(return_os_pages);
+        print_non_default(omit_task_when_idle);
+        print_non_default(trace_external_log);
+        print_non_default(external_log_explain);
+        print_non_default(try_insert_on_upserting_secondary);
+        print_non_default(support_octet);
+        print_non_default(support_smallint);
+        print_non_default(scan_concurrent_operation_as_not_found);
+        print_non_default(point_read_concurrent_operation_as_not_found);
+        print_non_default(normalize_float);
+        print_non_default(log_msg_user_data);
+        return out;
+
+        #undef print_non_default
     }
 
 private:
@@ -513,5 +524,4 @@ private:
 
 };
 
-}
-
+}  // namespace jogasaki

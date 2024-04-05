@@ -425,5 +425,33 @@ TEST_F(cast_from_string_test, to_double) {
         EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_float8("sNaN", ctx));
     }
 }
+
+TEST_F(cast_from_string_test, to_decimal_long_string) {
+    // verify very long string hits format error
+    constexpr std::size_t repeats = 100000;
+    evaluator_context ctx{&resource_};
+    std::stringstream ss{};
+    for(std::size_t i=0; i < repeats; ++i) {
+        ss << "1234567890";
+    }
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_decimal(ss.str(), ctx));
+}
+
+TEST_F(cast_from_string_test, to_decimal_long_string3) {
+    // mpdecimal can accept very long string e.g. 100MB
+    // TODO what is the realistic max for acceptable string length for decimals?
+    constexpr std::size_t repeats = 10000000;
+    evaluator_context ctx{&resource_};
+    {
+        std::stringstream ss{};
+        ss << "0.";
+        for(std::size_t i=0; i < repeats; ++i) {
+            ss << "0000000000";
+        }
+        ss << "1E100000000";
+        EXPECT_EQ((any{std::in_place_type<triple>, triple{1,0,1,-1}}), to_decimal(ss.str(), ctx));
+    }
+}
+
 }
 

@@ -20,7 +20,6 @@ TsurugiにおけるDECIMAL型についての実装上のメモ
 
 [data_type.md](data_types.md) を参照
 
-
 ## TsurugiのDECIMALの実装
 
 ### mpdecimalによるDECIMALの表現

@@ -13,25 +13,22 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
 ## TINYINT/SMALLINT/INT/BIGINT
 
 - 実行時型: std::int32_t (TINYINT, SMALLINT, INT) / std::int64_t (BIGINT)
-- 実行時型の値の一意性：あり
-- 全順序性：あり
+  - 全順序で比較可能
 
 ## REAL/DOUBLE
 
 - 実行時型: float (REAL) / double (DOUBLE)
-- 実行時型の値の一意性：なし
-  - -0.0 があるので一意ではない
-  - ストア時には -0.0は正のゼロへ正規化する
-- 全順序性：なし
-  - -0.0 があるので全順序でない
-  - NaNを最大の値として扱いNaN == NaNとする
-  - 計算結果で現れたNaNは最小のquiet NaNにnormalizeする
+  - NaNは他のすべての値(+Infinity含む)より大きな値として扱い、自分自身と等しいものとして比較する (IEEE 754規則と異なる)
+  - 計算過程/結果に現れたNaNは最小のquiet NaNに正規化する。正規でないNaNが外部へ見えることはない。
+  - +0.0と-0.0は互いに等しいものとして比較する
+    - このルールのため全順序ではない(strict weak ordering)
+  - -0.0が計算過程/結果に現れることはある
+  - -0.0はストア時には+0.0へ正規化する
 
 ## VARCHAR
 
 - 実行時型: jogasaki::accessor::text
-- 実行時型の値の一意性：あり
-- 全順序性：あり
+  - 全順序で比較可能
 
 ### `VARCHAR(*)`
 
@@ -47,8 +44,7 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
 ## CHAR
 
 - 実行時型: jogasaki::accessor::text
-- 実行時型の値の一意性：あり
-- 全順序性：あり
+  - 全順序で比較可能
 
 ### `CHAR(*)`
 
@@ -68,10 +64,14 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
   - `p` は `[1,38]` の範囲の整数で桁数を表す
   - `s`は `[0, p]` の範囲の整数で小数点以下の桁数を表す
 - `DECIMAL(p,s)`は`[-(10^p-1)*10^(-s), (10^p-1)*10^(-s)]` の範囲の値を表現可能
-- 実行時型: takatori::decimal::triple
-- 実行時型の値の一意性：あり
-  - trailing zeroを除去した形のtripleのみをあつかう
-- 全順序性：あり
+- 実行時型: `takatori::decimal::triple`
+  - `triple` そのものには順序比較がないので `decimal::Decimal` へ変換して順序比較をおこなう
+    - strict weak order
+      - 下記のように互いに等しく比較される複数の `triple` がある
+  - 任意の `triple` は `decimal::Decimal` へ変換可能 
+    - ただしこの変換は単射ではない
+      - trailing zeroを加えて指数を調整した `triple` も同じ `Decimal` に変換される
+    - trailing zeroを除けば一意なので、演算や変換は可能な限りtrailing zeroを除去した形(reduced)で出力するようにする
 
 ### 任意長のprecision/scale
 

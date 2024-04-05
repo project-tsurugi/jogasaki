@@ -10,9 +10,10 @@
 
 ### 浮動小数へ変換時のunderflow/overflow
 
-  - 変換先の型がfloat4またはfloat8で、値が `-std::numeric_limits::min()` と `std::numeric_limits::min()` の間(端点を含まない)の場合、underflowが発生する。この場合、変換結果は負又は正のゼロとし、精度は失われるものとする。
+  - 変換先の型がfloat4またはfloat8で、値が `-std::numeric_limits::min()` と `std::numeric_limits::min()` の間(端点を含まない)の場合、underflowが発生する。この場合、変換結果は負又は正のゼロとする。
+  - 変換先の型がfloat4またはfloat8で、値が `-std::numeric_limits::max()` 未満か `std::numeric_limits::max()` を越える場合overflowが発生する。この場合、変換結果は負又は正の無限大とする。
 
-  - 変換先の型がfloat4またはfloat8で、値が `-std::numeric_limits::max()` 未満か `std::numeric_limits::max()` を越える場合overflowが発生する。この場合、変換結果は負又は正の無限大とし、精度は失われるものとする。
+いずれの場合も精度は失われない(approx. numberへの変換では精度は失われない)。
 
 ### 特殊値の文字列表現
 

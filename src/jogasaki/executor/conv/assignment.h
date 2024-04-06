@@ -24,6 +24,17 @@
 
 namespace jogasaki::executor::conv {
 
+/**
+ * @brief conduct the assignment conversion
+ * @details convert the input value of source type to target type
+ * @param source_type the source type of the conversion
+ * @param target_type the target type of the conversion
+ * @param in the input value to convert
+ * @param out the output value of the conversion
+ * @param ctx the request context
+ * @param resource the memory resource used for the conversion and output data
+ * @warning output data can possibly be allocated in `resource` and caller is responsible to rewind the resource
+*/
 status conduct_assignment_conversion(
     takatori::type::data const& source_type,
     takatori::type::data const& target_type,
@@ -33,6 +44,10 @@ status conduct_assignment_conversion(
     memory::lifo_paged_memory_resource* resource
 );
 
+/**
+ * @brief check if the conversion is required
+ * @details this is the common function to check if source and target types are different
+*/
 bool to_require_conversion(
     takatori::type::data const& source_type,
     takatori::type::data const& target_type

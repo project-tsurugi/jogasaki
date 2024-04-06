@@ -143,8 +143,13 @@ status write_partial::update_record(
             f.source_external_ ? host_variables : input_variables,
             f.source_offset_,
             f.source_nullity_offset_,
-            a
+            a,
+            nullptr // varlen data is owned by the source record
         );
+
+        // To clean up varlen data resource in data::any, we rely on upper layer that does clean up
+        // on evey process invocation. Otherwise, we have to copy the result of conversion and
+        // lifo resource is not convenient to copy the result when caller and callee use the same resource.
         data::any converted{};
         if(auto res = conv::conduct_assignment_conversion(
                *f.source_type_,

@@ -181,7 +181,7 @@ status fill_evaluated_value(
     evaluator eval{t.elements()[f.index_], info, host_variables};
     process::impl::variable_table empty{};
     process::impl::expression::evaluator_context c{std::addressof(resource)};
-    auto res = eval(c, empty, &resource);
+    auto res = eval(c, empty, std::addressof(resource));
     if (res.error()) {
         auto rc = status::err_expression_evaluation_failure;
         set_error(
@@ -193,6 +193,10 @@ status fill_evaluated_value(
         );
         return rc;
     }
+
+    // To clean up varlen data resource in data::any, we rely on upper layer that does clean up
+    // on evey process invocation. Otherwise, we have to copy the result of conversion and
+    // lifo resource is not convenient to copy the result when caller and callee use the same resource.
     data::any converted{res};
     if(conv::to_require_conversion(source_type, *f.target_type_)) {
         if(auto st = conv::conduct_assignment_conversion(
@@ -273,7 +277,7 @@ void create_generated_field(
             knd = process::impl::ops::default_value_kind::immediate;
             auto& v = *dv.element<column_value_kind::immediate>();
             if(auto a = conv::create_immediate_default_value(v, type, resource); ! a.error()) {
-                immediate_val = a;
+                immediate_val = a; // varlen resource of the any content is owned by the executable_statement
                 break;
             }
             // the value must have been validated when ddl is issued
@@ -733,7 +737,7 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         value_meta_,
         secondaries_,
         *db,
-        resource_);
+        resource_); // currently common::write uses the same resource for building mirror and executing runtime 
 
     for(auto&& tuple: wrt_->tuples()) {
         utils::checkpoint_holder cph(resource_);

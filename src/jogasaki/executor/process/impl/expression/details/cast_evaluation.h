@@ -34,11 +34,14 @@ using any = jogasaki::data::any;
 
 /**
  * @brief cast function from src to target type
+ * @details convert the input value of source type to target type
  * @param ctx evaluator context holding resource, warnings
  * @param src source type
  * @param tgt target type
  * @param a value to be casted
  * @return casted value or error if any
+ * @warning output data can possibly be allocated in `ctx.resource()` and caller is responsible to rewind the resource
+ * to avoid resource leak
  */
 any conduct_cast(
     evaluator_context& ctx,

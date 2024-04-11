@@ -31,6 +31,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/id.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
 #include <jogasaki/scheduler/dag_controller.h>
@@ -54,7 +55,7 @@ using namespace jogasaki::scheduler;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 using impl::get_impl;
@@ -237,9 +238,9 @@ TEST_F(load_test, existing_file_and_missing_file) {
 }
 
 TEST_F(load_test, decimals) {
-    auto v111 = decimal_v{1, 0, 111, 0}; // 111
-    auto v11_111 = decimal_v{1, 0, 11111, -3}; // 11.111
-    auto v11111_1 = decimal_v{1, 0, 111111, -1}; // 11111.1
+    auto v111 = triple{1, 0, 111, 0}; // 111
+    auto v11_111 = triple{1, 0, 11111, -3}; // 11.111
+    auto v11111_1 = triple{1, 0, 111111, -1}; // 11111.1
     {
         std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::decimal},
@@ -300,7 +301,7 @@ TEST_F(load_test, decimals) {
 }
 
 TEST_F(load_test, decimals_with_indefinite_precscale) {
-    auto v1 = decimal_v{1, 0, 1, 0}; // 1
+    auto v1 = triple{1, 0, 1, 0}; // 1
     {
         std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::decimal},
@@ -397,7 +398,7 @@ TEST_F(load_test, cast_from_string) {
                 meta::field_type{meta::field_enum_tag<kind::float8>},
                 meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
             },
-            { 1, 10, 100.0, 1000.0, decimal_v{1, 0, 11111, -3} /* 11.111 */ }
+            { 1, 10, 100.0, 1000.0, triple{1, 0, 11111, -3} /* 11.111 */ }
         )), result[0]);
         EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(
             std::tuple{
@@ -407,7 +408,7 @@ TEST_F(load_test, cast_from_string) {
                 meta::field_type{meta::field_enum_tag<kind::float8>},
                 meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
             },
-            { 2, 20, 200.0, 2000.0, decimal_v{1, 0, 22222, -3} /* 22.222 */ }
+            { 2, 20, 200.0, 2000.0, triple{1, 0, 22222, -3} /* 22.222 */ }
         )), result[1]);
     }
 }
@@ -433,6 +434,32 @@ TEST_F(load_test, DISABLED_third_party_file) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TT ORDER BY C0", result);
         ASSERT_EQ(5, result.size());
+    }
+}
+
+TEST_F(load_test, decimals_bad_length_calculation) {
+    // regression testcase jogasaki issue #100
+    execute_statement("CREATE TABLE t (c0 DECIMAL(38) primary key)");
+    auto m129 = triple{-1, 0, 0x81UL, 0};
+    execute_statement("INSERT INTO t VALUES (CAST('-129' AS DECIMAL(*,*)))");
+
+    std::vector<std::string> files{};
+    test_dump("select c0 from t", files);
+    execute_statement("DELETE FROM t");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::decimal},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_reference_column("p0", "c0");
+
+    test_load(files, "INSERT INTO t VALUES (:p0)", variables, std::move(ps));
+    {
+        using kind = meta::field_type_kind;
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t ORDER BY c0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(38, 0)}, {m129})), result[0]);
     }
 }
 

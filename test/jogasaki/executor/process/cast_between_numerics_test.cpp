@@ -139,7 +139,7 @@ void cast_between_numerics_test::test_int_to_decimal(std::function<any(Source, e
     evaluator_context ctx{&resource_};
     EXPECT_EQ(any_triple(1), fn(1, ctx, std::nullopt, std::nullopt));
     EXPECT_EQ(any_triple(1, 0, 123, 0), fn(123, ctx, 6, 3));
-    EXPECT_EQ(any_triple(1, 0, 0, 0), fn(0, ctx, 5, 3));
+    EXPECT_EQ(any_triple(0, 0, 0, 0), fn(0, ctx, 5, 3));
     EXPECT_EQ(any_triple(1, 0, 1, 1), fn(10, ctx, 5, 0));
 
     EXPECT_EQ(any_triple(1, 0, 99, 0), fn(100, ctx, 2, 0));
@@ -248,14 +248,14 @@ TEST_F(cast_between_numerics_test, decimal_to_int8) {
 template <class Source, class Target, class RangeTarget>
 void cast_between_numerics_test::test_int_narrowing(std::function<any(Source, evaluator_context&)> fn) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(0, ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(1, ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, -1}), fn(-1, ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget, Target>()}), fn(int_max<RangeTarget, Source>(), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget, Target>()}), fn(int_min<RangeTarget, Source>(), ctx));
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(0, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(1, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, -1}), fn(-1, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget, Target>()}), fn(int_max<RangeTarget, Source>(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget, Target>()}), fn(int_min<RangeTarget, Source>(), ctx)); lost_precision(false);
 
-    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget, Target>()}), fn(int_max<RangeTarget, Source>()+1, ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget, Target>()}), fn(int_min<RangeTarget, Source>()-1, ctx));
+    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget, Target>()}), fn(int_max<RangeTarget, Source>()+1, ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget, Target>()}), fn(int_min<RangeTarget, Source>()-1, ctx)); lost_precision(true);
 }
 
 TEST_F(cast_between_numerics_test, int8_to_int1) {
@@ -291,11 +291,11 @@ TEST_F(cast_between_numerics_test, int4_to_int1) {
 template <class Source, class Target, class RangeTarget>
 void cast_between_numerics_test::test_int_widening(std::function<any(Source, evaluator_context&)> fn) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(0, ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(1, ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, -1}), fn(-1, ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget, Target>()}), fn(int_max<RangeTarget, Source>(), ctx));
-    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget, Target>()}), fn(int_min<RangeTarget, Source>(), ctx));
+    EXPECT_EQ((any{std::in_place_type<Target>, 0}), fn(0, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(1, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, -1}), fn(-1, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_max<RangeTarget, Target>()}), fn(int_max<RangeTarget, Source>(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Target>, int_min<RangeTarget, Target>()}), fn(int_min<RangeTarget, Source>(), ctx)); lost_precision(false);
 }
 
 TEST_F(cast_between_numerics_test, int1_to_int8) {
@@ -317,23 +317,23 @@ TEST_F(cast_between_numerics_test, int4_to_int8) {
 }
 TEST_F(cast_between_numerics_test, decimal_to_float4) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<float>, 1}), from_decimal::to_float4(make_triple("1"), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 0}), from_decimal::to_float4(make_triple("0"), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -1}), from_decimal::to_float4(make_triple("-1"), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 123}), from_decimal::to_float4(make_triple("123"), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 1.23}), from_decimal::to_float4(make_triple("1.23"), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 100}), from_decimal::to_float4(make_triple("100"), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 1000}), from_decimal::to_float4(make_triple("1E+3"), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 1}), from_decimal::to_float4(make_triple("1"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 0}), from_decimal::to_float4(make_triple("0"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, -1}), from_decimal::to_float4(make_triple("-1"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 123}), from_decimal::to_float4(make_triple("123"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 1.23}), from_decimal::to_float4(make_triple("1.23"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 100}), from_decimal::to_float4(make_triple("100"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 1000}), from_decimal::to_float4(make_triple("1E+3"), ctx)); lost_precision(false);
 
     // verify (approx.) boundaries
-    EXPECT_EQ((any{std::in_place_type<float>, 3.40282e+38}), from_decimal::to_float4(make_triple("3.40282e+38"), ctx)); // FLT_MAX
-    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_decimal::to_float4(make_triple("3.4029e+38"), ctx)); // FLT_MAX + alpha
-    EXPECT_EQ((any{std::in_place_type<float>, -3.40282e+38}), from_decimal::to_float4(make_triple("-3.40282e+38"), ctx)); // -FLT_MAX
-    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_decimal::to_float4(make_triple("-3.4029e+38"), ctx)); // -FLT_MAX - alpha
-    EXPECT_EQ((any{std::in_place_type<float>, 1.17550e-38}), from_decimal::to_float4(make_triple("1.17550e-38"), ctx)); // FLT_MIN + alpha (because FLT_MIN underflows)
+    EXPECT_EQ((any{std::in_place_type<float>, 3.40282e+38}), from_decimal::to_float4(make_triple("3.40282e+38"), ctx)); lost_precision(false); // FLT_MAX
+    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_decimal::to_float4(make_triple("3.4029e+38"), ctx));  lost_precision(false); // FLT_MAX + alpha
+    EXPECT_EQ((any{std::in_place_type<float>, -3.40282e+38}), from_decimal::to_float4(make_triple("-3.40282e+38"), ctx));  lost_precision(false); // -FLT_MAX
+    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_decimal::to_float4(make_triple("-3.4029e+38"), ctx));  lost_precision(false); // -FLT_MAX - alpha
+    EXPECT_EQ((any{std::in_place_type<float>, 1.17550e-38}), from_decimal::to_float4(make_triple("1.17550e-38"), ctx));  lost_precision(false); // FLT_MIN + alpha (because FLT_MIN underflows)
     {
         // FLT_MIN - alpha will be +0.0
-        auto a = from_decimal::to_float4(make_triple("1.1754e-38"), ctx);
+        auto a = from_decimal::to_float4(make_triple("1.1754e-38"), ctx); lost_precision(false);
         ASSERT_TRUE(a);
         auto f = a.to<float>();
         EXPECT_EQ(0, f);
@@ -341,7 +341,7 @@ TEST_F(cast_between_numerics_test, decimal_to_float4) {
     }
     {
         // - FLT_MIN + alpha will be -0.0
-        auto a = from_decimal::to_float4(make_triple("-1.1754e-38"), ctx);
+        auto a = from_decimal::to_float4(make_triple("-1.1754e-38"), ctx); lost_precision(false);
         ASSERT_TRUE(a);
         auto f = a.to<float>();
         EXPECT_EQ(0, f);
@@ -351,25 +351,25 @@ TEST_F(cast_between_numerics_test, decimal_to_float4) {
 
 TEST_F(cast_between_numerics_test, decimal_to_float8) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<double>, 1}), from_decimal::to_float8(make_triple("1"), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, 0}), from_decimal::to_float8(make_triple("0"), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, -1}), from_decimal::to_float8(make_triple("-1"), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, 123}), from_decimal::to_float8(make_triple("123"), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, 1.23}), from_decimal::to_float8(make_triple("1.23"), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, 100}), from_decimal::to_float8(make_triple("100"), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, 1000}), from_decimal::to_float8(make_triple("1E+3"), ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, 1}), from_decimal::to_float8(make_triple("1"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, 0}), from_decimal::to_float8(make_triple("0"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, -1}), from_decimal::to_float8(make_triple("-1"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, 123}), from_decimal::to_float8(make_triple("123"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, 1.23}), from_decimal::to_float8(make_triple("1.23"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, 100}), from_decimal::to_float8(make_triple("100"), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, 1000}), from_decimal::to_float8(make_triple("1E+3"), ctx)); lost_precision(false);
 
     // verify (approx.) boundaries
-    EXPECT_EQ((any{std::in_place_type<double>, 1.79769e+308}), from_decimal::to_float8(make_triple("1.79769e+308"), ctx)); // DBL_MAX
-    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<double>::infinity()}), from_decimal::to_float8(make_triple("1.7977e+308"), ctx)); // DBL_MAX + alpha
-    EXPECT_EQ((any{std::in_place_type<double>, -1.79769e+308}), from_decimal::to_float8(make_triple("-1.79769e+308"), ctx)); // - DBL_MAX
-    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<double>::infinity()}), from_decimal::to_float8(make_triple("-1.7977e+308"), ctx)); // - DBL_MAX - alpha
-    EXPECT_EQ((any{std::in_place_type<double>, 2.22508e-308}), from_decimal::to_float8(make_triple("2.22508e-308"), ctx)); // DBL_MIN + alpha (because DBL_MIN underflows)
-    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), from_decimal::to_float8(make_triple("2.22506e-308"), ctx)); // DBL_MIN - alpha
-    EXPECT_EQ((any{std::in_place_type<double>, -0.0}), from_decimal::to_float8(make_triple("-2.22506e-308"), ctx)); // negative (DBL_MIN - alpha)
+    EXPECT_EQ((any{std::in_place_type<double>, 1.79769e+308}), from_decimal::to_float8(make_triple("1.79769e+308"), ctx));  lost_precision(false); // DBL_MAX
+    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<double>::infinity()}), from_decimal::to_float8(make_triple("1.7977e+308"), ctx));  lost_precision(false); // DBL_MAX + alpha
+    EXPECT_EQ((any{std::in_place_type<double>, -1.79769e+308}), from_decimal::to_float8(make_triple("-1.79769e+308"), ctx));  lost_precision(false); // - DBL_MAX
+    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<double>::infinity()}), from_decimal::to_float8(make_triple("-1.7977e+308"), ctx));  lost_precision(false); // - DBL_MAX - alpha
+    EXPECT_EQ((any{std::in_place_type<double>, 2.22508e-308}), from_decimal::to_float8(make_triple("2.22508e-308"), ctx));  lost_precision(false); // DBL_MIN + alpha (because DBL_MIN underflows)
+    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), from_decimal::to_float8(make_triple("2.22506e-308"), ctx));  lost_precision(false); // DBL_MIN - alpha
+    EXPECT_EQ((any{std::in_place_type<double>, -0.0}), from_decimal::to_float8(make_triple("-2.22506e-308"), ctx));  lost_precision(false); // negative (DBL_MIN - alpha)
     {
         // DBL_MIN - alpha will be +0.0
-        auto a = from_decimal::to_float8(make_triple("2.22506e-308"), ctx);
+        auto a = from_decimal::to_float8(make_triple("2.22506e-308"), ctx); lost_precision(false);
         ASSERT_TRUE(a);
         auto d = a.to<double>();
         EXPECT_EQ(0, d);
@@ -377,7 +377,7 @@ TEST_F(cast_between_numerics_test, decimal_to_float8) {
     }
     {
         // - DBL_MIN + alpha will be +0.0
-        auto a = from_decimal::to_float8(make_triple("-2.22506e-308"), ctx);
+        auto a = from_decimal::to_float8(make_triple("-2.22506e-308"), ctx); lost_precision(false);
         ASSERT_TRUE(a);
         auto d = a.to<double>();
         EXPECT_EQ(0, d);
@@ -386,77 +386,83 @@ TEST_F(cast_between_numerics_test, decimal_to_float8) {
 }
 
 TEST_F(cast_between_numerics_test, float4_to_decimal) {
+    // note: testing lost precision here is a little vague. See the comment for float8_to_decimal
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any_triple(1, 0, 1, 0)), from_float4::to_decimal(1.0f, ctx, 5, 3));
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(0.0f, ctx, 5, 3));
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(-0.0f, ctx, 5, 3));
-    EXPECT_EQ((any_triple(-1, 0, 1, 0)), from_float4::to_decimal(-1.0f, ctx, 5, 3));
-    EXPECT_EQ((any_triple(1, 0, 1, 1)), from_float4::to_decimal(10.0f, ctx, 5, 3));
-    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float4::to_decimal(1.23f, ctx, 5, 3));
-    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float4::to_decimal(1.23f, ctx, 5, 2));
+    EXPECT_EQ((any_triple(1, 0, 1, 0)), from_float4::to_decimal(1.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(0.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(-0.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(-1, 0, 1, 0)), from_float4::to_decimal(-1.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 1, 1)), from_float4::to_decimal(10.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float4::to_decimal(1.23f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float4::to_decimal(1.23f, ctx, 5, 2)); lost_precision(false);
 
     // verify on float min/max
     {
-        auto a = from_float4::to_decimal(3.40282e+38f, ctx, {}, {});
+        auto a = from_float4::to_decimal(3.40282e+38f, ctx, {}, {}); lost_precision(false);
         EXPECT_TRUE(a);
         decimal::Decimal d{a.to<triple>()};
         EXPECT_EQ(1, d.sign());
         EXPECT_LE(38, d.adjexp());
     }
     {
-        auto a = from_float4::to_decimal(-3.40282e+38f, ctx, {}, {});
+        auto a = from_float4::to_decimal(-3.40282e+38f, ctx, {}, {}); lost_precision(false);
         decimal::Decimal d{a.to<triple>()};
         EXPECT_EQ(-1, d.sign());
         EXPECT_LE(38, d.adjexp());
     }
-    EXPECT_EQ((any_triple(1, 0, 117549, -43)), from_float4::to_decimal(1.17549e-38f, ctx, {}, {}));
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(1.17549e-38f, ctx, {}, 0));
+    EXPECT_EQ((any_triple(1, 0, 117549, -43)), from_float4::to_decimal(1.17549e-38f, ctx, {}, {})); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(1.17549e-38f, ctx, {}, 0)); lost_precision(true);
 
     // verify on decimal min/max
-    EXPECT_FALSE(from_float4::to_decimal(1.0e+38f-1, ctx, {}, 0).error()); // 9999...(38 digits) - alpha
-    EXPECT_FALSE(from_float4::to_decimal(1.1e+38f, ctx, 38, 0).error()); // 9999...(38 digits) + alpha
+    EXPECT_FALSE(from_float4::to_decimal(1.0e+37F, ctx, {}, 0).error()); lost_precision(false); // 9999...(38 digits) - alpha
+    EXPECT_FALSE(from_float4::to_decimal(1.1e+38f, ctx, 38, 0).error()); lost_precision(true); // 9999...(38 digits) + alpha
 
     // special values
-    EXPECT_EQ((any{std::in_place_type<triple>, triple_max}), from_float4::to_decimal(std::numeric_limits<float>::infinity(), ctx, {}, {}));
-    EXPECT_EQ((any{std::in_place_type<triple>, triple_min}), from_float4::to_decimal(-std::numeric_limits<float>::infinity(), ctx, {}, {}));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple_max}), from_float4::to_decimal(std::numeric_limits<float>::infinity(), ctx, {}, {})); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple_min}), from_float4::to_decimal(-std::numeric_limits<float>::infinity(), ctx, {}, {})); lost_precision(true);
     EXPECT_EQ((any_error(error_kind::arithmetic_error)), from_float4::to_decimal(std::numeric_limits<float>::quiet_NaN(), ctx, {}, {}));
     EXPECT_EQ((any_error(error_kind::arithmetic_error)), from_float4::to_decimal(std::numeric_limits<float>::signaling_NaN(), ctx, {}, {}));
 }
 
 TEST_F(cast_between_numerics_test, float8_to_decimal) {
+    // note: testing lost precision here is a little vague since approx. to exact almost always has binary to decimal conversion error.
+    // For example, 0.3 in float8 is not precise and it's actually something like 0.300000011920928955078125.
+    // So if we can convert 0.3 in float8 to triple{1, 0, 3, -1}, it's not exact conversion.
+    // To avoid the confusion, we block the implicit conversion from approx. to exact.
+    // Lost precision here means only the case going over max/min boundery and saturated to max/min.
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any_triple(1, 0, 1, 0)), from_float8::to_decimal(1, ctx, 5, 3));
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(0.0, ctx, 5, 3));
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(-0.0, ctx, 5, 3));
-    EXPECT_EQ((any_triple(-1, 0, 1, 0)), from_float8::to_decimal(-1, ctx, 5, 3));
-    EXPECT_EQ((any_triple(1, 0, 1, 1)), from_float8::to_decimal(10, ctx, 5, 3));
-    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float8::to_decimal(1.23, ctx, 5, 3));
-    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float8::to_decimal(1.23, ctx, 5, 2));
+    EXPECT_EQ((any_triple(1, 0, 1, 0)), from_float8::to_decimal(1, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(0.0, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(-0.0, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(-1, 0, 1, 0)), from_float8::to_decimal(-1, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 1, 1)), from_float8::to_decimal(10, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float8::to_decimal(1.23, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float8::to_decimal(1.23, ctx, 5, 2)); lost_precision(false);
 
     // verify on double min/max
     {
-        auto a = from_float8::to_decimal(1.79769e+308, ctx, {}, {}); // DBL_MAX
+        auto a = from_float8::to_decimal(1.79769e+308, ctx, {}, {}); lost_precision(false); // DBL_MAX
         EXPECT_TRUE(a);
         decimal::Decimal d{a.to<triple>()};
         EXPECT_EQ(1, d.sign());
         EXPECT_LE(308, d.adjexp());
     }
     {
-        auto a = from_float8::to_decimal(-1.79769e+308, ctx, {}, {}); // -DBL_MAX
+        auto a = from_float8::to_decimal(-1.79769e+308, ctx, {}, {}); lost_precision(false); // -DBL_MAX
         decimal::Decimal d{a.to<triple>()};
         EXPECT_EQ(-1, d.sign());
         EXPECT_LE(308, d.adjexp());
     }
-    EXPECT_EQ((any_triple(1, 0, 222507, -313)), from_float8::to_decimal(2.22507e-308, ctx, {}, {}));  // DBL_MIN
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(2.22507e-308, ctx, {}, 0));  // DBL_MIN
+    EXPECT_EQ((any_triple(1, 0, 222507, -313)), from_float8::to_decimal(2.22507e-308, ctx, {}, {})); lost_precision(false);  // DBL_MIN
+    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(2.22507e-308, ctx, {}, 0)); lost_precision(true);  // DBL_MIN
 
     // verify on decimal min/max
-    EXPECT_FALSE(from_float8::to_decimal(1.0e+38f-1, ctx, {}, 0).error()); // 9999...(38 digits) - alpha
-    EXPECT_FALSE(from_float8::to_decimal(1.1e+38f, ctx, 38, 0).error()); // 9999...(38 digits) + alpha
+    EXPECT_FALSE(from_float8::to_decimal(1.0e+37, ctx, {}, 0).error()); lost_precision(false); // 9999...(38 digits) - alpha
+    EXPECT_FALSE(from_float8::to_decimal(1.1e+38, ctx, 38, 0).error()); lost_precision(true); // 9999...(38 digits) + alpha
 
     // special values
-    EXPECT_EQ((any{std::in_place_type<triple>, triple_max}), from_float8::to_decimal(std::numeric_limits<double>::infinity(), ctx, {}, {}));
-    EXPECT_EQ((any{std::in_place_type<triple>, triple_min}), from_float8::to_decimal(-std::numeric_limits<double>::infinity(), ctx, {}, {}));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple_max}), from_float8::to_decimal(std::numeric_limits<double>::infinity(), ctx, {}, {})); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple_min}), from_float8::to_decimal(-std::numeric_limits<double>::infinity(), ctx, {}, {})); lost_precision(true);
     EXPECT_EQ((any_error(error_kind::arithmetic_error)), from_float8::to_decimal(std::numeric_limits<double>::quiet_NaN(), ctx, {}, {}));
     EXPECT_EQ((any_error(error_kind::arithmetic_error)), from_float8::to_decimal(std::numeric_limits<double>::signaling_NaN(), ctx, {}, {}));
 }
@@ -529,26 +535,26 @@ TEST_F(cast_between_numerics_test, verify_float8_int8_constants) {
 
 template <class Float, class Int, class RangeInt>
 void test_float_to_int_common(evaluator_context& ctx, std::function<any(Float, evaluator_context&)> fn) {
-    EXPECT_EQ((any{std::in_place_type<Int>, 0}), fn(0.0f, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, 0}), fn(-0.0f, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, 1}), fn(1.0f, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, -1}), fn(-1.0f, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, 10}), fn(10.0f, ctx));
+    EXPECT_EQ((any{std::in_place_type<Int>, 0}), fn(0.0f, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Int>, 0}), fn(-0.0f, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Int>, 1}), fn(1.0f, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Int>, -1}), fn(-1.0f, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Int>, 10}), fn(10.0f, ctx)); lost_precision(false);
 
     // right to decimal point are truncated (round down)
-    EXPECT_EQ((any{std::in_place_type<Int>, 1}), fn(1.5f, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, 2}), fn(2.5f, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, -1}), fn(-1.5f, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, -2}), fn(-2.5f, ctx));
+    EXPECT_EQ((any{std::in_place_type<Int>, 1}), fn(1.5f, ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Int>, 2}), fn(2.5f, ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Int>, -1}), fn(-1.5f, ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Int>, -2}), fn(-2.5f, ctx)); lost_precision(true);
 
     // verify on floats min/max
-    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::max()}), fn(std::numeric_limits<Float>::max(), ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, 0}), fn(std::numeric_limits<Float>::min(), ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::min()}), fn(std::numeric_limits<Float>::lowest(), ctx));
+    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::max()}), fn(std::numeric_limits<Float>::max(), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Int>, 0}), fn(std::numeric_limits<Float>::min(), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::min()}), fn(std::numeric_limits<Float>::lowest(), ctx)); lost_precision(true);
 
     // special values
-    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::max()}), fn(std::numeric_limits<Float>::infinity(), ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::min()}), fn(-std::numeric_limits<Float>::infinity(), ctx));
+    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::max()}), fn(std::numeric_limits<Float>::infinity(), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Int>, std::numeric_limits<RangeInt>::min()}), fn(-std::numeric_limits<Float>::infinity(), ctx)); lost_precision(true);
     EXPECT_EQ((any_error(error_kind::arithmetic_error)), fn(std::numeric_limits<Float>::quiet_NaN(), ctx));
     EXPECT_EQ((any_error(error_kind::arithmetic_error)), fn(-std::numeric_limits<Float>::quiet_NaN(), ctx));
 }
@@ -559,10 +565,10 @@ void test_float_to_int_minmax(evaluator_context& ctx, std::function<any(runtime_
     using Int = runtime_type<IntKind>;
     using Range = typename meta::field_type_traits<IntKind>::value_range;
     using Float = runtime_type<FloatKind>;
-    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(max_integral_float_convertible_to_int<IntKind, FloatKind>)}), fn(max_integral_float_convertible_to_int<IntKind, FloatKind>, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(std::numeric_limits<Range>::max())}), fn(next_int_representable(max_integral_float_convertible_to_int<IntKind, FloatKind>), ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(min_integral_float_convertible_to_int<IntKind, FloatKind>)}), fn(min_integral_float_convertible_to_int<IntKind, FloatKind>, ctx));
-    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(std::numeric_limits<Range>::min())}), fn(next_int_representable(min_integral_float_convertible_to_int<IntKind, FloatKind>, true), ctx));
+    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(max_integral_float_convertible_to_int<IntKind, FloatKind>)}), fn(max_integral_float_convertible_to_int<IntKind, FloatKind>, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(std::numeric_limits<Range>::max())}), fn(next_int_representable(max_integral_float_convertible_to_int<IntKind, FloatKind>), ctx)); lost_precision(true);
+    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(min_integral_float_convertible_to_int<IntKind, FloatKind>)}), fn(min_integral_float_convertible_to_int<IntKind, FloatKind>, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Int>, static_cast<Int>(std::numeric_limits<Range>::min())}), fn(next_int_representable(min_integral_float_convertible_to_int<IntKind, FloatKind>, true), ctx)); lost_precision(true);
 }
 
 TEST_F(cast_between_numerics_test, next_int_representable) {
@@ -665,14 +671,14 @@ TEST_F(cast_between_numerics_test, float8_to_int8) {
 
 template <class Int, class Float>
 void test_int_to_float(evaluator_context& ctx, std::function<any(Int, evaluator_context&)> fn) {
-    EXPECT_EQ((any{std::in_place_type<Float>, 0}), fn(0, ctx));
-    EXPECT_EQ((any{std::in_place_type<Float>, 1}), fn(1, ctx));
-    EXPECT_EQ((any{std::in_place_type<Float>, 10}), fn(10, ctx));
-    EXPECT_EQ((any{std::in_place_type<Float>, -1}), fn(-1, ctx));
+    EXPECT_EQ((any{std::in_place_type<Float>, 0}), fn(0, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Float>, 1}), fn(1, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Float>, 10}), fn(10, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Float>, -1}), fn(-1, ctx)); lost_precision(false);
 
     // verify on ints min/max
-    EXPECT_EQ((any{std::in_place_type<Float>, static_cast<Float>(std::numeric_limits<Int>::max())}), fn(std::numeric_limits<Int>::max(), ctx));
-    EXPECT_EQ((any{std::in_place_type<Float>, static_cast<Float>(std::numeric_limits<Int>::min())}), fn(std::numeric_limits<Int>::min(), ctx));
+    EXPECT_EQ((any{std::in_place_type<Float>, static_cast<Float>(std::numeric_limits<Int>::max())}), fn(std::numeric_limits<Int>::max(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<Float>, static_cast<Float>(std::numeric_limits<Int>::min())}), fn(std::numeric_limits<Int>::min(), ctx)); lost_precision(false);
 }
 
 TEST_F(cast_between_numerics_test, int4_to_float4) {
@@ -704,83 +710,83 @@ TEST_F(cast_between_numerics_test, int8_to_float8) {
 
 TEST_F(cast_between_numerics_test, float4_to_float8) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), from_float4::to_float8(+0.0f, ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), from_float4::to_float8(+0.0f, ctx)); lost_precision(false);
     {
         // negative zero preserves
-        double negative_zero = from_float4::to_float8(-0.0f, ctx).to<double>();
+        double negative_zero = from_float4::to_float8(-0.0f, ctx).to<double>(); lost_precision(false);
         EXPECT_EQ(0.0, negative_zero);
         EXPECT_TRUE(std::signbit(negative_zero));
     }
-    EXPECT_EQ((any{std::in_place_type<double>, 1}), from_float4::to_float8(1, ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, 10}), from_float4::to_float8(10, ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, -1}), from_float4::to_float8(-1, ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, 1}), from_float4::to_float8(1, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, 10}), from_float4::to_float8(10, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, -1}), from_float4::to_float8(-1, ctx)); lost_precision(false);
 
     // verify on special values
-    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<double>::infinity()}), from_float4::to_float8(std::numeric_limits<float>::infinity(), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<double>::infinity()}), from_float4::to_float8(-std::numeric_limits<float>::infinity(), ctx));
-    EXPECT_TRUE(std::isnan(from_float4::to_float8(std::numeric_limits<float>::quiet_NaN(), ctx).to<double>()));
-    EXPECT_TRUE(std::isnan(from_float4::to_float8(-std::numeric_limits<float>::quiet_NaN(), ctx).to<double>()));
-    EXPECT_TRUE(std::isnan(from_float4::to_float8(std::numeric_limits<float>::signaling_NaN(), ctx).to<double>()));
-    EXPECT_TRUE(std::isnan(from_float4::to_float8(-std::numeric_limits<float>::signaling_NaN(), ctx).to<double>()));
+    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<double>::infinity()}), from_float4::to_float8(std::numeric_limits<float>::infinity(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<double>::infinity()}), from_float4::to_float8(-std::numeric_limits<float>::infinity(), ctx)); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float4::to_float8(std::numeric_limits<float>::quiet_NaN(), ctx).to<double>())); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float4::to_float8(-std::numeric_limits<float>::quiet_NaN(), ctx).to<double>())); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float4::to_float8(std::numeric_limits<float>::signaling_NaN(), ctx).to<double>())); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float4::to_float8(-std::numeric_limits<float>::signaling_NaN(), ctx).to<double>())); lost_precision(false);
 
-    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<float>::max()}), from_float4::to_float8(std::numeric_limits<float>::max(), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<float>::min()}), from_float4::to_float8(std::numeric_limits<float>::min(), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<float>::max()}), from_float4::to_float8(-std::numeric_limits<float>::max(), ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<float>::min()}), from_float4::to_float8(-std::numeric_limits<float>::min(), ctx));
+    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<float>::max()}), from_float4::to_float8(std::numeric_limits<float>::max(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<float>::min()}), from_float4::to_float8(std::numeric_limits<float>::min(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<float>::max()}), from_float4::to_float8(-std::numeric_limits<float>::max(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<float>::min()}), from_float4::to_float8(-std::numeric_limits<float>::min(), ctx)); lost_precision(false);
 
     // no overflow / underflow possible
 }
 
 TEST_F(cast_between_numerics_test, float8_to_float4) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<float>, 0.0}), from_float8::to_float4(+0.0, ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 0.0}), from_float8::to_float4(+0.0, ctx)); lost_precision(false);
     {
         // negative zero preserves
-        float negative_zero = from_float8::to_float4(-0.0, ctx).to<float>();
+        float negative_zero = from_float8::to_float4(-0.0, ctx).to<float>(); lost_precision(false);
         EXPECT_EQ(0.0, negative_zero);
         EXPECT_TRUE(std::signbit(negative_zero));
     }
-    EXPECT_EQ((any{std::in_place_type<float>, 1}), from_float8::to_float4(1, ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 10}), from_float8::to_float4(10, ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -1}), from_float8::to_float4(-1, ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 1}), from_float8::to_float4(1, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 10}), from_float8::to_float4(10, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, -1}), from_float8::to_float4(-1, ctx)); lost_precision(false);
 
     // verify on special values
-    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::numeric_limits<double>::infinity(), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_float8::to_float4(-std::numeric_limits<double>::infinity(), ctx));
-    EXPECT_TRUE(std::isnan(from_float8::to_float4(std::numeric_limits<float>::quiet_NaN(), ctx).to<float>()));
-    EXPECT_TRUE(std::isnan(from_float8::to_float4(-std::numeric_limits<float>::quiet_NaN(), ctx).to<float>()));
-    EXPECT_TRUE(std::isnan(from_float8::to_float4(std::numeric_limits<float>::signaling_NaN(), ctx).to<float>()));
-    EXPECT_TRUE(std::isnan(from_float8::to_float4(-std::numeric_limits<float>::signaling_NaN(), ctx).to<float>()));
+    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::numeric_limits<double>::infinity(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_float8::to_float4(-std::numeric_limits<double>::infinity(), ctx)); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float8::to_float4(std::numeric_limits<float>::quiet_NaN(), ctx).to<float>())); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float8::to_float4(-std::numeric_limits<float>::quiet_NaN(), ctx).to<float>())); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float8::to_float4(std::numeric_limits<float>::signaling_NaN(), ctx).to<float>())); lost_precision(false);
+    EXPECT_TRUE(std::isnan(from_float8::to_float4(-std::numeric_limits<float>::signaling_NaN(), ctx).to<float>())); lost_precision(false);
 
     // verify on min/max values
-    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::max()}), from_float8::to_float4(std::numeric_limits<float>::max(), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::min()}), from_float8::to_float4(std::numeric_limits<float>::min(), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::max()}), from_float8::to_float4(-std::numeric_limits<float>::max(), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::min()}), from_float8::to_float4(-std::numeric_limits<float>::min(), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::max()}), from_float8::to_float4(std::numeric_limits<float>::max(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::min()}), from_float8::to_float4(std::numeric_limits<float>::min(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::max()}), from_float8::to_float4(-std::numeric_limits<float>::max(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::min()}), from_float8::to_float4(-std::numeric_limits<float>::min(), ctx)); lost_precision(false);
 
     // larger than float max
-    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::nextafter(static_cast<double>(std::numeric_limits<float>::max()), std::numeric_limits<double>::infinity()), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::nextafter(static_cast<double>(-std::numeric_limits<float>::max()), -std::numeric_limits<double>::infinity()), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::nextafter(static_cast<double>(std::numeric_limits<float>::max()), std::numeric_limits<double>::infinity()), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), from_float8::to_float4(std::nextafter(static_cast<double>(-std::numeric_limits<float>::max()), -std::numeric_limits<double>::infinity()), ctx)); lost_precision(false);
 
     // between float min and - float min
-    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(std::nextafter(static_cast<double>(std::numeric_limits<float>::min()), -std::numeric_limits<double>::infinity()), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(std::nextafter(static_cast<double>(-std::numeric_limits<float>::min()), std::numeric_limits<double>::infinity()), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(std::numeric_limits<double>::min(), ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(-std::numeric_limits<double>::min(), ctx));
+    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(std::nextafter(static_cast<double>(std::numeric_limits<float>::min()), -std::numeric_limits<double>::infinity()), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(std::nextafter(static_cast<double>(-std::numeric_limits<float>::min()), std::numeric_limits<double>::infinity()), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(std::numeric_limits<double>::min(), ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), from_float8::to_float4(-std::numeric_limits<double>::min(), ctx)); lost_precision(false);
 }
 
 TEST_F(cast_between_numerics_test, decimal_to_decimal) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ(any_triple(1, 0, 1, 0), from_decimal::to_decimal(make_triple("1"), ctx, {}, {}));
-    EXPECT_EQ(any_triple(1, 0, 123, 0), from_decimal::to_decimal(make_triple("123"), ctx, {}, {}));
-    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, {}));
+    EXPECT_EQ(any_triple(1, 0, 1, 0), from_decimal::to_decimal(make_triple("1"), ctx, {}, {})); lost_precision(false);
+    EXPECT_EQ(any_triple(1, 0, 123, 0), from_decimal::to_decimal(make_triple("123"), ctx, {}, {})); lost_precision(false);
+    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, {})); lost_precision(false);
 
-    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 5, 2));
-    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 6, 3));
-    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, 3));
-    EXPECT_EQ(any_triple(1, 0, 9999, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 4, 2));
+    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 5, 2)); lost_precision(false);
+    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 6, 3)); lost_precision(false);
+    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, 3)); lost_precision(false);
+    EXPECT_EQ(any_triple(1, 0, 9999, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 4, 2)); lost_precision(true);
     EXPECT_EQ(any_error(error_kind::unsupported), from_decimal::to_decimal(make_triple("123.45"), ctx, 4, {}));
-    EXPECT_EQ(any_triple(1, 0, 123, 0), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, 0));
+    EXPECT_EQ(any_triple(1, 0, 123, 0), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, 0)); lost_precision(true);
 }
 }
 

@@ -339,7 +339,8 @@ any handle_ps(
     auto digits = d.coeff().adjexp() + 1;
     auto digits_prec = -d.exponent();
 
-    if(static_cast<std::int64_t>(*precision-*scale) < digits-digits_prec) {
+    if((static_cast<std::int64_t>(*precision - *scale) < digits - digits_prec) && ! d.iszero()) {
+        // zero is the exceptional case where integral part has 1 digit but any decimal(p,s) can contain it
         if(auto a = handle_precision_lost<decimal::Decimal, triple>(src, d, ctx); a.error()) {
             return a;
         }
@@ -570,6 +571,11 @@ any to_decimal_internal(
         out = value;
         return {};
     }
+    if(value.iszero()) {
+        // zero is the exceptional case, in that it can have very large exponent. Normalize to standard zero.
+        out = decimal::Decimal{0}.copy_sign(value);
+        return {};
+    }
     // validate the value is in the valid triple (with digits checked) range
     // otherwise, truncate the coefficient and increase the exponent
     if(static_cast<std::int64_t>(max_triple_digits) < value.coeff().adjexp() + 1) {
@@ -586,6 +592,9 @@ any to_decimal_internal(
                 e.new_argument() << value;
                 e.new_argument() << rescaled;
                 return any{std::in_place_type<error>, error(error_kind::unknown)};
+            }
+            if(auto a = handle_inexact_conversion(ctx, value, rescaled); a.error()) {
+                return a;
             }
             value = rescaled;
         }
@@ -856,6 +865,7 @@ any handle_length(
         bool lost_precision = false;
         auto ret = truncate_or_pad_if_needed(ctx, src, dlen, add_padding, lenient_remove_padding, lost_precision);
         if(lost_precision) {
+            ctx.lost_precision(true);
             // inexact operation
             switch(ctx.get_loss_precision_policy()) {
                 case loss_precision_policy::ignore: break;
@@ -930,7 +940,11 @@ any float_to_decimal(
         return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
     }
     if(std::isinf(src)) {
-        return any{std::in_place_type<triple>, (std::signbit(src) ? triple_min : triple_max)};
+        auto tgt = std::signbit(src) ? triple_min : triple_max;
+        if(auto a = handle_precision_lost(src, tgt, ctx); a.error()) {
+            return a;
+        }
+        return any{std::in_place_type<triple>, tgt};
     }
     auto str = utils::to_string(src);
     decimal::context.clear_status();

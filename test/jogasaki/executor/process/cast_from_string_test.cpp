@@ -275,6 +275,7 @@ TEST_F(cast_from_string_test, to_decimal_large) {
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, 100}}), to_decimal("1E100", ctx));
     EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 1, 100}}), to_decimal("-1E100", ctx));
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_decimal("1E+24577", ctx)); // emax + 1
+    EXPECT_EQ((any{std::in_place_type<triple>, 0}), to_decimal("0.0E+1000000000000", ctx)); // zero is the exception for too large exp
 }
 
 TEST_F(cast_from_string_test, to_decimal_with_ps) {
@@ -312,9 +313,30 @@ TEST_F(cast_from_string_test, to_float) {
     EXPECT_EQ((any{std::in_place_type<float>, std::numeric_limits<float>::infinity()}), to_float4("3.40283e+38", ctx));  // FLT_MAX + alpha
     EXPECT_EQ((any{std::in_place_type<float>, -std::numeric_limits<float>::infinity()}), to_float4("-3.40283e+38", ctx));  // -(FLT_MAX + alpha)
     EXPECT_EQ((any{std::in_place_type<float>, 0.0F}), to_float4("0", ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, 0.0F}), to_float4("0.0", ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -0.0F}), to_float4("-0", ctx));
-    EXPECT_EQ((any{std::in_place_type<float>, -0.0F}), to_float4("-0.0", ctx));
+    {
+        auto a = to_float4("0", ctx);
+        EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), a);
+        auto f = a.to<float>();
+        EXPECT_FALSE(std::signbit(f));
+    }
+    {
+        auto a = to_float4("0.0", ctx);
+        EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), a);
+        auto f = a.to<float>();
+        EXPECT_FALSE(std::signbit(f));
+    }
+    {
+        auto a = to_float4("-0", ctx);
+        EXPECT_EQ((any{std::in_place_type<float>, -0.0f}), a);
+        auto f = a.to<float>();
+        EXPECT_TRUE(std::signbit(f));
+    }
+    {
+        auto a = to_float4("-0.0", ctx);
+        EXPECT_EQ((any{std::in_place_type<float>, -0.0f}), a);
+        auto f = a.to<float>();
+        EXPECT_TRUE(std::signbit(f));
+    }
     {
         auto a = to_float4("1.17549e-38", ctx); // FLT_MIN (underflows)
         EXPECT_EQ((any{std::in_place_type<float>, 0.0f}), a);
@@ -373,10 +395,30 @@ TEST_F(cast_from_string_test, to_double) {
     EXPECT_EQ((any{std::in_place_type<double>, -2.22508e-308}), to_float8("-2.22508e-308", ctx)); // -(DBL_MIN(2.22507e-308) + alpha)
     EXPECT_EQ((any{std::in_place_type<double>, std::numeric_limits<double>::infinity()}), to_float8("1.79770e+308", ctx)); // DBL_MAX + alpha
     EXPECT_EQ((any{std::in_place_type<double>, -std::numeric_limits<double>::infinity()}), to_float8("-1.79770e+308", ctx)); // -(DBL_MAX + alpha)
-    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), to_float8("0", ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, 0.0}), to_float8("0.0", ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, -0.0}), to_float8("-0", ctx));
-    EXPECT_EQ((any{std::in_place_type<double>, -0.0}), to_float8("-0.0", ctx));
+    {
+        auto a = to_float8("0", ctx);
+        EXPECT_EQ((any{std::in_place_type<double>, 0.0}), a);
+        auto d = a.to<double>();
+        EXPECT_FALSE(std::signbit(d));
+    }
+    {
+        auto a = to_float8("0.0", ctx);
+        EXPECT_EQ((any{std::in_place_type<double>, 0.0}), a);
+        auto d = a.to<double>();
+        EXPECT_FALSE(std::signbit(d));
+    }
+    {
+        auto a = to_float8("-0", ctx);
+        EXPECT_EQ((any{std::in_place_type<double>, -0.0}), a);
+        auto d = a.to<double>();
+        EXPECT_TRUE(std::signbit(d));
+    }
+    {
+        auto a = to_float8("-0.0", ctx);
+        EXPECT_EQ((any{std::in_place_type<double>, -0.0}), a);
+        auto d = a.to<double>();
+        EXPECT_TRUE(std::signbit(d));
+    }
     {
         auto a = to_float8("2.22507e-308", ctx); // DBL_MIN - alpha (underflows)
         EXPECT_EQ((any{std::in_place_type<double>, 0.0}), a);

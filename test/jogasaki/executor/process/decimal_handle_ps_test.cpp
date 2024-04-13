@@ -99,5 +99,17 @@ TEST_F(decimal_handle_ps_test, simple) {
     EXPECT_EQ((any{std::in_place_type<triple>, static_cast<triple>(decimal::Decimal{"999999999999999999999999999999999999.9"})}), handle_ps(decimal::Decimal{"999999999999999999999999999999999999.99"}, ctx, std::nullopt, 1));
 }
 
+TEST_F(decimal_handle_ps_test, same_ps) {
+    evaluator_context ctx{&resource_};
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{0, 0, 0, 0}}), handle_ps(decimal::Decimal{0}, ctx, 3, 3));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{0, 0, 0, 0}}), handle_ps(decimal::Decimal{"0.000"}, ctx, 3, 3));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 999, -3}}), handle_ps(decimal::Decimal{"0.999"}, ctx, 3, 3));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 99, -2}}), handle_ps(decimal::Decimal{"0.990"}, ctx, 3, 3));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 9, -1}}), handle_ps(decimal::Decimal{"0.900"}, ctx, 3, 3));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, -3}}), handle_ps(decimal::Decimal{"0.001"}, ctx, 3, 3));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, -2}}), handle_ps(decimal::Decimal{"0.010"}, ctx, 3, 3));
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, -1}}), handle_ps(decimal::Decimal{"0.100"}, ctx, 3, 3));
+}
+
 }
 

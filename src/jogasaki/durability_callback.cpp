@@ -33,6 +33,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/request_logging.h>
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/scheduler/schedule_option.h>
@@ -54,12 +55,18 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     if(db_->config()->profile_commits()) {
         durability_callback_invoked = commit_profile::clock::now();
     }
+
+    auto req_detail =
+        std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::process_durability_callback);
+    req_detail->status(scheduler::request_detail_status::accepted);
+    log_request(*req_detail);
+
     auto request_ctx = api::impl::create_request_context(
         *db_,
         nullptr,
         nullptr,
         nullptr,
-        std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::process_durability_callback)
+        std::move(req_detail)
     );
     request_ctx->job()->callback([request_ctx](){
         (void) request_ctx;
@@ -95,5 +102,5 @@ durability_callback::durability_callback(
     manager_(db.durable_manager().get()),
     scheduler_(db.task_scheduler())
 {}
-}
 
+}  // namespace jogasaki

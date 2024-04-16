@@ -16,13 +16,13 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <emmintrin.h>
 #include <functional>
 #include <ios>
 #include <memory>
 #include <ratio>
 #include <regex>
-#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -35,6 +35,7 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/response.h>
 #include <tateyama/api/server/session_info.h>
+#include <tateyama/api/server/session_store.h>
 #include <tateyama/api/server/writer.h>
 #include <tateyama/proto/diagnostics.pb.h>
 #include <tateyama/status.h>
@@ -153,12 +154,14 @@ public:
     [[nodiscard]] std::string_view payload() const override;
     [[nodiscard]] tateyama::api::server::database_info const& database_info() const noexcept override;
     [[nodiscard]] tateyama::api::server::session_info const& session_info() const noexcept override;
+    [[nodiscard]] tateyama::api::server::session_store& session_store() noexcept override;
 
     std::string payload_{};  //NOLINT
     std::size_t session_id_{};
     std::size_t service_id_{};
     database_info_impl database_info_{};
     session_info_impl session_info_{};
+    tateyama::api::server::session_store session_store_{};
 
 };
 
@@ -233,5 +236,4 @@ public:
     proto::diagnostics::Record error_{};  //NOLINT
 };
 
-}
-
+}  // namespace tateyama::api::server::mock

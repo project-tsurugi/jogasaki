@@ -53,6 +53,10 @@ tateyama::api::server::session_info const& test_request::session_info() const no
     return session_info_;
 }
 
+tateyama::api::server::session_store& test_request::session_store() noexcept {
+    return session_store_;
+}
+
 status test_channel::acquire(std::shared_ptr<writer>& wrt) {
     auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
     if (on_write_) {

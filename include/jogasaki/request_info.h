@@ -18,6 +18,7 @@
 #include <memory>
 
 #include <tateyama/api/server/request.h>
+#include <tateyama/api/server/response.h>
 
 namespace jogasaki {
 
@@ -29,21 +30,32 @@ public:
         id_(id)
     {}
 
-    request_info(std::size_t id, std::shared_ptr<tateyama::api::server::request const> src) :
+    request_info(
+        std::size_t id,
+        std::shared_ptr<tateyama::api::server::request> req_src,
+        std::shared_ptr<tateyama::api::server::response> res_src
+    ) :
         id_(id),
-        request_source_(std::move(src))
+        request_source_(std::move(req_src)),
+        response_source_(std::move(res_src))
     {}
 
     [[nodiscard]] std::size_t id() const noexcept {
         return id_;
     }
 
-    [[nodiscard]] std::shared_ptr<tateyama::api::server::request const> const& request_source() const noexcept {
+    [[nodiscard]] std::shared_ptr<tateyama::api::server::request> const& request_source() const noexcept {
         return request_source_;
     }
+
+    [[nodiscard]] std::shared_ptr<tateyama::api::server::response> const& response_source() const noexcept {
+        return response_source_;
+    }
+
 private:
     std::size_t id_{};
-    std::shared_ptr<tateyama::api::server::request const> request_source_{};
+    std::shared_ptr<tateyama::api::server::request> request_source_{};
+    std::shared_ptr<tateyama::api::server::response> response_source_{};
 };
 
 }  // namespace jogasaki

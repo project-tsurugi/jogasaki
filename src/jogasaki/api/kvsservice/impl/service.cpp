@@ -687,7 +687,7 @@ void service::command_dispose_transaction(tateyama::proto::kvs::request::Request
 /*
  * service protocol handling
  */
-bool service::operator()(std::shared_ptr<tateyama::api::server::request const> req, // NOLINT
+bool service::operator()(std::shared_ptr<tateyama::api::server::request> req, // NOLINT
                               std::shared_ptr<tateyama::api::server::response> res) {
     tateyama::proto::kvs::request::Request proto_req { };
     res->session_id(req->session_id());

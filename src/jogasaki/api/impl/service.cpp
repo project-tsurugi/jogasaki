@@ -748,7 +748,7 @@ void service::command_describe_table(
 }
 
 bool service::operator()(
-    std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<tateyama::api::server::request> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
 ) {
     try {
@@ -802,11 +802,11 @@ bool check_message_version(
 }
 
 bool service::process(
-    std::shared_ptr<tateyama::api::server::request const> req,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<tateyama::api::server::request> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
 ) {
     std::size_t reqid = request_id_src_++;
-    request_info req_info{reqid, req};
+    request_info req_info{reqid, req, res};
     sql::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;
     bool enable_performance_counter = false;

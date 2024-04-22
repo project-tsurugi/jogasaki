@@ -402,7 +402,7 @@ public:
     service(std::shared_ptr<tateyama::api::configuration::whole> cfg, jogasaki::api::database* db);
 
     bool operator()(
-        std::shared_ptr<tateyama::api::server::request const> req,
+        std::shared_ptr<tateyama::api::server::request> req,
         std::shared_ptr<tateyama::api::server::response> res
     );
 
@@ -432,7 +432,7 @@ private:
     static inline std::atomic_size_t request_id_src_{0};  //NOLINT
 
     bool process(
-            std::shared_ptr<tateyama::api::server::request const> req,
+            std::shared_ptr<tateyama::api::server::request> req,
             std::shared_ptr<tateyama::api::server::response> res
     );
 

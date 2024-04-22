@@ -40,7 +40,7 @@ public:
     explicit service(std::shared_ptr<tateyama::api::configuration::whole> const &cfg,
                      jogasaki::api::kvsservice::store* store);
 
-    bool operator()(std::shared_ptr<tateyama::api::server::request const> req,
+    bool operator()(std::shared_ptr<tateyama::api::server::request> req,
                     std::shared_ptr<tateyama::api::server::response> res);
 
     bool start();

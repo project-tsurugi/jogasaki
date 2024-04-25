@@ -45,6 +45,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/latch.h>
+#include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::scheduler {
@@ -121,6 +122,13 @@ bool flat_task::teardown() {  //NOLINT(readability-make-member-function-const)
 
 void flat_task::write() {
     log_entry << *this;
+    auto res_src = req_context_->req_info().response_source();
+    if(res_src && res_src->check_cancel()) {
+        set_cancel_status(*req_context_);
+        submit_teardown(*req_context_);
+        log_exit << *this;
+        return;
+    }
     trace_scope_name("write");  //NOLINT
     (*write_)(*req_context_);
     submit_teardown(*req_context_);

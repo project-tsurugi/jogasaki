@@ -128,19 +128,23 @@ T* mutable_object(sql::response::Response& r) {
     }
 }
 
-template<typename T>
-void error(
+void report_error(
     tateyama::api::server::response& res,
-    jogasaki::status,
+    tateyama::proto::diagnostics::Code code,
     std::string_view msg,
+    std::size_t reqid
+);
+
+inline bool promote_error_if_needed(
+    tateyama::api::server::response& res,
+    error::error_info* err_info,
     request_info const& req_info
 ) {
-    sql::response::Response r{};
-    auto* p = mutable_object<T>(r);
-    auto* e = p->mutable_error();
-    std::string m{utils::sanitize_utf8(msg)};
-    e->set_detail(m);
-    reply(res, r, req_info);
+    if(! err_info || err_info->code() != error_code::request_canceled) {
+        return false;
+    }
+    report_error(res, tateyama::proto::diagnostics::Code::OPERATION_CANCELED, err_info->message(), req_info.id());
+    return true;
 }
 
 template<typename T>
@@ -149,6 +153,8 @@ void error(
     error::error_info* err_info,
     request_info const& req_info
 ) {
+    sql::response::Error e{};
+    T p{};
     sql::response::Response r{};
     auto* p = mutable_object<T>(r);
     auto* e = p->mutable_error();

@@ -93,6 +93,21 @@ constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:ser
 
 namespace details {
 
+void report_error(
+    tateyama::api::server::response& res,
+    tateyama::proto::diagnostics::Code code,
+    std::string_view msg,
+    std::size_t reqid
+) {
+    VLOG(log_error) << log_location_prefix << msg;
+    tateyama::proto::diagnostics::Record rec{};
+    rec.set_code(code);
+    rec.set_message(msg.data(), msg.size());
+    VLOG(log_trace) << log_location_prefix << "respond with error (rid=" << reqid
+                    << "): " << utils::to_debug_string(rec);
+    res.error(rec);
+}
+
 class query_info {
 public:
     using handle_parameters = std::pair<std::size_t, maybe_shared_ptr<jogasaki::api::parameter_set const>>;
@@ -762,21 +777,6 @@ bool service::operator()(
     return true;
 }
 
-void report_error(
-    tateyama::api::server::response& res,
-    tateyama::proto::diagnostics::Code code,
-    std::string_view msg,
-    std::size_t reqid
-) {
-    VLOG(log_error) << log_location_prefix << msg;
-    tateyama::proto::diagnostics::Record rec{};
-    rec.set_code(code);
-    rec.set_message(msg.data(), msg.size());
-    VLOG(log_trace) << log_location_prefix << "respond with error (rid=" << reqid
-                    << "): " << utils::to_debug_string(rec);
-    res.error(rec);
-}
-
 std::string version_string(std::size_t major, std::size_t minor) {
     return string_builder{} << "sql-" << major << "." << minor << string_builder::to_string;
 }
@@ -797,7 +797,7 @@ bool check_message_version(
         " (client: \"" << version_string(major, minor) <<
         "\", server: \"" << version_string(service_message_version_major, service_message_version_minor) << "\")" <<
         string_builder::to_string;
-    report_error(res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
+    details::report_error(res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
     return false;
 }
 
@@ -824,7 +824,7 @@ bool service::process(
         if (!proto_req.ParseFromArray(s.data(), static_cast<int>(s.size()))) {
             auto msg = string_builder{} << "parse error with request (rid=" << reqid
                                         << ") body:" << utils::binary_printer{s} << string_builder::to_string;
-            report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
+            details::report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             return true;
         }
         VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size()
@@ -905,7 +905,7 @@ bool service::process(
         case sql::request::Request::RequestCase::kBatch: {
             auto msg = string_builder{} << "batch request is unsupported (rid=" << reqid
                                         << ") body:" << utils::to_debug_string(proto_req) << string_builder::to_string;
-            report_error(*res, tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, msg, reqid);
+            details::report_error(*res, tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, msg, reqid);
             break;
         }
         case sql::request::Request::RequestCase::kListTables: {
@@ -932,7 +932,7 @@ bool service::process(
             auto msg = string_builder{} << "request code is invalid (rid=" << reqid
                                         << ") code:" << proto_req.request_case()
                                         << " body:" << utils::to_debug_string(proto_req) << string_builder::to_string;
-            report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
+            details::report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             break;
     }
     if (enable_performance_counter) {

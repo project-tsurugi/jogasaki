@@ -18,8 +18,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <string_view>
 #include <ostream>
+#include <string_view>
 
 namespace jogasaki {
 
@@ -89,6 +89,9 @@ enum class error_code : std::int64_t {
     ltx_write_exception = 4014,
     rtx_exception = 4005,
     blocked_by_concurrent_operation_exception = 4007,
+
+    // internal use
+    request_canceled = 50011,
 };
 
 /**
@@ -159,6 +162,7 @@ enum class error_code : std::int64_t {
         case code::ltx_write_exception: return "ltx_write_exception"sv;
         case code::rtx_exception: return "rtx_exception"sv;
         case code::blocked_by_concurrent_operation_exception: return "blocked_by_concurrent_operation_exception"sv;
+        case code::request_canceled: return "request_canceled"sv;
     }
     std::abort();
 }
@@ -173,4 +177,4 @@ inline std::ostream& operator<<(std::ostream& out, error_code value) {
     return out << to_string_view(value);
 }
 
-}
+}  // namespace jogasaki

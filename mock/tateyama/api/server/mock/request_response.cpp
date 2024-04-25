@@ -119,7 +119,11 @@ void test_response::session_id(std::size_t id) {
 }
 
 bool test_response::check_cancel() const {
-    return false;
+    return cancel_requested_;
+}
+
+void test_response::cancel() {
+    cancel_requested_ = true;
 }
 
 bool test_channel::all_released() const noexcept {

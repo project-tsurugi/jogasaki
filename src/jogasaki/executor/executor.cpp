@@ -112,7 +112,7 @@ bool execute_internal(
     log_request(*req);
 
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
-    auto rctx = create_request_context(database, std::move(tx), channel, s.resource(), std::move(req));
+    auto rctx = create_request_context(database, std::move(tx), channel, s.resource(), req_info, std::move(req));
     rctx->lightweight(
         stmt->mirrors()->work_level().value() <=
         static_cast<std::int32_t>(rctx->configuration()->lightweight_job_level())
@@ -269,6 +269,7 @@ bool execute_async(
         tx,
         channel,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req_info,
         req
     );
     request_ctx->req_info(req_info);
@@ -612,6 +613,7 @@ bool execute_load(
         tx,
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req_info,
         req
     );
     auto ldr = std::make_shared<executor::file::loader>(
@@ -715,6 +717,7 @@ scheduler::job_context::job_id_type commit_async(
         tx,
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req_info,
         req
     );
     auto jobid = rctx->job()->id();

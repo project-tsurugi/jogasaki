@@ -152,6 +152,8 @@ public:
         std::vector<std::string> const& exp_colnames
     );
 
+    void test_cancel_statement(std::string_view sql, std::uint64_t tx_handle);
+
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
         auto s = encode_prepare(sql, args...);
@@ -1935,4 +1937,38 @@ TEST_F(service_api_test, batch_unsupported) {
     ASSERT_EQ(::tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, err.code());
 }
 
+void service_api_test::test_cancel_statement(
+    std::string_view sql, std::uint64_t tx_handle) {
+    auto s = encode_execute_statement(tx_handle, sql);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+    res->cancel();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_TRUE(res->all_released());
+
+    auto& rec = res->error_;
+    EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_CANCELED, rec.code());
 }
+
+TEST_F(service_api_test, cancel_insert) {
+    execute_statement("create table t (c0 int primary key)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("insert into t values (1)", tx_handle);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
+TEST_F(service_api_test, cancel_query) {
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (0)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("select * from t order by c0", tx_handle);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+}  // namespace jogasaki::api

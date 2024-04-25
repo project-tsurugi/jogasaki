@@ -1146,6 +1146,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         nullptr,
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        req_info,
         req
     );
 
@@ -1283,6 +1284,7 @@ bool database::execute_load(
         nullptr,
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        {},
         req
     );
 

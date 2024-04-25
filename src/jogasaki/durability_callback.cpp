@@ -66,6 +66,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
         nullptr,
         nullptr,
         nullptr,
+        {},
         std::move(req_detail)
     );
     request_ctx->job()->callback([request_ctx](){

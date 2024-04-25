@@ -34,6 +34,7 @@ std::shared_ptr<request_context> create_request_context(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
+    request_info const& req_info,
     std::shared_ptr<scheduler::request_detail> request_detail = nullptr
 );
 

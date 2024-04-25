@@ -33,6 +33,7 @@ std::shared_ptr<request_context> create_request_context(
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
+    request_info const& req_info,
     std::shared_ptr<scheduler::request_detail> request_detail
 ) {
     auto& c = db.configuration();
@@ -44,6 +45,7 @@ std::shared_ptr<request_context> create_request_context(
         db.sequence_manager(),
         channel
     );
+    rctx->req_info(req_info);
     rctx->scheduler(db.scheduler());
     rctx->stmt_scheduler(
         std::make_shared<scheduler::statement_scheduler>(

@@ -225,6 +225,8 @@ public:
 
     [[nodiscard]] bool check_cancel() const override;
 
+    void cancel();
+
     std::string body_{};  //NOLINT
     std::string body_head_{};  //NOLINT
     std::shared_ptr<test_channel> channel_{};  //NOLINT
@@ -234,6 +236,7 @@ public:
     std::function<void(std::string_view)> on_write_{}; //NOLINT
     std::size_t session_id_{};  //NOLINT
     proto::diagnostics::Record error_{};  //NOLINT
+    std::atomic_bool cancel_requested_{};  //NOLINT
 };
 
 }  // namespace tateyama::api::server::mock

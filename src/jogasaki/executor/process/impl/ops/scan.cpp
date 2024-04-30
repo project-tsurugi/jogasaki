@@ -48,6 +48,7 @@
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
+#include <jogasaki/utils/set_cancel_status.h>
 
 #include "context_helper.h"
 #include "details/encode_key.h"
@@ -151,6 +152,12 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto resource = ctx.varlen_resource();
     status st{};
     while(true) {
+        if(ctx.req_context()->req_info().response_source()->check_cancel()) {
+            set_cancel_status(*ctx.req_context());
+            ctx.abort();
+            finish(context);
+            return {operation_status_kind::aborted};
+        }
         if((st = ctx.it_->next()) != status::ok) {
             handle_kvs_errors(*ctx.req_context(), st);
             break;

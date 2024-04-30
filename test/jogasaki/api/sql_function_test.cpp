@@ -61,6 +61,9 @@ using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
 using decimal_v = takatori::decimal::triple;
+using date = takatori::datetime::date;
+using time_of_day = takatori::datetime::time_of_day;
+using time_point = takatori::datetime::time_point;
 using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
@@ -354,6 +357,170 @@ TEST_F(sql_function_test, aggregate_decimals) {
             v20, v10, 2, v15
         }
     )), result[0]);
+}
+
+TEST_F(sql_function_test, min_max_date) {
+    execute_statement("CREATE TABLE t (c0 DATE NOT NULL PRIMARY KEY)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::date},
+    };
+    auto dt0 = date{2000, 1, 1};
+    auto dt1 = date{2000, 1, 2};
+    auto dt2 = date{2001, 1, 1};
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_date("p0", dt0);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_date("p0", dt1);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_date("p0", dt2);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MIN(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, { dt0 })), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MAX(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, { dt2 })), result[0]);
+    }
+}
+
+TEST_F(sql_function_test, min_max_time) {
+    execute_statement("CREATE TABLE t (c0 TIME NOT NULL PRIMARY KEY)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::time_of_day},
+    };
+    auto td0 = time_of_day{12, 0, 0};
+    auto td1 = time_of_day{12, 0, 1};
+    auto td2 = time_of_day{12, 1, 0};
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_of_day("p0", td0);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_of_day("p0", td1);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_of_day("p0", td2);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MIN(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type(false)}, { td0 })), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MAX(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type(false)}, { td2 })), result[0]);
+    }
+}
+
+TEST_F(sql_function_test, min_max_timestamp) {
+    execute_statement("CREATE TABLE t (c0 TIMESTAMP NOT NULL PRIMARY KEY)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::time_point},
+    };
+    auto tp0 = time_point{date{2000, 1, 1}, time_of_day{12, 0, 0}};
+    auto tp1 = time_point{date{2000, 1, 1}, time_of_day{12, 0, 1}};
+    auto tp2 = time_point{date{2000, 1, 2}, time_of_day{12, 0, 0}};
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tp0);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tp1);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tp2);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MIN(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tp0 })), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MAX(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tp2 })), result[0]);
+    }
+}
+
+TEST_F(sql_function_test, min_max_timestamp_negative) {
+    execute_statement("CREATE TABLE t (c0 TIMESTAMP NOT NULL PRIMARY KEY)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::time_point},
+    };
+    auto tpn2 = time_point{date{1969, 12, 31}, time_of_day{23, 59, 59, time_of_day::time_unit{999999998}}};
+    auto tpn1 = time_point{date{1969, 12, 31}, time_of_day{23, 59, 59, time_of_day::time_unit{999999999}}};
+    auto tp0 = time_point{date{1970, 1, 1}, time_of_day{0, 0, 0, time_of_day::time_unit{0}}};
+    auto tpp1 = time_point{date{1970, 1, 1}, time_of_day{0, 0, 0, time_of_day::time_unit{1}}};
+    auto tpp2 = time_point{date{1970, 1, 1}, time_of_day{0, 0, 0, time_of_day::time_unit{2}}};
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tpn2);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tpn1);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tp0);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tpp1);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tpp2);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MIN(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tpn2 })), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MAX(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tpp2 })), result[0]);
+    }
 }
 
 }  // namespace jogasaki::testing

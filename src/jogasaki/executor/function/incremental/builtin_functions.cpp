@@ -45,6 +45,7 @@
 #include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/executor/less.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
@@ -639,56 +640,12 @@ void avg_post(
 
 template <class T>
 T max_or_min(bool max, T a, T b) {
-    if (max) {
-        return std::max(a, b);
-    }
-    return std::min(a, b);
-}
-
-template <>
-runtime_t<kind::decimal> max_or_min<runtime_t<kind::decimal>>(bool max, runtime_t<kind::decimal> a, runtime_t<kind::decimal> b) {
-    // FIXME use context
-    auto aa = static_cast<decimal::Decimal>(a);
-    auto bb = static_cast<decimal::Decimal>(b);
-    if (aa < bb) {
-        return runtime_t<kind::decimal>{max ? bb.as_uint128_triple() : aa.as_uint128_triple()};
-    }
-    return runtime_t<kind::decimal>{max ? aa.as_uint128_triple() : bb.as_uint128_triple()};
-}
-
-template <>
-runtime_t<kind::date> max_or_min<runtime_t<kind::date>>(bool max, runtime_t<kind::date> a, runtime_t<kind::date> b) {
-    if (a.days_since_epoch() < b.days_since_epoch()) {
+    if (less(a,b)) {
         return max ? b : a;
     }
     return max ? a : b;
 }
 
-template <>
-runtime_t<kind::time_of_day> max_or_min<runtime_t<kind::time_of_day>>(bool max, runtime_t<kind::time_of_day> a, runtime_t<kind::time_of_day> b) {
-    if (a.time_since_epoch() < b.time_since_epoch()) {
-        return max ? b : a;
-    }
-    return max ? a : b;
-}
-
-template <>
-runtime_t<kind::time_point> max_or_min<runtime_t<kind::time_point>>(bool max, runtime_t<kind::time_point> a, runtime_t<kind::time_point> b) {
-    auto& aa = max ? a : b;
-    auto& bb = max ? b : a;
-    if (a.seconds_since_epoch() < b.seconds_since_epoch()) {
-        return max ? bb : aa;
-    }
-    if (b.seconds_since_epoch() < a.seconds_since_epoch()) {
-        return max ? aa : bb;
-    }
-    auto sec = a.seconds_since_epoch().count();
-    // subsecond is unsigned, so negate if second part is negative
-    if (a.subsecond() < b.subsecond()) {
-        return sec < 0 ? aa : bb;
-    }
-    return sec < 0 ? bb : aa;
-}
 
 void max(
     accessor::record_ref target,

@@ -215,11 +215,11 @@ public:
         return tx_ids_.end();
     }
 
-    auto begin() const noexcept {
+    [[nodiscard]] auto begin() const noexcept {
         return tx_ids_.begin();
     }
 
-    auto end() const noexcept {
+    [[nodiscard]] auto end() const noexcept {
         return tx_ids_.end();
     }
 

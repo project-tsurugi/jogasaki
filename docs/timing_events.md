@@ -44,7 +44,7 @@ jogasakiは下記のイベントをverbose log level 37 (`jogasaki::log_debug_ti
 |/:jogasaki:timing:job_accepted | ジョブを受け付けた | ジョブID, リクエスト種、SQL文字列(*1)、トランザクションオプション、トランザクションID等も出力する |
 |/:jogasaki:timing:job_submitting | ジョブをスケジューラに投入しようとする (スケジューラを利用する場合のみ) | ジョブIDを出力する |
 |/:jogasaki:timing:job_started | ジョブがスケジューラ上で開始された (スケジューラを利用する場合のみ) | ジョブIDを出力する|
-|/:jogasaki:timing:job_finishing | ジョブが完了しようとする | ジョブID, ハイブリッドスケジューラー実行モード(*2)を出力する。ジョブの実行結果をstatus (success/failure) として出力する。|
+|/:jogasaki:timing:job_finishing | ジョブが完了しようとする | ジョブID, ハイブリッドスケジューラー実行モード(*2)を出力する。ジョブの実行結果をstatus (success/failure) として出力する。リクエストがprocess_durability_callbackの場合には永続化されたトランザクションのIDをaffected_transactionsとして出力する。|
 
 
 リクエスト種を下表に示す
@@ -62,6 +62,7 @@ jogasakiは下記のイベントをverbose log level 37 (`jogasaki::log_debug_ti
 |explain | 実行プラン表示 | |
 |describe_table  | テーブルメタデータの取得 | |
 |batch | TBD | |
+|process_durability_callback | 永続化コールバックの処理 | TXエンジンからのコールバックを起点とする内部リクエスト。本リクエストの完了時点までにトランザクションの永続化が完了する。|
 
 出力例
 ```

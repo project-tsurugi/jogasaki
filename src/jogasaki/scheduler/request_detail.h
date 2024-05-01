@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <deque>
 #include <iosfwd>
 #include <memory>
 #include <string>
@@ -189,6 +190,67 @@ inline std::ostream& operator<<(std::ostream& out, request_detail_channel_status
     return out << to_string_view(value);
 }
 
+class affected_transactions {
+public:
+    /**
+     * @brief create default object
+     */
+    affected_transactions() = default;
+
+    ~affected_transactions() = default;
+    affected_transactions(affected_transactions const& other) = default;
+    affected_transactions& operator=(affected_transactions const& other) = default;
+    affected_transactions(affected_transactions&& other) noexcept = default;
+    affected_transactions& operator=(affected_transactions&& other) noexcept = default;
+
+    void add(std::string_view tx_id) noexcept {
+        tx_ids_.emplace_back(tx_id);
+    }
+
+    auto begin() noexcept {
+        return tx_ids_.begin();
+    }
+
+    auto end() noexcept {
+        return tx_ids_.end();
+    }
+
+    auto begin() const noexcept {
+        return tx_ids_.begin();
+    }
+
+    auto end() const noexcept {
+        return tx_ids_.end();
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return tx_ids_.size();
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return tx_ids_.empty();
+    }
+
+    void clear() {
+        tx_ids_.clear();
+    }
+
+private:
+    std::deque<std::string> tx_ids_{};
+};
+
+inline std::ostream& operator<<(std::ostream& out, affected_transactions const& value) {
+    bool first = true;
+    for(auto&& tx_id : value) {
+        if(! first) {
+            out << ",";
+        }
+        first = false;
+        out << tx_id;
+    }
+    return out;
+}
+
 /**
  * @brief diagnostics info object for the job
  * @details this class represents detailed job information in the context of sql request
@@ -332,6 +394,21 @@ public:
         return hybrid_execution_mode_;
     }
 
+    /**
+     * @brief accessor for affected transactions
+     * @return affected transactions object reference
+     */
+    [[nodiscard]] affected_transactions& affected_txs() noexcept {
+        return affected_transactions_;
+    }
+
+    /**
+     * @brief accessor for affected transactions
+     * @return affected transactions object reference
+     */
+    [[nodiscard]] affected_transactions const& affected_txs() const noexcept {
+        return affected_transactions_;
+    }
 private:
     std::size_t id_{id_src_++};
     request_detail_kind kind_{};
@@ -347,6 +424,7 @@ private:
     std::atomic_size_t sticky_task_count_{};
     std::atomic_size_t sticky_task_worker_enforced_count_{};
     std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
+    affected_transactions affected_transactions_{};
 
     static inline std::atomic_size_t id_src_{0}; //NOLINT
 };

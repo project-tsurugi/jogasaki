@@ -78,9 +78,10 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
             [mgr=manager_, marker, request_ctx=request_ctx.get(), durability_callback_invoked](){ // capture request_ctx pointer to avoid cyclic dependency
                 if(mgr->update_current_marker(
                     marker,
-                    [marker, durability_callback_invoked](element_reference_type e){
+                    [marker, durability_callback_invoked, request_ctx](element_reference_type e){
                         VLOG(log_trace) << "/:jogasaki:durability_callback:operator() "
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
+                        request_ctx->job()->request()->affected_txs().add(e->transaction()->transaction_id());
                         e->transaction()->profile()->set_durability_cb_invoked(durability_callback_invoked);
                         scheduler::submit_teardown(*e, false, true);
                     })) {

@@ -298,4 +298,34 @@ TEST_F(async_api_test, execute_statement_as_query) {
     ASSERT_FALSE(stmt->meta());
     ASSERT_EQ(status::ok, tx->commit());
 }
+
+TEST_F(async_api_test, async_commit_multi_thread) {
+    // manually check multiple async commit works
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory causes problem accessing from multiple threads";
+    }
+    static constexpr std::size_t num_thread = 10;
+    std::vector<std::shared_ptr<transaction_handle>> transactions{};
+    transactions.resize(num_thread);
+    for(std::size_t i=0; i < num_thread; ++i) {
+        transactions[i] = utils::create_transaction(*db_, false, false); // TODO this tests only stx now
+        execute_statement("INSERT INTO T0 (C0, C1) VALUES ("+std::to_string(i)+", 0.0)", *transactions[i]);
+    }
+    std::vector<std::unique_ptr<std::atomic_bool>> finished{};
+    finished.reserve(num_thread);
+    for(std::size_t i=0; i < num_thread; ++i) {
+        finished.emplace_back(std::make_unique<std::atomic_bool>());
+    }
+    std::vector<bool> success{};
+    for(std::size_t i=0; i < num_thread; ++i) {
+        transactions[i]->commit_async([&finished, i](status st, std::shared_ptr<api::error_info> info) {
+            ASSERT_EQ(status::ok, st);
+            finished[i]->store(true);
+        });
+    }
+    for(std::size_t i=0; i < num_thread; ++i) {
+        while(finished[i]->load() == false) {}
+    }
 }
+
+}  // namespace jogasaki::api

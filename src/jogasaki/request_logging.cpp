@@ -71,11 +71,14 @@ void log_request(const scheduler::request_detail &req, bool success) {
         return;
     }
     if(req.status() == scheduler::request_detail_status::finishing) {
+        bool finalizing_tx = ! req.affected_txs().empty();
         VLOG(log_debug_timing_event_fine) << timing_job_finishing
             << " job_id:" << utils::hex(req.id())
             << " status:" << (success ? "success" : "failure")  //NOLINT
-            << " hybrid_execution_mode:" << req.hybrid_execution_mode();  //NOLINT
-
+            << " hybrid_execution_mode:" << req.hybrid_execution_mode()  //NOLINT
+            << (finalizing_tx ? " affected_transactions:[" : "")  //NOLINT
+            << (finalizing_tx ? req.affected_txs() : scheduler::affected_transactions{})  //NOLINT
+            << (finalizing_tx ? "]" : "");  //NOLINT
         return;
     }
 }

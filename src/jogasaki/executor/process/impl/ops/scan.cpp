@@ -42,7 +42,9 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/storage.h>
+#include <jogasaki/request_cancel_config.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_generic_error.h>
@@ -152,11 +154,14 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto resource = ctx.varlen_resource();
     status st{};
     while(true) {
-        if(ctx.req_context()->req_info().response_source()->check_cancel()) {
-            set_cancel_status(*ctx.req_context());
-            ctx.abort();
-            finish(context);
-            return {operation_status_kind::aborted};
+        if(utils::request_cancel_enabled(request_cancel_kind::scan)) {
+            auto res_src = ctx.req_context()->req_info().response_source();
+            if(res_src && res_src->check_cancel()) {
+                set_cancel_status(*ctx.req_context());
+                ctx.abort();
+                finish(context);
+                return {operation_status_kind::aborted};
+            }
         }
         if((st = ctx.it_->next()) != status::ok) {
             handle_kvs_errors(*ctx.req_context(), st);

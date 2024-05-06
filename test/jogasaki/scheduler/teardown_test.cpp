@@ -82,7 +82,8 @@ TEST_F(teardown_test, basic) {
         get_impl(*db_),
         nullptr,
         nullptr,
-        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool())
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        {}
     );
     auto jctx = rctx->job();
     auto jobid = jctx->id();

@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/configuration.h>
+#include <jogasaki/request_cancel_config.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::testing {
@@ -40,4 +41,17 @@ TEST_F(configuration_test, print_non_default_values) {
     EXPECT_EQ("single_thread:true thread_pool_size:123 ", ss.str());
 }
 
+TEST_F(configuration_test, print_request_cancel_cfg) {
+    configuration c{};
+    c.single_thread(true);
+    c.thread_pool_size(123);
+    auto req_cancel_cfg = std::make_shared<request_cancel_config>();
+    req_cancel_cfg->enable(request_cancel_kind::write);
+    req_cancel_cfg->enable(request_cancel_kind::scan);
+    c.req_cancel_config(std::move(req_cancel_cfg));
+
+    std::stringstream ss{};
+    ss << c;
+    EXPECT_EQ("single_thread:true thread_pool_size:123 req_cancel_config:write,scan ", ss.str());
+}
 }  // namespace jogasaki::testing

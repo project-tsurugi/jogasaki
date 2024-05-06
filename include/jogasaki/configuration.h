@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <jogasaki/request_cancel_config.h>
+
 #include "commit_response.h"
 
 namespace jogasaki {
@@ -424,6 +426,14 @@ public:
         return log_msg_user_data_;
     }
 
+    void req_cancel_config(std::shared_ptr<request_cancel_config> arg) noexcept {
+        request_cancel_config_ = std::move(arg);
+    }
+
+    [[nodiscard]] std::shared_ptr<request_cancel_config> const& req_cancel_config() const noexcept {
+        return request_cancel_config_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -473,6 +483,10 @@ public:
         print_non_default(point_read_concurrent_operation_as_not_found);
         print_non_default(normalize_float);
         print_non_default(log_msg_user_data);
+
+        if(cfg.req_cancel_config()) {
+            out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
+        }
         return out;
 
         #undef print_non_default
@@ -521,6 +535,7 @@ private:
     bool point_read_concurrent_operation_as_not_found_ = true;
     bool normalize_float_ = true;
     bool log_msg_user_data_ = false;
+    std::shared_ptr<request_cancel_config> request_cancel_config_{};
 
 };
 

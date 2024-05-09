@@ -154,7 +154,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto resource = ctx.varlen_resource();
     status st{};
     while(true) {
-        if(utils::request_cancel_enabled(request_cancel_kind::scan)) {
+        if(utils::request_cancel_enabled(request_cancel_kind::scan) && ctx.req_context()) {
             auto res_src = ctx.req_context()->req_info().response_source();
             if(res_src && res_src->check_cancel()) {
                 set_cancel_status(*ctx.req_context());

@@ -114,9 +114,11 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/backoff_waiter.h>
+#include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/proto_debug_string.h>
+#include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/use_counter.h>
 
@@ -1195,14 +1197,26 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 return model::task_result::complete;
             }
 
+            auto canceled = std::make_shared<bool>();
             auto& ts = *rctx->scheduler();
             ts.schedule_conditional_task(
                 scheduler::conditional_task{
                     rctx.get(),
-                    [handle]() {
+                    [handle, rctx, canceled]() {
+                        if(utils::request_cancel_enabled(request_cancel_kind::transaction_begin_wait)) {
+                            auto res_src = rctx->req_info().response_source();
+                            if(res_src && res_src->check_cancel()) {
+                                *canceled = true;
+                                // FIXME abort transaction
+                                return true;
+                            }
+                        }
                         return handle->is_ready_unchecked();
                     },
-                    [rctx]() {
+                    [rctx, canceled]() {
+                        if(*canceled) {
+                            set_cancel_status(*rctx);
+                        }
                         scheduler::submit_teardown(*rctx, false, true);
                     },
                 }

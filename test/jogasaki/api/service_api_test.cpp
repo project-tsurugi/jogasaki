@@ -153,6 +153,8 @@ public:
     );
 
     void test_cancel_statement(std::string_view sql, std::uint64_t tx_handle);
+    void test_cancel_transaction_begin(std::uint64_t tx_handle, std::string_view label);
+    void test_cancel_transaction_commit(std::uint64_t tx_handle, bool auto_dispose_on_commit_success);
 
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
@@ -1937,6 +1939,36 @@ TEST_F(service_api_test, batch_unsupported) {
     ASSERT_EQ(::tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, err.code());
 }
 
+void service_api_test::test_cancel_transaction_commit(std::uint64_t tx_handle, bool auto_dispose_on_commit_success) {
+    auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+    res->cancel();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_TRUE(res->all_released());
+
+    auto& rec = res->error_;
+    EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_CANCELED, rec.code());
+}
+
+void service_api_test::test_cancel_transaction_begin(std::uint64_t tx_handle, std::string_view label) {
+    auto s = encode_begin(false, true, {}, label, false);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+    res->cancel();
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_TRUE(res->all_released());
+
+    auto& rec = res->error_;
+    EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_CANCELED, rec.code());
+}
+
 void service_api_test::test_cancel_statement(
     std::string_view sql, std::uint64_t tx_handle) {
     auto s = encode_execute_statement(tx_handle, sql);
@@ -1953,7 +1985,15 @@ void service_api_test::test_cancel_statement(
     EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_CANCELED, rec.code());
 }
 
+void enable_request_cancel(request_cancel_kind kind) {
+    auto cfg = global::config_pool();
+    auto c = std::make_shared<request_cancel_config>();
+    c->enable(kind);
+    cfg->req_cancel_config(std::move(c));
+}
+
 TEST_F(service_api_test, cancel_insert) {
+    enable_request_cancel(request_cancel_kind::write);
     execute_statement("create table t (c0 int primary key)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
@@ -1962,7 +2002,8 @@ TEST_F(service_api_test, cancel_insert) {
     // test_get_error_info(tx_handle, false, error_code::none);
 }
 
-TEST_F(service_api_test, cancel_query) {
+TEST_F(service_api_test, cancel_scan) {
+    enable_request_cancel(request_cancel_kind::scan);
     execute_statement("create table t (c0 int primary key)");
     execute_statement("insert into t values (0)");
     std::uint64_t tx_handle{};
@@ -1971,4 +2012,46 @@ TEST_F(service_api_test, cancel_query) {
     // test_commit(tx_handle, false);
     // test_get_error_info(tx_handle, false, error_code::none);
 }
+
+TEST_F(service_api_test, cancel_find) {
+    enable_request_cancel(request_cancel_kind::find);
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (0)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("select * from t where c0 = 0", tx_handle);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
+TEST_F(service_api_test, cancel_group) {
+    enable_request_cancel(request_cancel_kind::group);
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("insert into t0 values (0)");
+    execute_statement("create table t1 (c0 int)");
+    execute_statement("insert into t1 values (0)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("select * from t0 join t1 on t0.c0 = t1.c0", tx_handle);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
+TEST_F(service_api_test, cancel_tx_begin) {
+    enable_request_cancel(request_cancel_kind::transaction_begin_wait);
+    std::uint64_t tx_handle{};
+    test_cancel_transaction_begin(tx_handle, "label");
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
+TEST_F(service_api_test, cancel_precommit) {
+    enable_request_cancel(request_cancel_kind::transaction_precommit);
+    std::uint64_t tx_handle{};
+    test_cancel_transaction_begin(tx_handle, "label");
+    test_cancel_transaction_commit(tx_handle, true);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
 }  // namespace jogasaki::api

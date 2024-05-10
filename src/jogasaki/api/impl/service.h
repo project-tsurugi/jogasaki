@@ -101,50 +101,25 @@ template<bool flag = false> void static_fail() {
 }
 
 template<typename T>
-void set_allocated_object(sql::response::Response& r, T& p) {
+T* mutable_object(sql::response::Response& r) {
     if constexpr (std::is_same_v<T, sql::response::Begin>) {  //NOLINT
-        r.set_allocated_begin(&p);
+        return r.mutable_begin();
     } else if constexpr (std::is_same_v<T, sql::response::Prepare>) {  //NOLINT
-        r.set_allocated_prepare(&p);
+        return r.mutable_prepare();
     } else if constexpr (std::is_same_v<T, sql::response::ResultOnly>) {  //NOLINT
-        r.set_allocated_result_only(&p);
+        return r.mutable_result_only();
     } else if constexpr (std::is_same_v<T, sql::response::ExecuteQuery>) {  //NOLINT
-        r.set_allocated_execute_query(&p);
+        return r.mutable_execute_query();
     } else if constexpr (std::is_same_v<T, sql::response::Explain>) {  //NOLINT
-        r.set_allocated_explain(&p);
+        return r.mutable_explain();
     } else if constexpr (std::is_same_v<T, sql::response::DescribeTable>) {  //NOLINT
-        r.set_allocated_describe_table(&p);
+        return r.mutable_describe_table();
     } else if constexpr (std::is_same_v<T, sql::response::ListTables>) {  //NOLINT
-        r.set_allocated_list_tables(&p);
+        return r.mutable_list_tables();
     } else if constexpr (std::is_same_v<T, sql::response::GetErrorInfo>) {  //NOLINT
-        r.set_allocated_get_error_info(&p);
+        return r.mutable_get_error_info();
     } else if constexpr (std::is_same_v<T, sql::response::ExecuteResult>) {  //NOLINT
-        r.set_allocated_execute_result(&p);
-    } else {
-        static_fail();
-    }
-}
-
-template<typename T>
-void release_object(sql::response::Response& r, T&) {
-    if constexpr (std::is_same_v<T, sql::response::Begin>) {  //NOLINT
-        (void)r.release_begin();
-    } else if constexpr (std::is_same_v<T, sql::response::Prepare>) {  //NOLINT
-        (void)r.release_prepare();
-    } else if constexpr (std::is_same_v<T, sql::response::ResultOnly>) {  //NOLINT
-        (void)r.release_result_only();
-    } else if constexpr (std::is_same_v<T, sql::response::ExecuteQuery>) {  //NOLINT
-        (void)r.release_execute_query();
-    } else if constexpr (std::is_same_v<T, sql::response::Explain>) {  //NOLINT
-        (void)r.release_explain();
-    } else if constexpr (std::is_same_v<T, sql::response::DescribeTable>) {  //NOLINT
-        (void)r.release_describe_table();
-    } else if constexpr (std::is_same_v<T, sql::response::ListTables>) {  //NOLINT
-        (void)r.release_list_tables();
-    } else if constexpr (std::is_same_v<T, sql::response::GetErrorInfo>) {  //NOLINT
-        (void)r.release_get_error_info();
-    } else if constexpr (std::is_same_v<T, sql::response::ExecuteResult>) {  //NOLINT
-        (void)r.release_execute_result();
+        return r.mutable_execute_result();
     } else {
         static_fail();
     }
@@ -157,16 +132,12 @@ void error(
     std::string_view msg,
     request_info const& req_info
 ) {
-    sql::response::Error e{};
-    T p{};
     sql::response::Response r{};
+    auto* p = mutable_object<T>(r);
+    auto* e = p->mutable_error();
     std::string m{utils::sanitize_utf8(msg)};
-    e.set_detail(m);
-    p.set_allocated_error(&e);
-    set_allocated_object(r, p);
+    e->set_detail(m);
     reply(res, r, req_info);
-    release_object(r, p);
-    (void)p.release_error();
 }
 
 template<typename T>
@@ -175,19 +146,15 @@ void error(
     error::error_info* err_info,
     request_info const& req_info
 ) {
-    sql::response::Error e{};
-    T p{};
     sql::response::Response r{};
-    e.set_code(map_error(err_info ? err_info->code() : error_code::none));
+    auto* p = mutable_object<T>(r);
+    auto* e = p->mutable_error();
+    e->set_code(map_error(err_info ? err_info->code() : error_code::none));
     std::string detail{utils::sanitize_utf8(err_info ? err_info->message() : "")};
-    e.set_detail(detail);
+    e->set_detail(detail);
     std::string suptext{utils::sanitize_utf8(err_info ? err_info->supplemental_text() : "")};
-    e.set_supplemental_text(suptext);
-    p.set_allocated_error(&e);
-    set_allocated_object(r, p);
+    e->set_supplemental_text(suptext);
     reply(res, r, req_info);
-    release_object(r, p);
-    (void)p.release_error();
 }
 
 template<typename T>
@@ -212,15 +179,10 @@ inline void success<sql::response::ResultOnly>(
     tateyama::api::server::response& res,
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
-    sql::response::Success s{};
-    sql::response::ResultOnly ro{};
     sql::response::Response r{};
-
-    ro.set_allocated_success(&s);
-    r.set_allocated_result_only(&ro);
+    auto* ro = r.mutable_result_only();
+    ro->mutable_success();
     reply(res, r, req_info);
-    (void)r.release_result_only();
-    (void)ro.release_success();
 }
 
 template<>
@@ -229,24 +191,15 @@ inline void success<sql::response::Begin>(
     jogasaki::api::transaction_handle tx, //NOLINT(performance-unnecessary-value-param)
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
-    sql::common::Transaction t{};
-    sql::common::TransactionId tid{};
-    sql::response::Begin b{};
-    sql::response::Begin::Success s{};
     sql::response::Response r{};
-
+    auto* b = r.mutable_begin();
+    auto* s = b->mutable_success();
+    auto* tid = s->mutable_transaction_id();
+    auto* t = s->mutable_transaction_handle();
     auto idstr = tx.transaction_id();
-    tid.set_id(idstr.data(), idstr.size());
-    t.set_handle(static_cast<std::size_t>(tx));
-    s.set_allocated_transaction_handle(&t);
-    s.set_allocated_transaction_id(&tid);
-    b.set_allocated_success(&s);
-    r.set_allocated_begin(&b);
+    tid->set_id(idstr.data(), idstr.size());
+    t->set_handle(static_cast<std::size_t>(tx));
     reply(res, r, req_info);
-    (void)r.release_begin();
-    (void)b.release_success();
-    (void)s.release_transaction_id();
-    (void)s.release_transaction_handle();
 }
 
 template<>
@@ -255,17 +208,12 @@ inline void success<sql::response::Prepare>(
     jogasaki::api::statement_handle statement, //NOLINT(performance-unnecessary-value-param)
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
-    sql::common::PreparedStatement ps{};
-    sql::response::Prepare p{};
     sql::response::Response r{};
-
-    ps.set_handle(static_cast<std::size_t>(statement));
-    ps.set_has_result_records(statement.has_result_records());
-    p.set_allocated_prepared_statement_handle(&ps);
-    r.set_allocated_prepare(&p);
+    auto* p = r.mutable_prepare();
+    auto* ps = p->mutable_prepared_statement_handle();
+    ps->set_handle(static_cast<std::size_t>(statement));
+    ps->set_has_result_records(statement.has_result_records());
     reply(res, r, req_info);
-    (void)r.release_prepare();
-    (void)p.release_prepared_statement_handle();
 }
 
 inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::data const& type) {
@@ -297,22 +245,15 @@ inline void success<sql::response::Explain>(
     api::record_meta const* meta,
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
-    sql::response::Explain explain{};
     sql::response::Response r{};
-    sql::response::Explain::Success success{};
-    explain.set_allocated_success(&success);
-    success.set_format_version(sql_proto_explain_format_version);
+    auto* explain = r.mutable_explain();
+    auto* success = explain->mutable_success();
+    success->set_format_version(sql_proto_explain_format_version);
     std::string id{sql_proto_explain_format_id};
-    success.set_allocated_format_id(&id);
-    success.set_allocated_contents(&output);
-    r.set_allocated_explain(&explain);
-    set_metadata(meta, success);
+    success->set_format_id(std::move(id));
+    success->set_contents(std::move(output));
+    set_metadata(meta, *success);
     reply(res, r, req_info);
-    success.clear_columns();
-    (void)r.release_explain();
-    (void)success.release_format_id();
-    (void)success.release_contents();
-    (void)explain.release_success();
 }
 
 template<>
@@ -323,14 +264,12 @@ inline void success<sql::response::DescribeTable>(
 ) {
     BOOST_ASSERT(tbl != nullptr); //NOLINT
     sql::response::Response r{};
-    sql::response::DescribeTable dt{};
-    r.set_allocated_describe_table(&dt);
-    sql::response::DescribeTable_Success success{};
-    dt.set_allocated_success(&success);
-    success.set_table_name(std::string{tbl->simple_name()});
-    success.set_schema_name("");  //FIXME schema resolution
-    success.set_database_name("");  //FIXME database name resolution
-    auto* cols = success.mutable_columns();
+    auto* dt = r.mutable_describe_table();
+    auto* success = dt->mutable_success();
+    success->set_table_name(std::string{tbl->simple_name()});
+    success->set_schema_name("");  //FIXME schema resolution
+    success->set_database_name("");  //FIXME database name resolution
+    auto* cols = success->mutable_columns();
     for(auto&& col : tbl->columns()) {
         if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
             continue;
@@ -340,9 +279,6 @@ inline void success<sql::response::DescribeTable>(
         c->set_atom_type(to_atom_type(col.type()));
     }
     reply(res, r, req_info);
-    success.clear_columns();
-    (void)dt.release_success();
-    (void)r.release_describe_table();
 }
 
 template<>
@@ -352,17 +288,13 @@ inline void success<sql::response::ListTables>(
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
     sql::response::Response r{};
-    sql::response::ListTables lt{};
-    r.set_allocated_list_tables(&lt);
-    sql::response::ListTables_Success success{};
-    lt.set_allocated_success(&success);
+    auto* lt = r.mutable_list_tables();
+    auto* success = lt->mutable_success();
     for(auto&& n : simple_names) {
-        auto* name = success.add_table_path_names();
+        auto* name = success->add_table_path_names();
         name->add_identifiers()->set_label(n);
     }
     reply(res, r, req_info);
-    (void)lt.release_success();
-    (void)r.release_list_tables();
 }
 
 template<>
@@ -371,16 +303,12 @@ inline void success<sql::response::GetSearchPath>(
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
     sql::response::Response r{};
-    sql::response::GetSearchPath sp{};
-    r.set_allocated_get_search_path(&sp);
-    sql::response::GetSearchPath_Success success{};
-    sp.set_allocated_success(&success);
+    auto* sp = r.mutable_get_search_path();
+    sp->mutable_success();
 
     // currently search path is not in place yet, so return empty success object
 
     reply(res, r, req_info);
-    (void)sp.release_success();
-    (void)r.release_get_search_path();
 }
 
 
@@ -391,28 +319,18 @@ inline void success<sql::response::GetErrorInfo>(
     std::shared_ptr<api::error_info> info  //NOLINT(performance-unnecessary-value-param)
 ) {
     sql::response::Response r{};
-    sql::response::GetErrorInfo gei{};
-    r.set_allocated_get_error_info(&gei);
-
-    sql::response::Void v{};
-    sql::response::Error error{};
+    auto* gei = r.mutable_get_error_info();
     if (! info) {
-        gei.set_allocated_error_not_found(&v);
+        gei->mutable_error_not_found();
     } else {
-        gei.set_allocated_success(&error);
-        error.set_code(map_error(info->code()));
+        auto* error = gei->mutable_success();
+        error->set_code(map_error(info->code()));
         auto msg = info->message();
-        error.set_detail(msg.data(), msg.size());
+        error->set_detail(msg.data(), msg.size());
         auto text = info->supplemental_text();
-        error.set_supplemental_text(text.data(), text.size());
+        error->set_supplemental_text(text.data(), text.size());
     }
     reply(res, r, req_info);
-    if (! info) {
-        (void)gei.release_error_not_found();
-    } else {
-        (void)gei.release_success();
-    }
-    (void)r.release_get_error_info();
 }
 
 inline sql::response::ExecuteResult::CounterType from(counter_kind kind) {
@@ -432,24 +350,21 @@ inline void success<sql::response::ExecuteResult>(
     request_info req_info,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<request_statistics> stats  //NOLINT(performance-unnecessary-value-param)
 ) {
-    sql::response::ExecuteResult::Success s{};
-    sql::response::ExecuteResult er{};
     sql::response::Response r{};
-    er.set_allocated_success(&s);
-    r.set_allocated_execute_result(&er);
+    auto* er = r.mutable_execute_result();
+    auto* s = er->mutable_success();
+
     stats->each_counter([&](auto&& kind, auto&& counter){
         auto knd = from(kind);
         if(knd != sql::response::ExecuteResult::COUNTER_TYPE_UNSPECIFIED) {
             if(counter.count().has_value()) {
-                auto* c = s.add_counters();
+                auto* c = s->add_counters();
                 c->set_type(knd);
                 c->set_value(*counter.count());
             }
         }
     });
     reply(res, r, req_info);
-    (void)r.release_execute_result();
-    (void)er.release_success();
 }
 
 inline void send_body_head(
@@ -457,17 +372,12 @@ inline void send_body_head(
     channel_info const& info,
     request_info const& req_info
 ) {
-    sql::response::ResultSetMetadata meta{};
-    sql::response::ExecuteQuery e{};
     sql::response::Response r{};
-
-    set_metadata(info.meta_, meta);
-    e.set_name(info.name_);
-    e.set_allocated_record_meta(&meta);
-    r.set_allocated_execute_query(&e);
+    auto* e = r.mutable_execute_query();
+    e->set_name(info.name_);
+    auto* meta = e->mutable_record_meta();
+    set_metadata(info.meta_, *meta);
     details::reply(res, r, req_info, true);
-    (void)r.release_execute_query();
-    (void)e.release_record_meta();
 }
 
 }

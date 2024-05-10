@@ -49,15 +49,12 @@ std::shared_ptr<error::error_info> create_storage_option(
     utils::metadata_serializer_option const& option
 ) {
     out.clear();
-    proto::metadata::storage::IndexDefinition idef{};
-
-    if(auto err = recovery::serialize_index(idx, idef, option)) {
-        return err;
-    }
     proto::metadata::storage::Storage stg{};
     stg.set_message_version(metadata_format_version);
-    stg.set_allocated_index(&idef);
-
+    auto* idef = stg.mutable_index();
+    if(auto err = recovery::serialize_index(idx, *idef, option)) {
+        return err;
+    }
     std::stringstream ss{};
     if (!stg.SerializeToOstream(&ss)) {
         return create_error_info(
@@ -68,7 +65,6 @@ std::shared_ptr<error::error_info> create_storage_option(
     }
     out = ss.str();
     VLOG_LP(log_trace) << "storage_option:" << utils::to_debug_string(stg);
-    (void)stg.release_index();
     return {};
 }
 

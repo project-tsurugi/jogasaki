@@ -29,7 +29,13 @@
         "cwd": "${cwd}",
         "env": "${envObj}",
         "environment": "${envObjArray}",
-        "sourceFileMap": "${sourceFileMapObj}",
+        // "sourceFileMap": "${sourceFileMapObj}",
+        "sourceFileMap": {
+            "${workspaceFolder}": {
+                "editorPath": "${workspaceFolder}",
+                "useForBreakpoints": "true"
+            }
+        },
         "externalConsole": false,
         "testMate.cpp.debug.setEnv": {
             "ASAN_OPTIONS": "detect_leaks=0"

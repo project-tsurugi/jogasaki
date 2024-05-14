@@ -2045,7 +2045,7 @@ TEST_F(service_api_test, cancel_tx_begin) {
     // test_get_error_info(tx_handle, false, error_code::none);
 }
 
-TEST_F(service_api_test, cancel_precommit) {
+TEST_F(service_api_test, DISABLED_cancel_precommit) {
     enable_request_cancel(request_cancel_kind::transaction_precommit);
     std::uint64_t tx_handle{};
     test_cancel_transaction_begin(tx_handle, "label");

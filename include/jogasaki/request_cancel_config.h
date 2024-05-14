@@ -71,7 +71,7 @@ public:
         return enabled_kinds_.contains(value);
     }
 
-    void enable(request_cancel_kind arg) noexcept {
+    void enable(request_cancel_kind arg) {
         enabled_kinds_.insert(arg);
     }
 

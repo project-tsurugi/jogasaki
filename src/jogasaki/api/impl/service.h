@@ -153,8 +153,9 @@ void error(
     error::error_info* err_info,
     request_info const& req_info
 ) {
-    sql::response::Error e{};
-    T p{};
+    if(promote_error_if_needed(res, err_info, req_info)) {
+        return;
+    }
     sql::response::Response r{};
     auto* p = mutable_object<T>(r);
     auto* e = p->mutable_error();

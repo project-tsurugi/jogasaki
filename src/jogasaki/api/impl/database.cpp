@@ -250,13 +250,13 @@ status database::stop() {
     deinit();
     prepared_statements_.clear();
 
+    transactions_.clear();
     if (kvs_db_) {
         if(! kvs_db_->close()) {
             return status::err_io_error;
         }
         kvs_db_ = nullptr;
     }
-    transactions_.clear();
 
     commit_stats_->dump();
     return status::ok;

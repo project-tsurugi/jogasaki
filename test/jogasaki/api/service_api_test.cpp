@@ -2037,6 +2037,41 @@ TEST_F(service_api_test, cancel_group) {
     // test_get_error_info(tx_handle, false, error_code::none);
 }
 
+TEST_F(service_api_test, cancel_aggregate) {
+    enable_request_cancel(request_cancel_kind::group);
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("insert into t0 values (0)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("select max(c0) from t0", tx_handle);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
+TEST_F(service_api_test, cancel_take_cogroup) {
+    enable_request_cancel(request_cancel_kind::take_cogroup);
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("insert into t0 values (0)");
+    execute_statement("create table t1 (c0 int)");
+    execute_statement("insert into t1 values (0)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("select * from t0 join t1 on t0.c0 = t1.c0", tx_handle);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
+TEST_F(service_api_test, cancel_take_group) {
+    enable_request_cancel(request_cancel_kind::take_group);
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("insert into t0 values (0)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_statement("select max(c0) from t0", tx_handle);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
 TEST_F(service_api_test, cancel_tx_begin) {
     enable_request_cancel(request_cancel_kind::transaction_begin_wait);
     std::uint64_t tx_handle{};

@@ -37,8 +37,10 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/validation.h>
 
 #include "context_helper.h"
@@ -111,6 +113,15 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
         if(! ctx.reader_->next_member()) continue;
         bool has_next = true;
         while(has_next) {
+            if(utils::request_cancel_enabled(request_cancel_kind::take_group) && ctx.req_context()) {
+                auto res_src = ctx.req_context()->req_info().response_source();
+                if(res_src && res_src->check_cancel()) {
+                    set_cancel_status(*ctx.req_context());
+                    ctx.abort();
+                    finish(context);
+                    return {operation_status_kind::aborted};
+                }
+            }
             utils::checkpoint_holder member_cp{resource};
             auto value = ctx.reader_->get_member();
             for(auto &f : fields_) {

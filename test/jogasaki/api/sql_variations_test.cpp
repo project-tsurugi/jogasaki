@@ -113,18 +113,15 @@ TEST_F(sql_variations_test, cross_join) {
     }
 }
 
-// comment -- not supported by current compiler
-TEST_F(sql_variations_test, DISABLED_comment_by_two_minus) {
+TEST_F(sql_variations_test, comment_by_two_minus) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
-    execute_statement("-- create table TT (C0 int primary key, C1 int)");
-    execute_statement("create table TT (C0 int primary key, C1 int)");
-    execute_statement("INSERT INTO TT (C1, C2) VALUES (1,1)");
+    execute_statement("-- create table TT (C0 int primary key, C1 int) \ncreate table TT (C0 int primary key, C1 int)");
+    execute_statement("INSERT INTO TT VALUES (1,1)");
 }
 
-// comment block not supported by current compiler
-TEST_F(sql_variations_test, DISABLED_comment_by_block) {
+TEST_F(sql_variations_test, comment_by_block) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create /* table */ table TT (C0 int primary key, C1 int)");
-    execute_statement("INSERT INTO TT (C1, C2) VALUES (1,1)");
+    execute_statement("INSERT INTO TT VALUES (1,1)");
 }
 }

@@ -84,6 +84,16 @@ public:
     );
 
     /**
+     * @brief check if existing wait list entries are canceled
+     * @param cb the callback to be called for the transaction that is going to be canceled
+     * @return false if waiting list is not checked due to concurrent operation to the waiting list
+     * @return true otherwise
+    */
+    bool check_cancel(
+        callback cb
+    );
+
+    /**
      * @brief add transaction to the wait list
     */
     void add_to_waitlist(element_type arg);

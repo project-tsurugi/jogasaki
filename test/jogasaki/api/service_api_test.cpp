@@ -2089,4 +2089,13 @@ TEST_F(service_api_test, DISABLED_cancel_precommit) {
     // test_get_error_info(tx_handle, false, error_code::none);
 }
 
+TEST_F(service_api_test, cancel_durable_wait) {
+    enable_request_cancel(request_cancel_kind::transaction_durable_wait);
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_cancel_transaction_commit(tx_handle, true);
+    // test_commit(tx_handle, false);
+    // test_get_error_info(tx_handle, false, error_code::none);
+}
+
 }  // namespace jogasaki::api

@@ -40,6 +40,7 @@
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/set_cancel_status.h>
 
 namespace jogasaki {
 
@@ -77,6 +78,14 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
         scheduler::create_custom_task(
             request_ctx.get(),
             [mgr=manager_, marker, request_ctx=request_ctx.get(), durability_callback_invoked](){ // capture request_ctx pointer to avoid cyclic dependency
+                mgr->check_cancel(
+                    [marker](element_reference_type e){
+                        VLOG(log_trace) << "/:jogasaki:durability_callback:operator() check_cancel "
+                            << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
+                        set_cancel_status(*e);
+                        scheduler::submit_teardown(*e, false, true);
+                    }
+                );
                 if(mgr->update_current_marker(
                     marker,
                     [marker, durability_callback_invoked, request_ctx](element_reference_type e){

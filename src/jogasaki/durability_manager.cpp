@@ -30,6 +30,7 @@
 
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/hex.h>
+#include <jogasaki/utils/cancel_request.h>
 
 namespace jogasaki {
 
@@ -82,6 +83,34 @@ bool durability_manager::update_current_marker(
         current_ = marker;
     }
     current_set_ = true;
+    heap_in_use_ = false;
+    return true;
+}
+
+bool durability_manager::check_cancel(
+    callback cb  //NOLINT(performance-unnecessary-value-param)
+) {
+    if(! utils::request_cancel_enabled(request_cancel_kind::transaction_durable_wait)) {
+        return true;
+    }
+    bool v{false};
+    if(! heap_in_use_.compare_exchange_strong(v, true)) {
+        // already in use
+        return false;
+    }
+    std::vector<element_type> vec{};
+    element_type top{};
+    while(heap_.try_pop(top)) {
+        vec.emplace_back(std::move(top));
+    }
+    for(auto&& e : vec) {
+        auto res_src = e->req_info().response_source();
+        if(res_src && res_src->check_cancel()) {
+            cb(e);
+            continue;
+        }
+        heap_.emplace(std::move(e));
+    }
     heap_in_use_ = false;
     return true;
 }

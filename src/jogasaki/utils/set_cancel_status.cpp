@@ -31,7 +31,7 @@ void set_cancel_status_impl(
     error::set_error_impl(
         context,
         error_code::request_canceled,
-        "request canceled",
+        "the operation has been canceled",
         filepath,
         position,
         status::request_canceled,

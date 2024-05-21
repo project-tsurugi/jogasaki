@@ -2090,6 +2090,9 @@ TEST_F(service_api_test, DISABLED_cancel_precommit) {
 }
 
 TEST_F(service_api_test, cancel_durable_wait) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't call durability callback";
+    }
     enable_request_cancel(request_cancel_kind::transaction_durable_wait);
     std::uint64_t tx_handle{};
     test_begin(tx_handle);

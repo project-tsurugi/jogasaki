@@ -26,6 +26,9 @@
 #include <tbb/concurrent_hash_map.h>
 
 #include <takatori/type/data.h>
+#include <takatori/type/date.h>
+#include <takatori/type/time_of_day.h>
+#include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/reference_extractor.h>
@@ -230,8 +233,18 @@ inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::dat
         case k::octet: return AtomType::OCTET;
         case k::bit: return AtomType::BIT;
         case k::date: return AtomType::DATE;
-        case k::time_of_day: return AtomType::TIME_OF_DAY;
-        case k::time_point: return AtomType::TIME_POINT;
+        case k::time_of_day: {
+            if(static_cast<takatori::type::time_of_day const&>(type).with_time_zone()) { //NOLINT
+                return AtomType::TIME_OF_DAY_WITH_TIME_ZONE;
+            }
+            return AtomType::TIME_OF_DAY;
+        }
+        case k::time_point: {
+            if(static_cast<takatori::type::time_point const&>(type).with_time_zone()) { //NOLINT
+                return AtomType::TIME_POINT_WITH_TIME_ZONE;
+            }
+            return AtomType::TIME_POINT;
+        }
         case k::datetime_interval: return AtomType::DATETIME_INTERVAL;
         default:
             return AtomType::UNKNOWN;

@@ -1521,6 +1521,33 @@ TEST_F(service_api_test, describe_table_not_found) {
     LOG(INFO) << "error: " << error.message_;
 }
 
+TEST_F(service_api_test, describe_table_temporal_types) {
+    // verify with_offset is correctly reflected on the output schema
+    execute_statement("create table T (C0 DATE, C1 TIME, C2 TIMESTAMP, C3 TIME WITH TIME ZONE, C4 TIMESTAMP WITH TIME ZONE)");
+    auto s = encode_describe_table("T");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ("T", result.table_name_);
+    ASSERT_EQ(5, result.columns_.size());
+    EXPECT_EQ("C0", result.columns_[0].name_);
+    EXPECT_EQ(sql::common::AtomType::DATE, result.columns_[0].atom_type_);
+    EXPECT_EQ("C1", result.columns_[1].name_);
+    EXPECT_EQ(sql::common::AtomType::TIME_OF_DAY, result.columns_[1].atom_type_);
+    EXPECT_EQ("C2", result.columns_[2].name_);
+    EXPECT_EQ(sql::common::AtomType::TIME_POINT, result.columns_[2].atom_type_);
+    EXPECT_EQ("C3", result.columns_[3].name_);
+    EXPECT_EQ(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE, result.columns_[3].atom_type_);
+    EXPECT_EQ("C4", result.columns_[4].name_);
+    EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, result.columns_[4].atom_type_);
+}
+
 TEST_F(service_api_test, describe_pkless_table) {
     // make sure generated pk column is not visible
     execute_statement("create table T (C0 INT)");

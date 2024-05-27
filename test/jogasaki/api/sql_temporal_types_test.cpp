@@ -101,9 +101,9 @@ TEST_F(sql_temporal_types_test, timestamp) {
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
         auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
-        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        auto tpt = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
         EXPECT_EQ((mock::typed_nullable_record<kind::time_point, kind::time_point>(
-            std::tuple{tp, tptz}, { tp, tp }
+            std::tuple{tpt, tptz}, { tp, tp }
         )), result[0]);
     }
 }

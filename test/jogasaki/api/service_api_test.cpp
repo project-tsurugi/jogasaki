@@ -69,6 +69,9 @@ using ValueCase = sql::request::Parameter::ValueCase;
 
 using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
@@ -915,6 +918,87 @@ TEST_F(service_api_test, temporal_types) {
     test_dispose_prepare(stmt_handle);
     test_dispose_prepare(query_handle);
 }
+
+TEST_F(service_api_test, timestamptz) {
+    // there was an issue with timestamp close to 0000-00-00
+    execute_statement("create table T (C0 TIMESTAMP WITH TIME ZONE)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T values (:p0)",
+        std::pair{"p0"s, sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE}
+    );
+
+    auto tod = time_of_day{0, 2, 48, 91383000ns};
+    auto tp = time_point{date{1, 1, 1}, tod};
+
+    {
+        std::vector<parameter> parameters{
+            {"p0"s, ValueCase::kTimePointWithTimeZoneValue, std::any{std::in_place_type<time_point_v>, tp}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto [success, error, stats] = decode_execute_result(res->body_);
+        ASSERT_TRUE(success);
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select * from T"
+    );
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(1, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
+                EXPECT_EQ((mock::typed_nullable_record<ft::time_point>(
+                    std::tuple{tptz}, {tp}
+                )), v[0]);
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
+}
+
 TEST_F(service_api_test, protobuf1) {
     // verify protobuf behavior
     using namespace std::string_view_literals;

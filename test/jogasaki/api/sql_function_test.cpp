@@ -474,6 +474,47 @@ TEST_F(sql_function_test, min_max_time) {
     }
 }
 
+TEST_F(sql_function_test, min_max_time_with_tz) {
+    execute_statement("CREATE TABLE t (c0 TIME WITH TIME ZONE NOT NULL PRIMARY KEY)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::time_of_day},
+    };
+    auto td0 = time_of_day{12, 0, 0};
+    auto td1 = time_of_day{12, 0, 1};
+    auto td2 = time_of_day{12, 1, 0};
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_of_day("p0", td0);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_of_day("p0", td1);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_of_day("p0", td2);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MIN(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        // TODO fix after issue #791
+        // EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type(true)}, { td0 })), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type(false)}, { td0 })), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MAX(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        // TODO fix after issue #791
+        // EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type(true)}, { td2 })), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type(false)}, { td2 })), result[0]);
+    }
+}
+
 TEST_F(sql_function_test, min_max_timestamp) {
     execute_statement("CREATE TABLE t (c0 TIMESTAMP NOT NULL PRIMARY KEY)");
     std::unordered_map<std::string, api::field_type_kind> variables{
@@ -508,6 +549,49 @@ TEST_F(sql_function_test, min_max_timestamp) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT MAX(c0) FROM t", result);
         ASSERT_EQ(1, result.size());
+        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tp2 })), result[0]);
+    }
+}
+
+TEST_F(sql_function_test, min_max_timestamp_with_tz) {
+    execute_statement("CREATE TABLE t (c0 TIMESTAMP WITH TIME ZONE NOT NULL PRIMARY KEY)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::time_point},
+    };
+    auto tp0 = time_point{date{2000, 1, 1}, time_of_day{12, 0, 0}};
+    auto tp1 = time_point{date{2000, 1, 1}, time_of_day{12, 0, 1}};
+    auto tp2 = time_point{date{2000, 1, 2}, time_of_day{12, 0, 0}};
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tp0);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tp1);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_time_point("p0", tp2);
+        execute_statement( "INSERT INTO t VALUES (:p0)", variables, *ps);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MIN(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        // TODO fix after issue #791
+        // auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
+        auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tp0 })), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT MAX(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        // TODO fix after issue #791
+        // auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
         auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
         EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tp2 })), result[0]);
     }

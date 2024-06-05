@@ -4,7 +4,7 @@
             "name": "attach gdb",
             "type": "cppdbg",
             "request": "attach",
-            "program": "/usr/bin/bash",  // dummy - any executable is ok
+            "program": "/usr/bin/bash", // dummy - any executable is ok
             "processId": "${command:pickProcess}",
             "MIMode": "gdb",
             "setupCommands": [
@@ -20,7 +20,31 @@
                 }
             ],
             "miDebuggerPath": "/usr/bin/gdb"
-        }
+        },
+        {
+            "name": "debug multiple-tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}/test/service_api_test",
+            "args": [
+                "--gtest_filter='*cancel_tx_begin:*cancel_durable_wait'",
+            ],
+            "MIMode": "gdb",
+            "cwd": "${workspaceFolder}",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
     ],
     "version": "2.0.0"
 }

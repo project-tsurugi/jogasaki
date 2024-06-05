@@ -50,6 +50,8 @@
     },
     "C_Cpp.codeAnalysis.clangTidy.headerFilter": ".*/(include|src)/.*\\.h$",
     "window.title": "${rootName}",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
     "files.associations": {
         "condition_variable": "cpp",
         "thread": "cpp",

@@ -7,7 +7,7 @@ file(GLOB SOURCES
 set_source_files_properties(
         ${SOURCES}
         PROPERTIES
-        COMPILE_FLAGS -Wno-implicit-fallthrough
+        COMPILE_FLAGS "-Wno-implicit-fallthrough -Wno-c++20-compat -Wno-stringop-overflow"
 )
 
 add_executable(service-cli

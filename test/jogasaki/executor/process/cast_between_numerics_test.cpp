@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -194,7 +194,7 @@ TEST_F(cast_between_numerics_test, verify_triples_comparison) {
     EXPECT_NE(make_triple("1.50"), make_triple("1.5"));
 }
 
-template <class Target, class RangeTarget = Target>
+template <class Target, class RangeTarget>
 void cast_between_numerics_test::test_decimal_to_int(std::function<any(triple, evaluator_context&)> fn) {
     evaluator_context ctx{&resource_};
     EXPECT_EQ((any{std::in_place_type<Target>, 1}), fn(make_triple("1"), ctx)); lost_precision(false);

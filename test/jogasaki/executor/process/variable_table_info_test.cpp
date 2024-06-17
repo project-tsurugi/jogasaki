@@ -37,11 +37,6 @@
 #include <yugawara/binding/factory.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/table.h>
-#include <mizugaki/placeholder_entry.h>
-#include <mizugaki/translator/shakujo_translator.h>
-#include <mizugaki/translator/shakujo_translator_code.h>
-#include <mizugaki/translator/shakujo_translator_options.h>
-#include <shakujo/common/core/Type.h>
 
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -58,21 +53,13 @@ using namespace meta;
 using namespace takatori::util;
 using namespace yugawara::binding;
 
-using namespace ::mizugaki::translator;
-using namespace ::mizugaki;
-
 using namespace testing;
-
-using code = shakujo_translator_code;
-using result_kind = shakujo_translator::result_type::kind_type;
 
 namespace type = ::takatori::type;
 namespace value = ::takatori::value;
 namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
 namespace statement = ::takatori::statement;
-
-namespace tinfo = ::shakujo::common::core::type;
 
 using take = relation::step::take_flat;
 using offer = relation::step::offer;

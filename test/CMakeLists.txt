@@ -38,6 +38,9 @@ function (add_test_executable source_file)
             PUBLIC gtest
             PRIVATE tbb
             PRIVATE takatori
+            PRIVATE mizugaki
+            PRIVATE shakujo-model
+            PRIVATE shakujo-parser
             PRIVATE atomic
             PRIVATE protobuf::libprotobuf
             PRIVATE mpdecpp

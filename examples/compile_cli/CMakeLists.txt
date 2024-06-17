@@ -17,6 +17,9 @@ target_include_directories(compile-cli
 
 target_link_libraries(compile-cli
         PRIVATE jogasaki-impl
+        PRIVATE mizugaki
+        PRIVATE shakujo-model
+        PRIVATE shakujo-parser
         PRIVATE glog::glog
         PRIVATE gflags::gflags
         PRIVATE Threads::Threads

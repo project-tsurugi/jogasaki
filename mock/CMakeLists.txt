@@ -67,9 +67,6 @@ target_link_libraries(common-impl
         INTERFACE ${ENGINE}
         INTERFACE takatori
         INTERFACE yugawara
-        INTERFACE mizugaki
-        INTERFACE shakujo-model
-        INTERFACE shakujo-parser
         INTERFACE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         INTERFACE tbb
         INTERFACE numa

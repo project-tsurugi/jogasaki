@@ -25,11 +25,6 @@
 #include <takatori/util/exception.h>
 #include <takatori/value/value_kind.h>
 #include <yugawara/binding/factory.h>
-#include <mizugaki/placeholder_entry.h>
-#include <mizugaki/translator/shakujo_translator.h>
-#include <mizugaki/translator/shakujo_translator_code.h>
-#include <mizugaki/translator/shakujo_translator_options.h>
-#include <shakujo/common/core/Type.h>
 
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/variable_order.h>
@@ -41,21 +36,13 @@ using namespace std::string_view_literals;
 using namespace meta;
 using namespace takatori::util;
 
-using namespace ::mizugaki::translator;
-using namespace ::mizugaki;
-
 using namespace ::yugawara::binding;
-
-using code = shakujo_translator_code;
-using result_kind = shakujo_translator::result_type::kind_type;
 
 namespace type = ::takatori::type;
 namespace value = ::takatori::value;
 namespace scalar = ::takatori::scalar;
 namespace relation = ::takatori::relation;
 namespace statement = ::takatori::statement;
-
-namespace tinfo = ::shakujo::common::core::type;
 
 class variable_order_test : public ::testing::Test {};
 

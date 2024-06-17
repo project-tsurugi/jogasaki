@@ -36,10 +36,6 @@
 #include <takatori/value/value_kind.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
-#include <mizugaki/placeholder_entry.h>
-#include <mizugaki/translator/shakujo_translator.h>
-#include <mizugaki/translator/shakujo_translator_code.h>
-#include <mizugaki/translator/shakujo_translator_options.h>
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
@@ -55,13 +51,7 @@ using namespace meta;
 using namespace takatori::util;
 using namespace yugawara::binding;
 
-using namespace ::mizugaki::translator;
-using namespace ::mizugaki;
-
 using namespace testing;
-
-using code = shakujo_translator_code;
-using result_kind = shakujo_translator::result_type::kind_type;
 
 namespace type = ::takatori::type;
 namespace value = ::takatori::value;

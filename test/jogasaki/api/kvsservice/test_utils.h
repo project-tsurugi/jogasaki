@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ constexpr std::string_view default_property {  // NOLINT
         "database_name=tsurugi\n"
         "threads=104\n"
         "datachannel_buffer_size=64\n"
+        "admin_sessions=1\n"
 
         "[stream_endpoint]\n"
         "port=12345\n"

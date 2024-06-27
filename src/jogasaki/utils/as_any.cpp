@@ -38,6 +38,11 @@ data::any as_any(
     memory::paged_memory_resource* resource
 ) {
     using t = takatori::type::type_kind;
+    if(arg.kind() == takatori::value::value_kind::unknown) {
+        // Value null is not necessarily of type unknown, and it comes as any type.kind().
+        // Handle it here before passing to value_of.
+        return {};
+    }
     switch(type.kind()) {
         // TODO create and use traits for types
         case t::boolean: return {std::in_place_type<bool>, value_of<takatori::value::boolean>(arg)};

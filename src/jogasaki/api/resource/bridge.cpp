@@ -199,6 +199,12 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<std::size_t>("worker_suspend_timeout")) {
         ret->worker_suspend_timeout(v.value());
     }
+    if (auto v = jogasaki_config->get<std::size_t>("dev_compiler_support")) {
+        ret->compiler_support(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("dev_lowercase_regular_identifiers")) {
+        ret->lowercase_regular_identifiers(v.value());
+    }
 
     constexpr std::string_view KEY_COMMIT_RESPONSE{"commit_response"};
     if (auto v = jogasaki_config->get<std::string>(KEY_COMMIT_RESPONSE)) {

@@ -434,6 +434,22 @@ public:
         return request_cancel_config_;
     }
 
+    [[nodiscard]] std::size_t compiler_support() const noexcept {
+        return compiler_support_;
+    }
+
+    void compiler_support(std::size_t arg) noexcept {
+        compiler_support_ = arg;
+    }
+
+    void lowercase_regular_identifiers(bool arg) noexcept {
+        lowercase_regular_identifiers_ = arg;
+    }
+
+    [[nodiscard]] bool lowercase_regular_identifiers() const noexcept {
+        return lowercase_regular_identifiers_;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -483,6 +499,8 @@ public:
         print_non_default(point_read_concurrent_operation_as_not_found);
         print_non_default(normalize_float);
         print_non_default(log_msg_user_data);
+        print_non_default(compiler_support);
+        print_non_default(lowercase_regular_identifiers);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -536,6 +554,8 @@ private:
     bool normalize_float_ = true;
     bool log_msg_user_data_ = false;
     std::shared_ptr<request_cancel_config> request_cancel_config_{};
+    std::size_t compiler_support_ = 0;
+    bool lowercase_regular_identifiers_ = false;
 
 };
 

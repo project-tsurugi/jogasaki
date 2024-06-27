@@ -63,6 +63,7 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/infect_qualifier.h>
+#include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/optional_ptr.h>
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/reference_list_view.h>
@@ -81,11 +82,13 @@
 #include <yugawara/compiler_options.h>
 #include <yugawara/compiler_result.h>
 #include <yugawara/runtime_feature.h>
+#include <yugawara/schema/configurable_provider.h>
 #include <yugawara/storage/index.h>
 #include <yugawara/storage/table.h>
 #include <yugawara/variable/basic_configurable_provider.h>
 #include <yugawara/variable/declaration.h>
-#include <mizugaki/placeholder_entry.h>
+#include <mizugaki/analyzer/sql_analyzer.h>
+#include <mizugaki/parser/sql_parser.h>
 #include <mizugaki/translator/shakujo_translator.h>
 #include <mizugaki/translator/shakujo_translator_code.h>
 #include <mizugaki/translator/shakujo_translator_options.h>
@@ -93,7 +96,6 @@
 #include <shakujo/analyzer/Diagnostic.h>
 #include <shakujo/analyzer/Reporter.h>
 #include <shakujo/analyzer/SyntaxValidator.h>
-#include <shakujo/common/core/DocumentRegion.h>
 #include <shakujo/model/program/Program.h>
 #include <shakujo/parser/Parser.h>
 
@@ -140,29 +142,21 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 
-namespace jogasaki::plan {
-
 #define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, "") //NOLINT
 #define set_compile_error_with_stack(ctx, code, msg, st, stack) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, stack) //NOLINT
 
-using takatori::util::throw_exception;
+namespace jogasaki::plan {
+
+using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
+using takatori::util::throw_exception;
+using takatori::util::unsafe_downcast;
 
 ///@private
 namespace impl {
 
-using namespace takatori::util;
-
-using namespace ::mizugaki::translator;
-using namespace ::mizugaki;
-
-using code = shakujo_translator_code;
-using result_kind = shakujo_translator::result_type::kind_type;
 namespace statement = ::takatori::statement;
-
 namespace relation = takatori::relation;
-
-using takatori::util::unsafe_downcast;
 
 /**
  * @brief set error info to the compiler context
@@ -314,16 +308,88 @@ std::shared_ptr<mirror_container> preprocess_mirror(
     return container;
 }
 
-template <result_kind Kind>
-yugawara::compiler_result compile_internal(
-    shakujo_translator::result_type& r,
+template <mizugaki::translator::shakujo_translator::result_type::kind_type Kind>
+yugawara::compiler_result compile_internal_legacy(
+    mizugaki::translator::shakujo_translator::result_type& r,
     yugawara::compiler_options& c_options) {
     auto ptr = r.release<Kind>();
     return yugawara::compiler()(c_options, std::move(*ptr));
 }
 
-error_code map_compiler_error(shakujo_translator_code code) {
-    using stc = shakujo_translator_code;
+template <mizugaki::analyzer::sql_analyzer_result_kind Kind>
+yugawara::compiler_result compile_internal(
+    mizugaki::analyzer::sql_analyzer_result r,
+    yugawara::compiler_options& c_options) {
+    auto ptr = r.release<Kind>();
+    return yugawara::compiler()(c_options, std::move(*ptr));
+}
+
+error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
+    using sac = mizugaki::analyzer::sql_analyzer_code;
+    using ec = error_code;
+    switch(code) {
+        case sac::unknown: break;
+        case sac::unsupported_feature: return ec::unsupported_compiler_feature_exception;
+        case sac::malformed_syntax: return ec::syntax_exception;
+
+        case sac::missing_context_of_default_value: return ec::value_analyze_exception;
+        case sac::missing_context_of_null: return ec::value_analyze_exception;
+        case sac::unsupported_decimal_value: return ec::value_analyze_exception;
+        case sac::malformed_approximate_number: return ec::value_analyze_exception;
+        case sac::unsupported_approximate_number: return ec::value_analyze_exception;
+        case sac::malformed_quoted_string: return ec::value_analyze_exception;
+        case sac::unsupported_string_value: return ec::value_analyze_exception;
+
+        case sac::flexible_length_is_not_supported: return ec::type_analyze_exception;
+        case sac::type_length_is_too_large: return ec::type_analyze_exception;
+        case sac::invalid_numeric_scale: return ec::type_analyze_exception;
+
+        case sac::schema_not_found: return ec::symbol_analyze_exception;
+        case sac::table_not_found: return ec::symbol_analyze_exception;
+        case sac::index_not_found: return ec::symbol_analyze_exception;
+        case sac::view_not_found: return ec::symbol_analyze_exception;
+        case sac::sequence_not_found: return ec::symbol_analyze_exception;
+        case sac::column_not_found: return ec::symbol_analyze_exception;
+        case sac::variable_not_found: return ec::symbol_analyze_exception;
+        case sac::function_not_found: return ec::symbol_analyze_exception;
+        case sac::symbol_not_found: return ec::symbol_analyze_exception;
+
+        case sac::schema_already_exists: return ec::symbol_analyze_exception;
+        case sac::table_already_exists: return ec::symbol_analyze_exception;
+        case sac::index_already_exists: return ec::symbol_analyze_exception;
+        case sac::view_already_exists: return ec::symbol_analyze_exception;
+        case sac::sequence_already_exists: return ec::symbol_analyze_exception;
+        case sac::column_already_exists: return ec::symbol_analyze_exception;
+        case sac::variable_already_exists: return ec::symbol_analyze_exception;
+        case sac::function_already_exists: return ec::symbol_analyze_exception;
+        case sac::symbol_already_exists: return ec::symbol_analyze_exception;
+
+        case sac::primary_index_not_found: break;
+        case sac::primary_index_already_exists: break;
+        case sac::invalid_constraint: break;
+
+        case sac::variable_ambiguous: return ec::symbol_analyze_exception;
+        case sac::column_ambiguous: return ec::symbol_analyze_exception;
+        case sac::function_ambiguous: return ec::symbol_analyze_exception;
+
+        case sac::invalid_unsigned_integer: return ec::type_analyze_exception;
+
+        case sac::inconsistent_table: break;
+        case sac::inconsistent_columns: break;
+        case sac::invalid_aggregation_column: break;
+
+        case sac::ambiguous_type: return ec::type_analyze_exception;
+        case sac::inconsistent_type: return ec::type_analyze_exception;
+        case sac::unresolved_variable: return ec::symbol_analyze_exception;
+        case sac::inconsistent_elements: return ec::value_analyze_exception;
+
+        default: break;
+    }
+    return ec::compile_exception;
+}
+
+error_code map_compiler_error(mizugaki::translator::shakujo_translator_code code) {
+    using stc = mizugaki::translator::shakujo_translator_code;
     using ec = error_code;
     switch(code) {
         case stc::table_not_found: return ec::symbol_analyze_exception;
@@ -362,6 +428,34 @@ error_code map_compiler_error(yugawara::compiler_code code) {
 
 template <class T>
 void handle_compile_error(
+    T&& error,
+    status res,
+    compiler_context &ctx
+) {
+    (void) res;
+    if constexpr(std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, mizugaki::parser::sql_parser_diagnostic>) {
+        std::stringstream msg{};
+        msg << "compile failed with message:\"" << error.message() << "\"";
+        // // currently we pass sql text only, so document doesn't contain much information
+        // if(error.document()) {
+        //   msg << " document:" << *error.document();
+        // }
+        msg << " region:\"" << error.region() << "\"";
+        VLOG_LP(log_error) << msg.str();
+        set_compile_error(ctx, error_code::syntax_exception, msg.str(), status::err_parse_error);
+    } else if constexpr (std::is_same_v<T, mizugaki::analyzer::sql_analyzer_result>) {
+        auto code = map_compiler_error(error.code());
+        auto msg = string_builder{} << "compile failed with error:" << error.code() << " message:\"" << error.message()
+                                    << "\" location:" << error.location() << string_builder::to_string;
+        VLOG_LP(log_error) << msg.str();
+        set_compile_error(ctx, code, msg, res);
+    } else {
+        std::abort();
+    }
+}
+
+template <class T>
+void handle_compile_errors(
     T&& errors,
     status res,
     compiler_context &ctx
@@ -395,30 +489,15 @@ void handle_compile_error(
 }
 
 status create_prepared_statement(
-    shakujo_translator::result_type& r,
+    yugawara::compiler_result result,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
-    yugawara::compiler_options& c_options,
     std::shared_ptr<storage_processor> const& sp,
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
-    yugawara::compiler_result result{};
-    switch(r.kind()) {
-        case result_kind::execution_plan: {
-            result = compile_internal<result_kind::execution_plan>(r, c_options);
-            break;
-        }
-        case result_kind::statement: {
-            result = compile_internal<result_kind::statement>(r, c_options);
-            break;
-        }
-        default:
-            throw_exception(std::logic_error{""});
-    }
-
     if(!result.success()) {
         auto res = status::err_compiler_error;
-        handle_compile_error(result.diagnostics(), res, ctx);
+        handle_compile_errors(result.diagnostics(), res, ctx);
         return res;
     }
     auto stmt = result.release_statement();
@@ -432,6 +511,56 @@ status create_prepared_statement(
         ctx.sql_text()
     );
     return status::ok;
+}
+
+status create_prepared_statement(
+    mizugaki::translator::shakujo_translator::result_type& r,
+    std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
+    yugawara::compiler_options& c_options,
+    std::shared_ptr<storage_processor> const& sp,
+    compiler_context &ctx,
+    std::shared_ptr<plan::prepared_statement>& out
+) {
+    using result_kind = mizugaki::translator::shakujo_translator::result_type::kind_type;
+    yugawara::compiler_result result{};
+    switch(r.kind()) {
+        case result_kind::execution_plan: {
+            result = compile_internal_legacy<result_kind::execution_plan>(r, c_options);
+            break;
+        }
+        case result_kind::statement: {
+            result = compile_internal_legacy<result_kind::statement>(r, c_options);
+            break;
+        }
+        default:
+            throw_exception(std::logic_error{""});
+    }
+    return create_prepared_statement(std::move(result), provider, sp, ctx, out);
+}
+
+status create_prepared_statement(
+    mizugaki::analyzer::sql_analyzer_result r,
+    std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
+    yugawara::compiler_options& c_options,
+    std::shared_ptr<storage_processor> const& sp,
+    compiler_context &ctx,
+    std::shared_ptr<plan::prepared_statement>& out
+) {
+    using result_kind = mizugaki::analyzer::sql_analyzer_result_kind;
+    yugawara::compiler_result result{};
+    switch(r.kind()) {
+        case result_kind::execution_plan: {
+            result = compile_internal<result_kind::execution_plan>(std::move(r), c_options);
+            break;
+        }
+        case result_kind::statement: {
+            result = compile_internal<result_kind::statement>(std::move(r), c_options);
+            break;
+        }
+        default:
+            throw_exception(std::logic_error{""});
+    }
+    return create_prepared_statement(std::move(result), provider, sp, ctx, out);
 }
 
 status parse_validate(
@@ -485,8 +614,7 @@ status parse_validate(
     return status::ok;
 }
 
-
-status prepare(
+status prepare_legacy(
     std::string_view sql,
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
@@ -498,8 +626,8 @@ status prepare(
         return res;
     }
 
-    shakujo_translator translator;
-    shakujo_translator_options options {
+    mizugaki::translator::shakujo_translator translator;
+    mizugaki::translator::shakujo_translator_options options {
         ctx.storage_provider(),
         ctx.variable_provider(),
         ctx.function_provider(),
@@ -535,11 +663,107 @@ status prepare(
     auto r = translator(options, *program->main(), documents);
     if (! r) {
         auto res = status::err_compiler_error;
-        auto errors = r.release<result_kind::diagnostics>();
-        handle_compile_error(errors, res, ctx);
+        auto errors = r.release<mizugaki::translator::shakujo_translator::result_type::kind_type::diagnostics>();
+        handle_compile_errors(errors, res, ctx);
         return res;
     }
     return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, ctx, out);
+}
+
+status prepare(
+    std::string_view sql,
+    compiler_context &ctx,
+    std::shared_ptr<plan::prepared_statement>& out
+) {
+    auto cfg = global::config_pool();
+    if(cfg && cfg->compiler_support() == 0) {
+        return prepare_legacy(sql, ctx, out);
+    }
+
+    ctx.sql_text(std::make_shared<std::string>(sql));
+    mizugaki::parser::sql_parser parser{};
+    auto result = parser("<input>", std::string{sql});
+    if(result.has_diagnostic()) {
+        // warning or error raised
+        // currently, handle all diagnostics as error
+        handle_compile_error(result.diagnostic(), status::err_parse_error, ctx);
+        return status::err_parse_error;
+    }
+
+    auto& compilation_unit = result.value();
+    // VLOG_LP(log_info) << "********************* compilation_unit:" << *compilation_unit;
+
+    auto schema_provider = std::make_shared<yugawara::schema::configurable_provider>();
+    auto& schema = schema_provider->add(schema::declaration{
+        std::nullopt,
+        "public",
+        ctx.storage_provider(),
+        ctx.variable_provider(),
+        ctx.function_provider(),
+        ctx.aggregate_provider()
+    });
+    yugawara::schema::catalog catalog{"tsurugi"};  // specify db name // TODO move to database
+    catalog.schema_provider(std::move(schema_provider));
+    yugawara::schema::search_path schema_search_path{{schema}};
+    mizugaki::analyzer::sql_analyzer_options opts{
+        maybe_shared_ptr{std::addressof(catalog)},
+        maybe_shared_ptr{std::addressof(schema_search_path)},
+        schema
+    };
+
+    // used when SQL has no parenthesis for decimal: "create table T (c0 decimal)" or "CAST(... AS decimal)"
+    opts.default_decimal_precision() = decimal_default_precision_no_parenthesis;
+
+    // prefer write statement othewise VALUES operator is generated
+    // opts.prefer_write_statement() = true;
+
+    // allow null literals
+    opts.allow_context_independent_null() = true;
+
+    if(cfg) {
+        opts.lowercase_regular_identifiers() = cfg->lowercase_regular_identifiers();
+    }
+
+    mizugaki::analyzer::sql_analyzer analyzer{};
+    if(compilation_unit->statements().size() != 1) {
+        set_compile_error(
+            ctx,
+            error_code::unsupported_runtime_feature_exception,
+            "unexpected number of statements",
+            status::err_unsupported
+        );
+        return status::err_unsupported;
+    }
+    auto& stmt = compilation_unit->statements()[0];
+    // VLOG_LP(log_info) << "********************* stmt:" << *stmt;
+    mizugaki::placeholder_map placeholders{};
+    auto analysis = analyzer(opts, *stmt, *compilation_unit, placeholders, *ctx.variable_provider());
+
+    if(! analysis.is_valid()) {
+        // VLOG_LP(log_error) << "********************* error:" << analysis;
+        auto r = analysis.release<mizugaki::analyzer::sql_analyzer_result_kind::diagnostics>();
+        handle_compile_errors(r, status::err_compiler_error, ctx);
+        return status::err_compiler_error;
+    }
+
+    yugawara::runtime_feature_set runtime_features {
+        //TODO enable features
+//        yugawara::runtime_feature::broadcast_exchange,
+        yugawara::runtime_feature::aggregate_exchange,
+//        yugawara::runtime_feature::broadcast_join_scan,
+    };
+
+    if(cfg && cfg->enable_index_join()) {
+        runtime_features.insert(yugawara::runtime_feature::index_join);
+    }
+    std::shared_ptr<yugawara::analyzer::index_estimator> indices{};
+    auto sp = std::make_shared<storage_processor>();
+    yugawara::compiler_options c_options{
+        runtime_features,
+        sp,
+        indices,
+    };
+    return create_prepared_statement(std::move(analysis), ctx.variable_provider(), c_options, sp, ctx, out);
 }
 
 executor::process::step create(
@@ -1090,4 +1314,4 @@ status compile(
     }
 }
 
-}
+}  // namespace jogasaki::plan

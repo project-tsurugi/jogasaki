@@ -61,7 +61,8 @@ void stmt_end(
     std::int64_t inserted,
     std::int64_t updated,
     std::int64_t deleted,
-    std::int64_t merged
+    std::int64_t merged,
+    std::int64_t duration_time_ns
 );
 
 void stmt_explain(

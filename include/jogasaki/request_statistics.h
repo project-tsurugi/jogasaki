@@ -16,6 +16,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
@@ -110,6 +111,8 @@ class request_statistics {
 public:
     using each_counter_consumer = std::function<void(counter_kind kind, request_execution_counter const&)>;
 
+    using clock = std::chrono::steady_clock;
+
     /**
      * @brief create new object
      */
@@ -129,8 +132,19 @@ public:
 
     void each_counter(each_counter_consumer consumer) const noexcept;
 
+    void start_time(clock::time_point arg) noexcept;
+
+    void end_time(clock::time_point arg) noexcept;
+
+    template<class Duration>
+    Duration duration() const noexcept {
+        return std::chrono::duration_cast<Duration>(end_time_ - start_time_);
+    }
+
 private:
     std::unordered_map<std::underlying_type_t<counter_kind>, request_execution_counter> entity_{};
+    clock::time_point start_time_{};
+    clock::time_point end_time_{};
 
 };
 

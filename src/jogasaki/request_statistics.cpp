@@ -44,5 +44,12 @@ void request_statistics::each_counter(
         consumer(static_cast<counter_kind>(k), e);
     }
 }
+
+void request_statistics::start_time(request_statistics::clock::time_point arg) noexcept {
+    start_time_ = arg;
+}
+void request_statistics::end_time(request_statistics::clock::time_point arg) noexcept {
+    end_time_ = arg;
 }
 
+}  // namespace jogasaki

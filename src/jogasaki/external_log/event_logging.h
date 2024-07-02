@@ -22,6 +22,8 @@
 
 namespace jogasaki::external_log {
 
+using clock = std::chrono::steady_clock;
+
 void tx_start(
     request_info const& req_info,
     std::string_view message,
@@ -61,7 +63,8 @@ void stmt_end(
     std::int64_t inserted,
     std::int64_t updated,
     std::int64_t deleted,
-    std::int64_t merged
+    std::int64_t merged,
+    std::int64_t duration_time_ns
 );
 
 void stmt_explain(

@@ -388,6 +388,9 @@ void external_log_stmt_start(
     (void) req_info;
     (void) statement;
     (void) string_builder{};
+    if(rctx.stats()) {
+        rctx.stats()->start_time(request_statistics::clock::now());
+    }
 #ifdef ENABLE_ALTIMETER
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
@@ -412,6 +415,9 @@ void external_log_stmt_end(
     (void) req_info;
     (void) statement;
     (void) string_builder{};
+    if(rctx.stats()) {
+        rctx.stats()->end_time(request_statistics::clock::now());
+    }
 #ifdef ENABLE_ALTIMETER
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());
@@ -433,6 +439,7 @@ void external_log_stmt_end(
     std::int64_t deleted{};
     std::int64_t merged{};
     std::int64_t fetched{};
+    std::int64_t duration_time_ns{};
     if(rctx.stats()) {
         if(auto cnt = rctx.stats()->counter(counter_kind::inserted).count(); cnt.has_value()) {
             inserted = cnt.value();
@@ -449,6 +456,7 @@ void external_log_stmt_end(
         if(auto cnt = rctx.stats()->counter(counter_kind::fetched).count(); cnt.has_value()) {
             fetched = cnt.value();
         }
+        duration_time_ns = rctx.stats()->duration<std::chrono::nanoseconds>().count();
     }
     std::string params{};
     if(stmt->host_variables()) {
@@ -468,7 +476,8 @@ void external_log_stmt_end(
         inserted,
         updated,
         deleted,
-        merged
+        merged,
+        duration_time_ns
     );
 #endif
 }

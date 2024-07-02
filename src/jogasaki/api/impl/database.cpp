@@ -1232,6 +1232,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         if(rctx->status_code() == status::ok) {
             auto* tx = reinterpret_cast<transaction_context*>(handle->get());  //NOLINT
             auto tx_type = utils::tx_type_from(*tx);
+            tx->start_time(transaction_context::clock::now());
             external_log::tx_start(req_info, "", txidstr, tx_type);
         }
         on_completion(

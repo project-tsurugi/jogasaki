@@ -17,6 +17,7 @@
 
 #ifdef ENABLE_ALTIMETER
 #include <altimeter/event/constants.h>
+#include <altimeter/event/event_logger.h>
 #include <altimeter/log_item.h>
 #include <altimeter/logger.h>
 #endif
@@ -156,7 +157,8 @@ void stmt_end(
     std::int64_t merged,
     std::int64_t duration_time_ns
 ) {
-    if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::statement)) {
+    if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::statement) &&
+       ! ::altimeter::event::event_logger::is_over_stmt_duration_threshold(duration_time_ns)) {
         return;
     }
     if(! req_info.request_source()) {

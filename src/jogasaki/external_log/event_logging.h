@@ -28,7 +28,8 @@ void tx_start(
     request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
-    std::int64_t tx_type
+    std::int64_t tx_type,
+    std::string_view tx_label
 );
 
 void tx_end(
@@ -37,7 +38,8 @@ void tx_end(
     std::string_view tx_id,
     std::int64_t tx_type,
     std::int64_t result,
-    std::int64_t duration_time_ns
+    std::int64_t duration_time_ns,
+    std::string_view tx_label
 );
 
 void stmt_start(
@@ -47,7 +49,8 @@ void stmt_start(
     std::int64_t tx_type,
     std::string_view job_id,
     std::string_view statement,
-    std::string_view parameter
+    std::string_view parameter,
+    std::string_view tx_label
 );
 
 void stmt_end(
@@ -65,7 +68,8 @@ void stmt_end(
     std::int64_t updated,
     std::int64_t deleted,
     std::int64_t merged,
-    std::int64_t duration_time_ns
+    std::int64_t duration_time_ns,
+    std::string_view tx_label
 );
 
 void stmt_explain(
@@ -73,7 +77,8 @@ void stmt_explain(
     std::string_view tx_id,
     std::int64_t tx_type,
     std::string_view job_id,
-    std::string_view data
+    std::string_view data,
+    std::string_view tx_label
 );
 
 }  // namespace jogasaki::external_log

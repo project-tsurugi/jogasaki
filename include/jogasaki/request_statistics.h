@@ -137,7 +137,7 @@ public:
     void end_time(clock::time_point arg) noexcept;
 
     template<class Duration>
-    Duration duration() const noexcept {
+    [[nodiscard]] Duration duration() const noexcept {
         return std::chrono::duration_cast<Duration>(end_time_ - start_time_);
     }
 

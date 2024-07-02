@@ -42,7 +42,8 @@ void tx_start(
     request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
-    std::int64_t tx_type
+    std::int64_t tx_type,
+    std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
     if(cfg && cfg->trace_external_log()) {
@@ -50,11 +51,12 @@ void tx_start(
             "message:\"" << message << "\"" <<
             " tx_id:" << tx_id <<
             " tx_type:" << tx_type <<
+            " tx_label:" << tx_label <<
             "";
     }
     (void) req_info;
 #ifdef ENABLE_ALTIMETER
-    details::tx_start(req_info, message, tx_id, tx_type);
+    details::tx_start(req_info, message, tx_id, tx_type, tx_label);
 #endif
 }
 
@@ -64,7 +66,8 @@ void tx_end(
     std::string_view tx_id,
     std::int64_t tx_type,
     std::int64_t result,
-    std::int64_t duration_time_ns
+    std::int64_t duration_time_ns,
+    std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
     if(cfg  && cfg->trace_external_log()) {
@@ -72,13 +75,14 @@ void tx_end(
         "message:\"" << message << "\"" <<
         " tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
+        " tx_label:" << tx_label <<
         " result:" << result <<
         " duration_time:" << duration_time_ns <<
         "";
     }
     (void) req_info;
 #ifdef ENABLE_ALTIMETER
-    details::tx_end(req_info, message, tx_id, tx_type, result, duration_time_ns);
+    details::tx_end(req_info, message, tx_id, tx_type, result, duration_time_ns, tx_label);
 #endif
 }
 
@@ -89,7 +93,8 @@ void stmt_start(
     std::int64_t tx_type,
     std::string_view job_id,
     std::string_view statement,
-    std::string_view parameter
+    std::string_view parameter,
+    std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
     if(cfg  && cfg->trace_external_log()) {
@@ -97,6 +102,7 @@ void stmt_start(
         "message:\"" << message << "\"" <<
         " tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
+        " tx_label:" << tx_label <<
         " job_id:" << job_id <<
         " statement:\"" << statement << "\"" <<
         " parameter:\"" << parameter << "\"" <<
@@ -104,7 +110,7 @@ void stmt_start(
     }
     (void) req_info;
 #ifdef ENABLE_ALTIMETER
-    details::stmt_start(req_info, message, tx_id, tx_type, job_id, statement, parameter);
+    details::stmt_start(req_info, message, tx_id, tx_type, job_id, statement, parameter, tx_label);
 #endif
 }
 
@@ -123,7 +129,8 @@ void stmt_end(
     std::int64_t updated,
     std::int64_t deleted,
     std::int64_t merged,
-    std::int64_t duration_time_ns
+    std::int64_t duration_time_ns,
+    std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
     if(cfg  && cfg->trace_external_log()) {
@@ -131,6 +138,7 @@ void stmt_end(
         "message:\"" << message << "\"" <<
         " tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
+        " tx_label:" << tx_label <<
         " job_id:" << job_id <<
         " statement:\"" << statement << "\"" <<
         " parameter:\"" << parameter << "\"" <<
@@ -161,7 +169,8 @@ void stmt_end(
         updated,
         deleted,
         merged,
-        duration_time_ns
+        duration_time_ns,
+        tx_label
     );
 #endif
 }
@@ -171,7 +180,8 @@ void stmt_explain(
     std::string_view tx_id,
     std::int64_t tx_type,
     std::string_view job_id,
-    std::string_view data
+    std::string_view data,
+    std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
     if(cfg  && cfg->trace_external_log()) {
@@ -179,12 +189,13 @@ void stmt_explain(
         "tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
         " job_id:" << job_id <<
+        " tx_label:" << tx_label <<
         " data:" << data <<
         "";
     }
     (void) req_info;
 #ifdef ENABLE_ALTIMETER
-    details::stmt_explain(req_info, tx_id, tx_type, job_id, data);
+    details::stmt_explain(req_info, tx_id, tx_type, job_id, data, tx_label);
 #endif
 }
 

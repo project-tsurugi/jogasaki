@@ -284,9 +284,14 @@ public:
     void end_time(clock::time_point arg) noexcept;
 
     template<class Duration>
-    Duration duration() const noexcept {
+    [[nodiscard]] Duration duration() const noexcept {
         return std::chrono::duration_cast<Duration>(end_time_ - start_time_);
     }
+
+    void label(std::string_view arg) noexcept;
+
+    [[nodiscard]] std::string_view label() const noexcept;
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
@@ -299,6 +304,7 @@ private:
     std::shared_ptr<kvs::transaction_option const> option_{};
     clock::time_point start_time_{};
     clock::time_point end_time_{};
+    std::string label_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

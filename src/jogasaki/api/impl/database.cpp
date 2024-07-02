@@ -605,6 +605,7 @@ status database::create_transaction_internal(transaction_handle& handle, transac
         if(auto res = executor::create_transaction(*this, tx, from(option, *tables_)); res != status::ok) {
             return res;
         }
+        tx->label(option.label());
         api::transaction_handle t{tx.get(), this};
         {
             decltype(transactions_)::accessor acc{};
@@ -1233,7 +1234,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             auto* tx = reinterpret_cast<transaction_context*>(handle->get());  //NOLINT
             auto tx_type = utils::tx_type_from(*tx);
             tx->start_time(transaction_context::clock::now());
-            external_log::tx_start(req_info, "", txidstr, tx_type);
+            external_log::tx_start(req_info, "", txidstr, tx_type, tx->label());
         }
         on_completion(
             *handle,

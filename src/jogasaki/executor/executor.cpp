@@ -187,7 +187,8 @@ status abort_transaction(
             txid,
             tx_type,
             external_log::result_value::fail,
-            tx->duration<std::chrono::nanoseconds>().count()
+            tx->duration<std::chrono::nanoseconds>().count(),
+            tx->label()
         );
     }
     return ret;
@@ -410,7 +411,16 @@ void external_log_stmt_start(
     if(stmt->host_variables()) {
         params = string_builder{} << *stmt->host_variables() << string_builder::to_string;
     }
-    external_log::stmt_start(req_info, "", tx_id, tx_type, jobidstr, stmt->sql_text(), params);
+    external_log::stmt_start(
+        req_info,
+        "",
+        tx_id,
+        tx_type,
+        jobidstr,
+        stmt->sql_text(),
+        params,
+        rctx.transaction()->label()
+    );
 #endif
 }
 
@@ -485,7 +495,8 @@ void external_log_stmt_end(
         updated,
         deleted,
         merged,
-        duration_time_ns
+        duration_time_ns,
+        rctx.transaction()->label()
     );
 #endif
 }
@@ -518,7 +529,8 @@ void external_log_stmt_explain(
         tx_id,
         tx_type,
         jobidstr,
-        ss.str()
+        ss.str(),
+        rctx.transaction()->label()
     );
 #endif
 }
@@ -781,7 +793,8 @@ scheduler::job_context::job_id_type commit_async(
             txid,
             tx_type,
             result,
-            rctx->transaction()->duration<std::chrono::nanoseconds>().count()
+            rctx->transaction()->duration<std::chrono::nanoseconds>().count(),
+            rctx->transaction()->label()
         );
         on_completion(rctx->status_code(), rctx->error_info());
     });

@@ -155,6 +155,14 @@ void transaction_context::end_time(transaction_context::clock::time_point arg) n
     end_time_ = arg;
 }
 
+void transaction_context::label(std::string_view arg) noexcept {
+    label_ = arg;
+}
+
+std::string_view transaction_context::label() const noexcept {
+    return label_;
+}
+
 std::shared_ptr<transaction_context> wrap(
     std::unique_ptr<kvs::transaction>&& arg,
     std::shared_ptr<kvs::transaction_option const> options

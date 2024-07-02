@@ -64,7 +64,8 @@ void tx_start(
     request_info const& req_info,
     std::string_view message,
     std::string_view tx_id,
-    std::int64_t tx_type
+    std::int64_t tx_type,
+    std::string_view tx_label
 ) {
     if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::transaction)) {
         return;
@@ -81,6 +82,7 @@ void tx_start(
     }
     item.add(::altimeter::event::item::tx_id, tx_id);
     item.add(::altimeter::event::item::tx_type, tx_type);
+    item.add(::altimeter::event::item::tx_label, tx_label);
     ::altimeter::logger::log(item);
 }
 
@@ -90,7 +92,8 @@ void tx_end(
     std::string_view tx_id,
     std::int64_t tx_type,
     std::int64_t result,
-    std::int64_t duration_time_ns
+    std::int64_t duration_time_ns,
+    std::string_view tx_label
 ) {
     if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::transaction)) {
         return;
@@ -109,6 +112,7 @@ void tx_end(
     item.add(::altimeter::event::item::tx_type, tx_type);
     item.add(::altimeter::event::item::result, result);
     item.add(::altimeter::event::item::duration_time, duration_time_ns);
+    item.add(::altimeter::event::item::tx_label, tx_label);
     ::altimeter::logger::log(item);
 }
 
@@ -119,7 +123,8 @@ void stmt_start(
     std::int64_t tx_type,
     std::string_view job_id,
     std::string_view statement,
-    std::string_view parameter
+    std::string_view parameter,
+    std::string_view tx_label
 ) {
     if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::statement)) {
         return;
@@ -139,6 +144,7 @@ void stmt_start(
     item.add(::altimeter::event::item::job_id, job_id);
     item.add(::altimeter::event::item::statement, statement);
     item.add(::altimeter::event::item::parameter, parameter);
+    item.add(::altimeter::event::item::tx_label, tx_label);
     ::altimeter::logger::log(item);
 }
 
@@ -157,7 +163,8 @@ void stmt_end(
     std::int64_t updated,
     std::int64_t deleted,
     std::int64_t merged,
-    std::int64_t duration_time_ns
+    std::int64_t duration_time_ns,
+    std::string_view tx_label
 ) {
     if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::statement) &&
        ! ::altimeter::event::event_logger::is_over_stmt_duration_threshold(duration_time_ns)) {
@@ -186,6 +193,7 @@ void stmt_end(
     item.add(::altimeter::event::item::deleted, deleted);
     item.add(::altimeter::event::item::merged, merged);
     item.add(::altimeter::event::item::duration_time, duration_time_ns);
+    item.add(::altimeter::event::item::tx_label, tx_label);
     ::altimeter::logger::log(item);
 }
 
@@ -194,7 +202,8 @@ void stmt_explain(
     std::string_view tx_id,
     std::int64_t tx_type,
     std::string_view job_id,
-    std::string_view data
+    std::string_view data,
+    std::string_view tx_label
 ) {
     if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::min)) {
         return;
@@ -210,6 +219,7 @@ void stmt_explain(
     item.add(::altimeter::event::item::tx_type, tx_type);
     item.add(::altimeter::event::item::job_id, job_id);
     item.add(::altimeter::event::item::data, data);
+    item.add(::altimeter::event::item::tx_label, tx_label);
     ::altimeter::logger::log(item);
 }
 

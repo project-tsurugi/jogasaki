@@ -36,7 +36,8 @@ void tx_end(
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
-    std::int64_t result
+    std::int64_t result,
+    std::int64_t duration_time_ns
 );
 
 void stmt_start(

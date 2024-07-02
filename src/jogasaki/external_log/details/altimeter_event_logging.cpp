@@ -89,7 +89,8 @@ void tx_end(
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
-    std::int64_t result
+    std::int64_t result,
+    std::int64_t duration_time_ns
 ) {
     if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::transaction)) {
         return;
@@ -107,6 +108,7 @@ void tx_end(
     item.add(::altimeter::event::item::tx_id, tx_id);
     item.add(::altimeter::event::item::tx_type, tx_type);
     item.add(::altimeter::event::item::result, result);
+    item.add(::altimeter::event::item::duration_time, duration_time_ns);
     ::altimeter::logger::log(item);
 }
 

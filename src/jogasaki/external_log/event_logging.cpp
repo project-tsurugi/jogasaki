@@ -27,6 +27,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
+#include <jogasaki/transaction_context.h>
 
 #ifdef ENABLE_ALTIMETER
 #include "details/altimeter_event_logging.h"
@@ -35,6 +36,7 @@
 namespace jogasaki::external_log {
 
 static_assert(std::is_same_v<clock, request_statistics::clock>);
+static_assert(std::is_same_v<clock, transaction_context::clock>);
 
 void tx_start(
     request_info const& req_info,
@@ -61,7 +63,8 @@ void tx_end(
     std::string_view message,
     std::string_view tx_id,
     std::int64_t tx_type,
-    std::int64_t result
+    std::int64_t result,
+    std::int64_t duration_time_ns
 ) {
     auto& cfg = global::config_pool();
     if(cfg  && cfg->trace_external_log()) {
@@ -70,11 +73,12 @@ void tx_end(
         " tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
         " result:" << result <<
+        " duration_time:" << duration_time_ns <<
         "";
     }
     (void) req_info;
 #ifdef ENABLE_ALTIMETER
-    details::tx_end(req_info, message, tx_id, tx_type, result);
+    details::tx_end(req_info, message, tx_id, tx_type, result, duration_time_ns);
 #endif
 }
 

@@ -105,6 +105,8 @@ public:
 
     using commit_callback_type = kvs::transaction::commit_callback_type;
 
+    using clock = std::chrono::steady_clock;
+
     /**
      * @brief create empty object
      */
@@ -277,6 +279,14 @@ public:
      */
     [[nodiscard]] std::shared_ptr<kvs::transaction_option const> const& option() const noexcept;
 
+    void start_time(clock::time_point arg) noexcept;
+
+    void end_time(clock::time_point arg) noexcept;
+
+    template<class Duration>
+    Duration duration() const noexcept {
+        return std::chrono::duration_cast<Duration>(end_time_ - start_time_);
+    }
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
@@ -287,6 +297,8 @@ private:
     std::optional<durability_marker_type> durability_marker_{};
     std::shared_ptr<commit_profile> profile_{std::make_shared<commit_profile>()};
     std::shared_ptr<kvs::transaction_option const> option_{};
+    clock::time_point start_time_{};
+    clock::time_point end_time_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

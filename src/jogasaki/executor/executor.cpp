@@ -180,7 +180,15 @@ status abort_transaction(
     if(ret == status::ok) {
         // TODO abort is almost always successful. distinguish "real abort"
         auto tx_type = utils::tx_type_from(*tx);
-        external_log::tx_end(req_info, "", txid, tx_type, external_log::result_value::fail);
+        tx->end_time(transaction_context::clock::now());
+        external_log::tx_end(
+            req_info,
+            "",
+            txid,
+            tx_type,
+            external_log::result_value::fail,
+            tx->duration<std::chrono::nanoseconds>().count()
+        );
     }
     return ret;
 }
@@ -766,7 +774,15 @@ scheduler::job_context::job_id_type commit_async(
         rctx->transaction()->profile()->set_commit_job_completed();
         auto tx_type = utils::tx_type_from(*rctx->transaction());
         auto result = utils::result_from(rctx->status_code());
-        external_log::tx_end(req_info, "", txid, tx_type, result);
+        rctx->transaction()->end_time(transaction_context::clock::now());
+        external_log::tx_end(
+            req_info,
+            "",
+            txid,
+            tx_type,
+            result,
+            rctx->transaction()->duration<std::chrono::nanoseconds>().count()
+        );
         on_completion(rctx->status_code(), rctx->error_info());
     });
     std::weak_ptr wrctx{rctx};

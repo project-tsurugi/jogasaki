@@ -341,7 +341,7 @@ error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
         case sac::unsupported_string_value: return ec::value_analyze_exception;
 
         case sac::flexible_length_is_not_supported: return ec::type_analyze_exception;
-        case sac::type_length_is_too_large: return ec::type_analyze_exception;
+        case sac::invalid_type_length: return ec::type_analyze_exception;
         case sac::invalid_numeric_scale: return ec::type_analyze_exception;
 
         case sac::schema_not_found: return ec::symbol_analyze_exception;

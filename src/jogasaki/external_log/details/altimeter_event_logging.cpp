@@ -16,8 +16,9 @@
 #include "altimeter_event_logging.h"
 
 #ifdef ENABLE_ALTIMETER
-#include <altimeter/logger.h>
+#include <altimeter/event/constants.h>
 #include <altimeter/log_item.h>
+#include <altimeter/logger.h>
 #endif
 
 #include <memory>
@@ -27,7 +28,6 @@
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/session_info.h>
 
-#include <jogasaki/external_log/events.h>
 #include <jogasaki/request_info.h>
 
 namespace jogasaki::external_log::details {
@@ -36,8 +36,7 @@ void fill_common_properties(
     request_info const& req_info,
     ::altimeter::log_item& item
 ) {
-    item.category(log_category::event);
-    item.level(log_level::event::info);
+    item.category(::altimeter::event::category);
     auto req = req_info.request_source();
     if(! req) {
         return;
@@ -45,19 +44,19 @@ void fill_common_properties(
     auto const& database_info = req->database_info();
     auto const& session_info = req->session_info();
     if(auto database_name = database_info.name(); ! database_name.empty()) {
-        item.add(log_item::event::dbname, database_name);
+        item.add(::altimeter::event::item::dbname, database_name);
     }
-    item.add(log_item::event::pid, static_cast<pid_t>(database_info.process_id()));
+    item.add(::altimeter::event::item::pid, static_cast<pid_t>(database_info.process_id()));
     if(auto connection_information = session_info.connection_information(); ! connection_information.empty()) {
-        item.add(log_item::event::remote_host, connection_information);
+        item.add(::altimeter::event::item::remote_host, connection_information);
     }
     if(auto application_name = session_info.application_name(); ! application_name.empty()) {
-        item.add(log_item::event::application_name, application_name);
+        item.add(::altimeter::event::item::application_name, application_name);
     }
     if(auto session_label = session_info.label(); ! session_label.empty()) {
-        item.add(log_item::event::session_label, session_label);
+        item.add(::altimeter::event::item::session_label, session_label);
     }
-    item.add(log_item::event::session_id, static_cast<std::int64_t>(session_info.id()));
+    item.add(::altimeter::event::item::session_id, static_cast<std::int64_t>(session_info.id()));
 }
 
 void tx_start(
@@ -66,20 +65,21 @@ void tx_start(
     std::string_view tx_id,
     std::int64_t tx_type
 ) {
-    if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
+    if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::transaction)) {
         return;
     }
     if(! req_info.request_source()) {
         return;
     }
     ::altimeter::log_item item{};
-    item.type(log_type::event::tx_start);
+    item.type(::altimeter::event::type::tx_start);
+    item.level(::altimeter::event::level::transaction);
     fill_common_properties(req_info, item);
     if(! message.empty()) {
-        item.add(log_item::event::message, message);
+        item.add(::altimeter::event::item::message, message);
     }
-    item.add(log_item::event::tx_id, tx_id);
-    item.add(log_item::event::tx_type, tx_type);
+    item.add(::altimeter::event::item::tx_id, tx_id);
+    item.add(::altimeter::event::item::tx_type, tx_type);
     ::altimeter::logger::log(item);
 }
 
@@ -90,21 +90,22 @@ void tx_end(
     std::int64_t tx_type,
     std::int64_t result
 ) {
-    if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
+    if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::transaction)) {
         return;
     }
     if(! req_info.request_source()) {
         return;
     }
     ::altimeter::log_item item{};
-    item.type(log_type::event::tx_end);
+    item.type(::altimeter::event::type::tx_end);
+    item.level(::altimeter::event::level::transaction);
     fill_common_properties(req_info, item);
     if(! message.empty()) {
-        item.add(log_item::event::message, message);
+        item.add(::altimeter::event::item::message, message);
     }
-    item.add(log_item::event::tx_id, tx_id);
-    item.add(log_item::event::tx_type, tx_type);
-    item.add(log_item::event::result, result);
+    item.add(::altimeter::event::item::tx_id, tx_id);
+    item.add(::altimeter::event::item::tx_type, tx_type);
+    item.add(::altimeter::event::item::result, result);
     ::altimeter::logger::log(item);
 }
 
@@ -117,23 +118,24 @@ void stmt_start(
     std::string_view statement,
     std::string_view parameter
 ) {
-    if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
+    if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::statement)) {
         return;
     }
     if(! req_info.request_source()) {
         return;
     }
     ::altimeter::log_item item{};
-    item.type(log_type::event::stmt_start);
+    item.type(::altimeter::event::type::stmt_start);
+    item.level(::altimeter::event::level::statement);
     fill_common_properties(req_info, item);
     if(! message.empty()) {
-        item.add(log_item::event::message, message);
+        item.add(::altimeter::event::item::message, message);
     }
-    item.add(log_item::event::tx_id, tx_id);
-    item.add(log_item::event::tx_type, tx_type);
-    item.add(log_item::event::job_id, job_id);
-    item.add(log_item::event::statement, statement);
-    item.add(log_item::event::parameter, parameter);
+    item.add(::altimeter::event::item::tx_id, tx_id);
+    item.add(::altimeter::event::item::tx_type, tx_type);
+    item.add(::altimeter::event::item::job_id, job_id);
+    item.add(::altimeter::event::item::statement, statement);
+    item.add(::altimeter::event::item::parameter, parameter);
     ::altimeter::logger::log(item);
 }
 
@@ -153,30 +155,31 @@ void stmt_end(
     std::int64_t deleted,
     std::int64_t merged
 ) {
-    if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
+    if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::statement)) {
         return;
     }
     if(! req_info.request_source()) {
         return;
     }
     ::altimeter::log_item item{};
-    item.type(log_type::event::stmt_end);
+    item.type(::altimeter::event::type::stmt_end);
+    item.level(::altimeter::event::level::statement);
     fill_common_properties(req_info, item);
     if(! message.empty()) {
-        item.add(log_item::event::message, message);
+        item.add(::altimeter::event::item::message, message);
     }
-    item.add(log_item::event::tx_id, tx_id);
-    item.add(log_item::event::tx_type, tx_type);
-    item.add(log_item::event::job_id, job_id);
-    item.add(log_item::event::statement, statement);
-    item.add(log_item::event::parameter, parameter);
-    item.add(log_item::event::result, result);
-    item.add(log_item::event::state_code, state_code);
-    item.add(log_item::event::fetched, fetched);
-    item.add(log_item::event::inserted, inserted);
-    item.add(log_item::event::updated, updated);
-    item.add(log_item::event::deleted, deleted);
-    item.add(log_item::event::merged, merged);
+    item.add(::altimeter::event::item::tx_id, tx_id);
+    item.add(::altimeter::event::item::tx_type, tx_type);
+    item.add(::altimeter::event::item::job_id, job_id);
+    item.add(::altimeter::event::item::statement, statement);
+    item.add(::altimeter::event::item::parameter, parameter);
+    item.add(::altimeter::event::item::result, result);
+    item.add(::altimeter::event::item::state_code, state_code);
+    item.add(::altimeter::event::item::fetched, fetched);
+    item.add(::altimeter::event::item::inserted, inserted);
+    item.add(::altimeter::event::item::updated, updated);
+    item.add(::altimeter::event::item::deleted, deleted);
+    item.add(::altimeter::event::item::merged, merged);
     ::altimeter::logger::log(item);
 }
 
@@ -187,19 +190,20 @@ void stmt_explain(
     std::string_view job_id,
     std::string_view data
 ) {
-    if(! ::altimeter::logger::is_log_on(log_category::event, log_level::event::info)) {
+    if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::min)) {
         return;
     }
     if(! req_info.request_source()) {
         return;
     }
     ::altimeter::log_item item{};
-    item.type(log_type::event::stmt_explain);
+    item.type(::altimeter::event::type::stmt_explain);
+    item.level(::altimeter::event::level::min);
     fill_common_properties(req_info, item);
-    item.add(log_item::event::tx_id, tx_id);
-    item.add(log_item::event::tx_type, tx_type);
-    item.add(log_item::event::job_id, job_id);
-    item.add(log_item::event::data, data);
+    item.add(::altimeter::event::item::tx_id, tx_id);
+    item.add(::altimeter::event::item::tx_type, tx_type);
+    item.add(::altimeter::event::item::job_id, job_id);
+    item.add(::altimeter::event::item::data, data);
     ::altimeter::logger::log(item);
 }
 

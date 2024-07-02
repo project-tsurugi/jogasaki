@@ -4,7 +4,7 @@
 
 * CMake `>= 3.16`
 * C++ Compiler `>= C++17`
-* mpdecimal 2.5.1 (see `Manual install steps for mpdecimal` section below to install on Ubuntu 20.04)
+* mpdecimal 2.5.1 (see `Manual install steps for mpdecimal` section below to install on Ubuntu 24.04)
 * and see *Dockerfile* section
 
 ```sh
@@ -17,12 +17,9 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:22.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libmpdec-dev libparquet-dev=14.0.1-1 libparquet-glib-dev=14.0.1-1 libarrow-dev=14.0.1-1 libarrow-glib-dev=14.0.1-1
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libmpdec-dev libparquet-dev=16.1.0-1 libparquet-glib-dev=16.1.0-1 libarrow-dev=16.1.0-1 libarrow-glib-dev=16.1.0-1
 ```
 (see "Additional file installation for Apache Parquet" below if installing `libparquet-dev`, `libparquet-glib-dev` fails)
-
-> [!NOTE]
-> Apache Arrow/Parquet packages with major version 14 are required. Different versions such as 13 or 15 cause cmake build failure.
 
 optional packages:
 
@@ -41,7 +38,7 @@ This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) mo
 
 ### Additional file installation for Apache Arrow/Parquet
 
-Jogasaki requires Apache Arrow and Parquet package versioned as `14.0.1-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.)
+Jogasaki requires Apache Arrow and Parquet package versioned as `16.1.0-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.)
 
 Installing Apache Arrow/Paquet packages `libarrow-dev`, `libarrow-glib-dev`, `libparquet-dev`, `libparquet-glib-dev` requires additional files installation.
 If installing these packages from `apt install` command fails, issue below commands to install required files.
@@ -51,14 +48,14 @@ sudo apt install -y -V lsb-release
 wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt update
-sudo apt install -y -V libparquet-dev=14.0.1-1 libparquet-glib-dev=14.0.1-1 libarrow-dev=14.0.1-1 libarrow-glib-dev=14.0.1-1 gir1.2-parquet-1.0=14.0.1-1 gir1.2-arrow-1.0=14.0.1-1 libarrow-acero-dev=14.0.1-1
+sudo apt install -y -V libparquet-dev=16.1.0-1 libparquet-glib-dev=16.1.0-1 libarrow-dev=16.1.0-1 libarrow-glib-dev=16.1.0-1 gir1.2-parquet-1.0=16.1.0-1 gir1.2-arrow-1.0=16.1.0-1 libarrow-acero-dev=16.1.0-1
 ```
 
 (You can see [here](https://arrow.apache.org/install/) for full instruction. )
 
 ### Manual install steps for mpdecimal
 
-Ubuntu 22.04 users can safely skip this section since `apt install libmpdec-dev` installs new version enough for Jogasaki. On Ubuntu 20.04, the apt command installs slightly old mpdecimal package (2.4) while jogasaki requires newer version(2.5 or later.) Follow these steps in order to install mpdecmal in the custom location.
+Ubuntu 22.04 users can safely skip this section since `apt install libmpdec-dev` installs new version enough for Jogasaki. On Ubuntu 24.04 (and later), the apt command won't install mpdecimal package. Follow these steps in order to install mpdecmal in the custom location.
 
 1. Download [mpdecimal-2.5.1.tar.gz](https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz) listed [here](https://www.bytereef.org/mpdecimal/download.html).
 2. Untar the archive and move into the extracted directory.

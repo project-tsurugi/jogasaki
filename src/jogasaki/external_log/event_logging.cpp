@@ -26,12 +26,15 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_info.h>
+#include <jogasaki/request_statistics.h>
 
 #ifdef ENABLE_ALTIMETER
 #include "details/altimeter_event_logging.h"
 #endif
 
 namespace jogasaki::external_log {
+
+static_assert(std::is_same_v<clock, request_statistics::clock>);
 
 void tx_start(
     request_info const& req_info,
@@ -115,7 +118,8 @@ void stmt_end(
     std::int64_t inserted,
     std::int64_t updated,
     std::int64_t deleted,
-    std::int64_t merged
+    std::int64_t merged,
+    std::int64_t duration_time_ns
 ) {
     auto& cfg = global::config_pool();
     if(cfg  && cfg->trace_external_log()) {
@@ -133,6 +137,7 @@ void stmt_end(
         " updated:" << updated <<
         " deleted:" << deleted <<
         " merged:" << merged <<
+        " duration_time:" << duration_time_ns <<
         "";
     }
     (void) req_info;
@@ -151,7 +156,8 @@ void stmt_end(
         inserted,
         updated,
         deleted,
-        merged
+        merged,
+        duration_time_ns
     );
 #endif
 }

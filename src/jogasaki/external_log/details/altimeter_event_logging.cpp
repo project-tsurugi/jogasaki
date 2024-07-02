@@ -153,7 +153,8 @@ void stmt_end(
     std::int64_t inserted,
     std::int64_t updated,
     std::int64_t deleted,
-    std::int64_t merged
+    std::int64_t merged,
+    std::int64_t duration_time_ns
 ) {
     if(! ::altimeter::logger::is_log_on(::altimeter::event::category, ::altimeter::event::level::statement)) {
         return;
@@ -180,6 +181,7 @@ void stmt_end(
     item.add(::altimeter::event::item::updated, updated);
     item.add(::altimeter::event::item::deleted, deleted);
     item.add(::altimeter::event::item::merged, merged);
+    item.add(::altimeter::event::item::duration_time, duration_time_ns);
     ::altimeter::logger::log(item);
 }
 

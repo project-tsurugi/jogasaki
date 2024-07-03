@@ -211,7 +211,7 @@ TEST_F(sql_cast_test, cast_bad_paraeters) {
 TEST_F(sql_cast_test, cast_with_length) {
     // compiler prevents specifying length for types that doesn't support length
     execute_statement("create table TT (C0 int primary key)");
-    test_stmt_err("SELECT CAST('123.456' AS INT(4)) FROM TT", error_code::syntax_exception);
+    // on new compiler, FLOAT and INT can accept length - e.g. INT(7) is TINYINT, FLOAT(53) is DOUBLE
     test_stmt_err("SELECT CAST('123.456' AS BIGINT(8)) FROM TT", error_code::syntax_exception);
     test_stmt_err("SELECT CAST('123.456' AS REAL(4)) FROM TT", error_code::syntax_exception);
     test_stmt_err("SELECT CAST('123.456' AS DOUBLE(8)) FROM TT", error_code::syntax_exception);
@@ -256,8 +256,15 @@ TEST_F(sql_cast_test, cast_without_length) {
            std::tuple{character_type(false, 1)},
            std::forward_as_tuple(accessor::text{"1"}))), result[0]);
     }
-    // compiler doesn't allow VARCHAR
-    test_stmt_err("SELECT CAST('123.456' AS VARCHAR) FROM TT", error_code::syntax_exception);
+    {
+        // new compiler allow VARCHAR as VARCHAR(*)
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST('123.456' AS VARCHAR) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(true, std::nullopt)},
+           std::forward_as_tuple(accessor::text{"123.456"}))), result[0]);
+    }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS DECIMAL) FROM TT", result);
@@ -481,9 +488,9 @@ TEST_F(sql_cast_test, format_error_with_too_large_number) {
 TEST_F(sql_cast_test, unsupported_small_integers) {
     execute_statement("create table TT (C0 int primary key)");
     execute_statement("INSERT INTO TT VALUES (1)");
-    test_stmt_err("SELECT CAST('true' AS BOOLEAN) FROM TT", error_code::syntax_exception);
-    test_stmt_err("SELECT CAST('1' AS TINYINT) FROM TT", error_code::syntax_exception);
-    test_stmt_err("SELECT CAST('1' AS SMALLINT) FROM TT", error_code::syntax_exception);
+    test_stmt_err("SELECT CAST('true' AS BOOLEAN) FROM TT", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("SELECT CAST('1' AS TINYINT) FROM TT", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("SELECT CAST('1' AS SMALLINT) FROM TT", error_code::unsupported_runtime_feature_exception);
 }
 
 }  // namespace jogasaki::testing

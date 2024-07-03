@@ -107,6 +107,7 @@ public:
         std::cerr << *error << std::endl;
         ASSERT_EQ(expected, error->code());
     }
+    void test_prepare_ddl_type(std::string_view type);
 };
 
 using namespace std::string_view_literals;
@@ -263,7 +264,7 @@ TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
 
 TEST_F(ddl_test, existing_table) {
     execute_statement("CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)");
-    test_prepare_err("CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", error_code::compile_exception);
+    test_prepare_err("CREATE TABLE T (C0 BIGINT NOT NULL PRIMARY KEY, C1 DOUBLE)", error_code::symbol_analyze_exception);
 }
 
 TEST_F(ddl_test, duplicate_table_name) {
@@ -273,7 +274,7 @@ TEST_F(ddl_test, duplicate_table_name) {
     ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared0));
     ASSERT_EQ(status::ok,db_->prepare("CREATE TABLE TTT (C0 INT PRIMARY KEY)", variables, prepared1));
     execute_statement( "CREATE TABLE TTT (C0 INT PRIMARY KEY)");
-    test_prepare_err("CREATE TABLE TTT (C0 INT PRIMARY KEY)", error_code::compile_exception);
+    test_prepare_err("CREATE TABLE TTT (C0 INT PRIMARY KEY)", error_code::symbol_analyze_exception);
     test_stmt_err(prepared1, error_code::target_already_exists_exception);
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared0));
     ASSERT_EQ(status::ok, db_->destroy_statement(prepared1));
@@ -433,11 +434,17 @@ TEST_F(ddl_test, type_name_variants) {
     EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE DBLPREC (C0 DOUBLE PRECISION PRIMARY KEY)", variables, prepared));
 }
 
-TEST_F(ddl_test, unsupported_types) {
-    test_prepare_err("CREATE TABLE T (C0 BOOLEAN PRIMARY KEY)", error_code::syntax_exception);
-    test_prepare_err("CREATE TABLE T (C0 TINYINT PRIMARY KEY)", error_code::syntax_exception);
-    test_prepare_err("CREATE TABLE T (C0 SMALLINT PRIMARY KEY)", error_code::syntax_exception);
-    test_prepare_err("CREATE TABLE T (C0 BINARY VARYING(4) PRIMARY KEY)", error_code::syntax_exception);
+void ddl_test::test_prepare_ddl_type(std::string_view type) {
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE T (C0 "+std::string{type}+" PRIMARY KEY)", variables, prepared));
+}
+
+TEST_F(ddl_test, smallints) {
+    test_prepare_ddl_type("BOOLEAN");
+    test_prepare_ddl_type("TINYINT");
+    test_prepare_ddl_type("SMALLINT");
+    test_prepare_ddl_type("BINARY VARYING(4)");
 }
 
 TEST_F(ddl_test, decimal_args) {
@@ -489,27 +496,33 @@ TEST_F(ddl_test, decimal_with_aster_scale) {
 }
 
 TEST_F(ddl_test, string_args) {
-    api::statement_handle prepared{};
-    std::unordered_map<std::string, api::field_type_kind> variables{};
-    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT0 (C0 CHAR PRIMARY KEY)", variables, prepared));
-
+    {
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{};
+        EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT0 (C0 CHAR PRIMARY KEY)", variables, prepared));
+    }
     test_prepare_err("CREATE TABLE TT1 (C0 CHAR(*) PRIMARY KEY)", error_code::syntax_exception);
-    test_prepare_err("CREATE TABLE TT2 (C0 VARCHAR PRIMARY KEY)", error_code::syntax_exception);
-//    test_prepare_err("CREATE TABLE TT2 (C0 VARCHAR(0) PRIMARY KEY)", error_code::syntax_exception);  // varchar(0) should be error  //TODO
-
-    EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT3 (C0 VARCHAR(*) PRIMARY KEY)", variables, prepared));
+    {
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{};
+        EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT2 (C0 VARCHAR PRIMARY KEY)", variables, prepared));
+    }
+    test_prepare_err("CREATE TABLE TT2 (C0 VARCHAR(0) PRIMARY KEY)", error_code::type_analyze_exception);
+    {
+        api::statement_handle prepared{};
+        std::unordered_map<std::string, api::field_type_kind> variables{};
+        EXPECT_EQ(status::ok, db_->prepare("CREATE TABLE TT3 (C0 VARCHAR(*) PRIMARY KEY)", variables, prepared));
+    }
 }
 
 TEST_F(ddl_test, default_value) {
-    // NOT NULL clause and DEFAULT clause cannot be specified at the same time
-    // TODO check with new compiler
-    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT NOT NULL DEFAULT 100)", error_code::syntax_exception);
+    // old compiler failed to handle NOT NULL clause and DEFAULT clause specified at the same time
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT NOT NULL DEFAULT 100)");
 }
 
 TEST_F(ddl_test, negative_default_value) {
-    // DEFAULT clause with negative integer cannot be specified
-    // TODO check with new compiler
-    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT DEFAULT -100)", error_code::syntax_exception);
+    // old compiler failed to handle DEFAULT clause with negative integer
+    execute_statement("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 INT DEFAULT -100)");
 }
 
 TEST_F(ddl_test, type_difference_between_default_value_and_column_type) {

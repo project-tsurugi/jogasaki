@@ -167,33 +167,16 @@ TEST_F(recovery_test, system_table) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    std::size_t sequences{};
-    {
-        SCOPED_TRACE("initial");
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM "s+std::string{system_sequences_name}, result);
-        sequences = result.size();
-        LOG(INFO) << "built-in sequences: " << sequences;
-    }
     jogasaki::executor::sequence::manager mgr{*db_impl()->kvs_db()};
+    std::size_t sequences = mgr.load_id_map();
     mgr.register_sequence(nullptr, 100, "SEQ100");
     mgr.register_sequence(nullptr, 200, "SEQ200");
-    {
-        SCOPED_TRACE("sequences are registered");
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM "s+std::string{system_sequences_name}, result);
-        ASSERT_EQ(sequences+2, result.size());
-    }
 
     EXPECT_EQ(sequences+2, mgr.load_id_map());
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    {
-        SCOPED_TRACE("after recovery");
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM "s+std::string{system_sequences_name}, result);
-        ASSERT_EQ(sequences+2, result.size());
-    }
+    jogasaki::executor::sequence::manager mgr2{*db_impl()->kvs_db()};
+    EXPECT_EQ(sequences+2, mgr2.load_id_map());
 }
 
 TEST_F(recovery_test, recovery_metadata) {

@@ -137,11 +137,8 @@ TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {
 }
 
 TEST_F(unsupported_sql_test, subquery) {
+    // new compiler now supports subqueries
     execute_statement("create table T (C0 int not null primary key)");
-    test_stmt_err(
-        "select * from (select * from T t11, T t12) t1",
-        error_code::compile_exception,
-        "unexpected compile error occurred (likely unsupported SQL): must not be a join scope"
-    );
+    execute_statement("select * from (select * from T t11, T t12) t1");
 }
 }

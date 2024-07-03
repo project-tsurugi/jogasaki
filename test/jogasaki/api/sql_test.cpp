@@ -414,7 +414,7 @@ TEST_F(sql_test, select_boolean_expression) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
     execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
-    test_stmt_err("select C1 like 'A%' from TT", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("select C1 like 'A%' from TT", error_code::unsupported_compiler_feature_exception);
     // {
         // std::vector<mock::basic_record> result{};
         // execute_query("select C1 like 'A%' from TT", result);
@@ -427,13 +427,13 @@ TEST_F(sql_test, like_expression) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 VARCHAR(10))");
     execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 'ABC')");
-    test_stmt_err("select * from TT where C1 like 'A%'", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("select * from TT where C1 like 'A%'", error_code::unsupported_compiler_feature_exception);
     // {
         // std::vector<mock::basic_record> result{};
         // execute_query("select * from TT where C1 like 'A%'", result);
         // ASSERT_EQ(1, result.size());
     // }
-    test_stmt_err("select * from TT where NOT C1 like 'A%'", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("select * from TT where NOT C1 like 'A%'", error_code::unsupported_compiler_feature_exception);
     // {
         // std::vector<mock::basic_record> result{};
         // execute_query("select * from TT where NOT C1 like 'A%'", result);

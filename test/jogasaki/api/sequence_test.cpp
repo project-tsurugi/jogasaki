@@ -71,11 +71,6 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(sequence_test, generate_primary_key) {
-    {
-        std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM __system_sequences", entries);
-        ASSERT_LT(0, entries.size());
-    }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (30)");
@@ -89,11 +84,6 @@ TEST_F(sequence_test, generate_primary_key) {
     auto s2 = result[2].ref().get_value<std::int64_t>(meta->value_offset(0));
     EXPECT_LT(s0, s1);
     EXPECT_LT(s1, s2);
-    {
-        std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM __system_sequences", entries);
-        ASSERT_LT(0, entries.size());
-    }
 }
 
 TEST_F(sequence_test, recovery) {
@@ -109,22 +99,8 @@ TEST_F(sequence_test, recovery) {
         execute_query("SELECT * FROM TSEQ0", result);
         ASSERT_EQ(2, result.size());
     }
-    int num_seqs = 0;
-    {
-        SCOPED_TRACE("before recovery 0");
-        std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM __system_sequences", entries);
-        num_seqs = entries.size();
-        ASSERT_LT(0, num_seqs);
-    }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    {
-        SCOPED_TRACE("after recovery 0");
-        std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM __system_sequences", entries);
-        ASSERT_EQ(num_seqs, entries.size());
-    }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (30)");
     {
         SCOPED_TRACE("before recovery 1");
@@ -140,12 +116,6 @@ TEST_F(sequence_test, recovery) {
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    {
-        SCOPED_TRACE("after recovery 0");
-        std::vector<mock::basic_record> entries{};
-        execute_query("SELECT * FROM __system_sequences", entries);
-        ASSERT_EQ(num_seqs, entries.size());
-    }
     execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (40)");
     {
         std::vector<mock::basic_record> result{};

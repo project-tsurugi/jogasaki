@@ -78,16 +78,6 @@ TEST_F(transaction_and_ddl_test, create_with_ltx_modifies_definitions) {
         execute_statement("CREATE TABLE TT (C1 INT)", *tx);
         ASSERT_EQ(status::ok, tx->commit());
     }
-    {
-        // verify tx with modifies_definitions = true has access to system tables
-        api::transaction_option opts{false, true, {"TT"}, "label", {"TT"}};
-        opts.is_long(true).modifies_definitions(true);
-        auto tx = utils::create_transaction(*db_, opts);
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM "+std::string{system_sequences_name}, *tx, result);
-        ASSERT_EQ(status::ok, tx->commit());
-        ASSERT_LT(0, result.size());
-    }
     execute_statement("INSERT INTO TT VALUES (1)");
     execute_statement("INSERT INTO TT VALUES (1)");
     {

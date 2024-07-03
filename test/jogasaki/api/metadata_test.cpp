@@ -240,7 +240,7 @@ TEST_F(metadata_test, create_table_with_secondary_index) {
     {
         auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db_->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0)", exec));
+        ASSERT_EQ(status::ok,db_->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0E0)", exec));
         ASSERT_EQ(status::ok,tx->execute(*exec));
         tx->commit();
     }

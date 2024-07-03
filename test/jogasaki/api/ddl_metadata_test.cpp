@@ -178,7 +178,7 @@ TEST_F(ddl_metadata_test, decimal_precision_only) {
 }
 
 TEST_F(ddl_metadata_test, decimal_prec_smaller_than_scale) {
-    test_stmt_err("CREATE TABLE T (C0 DECIMAL(3,4) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(3,4) PRIMARY KEY)", error_code::type_analyze_exception);
 }
 
 TEST_F(ddl_metadata_test, decimal_wo_ps) {
@@ -202,7 +202,7 @@ TEST_F(ddl_metadata_test, decimal_scale_wildcard) {
 }
 
 TEST_F(ddl_metadata_test, decimal_zero) {
-    test_stmt_err("CREATE TABLE T (C0 DECIMAL(0) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("CREATE TABLE T (C0 DECIMAL(0) PRIMARY KEY)", error_code::type_analyze_exception);
 }
 
 TEST_F(ddl_metadata_test, decimal_prec_minus) {
@@ -247,7 +247,7 @@ TEST_F(ddl_metadata_test, char_minus) {
 }
 
 TEST_F(ddl_metadata_test, char_0) {
-    test_stmt_err("CREATE TABLE T (C0 CHAR(0) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("CREATE TABLE T (C0 CHAR(0) PRIMARY KEY)", error_code::type_analyze_exception);
 }
 
 TEST_F(ddl_metadata_test, char_wo_len) {
@@ -266,7 +266,8 @@ TEST_F(ddl_metadata_test, varchar_minus) {
     test_stmt_err("CREATE TABLE T (C0 VARCHAR(-1) PRIMARY KEY)", error_code::syntax_exception);
 }
 TEST_F(ddl_metadata_test, varchar_wo_len) {
-    test_stmt_err("CREATE TABLE T (C0 VARCHAR PRIMARY KEY)", error_code::syntax_exception);
+    // new compiler treats VARCHAR as VARCHAR(*)
+    test_character("VARCHAR", false, -1, true);
 }
 
 TEST_F(ddl_metadata_test, varchar_paren_wo_len_) {
@@ -278,7 +279,10 @@ TEST_F(ddl_metadata_test, varchar_wildcard) {
 }
 
 TEST_F(ddl_metadata_test, varchar_0) {
-    test_stmt_err("CREATE TABLE T (C0 VARCHAR(0) PRIMARY KEY)", error_code::unsupported_runtime_feature_exception);
+    api::statement_handle handle{};
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).prepare("CREATE TABLE T (C0 VARCHAR(0) PRIMARY KEY)", handle, info));
+    EXPECT_EQ(error_code::type_analyze_exception, info->code());
 }
 
 TEST_F(ddl_metadata_test, varchar_exceeding_limit) {
@@ -294,7 +298,7 @@ TEST_F(ddl_metadata_test, genpk_column_features) {
     auto t = find_table(*db_, "T");
     ASSERT_TRUE(t);
     {
-        auto c = find_column(*t, "__generated_rowid___T");
+        auto c = find_column(*t, "__generated_rowid__public_T");
         ASSERT_TRUE(c);
         ASSERT_EQ(takatori::type::type_kind::int8, c->type().kind());
         auto features = c->features();

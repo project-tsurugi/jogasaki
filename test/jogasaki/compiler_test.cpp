@@ -166,7 +166,7 @@ public:
 };
 
 TEST_F(compiler_test, insert) {
-    std::string sql = "insert into T0(C0, C1) values (1,1.0)";
+    std::string sql = "insert into T0(C0, C1) values (1,1.0E0)";
     memory::page_pool pool{};
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&pool);
     compiler_context ctx{};
@@ -185,7 +185,7 @@ TEST_F(compiler_test, insert) {
     ASSERT_EQ(write.tuples().size(), 1);
     auto&& es = write.tuples()[0].elements();
     ASSERT_EQ(es.size(), 2);
-    EXPECT_EQ(es[0], scalar::immediate(value::int4(1), type::int4()));
+    EXPECT_EQ(es[0], scalar::immediate(value::int8(1), type::int8()));
     EXPECT_EQ(es[1], scalar::immediate(value::float8(1.0), type::float8()));
 
     auto& info =ctx.executable_statement()->compiled_info();
@@ -251,25 +251,30 @@ TEST_F(compiler_test, filter) {
 
     auto& info =ctx.executable_statement()->compiled_info();
     auto& stmt =*ctx.executable_statement()->statement();
+    dump(info, stmt);
     auto&& c = downcast<statement::execute>(stmt);
     ASSERT_EQ(c.execution_plan().size(), 1);
 
     auto b = c.execution_plan().begin();
     auto&& graph = takatori::util::downcast<takatori::plan::process>(*b).operators();
     auto&& emit = last<relation::emit>(graph);
-    auto&& filter = next<relation::filter>(emit.input());
+    auto&& project = next<relation::project>(emit.input());
+    auto&& filter = next<relation::filter>(project.input());
     auto&& scan = next<relation::scan>(filter.input());
 
     auto&& p0 = find(c.execution_plan(), scan);
     auto&& p1 = find(c.execution_plan(), emit);
     auto&& p2 = find(c.execution_plan(), filter);
+    auto&& p3 = find(c.execution_plan(), project);
     ASSERT_EQ(p0, p1);
     ASSERT_EQ(p1, p2);
+    ASSERT_EQ(p2, p3);
 
-    ASSERT_EQ(p0.operators().size(), 3);
+    ASSERT_EQ(p0.operators().size(), 4);
     ASSERT_TRUE(p0.operators().contains(scan));
     ASSERT_TRUE(p0.operators().contains(filter));
     ASSERT_TRUE(p0.operators().contains(emit));
+    ASSERT_TRUE(p0.operators().contains(project));
 
     ASSERT_EQ(scan.columns().size(), 2);
 //    EXPECT_EQ(scan2.columns()[0].source(), bindings(t0c0));

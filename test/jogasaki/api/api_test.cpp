@@ -110,16 +110,14 @@ TEST_F(api_test, invalid_column_name) {
     std::unique_ptr<api::executable_statement> stmt{};
     std::shared_ptr<error::error_info> info{};
     ASSERT_EQ(status::err_compiler_error, get_impl(*db_).create_executable("INSERT INTO T0(dummy) VALUES(1)", stmt, info));
-    EXPECT_EQ(error_code::compile_exception, info->code()); // generic error TODO revisit with new mizugaki
+    EXPECT_EQ(error_code::symbol_analyze_exception, info->code());
     std::cerr << info->message() << std::endl;
 }
 
 TEST_F(api_test, inconsistent_type_in_write) {
     std::unique_ptr<api::executable_statement> stmt{};
     std::shared_ptr<error::error_info> info{};
-    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).create_executable("INSERT INTO T0(C0) VALUES('X')", stmt, info));
-    EXPECT_EQ(error_code::type_analyze_exception, info->code());
-    std::cerr << info->message() << std::endl;
+    test_stmt_err("INSERT INTO T0(C0) VALUES('X')", error_code::value_evaluation_exception);
 }
 
 TEST_F(api_test, inconsistent_type_in_query) {
@@ -727,8 +725,10 @@ TEST_F(api_test, err_querying_generated_rowid) {
 }
 
 TEST_F(api_test, err_insert_lack_of_values) {
-    std::unique_ptr<api::executable_statement> stmt0{};
-    ASSERT_EQ(status::err_parse_error, db_->create_executable("INSERT INTO T0(C0, C1) VALUES (1)", stmt0));
+    api::statement_handle handle{};
+    std::shared_ptr<error::error_info> info{};
+    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).prepare("INSERT INTO T0(C0, C1) VALUES (1)", handle, info));
+    EXPECT_EQ(error_code::analyze_exception, info->code());
 }
 
 bool contains(std::vector<std::string> const& v, std::string_view s) {

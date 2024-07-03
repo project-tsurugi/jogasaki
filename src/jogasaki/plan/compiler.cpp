@@ -328,16 +328,18 @@ error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
     using sac = mizugaki::analyzer::sql_analyzer_code;
     using ec = error_code;
     switch(code) {
+        // entirely unknown error - use generic compiler error
         case sac::unknown: break;
+
         case sac::unsupported_feature: return ec::unsupported_compiler_feature_exception;
         case sac::malformed_syntax: return ec::syntax_exception;
 
         case sac::missing_context_of_default_value: return ec::value_analyze_exception;
         case sac::missing_context_of_null: return ec::value_analyze_exception;
         case sac::unsupported_decimal_value: return ec::value_analyze_exception;
-        case sac::malformed_approximate_number: return ec::value_analyze_exception;
+        case sac::malformed_approximate_number: return ec::analyze_exception;
         case sac::unsupported_approximate_number: return ec::value_analyze_exception;
-        case sac::malformed_quoted_string: return ec::value_analyze_exception;
+        case sac::malformed_quoted_string: return ec::analyze_exception;
         case sac::unsupported_string_value: return ec::value_analyze_exception;
 
         case sac::flexible_length_is_not_supported: return ec::type_analyze_exception;
@@ -364,9 +366,9 @@ error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
         case sac::function_already_exists: return ec::symbol_analyze_exception;
         case sac::symbol_already_exists: return ec::symbol_analyze_exception;
 
-        case sac::primary_index_not_found: break;
-        case sac::primary_index_already_exists: break;
-        case sac::invalid_constraint: break;
+        case sac::primary_index_not_found: return ec::symbol_analyze_exception;
+        case sac::primary_index_already_exists: return ec::symbol_analyze_exception;
+        case sac::invalid_constraint: return ec::analyze_exception;
 
         case sac::variable_ambiguous: return ec::symbol_analyze_exception;
         case sac::column_ambiguous: return ec::symbol_analyze_exception;
@@ -374,9 +376,9 @@ error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
 
         case sac::invalid_unsigned_integer: return ec::type_analyze_exception;
 
-        case sac::inconsistent_table: break;
-        case sac::inconsistent_columns: break;
-        case sac::invalid_aggregation_column: break;
+        case sac::inconsistent_table: return ec::analyze_exception;
+        case sac::inconsistent_columns: return ec::analyze_exception;
+        case sac::invalid_aggregation_column: return ec::symbol_analyze_exception;
 
         case sac::ambiguous_type: return ec::type_analyze_exception;
         case sac::inconsistent_type: return ec::type_analyze_exception;

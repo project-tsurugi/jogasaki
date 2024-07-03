@@ -722,6 +722,9 @@ status prepare(
     // allow null literals
     opts.allow_context_independent_null() = true;
 
+    // avoid casting string literal to other types
+    opts.cast_literals_in_context() = false;
+
     if(cfg) {
         opts.lowercase_regular_identifiers() = cfg->lowercase_regular_identifiers();
     }

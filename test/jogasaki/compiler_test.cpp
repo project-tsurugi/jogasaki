@@ -185,7 +185,7 @@ TEST_F(compiler_test, insert) {
     ASSERT_EQ(write.tuples().size(), 1);
     auto&& es = write.tuples()[0].elements();
     ASSERT_EQ(es.size(), 2);
-    EXPECT_EQ(es[0], scalar::immediate(value::int4(1), type::int4()));
+    EXPECT_EQ(es[0], scalar::immediate(value::int4(1), type::int8()));
     EXPECT_EQ(es[1], scalar::immediate(value::float8(1.0), type::float8()));
 
     auto& info =ctx.executable_statement()->compiled_info();

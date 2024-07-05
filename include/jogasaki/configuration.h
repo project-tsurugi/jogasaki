@@ -554,7 +554,7 @@ private:
     bool normalize_float_ = true;
     bool log_msg_user_data_ = false;
     std::shared_ptr<request_cancel_config> request_cancel_config_{};
-    std::size_t compiler_support_ = 0;
+    std::size_t compiler_support_ = 1;
     bool lowercase_regular_identifiers_ = false;
 
 };

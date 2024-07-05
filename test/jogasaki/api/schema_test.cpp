@@ -109,7 +109,7 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(schema_test, DISABLED_variety_types) {
+TEST_F(schema_test, variety_types) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -162,11 +162,11 @@ TEST_F(schema_test, DISABLED_variety_types) {
                   "WHERE "
                   "K1 = '1' AND "
                   "K2 = 1   AND "
-                  "K3 = 1.0 AND "
+                  "K3 = 1.0E0 AND "
                   "K4 = '1' AND "
                   "V1 = '1' AND "
                   "V2 = 1   AND "
-                  "V3 = 1.0 AND "
+                  "V3 = 1.0E0 AND "
                   "V4 = '1' AND "
                   "V5 = 1 AND "
                   "V6 = 1 AND "
@@ -180,6 +180,50 @@ TEST_F(schema_test, DISABLED_variety_types) {
     );
     EXPECT_EQ(exp, result[0]);
 }
+
+// TODO fix jogasaki find
+TEST_F(schema_test, DISABLED_find_double_by_decimal) {
+    // test find op with double column with given decimal literal
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::float8(), nullity{false} },
+            column{ "C1", type::int4(), nullity{true} },
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    auto i = std::make_shared<yugawara::storage::index>(
+        t,
+        t->simple_name(),
+        std::initializer_list<index::key>{
+            t->columns()[0],
+        },
+        std::initializer_list<index::column_ref>{
+            t->columns()[1],
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_index(i));
+
+    execute_statement("INSERT INTO TEST VALUES (0.0, 0)");
+    execute_statement("INSERT INTO TEST VALUES (1.0, 1)");
+    execute_statement("INSERT INTO TEST VALUES (2.0, 2)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C0, C1 FROM TEST WHERE C0 = 1.0", result); // double compared with decimal
+    ASSERT_EQ(1, result.size());
+    auto exp = mock::typed_nullable_record<kind::float8, kind::int4>(
+        std::tuple{float8_type(), int4_type()},
+        std::forward_as_tuple(1.0, 1),
+        {false, false}
+    );
+    EXPECT_EQ(exp, result[0]);
+}
+
 
 TEST_F(schema_test, nullables) {
     auto t = std::make_shared<table>(

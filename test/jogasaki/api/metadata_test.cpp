@@ -196,7 +196,7 @@ TEST_F(metadata_test, primary_index_with_nullable_columns) {
     ASSERT_EQ(status::err_illegal_operation, db_->create_index(i));
 }
 
-TEST_F(metadata_test, DISABLED_create_table_with_secondary_index) {
+TEST_F(metadata_test, create_table_with_secondary_index) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -247,7 +247,7 @@ TEST_F(metadata_test, DISABLED_create_table_with_secondary_index) {
     {
         auto tx = utils::create_transaction(*db_);
         std::unique_ptr<api::executable_statement> exec{};
-        ASSERT_EQ(status::ok,db_->create_executable("select * from TEST where C1=1.0", exec));
+        ASSERT_EQ(status::ok,db_->create_executable("select * from TEST where C1=1.0E0", exec));
 //        db_->explain(*exec, std::cout);
         std::unique_ptr<api::result_set> rs{};
         ASSERT_EQ(status::ok,tx->execute(*exec, rs));
@@ -264,6 +264,78 @@ TEST_F(metadata_test, DISABLED_create_table_with_secondary_index) {
         tx->commit();
     }
 }
+
+// TODO uncomment after jogasaki find fix
+TEST_F(metadata_test, DISABLED_secondary_index_search_double_by_decimal) {
+    // similar to create_table_with_primary_index, but search double column by decimal values
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int8(), nullity{false} },
+            column{ "C1", type::float8(), nullity{true} },
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    auto i = std::make_shared<yugawara::storage::index>(
+        t,
+        "TEST",
+        std::initializer_list<index::key>{
+            t->columns()[0],
+        },
+        std::initializer_list<index::column_ref>{
+            t->columns()[1],
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_index(i));
+    auto i2 = std::make_shared<yugawara::storage::index>(
+        t,
+        "TEST_SECONDARY",
+        std::initializer_list<index::key>{
+            t->columns()[1],
+        },
+        std::initializer_list<index::column_ref>{
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+        }
+    );
+    ASSERT_EQ(status::ok, db_->create_index(i2));
+    verify_index_storage_metadata("TEST_SECONDARY");
+    {
+        auto tx = utils::create_transaction(*db_);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->create_executable("INSERT INTO TEST (C0, C1) VALUES(0, 1.0E0)", exec));
+        ASSERT_EQ(status::ok,tx->execute(*exec));
+        tx->commit();
+    }
+    {
+        auto tx = utils::create_transaction(*db_);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->create_executable("select * from TEST where C1=1.0", exec));  // find double by decimal
+//        db_->explain(*exec, std::cout);
+        std::unique_ptr<api::result_set> rs{};
+        ASSERT_EQ(status::ok,tx->execute(*exec, rs));
+        auto it = rs->iterator();
+        std::size_t count = 0;
+        while(it->has_next()) {
+            std::stringstream ss{};
+            auto* record = it->next();
+            ss << *record;
+            LOG(INFO) << ss.str();
+            ++count;
+        }
+        EXPECT_EQ(1, count);
+        tx->commit();
+    }
+}
+
 
 TEST_F(metadata_test, crud1) {
     auto t = std::make_shared<table>(

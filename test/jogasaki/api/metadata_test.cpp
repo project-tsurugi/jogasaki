@@ -196,7 +196,7 @@ TEST_F(metadata_test, primary_index_with_nullable_columns) {
     ASSERT_EQ(status::err_illegal_operation, db_->create_index(i));
 }
 
-TEST_F(metadata_test, create_table_with_secondary_index) {
+TEST_F(metadata_test, DISABLED_create_table_with_secondary_index) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{

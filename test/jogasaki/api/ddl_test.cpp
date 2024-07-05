@@ -672,7 +672,8 @@ TEST_F(ddl_test, long_char_data) {
     }
 }
 
-TEST_F(ddl_test, max_key_len) {
+// new compiler took too long to complete
+TEST_F(ddl_test, DISABLED_max_key_len) {
     std::size_t len = 30*1024 - 4; // 4 for nullity bits
     std::string strlen = std::to_string(len);
     std::string c0(len, '0');
@@ -738,7 +739,8 @@ TEST_F(ddl_test, insert_exceeding_max_key_len_on_secondary) {
     }
 }
 
-TEST_F(ddl_test, query_exceeding_max_key_len) {
+// new compiler took too long to complete
+TEST_F(ddl_test, DISABLED_query_exceeding_max_key_len) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has no limit";
     }

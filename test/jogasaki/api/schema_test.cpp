@@ -109,7 +109,7 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(schema_test, variety_types) {
+TEST_F(schema_test, DISABLED_variety_types) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{

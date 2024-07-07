@@ -385,6 +385,9 @@ error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
         case sac::unresolved_variable: return ec::symbol_analyze_exception;
         case sac::inconsistent_elements: return ec::value_analyze_exception;
 
+        case sac::catalog_not_found: return ec::symbol_analyze_exception;
+        case sac::relation_ambiguous: return ec::symbol_analyze_exception;
+
         default: break;
     }
     return ec::compile_exception;

@@ -115,11 +115,15 @@ TEST_F(api_test, invalid_column_name) {
 }
 
 TEST_F(api_test, inconsistent_type_in_write) {
+    // old compiler made this error, while new compiler can pass to jogasaki in order to let jogasaki try conversion
+    // analyzer option cast_literals_in_context = false can be used to keep the old behavior
     std::unique_ptr<api::executable_statement> stmt{};
     std::shared_ptr<error::error_info> info{};
-    ASSERT_EQ(status::err_compiler_error, get_impl(*db_).create_executable("INSERT INTO T0(C0) VALUES('X')", stmt, info));
-    EXPECT_EQ(error_code::type_analyze_exception, info->code());
-    std::cerr << info->message() << std::endl;
+    ASSERT_EQ(status::ok, get_impl(*db_).create_executable("INSERT INTO T0(C0) VALUES('X')", stmt, info));
+    auto tx = utils::create_transaction(*db_);
+    auto err = execute(*tx, *stmt);
+    ASSERT_EQ(error_code::value_evaluation_exception, err->code());
+    ASSERT_EQ(status::ok, tx->abort());
 }
 
 TEST_F(api_test, inconsistent_type_in_query) {

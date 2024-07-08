@@ -51,6 +51,19 @@ operation_status handle_expression_error_impl(
         ctx.abort();
         return {operation_status_kind::aborted};
     }
+    if (err.kind() == process::impl::expression::error_kind::lost_precision_value_too_long) {
+        auto rc = status::err_expression_evaluation_failure;
+        error::set_error_impl(
+            *ctx.req_context(),
+            error_code::value_too_long_exception,
+            "evaluated value was too long",
+            filepath,
+            position,
+            rc,
+            false);
+        ctx.abort();
+        return {operation_status_kind::aborted};
+    }
     auto rc = status::err_expression_evaluation_failure;
     error::set_error_impl(
         *ctx.req_context(),

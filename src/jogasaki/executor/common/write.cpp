@@ -183,6 +183,17 @@ status fill_evaluated_value(
     process::impl::expression::evaluator_context c{std::addressof(resource)};
     auto res = eval(c, empty, std::addressof(resource));
     if (res.error()) {
+        auto err = res.to<process::impl::expression::error>();
+        if(err.kind() == process::impl::expression::error_kind::lost_precision_value_too_long) {
+            auto rc = status::err_expression_evaluation_failure;
+            set_error(
+                ctx,
+                error_code::value_too_long_exception,
+                "evaluated value was too long to write",
+                rc
+            );
+            return rc;
+        }
         auto rc = status::err_expression_evaluation_failure;
         set_error(
             ctx,
@@ -737,7 +748,7 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         value_meta_,
         secondaries_,
         *db,
-        resource_); // currently common::write uses the same resource for building mirror and executing runtime 
+        resource_); // currently common::write uses the same resource for building mirror and executing runtime
 
     for(auto&& tuple: wrt_->tuples()) {
         utils::checkpoint_holder cph(resource_);

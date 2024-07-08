@@ -715,17 +715,8 @@ status prepare(
         schema
     };
 
-    // used when SQL has no parenthesis for decimal: "create table T (c0 decimal)" or "CAST(... AS decimal)"
-    opts.default_decimal_precision() = decimal_default_precision_no_parenthesis;
-
-    // prefer write statement othewise VALUES operator is generated
-    // opts.prefer_write_statement() = true;
-
     // allow null literals
     opts.allow_context_independent_null() = true;
-
-    // avoid casting string literal to other types
-    opts.cast_literals_in_context() = false;
 
     if(cfg) {
         opts.lowercase_regular_identifiers() = cfg->lowercase_regular_identifiers();

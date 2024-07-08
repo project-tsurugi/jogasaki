@@ -680,13 +680,12 @@ status prepare(
     }
 
     auto& compilation_unit = result.value();
-
     auto schema_provider = std::make_shared<yugawara::schema::configurable_provider>();
     auto& schema = schema_provider->add(schema::declaration{
         std::nullopt,
         std::string{public_schema_name},
         ctx.storage_provider(),
-        ctx.variable_provider(),
+        {}, // no variables under schema for now (host variables are passed to analyzer directly)
         ctx.function_provider(),
         ctx.aggregate_provider()
     });

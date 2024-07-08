@@ -119,6 +119,12 @@ constexpr std::string_view sql_proto_explain_format_id{"jogasaki-statement.json"
 constexpr std::size_t sql_proto_explain_format_version = 1;
 
 /**
+ * @brief catalog name
+ * @details the name for the built-in database catalog
+ */
+constexpr static std::string_view default_catalog_name = "";  //NOLINT(readability-redundant-string-init)
+
+/**
  * @brief public schema name
  * @details the name for the built-in public schema
  */

@@ -518,7 +518,7 @@ status create_prepared_statement(
     return status::ok;
 }
 
-status create_prepared_statement(
+status create_prepared_statement_legacy(
     mizugaki::translator::shakujo_translator::result_type& r,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     yugawara::compiler_options& c_options,
@@ -672,7 +672,7 @@ status prepare_legacy(
         handle_compile_errors(errors, res, ctx);
         return res;
     }
-    return create_prepared_statement(r, ctx.variable_provider(), c_options, sp, ctx, out);
+    return create_prepared_statement_legacy(r, ctx.variable_provider(), c_options, sp, ctx, out);
 }
 
 status prepare(
@@ -706,7 +706,7 @@ status prepare(
         ctx.function_provider(),
         ctx.aggregate_provider()
     });
-    yugawara::schema::catalog catalog{"tsurugi"};  // specify db name // TODO move to database
+    yugawara::schema::catalog catalog{std::string{default_catalog_name}};
     catalog.schema_provider(std::move(schema_provider));
     yugawara::schema::search_path schema_search_path{{schema}};
     mizugaki::analyzer::sql_analyzer_options opts{

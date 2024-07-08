@@ -298,7 +298,7 @@ TEST_F(ddl_metadata_test, genpk_column_features) {
     auto t = find_table(*db_, "T");
     ASSERT_TRUE(t);
     {
-        auto c = find_column(*t, "__generated_rowid__public_T");
+        auto c = find_column(*t, "__generated_rowid___T");
         ASSERT_TRUE(c);
         ASSERT_EQ(takatori::type::type_kind::int8, c->type().kind());
         auto features = c->features();

@@ -39,6 +39,7 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/constants.h>
+#include <jogasaki/utils/map_schema_name.h>
 
 namespace jogasaki::plan {
 
@@ -68,7 +69,9 @@ bool storage_processor::ensure(
 
     if(primary_index_prototype.keys().empty()) {
         primary_key_generated_ = true;
-        auto name = std::string(generated_pkey_column_prefix)+"_"+std::string{location.name()}+"_"+std::string{table_prototype.simple_name()};
+        auto name = std::string(generated_pkey_column_prefix) + "_" +
+            std::string{utils::map_schema_name_to_storage_namespace(location.name())} + "_" +
+            std::string{table_prototype.simple_name()};
         auto seq = std::make_shared<yugawara::storage::sequence>(name);
         auto& c = table_prototype.columns().emplace_back(
             yugawara::storage::column{

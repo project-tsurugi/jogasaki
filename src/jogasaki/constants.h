@@ -117,4 +117,17 @@ constexpr std::string_view sql_proto_explain_format_id{"jogasaki-statement.json"
  * @brief format version of the explain response
  */
 constexpr std::size_t sql_proto_explain_format_version = 1;
+
+/**
+ * @brief public schema name
+ * @details the name for the built-in public schema
+ */
+constexpr static std::string_view public_schema_name = "public";
+
+/**
+ * @brief storage namespace for public schema
+ * @details the namespace identifier of the storage corresponding to the public schema
+ */
+constexpr static std::string_view storage_namespace_for_public_schema = "";
+
 }

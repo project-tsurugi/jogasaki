@@ -696,12 +696,11 @@ status prepare(
     }
 
     auto& compilation_unit = result.value();
-    // VLOG_LP(log_info) << "********************* compilation_unit:" << *compilation_unit;
 
     auto schema_provider = std::make_shared<yugawara::schema::configurable_provider>();
     auto& schema = schema_provider->add(schema::declaration{
         std::nullopt,
-        "public",
+        std::string{public_schema_name},
         ctx.storage_provider(),
         ctx.variable_provider(),
         ctx.function_provider(),
@@ -743,12 +742,10 @@ status prepare(
         return status::err_unsupported;
     }
     auto& stmt = compilation_unit->statements()[0];
-    // VLOG_LP(log_info) << "********************* stmt:" << *stmt;
     mizugaki::placeholder_map placeholders{};
     auto analysis = analyzer(opts, *stmt, *compilation_unit, placeholders, *ctx.variable_provider());
 
     if(! analysis.is_valid()) {
-        // VLOG_LP(log_error) << "********************* error:" << analysis;
         auto r = analysis.release<mizugaki::analyzer::sql_analyzer_result_kind::diagnostics>();
         handle_compile_errors(r, status::err_compiler_error, ctx);
         return status::err_compiler_error;

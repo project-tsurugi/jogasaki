@@ -55,7 +55,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using decimal_v = takatori::decimal::triple;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 using accessor::text;
 
@@ -348,6 +348,81 @@ TEST_F(insert_test, data_types_with_default) {
             std::forward_as_tuple(text("12345678901234567890"), text("12")))), result[0]);
     }
     execute_statement("drop table T");
+}
+
+TEST_F(insert_test, assign_numeric_from_string) {
+    // verify insert string into numeric column
+    {
+        execute_statement("create table t (c0 int primary key)");
+        execute_statement("INSERT INTO t VALUES ('123')");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT c0 FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int4>({123}, {false})), result[0]);
+        }
+        execute_statement("drop table t");
+    }
+    {
+        execute_statement("create table t (c0 bigint primary key)");
+        execute_statement("INSERT INTO t VALUES ('1234567890123')");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT c0 FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::int8>({1234567890123}, {false})), result[0]);
+        }
+        execute_statement("drop table t");
+    }
+    {
+        execute_statement("create table t (c0 real primary key)");
+        execute_statement("INSERT INTO t VALUES ('1.1')");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT c0 FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::float4>({1.1}, {false})), result[0]);
+        }
+        execute_statement("drop table t");
+    }
+    {
+        execute_statement("create table t (c0 double primary key)");
+        execute_statement("INSERT INTO t VALUES ('1.1')");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT c0 FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ((create_nullable_record<kind::float8>({1.1}, {false})), result[0]);
+        }
+        execute_statement("drop table t");
+    }
+    {
+        execute_statement("create table t (c0 decimal(5,3) primary key)");
+        execute_statement("INSERT INTO t VALUES ('12.345')");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT c0 FROM t", result);
+            ASSERT_EQ(1, result.size());
+            EXPECT_EQ(
+                (typed_nullable_record<kind::decimal>(
+                    std::tuple{decimal_type(5, 3)},
+                    std::forward_as_tuple(triple{1, 0, 12345, -3})
+                )),
+                result[0]
+            );
+        }
+        execute_statement("drop table t");
+    }
+}
+
+TEST_F(insert_test, assign_numeric_from_string_error) {
+    // verify insert string into numeric column
+    {
+        execute_statement("create table t (c0 int primary key)");
+        test_stmt_err("INSERT INTO t VALUES ('12345678901234567890')", error_code::value_evaluation_exception);
+        test_stmt_err("INSERT INTO t VALUES ('')", error_code::value_evaluation_exception);
+        test_stmt_err("INSERT INTO t VALUES ('a')", error_code::value_evaluation_exception);
+    }
 }
 
 }

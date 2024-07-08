@@ -431,32 +431,16 @@ error_code map_compiler_error(yugawara::compiler_code code) {
     std::abort();
 }
 
-template <class T>
-void handle_compile_error(
-    T&& error,
-    status res,
+void handle_parse_error(
+    mizugaki::parser::sql_parser_diagnostic const& error,
     compiler_context &ctx
 ) {
-    (void) res;
-    if constexpr(std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, mizugaki::parser::sql_parser_diagnostic>) {
-        std::stringstream msg{};
-        msg << "compile failed with message:\"" << error.message() << "\"";
-        // // currently we pass sql text only, so document doesn't contain much information
-        // if(error.document()) {
-        //   msg << " document:" << *error.document();
-        // }
-        msg << " region:\"" << error.region() << "\"";
-        VLOG_LP(log_error) << msg.str();
-        set_compile_error(ctx, error_code::syntax_exception, msg.str(), status::err_parse_error);
-    } else if constexpr (std::is_same_v<T, mizugaki::analyzer::sql_analyzer_result>) {
-        auto code = map_compiler_error(error.code());
-        auto msg = string_builder{} << "compile failed with error:" << error.code() << " message:\"" << error.message()
-                                    << "\" location:" << error.location() << string_builder::to_string;
-        VLOG_LP(log_error) << msg.str();
-        set_compile_error(ctx, code, msg, res);
-    } else {
-        std::abort();
-    }
+    std::stringstream msg{};
+    msg << "compile failed with message:\"" << error.message() << "\"";
+    // currently we pass sql text only, so error.document() doesn't contain much information
+    msg << " region:\"" << error.region() << "\"";
+    VLOG_LP(log_error) << msg.str();
+    set_compile_error(ctx, error_code::syntax_exception, msg.str(), status::err_parse_error);
 }
 
 template <class T>
@@ -691,7 +675,7 @@ status prepare(
     if(result.has_diagnostic()) {
         // warning or error raised
         // currently, handle all diagnostics as error
-        handle_compile_error(result.diagnostic(), status::err_parse_error, ctx);
+        handle_parse_error(result.diagnostic(), ctx);
         return status::err_parse_error;
     }
 

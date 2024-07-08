@@ -606,7 +606,7 @@ TEST_F(service_api_test, data_types) {
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
-        "insert into T1(C0, C1, C2, C3, C4) values (:c0, :c1, :c2, :c3, c4)",
+        "insert into T1(C0, C1, C2, C3, C4) values (:c0, :c1, :c2, :c3, :c4)",
         std::pair{"c0"s, sql::common::AtomType::INT4},
         std::pair{"c1"s, sql::common::AtomType::INT8},
         std::pair{"c2"s, sql::common::AtomType::FLOAT8},
@@ -820,7 +820,7 @@ TEST_F(service_api_test, temporal_types) {
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
-        "insert into TTEMPORALS(K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) values (:p0, :p1, :p2, :p3, p4, :p0, :p1, :p2, :p3, p4)",
+        "insert into TTEMPORALS(K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) values (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)",
         std::pair{"p0"s, sql::common::AtomType::DATE},
         std::pair{"p1"s, sql::common::AtomType::TIME_OF_DAY},
         std::pair{"p2"s, sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE},

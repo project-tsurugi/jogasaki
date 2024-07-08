@@ -128,6 +128,6 @@ constexpr static std::string_view public_schema_name = "public";
  * @brief storage namespace for public schema
  * @details the namespace identifier of the storage corresponding to the public schema
  */
-constexpr static std::string_view storage_namespace_for_public_schema = "";
+constexpr static std::string_view storage_namespace_for_public_schema = "";  //NOLINT(readability-redundant-string-init)
 
 }

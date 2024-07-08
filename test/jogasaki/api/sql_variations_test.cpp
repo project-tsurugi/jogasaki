@@ -70,29 +70,21 @@ public:
 using namespace std::string_view_literals;
 
 // union operator not supported by current compiler
-TEST_F(sql_variations_test, DISABLED_union_all) {
+TEST_F(sql_variations_test, union_all) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 int)");
     execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("select * from TT union select * from TT", result);
-        ASSERT_EQ(1, result.size());
-    }
+    test_stmt_err("select * from TT union select * from TT", error_code::unsupported_compiler_feature_exception);
 }
 
 // natural join not supported by current compiler
-TEST_F(sql_variations_test, DISABLED_natural_join) {
+TEST_F(sql_variations_test, natural_join) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT0 (C0 int primary key, C1 int)");
     execute_statement("create table TT1 (C1 int primary key, C2 int)");
     execute_statement("INSERT INTO TT0 (C0, C1) VALUES (1,1)");
     execute_statement("INSERT INTO TT1 (C1, C2) VALUES (1,1)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("select * from TT0 natural join TT1", result);
-        ASSERT_EQ(1, result.size());
-    }
+    test_stmt_err("select * from TT0 natural join TT1", error_code::unsupported_compiler_feature_exception);
 }
 
 TEST_F(sql_variations_test, cross_join) {

@@ -335,11 +335,11 @@ TEST_F(sql_test, DISABLED_join_condition_on_clause) {
     }
 }
 
-// jogasaki should catch runtime exception from compiler
-TEST_F(sql_test, DISABLED_subquery) {
+TEST_F(sql_test, subquery) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 int)");
     execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (2,2)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("select * from (select * from TT t00, TT t01) t1", result);
@@ -441,15 +441,13 @@ TEST_F(sql_test, like_expression) {
     // }
 }
 
-// current compiler doesn't read double literal correctly
-TEST_F(sql_test, DISABLED_double_literal) {
+TEST_F(sql_test, double_literal) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 double)");
-//    execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 1e2)");
-    execute_statement("INSERT INTO TT (C0, C1) VALUES (0, 0.0)");
+    execute_statement("INSERT INTO TT (C0, C1) VALUES (1, 1e2)");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("select 1e2 from TT", result);
+        execute_query("select 1e-2 from TT", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((create_nullable_record<kind::float8>(0.01)), result[0]);
     }
@@ -487,16 +485,12 @@ TEST_F(sql_test, is_null) {
     }
 }
 
-// shakujo based compiler doesn't return parse error with invalid toke TODO
-TEST_F(sql_test, DISABLED_literal_with_invalid_char) {
+TEST_F(sql_test, literal_with_invalid_char) {
+    // old compiler failed to handle invalid char such as $1
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table T (C0 int)");
     execute_statement("INSERT INTO T (C0) VALUES (1)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0 FROM T WHERE C0=$1", result);
-        ASSERT_EQ(0, result.size());
-    }
+    test_stmt_err("SELECT C0 FROM T WHERE C0=$1", error_code::syntax_exception);
 }
 
 TEST_F(sql_test, insert_string_with_invalid_char) {

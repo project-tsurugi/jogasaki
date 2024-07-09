@@ -202,7 +202,7 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<std::size_t>("dev_compiler_support")) {
         ret->compiler_support(v.value());
     }
-    if (auto v = jogasaki_config->get<bool>("dev_lowercase_regular_identifiers")) {
+    if (auto v = jogasaki_config->get<bool>("lowercase_regular_identifiers")) {
         ret->lowercase_regular_identifiers(v.value());
     }
 

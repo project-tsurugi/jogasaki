@@ -25,7 +25,7 @@
 namespace jogasaki::data {
 
 iterable_record_store::iterator &iterable_record_store::iterator::operator++() {
-    pos_ = static_cast<unsigned char*>(pos_) + container_->record_size_; //NOLINT
+    pos_ = static_cast<unsigned char*>(pos_) + container_->positive_record_size_; //NOLINT
     if (pos_ >= range_->e_) {
         ++range_;
         if(range_ != container_->ranges_.end()) {
@@ -44,7 +44,7 @@ const iterable_record_store::iterator iterable_record_store::iterator::operator+
 }
 
 accessor::record_ref iterable_record_store::iterator::ref() const noexcept {
-    return accessor::record_ref{pos_, container_->record_size_};
+    return accessor::record_ref{pos_, container_->original_record_size_};
 }
 
 iterable_record_store::iterator::iterator(
@@ -65,19 +65,22 @@ iterable_record_store::iterable_record_store(
     memory::paged_memory_resource *varlen_resource,
     maybe_shared_ptr<meta::record_meta> meta
 ) :
-    record_size_(meta->record_size()),
+    original_record_size_(meta->record_size()),
+    positive_record_size_(original_record_size_ == 0 ? 1 : original_record_size_),
     base_(record_resource, varlen_resource, std::move(meta))
 {}
 
 iterable_record_store::value_type iterable_record_store::append(accessor::record_ref record) {
+    // note that we support zero length record. Use positive_record_size_ to advance the pointer while
+    // returning original_record_size_ to the caller.
     auto p = base_.append(record);
-    if (prev_ == nullptr || p != static_cast<unsigned char*>(prev_) + record_size_) { //NOLINT
+    if (prev_ == nullptr || p != static_cast<unsigned char*>(prev_) + positive_record_size_) { //NOLINT
         // starting new range
         ranges_.emplace_back(p, nullptr);
     }
-    ranges_.back().e_ = static_cast<unsigned char*>(p) + record_size_; //NOLINT
+    ranges_.back().e_ = static_cast<unsigned char*>(p) + positive_record_size_; //NOLINT
     prev_ = p;
-    return {p, record_size_};
+    return {p, original_record_size_};
 }
 
 std::size_t iterable_record_store::count() const noexcept {

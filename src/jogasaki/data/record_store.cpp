@@ -25,15 +25,15 @@
 namespace jogasaki::data {
 
 record_store::record_pointer record_store::append(accessor::record_ref record) {
-    auto* p = resource_->allocate(record_size_, meta_->record_alignment());
+    auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
     if (!p) std::abort();
-    copier_(p, record_size_, record);
+    copier_(p, original_record_size_, record);
     ++count_;
     return p;
 }
 
 record_store::record_pointer record_store::allocate_record() {
-    auto* p = resource_->allocate(record_size_, meta_->record_alignment());
+    auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
     if (!p) std::abort();
     ++count_;
     return p;
@@ -59,8 +59,12 @@ record_store::record_store(
     varlen_resource_(varlen_resource),
     meta_(std::move(meta)),
     copier_(meta_, varlen_resource),
-    record_size_(meta_->record_size())
-{}
+    original_record_size_(meta_->record_size()),
+    positive_record_size_(original_record_size_ == 0 ? 1 : original_record_size_)
+{
+    // if record size is 0, the alignment must be 1
+    BOOST_ASSERT(original_record_size_ != 0 || meta_->record_alignment() == 1);  //NOLINT
+}
 
 maybe_shared_ptr<meta::record_meta> const& record_store::meta() const noexcept {
     return meta_;

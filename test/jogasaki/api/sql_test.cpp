@@ -160,6 +160,38 @@ TEST_F(sql_test, cross_join_pkless_with_varchar) {
         std::forward_as_tuple(accessor::text{"efgh"}, accessor::text{"BBBBBBB"}))), result[3]);
 }
 
+TEST_F(sql_test, cross_join_with_no_columns) {
+    // regression testcase (tsurugi-issues #794) - once cross join with no result columns involved 0 length record_ref
+    // and caused wrong number of output records
+    execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO t VALUES (1)");
+    execute_statement("INSERT INTO t VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT 1 FROM t t0, t t1", result);
+        ASSERT_EQ(4, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(1)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(1)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(1)), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(1)), result[3]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT t0.c0 FROM t t0, t t1 ORDER BY t0.c0", result);
+        ASSERT_EQ(4, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(2)), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4>(2)), result[3]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT count(*) FROM t t0, t t1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(4)), result[0]);
+    }
+}
+
 TEST_F(sql_test, outer_join) {
     execute_statement("create table L (C0 INT PRIMARY KEY, C1 INT)");
     execute_statement("create table R (C0 INT PRIMARY KEY, C1 INT)");

@@ -116,7 +116,8 @@ private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     accessor::record_copier copier_{};
     std::size_t count_{};
-    std::size_t record_size_{};
+    std::size_t original_record_size_{};
+    std::size_t positive_record_size_{};
 };
 
 } // namespace

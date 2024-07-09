@@ -163,4 +163,40 @@ TEST_F(iterable_record_store_test, record_ref) {
     EXPECT_EQ(0, comp(res1, it.ref()));
 }
 
+TEST_F(iterable_record_store_test, record_of_length_zero) {
+    // We support zero length record stored in the store.
+    // In this case, one byte is allocated to advance the pointer while record size is returned as zero to the caller.
+    mock_memory_resource memory{};
+
+    // use record of length zero
+    meta::record_meta meta{};
+    accessor::record_ref rec{};
+
+    iterable_record_store r{&memory, &memory, maybe_shared_ptr{&meta}};
+    auto res1 = r.append(rec);
+    auto res2 = r.append(rec);
+    auto res3 = r.append(rec);
+
+    // even if length is zero, the pointer should be different
+    EXPECT_LT(res1.data(), res2.data());
+    EXPECT_LT(res2.data(), res3.data());
+
+    EXPECT_EQ(0, res1.size());
+    EXPECT_EQ(0, res2.size());
+    EXPECT_EQ(0, res3.size());
+
+    compare_info cm{meta};
+    comparator comp{cm};
+    auto it = r.begin();
+    EXPECT_EQ(0, comp(res1, it.ref()));
+    ++it;
+    EXPECT_NE(r.end(), it);
+    EXPECT_EQ(0, comp(res2, it.ref()));
+    ++it;
+    EXPECT_NE(r.end(), it);
+    EXPECT_EQ(0, comp(res3, it.ref()));
+    ++it;
+    EXPECT_EQ(r.end(), it);
+}
+
 }

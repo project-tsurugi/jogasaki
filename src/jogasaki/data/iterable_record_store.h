@@ -42,6 +42,8 @@ namespace jogasaki::data {
  * Even if the resource is shared by others and the appended records are not in the adjacent position,
  * this class handles that case, but the ranges become granule, the number of ranges become large and
  * the performance possibly gets affected.
+ * @note record of size zero is supported. In this case, internally one byte is allocated for each record in
+ * order to make the iterator work.
  */
 class cache_align iterable_record_store {
 public:
@@ -197,7 +199,7 @@ public:
      * @return record size
      */
     [[nodiscard]] std::size_t record_size() const noexcept {
-        return record_size_;
+        return original_record_size_;
     }
 
     /**
@@ -209,7 +211,8 @@ public:
     }
 
 private:
-    std::size_t record_size_{};
+    std::size_t original_record_size_{};
+    std::size_t positive_record_size_{};  // modified to 1 if original_record_size_ is 0
     record_store base_{};
     record_pointer prev_{};
     range_list ranges_{};

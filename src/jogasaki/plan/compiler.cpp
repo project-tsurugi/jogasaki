@@ -81,6 +81,7 @@
 #include <yugawara/compiler_code.h>
 #include <yugawara/compiler_options.h>
 #include <yugawara/compiler_result.h>
+#include <yugawara/restricted_feature.h>
 #include <yugawara/runtime_feature.h>
 #include <yugawara/schema/configurable_provider.h>
 #include <yugawara/storage/index.h>
@@ -426,6 +427,7 @@ error_code map_compiler_error(yugawara::compiler_code code) {
         case ycc::inconsistent_type: return ec::type_analyze_exception;
         case ycc::unsupported_type: return ec::unsupported_compiler_feature_exception;
         case ycc::unresolved_variable: return ec::symbol_analyze_exception;
+        case ycc::unsupported_feature: return ec::unsupported_compiler_feature_exception;
         default: return ec::compile_exception;
     }
     std::abort();
@@ -742,6 +744,21 @@ status prepare(
         sp,
         indices,
     };
+
+    // restricted features - jogasaki does not implement yet
+    c_options.restricted_features() += {
+        yugawara::restricted_feature::relation_buffer,
+        yugawara::restricted_feature::relation_identify,
+        // yugawara::restricted_feature::relation_join_scan,  // jogasaki manually check and create error message
+        yugawara::restricted_feature::relation_write_insert,
+        yugawara::restricted_feature::relation_values,
+        yugawara::restricted_feature::relation_difference,
+        yugawara::restricted_feature::relation_intersection,
+        yugawara::restricted_feature::exchange_broadcast,
+        yugawara::restricted_feature::exchange_discard,
+        yugawara::restricted_feature::exchange_forward,
+    };
+
     return create_prepared_statement(std::move(analysis), ctx.variable_provider(), c_options, sp, ctx, out);
 }
 

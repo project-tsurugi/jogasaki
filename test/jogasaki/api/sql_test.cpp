@@ -565,4 +565,14 @@ TEST_F(sql_test, select_null) {
         EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(std::tuple{1, '\0'}, {false, true})), result[0]);
     }
 }
+
+TEST_F(sql_test, unsupported_features) {
+    test_stmt_err("select 1", error_code::unsupported_compiler_feature_exception);
+    test_stmt_err("values (1)", error_code::unsupported_compiler_feature_exception);
+    execute_statement("create table t (C0 int primary key)");
+    execute_statement("create table t2 (C0 int primary key)");
+    test_stmt_err("SELECT * FROM t LIMIT 1", error_code::unsupported_compiler_feature_exception);
+    test_stmt_err("INSERT INTO t SELECT 1 FROM t2", error_code::unsupported_compiler_feature_exception);
+}
+
 }

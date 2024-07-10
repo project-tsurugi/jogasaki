@@ -92,8 +92,10 @@ bool matcher::operator()(
     matcher::memory_resource* resource
 ) {
     std::size_t len{};
-    if(auto res = details::encode_key(key_fields_, input_variables, *resource, buf_, len); res != status::ok) {
+    std::string msg{};
+    if(auto res = details::encode_key(key_fields_, input_variables, *resource, buf_, len, msg); res != status::ok) {
         status_ = res;
+        // TODO handle msg
         return false;
     }
     std::string_view key{static_cast<char*>(buf_.data()), len};

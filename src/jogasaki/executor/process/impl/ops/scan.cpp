@@ -147,6 +147,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             finish(context);
             return {};
         }
+        // res can be status::err_type_mismatch, then ctx already filled with error info
         finish(context);
         return error_abort(ctx, res);
     }
@@ -252,11 +253,30 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     }
     executor::process::impl::variable_table vars{};
     std::size_t blen{};
-    if(auto res = details::encode_key(ctx.scan_info_->begin_columns(), vars, *ctx.varlen_resource(), ctx.key_begin_, blen); res != status::ok) {
+    std::string msg{};
+    if(auto res = details::encode_key(
+           ctx.scan_info_->begin_columns(),
+           vars,
+           *ctx.varlen_resource(),
+           ctx.key_begin_,
+           blen,
+           msg
+       );
+       res != status::ok) {
+        if(res == status::err_type_mismatch) {
+            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
+            set_error(*ctx.req_context(), error_code::unsupported_runtime_feature_exception, msg, res);
+        }
         return res;
     }
     std::size_t elen{};
-    if(auto res = details::encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_, elen); res != status::ok) {
+    if(auto res =
+           details::encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_, elen, msg);
+       res != status::ok) {
+        if(res == status::err_type_mismatch) {
+            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
+            set_error(*ctx.req_context(), error_code::unsupported_runtime_feature_exception, msg, res);
+        }
         return res;
     }
     if(auto res = stg.content_scan(

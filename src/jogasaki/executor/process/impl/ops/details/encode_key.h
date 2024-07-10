@@ -28,12 +28,27 @@
 
 namespace jogasaki::executor::process::impl::ops::details {
 
+/**
+ * @brief evaluate the search key and encode
+ * @details evaluate the search key and encode it so that it can be used for search
+ * @param keys the key fields to be evaluated
+ * @param input_variables the variables to be used for evaluation
+ * @param resource the memory resource
+ * @param out the buffer to store the encoded key
+ * @param length the length of the encoded key
+ * @param message the error message filled only when the return value is not status::ok and message is available
+ * @return status::ok when successful
+ * @return status::err_integrity_constraint_violation when evaluation results in null where it is not allowed
+ * @return status::err_type_mismatch if the type of the evaluated value does not match the expected type
+ * @return status::err_expression_evaluation_failure any other evaluation failure
+ */
 status encode_key(
     std::vector<details::search_key_field_info> const& keys,
     executor::process::impl::variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out,
-    std::size_t& length
+    std::size_t& length,
+    std::string& message
 );
 
 }  // namespace jogasaki::executor::process::impl::ops::details

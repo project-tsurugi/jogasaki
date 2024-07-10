@@ -42,7 +42,8 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
     data::aligned_buffer& out,
-    std::size_t& length
+    std::size_t& length,
+    std::string& message
 ) {
     utils::checkpoint_holder cph(std::addressof(resource));
     length = 0;
@@ -56,8 +57,11 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
                 return status::err_expression_evaluation_failure;
             }
             if(! utils::convert_any(a, k.type_)) {
-                VLOG_LP(log_error) << "type mismatch: expected " << k.type_ << ", value index is " << a.type_index();
-                return status::err_expression_evaluation_failure;
+                std::stringstream ss{};
+                ss << "unsupported type conversion to:" << k.type_ << " from:" << type_name(a);
+                VLOG_LP(log_error) << ss.str();
+                message = ss.str();
+                return status::err_type_mismatch;
             }
             if (k.nullable_) {
                 if(auto res = kvs::encode_nullable(a, k.type_, k.spec_, s);res != status::ok) {

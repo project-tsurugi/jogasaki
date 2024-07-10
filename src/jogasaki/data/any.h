@@ -200,4 +200,29 @@ inline std::ostream& operator<<(std::ostream& out, any const& value) {
     return out;
 }
 
+/**
+ * @brief output type name of the give value
+ * @return the type name
+ */
+inline std::string_view type_name(any const& value) {
+    switch (value.type_index()) {
+        case any::index<std::monostate>: return "empty";
+        case any::index<class error>: return "error";
+        case any::index<std::int8_t>: return "int1";
+        case any::index<std::int16_t>: return "int2";
+        case any::index<std::int32_t>: return "int4";
+        case any::index<std::int64_t>: return "int8";
+        case any::index<float>: return "float4";
+        case any::index<double>: return "float8";
+        case any::index<accessor::text>: return "character";
+        case any::index<accessor::binary>: return "octet";
+        case any::index<takatori::decimal::triple>: return "decimal";
+        case any::index<takatori::datetime::date>: return "date";
+        case any::index<takatori::datetime::time_of_day>: return "time_of_day";
+        case any::index<takatori::datetime::time_point>: return "time_point";
+        case any::index<std::size_t>: return "columm_position";
+    }
+    std::abort();
 }
+
+}  // namespace jogasaki::data

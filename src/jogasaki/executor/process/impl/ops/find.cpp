@@ -173,8 +173,20 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     std::string_view v{};
     executor::process::impl::variable_table vars{};
     std::size_t len{};
-    if(auto res = details::encode_key(search_key_fields_, vars, *resource, ctx.key_, len);
+    std::string msg{};
+    if(auto res = details::encode_key(search_key_fields_, vars, *resource, ctx.key_, len, msg);
         res != status::ok) {
+        if (res == status::err_type_mismatch) {
+            // unsupported type/value mapping detected during expression evaluation
+            ctx.abort();
+            set_error(
+                *ctx.req_context(),
+                error_code::unsupported_runtime_feature_exception,
+                msg,
+                res
+            );
+            return {operation_status_kind::aborted};
+        }
         if (res == status::err_integrity_constraint_violation) {
             // null is assigned for find condition. Nothing should be found.
             finish(context);

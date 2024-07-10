@@ -316,5 +316,36 @@ TEST_F(ddl_metadata_test, genpk_column_features) {
     }
 }
 
+TEST_F(ddl_metadata_test, bad_column_constraints) {
+    // both `null` and `not null` specified
+    test_stmt_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT NULL NOT NULL)", error_code::analyze_exception);
 
+    // `null` twice
+    test_stmt_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT NULL NULL)", error_code::analyze_exception);
+
+    // `not null` twice
+    test_stmt_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT NOT NULL NOT NULL)", error_code::analyze_exception);
+
+    // `default` twice
+    test_stmt_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT DEFAULT 1 DEFAULT 1)", error_code::analyze_exception);
+}
+
+TEST_F(ddl_metadata_test, duplicate_primary_key) {
+    test_stmt_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT PRIMARY KEY)", error_code::symbol_analyze_exception);
+    test_stmt_err("CREATE TABLE T (C0 INT NOT NULL, C1 INT PRIMARY KEY, PRIMARY KEY(C0))", error_code::symbol_analyze_exception);
+    test_stmt_err("CREATE TABLE T (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0), PRIMARY KEY(C1))", error_code::symbol_analyze_exception);
+}
+
+TEST_F(ddl_metadata_test, primary_key_for_nullable_column) {
+    test_stmt_err("CREATE TABLE T (C0 INT NULL PRIMARY KEY)", error_code::analyze_exception);
+}
+
+// uncomment when compiler is fixed
+TEST_F(ddl_metadata_test, DISABLED_primary_key_for_nullable_column_separated) {
+    test_stmt_err("CREATE TABLE T (C0 INT NULL, PRIMARY KEY(C0))", error_code::analyze_exception);
+}
+
+TEST_F(ddl_metadata_test, empty_columns) {
+    test_stmt_err("CREATE TABLE T ()", error_code::syntax_exception);
+}
 }

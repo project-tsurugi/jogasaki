@@ -116,4 +116,51 @@ TEST_F(sql_variations_test, comment_by_block) {
     execute_statement("create /* table */ table TT (C0 int primary key, C1 int)");
     execute_statement("INSERT INTO TT VALUES (1,1)");
 }
+
+
+TEST_F(sql_variations_test, empty_statements) {
+    // compiler treats empty string as empty compilation units (with no statement) and runtime rejects it as unsupported
+    test_stmt_err("", error_code::unsupported_runtime_feature_exception);
+}
+
+TEST_F(sql_variations_test, only_statement_separator) {
+    execute_statement(";");
+}
+
+TEST_F(sql_variations_test, multiple_empty_statements) {
+    execute_statement(";;;");
+}
+
+TEST_F(sql_variations_test, statement_with_semicolon) {
+    execute_statement("create table t (C0 int primary key);");
+    execute_statement("INSERT INTO t VALUES (0)");
+}
+
+TEST_F(sql_variations_test, empty_and_non_empty_statement) {
+    execute_statement(";create table t (C0 int primary key);");
+    execute_statement("INSERT INTO t VALUES (0)");
+}
+
+TEST_F(sql_variations_test, multiple_statements) {
+    // jogasaki raises error if sql text has multiple statements
+    execute_statement("create table t (C0 int primary key)");
+    test_stmt_err("INSERT INTO t VALUES (0);INSERT INTO t VALUES (1)", error_code::unsupported_runtime_feature_exception);
+}
+
+TEST_F(sql_variations_test, multiple_lines) {
+    // jogasaki raises error if sql text has multiple statements
+    utils::set_global_tx_option(utils::create_tx_option{false, false});
+    execute_statement("create table t (C0 int primary key)");
+    execute_statement("INSERT\n INTO\n t \nVALUES (0)");
+}
+
+TEST_F(sql_variations_test, control_character_in_delimited_identifier) {
+    execute_statement("create table \"tt\ntt\" (\"aa\nbb\" int primary key)");
+    execute_statement("INSERT INTO \"tt\ntt\" (\"aa\nbb\") VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select \"aa\nbb\" from \"tt\ntt\"", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
 }

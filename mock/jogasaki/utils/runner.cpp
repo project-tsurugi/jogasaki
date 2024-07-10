@@ -52,7 +52,7 @@ runner& runner::run() {
     auto* out = output_error_info_ ? output_error_info_ : &temp;
 
     api::statement_handle prepared{prepared_};
-    if(! text_.empty()) {
+    if(text_is_set_) {
         if(auto res = get_impl(*db_).prepare(
                 text_,
                 variables_ ? *variables_ : std::unordered_map<std::string, api::field_type_kind>{},

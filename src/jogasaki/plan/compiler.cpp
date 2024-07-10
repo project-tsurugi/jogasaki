@@ -708,7 +708,20 @@ status prepare(
     }
 
     mizugaki::analyzer::sql_analyzer analyzer{};
-    if(compilation_unit->statements().size() != 1) {
+
+    // It's possible multiple statements are passed, but runtime only supports single statement for now.
+    // Ignore empty statements and check only one non-empty statement exists.
+    std::size_t cnt_non_empty = 0;
+    std::size_t idx = 0;
+    std::size_t idx_non_empty_or_zero = 0;
+    for(auto&& s : compilation_unit->statements()) {
+        if(s != nullptr && s->node_kind() != mizugaki::ast::statement::kind::empty_statement) {
+            ++cnt_non_empty;
+            idx_non_empty_or_zero = idx;
+        }
+        ++idx;
+    }
+    if(cnt_non_empty > 1 || compilation_unit->statements().empty()) {
         set_compile_error(
             ctx,
             error_code::unsupported_runtime_feature_exception,
@@ -717,7 +730,7 @@ status prepare(
         );
         return status::err_unsupported;
     }
-    auto& stmt = compilation_unit->statements()[0];
+    auto& stmt = compilation_unit->statements()[idx_non_empty_or_zero];
     mizugaki::placeholder_map placeholders{};
     auto analysis = analyzer(opts, *stmt, *compilation_unit, placeholders, *ctx.variable_provider());
 

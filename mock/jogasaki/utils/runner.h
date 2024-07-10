@@ -74,6 +74,7 @@ public:
      */
     runner& text(std::string_view arg) {
         text_ = std::string{arg};
+        text_is_set_ = true;
         return *this;
     }
 
@@ -247,6 +248,7 @@ private:
 
     jogasaki::api::database* db_{};
     std::string text_{};
+    bool text_is_set_{};
     api::statement_handle prepared_{};
     api::executable_statement* executable_{};
 

@@ -764,8 +764,7 @@ TEST_F(api_test, list_tables) {
 // TODO auto generate index name when omitted
 TEST_F(api_test, create_index_wo_name) {
     execute_statement("create table TT0 (C0 int)");
-    execute_statement("create index on TT0 (C0)");
-    test_stmt_err("create index on TT0 (C0)", error_code::target_already_exists_exception);
+    test_stmt_err("create index on TT0 (C0)", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(api_test, create_table_if_not_exsits) {

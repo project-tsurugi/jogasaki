@@ -78,7 +78,7 @@ TEST_F(insert_types_test, insert) {
     EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(1,10.0)), result[0]);
 }
 
-TEST_F(insert_types_test, insert_skip) {
+TEST_F(insert_types_test, insert_if_not_exists) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement("INSERT IF NOT EXISTS INTO T0 (C0, C1) VALUES (1, 20.0)");
     std::vector<mock::basic_record> result{};
@@ -87,7 +87,17 @@ TEST_F(insert_types_test, insert_skip) {
     EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(1,10.0)), result[0]);
 }
 
-TEST_F(insert_types_test, insert_overwrite) {
+TEST_F(insert_types_test, insert_or_ignore) {
+    // alias of insert if not exists
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement("INSERT OR IGNORE INTO T0 (C0, C1) VALUES (1, 20.0)");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM T0 ORDER BY C0", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(1,10.0)), result[0]);
+}
+
+TEST_F(insert_types_test, insert_or_replace) {
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement("INSERT OR REPLACE INTO T0 (C0, C1) VALUES (1, 20.0)");
     std::vector<mock::basic_record> result{};

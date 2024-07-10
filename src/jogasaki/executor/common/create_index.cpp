@@ -100,6 +100,16 @@ bool create_index::operator()(request_context& context) const {
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->definition());
+    if(i->simple_name().empty()) {
+        // The index name is omitted. It's not supported for now.
+        set_error(
+            context,
+            error_code::unsupported_runtime_feature_exception,
+            "omitting index name is currently unsupported",
+            status::err_unsupported
+        );
+        return false;
+    }
     if(provider.find_index(i->simple_name())) {
         set_error(
             context,

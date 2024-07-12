@@ -517,6 +517,61 @@ TEST_F(sql_test, is_null) {
     }
 }
 
+TEST_F(sql_test, is_true) {
+    execute_statement("create table T (C0 int, C1 int)");
+    execute_statement("INSERT INTO T (C0,C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0,C1) VALUES (2, 20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C1 = 10 IS TRUE", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C1 = 10 IS NOT TRUE", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]);
+    }
+}
+
+TEST_F(sql_test, is_false) {
+    execute_statement("create table T (C0 int, C1 int)");
+    execute_statement("INSERT INTO T (C0,C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0,C1) VALUES (2, 20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C1 = 10 IS FALSE", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C1 = 10 IS NOT FALSE", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+}
+
+TEST_F(sql_test, is_unknown) {
+    execute_statement("create table T (C0 int, C1 int)");
+    execute_statement("INSERT INTO T (C0) VALUES (1)");
+    execute_statement("INSERT INTO T (C0,C1) VALUES (2, 20)");
+    {
+        std::vector<mock::basic_record> result{};
+        // execute_query("SELECT C0 FROM T WHERE (C1 = 0) IS UNKNOWN ORDER BY C0", result);
+        execute_query("SELECT C0 FROM T WHERE C1 = 0 IS UNKNOWN ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T WHERE C1 = 0 IS NOT UNKNOWN ORDER BY C0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]);
+    }
+}
+
 TEST_F(sql_test, literal_with_invalid_char) {
     // old compiler failed to handle invalid char such as $1
     utils::set_global_tx_option(utils::create_tx_option{false, false});
@@ -634,6 +689,41 @@ TEST_F(sql_test, limit) {
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t ORDER BY c0 LIMIT 0", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
+TEST_F(sql_test, simple_having) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t VALUES "
+        "(11,10),(12,10),"
+        "(21,20),(22,20),"
+        "(31,30),(32,30)"
+    );
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT sum(c0), c1 FROM t group by c1 having sum(c0) > 60", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(63, 30)), result[0]);
+    }
+}
+
+TEST_F(sql_test, having_witout_group_by) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t VALUES "
+        "(11,10),(12,10),"
+        "(21,20),(22,20),"
+        "(31,30),(32,30)"
+    );
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT sum(c0), sum(c1) FROM t having sum(c0) > 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(129, 120)), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT sum(c0), sum(c1) FROM t having sum(c0) < 0", result);
         ASSERT_EQ(0, result.size());
     }
 }

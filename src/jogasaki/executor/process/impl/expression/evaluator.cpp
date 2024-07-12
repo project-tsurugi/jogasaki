@@ -439,17 +439,40 @@ any engine::length_any(any const& exp) {
 }
 
 any engine::is_null(any const& exp) {
-    if(exp.error()) {
-        return exp;
-    }
     return any{std::in_place_type<bool>, exp.empty()};
+}
+
+any engine::is_true(any const& exp) {
+    // exp is null or bool
+    if(exp.empty()) {
+        return any{std::in_place_type<bool>, false};
+    }
+    return exp;
+}
+
+any engine::is_false(any const& exp) {
+    // exp is null or bool
+    if(exp.empty()) {
+        return any{std::in_place_type<bool>, true};
+    }
+    return conditional_not(exp.to<bool>());
+}
+
+any engine::is_unknown(any const& exp) {
+    return is_null(exp);
 }
 
 any engine::operator()(takatori::scalar::unary const& exp) {
     using optype = takatori::scalar::unary::operator_kind_type;
     auto v = dispatch(*this, exp.operand());
-    if (! v && exp.operator_kind() != takatori::scalar::unary_operator::is_null) {
-        // except for is_null predicate, return null if input is null
+    if(v.error()) {
+        return v;
+    }
+    if(! v && exp.operator_kind() != takatori::scalar::unary_operator::is_null &&
+       exp.operator_kind() != takatori::scalar::unary_operator::is_true &&
+       exp.operator_kind() != takatori::scalar::unary_operator::is_false &&
+       exp.operator_kind() != takatori::scalar::unary_operator::is_unknown) {
+        // except for is_xxx predicate, return null if input is null
         return v;
     }
     switch(exp.operator_kind()) {
@@ -464,6 +487,12 @@ any engine::operator()(takatori::scalar::unary const& exp) {
             return length_any(v);
         case optype::is_null:
             return is_null(v);
+        case optype::is_true:
+            return is_true(v);
+        case optype::is_false:
+            return is_false(v);
+        case optype::is_unknown:
+            return is_unknown(v);
         default: return return_unsupported();
     }
 }

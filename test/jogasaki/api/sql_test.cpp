@@ -604,4 +604,38 @@ TEST_F(sql_test, store_double_literal_into_decimal) {
     test_stmt_err("insert into t values (1.0e0+0.1e0)", error_code::unsupported_runtime_feature_exception);
     test_stmt_err("update t set c0 = 2.0e0+0.2e0", error_code::unsupported_runtime_feature_exception);
 }
+
+TEST_F(sql_test, limit) {
+    // test limit clause with order by (i.e. group operator is used)
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (0), (1), (2), (3), (4)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t ORDER BY c0 LIMIT 2", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[1]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t ORDER BY c0 DESC LIMIT 2", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(4)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[1]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t ORDER BY c0 ASC LIMIT 9223372036854775807", result);
+        ASSERT_EQ(5, result.size());
+    }
+    test_stmt_err("SELECT c0 FROM t ORDER BY c0 ASC LIMIT 9223372036854775808", error_code::type_analyze_exception);
+    test_stmt_err("SELECT c0 FROM t ORDER BY c0 ASC LIMIT -1", error_code::type_analyze_exception);
+    test_stmt_err("SELECT c0 FROM t ORDER BY c0 ASC LIMIT -9223372036854775808", error_code::type_analyze_exception);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t ORDER BY c0 LIMIT 0", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
 }

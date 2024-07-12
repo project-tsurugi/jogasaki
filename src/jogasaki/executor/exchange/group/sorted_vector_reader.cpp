@@ -61,6 +61,13 @@ bool sorted_vector_reader::next_group() {
     init_aggregated_table();
     record_count_per_group_ = 0;
     if (state_ == reader_state::init || state_ == reader_state::after_group) {
+        if (info_->limit().has_value() && info_->limit().value() == 0) {
+            // LIMIT 0 means no members from any group, so no group is available
+            // Unlike LIMIT n with n > 0, no clean up is done because the reader is not used any more.
+            // Rather users want to return as soon as possible.
+            state_ = reader_state::eof;
+            return false;
+        }
         if (current_ == aggregated_pointer_table_.end()) {
             state_ = reader_state::eof;
             return false;

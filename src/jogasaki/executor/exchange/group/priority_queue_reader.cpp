@@ -71,6 +71,13 @@ void priority_queue_reader::pop_queue(bool read) { //NOLINT
 bool priority_queue_reader::next_group() {
     record_count_per_group_ = 0;
     if (state_ == reader_state::init || state_ == reader_state::after_group) {
+        if (info_->limit().has_value() && info_->limit().value() == 0) {
+            // LIMIT 0 means no members from any group, so no group is available
+            // Unlike LIMIT n with n > 0, no clean up is done because the reader is not used any more.
+            // Rather users want to return as soon as possible.
+            state_ = reader_state::eof;
+            return false;
+        }
         if (queue_.empty()) {
             state_ = reader_state::eof;
             return false;

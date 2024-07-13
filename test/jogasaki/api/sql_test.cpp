@@ -575,13 +575,13 @@ TEST_F(sql_test, is_false_with_null) {
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0 FROM T WHERE C1 = 10 IS FALSE", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+        ASSERT_EQ(0, result.size());
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0 FROM T WHERE C1 = 10 IS NOT FALSE", result);
-        ASSERT_EQ(0, result.size());
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
     }
 }
 

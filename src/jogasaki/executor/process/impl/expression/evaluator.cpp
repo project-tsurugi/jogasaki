@@ -453,7 +453,7 @@ any engine::is_true(any const& exp) {
 any engine::is_false(any const& exp) {
     // exp is null or bool
     if(exp.empty()) {
-        return any{std::in_place_type<bool>, true};
+        return any{std::in_place_type<bool>, false};
     }
     return conditional_not(exp.to<bool>());
 }

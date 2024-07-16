@@ -136,4 +136,9 @@ constexpr static std::string_view public_schema_name = "public";
  */
 constexpr static std::string_view storage_namespace_for_public_schema = "";  //NOLINT(readability-redundant-string-init)
 
+/**
+ * @brief prefix used for system internal identifiers
+ */
+constexpr static std::string_view system_identifier_prefix = "__";
+
 }  // namespace jogasaki

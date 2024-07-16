@@ -120,6 +120,7 @@
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/string_manipulation.h>
 #include <jogasaki/utils/use_counter.h>
 
 #include "request_context_factory.h"
@@ -1281,6 +1282,9 @@ jogasaki::status jogasaki::api::impl::database::list_tables(
 ) {
     err_info = {};
     tables_->each_relation([&](std::string_view, std::shared_ptr<yugawara::storage::relation const> const& t) {
+        if(utils::is_prefix(t->simple_name(), system_identifier_prefix)) {
+            return;
+        }
         out.emplace_back(t->simple_name());
     });
     return status::ok;

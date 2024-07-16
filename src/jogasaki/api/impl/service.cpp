@@ -81,6 +81,7 @@
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/proto_field_types.h>
+#include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::api::impl {
 
@@ -743,7 +744,7 @@ void service::command_describe_table(
     log_request(*req);
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     auto table = db_->find_table(dt.name());
-    if(! table) {
+    if(! table || utils::is_prefix(dt.name(), system_identifier_prefix)) {
         VLOG(log_error) << log_location_prefix << "table not found : " << dt.name();
         auto st = status::err_not_found;
         auto err_info = create_error_info(

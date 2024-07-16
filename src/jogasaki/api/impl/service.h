@@ -507,6 +507,11 @@ private:
         std::shared_ptr<tateyama::api::server::response> const& res,
         request_info const& req_info
     );
+    void command_explain_by_text(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        request_info const& req_info
+    );
 
     void command_describe_table(
         sql::request::Request const& proto_req,

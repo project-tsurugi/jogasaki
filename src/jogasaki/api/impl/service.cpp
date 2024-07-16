@@ -646,6 +646,58 @@ void service::command_explain(
     log_request(*req);
 }
 
+void service::command_explain_by_text(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    request_info const& req_info
+) {
+    auto& ex = proto_req.explain_by_text();
+    auto const& sql = ex.sql();
+    if(sql.empty()) {
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "invalid request format - missing sql",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::Explain>(*res, err_info.get(), req_info);
+        return;
+    }
+    // log explain event here to include db_->prepare duration as well as db_->explain
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::explain);
+    req->statement_text(std::make_shared<std::string>(sql));  //NOLINT
+    req->status(scheduler::request_detail_status::accepted);
+    log_request(*req);
+
+    jogasaki::api::statement_handle statement{};
+    std::shared_ptr<error::error_info> err_info{};
+    if(auto rc = get_impl(*db_).prepare(sql, statement, err_info); rc != jogasaki::status::ok) {
+        details::error<sql::response::Explain>(*res, err_info.get(), req_info);
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
+        return;
+    }
+
+    std::unique_ptr<jogasaki::api::executable_statement> e{};
+    err_info = {};
+    auto params = jogasaki::api::create_parameter_set();
+    if(auto rc = get_impl(*db_).resolve(statement, maybe_shared_ptr{params.get()}, e, err_info);
+       rc != jogasaki::status::ok) {
+        details::error<sql::response::Explain>(*res, err_info.get(), req_info);
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
+        return;
+    }
+    std::stringstream ss{};
+    if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
+        details::success<sql::response::Explain>(*res, ss.str(), e->meta(), req_info);
+    } else {
+        throw_exception(std::logic_error{"explain failed"});
+    }
+
+    req->status(scheduler::request_detail_status::finishing);
+    log_request(*req);
+}
+
 //TODO put global constant file
 constexpr static std::size_t max_records_per_file = 10000;
 
@@ -927,6 +979,11 @@ bool service::process(
         case sql::request::Request::RequestCase::kDisposeTransaction: {
             trace_scope_name("cmd-dispose_transaction");  //NOLINT
             command_dispose_transaction(proto_req, res, req_info);
+            break;
+        }
+        case sql::request::Request::RequestCase::kExplainByText: {
+            trace_scope_name("cmd-explain_by_text");  //NOLINT
+            command_explain_by_text(proto_req, res, req_info);
             break;
         }
         default:

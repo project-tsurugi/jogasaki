@@ -1239,6 +1239,46 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
     }
 }
 
+TEST_F(service_api_test, explain_by_text) {
+    auto s = encode_explain_by_text("select C0, C1 from T0 where C0 = 1 and C1 = 1.0");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, id, version, cols, error] = decode_explain(res->body_);
+    ASSERT_FALSE(result.empty());
+    EXPECT_EQ(sql_proto_explain_format_id, id);
+    EXPECT_EQ(sql_proto_explain_format_version, version);
+    EXPECT_EQ(2, cols.size());
+    EXPECT_EQ(sql::common::AtomType::INT8, cols[0].type_);
+    EXPECT_TRUE(cols[0].nullable_);
+    EXPECT_EQ(sql::common::AtomType::FLOAT8, cols[1].type_);
+    EXPECT_TRUE(cols[1].nullable_);
+    LOG(INFO) << result;
+}
+
+TEST_F(service_api_test, explain_by_text_error_on_prepare) {
+    auto s = encode_explain_by_text("select * from dummy_table");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, id, version, cols, error] = decode_explain(res->body_);
+    ASSERT_TRUE(result.empty());
+    ASSERT_TRUE(cols.empty());
+    ASSERT_EQ(error_code::symbol_analyze_exception, error.code_);
+    ASSERT_FALSE(error.message_.empty());
+    LOG(INFO) << result;
+}
+
 TEST_F(service_api_test, null_host_variable) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);

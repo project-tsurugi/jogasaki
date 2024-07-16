@@ -546,6 +546,18 @@ inline std::string encode_explain(std::uint64_t stmt_handle, std::vector<paramet
     return s;
 }
 
+inline std::string encode_explain_by_text(std::string_view sql) {
+    sql::request::Request r{};
+    auto* explain = r.mutable_explain_by_text();
+    explain->mutable_sql()->assign(sql);
+
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_explain_by_text();
+    return s;
+}
+
+
 
 inline std::tuple<std::string, std::string, std::size_t, std::vector<colinfo>, error> decode_explain(std::string_view res) {
     sql::response::Response resp{};

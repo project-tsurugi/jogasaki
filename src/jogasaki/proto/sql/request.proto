@@ -394,6 +394,11 @@ message DisposePreparedStatement {
   common.PreparedStatement prepared_statement_handle = 1;
 }
 
+/* For explain text sql. */
+message ExplainByText {
+  string sql = 1;
+}
+
 /* For explain prepared sql. */
 message Explain {
   common.PreparedStatement prepared_statement_handle = 1;
@@ -453,9 +458,10 @@ message Request {
     GetSearchPath getSearchPath = 18;
     GetErrorInfo get_error_info = 19;
     DisposeTransaction dispose_transaction = 20;
+    ExplainByText explain_by_text = 21;
   }
 
-  reserved 21 to 99;
+  reserved 22 to 99;
 
   // service message version (major)
   uint64 service_message_version_major = 100;

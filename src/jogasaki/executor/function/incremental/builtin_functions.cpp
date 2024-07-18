@@ -28,6 +28,7 @@
 #include <takatori/type/character.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
 #include <takatori/type/primitive.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
@@ -134,6 +135,16 @@ void add_builtin_aggregate_functions(
             "count",
             t::int8(),
             {
+                t::boolean(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
                 t::int4(),
             },
             true,
@@ -183,6 +194,24 @@ void add_builtin_aggregate_functions(
             "count",
             t::int8(),
             {
+                t::character(takatori::type::varying),
+            },
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::octet(takatori::type::varying),
+            },
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
                 t::date(),
             },
             true,
@@ -203,7 +232,27 @@ void add_builtin_aggregate_functions(
             "count",
             t::int8(),
             {
+                t::time_of_day(takatori::type::with_time_zone),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
                 t::time_point(),
+            },
+            true,
+        });
+        repo.add(id, count);
+        functions.add({
+            id++,
+            "count",
+            t::int8(),
+            {
+                t::time_point(takatori::type::with_time_zone),
             },
             true,
         });
@@ -339,6 +388,16 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "max",
+            t::octet(t::varying),
+            {
+                t::octet(t::varying),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
             t::decimal(),
             {
                 t::decimal(),
@@ -369,9 +428,29 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "max",
+            t::time_of_day(takatori::type::with_time_zone),
+            {
+                t::time_of_day(takatori::type::with_time_zone),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
             t::time_point(),
             {
                 t::time_point(),
+            },
+            true,
+        });
+        repo.add(id, max);
+        functions.add({
+            id++,
+            "max",
+            t::time_point(takatori::type::with_time_zone),
+            {
+                t::time_point(takatori::type::with_time_zone),
             },
             true,
         });
@@ -435,6 +514,16 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "min",
+            t::octet(t::varying),
+            {
+                t::octet(t::varying),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
             t::decimal(),
             {
                 t::decimal(),
@@ -465,9 +554,29 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "min",
+            t::time_of_day(takatori::type::with_time_zone),
+            {
+                t::time_of_day(takatori::type::with_time_zone),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
             t::time_point(),
             {
                 t::time_point(),
+            },
+            true,
+        });
+        repo.add(id, min);
+        functions.add({
+            id++,
+            "min",
+            t::time_point(takatori::type::with_time_zone),
+            {
+                t::time_point(takatori::type::with_time_zone),
             },
             true,
         });

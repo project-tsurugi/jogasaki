@@ -34,6 +34,7 @@
 #include <takatori/type/character.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
 #include <takatori/type/primitive.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
@@ -96,6 +97,16 @@ void add_builtin_aggregate_functions(
             name,
             t::int8(),
             {
+                t::boolean(),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
                 t::int4(),
             },
             false,
@@ -145,6 +156,16 @@ void add_builtin_aggregate_functions(
             name,
             t::int8(),
             {
+                t::octet(t::varying),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
                 t::decimal(),
             },
             false,
@@ -175,7 +196,27 @@ void add_builtin_aggregate_functions(
             name,
             t::int8(),
             {
+                t::time_of_day(takatori::type::with_time_zone),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
                 t::time_point(),
+            },
+            false,
+        });
+        repo.add(id, count_distinct);
+        functions.add({
+            id++,
+            name,
+            t::int8(),
+            {
+                t::time_point(takatori::type::with_time_zone),
             },
             false,
         });
@@ -230,6 +271,7 @@ void count_distinct(
     auto& store = static_cast<data::value_store&>(args[0]);
     std::int64_t res{};
     switch(store.type().kind()) {
+        case kind::boolean: res = details::count_distinct<runtime_t<kind::boolean>>(store); break;
         case kind::int4: res = details::count_distinct<runtime_t<kind::int4>>(store); break;
         case kind::int8: res = details::count_distinct<runtime_t<kind::int8>>(store); break;
         case kind::float4: res = details::count_distinct<runtime_t<kind::float4>>(store); break;

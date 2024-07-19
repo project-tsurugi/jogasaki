@@ -375,9 +375,7 @@ TEST_F(sql_function_test, aggregate_decimals_scale_zero) {
     execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps);
     execute_statement("INSERT INTO TT (C0) VALUES (:p1)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    // TODO remove cast when fixed
-    // execute_query("SELECT MAX(C0), MIN(C0), COUNT(C0), AVG(C0) FROM TT", result);
-    execute_query("SELECT MAX(CAST(C0 AS DECIMAL(*,*))), MIN(CAST(C0 AS DECIMAL(*,*))), COUNT(CAST(C0 AS DECIMAL(*,*))), AVG(CAST(C0 AS DECIMAL(*,*))) FROM TT", result);
+    execute_query("SELECT MAX(C0), MIN(C0), COUNT(C0), AVG(C0) FROM TT", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_FALSE(rec.is_null(0));
@@ -637,6 +635,19 @@ TEST_F(sql_function_test, min_max_timestamp_negative) {
         ASSERT_EQ(1, result.size());
         auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
         EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{tp}, { tpp2 })), result[0]);
+    }
+}
+
+TEST_F(sql_function_test, verify_parameter_application_conversion) {
+    // no count(char) is registered, but count(varchar) is applied instead for char columns
+    // by paramater application conversion
+    execute_statement("create table t (c0 char(3))");
+    execute_statement("insert into t values ('aaa'), ('bbb'), ('ccc')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT COUNT(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(3)), result[0]);
     }
 }
 

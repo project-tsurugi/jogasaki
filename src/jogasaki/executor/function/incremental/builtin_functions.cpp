@@ -167,6 +167,7 @@ void add_builtin_aggregate_functions(
             {
                 t::float4(),
             },
+            true,
         });
         repo.add(id, count);
         functions.add({
@@ -194,8 +195,9 @@ void add_builtin_aggregate_functions(
             "count",
             t::int8(),
             {
-                t::character(takatori::type::varying),
+                t::character(t::varying),
             },
+            true,
         });
         repo.add(id, count);
         functions.add({
@@ -203,8 +205,9 @@ void add_builtin_aggregate_functions(
             "count",
             t::int8(),
             {
-                t::octet(takatori::type::varying),
+                t::octet(t::varying),
             },
+            true,
         });
         repo.add(id, count);
         functions.add({
@@ -232,7 +235,7 @@ void add_builtin_aggregate_functions(
             "count",
             t::int8(),
             {
-                t::time_of_day(takatori::type::with_time_zone),
+                t::time_of_day(t::with_time_zone),
             },
             true,
         });
@@ -252,7 +255,7 @@ void add_builtin_aggregate_functions(
             "count",
             t::int8(),
             {
-                t::time_point(takatori::type::with_time_zone),
+                t::time_point(t::with_time_zone),
             },
             true,
         });
@@ -428,9 +431,9 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "max",
-            t::time_of_day(takatori::type::with_time_zone),
+            t::time_of_day(t::with_time_zone),
             {
-                t::time_of_day(takatori::type::with_time_zone),
+                t::time_of_day(t::with_time_zone),
             },
             true,
         });
@@ -448,9 +451,9 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "max",
-            t::time_point(takatori::type::with_time_zone),
+            t::time_point(t::with_time_zone),
             {
-                t::time_point(takatori::type::with_time_zone),
+                t::time_point(t::with_time_zone),
             },
             true,
         });
@@ -554,9 +557,9 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "min",
-            t::time_of_day(takatori::type::with_time_zone),
+            t::time_of_day(t::with_time_zone),
             {
-                t::time_of_day(takatori::type::with_time_zone),
+                t::time_of_day(t::with_time_zone),
             },
             true,
         });
@@ -574,9 +577,9 @@ void add_builtin_aggregate_functions(
         functions.add({
             id++,
             "min",
-            t::time_point(takatori::type::with_time_zone),
+            t::time_point(t::with_time_zone),
             {
-                t::time_point(takatori::type::with_time_zone),
+                t::time_point(t::with_time_zone),
             },
             true,
         });

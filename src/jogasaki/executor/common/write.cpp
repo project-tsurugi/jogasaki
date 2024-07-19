@@ -303,6 +303,9 @@ void create_generated_field(
             }
             break;
         }
+        case column_value_kind::function: {
+            throw_exception(std::logic_error{"function default value is unsupported now"});
+        }
     }
     ret.emplace_back(
         index,

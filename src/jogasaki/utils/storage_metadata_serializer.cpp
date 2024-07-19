@@ -256,6 +256,9 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
             seq->set_cycle(value->cycle());
             break;
         }
+        case yugawara::storage::column_value_kind::function: {
+            throw_exception(std::logic_error{"function default value is unsupported now"});
+        }
     }
 }
 

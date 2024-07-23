@@ -79,6 +79,9 @@ enum TableColumnFeature {
 
     // hidden.
     HIDDEN = 2;
+
+    // read-only.
+    READ_ONLY = 3;
 }
 
 // the table column definition.

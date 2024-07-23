@@ -123,6 +123,9 @@ void set_column_features(::jogasaki::proto::metadata::storage::TableColumn* col,
             case yugawara::storage::column_feature::hidden:
                 col->add_column_features(::jogasaki::proto::metadata::storage::TableColumnFeature::HIDDEN);
                 break;
+            case yugawara::storage::column_feature::read_only:
+                col->add_column_features(::jogasaki::proto::metadata::storage::TableColumnFeature::READ_ONLY);
+                break;
         }
 
     }

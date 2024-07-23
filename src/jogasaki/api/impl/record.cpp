@@ -43,6 +43,10 @@ record::record(maybe_shared_ptr<meta::record_meta> meta) :
     record({}, std::move(meta))
 {}
 
+record::runtime_type<kind::boolean> impl::record::get_boolean(std::size_t index) const {
+    return ref_.get_value<runtime_t<k::boolean>>(meta_->value_offset(index));
+}
+
 record::runtime_type<kind::int4> impl::record::get_int4(std::size_t index) const {
     return ref_.get_value<runtime_t<k::int4>>(meta_->value_offset(index));
 }

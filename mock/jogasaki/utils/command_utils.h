@@ -67,13 +67,14 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
         nullities.push_back(nullable);
         switch(c.type_) {
             using kind = meta::field_type_kind;
+            case sql::common::AtomType::BOOLEAN: fields.emplace_back(meta::field_enum_tag<kind::boolean>); break;
             case sql::common::AtomType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
             case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case sql::common::AtomType::CHARACTER: fields.emplace_back(std::make_shared<meta::character_field_option>()); break;
-            case sql::common::AtomType::OCTET: fields.emplace_back(meta::field_enum_tag<kind::octet>); break;
             case sql::common::AtomType::DECIMAL: fields.emplace_back(std::make_shared<meta::decimal_field_option>()); break;
+            case sql::common::AtomType::CHARACTER: fields.emplace_back(std::make_shared<meta::character_field_option>()); break;
+            case sql::common::AtomType::OCTET: fields.emplace_back(std::make_shared<meta::octet_field_option>()); break;
             case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
             case sql::common::AtomType::TIME_OF_DAY: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>(false)); break;
             case sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>(true)); break;
@@ -100,7 +101,7 @@ inline jogasaki::meta::record_meta create_record_meta(sql::response::ResultSetMe
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
             case sql::common::AtomType::CHARACTER: fields.emplace_back(std::make_shared<meta::character_field_option>()); break;
-            case sql::common::AtomType::OCTET: fields.emplace_back(meta::field_enum_tag<kind::octet>); break;
+            case sql::common::AtomType::OCTET: fields.emplace_back(std::make_shared<meta::octet_field_option>()); break;
             case sql::common::AtomType::DECIMAL: fields.emplace_back(std::make_shared<meta::decimal_field_option>()); break;
             case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
             case sql::common::AtomType::TIME_OF_DAY: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>()); break;
@@ -408,11 +409,13 @@ inline void fill_parameters(
         }
         using ValueCase = sql::request::Parameter::ValueCase;
         switch (p.type_) {
+            case ValueCase::kBooleanValue: c0->set_boolean_value(std::any_cast<std::int8_t>(p.value_) != 0); break;
             case ValueCase::kInt4Value: c0->set_int4_value(std::any_cast<std::int32_t>(p.value_)); break;
             case ValueCase::kInt8Value: c0->set_int8_value(std::any_cast<std::int64_t>(p.value_)); break;
             case ValueCase::kFloat4Value: c0->set_float4_value(std::any_cast<float>(p.value_)); break;
             case ValueCase::kFloat8Value: c0->set_float8_value(std::any_cast<double>(p.value_)); break;
             case ValueCase::kCharacterValue: c0->set_character_value(std::any_cast<std::string>(p.value_)); break;
+            case ValueCase::kOctetValue: c0->set_octet_value(std::any_cast<std::string>(p.value_)); break;
             case ValueCase::kDecimalValue: {
                 auto triple = std::any_cast<takatori::decimal::triple>(p.value_);
                 auto* v = c0->mutable_decimal_value();

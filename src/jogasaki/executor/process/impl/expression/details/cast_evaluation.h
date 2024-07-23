@@ -174,13 +174,42 @@ any to_decimal(
 
 }  // namespace from_decimal
 
+template <class T, char PaddingChar = std::is_same_v<T, accessor::text> ? ' ' : '\0'>
 any truncate_or_pad_if_needed(
     evaluator_context& ctx,
     std::string_view src,
     std::size_t dlen,
     bool add_padding,
     bool lenient_remove_padding,
-    bool& lost_precision);
+    bool& lost_precision
+) {
+    lost_precision = false;
+    auto slen = src.length();
+    if(dlen == slen) {
+        return any{std::in_place_type<T>, T{ctx.resource(), src}};
+    }
+    if(dlen < src.length()) {
+        if(lenient_remove_padding) {
+            // check if truncation occurs only for padding or not
+            if(! std::all_of(src.begin()+dlen, src.end(), [](auto c) { return c == PaddingChar; })) {
+                lost_precision = true;
+            }
+        } else {
+            lost_precision = true;
+        }
+        return any{
+            std::in_place_type<T>,
+            T{ctx.resource(), std::string_view{src.data(), dlen}}
+        };
+    }
+    // dlen > src.length()
+    if(add_padding) {
+        std::string tmp(dlen, PaddingChar);
+        std::memcpy(tmp.data(), src.data(), src.size());
+        return any{std::in_place_type<T>, T{ctx.resource(), tmp}};
+    }
+    return any{std::in_place_type<T>, T{ctx.resource(), src}};
+}
 
 any as_triple(
     decimal::Decimal const& d,

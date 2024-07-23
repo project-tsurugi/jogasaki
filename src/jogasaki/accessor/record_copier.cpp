@@ -38,9 +38,15 @@ record_copier::record_copier(
 {
     for(std::size_t i=0, n = meta_->field_count(); i < n; ++i) {
         if (meta_->at(i).kind() == meta::field_type_kind::character) {
-            text_field_offsets_.emplace_back(meta_->value_offset(i));
-            text_field_nullity_offsets_.emplace_back(meta_->nullity_offset(i));
-            text_field_nullability_.emplace_back(meta_->nullable(i));
+            varlen_field_offsets_.emplace_back(meta_->value_offset(i));
+            varlen_field_nullity_offsets_.emplace_back(meta_->nullity_offset(i));
+            varlen_field_nullability_.emplace_back(meta_->nullable(i));
+            varlen_field_kind_.emplace_back(meta::field_type_kind::character);
+        } else if (meta_->at(i).kind() == meta::field_type_kind::octet) {
+            varlen_field_offsets_.emplace_back(meta_->value_offset(i));
+            varlen_field_nullity_offsets_.emplace_back(meta_->nullity_offset(i));
+            varlen_field_nullability_.emplace_back(meta_->nullable(i));
+            varlen_field_kind_.emplace_back(meta::field_type_kind::octet);
         }
     }
 }
@@ -49,16 +55,23 @@ void record_copier::operator()(void *dst, std::size_t size, accessor::record_ref
     BOOST_ASSERT(size <= src.size());  //NOLINT
     std::memcpy(dst, src.data(), size);
     if (resource_ != nullptr) {
-        for(std::size_t i = 0, n = text_field_offsets_.size(); i < n ; ++i) {
-            if (text_field_nullability_[i]) {
-                auto nullity_offset = text_field_nullity_offsets_[i];
+        for(std::size_t i = 0, n = varlen_field_offsets_.size(); i < n ; ++i) {
+            if (varlen_field_nullability_[i]) {
+                auto nullity_offset = varlen_field_nullity_offsets_[i];
                 if(src.is_null(nullity_offset)) continue;
             }
-            auto value_offset = text_field_offsets_[i];
-            auto t = src.get_value<accessor::text>(value_offset);
-            auto sv = static_cast<std::string_view>(t);
-            text copied{resource_, sv.data(), sv.size()};
-            std::memcpy(static_cast<unsigned char*>(dst)+value_offset, &copied, sizeof(text)); //NOLINT
+            auto value_offset = varlen_field_offsets_[i];
+            if (varlen_field_kind_[i] == meta::field_type_kind::character) {
+                auto t = src.get_value<accessor::text>(value_offset);
+                auto sv = static_cast<std::string_view>(t);
+                text copied{resource_, sv.data(), sv.size()};
+                std::memcpy(static_cast<unsigned char*>(dst)+value_offset, &copied, sizeof(text)); //NOLINT
+            } else if (varlen_field_kind_[i] == meta::field_type_kind::octet) {
+                auto t = src.get_value<accessor::binary>(value_offset);
+                auto sv = static_cast<std::string_view>(t);
+                binary copied{resource_, sv.data(), sv.size()};
+                std::memcpy(static_cast<unsigned char*>(dst)+value_offset, &copied, sizeof(binary)); //NOLINT
+            }
         }
     }
 }
@@ -67,4 +80,4 @@ void record_copier::operator()(accessor::record_ref dst, accessor::record_ref sr
     operator()(dst.data(), meta_->record_size(), src);
 }
 
-}
+}  // namespace jogasaki::accessor

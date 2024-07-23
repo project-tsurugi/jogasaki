@@ -14,44 +14,44 @@
  * limitations under the License.
  */
 
-#include <sstream>
 #include <future>
+#include <sstream>
 #include <thread>
-#include <gtest/gtest.h>
 #include <google/protobuf/text_format.h>
+#include <gtest/gtest.h>
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/maybe_shared_ptr.h>
-#include <takatori/decimal/triple.h>
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
+#include <takatori/decimal/triple.h>
+#include <takatori/util/downcast.h>
+#include <takatori/util/maybe_shared_ptr.h>
+#include <tateyama/api/server/mock/request_response.h>
 
-#include <jogasaki/kvs/id.h>
-#include <jogasaki/constants.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
-#include <jogasaki/utils/command_utils.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/impl/service.h>
-#include <jogasaki/executor/tables.h>
-#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/manager.h>
-#include <jogasaki/utils/binary_printer.h>
-#include <jogasaki/utils/latch.h>
+#include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/id.h>
+#include <jogasaki/meta/type_helper.h>
+#include <jogasaki/mock/basic_record.h>
 #include <jogasaki/test_utils/temporary_folder.h>
-
-#include <tateyama/api/server/mock/request_response.h>
-#include "api_test_base.h"
+#include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/command_utils.h>
+#include <jogasaki/utils/latch.h>
 #include <jogasaki/utils/msgbuf_utils.h>
-
+#include <jogasaki/utils/storage_data.h>
+#include "jogasaki/proto/sql/common.pb.h"
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
-#include "jogasaki/proto/sql/common.pb.h"
+
+#include "api_test_base.h"
 
 namespace jogasaki::api {
 
@@ -990,6 +990,87 @@ TEST_F(service_api_test, timestamptz) {
                 auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
                 EXPECT_EQ((mock::typed_nullable_record<ft::time_point>(
                     std::tuple{tptz}, {tp}
+                )), v[0]);
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_test, binary_type) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table T (C0 VARBINARY(5), C1 BINARY(5))");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T(C0, C1) values (:p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::OCTET},
+        std::pair{"p1"s, sql::common::AtomType::OCTET}
+    );
+
+    {
+        std::vector<parameter> parameters{
+            {"p0"s, ValueCase::kOctetValue, std::any{std::in_place_type<std::string>, "\x01\x02\x03"s}},
+            {"p1"s, ValueCase::kOctetValue, std::any{std::in_place_type<std::string>, "\x04\x05\x06"s}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto [success, error, stats] = decode_execute_result(res->body_);
+        ASSERT_TRUE(success);
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select C0, C1 from T"
+    );
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(2, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::OCTET, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_EQ(sql::common::AtomType::OCTET, cols[1].type_);
+            EXPECT_TRUE(cols[1].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                EXPECT_EQ((mock::typed_nullable_record<ft::octet, ft::octet>(
+                    std::tuple{meta::octet_type(true), meta::octet_type(true)}, // currently service.cpp layer does not handle varying=true/false and all octet columns are varying
+                    {accessor::binary{"\x01\x02\x03"}, accessor::binary{"\x04\x05\x06\x00\x00"}}
                 )), v[0]);
             }
         }

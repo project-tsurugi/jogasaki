@@ -43,11 +43,13 @@ public:
      * @param name the name of the placeholder without colon
      * @param value the value assigned to the placeholder
      */
+    virtual void set_boolean(std::string_view name, field_type_traits<kind::boolean>::runtime_type value) = 0;
     virtual void set_int4(std::string_view name, field_type_traits<kind::int4>::runtime_type value) = 0;
     virtual void set_int8(std::string_view name, field_type_traits<kind::int8>::runtime_type value) = 0;
     virtual void set_float4(std::string_view name, field_type_traits<kind::float4>::runtime_type value) = 0;
     virtual void set_float8(std::string_view name, field_type_traits<kind::float8>::runtime_type value) = 0;
     virtual void set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) = 0;
+    virtual void set_octet(std::string_view name, field_type_traits<kind::octet>::runtime_type value) = 0;
     virtual void set_decimal(std::string_view name, field_type_traits<kind::decimal>::runtime_type value) = 0;
     virtual void set_date(std::string_view name, field_type_traits<kind::date>::runtime_type value) = 0;
     virtual void set_time_of_day(std::string_view name, field_type_traits<kind::time_of_day>::runtime_type value) = 0;

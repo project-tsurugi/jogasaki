@@ -48,6 +48,7 @@ any value::view() const {
         case index<float>: return any{std::in_place_type<float>, ref<float>()};
         case index<double>: return any{std::in_place_type<double>, ref<double>()};
         case index<std::string>: return any{std::in_place_type<accessor::text>, accessor::text{ref<std::string>()}};
+        case index<binary_string_value>: return any{std::in_place_type<accessor::binary>, accessor::binary{ref<binary_string_value>().str()}};
         case index<runtime_t<meta::field_type_kind::decimal>>: return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, ref<runtime_t<meta::field_type_kind::decimal>>()};
         case index<runtime_t<meta::field_type_kind::date>>: return any{std::in_place_type<runtime_t<meta::field_type_kind::date>>, ref<runtime_t<meta::field_type_kind::date>>()};
         case index<runtime_t<meta::field_type_kind::time_of_day>>: return any{std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, ref<runtime_t<meta::field_type_kind::time_of_day>>()};
@@ -58,7 +59,4 @@ any value::view() const {
     std::abort();
 }
 
-
-}
-
-
+}  // namespace jogasaki::data

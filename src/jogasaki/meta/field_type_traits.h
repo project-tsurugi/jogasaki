@@ -23,12 +23,13 @@
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 
-#include <jogasaki/accessor/text.h>
 #include <jogasaki/accessor/binary.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_option.h>
-#include <jogasaki/meta/decimal_field_option.h>
-#include <jogasaki/meta/character_field_option.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 
@@ -78,7 +79,7 @@ template <>
 struct field_type_traits<field_type_kind::character> : simple_field_type_traits<accessor::text, character_field_option> {};
 
 template <>
-struct field_type_traits<field_type_kind::octet> : simple_field_type_traits<accessor::binary> {};
+struct field_type_traits<field_type_kind::octet> : simple_field_type_traits<accessor::binary, octet_field_option> {};
 
 template <>
 struct field_type_traits<field_type_kind::date> : simple_field_type_traits<takatori::datetime::date> {};

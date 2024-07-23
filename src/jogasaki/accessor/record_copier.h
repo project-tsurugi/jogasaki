@@ -75,9 +75,10 @@ public:
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     memory::paged_memory_resource* resource_{};
-    std::vector<offset_type> text_field_offsets_{};
-    std::vector<offset_type> text_field_nullity_offsets_{};
-    std::vector<bool> text_field_nullability_{};
+    std::vector<offset_type> varlen_field_offsets_{};
+    std::vector<offset_type> varlen_field_nullity_offsets_{};
+    std::vector<bool> varlen_field_nullability_{};
+    std::vector<meta::field_type_kind> varlen_field_kind_{};
 };
 
-}
+}  // namespace jogasaki::accessor

@@ -162,26 +162,26 @@ TEST_F(cast_to_string_test, truncate) {
     {
         // no truncation
         bool lost_precision = false;
-        EXPECT_EQ((any{std::in_place_type<text>, "ABC"}), details::truncate_or_pad_if_needed(ctx, "ABC", 3, false, false, lost_precision));
+        EXPECT_EQ((any{std::in_place_type<text>, "ABC"}), details::truncate_or_pad_if_needed<text>(ctx, "ABC", 3, false, false, lost_precision));
         EXPECT_FALSE(lost_precision);
     }
     {
         // truncated non-padding char
         bool lost_precision = false;
-        EXPECT_EQ((any{std::in_place_type<text>, "AB"}), details::truncate_or_pad_if_needed(ctx, "ABC", 2, false, false, lost_precision));
+        EXPECT_EQ((any{std::in_place_type<text>, "AB"}), details::truncate_or_pad_if_needed<text>(ctx, "ABC", 2, false, false, lost_precision));
         EXPECT_TRUE(lost_precision);
     }
     {
         // truncated padding char, but is not lenient
         bool lost_precision = false;
-        EXPECT_EQ((any{std::in_place_type<text>, "AB"}), details::truncate_or_pad_if_needed(ctx, "AB  ", 2, false, false, lost_precision));
+        EXPECT_EQ((any{std::in_place_type<text>, "AB"}), details::truncate_or_pad_if_needed<text>(ctx, "AB  ", 2, false, false, lost_precision));
         EXPECT_TRUE(lost_precision);
     }
     {
         // truncated padding char, and is lenient
         bool lost_precision = false;
         EXPECT_EQ((any{std::in_place_type<text>, "AB"}),
-            details::truncate_or_pad_if_needed(ctx, "AB  ", 2, false, true, lost_precision));
+            details::truncate_or_pad_if_needed<text>(ctx, "AB  ", 2, false, true, lost_precision));
         EXPECT_FALSE(lost_precision);
     }
 }
@@ -192,14 +192,14 @@ TEST_F(cast_to_string_test, padding) {
         // no padding
         bool lost_precision = false;
         EXPECT_EQ((any{std::in_place_type<text>, "ABC"}),
-            details::truncate_or_pad_if_needed(ctx, "ABC", 5, false, false, lost_precision));
+            details::truncate_or_pad_if_needed<text>(ctx, "ABC", 5, false, false, lost_precision));
         EXPECT_FALSE(lost_precision);
     }
     {
         // add padding
         bool lost_precision = false;
         EXPECT_EQ((any{std::in_place_type<text>, "ABC  "}),
-            details::truncate_or_pad_if_needed(ctx, "ABC", 5, true, false, lost_precision));
+            details::truncate_or_pad_if_needed<text>(ctx, "ABC", 5, true, false, lost_precision));
         EXPECT_FALSE(lost_precision);
     }
 }

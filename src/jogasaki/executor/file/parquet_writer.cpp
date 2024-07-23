@@ -264,6 +264,10 @@ parquet_writer::create_schema() {
             name = o.value();
         }
         switch(meta_->at(i).kind()) {
+            case meta::field_type_kind::boolean: {
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, Type::BOOLEAN, ConvertedType::NONE));
+                break;
+            }
             case meta::field_type_kind::int4: {
                 fields.push_back(
                     PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::Int(32, true), Type::INT32)

@@ -48,6 +48,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
@@ -128,6 +129,11 @@ inline void create_entity(
                     accessor::text copy(resource, record.get_value<accessor::text>(meta.value_offset(i)));
                     std::memcpy(&entity[0]+i*basic_record_field_size, &copy, sizeof(accessor::text));  //NOLINT
                 }
+            } else if (f.kind() == kind::octet) {
+                if (!meta.nullable(i) || !record.is_null(meta.nullity_offset(i))) {
+                    accessor::binary copy(resource, record.get_value<accessor::binary>(meta.value_offset(i)));
+                    std::memcpy(&entity[0]+i*basic_record_field_size, &copy, sizeof(accessor::binary));  //NOLINT
+                }
             }
             ++i;
         }
@@ -162,6 +168,11 @@ inline meta::field_type create_field_type<meta::field_type_kind::decimal>() {
 template <>
 inline meta::field_type create_field_type<meta::field_type_kind::character>() {
     return meta::field_type(std::make_shared<meta::character_field_option>());
+}
+
+template <>
+inline meta::field_type create_field_type<meta::field_type_kind::octet>() {
+    return meta::field_type(std::make_shared<meta::octet_field_option>());
 }
 
 }  //namespace details

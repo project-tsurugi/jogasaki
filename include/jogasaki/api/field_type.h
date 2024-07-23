@@ -15,9 +15,10 @@
  */
 #pragma once
 
-#include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/character_field_option.h>
 #include <jogasaki/api/decimal_field_option.h>
+#include <jogasaki/api/field_type_kind.h>
+#include <jogasaki/api/octet_field_option.h>
 #include <jogasaki/api/time_of_day_field_option.h>
 #include <jogasaki/api/time_point_field_option.h>
 
@@ -65,6 +66,13 @@ public:
     [[nodiscard]] virtual std::shared_ptr<character_field_option> const& character_option() const noexcept = 0;
 
     /**
+     * @brief accessor to octet field option
+     * @return octet type field option if the field type is octet
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] virtual std::shared_ptr<octet_field_option> const& octet_option() const noexcept = 0;
+
+    /**
      * @brief accessor to decimal field option
      * @return decimal type field option if the field type is decimal
      * @return nullptr otherwise
@@ -86,5 +94,4 @@ public:
     [[nodiscard]] virtual std::shared_ptr<time_point_field_option> const& time_point_option() const noexcept = 0;
 };
 
-} // namespace
-
+}  // namespace jogasaki::api

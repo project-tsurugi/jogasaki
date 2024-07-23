@@ -50,6 +50,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/decimal.h>
@@ -60,7 +61,8 @@ using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
 
 template <class T, class Reader>
-T read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
+std::enable_if_t<! std::is_same_v<T, std::int8_t>, T>
+read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
     int64_t values_read = 0;
     int64_t rows_read = 0;
     int16_t definition_level = 0;
@@ -80,6 +82,34 @@ T read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, boo
         }
         if (values_read == 1) {
             return value;
+        }
+    }
+    throw std::logic_error{"column format error"};
+}
+
+template <class T, class Reader>
+std::enable_if_t<std::is_same_v<T, std::int8_t>, T>
+read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
+    int64_t values_read = 0;
+    int64_t rows_read = 0;
+    int16_t definition_level = 0;
+    null = false;
+    nodata = false;
+    auto* r = static_cast<Reader*>(std::addressof(reader));
+    if(! r->HasNext()) {
+        nodata = true;
+        return {};
+    }
+    // T value{};
+    bool value{};
+    rows_read = r->ReadBatch(1, &definition_level, nullptr, &value, &values_read);
+    if(rows_read == 1) {
+        if (values_read == 0 && definition_level == 0) {
+            null = true;
+            return {};
+        }
+        if (values_read == 1) {
+            return static_cast<std::int8_t>(value ? 1 : 0);
         }
     }
     throw std::logic_error{"column format error"};
@@ -196,13 +226,14 @@ bool parquet_reader::next(accessor::record_ref& ref) {
             bool null{false};
             bool nodata{false};
             switch(parameter_meta_->at(i).kind()) {
+                case meta::field_type_kind::boolean: ref.set_value<runtime_t<meta::field_type_kind::boolean>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::boolean>, parquet::BoolReader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::int4: ref.set_value<runtime_t<meta::field_type_kind::int4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, parquet::Int32Reader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::int8: ref.set_value<runtime_t<meta::field_type_kind::int8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, parquet::Int64Reader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::float4: ref.set_value<runtime_t<meta::field_type_kind::float4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, parquet::FloatReader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::float8: ref.set_value<runtime_t<meta::field_type_kind::float8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, parquet::DoubleReader>(reader, type, null, nodata)); break;
+                case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::character: ref.set_value<runtime_t<meta::field_type_kind::character>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::octet: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>>(reader, type, null, nodata)); break;
-                case meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, parquet::ByteArrayReader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, parquet::Int32Reader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::time_of_day: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, parquet::Int64Reader>(reader, type, null, nodata)); break;
                 case meta::field_type_kind::time_point: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(reader, type, null, nodata)); break;
@@ -354,7 +385,7 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
                 return meta::field_type{meta::field_enum_tag<meta::field_type_kind::boolean>};
             }
             if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
-                return meta::field_type{meta::field_enum_tag<meta::field_type_kind::octet>};
+                return meta::field_type{std::make_shared<meta::octet_field_option>()};
             }
 
             // even without logical type, parameter type helps guessing the type

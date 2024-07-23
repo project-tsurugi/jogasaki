@@ -20,20 +20,20 @@
 namespace jogasaki::api {
 
 /**
- * @brief type information for a character field
+ * @brief type information for a octet field
  */
-class character_field_option {
+class octet_field_option {
 public:
 
     /**
      * @brief construct empty object
      */
-    constexpr character_field_option() noexcept = default;
+    constexpr octet_field_option() noexcept = default;
 
     /**
      * @brief construct new object
      */
-    constexpr character_field_option(
+    constexpr octet_field_option(
         bool varying,
         std::optional<std::size_t> length
     ) noexcept :
@@ -43,12 +43,12 @@ public:
     /**
      * @brief destruct the object
      */
-    ~character_field_option() = default;
+    ~octet_field_option() = default;
 
-    character_field_option(character_field_option const& other) = default;
-    character_field_option& operator=(character_field_option const& other) = default;
-    character_field_option(character_field_option&& other) noexcept = default;
-    character_field_option& operator=(character_field_option&& other) noexcept = default;
+    octet_field_option(octet_field_option const& other) = default;
+    octet_field_option& operator=(octet_field_option const& other) = default;
+    octet_field_option(octet_field_option&& other) noexcept = default;
+    octet_field_option& operator=(octet_field_option&& other) noexcept = default;
 
     [[nodiscard]] std::optional<std::size_t> length() const noexcept {
         return length_;

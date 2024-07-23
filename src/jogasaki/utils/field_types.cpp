@@ -20,6 +20,7 @@
 #include <takatori/descriptor/variable.h>
 #include <takatori/type/character.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
@@ -29,6 +30,7 @@
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/fail.h>
@@ -54,7 +56,10 @@ meta::field_type type_for(takatori::type::data const& type) {
             auto& typ = static_cast<::takatori::type::character const&>(type);  //NOLINT
             return meta::field_type(std::make_shared<meta::character_field_option>(typ.varying(), typ.length()));
         }
-        case t::octet: return meta::field_type(meta::field_enum_tag<k::octet>);
+        case t::octet: {
+            auto& typ = static_cast<::takatori::type::octet const&>(type);  //NOLINT
+            return meta::field_type(std::make_shared<meta::octet_field_option>(typ.varying(), typ.length()));
+        }
         case t::bit: return meta::field_type(meta::field_enum_tag<k::bit>);
         case t::date: return meta::field_type(meta::field_enum_tag<k::date>);
         case t::time_of_day: {

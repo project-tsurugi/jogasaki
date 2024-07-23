@@ -37,6 +37,7 @@
 #include <takatori/type/data.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
 #include <takatori/type/primitive.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
@@ -340,15 +341,17 @@ void add_variable(
         return;
     }
     switch(kind) {
+        case field_type_kind::boolean: provider.add({name, takatori::type::boolean{}}, true); break;
         case field_type_kind::int4: provider.add({name, takatori::type::int4{}}, true); break;
         case field_type_kind::int8: provider.add({name, takatori::type::int8{}}, true); break;
         case field_type_kind::float4: provider.add({name, takatori::type::float4{}}, true); break;
         case field_type_kind::float8: provider.add({name, takatori::type::float8{}}, true); break;
+        case field_type_kind::decimal: provider.add({name, takatori::type::decimal{}}, true); break;
         case field_type_kind::character: provider.add({name, takatori::type::character{takatori::type::varying}}, true); break;
+        case field_type_kind::octet: provider.add({name, takatori::type::octet{takatori::type::varying}}, true); break;
         case field_type_kind::date: provider.add({name, takatori::type::date{}}, true); break;
         case field_type_kind::time_of_day: provider.add({name, takatori::type::time_of_day{}}, true); break;
         case field_type_kind::time_point: provider.add({name, takatori::type::time_point{}}, true); break;
-        case field_type_kind::decimal: provider.add({name, takatori::type::decimal{}}, true); break;
         default:
             throw_exception(std::logic_error{""});
     }
@@ -765,6 +768,20 @@ bool validate_type(
     return false;
 }
 
+bool validate_type(
+    std::string_view colname,
+    takatori::type::octet const& typ
+) {
+    std::string_view reason{};
+    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= 30716)) {
+        reason = "invalid length";
+    } else {
+        return true;
+    }
+    VLOG_LP(log_error) << "Data type specified for column \"" << colname << "\" is unsupported (" << reason << ")";
+    return false;
+}
+
 bool validate_table_definition(yugawara::storage::table const& t) {
     // should be sync with the same name function in create_table.cpp
     using takatori::type::type_kind;
@@ -777,6 +794,11 @@ bool validate_table_definition(yugawara::storage::table const& t) {
                 break;
             case type_kind::character:
                 if(! validate_type(c.simple_name(), unsafe_downcast<takatori::type::character const>(c.type()))) {
+                    return false;
+                }
+                break;
+            case type_kind::octet:
+                if(! validate_type(c.simple_name(), unsafe_downcast<takatori::type::octet const>(c.type()))) {
                     return false;
                 }
                 break;

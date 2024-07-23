@@ -1048,6 +1048,9 @@ void service::set_params(
     for (std::size_t i=0, n=static_cast<std::size_t>(ps.size()); i < n; ++i) {
         auto& p = ps.Get(static_cast<int>(i));
         switch (p.value_case()) {
+            case sql::request::Parameter::ValueCase::kBooleanValue:
+                params->set_boolean(p.name(), static_cast<std::int8_t>(p.boolean_value() ? 1 : 0));
+                break;
             case sql::request::Parameter::ValueCase::kInt4Value:
                 params->set_int4(p.name(), p.int4_value());
                 break;
@@ -1062,6 +1065,9 @@ void service::set_params(
                 break;
             case sql::request::Parameter::ValueCase::kCharacterValue:
                 params->set_character(p.name(), p.character_value());
+                break;
+            case sql::request::Parameter::ValueCase::kOctetValue:
+                params->set_octet(p.name(), p.octet_value());
                 break;
             case sql::request::Parameter::ValueCase::kDecimalValue:
                 params->set_decimal(p.name(), to_triple(p.decimal_value()));
@@ -1270,11 +1276,14 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
             case jogasaki::api::field_type_kind::float8:
                 column->set_atom_type(sql::common::AtomType::FLOAT8);
                 break;
+            case jogasaki::api::field_type_kind::decimal:
+                column->set_atom_type(sql::common::AtomType::DECIMAL);
+                break;
             case jogasaki::api::field_type_kind::character:
                 column->set_atom_type(sql::common::AtomType::CHARACTER);
                 break;
-            case jogasaki::api::field_type_kind::decimal:
-                column->set_atom_type(sql::common::AtomType::DECIMAL);
+            case jogasaki::api::field_type_kind::octet:
+                column->set_atom_type(sql::common::AtomType::OCTET);
                 break;
             case jogasaki::api::field_type_kind::date:
                 column->set_atom_type(sql::common::AtomType::DATE);

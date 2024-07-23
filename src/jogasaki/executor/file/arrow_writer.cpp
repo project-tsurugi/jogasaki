@@ -491,8 +491,18 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
                 break;
             }
             case meta::field_type_kind::octet: {
-                // TODO get length and varying flag to distinguish BINARY/VARBINARY
-                type = arrow::fixed_size_binary(10);
+                auto opt = meta_->at(i).option<meta::field_type_kind::octet>();
+                options[i].varying_ = opt->varying_;
+                options[i].length_ =
+                    opt->length_.has_value() ? opt->length_.value() : details::column_option::undefined;
+                if(opt->varying_) {
+                    type = arrow::binary();
+                    break;
+                }
+                if(! opt->length_.has_value()) {
+                    throw_exception(std::logic_error{"no length for binary field"});
+                }
+                type = arrow::fixed_size_binary(static_cast<std::int32_t>(*opt->length_));
                 break;
             }
             case meta::field_type_kind::decimal: {

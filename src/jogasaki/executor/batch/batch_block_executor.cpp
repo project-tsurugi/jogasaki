@@ -72,13 +72,14 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
         }
         using kind = meta::field_type_kind;
         switch(param.type_) {
+            case meta::field_type_kind::boolean: pset->set_boolean(name, ref.get_value<runtime_t<kind::boolean>>(param.value_offset_)); break;
             case meta::field_type_kind::int4: pset->set_int4(name, ref.get_value<runtime_t<kind::int4>>(param.value_offset_)); break;
             case meta::field_type_kind::int8: pset->set_int8(name, ref.get_value<runtime_t<kind::int8>>(param.value_offset_)); break;
             case meta::field_type_kind::float4: pset->set_float4(name, ref.get_value<runtime_t<kind::float4>>(param.value_offset_)); break;
             case meta::field_type_kind::float8: pset->set_float8(name, ref.get_value<runtime_t<kind::float8>>(param.value_offset_)); break;
+            case meta::field_type_kind::decimal: pset->set_decimal(name, ref.get_value<runtime_t<kind::decimal>>(param.value_offset_)); break;
             case meta::field_type_kind::character: pset->set_character(name, ref.get_value<runtime_t<kind::character>>(param.value_offset_)); break;
             case meta::field_type_kind::octet: pset->set_octet(name, ref.get_value<runtime_t<kind::octet>>(param.value_offset_)); break;
-            case meta::field_type_kind::decimal: pset->set_decimal(name, ref.get_value<runtime_t<kind::decimal>>(param.value_offset_)); break;
             case meta::field_type_kind::date: pset->set_date(name, ref.get_value<runtime_t<kind::date>>(param.value_offset_)); break;
             case meta::field_type_kind::time_of_day: pset->set_time_of_day(name, ref.get_value<runtime_t<kind::time_of_day>>(param.value_offset_)); break;
             case meta::field_type_kind::time_point: pset->set_time_point(name, ref.get_value<runtime_t<kind::time_point>>(param.value_offset_)); break;

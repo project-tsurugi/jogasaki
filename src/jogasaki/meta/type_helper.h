@@ -31,51 +31,55 @@
 
 namespace jogasaki::meta {
 
-field_type int1_type() {
+inline field_type boolean_type() {
+    return field_type{field_enum_tag<field_type_kind::boolean>};
+}
+
+inline field_type int1_type() {
     return field_type{field_enum_tag<field_type_kind::int1>};
 }
 
-field_type int2_type() {
+inline field_type int2_type() {
     return field_type{field_enum_tag<field_type_kind::int2>};
 }
 
-field_type int4_type() {
+inline field_type int4_type() {
     return field_type{field_enum_tag<field_type_kind::int4>};
 }
 
-field_type int8_type() {
+inline field_type int8_type() {
     return field_type{field_enum_tag<field_type_kind::int8>};
 }
 
-field_type float4_type() {
+inline field_type float4_type() {
     return field_type{field_enum_tag<field_type_kind::float4>};
 }
 
-field_type float8_type() {
+inline field_type float8_type() {
     return field_type{field_enum_tag<field_type_kind::float8>};
 }
 
-field_type decimal_type(std::optional<std::size_t> precision = std::nullopt, std::optional<std::size_t> scale = std::nullopt) {
+inline field_type decimal_type(std::optional<std::size_t> precision = std::nullopt, std::optional<std::size_t> scale = std::nullopt) {
     return field_type{std::make_shared<decimal_field_option>(precision, scale)};
 }
 
-field_type character_type(bool varying = true, std::optional<std::size_t> length = std::nullopt) {
+inline field_type character_type(bool varying = true, std::optional<std::size_t> length = std::nullopt) {
     return field_type{std::make_shared<character_field_option>(varying, length)};
 }
 
-field_type octet_type(bool varying = true, std::optional<std::size_t> length = std::nullopt) {
-    return field_type{field_enum_tag<field_type_kind::octet>};
+inline field_type octet_type(bool varying = true, std::optional<std::size_t> length = std::nullopt) {
+    return field_type{std::make_shared<octet_field_option>(varying, length)};
 }
 
-field_type date_type() {
+inline field_type date_type() {
     return field_type{field_enum_tag<field_type_kind::date>};
 }
 
-field_type time_of_day_type(bool with_offset = false) {
+inline field_type time_of_day_type(bool with_offset = false) {
     return field_type{std::make_shared<time_of_day_field_option>(with_offset)};
 }
 
-field_type time_point_type(bool with_offset = false) {
+inline field_type time_point_type(bool with_offset = false) {
     return field_type{std::make_shared<time_point_field_option>(with_offset)};
 }
 

@@ -61,7 +61,8 @@ enum class field_type_kind : std::size_t {
     using namespace std::string_view_literals;
     using kind = field_type_kind;
     switch (value) {
-        case kind::boolean: return "variable"sv;
+        case kind::undefined: return "undefined"sv;
+        case kind::boolean: return "boolean"sv;
         case kind::int1: return "int1"sv;
         case kind::int2: return "int2"sv;
         case kind::int4: return "int4"sv;
@@ -76,7 +77,6 @@ enum class field_type_kind : std::size_t {
         case kind::time_of_day: return "time_of_day"sv;
         case kind::time_point: return "time_point"sv;
         case kind::time_interval: return "time_interval"sv;
-        case kind::undefined: return "undefined"sv;
         case kind::array: return "array"sv;
         case kind::record: return "record"sv;
         case kind::unknown: return "unknown"sv;

@@ -27,6 +27,7 @@
 #include <takatori/type/character.h>
 #include <takatori/type/data.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
@@ -150,6 +151,26 @@ bool validate_type(
     return false;
 }
 
+bool validate_type(
+    request_context& context,
+    std::string_view colname,
+    takatori::type::octet const& typ
+) {
+    std::string_view reason{};
+    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= 30716)) {
+        reason = "invalid length";
+    } else {
+        return true;
+    }
+    set_error(
+        context,
+        error_code::unsupported_runtime_feature_exception,
+        string_builder{} << "octet type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,
+        status::err_unsupported
+    );
+    return false;
+}
+
 bool validate_default_value(
     request_context& context,
     yugawara::storage::column const& c
@@ -200,6 +221,13 @@ bool validate_table_definition(
                 continue;
             case type_kind::octet:
                 if(context.configuration()->support_octet()) {
+                    if(! validate_type(
+                           context,
+                           c.simple_name(),
+                           unsafe_downcast<takatori::type::octet const>(c.type())
+                       )) {
+                        return false;
+                    }
                     continue;
                 }
                 break;

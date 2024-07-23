@@ -865,19 +865,21 @@ void identity_post(
     target.set_null(target_nullity_offset, is_null);
     if (is_null) return;
     switch(type.kind()) {
+        case kind::boolean: target.set_value<runtime_t<kind::boolean>>(target_offset, source.get_value<runtime_t<kind::boolean>>(offset)); break;
         case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, source.get_value<runtime_t<kind::int4>>(offset)); break;
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(offset)); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, source.get_value<runtime_t<kind::float4>>(offset)); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, source.get_value<runtime_t<kind::float8>>(offset)); break;
+        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, source.get_value<runtime_t<kind::decimal>>(offset)); break;
         case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, source.get_value<runtime_t<kind::character>>(offset)); break;
         case kind::octet: target.set_value<runtime_t<kind::octet>>(target_offset, source.get_value<runtime_t<kind::octet>>(offset)); break;
-        case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, source.get_value<runtime_t<kind::decimal>>(offset)); break;
         case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, source.get_value<runtime_t<kind::date>>(offset)); break;
         case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, source.get_value<runtime_t<kind::time_of_day>>(offset)); break;
         case kind::time_point: target.set_value<runtime_t<kind::time_point>>(target_offset, source.get_value<runtime_t<kind::time_point>>(offset)); break;
         default: fail_with_exception();
     }
 }
-}
 
-}
+}  // namespace builtin
+
+}  // namespace jogasaki::executor::function::incremental

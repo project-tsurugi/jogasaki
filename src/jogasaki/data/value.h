@@ -23,6 +23,7 @@
 #include <variant>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/data/binary_string_value.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/fail.h>
@@ -47,7 +48,8 @@ public:
         std::int64_t,
         float,
         double,
-        std::string,
+        std::string,  // character
+        binary_string_value,  // octet
         runtime_t<meta::field_type_kind::decimal>,
         runtime_t<meta::field_type_kind::date>,
         runtime_t<meta::field_type_kind::time_of_day>,

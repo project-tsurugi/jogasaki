@@ -108,8 +108,9 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
                 case t::int8: copy_to<runtime_t<meta::field_type_kind::int8>>(ref, info.value_offset(), result); break;
                 case t::float4: copy_to<runtime_t<meta::field_type_kind::float4>>(ref, info.value_offset(), result); break;
                 case t::float8: copy_to<runtime_t<meta::field_type_kind::float8>>(ref, info.value_offset(), result); break;
-                case t::character: copy_to<runtime_t<meta::field_type_kind::character>>(ref, info.value_offset(), result); break;
                 case t::decimal: copy_to<runtime_t<meta::field_type_kind::decimal>>(ref, info.value_offset(), result); break;
+                case t::character: copy_to<runtime_t<meta::field_type_kind::character>>(ref, info.value_offset(), result); break;
+                case t::octet: copy_to<runtime_t<meta::field_type_kind::octet>>(ref, info.value_offset(), result); break;
                 case t::date: copy_to<runtime_t<meta::field_type_kind::date>>(ref, info.value_offset(), result); break;
                 case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), result); break;
                 case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;

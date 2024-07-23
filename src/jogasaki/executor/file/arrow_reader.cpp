@@ -91,11 +91,19 @@ read_data(arrow::Array& array, std::size_t offset) {
 }
 
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, T>
+std::enable_if_t<std::is_same_v<T, accessor::text>, T>
 read_data(arrow::Array& array, std::size_t offset) {
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
     return accessor::text{r.GetView(offset)};
+}
+
+template <class T, arrow::Type::type Typeid>
+std::enable_if_t<std::is_same_v<T, accessor::binary>, T>
+read_data(arrow::Array& array, std::size_t offset) {
+    using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
+    auto& r = static_cast<array_type&>(array);
+    return accessor::binary{r.GetView(offset)};
 }
 
 template <class T, arrow::Type::type Typeid>
@@ -181,6 +189,7 @@ bool arrow_reader::next(accessor::record_ref& ref) {
                 case arrow::Type::TIMESTAMP: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, arrow::Type::TIMESTAMP>(array, offset_)); break;
                 case arrow::Type::DECIMAL128: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, arrow::Type::DECIMAL128>(array, offset_)); break;
                 case arrow::Type::FIXED_SIZE_BINARY: ref.set_value<runtime_t<meta::field_type_kind::character>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, arrow::Type::FIXED_SIZE_BINARY>(array, offset_)); break;
+                case arrow::Type::BINARY: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>, arrow::Type::BINARY>(array, offset_)); break;
                 default: {
                     VLOG_LP(log_error) << "Arrow array saw invalid type: " << parameter_meta_->at(i).kind();
                     return false;

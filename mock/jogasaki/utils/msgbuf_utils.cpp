@@ -75,21 +75,29 @@ std::vector<mock::basic_record> deserialize_msg(
         for (std::size_t index = 0, n = meta.field_count(); index < n ; index++) {
             if(auto tp = serializer::peek_type(it, end); tp == serializer::entry_type::null) {
                 set_null(ref, index, meta);
+                serializer::read_null(it, end);
                 continue;
             }
             auto& fld = meta.at(index);
             switch (fld.kind()) {
+                case jogasaki::meta::field_type_kind::boolean: ref.set_value<std::int8_t>(meta.value_offset(index), static_cast<std::int8_t>(serializer::read_int(it, end))); break;
                 case jogasaki::meta::field_type_kind::int4: ref.set_value<std::int32_t>(meta.value_offset(index), static_cast<std::int32_t>(serializer::read_int(it, end))); break;
                 case jogasaki::meta::field_type_kind::int8: ref.set_value<std::int64_t>(meta.value_offset(index), serializer::read_int(it, end)); break;
                 case jogasaki::meta::field_type_kind::float4: ref.set_value<float>(meta.value_offset(index), serializer::read_float4(it, end)); break;
                 case jogasaki::meta::field_type_kind::float8: ref.set_value<double>(meta.value_offset(index), serializer::read_float8(it, end)); break;
+                case jogasaki::meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta.value_offset(index), serializer::read_decimal(it, end)); break;
                 case jogasaki::meta::field_type_kind::character: {
                     auto v = serializer::read_character(it, end);
                     auto sv = record.allocate_varlen_data(v);
                     record.ref().set_value(meta.value_offset(index), accessor::text{sv});
                     break;
                 }
-                case jogasaki::meta::field_type_kind::decimal: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(meta.value_offset(index), serializer::read_decimal(it, end)); break;
+                case jogasaki::meta::field_type_kind::octet: {
+                    auto v = serializer::read_octet(it, end);
+                    auto sv = record.allocate_varlen_data(v);
+                    record.ref().set_value(meta.value_offset(index), accessor::binary{sv});
+                    break;
+                }
                 case jogasaki::meta::field_type_kind::date: ref.set_value<runtime_t<meta::field_type_kind::date>>(meta.value_offset(index), serializer::read_date(it, end)); break;
                 case jogasaki::meta::field_type_kind::time_of_day: {
                     if(fld.option_unsafe<jogasaki::meta::field_type_kind::time_of_day>()->with_offset_) {

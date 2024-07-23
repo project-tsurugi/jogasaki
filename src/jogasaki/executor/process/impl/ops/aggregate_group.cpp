@@ -131,13 +131,14 @@ void copy_value(
         return;
     }
     switch(dest.type().kind()) {
+        case kind::boolean: dest.append(src.get_value<runtime_t<kind::boolean>>(offset)); break;
         case kind::int4: dest.append(src.get_value<runtime_t<kind::int4>>(offset)); break;
         case kind::int8: dest.append(src.get_value<runtime_t<kind::int8>>(offset)); break;
         case kind::float4: dest.append(src.get_value<runtime_t<kind::float4>>(offset)); break;
         case kind::float8: dest.append(src.get_value<runtime_t<kind::float8>>(offset)); break;
+        case kind::decimal: dest.append(src.get_value<runtime_t<kind::decimal>>(offset)); break;
         case kind::character: dest.append(src.get_value<runtime_t<kind::character>>(offset)); break;
         case kind::octet: dest.append(src.get_value<runtime_t<kind::octet>>(offset)); break;
-        case kind::decimal: dest.append(src.get_value<runtime_t<kind::decimal>>(offset)); break;
         case kind::date: dest.append(src.get_value<runtime_t<kind::date>>(offset)); break;
         case kind::time_of_day: dest.append(src.get_value<runtime_t<kind::time_of_day>>(offset)); break;
         case kind::time_point: dest.append(src.get_value<runtime_t<kind::time_point>>(offset)); break;
@@ -327,6 +328,4 @@ details::aggregate_group_argument::aggregate_group_argument(
     nullable_(nullable)
 {}
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

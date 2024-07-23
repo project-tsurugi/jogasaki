@@ -25,6 +25,10 @@ namespace jogasaki::api::impl {
 
 parameter_set::parameter_set(std::shared_ptr<plan::parameter_set> body) noexcept: body_(std::move(body)) {}
 
+void parameter_set::set_boolean(std::string_view name, field_type_traits<kind::boolean>::runtime_type value) {
+    body_->set_boolean(name, value);
+}
+
 void parameter_set::set_int4(std::string_view name, field_type_traits<kind::int4>::runtime_type value) {
     body_->set_int4(name, value);
 }
@@ -43,6 +47,10 @@ void parameter_set::set_float8(std::string_view name, field_type_traits<kind::fl
 
 void parameter_set::set_character(std::string_view name, field_type_traits<kind::character>::runtime_type value) {
     body_->set_character(name, accessor::text{const_cast<char*>(value.data()), value.size()});
+}
+
+void parameter_set::set_octet(std::string_view name, field_type_traits<kind::octet>::runtime_type value) {
+    body_->set_octet(name, accessor::binary{const_cast<char*>(value.data()), value.size()});
 }
 
 void parameter_set::set_decimal(std::string_view name, field_type_traits<kind::decimal>::runtime_type value) {

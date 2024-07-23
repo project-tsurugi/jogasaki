@@ -23,6 +23,7 @@
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 
+#include <jogasaki/data/binary_string_value.h>
 #include <jogasaki/data/value.h>
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
@@ -35,6 +36,15 @@
 namespace jogasaki::plan {
 
 using kind = meta::field_type_kind;
+
+void parameter_set::set_boolean(std::string_view name, runtime_t<kind::boolean> value) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::boolean>},
+            data::value{std::in_place_type<runtime_t<kind::boolean>>, value}
+        }
+    );
+}
 
 void parameter_set::set_int4(std::string_view name, runtime_t<kind::int4> value) {
     add(std::string(name),
@@ -85,9 +95,9 @@ void parameter_set::set_character(std::string_view name, runtime_t<kind::charact
 void parameter_set::set_octet(std::string_view name, runtime_t<kind::octet> value) {
     add(std::string(name),
         {
-            meta::field_type{meta::field_enum_tag<kind::octet>},
-            data::value{std::in_place_type<std::string>, static_cast<std::string_view>(value)}
-            // use std::string so that the content is copied from accessor::text
+            meta::field_type{std::make_shared<meta::octet_field_option>()},
+            data::value{std::in_place_type<data::binary_string_value>, static_cast<std::string_view>(value)}
+            // use binary_string_value so that the content is copied from accessor::binary
         }
     );
 }

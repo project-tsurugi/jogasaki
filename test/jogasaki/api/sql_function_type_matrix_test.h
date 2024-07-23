@@ -93,57 +93,21 @@ public:
         std::string_view type_name,
         std::string_view values,
         std::optional<runtime_t<ResultKind>> exp
-    );
-};
-
-using namespace std::string_view_literals;
-
-template<kind ResultKind>
-void sql_function_type_matrix_test::test_function_with_type(
-    std::string_view fn_name,
-    std::string_view type_name,
-    std::string_view values,
-    std::optional<runtime_t<ResultKind>> exp
-) {
-    execute_statement("create table t (c0 "+std::string{type_name}+")");
-    execute_statement("insert into t values "+std::string{values}+"");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT "+std::string{fn_name}+"c0) FROM t", result);
-        ASSERT_EQ(1, result.size());
-        if(exp.has_value()) {
-            EXPECT_EQ((create_nullable_record<ResultKind>(*exp)), result[0]);
-        } else {
-            EXPECT_EQ((create_nullable_record<ResultKind>({}, {false})), result[0]);
+    ) {
+        execute_statement("create table t (c0 "+std::string{type_name}+")");
+        execute_statement("insert into t values "+std::string{values}+"");
+        {
+            std::vector<mock::basic_record> result{};
+            execute_query("SELECT "+std::string{fn_name}+"c0) FROM t", result);
+            ASSERT_EQ(1, result.size());
+            if(exp.has_value()) {
+                EXPECT_EQ((create_nullable_record<ResultKind>(*exp)), result[0]);
+            } else {
+                EXPECT_EQ((create_nullable_record<ResultKind>({}, {false})), result[0]);
+            }
         }
     }
-}
 
-//////////////////
-// count
-//////////////////
-
-TEST_F(sql_function_type_matrix_test, count_int) {
-    test_function_with_type<kind::int8>("count(", "INT", "(1),(2),(3)", 3);
-}
-
-TEST_F(sql_function_type_matrix_test, count_varchar) {
-    test_function_with_type<kind::int8>("count(", "VARCHAR", "('AAA'),('BBB'),('CCC')", 3);
-}
-
-//////////////////
-// count distinct
-//////////////////
-TEST_F(sql_function_type_matrix_test, count_distinct_int) {
-    test_function_with_type<kind::int8>("count(distinct ", "INT", "(1),(1),(2)", 2);
-}
-
-//////////////////
-// max
-//////////////////
-
-TEST_F(sql_function_type_matrix_test, max_int) {
-    test_function_with_type<kind::int4>("max(", "INT", "(1),(2),(3)", 3);
-}
+};
 
 }  // namespace jogasaki::testing

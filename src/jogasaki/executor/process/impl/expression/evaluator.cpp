@@ -376,13 +376,16 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
     using t = takatori::type::type_kind;
     auto& type = info_.type_of(exp);
     switch(type.kind()) {
+        case t::boolean: return create_any<bool, std::int8_t>(ref, info);
+        case t::int1: return create_any<runtime_t<meta::field_type_kind::int1>>(ref, info);
+        case t::int2: return create_any<runtime_t<meta::field_type_kind::int2>>(ref, info);
         case t::int4: return create_any<runtime_t<meta::field_type_kind::int4>>(ref, info);
         case t::int8: return create_any<runtime_t<meta::field_type_kind::int8>>(ref, info);
         case t::float4: return create_any<runtime_t<meta::field_type_kind::float4>>(ref, info);
         case t::float8: return create_any<runtime_t<meta::field_type_kind::float8>>(ref, info);
-        case t::boolean: return create_any<bool, std::int8_t>(ref, info);
-        case t::character: return create_any<runtime_t<meta::field_type_kind::character>>(ref, info);
         case t::decimal: return create_any<runtime_t<meta::field_type_kind::decimal>>(ref, info);
+        case t::character: return create_any<runtime_t<meta::field_type_kind::character>>(ref, info);
+        case t::octet: return create_any<runtime_t<meta::field_type_kind::octet>>(ref, info);
         case t::date: return create_any<runtime_t<meta::field_type_kind::date>>(ref, info);
         case t::time_of_day: return create_any<runtime_t<meta::field_type_kind::time_of_day>>(ref, info);
         case t::time_point: return create_any<runtime_t<meta::field_type_kind::time_point>>(ref, info);
@@ -521,8 +524,9 @@ any engine::compare_any(takatori::scalar::comparison_operator optype, any const&
         case any::index<runtime_t<meta::field_type_kind::int8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
         case any::index<runtime_t<meta::field_type_kind::float4>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::character>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::character>>(), r.to<runtime_t<meta::field_type_kind::character>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        case any::index<runtime_t<meta::field_type_kind::character>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::character>>(), r.to<runtime_t<meta::field_type_kind::character>>());
+        case any::index<runtime_t<meta::field_type_kind::octet>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::octet>>(), r.to<runtime_t<meta::field_type_kind::octet>>());
         case any::index<runtime_t<meta::field_type_kind::date>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::date>>(), r.to<runtime_t<meta::field_type_kind::date>>());
         case any::index<runtime_t<meta::field_type_kind::time_of_day>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::time_of_day>>(), r.to<runtime_t<meta::field_type_kind::time_of_day>>());
         case any::index<runtime_t<meta::field_type_kind::time_point>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::time_point>>(), r.to<runtime_t<meta::field_type_kind::time_point>>());

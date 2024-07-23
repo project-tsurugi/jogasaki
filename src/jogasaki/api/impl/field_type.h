@@ -37,6 +37,7 @@ public:
     using option_type = std::variant<
         std::monostate,
         std::shared_ptr<character_field_option>,
+        std::shared_ptr<octet_field_option>,
         std::shared_ptr<decimal_field_option>,
         std::shared_ptr<time_of_day_field_option>,
         std::shared_ptr<time_point_field_option>
@@ -63,6 +64,13 @@ public:
      * @return nullptr otherwise
      */
     [[nodiscard]] std::shared_ptr<character_field_option> const& character_option() const noexcept override;
+
+    /**
+     * @brief accessor to octet field option
+     * @return octet type field option if the field type is octet
+     * @return nullptr otherwise
+     */
+    [[nodiscard]] std::shared_ptr<octet_field_option> const& octet_option() const noexcept override;
 
     /**
      * @brief accessor to decimal field option

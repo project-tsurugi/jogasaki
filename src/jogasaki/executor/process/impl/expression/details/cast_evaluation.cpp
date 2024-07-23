@@ -29,15 +29,17 @@
 
 #include <takatori/type/character.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/constants.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/executor/global.h>
@@ -46,6 +48,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/hex_to_octet.h>
 #include <jogasaki/utils/to_string.h>
 
 #include "common.h"
@@ -63,6 +66,14 @@ any supports_small_integers(evaluator_context& ctx) {
         return {};
     }
     ctx.add_error({error_kind::unsupported, "smaller integral types are unsupported"});
+    return {std::in_place_type<error>, error(error_kind::unsupported)};
+}
+
+any supports_octet(evaluator_context& ctx) {
+    if(global::config_pool()->support_octet()) {
+        return {};
+    }
+    ctx.add_error({error_kind::unsupported, "binary types are unsupported"});
     return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
@@ -380,6 +391,7 @@ inline const decimal::Decimal int_max{std::numeric_limits<T>::max()};
 template <class T>
 inline const decimal::Decimal int_min{std::numeric_limits<T>::min()};
 
+template <class T>
 any handle_length(
     std::string_view src,
     evaluator_context& ctx,
@@ -431,7 +443,7 @@ any to_character(
 ) {
     decimal::Decimal value{dec};
     auto s = value.to_sci();
-    return handle_length(s, ctx, len, add_padding, false);
+    return handle_length<accessor::text>(s, ctx, len, add_padding, false);
 }
 
 any to_int1(triple src, evaluator_context& ctx) {
@@ -732,7 +744,24 @@ any to_character(
     bool add_padding,
     bool src_padded
 ) {
-    return handle_length(s, ctx, len, add_padding, src_padded);
+    return handle_length<accessor::text>(s, ctx, len, add_padding, src_padded);
+}
+
+any to_octet(
+    std::string_view s,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding,
+    bool src_padded
+) {
+    std::string out{};
+    if(! utils::hex_to_octet(s, out)) {
+        ctx.add_error({error_kind::format_error, "loss precision policy `floor` is unsupported"});
+        auto& e = ctx.add_error({error_kind::format_error, "invalid hexadecimal string passed for conversion"});
+        e.new_argument() << s;
+        return {std::in_place_type<error>, error(error_kind::format_error)};
+    }
+    return handle_length<accessor::binary>(out, ctx, len, add_padding, src_padded);
 }
 
 }  // namespace from_character
@@ -761,7 +790,10 @@ any cast_from_character(evaluator_context& ctx,
             auto& typ = unsafe_downcast<takatori::type::character>(tgt);
             return from_character::to_character(sv, ctx, typ.length(), ! typ.varying(), src_padded);
         }
-        case k::octet: break;
+        case k::octet: {
+            auto& typ = unsafe_downcast<takatori::type::octet>(tgt);
+            return from_character::to_octet(sv, ctx, typ.length(), ! typ.varying(), src_padded);
+        }
         case k::bit: break;
         case k::date: break;
         case k::time_of_day: break;
@@ -817,42 +849,7 @@ any cast_from_decimal(evaluator_context& ctx,
     return return_unsupported();
 }
 
-any truncate_or_pad_if_needed(
-    evaluator_context& ctx,
-    std::string_view src,
-    std::size_t dlen,
-    bool add_padding,
-    bool lenient_remove_padding,
-    bool& lost_precision
-) {
-    lost_precision = false;
-    auto slen = src.length();
-    if(dlen == slen) {
-        return any{std::in_place_type<accessor::text>, accessor::text{ctx.resource(), src}};
-    }
-    if(dlen < src.length()) {
-        if(lenient_remove_padding) {
-            // check if truncation occurs only for padding or not
-            if(! std::all_of(src.begin()+dlen, src.end(), [](auto c) { return c == ' '; })) {
-                lost_precision = true;
-            }
-        } else {
-            lost_precision = true;
-        }
-        return any{
-            std::in_place_type<accessor::text>,
-            accessor::text{ctx.resource(), std::string_view{src.data(), dlen}}
-        };
-    }
-    // dlen > src.length()
-    if(add_padding) {
-        std::string tmp(dlen, ' ');
-        std::memcpy(tmp.data(), src.data(), src.size());
-        return any{std::in_place_type<accessor::text>, accessor::text{ctx.resource(), tmp}};
-    }
-    return any{std::in_place_type<accessor::text>, accessor::text{ctx.resource(), src}};
-}
-
+template <class T>
 any handle_length(
     std::string_view src,
     evaluator_context& ctx,
@@ -863,7 +860,7 @@ any handle_length(
     if(len.has_value()) {
         auto dlen = len.value();
         bool lost_precision = false;
-        auto ret = truncate_or_pad_if_needed(ctx, src, dlen, add_padding, lenient_remove_padding, lost_precision);
+        auto ret = truncate_or_pad_if_needed<T>(ctx, src, dlen, add_padding, lenient_remove_padding, lost_precision);
         if(lost_precision) {
             ctx.lost_precision(true);
             // inexact operation
@@ -901,7 +898,7 @@ any handle_length(
         }
         return ret;
     }
-    return any{std::in_place_type<accessor::text>, accessor::text{ctx.resource(), src}};
+    return any{std::in_place_type<T>, T{ctx.resource(), src}};
 }
 
 template<class T>
@@ -966,7 +963,7 @@ namespace from_int4 {
 
 any to_character(std::int32_t src, evaluator_context& ctx, std::optional<std::size_t> len, bool add_padding) {
     auto res = std::to_string(src);
-    return handle_length(res, ctx, len, add_padding, false);
+    return handle_length<accessor::text>(res, ctx, len, add_padding, false);
 }
 
 any to_int1(std::int32_t src, evaluator_context& ctx) {
@@ -1048,7 +1045,7 @@ namespace from_int8 {
 
 any to_character(std::int64_t src, evaluator_context& ctx, std::optional<std::size_t> len, bool add_padding) {
     auto res = std::to_string(src);
-    return handle_length(res, ctx, len, add_padding, false);
+    return handle_length<accessor::text>(res, ctx, len, add_padding, false);
 }
 
 any to_int1(std::int64_t src, evaluator_context& ctx) {
@@ -1134,7 +1131,7 @@ any to_character(std::int8_t src, evaluator_context& ctx, std::optional<std::siz
     } else {
         res = "true";
     }
-    return handle_length(res, ctx, len, add_padding, false);
+    return handle_length<accessor::text>(res, ctx, len, add_padding, false);
 }
 
 }  // namespace from_boolean
@@ -1182,14 +1179,14 @@ namespace from_float4 {
 any to_character(float src, evaluator_context& ctx, std::optional<std::size_t> len, bool add_padding) {
     if(std::isnan(src)) {
         // avoid printing "-NaN"
-        return handle_length(string_positive_nan, ctx, len, add_padding, false);
+        return handle_length<accessor::text>(string_positive_nan, ctx, len, add_padding, false);
     }
     if(std::isinf(src)) {
         auto str = std::signbit(src) ? string_negative_infinity : string_positive_infinity;
-        return handle_length(str, ctx, len, add_padding, false);
+        return handle_length<accessor::text>(str, ctx, len, add_padding, false);
     }
     auto res = utils::to_string(src);
-    return handle_length(res, ctx, len, add_padding, false);
+    return handle_length<accessor::text>(res, ctx, len, add_padding, false);
 }
 
 any to_int1(float src, evaluator_context& ctx) {
@@ -1282,14 +1279,14 @@ namespace from_float8 {
 any to_character(double src, evaluator_context& ctx, std::optional<std::size_t> len, bool add_padding) {
     if(std::isnan(src)) {
         // avoid printing "-NaN"
-        return handle_length(string_positive_nan, ctx, len, add_padding, false);
+        return handle_length<accessor::text>(string_positive_nan, ctx, len, add_padding, false);
     }
     if(std::isinf(src)) {
         auto str = std::signbit(src) ? string_negative_infinity : string_positive_infinity;
-        return handle_length(str, ctx, len, add_padding, false);
+        return handle_length<accessor::text>(str, ctx, len, add_padding, false);
     }
     auto res = utils::to_string(src);
-    return handle_length(res, ctx, len, add_padding, false);
+    return handle_length<accessor::text>(res, ctx, len, add_padding, false);
 }
 
 any to_int1(double src, evaluator_context& ctx) {
@@ -1399,6 +1396,76 @@ any cast_from_float8(evaluator_context& ctx,
     return return_unsupported();
 }
 
+namespace from_octet {
+
+any to_character(
+    std::string_view s,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding,
+    bool src_padded
+) {
+    (void) s;
+    (void) ctx;
+    (void) len;
+    (void) add_padding;
+    (void) src_padded;
+    return return_unsupported();
+}
+
+any to_octet(
+    std::string_view s,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding,
+    bool src_padded
+) {
+    return handle_length<accessor::binary>(s, ctx, len, add_padding, src_padded);
+}
+
+}  // namespace from_octet
+
+any cast_from_octet(evaluator_context& ctx,
+    ::takatori::type::data const& tgt,
+    any const& a,
+    bool src_padded // whether src is binary column
+) {
+    using k = takatori::type::type_kind;
+    auto txt = a.to<runtime_t<meta::field_type_kind::octet>>();
+    auto sv = static_cast<std::string_view>(txt);
+    switch(tgt.kind()) {
+        case k::boolean: break;
+        case k::int1: break;
+        case k::int2: break;
+        case k::int4: break;
+        case k::int8: break;
+        case k::float4: break;
+        case k::float8: break;
+        case k::decimal: break;
+        case k::character: {
+            auto& typ = unsafe_downcast<takatori::type::character>(tgt);
+            return from_octet::to_character(sv, ctx, typ.length(), ! typ.varying(), src_padded);
+        }
+        case k::octet: {
+            auto& typ = unsafe_downcast<takatori::type::octet>(tgt);
+            return from_octet::to_octet(sv, ctx, typ.length(), ! typ.varying(), src_padded);
+        }
+        case k::bit: break;
+        case k::date: break;
+        case k::time_of_day: break;
+        case k::time_point: break;
+        case k::datetime_interval: break;
+        case k::array: break;
+        case k::record: break;
+        case k::unknown: break;
+        case k::row_reference: break;
+        case k::row_id: break;
+        case k::declared: break;
+        case k::extension: break;
+    }
+    return return_unsupported();
+}
+
 any conduct_cast(
     evaluator_context& ctx,
     ::takatori::type::data const& src,
@@ -1407,9 +1474,18 @@ any conduct_cast(
 ) {
     using k = takatori::type::type_kind;
     // until we officially support boolean and small integers, these types are only available for testing
-    if(src.kind() == k::boolean || src.kind() == k::int1 || src.kind() == k::int2 ||
-       tgt.kind() == k::boolean || tgt.kind() == k::int1 || tgt.kind() == k::int2) {
+    // src unknown is the special case allowed
+    if(src.kind() != k::unknown &&
+       (src.kind() == k::boolean || src.kind() == k::int1 || src.kind() == k::int2 || tgt.kind() == k::boolean ||
+        tgt.kind() == k::int1 || tgt.kind() == k::int2)) {
         if(auto a = supports_small_integers(ctx); a.error()) {
+            return a;
+        }
+    }
+    // until we officially support binary/varbinary, these types are only available for testing
+    // src unknown is the special case allowed
+    if(src.kind() != k::unknown && (src.kind() == k::octet || tgt.kind() == k::octet)) {
+        if(auto a = supports_octet(ctx); a.error()) {
             return a;
         }
     }
@@ -1440,7 +1516,8 @@ any conduct_cast(
         case k::decimal: return cast_from_decimal(ctx, tgt, a);
         case k::character:
             return cast_from_character(ctx, tgt, a, ! unsafe_downcast<takatori::type::character>(src).varying());
-        case k::octet: break;
+        case k::octet:
+            return cast_from_octet(ctx, tgt, a, ! unsafe_downcast<takatori::type::octet>(src).varying());
         case k::bit: break;
         case k::date: break;
         case k::time_of_day: break;

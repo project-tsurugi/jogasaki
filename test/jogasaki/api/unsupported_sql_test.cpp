@@ -29,6 +29,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 
@@ -43,6 +44,8 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
+
+using kind = meta::field_type_kind;
 
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
@@ -121,8 +124,14 @@ TEST_F(unsupported_sql_test, ddl_with_binary_type_allowed) {
         "C2 varbinary(3)"
         ")"
     );
-    // cast is not yet available TODO
-    // execute_statement("INSERT INTO T VALUES (1, CAST('01' AS BINARY(3)), CAST('01' AS VARBINARY(3)))");
+    execute_statement("INSERT INTO T VALUES (1, CAST('010203' AS BINARY(3)), CAST('010203' AS VARBINARY(3)))");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT C1, C2 FROM T ORDER BY T.C0, T.C1", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
+        std::tuple{meta::octet_type(false, 3), meta::octet_type(true, 3)},
+        std::forward_as_tuple(accessor::binary{"\x01\x02\x03"}, accessor::binary{"\x01\x02\x03"}))), result[0]);
 }
 
 TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {

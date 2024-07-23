@@ -33,6 +33,7 @@
 #include <takatori/decimal/triple.h>
 #include <takatori/relation/sort_direction.h>
 #include <takatori/type/character.h>
+#include <takatori/type/octet.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 #include <takatori/util/reference_extractor.h>
@@ -49,6 +50,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/data/binary_string_value.h>
 #include <jogasaki/data/value.h>
 #include <jogasaki/error.h>
 #include <jogasaki/kvs/coder.h>
@@ -110,6 +112,21 @@ value create_value<runtime_t<meta::field_type_kind::character>>(
         return data::value{std::in_place_type<std::string>, {}};
     }
     return data::value{std::in_place_type<std::string>, d};
+}
+
+template <>
+value create_value<runtime_t<meta::field_type_kind::octet>>(
+    std::size_t val,
+    std::size_t record_count,
+    bool nullable,
+    std::size_t len
+) {
+    char c = '0' + val % 26;
+    std::string d(len, c);
+    if (nullable && record_count % 5 == 0) {
+        return data::value{std::in_place_type<data::binary_string_value>, {}};
+    }
+    return data::value{std::in_place_type<data::binary_string_value>, d};
 }
 
 template <>
@@ -214,14 +231,19 @@ static void fill_fields(
                 encode_field(a, meta::field_type(meta::field_enum_tag<kind::float8>), spec, nullable, target);
                 break;
             }
+            case kind::decimal: {
+                data::value a{create_value<runtime_t<meta::field_type_kind::decimal>>(val, record_count, nullable)};
+                encode_field(a, meta::field_type(std::make_shared<meta::decimal_field_option>()), spec, nullable, target);
+                break;
+            }
             case kind::character: {
                 data::value a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, len)};
                 encode_field(a, meta::field_type(std::make_shared<meta::character_field_option>()), spec, nullable, target);
                 break;
             }
-            case kind::decimal: {
-                data::value a{create_value<runtime_t<meta::field_type_kind::decimal>>(val, record_count, nullable)};
-                encode_field(a, meta::field_type(std::make_shared<meta::decimal_field_option>()), spec, nullable, target);
+            case kind::octet: {
+                data::value a{create_value<runtime_t<meta::field_type_kind::octet>>(val, record_count, nullable, len)};
+                encode_field(a, meta::field_type(std::make_shared<meta::octet_field_option>()), spec, nullable, target);
                 break;
             }
             case kind::date: {
@@ -256,8 +278,9 @@ std::string any_to_string(value const& value, meta::field_type type) {
         case kind::int8: return std::to_string(value.to<std::int64_t>());
         case kind::float4: return std::to_string(value.to<float>());
         case kind::float8: return std::to_string(value.to<double>());
-        case kind::character: return std::string(1, '\'') + static_cast<std::string>(value.to<accessor::text>()) + std::string(1, '\'');
         case kind::decimal: return to_string(value.to<runtime_t<meta::field_type_kind::decimal>>());
+        case kind::character: return std::string(1, '\'') + static_cast<std::string>(value.to<accessor::text>()) + std::string(1, '\'');
+        case kind::octet: return std::string(1, '\'') + static_cast<std::string>(value.to<accessor::binary>()) + std::string(1, '\'');
         case kind::date: return to_string(value.to<runtime_t<meta::field_type_kind::date>>());
         case kind::time_of_day: return to_string(value.to<runtime_t<meta::field_type_kind::time_of_day>>());
         case kind::time_point: return to_string(value.to<runtime_t<meta::field_type_kind::time_point>>());
@@ -370,6 +393,13 @@ void load_storage_data(api::database& db, std::shared_ptr<configurable_provider>
                     auto& ct = takatori::util::unsafe_downcast<takatori::type::character>(k.type());
                     auto len = ct.length() ? *ct.length() : 1;
                     data::value a{create_value<runtime_t<meta::field_type_kind::character>>(val, record_count, nullable, len)};
+                    values.emplace_back(any_to_string(a, type));
+                    break;
+                }
+                case kind::octet: {
+                    auto& ct = takatori::util::unsafe_downcast<takatori::type::octet>(k.type());
+                    auto len = ct.length() ? *ct.length() : 1;
+                    data::value a{create_value<runtime_t<meta::field_type_kind::octet>>(val, record_count, nullable, len)};
                     values.emplace_back(any_to_string(a, type));
                     break;
                 }

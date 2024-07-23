@@ -21,6 +21,7 @@
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/fail.h>
@@ -67,6 +68,10 @@ field_type::option_type create_option(meta::field_type const& type) noexcept {
             auto& opt = type.option_unsafe<meta::field_type_kind::character>();
             return std::make_shared<character_field_option>(opt->varying_, opt->length_);
         }
+        case t::octet: {
+            auto& opt = type.option_unsafe<meta::field_type_kind::octet>();
+            return std::make_shared<octet_field_option>(opt->varying_, opt->length_);
+        }
         case t::decimal: {
             auto& opt = type.option_unsafe<meta::field_type_kind::decimal>();
             return std::make_shared<decimal_field_option>(opt->precision_, opt->scale_);
@@ -98,6 +103,12 @@ std::shared_ptr<character_field_option> const& field_type::character_option() co
     static std::shared_ptr<character_field_option> nullopt{};
     if(type_.kind() != meta::field_type_kind::character) return nullopt;
     return *std::get_if<std::shared_ptr<character_field_option>>(std::addressof(option_));
+}
+
+std::shared_ptr<octet_field_option> const& field_type::octet_option() const noexcept {
+    static std::shared_ptr<octet_field_option> nullopt{};
+    if(type_.kind() != meta::field_type_kind::octet) return nullopt;
+    return *std::get_if<std::shared_ptr<octet_field_option>>(std::addressof(option_));
 }
 
 std::shared_ptr<decimal_field_option> const& field_type::decimal_option() const noexcept {

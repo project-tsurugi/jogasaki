@@ -547,7 +547,7 @@ private:
     bool trace_external_log_ = false;
     bool external_log_explain_ = true;
     bool try_insert_on_upserting_secondary_ = true;
-    bool support_octet_ = false;
+    bool support_octet_ = true;
     bool support_smallint_ = false;
     bool scan_concurrent_operation_as_not_found_ = true;
     bool point_read_concurrent_operation_as_not_found_ = true;

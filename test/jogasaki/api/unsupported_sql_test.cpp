@@ -104,6 +104,7 @@ TEST_F(unsupported_sql_test, join_scan) {
 }
 
 TEST_F(unsupported_sql_test, ddl_with_binary_type) {
+    db_impl()->configuration()->support_octet(false);
     test_stmt_err(
         "create table T ("
         "C0 INT NOT NULL PRIMARY KEY,"
@@ -135,6 +136,7 @@ TEST_F(unsupported_sql_test, ddl_with_binary_type_allowed) {
 }
 
 TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {
+    db_impl()->configuration()->support_octet(false);
     test_stmt_err(
         "create table T ("
         "C0 INT NOT NULL PRIMARY KEY,"

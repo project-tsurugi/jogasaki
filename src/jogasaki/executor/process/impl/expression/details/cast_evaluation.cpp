@@ -48,6 +48,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/hex_to_octet.h>
 #include <jogasaki/utils/to_string.h>
 
@@ -1410,7 +1411,9 @@ any to_character(
     (void) len;
     (void) add_padding;
     (void) src_padded;
-    return return_unsupported();
+    std::stringstream ss{};
+    ss << utils::binary_printer{s}.show_hyphen(false);
+    return handle_length<accessor::text>(ss.str(), ctx, len, add_padding, src_padded);
 }
 
 any to_octet(

@@ -45,12 +45,19 @@ public:
         size_(s.size())
     {}
 
+    binary_printer& show_hyphen(bool arg) noexcept {
+        show_hyphen_ = arg;
+        return *this;
+    }
+
     friend std::ostream& operator<<(std::ostream& out, binary_printer const& value) {
         std::ios init(nullptr);
         init.copyfmt(out);
         for(std::size_t idx = 0; idx < value.size_; ++idx) {
             if (idx != 0) {
-                out << std::string_view("-");
+                if(value.show_hyphen_) {
+                    out << std::string_view("-");
+                }
                 if (value.bytes_per_line_ != 0 && idx % value.bytes_per_line_ == 0) {
                     out << std::endl;
                 }
@@ -66,6 +73,7 @@ private:
     void const* ptr_{};
     std::size_t size_{};
     std::size_t bytes_per_line_{};
+    bool show_hyphen_{true};
 };
 
 }

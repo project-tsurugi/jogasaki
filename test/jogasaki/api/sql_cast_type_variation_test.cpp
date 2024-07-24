@@ -682,6 +682,34 @@ TEST_F(sql_cast_type_variation_test, varchar_to_varchar) {
 
 // from binary
 
+TEST_F(sql_cast_type_variation_test, binary_to_varchar) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table TT (C0 BINARY(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS BINARY(10)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS VARCHAR(21)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(true, 21)},
+           std::forward_as_tuple(accessor::text{"00010203000000000000"}))), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, binary_to_char) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table TT (C0 BINARY(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS BINARY(10)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS CHAR(21)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(false, 21)},
+           std::forward_as_tuple(accessor::text{"00010203000000000000 "}))), result[0]);
+    }
+}
+
 TEST_F(sql_cast_type_variation_test, binary_to_binary) {
     db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 BINARY(10) primary key)");
@@ -711,6 +739,34 @@ TEST_F(sql_cast_type_variation_test, binary_to_varbinary) {
 }
 
 // from varbinary
+
+TEST_F(sql_cast_type_variation_test, varbinary_to_varchar) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table TT (C0 VARBINARY(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS VARCHAR(21)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(true, 21)},
+           std::forward_as_tuple(accessor::text{"00010203"}))), result[0]);
+    }
+}
+
+TEST_F(sql_cast_type_variation_test, varbinary_to_char) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table TT (C0 VARBINARY(10) primary key)");
+    execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(C0 AS CHAR(21)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
+           std::tuple{character_type(false, 21)},
+           std::forward_as_tuple(accessor::text{"00010203             "}))), result[0]);
+    }
+}
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_binary) {
     db_impl()->configuration()->support_octet(true);

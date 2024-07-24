@@ -48,6 +48,7 @@
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/validate_index_key_type.h>
 
 namespace jogasaki::executor::common {
 
@@ -120,6 +121,9 @@ bool create_index::operator()(request_context& context) const {
         return false;
     }
     if(! validate_empty_table(context, i->table().simple_name())) {
+        return false;
+    }
+    if(! utils::validate_index_key_type(context, *i)) {
         return false;
     }
 

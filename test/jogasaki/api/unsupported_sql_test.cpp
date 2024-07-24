@@ -145,6 +145,43 @@ TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {
     );
 }
 
+TEST_F(unsupported_sql_test, ddl_with_varbinary_type_in_pk) {
+    db_impl()->configuration()->support_octet(true);
+    test_stmt_err(
+        "create table T ("
+        "C0 varbinary(10) NOT NULL PRIMARY KEY,"
+        "C1 int"
+        ")",
+        error_code::unsupported_runtime_feature_exception,
+        "data type used for column \"C0\" is unsupported for primary/secondary index key"
+    );
+}
+
+TEST_F(unsupported_sql_test, ddl_with_binary_type_in_pk) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table T ("
+                      "C0 binary(10) NOT NULL PRIMARY KEY,"
+                      "C1 int"
+                      ")");
+}
+
+TEST_F(unsupported_sql_test, ddl_with_varbinary_type_in_secondary_index) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table T (C0 INT PRIMARY KEY, C1 varbinary(10) NOT NULL)");
+    test_stmt_err(
+        "create index I on T (C1)",
+        error_code::unsupported_runtime_feature_exception,
+        "data type used for column \"C1\" is unsupported for primary/secondary index key"
+    );
+}
+
+TEST_F(unsupported_sql_test, ddl_with_binary_type_in_secondary_index) {
+    db_impl()->configuration()->support_octet(true);
+    execute_statement("create table T (C0 INT PRIMARY KEY, C1 binary(10) NOT NULL)");
+    execute_statement("create index I on T (C1)");
+}
+
+
 TEST_F(unsupported_sql_test, subquery) {
     // new compiler now supports subqueries
     execute_statement("create table T (C0 int not null primary key)");

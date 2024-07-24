@@ -62,6 +62,7 @@
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/validate_index_key_type.h>
 
 namespace jogasaki::executor::common {
 
@@ -270,6 +271,11 @@ bool create_table::operator()(request_context& context) const {
         return false;
     }
 
+    auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
+    if(! utils::validate_index_key_type(context, *i)) {
+        return false;
+    }
+
     // Creating sequence can possibly hit cc engine error (esp. with occ),
     // so do it first so that we can exit early in case of errors.
     auto rh = std::any_cast<plan::storage_processor_result>(ct_->runtime_hint());
@@ -282,7 +288,6 @@ bool create_table::operator()(request_context& context) const {
 
     std::string storage{};
     yugawara::storage::configurable_provider target{};
-    auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->primary_key());
     if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false})) {
         // error should not happen normally
         set_error_info(context, err);

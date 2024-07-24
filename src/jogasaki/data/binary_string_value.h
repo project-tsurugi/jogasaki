@@ -44,7 +44,7 @@ public:
     /**
      * @brief fetch body std::string
      */
-    std::string const& str() const;
+    [[nodiscard]] std::string const& str() const;
 
 private:
     std::string body_{};

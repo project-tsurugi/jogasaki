@@ -438,7 +438,7 @@ std::shared_ptr<arrow_writer> arrow_writer::open(
     return {};
 }
 
-std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> arrow_writer::create_schema() {
+std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> arrow_writer::create_schema() {  //NOLINT(readability-function-cognitive-complexity)
     std::vector<std::shared_ptr<arrow::Field>> fields{};
     fields.reserve(meta_->field_count());
     std::vector<details::column_option> options{};

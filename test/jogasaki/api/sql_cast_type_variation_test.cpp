@@ -742,7 +742,7 @@ TEST_F(sql_cast_type_variation_test, binary_to_varbinary) {
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_varchar) {
     db_impl()->configuration()->support_octet(true);
-    execute_statement("create table TT (C0 VARBINARY(10) primary key)");
+    execute_statement("create table TT (C0 VARBINARY(10) )");  // varbinary cannot be used for pk
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {
         std::vector<mock::basic_record> result{};
@@ -756,7 +756,7 @@ TEST_F(sql_cast_type_variation_test, varbinary_to_varchar) {
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_char) {
     db_impl()->configuration()->support_octet(true);
-    execute_statement("create table TT (C0 VARBINARY(10) primary key)");
+    execute_statement("create table TT (C0 VARBINARY(10))");  // varbinary cannot be used for pk
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {
         std::vector<mock::basic_record> result{};
@@ -770,7 +770,7 @@ TEST_F(sql_cast_type_variation_test, varbinary_to_char) {
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_binary) {
     db_impl()->configuration()->support_octet(true);
-    execute_statement("create table TT (C0 VARBINARY(10) primary key)");
+    execute_statement("create table TT (C0 VARBINARY(10))");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {
         std::vector<mock::basic_record> result{};
@@ -784,7 +784,7 @@ TEST_F(sql_cast_type_variation_test, varbinary_to_binary) {
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_varbinary) {
     db_impl()->configuration()->support_octet(true);
-    execute_statement("create table TT (C0 VARBINARY(10) primary key)");
+    execute_statement("create table TT (C0 VARBINARY(10))");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {
         std::vector<mock::basic_record> result{};

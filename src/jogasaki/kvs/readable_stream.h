@@ -61,6 +61,15 @@ static inline void key_decode(int_t<N>& value, uint_t<N> data, order odr) {
 }
 
 template<std::size_t N>
+static inline void key_decode(uint_t<N>& value, uint_t<N> data, order odr) {
+    auto u = boost::endian::big_to_native(data);
+    if (odr != order::ascending) {
+        u = ~u;
+    }
+    value = u;
+}
+
+template<std::size_t N>
 static inline void key_decode(float_t<N>& value, uint_t<N> data, order odr) {
     auto u = boost::endian::big_to_native(data);
     if (odr != order::ascending) {
@@ -181,12 +190,14 @@ public:
      * @param resource the resource to allocate the content read
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::binary>, T> read(order odr, bool discard, memory::paged_memory_resource* resource = nullptr) {
-        auto l = read<details::binary_encoding_prefix_type>(odr, false);
-        if(!(l >= 0)) throw_exception(std::domain_error{ //NOLINT
-                string_builder{} << base_filename() << " condition l >= 0 failed with l:" << l << string_builder::to_string //NOLINT
-            });
-        auto len = static_cast<std::size_t>(l);
+    std::enable_if_t<std::is_same_v<T, accessor::binary>, T> read(order odr, bool discard, std::optional<std::size_t> fixed_length, memory::paged_memory_resource* resource = nullptr) {
+        std::size_t len{};
+        if(fixed_length.has_value()) {
+            len = fixed_length.value();
+        } else {
+            auto l = read<details::binary_encoding_prefix_type>(odr, false);
+            len = static_cast<std::size_t>(l);
+        }
         if(!(pos_ + len <= capacity_)) throw_exception(std::domain_error{ //NOLINT
                 string_builder{} << base_filename() << " condition pos_ + len <= capacity_ failed with pos_:" << pos_ << " len:" << len << " capacity_:" << capacity_ << string_builder::to_string //NOLINT
             });

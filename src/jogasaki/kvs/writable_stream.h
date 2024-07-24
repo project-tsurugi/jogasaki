@@ -50,6 +50,7 @@ namespace jogasaki::kvs {
 using takatori::util::throw_exception;
 
 static constexpr char padding_character = '\x20';
+static constexpr char padding_octet = '\x00';
 
 namespace details {
 
@@ -57,6 +58,15 @@ template<std::size_t N>
 static inline uint_t<N> key_encode(int_t<N> data, order odr) {
     auto u = type_change<uint_t<N>>(data);
     u ^= SIGN_BIT<N>;
+    if (odr != order::ascending) {
+        u = ~u;
+    }
+    return boost::endian::native_to_big(u);
+}
+
+template<std::size_t N>
+static inline uint_t<N> key_encode(uint_t<N> data, order odr) {
+    auto u = data;
     if (odr != order::ascending) {
         u = ~u;
     }
@@ -175,16 +185,24 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, std::size_t max_len) {
+    std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, bool is_fixed_length, std::size_t max_len) {
         std::string_view sv{data};
         auto sz = sv.length();
         if(max_len < sz) {
             VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
             return status::err_insufficient_field_storage;
         }
-        auto len = static_cast<details::binary_encoding_prefix_type>(sz);
-        do_write<details::binary_encoding_prefix_type_bits>(details::key_encode<details::binary_encoding_prefix_type_bits>(len, odr));
+        if(! is_fixed_length) {
+            auto len = static_cast<details::binary_encoding_prefix_type>(is_fixed_length ? max_len : sz);
+            do_write<details::binary_encoding_prefix_type_bits>(details::key_encode<details::binary_encoding_prefix_type_bits>(len, odr));
+        }
         do_write(sv.data(), sz, odr);
+        if(is_fixed_length) {
+            // padding
+            if(sz < max_len) {
+                do_write(padding_octet, max_len-sz, odr);
+            }
+        }
         return status::ok;
     }
 

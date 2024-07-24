@@ -488,27 +488,99 @@ TEST_F(coder_test, text_non_variant_desc) {
     EXPECT_EQ('\xFF', buf[9]);
 }
 
-TEST_F(coder_test, binary) {
-    // asc/desc ordering is not fully supported for binary type
-    // currently re-cycling most of the logic for accessor::text
+TEST_F(coder_test, varbinary_asc) {
+    // actually varbinary key encoding is not used because varbinary encoding is not compatible with memcmp
+    // This is just to verify key encoding as the source of payload encoding.
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
-    accessor::binary bin{&resource, "ABC"sv};
-    EXPECT_EQ(status::ok, s.write(bin, asc, 10));
+    accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
+    EXPECT_EQ(status::ok, s.write(bin, asc, false, 10));
 
     auto rs = s.readable();
-    auto result = rs.read<accessor::binary>(asc, false, &resource);
-    EXPECT_EQ(3, result.size());
+    auto result = rs.read<accessor::binary>(asc, false, std::nullopt, &resource);
+    EXPECT_EQ(4, result.size());
     ASSERT_EQ(bin, result);
-    EXPECT_EQ('\x80', buf[0]);  // actually top bit is not needed because ordering is not yet supported for binary
-    EXPECT_EQ('\x03', buf[1]);
-    EXPECT_EQ('A', buf[2]);
-    EXPECT_EQ('B', buf[3]);
-    EXPECT_EQ('C', buf[4]);
+    EXPECT_EQ('\x00', buf[0]);
+    EXPECT_EQ('\x00', buf[1]);
+    EXPECT_EQ('\x00', buf[2]);
+    EXPECT_EQ('\x04', buf[3]);
+    EXPECT_EQ('\x00', buf[4]);
+    EXPECT_EQ('\x01', buf[5]);
+    EXPECT_EQ('\x02', buf[6]);
+    EXPECT_EQ('\x03', buf[7]);
+}
+
+TEST_F(coder_test, varbinary_desc) {
+    // varbinary payload encoding
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
+    EXPECT_EQ(status::ok, s.write(bin, desc, false, 10));
+
+    auto rs = s.readable();
+    auto result = rs.read<accessor::binary>(desc, false, std::nullopt, &resource);
+    EXPECT_EQ(4, result.size());
+    ASSERT_EQ(bin, result);
+    EXPECT_EQ('\xFF', buf[0]);
+    EXPECT_EQ('\xFF', buf[1]);
+    EXPECT_EQ('\xFF', buf[2]);
+    EXPECT_EQ('\xFB', buf[3]);
+    EXPECT_EQ('\xFF', buf[4]);
+    EXPECT_EQ('\xFE', buf[5]);
+    EXPECT_EQ('\xFD', buf[6]);
+    EXPECT_EQ('\xFC', buf[7]);
+}
+
+TEST_F(coder_test, binary_asc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
+    EXPECT_EQ(status::ok, s.write(bin, asc, true, 10));
+
+    auto rs = s.readable();
+    auto result = rs.read<accessor::binary>(asc, false, 10, &resource);
+    EXPECT_EQ(10, result.size());
+    accessor::binary exp{&resource, "\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00"sv};
+    ASSERT_EQ(exp, result);
+    EXPECT_EQ('\x00', buf[0]);
+    EXPECT_EQ('\x01', buf[1]);
+    EXPECT_EQ('\x02', buf[2]);
+    EXPECT_EQ('\x03', buf[3]);
+    EXPECT_EQ('\x00', buf[4]);
     EXPECT_EQ('\x00', buf[5]);
     EXPECT_EQ('\x00', buf[6]);
+    EXPECT_EQ('\x00', buf[7]);
+    EXPECT_EQ('\x00', buf[8]);
+    EXPECT_EQ('\x00', buf[9]);
 }
+
+TEST_F(coder_test, binary_desc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    mock_memory_resource resource{};
+    accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
+    EXPECT_EQ(status::ok, s.write(bin, desc, true, 10));
+
+    auto rs = s.readable();
+    auto result = rs.read<accessor::binary>(desc, false, 10, &resource);
+    EXPECT_EQ(10, result.size());
+    accessor::binary exp{&resource, "\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00"sv};
+    ASSERT_EQ(exp, result);
+    EXPECT_EQ('\xFF', buf[0]);
+    EXPECT_EQ('\xFE', buf[1]);
+    EXPECT_EQ('\xFD', buf[2]);
+    EXPECT_EQ('\xFC', buf[3]);
+    EXPECT_EQ('\xFF', buf[4]);
+    EXPECT_EQ('\xFF', buf[5]);
+    EXPECT_EQ('\xFF', buf[6]);
+    EXPECT_EQ('\xFF', buf[7]);
+    EXPECT_EQ('\xFF', buf[8]);
+    EXPECT_EQ('\xFF', buf[9]);
+}
+
 
 TEST_F(coder_test, encode_decode) {
     std::string src(100, 0);

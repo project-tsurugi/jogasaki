@@ -638,8 +638,7 @@ TEST_F(schema_test, default_value_with_variety_of_types) {
     }
 }
 
-// assigning default value with different type inserts wrong data TODO
-TEST_F(schema_test, DISABLED_default_value_with_different_type) {
+TEST_F(schema_test, default_value_with_different_type) {
     auto t = std::make_shared<table>(
         "TEST",
         std::initializer_list<column>{
@@ -677,7 +676,7 @@ TEST_F(schema_test, DISABLED_default_value_with_different_type) {
         ASSERT_EQ(1, result.size());
         auto exp = mock::create_record<kind::int8, kind::character, kind::int4, kind::float4>(
             boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
-            std::forward_as_tuple(0, text("1"), 20, 3.0),
+            std::forward_as_tuple(10, text("1"), 2, 123.456),
             {false, false, false, false}
         );
         EXPECT_EQ(exp, result[0]);
@@ -689,7 +688,7 @@ TEST_F(schema_test, DISABLED_default_value_with_different_type) {
         ASSERT_EQ(1, result.size());
         auto exp = mock::create_record<kind::int8, kind::character, kind::int4, kind::float4>(
             boost::dynamic_bitset<std::uint64_t>{"1111"s},  // note right most is position 0
-            std::forward_as_tuple(0, text("1"), 20, 3.0),
+            std::forward_as_tuple(0, text("1"), 20, 123.456),
             {false, false, false, false}
         );
         EXPECT_EQ(exp, result[0]);

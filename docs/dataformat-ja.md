@@ -85,6 +85,16 @@ version: 2 (2020-11 kurosawa jogasaki用に修正)
 * エンコード形式
   * 文字列データのバイト列に既定の終端文字列を連接して格納する
 
+### octet strings
+
+* エンコード形式
+  * 可変長 (SQL VARBINARY型に対応) 
+    * 下記を連接して格納する
+      * 長さを符号なし32ビット整数とし、[integral numbers](#integral-numbers) の方式で表現したもの
+      * オクテットデータ列
+  * 固定長 (SQL BINARY型に対応) 
+    * オクテットデータ列をそのまま格納する
+
 ### decimal 
 
 * エンコード形式

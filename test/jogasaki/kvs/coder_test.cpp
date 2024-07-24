@@ -52,6 +52,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock_memory_resource.h>
 #include <jogasaki/status.h>
@@ -239,6 +240,38 @@ TEST_F(coder_test, i8_asc) {
     ASSERT_EQ(i2, rs.read<std::int8_t>(asc, false));
     EXPECT_EQ('\x82', buf[0]);
     EXPECT_EQ('\x7E', buf[1]);
+}
+
+TEST_F(coder_test, boolean_asc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    uint_t<8> false0{0};
+    uint_t<8> true1{1};
+    EXPECT_EQ(status::ok, s.write(false0, asc));
+    EXPECT_EQ(status::ok, s.write(true1, asc));
+
+    auto rs = s.readable();
+
+    ASSERT_EQ(false0, rs.read<std::uint8_t>(asc, false));
+    ASSERT_EQ(true1, rs.read<std::uint8_t>(asc, false));
+    EXPECT_EQ('\x00', buf[0]);
+    EXPECT_EQ('\x01', buf[1]);
+}
+
+TEST_F(coder_test, boolean_desc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    uint_t<8> false0{0};
+    uint_t<8> true1{1};
+    EXPECT_EQ(status::ok, s.write(false0, desc));
+    EXPECT_EQ(status::ok, s.write(true1, desc));
+
+    auto rs = s.readable();
+
+    ASSERT_EQ(false0, rs.read<std::uint8_t>(desc, false));
+    ASSERT_EQ(true1, rs.read<std::uint8_t>(desc, false));
+    EXPECT_EQ('\xFF', buf[0]);
+    EXPECT_EQ('\xFE', buf[1]);
 }
 
 TEST_F(coder_test, f32_asc) {
@@ -815,6 +848,15 @@ void test_ordering() {
     { SCOPED_TRACE("null < n1"); verify_order(type, null, n1, true); }
     { SCOPED_TRACE("n1 < z0"); verify_order(type, n1, z0); }
     { SCOPED_TRACE("z0 < p1"); verify_order(type, z0, p1); }
+}
+
+TEST_F(coder_test, boolean_ordering) {
+    data::any null{};
+    data::any false0{std::in_place_type<runtime_t<kind::boolean>>, 0};
+    data::any true1{std::in_place_type<runtime_t<kind::boolean>>, 1};
+    meta::field_type type = meta::boolean_type();
+    { SCOPED_TRACE("null < false0"); verify_order(type, null, false0, true); }
+    { SCOPED_TRACE("false0 < true1"); verify_order(type, false0, true1); }
 }
 
 TEST_F(coder_test, i1_ordering) {

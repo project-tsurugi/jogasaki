@@ -142,6 +142,13 @@ any to_character(
     bool add_padding,
     bool src_padded
 );
+any to_octet(
+    std::string_view s,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding,
+    bool src_padded
+);
 any to_decimal(
     std::string_view s,
     evaluator_context& ctx,
@@ -150,6 +157,24 @@ any to_decimal(
 );
 
 }  // namespace from_character
+
+namespace from_octet {
+
+any to_character(
+    std::string_view s,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding,
+    bool src_padded);
+
+any to_octet(
+    std::string_view s,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding,
+    bool src_padded);
+
+}  // namespace from_octet
 
 namespace from_decimal {
 

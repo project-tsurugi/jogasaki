@@ -303,4 +303,13 @@ TEST_F(cast_to_string_test, from_character) {
     EXPECT_EQ(any_text("A "), details::from_character::to_character("A B", ctx, 2, true, true)); lost_precision(true);
 }
 
+TEST_F(cast_to_string_test, from_binary) {
+    evaluator_context ctx{&resource_};
+    EXPECT_EQ(any_text("00"), details::from_octet::to_character("\x00"sv, ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ(any_text("0a"), details::from_octet::to_character("\x0A"sv, ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ(any_text("ff"), details::from_octet::to_character("\xff"sv, ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ(any_text(""), details::from_octet::to_character(""sv, ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ(any_text("0000000000000000000000000000000000000000"), details::from_octet::to_character("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"sv, ctx, std::nullopt, false, false)); lost_precision(false);
+}
+
 }  // namespace jogasaki::executor::process::impl::expression

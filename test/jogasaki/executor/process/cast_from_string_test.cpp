@@ -495,5 +495,17 @@ TEST_F(cast_from_string_test, to_decimal_long_string3) {
     }
 }
 
+TEST_F(cast_from_string_test, to_octet) {
+    evaluator_context ctx{&resource_};
+    EXPECT_EQ((any{std::in_place_type<accessor::binary>, accessor::binary{"\x00"sv}}), to_octet("00", ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<accessor::binary>, accessor::binary{"\x00"sv}}), to_octet(" 00 ", ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<accessor::binary>, accessor::binary{""sv}}), to_octet("", ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<accessor::binary>, accessor::binary{"\xff"sv}}), to_octet("fF", ctx, std::nullopt, false, false)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_octet("0", ctx, std::nullopt, false, false));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_octet(" bad string", ctx, std::nullopt, false, false));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_octet(" 0  1 ", ctx, std::nullopt, false, false));
+    EXPECT_EQ((any{std::in_place_type<accessor::binary>, accessor::binary{"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F\x20"}}), to_octet("000102030405060708090a0b0c0d0e0f101112131415161718191A1B1C1D1E1F20"sv, ctx, std::nullopt, false, false)); lost_precision(false);
+}
+
 }
 

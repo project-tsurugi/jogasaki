@@ -755,9 +755,9 @@ any to_octet(
     bool add_padding,
     bool src_padded
 ) {
+    auto trimmed = trim_spaces(s);
     std::string out{};
-    if(! utils::hex_to_octet(s, out)) {
-        ctx.add_error({error_kind::format_error, "loss precision policy `floor` is unsupported"});
+    if(! utils::hex_to_octet(trimmed, out)) {
         auto& e = ctx.add_error({error_kind::format_error, "invalid hexadecimal string passed for conversion"});
         e.new_argument() << s;
         return {std::in_place_type<error>, error(error_kind::format_error)};
@@ -1406,11 +1406,6 @@ any to_character(
     bool add_padding,
     bool src_padded
 ) {
-    (void) s;
-    (void) ctx;
-    (void) len;
-    (void) add_padding;
-    (void) src_padded;
     std::stringstream ss{};
     ss << utils::binary_printer{s}.show_hyphen(false);
     return handle_length<accessor::text>(ss.str(), ctx, len, add_padding, src_padded);

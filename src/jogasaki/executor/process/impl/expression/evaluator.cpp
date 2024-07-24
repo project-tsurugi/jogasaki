@@ -160,6 +160,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
             break;
         }
         case any::index<accessor::text>:  // fall-thru
+        case any::index<accessor::binary>:  // fall-thru
         case any::index<takatori::datetime::date>:  // fall-thru
         case any::index<takatori::datetime::time_of_day>:  // fall-thru
         case any::index<takatori::datetime::time_point>:  // fall-thru

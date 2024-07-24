@@ -495,10 +495,11 @@ TEST_F(coder_test, varbinary_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
-    EXPECT_EQ(status::ok, s.write(bin, asc, false, 10));
+    meta::octet_field_option opt{true, 10};
+    EXPECT_EQ(status::ok, s.write(bin, asc, opt));
 
     auto rs = s.readable();
-    auto result = rs.read<accessor::binary>(asc, false, std::nullopt, &resource);
+    auto result = rs.read<accessor::binary>(asc, false, opt, &resource);
     EXPECT_EQ(4, result.size());
     ASSERT_EQ(bin, result);
     EXPECT_EQ('\x00', buf[0]);
@@ -517,10 +518,11 @@ TEST_F(coder_test, varbinary_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
-    EXPECT_EQ(status::ok, s.write(bin, desc, false, 10));
+    meta::octet_field_option opt{true, 10};
+    EXPECT_EQ(status::ok, s.write(bin, desc, opt));
 
     auto rs = s.readable();
-    auto result = rs.read<accessor::binary>(desc, false, std::nullopt, &resource);
+    auto result = rs.read<accessor::binary>(desc, false, opt, &resource);
     EXPECT_EQ(4, result.size());
     ASSERT_EQ(bin, result);
     EXPECT_EQ('\xFF', buf[0]);
@@ -538,10 +540,11 @@ TEST_F(coder_test, binary_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
-    EXPECT_EQ(status::ok, s.write(bin, asc, true, 10));
+    meta::octet_field_option opt{false, 10};
+    EXPECT_EQ(status::ok, s.write(bin, asc, opt));
 
     auto rs = s.readable();
-    auto result = rs.read<accessor::binary>(asc, false, 10, &resource);
+    auto result = rs.read<accessor::binary>(asc, false, opt, &resource);
     EXPECT_EQ(10, result.size());
     accessor::binary exp{&resource, "\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00"sv};
     ASSERT_EQ(exp, result);
@@ -562,10 +565,11 @@ TEST_F(coder_test, binary_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::binary bin{&resource, "\x00\x01\x02\x03"sv};
-    EXPECT_EQ(status::ok, s.write(bin, desc, true, 10));
+    meta::octet_field_option opt{false, 10};
+    EXPECT_EQ(status::ok, s.write(bin, desc, opt));
 
     auto rs = s.readable();
-    auto result = rs.read<accessor::binary>(desc, false, 10, &resource);
+    auto result = rs.read<accessor::binary>(desc, false, opt, &resource);
     EXPECT_EQ(10, result.size());
     accessor::binary exp{&resource, "\x00\x01\x02\x03\x00\x00\x00\x00\x00\x00"sv};
     ASSERT_EQ(exp, result);
@@ -767,6 +771,8 @@ void verify_order(meta::field_type type, data::any a, data::any b, bool only_nul
     if (! only_nullable) {
         {
             // ascending non nullable
+            auto spec = spec_asc;
+            spec.storage({});
             EXPECT_EQ(status::ok, encode(a, type, spec_asc, s0));
             EXPECT_EQ(status::ok, encode(b, type, spec_asc, s1));
             EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
@@ -801,14 +807,6 @@ void verify_order(meta::field_type type, data::any a, data::any b, bool only_nul
 
 template <kind Kind>
 void test_ordering() {
-    std::string src0(100, 0);
-    std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    kvs::writable_stream s0{src0};
-    kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
     data::any null{};
     data::any n1{std::in_place_type<runtime_t<Kind>>, -1};
     data::any z0{std::in_place_type<runtime_t<Kind>>, 0};
@@ -844,18 +842,6 @@ TEST_F(coder_test, f8_ordering) {
 }
 
 TEST_F(coder_test, text_ordering) {
-    std::string src0(100, 0);
-    std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    std::string src4(100, 0);
-    std::string src5(100, 0);
-    kvs::writable_stream s0{src0};
-    kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
-    kvs::writable_stream s4{src4};
-    kvs::writable_stream s5{src5};
     data::any c0{std::in_place_type<accessor::text>, text{""}};
     data::any c2{std::in_place_type<accessor::text>, text{"AA"}};
     data::any c3a{std::in_place_type<accessor::text>, text{"AAA"}};
@@ -869,17 +855,21 @@ TEST_F(coder_test, text_ordering) {
     { SCOPED_TRACE("c3b < c5"); verify_order(type, c3b, c5); }
 }
 
+TEST_F(coder_test, binary_ordering) {
+    data::any c0{std::in_place_type<accessor::binary>, binary{""sv}};
+    data::any c2{std::in_place_type<accessor::binary>, binary{"\x01\x01"sv}};
+    data::any c3a{std::in_place_type<accessor::binary>, binary{"\x01\x01\x01"sv}};
+    data::any c3b{std::in_place_type<accessor::binary>, binary{"\x01\x01\x02"sv}};
+    data::any c5{std::in_place_type<accessor::binary>, binary{"\x02\x02"sv}};
+
+    meta::field_type type{std::make_shared<meta::octet_field_option>(false, 5)};
+    { SCOPED_TRACE("c0 < c2"); verify_order(type, c0, c2); }
+    { SCOPED_TRACE("c2 < c3a"); verify_order(type, c2, c3a); }
+    { SCOPED_TRACE("c3a < c3b"); verify_order(type, c3a, c3b); }
+    { SCOPED_TRACE("c3b < c5"); verify_order(type, c3b, c5); }
+}
+
 TEST_F(coder_test, date_ordering) {
-    std::string src0(100, 0);
-    std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    std::string src4(100, 0);
-    kvs::writable_stream s0{src0};
-    kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
-    kvs::writable_stream s4{src4};
     data::any c0{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{-2}};
     data::any c1{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{-1}};
     data::any c2{std::in_place_type<rtype<ft::date>>, rtype<ft::date>{0}};
@@ -893,14 +883,6 @@ TEST_F(coder_test, date_ordering) {
 }
 
 TEST_F(coder_test, time_of_day_ordering) {
-    std::string src0(100, 0);
-    std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    kvs::writable_stream s0{src0};
-    kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
     data::any c0{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{0ns}};
     data::any c1{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{1ns}};
     data::any c2{std::in_place_type<rtype<ft::time_of_day>>, rtype<ft::time_of_day>{1ns*(24L*60*60*1000*1000*1000-2)}};
@@ -913,16 +895,6 @@ TEST_F(coder_test, time_of_day_ordering) {
 }
 
 TEST_F(coder_test, time_point_ordering) {
-    std::string src0(100, 0);
-    std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    std::string src4(100, 0);
-    kvs::writable_stream s0{src0};
-    kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
-    kvs::writable_stream s4{src4};
     data::any c0{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-2ns}};
     data::any c1{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1ns}};
     data::any c2{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0ns}};
@@ -937,16 +909,6 @@ TEST_F(coder_test, time_point_ordering) {
 }
 
 TEST_F(coder_test, time_point_ordering_with_only_secs) {
-    std::string src0(100, 0);
-    std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    std::string src4(100, 0);
-    kvs::writable_stream s0{src0};
-    kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
-    kvs::writable_stream s4{src4};
     data::any c0{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-2s, 0ns}};
     data::any c1{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 0ns}};
     data::any c2{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{0s, 0ns}};
@@ -961,16 +923,6 @@ TEST_F(coder_test, time_point_ordering_with_only_secs) {
 }
 
 TEST_F(coder_test, time_point_ordering_with_subsecs) {
-    std::string src0(100, 0);
-    std::string src1(100, 0);
-    std::string src2(100, 0);
-    std::string src3(100, 0);
-    std::string src4(100, 0);
-    kvs::writable_stream s0{src0};
-    kvs::writable_stream s1{src1};
-    kvs::writable_stream s2{src2};
-    kvs::writable_stream s3{src3};
-    kvs::writable_stream s4{src4};
     data::any c0{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 100ms}};
     data::any c1{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 200ms}};
     data::any c2{std::in_place_type<rtype<ft::time_point>>, rtype<ft::time_point>{-1s, 900ms}};

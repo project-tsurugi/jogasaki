@@ -190,10 +190,10 @@ public:
      * @param resource the resource to allocate the content read
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::binary>, T> read(order odr, bool discard, std::optional<std::size_t> fixed_length, memory::paged_memory_resource* resource = nullptr) {
+    std::enable_if_t<std::is_same_v<T, accessor::binary>, T> read(order odr, bool discard, meta::octet_field_option const& option, memory::paged_memory_resource* resource = nullptr) {
         std::size_t len{};
-        if(fixed_length.has_value()) {
-            len = fixed_length.value();
+        if(! option.varying_) {
+            len = option.length_.value();
         } else {
             auto l = read<details::binary_encoding_prefix_type>(odr, false);
             len = static_cast<std::size_t>(l);

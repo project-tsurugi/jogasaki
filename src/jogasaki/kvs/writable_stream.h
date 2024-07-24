@@ -43,6 +43,7 @@
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::kvs {
@@ -185,19 +186,20 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, bool is_fixed_length, std::size_t max_len) {
+    std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, meta::octet_field_option const& option) {
+        std::size_t max_len = *option.length_;
         std::string_view sv{data};
         auto sz = sv.length();
         if(max_len < sz) {
             VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
             return status::err_insufficient_field_storage;
         }
-        if(! is_fixed_length) {
-            auto len = static_cast<details::binary_encoding_prefix_type>(is_fixed_length ? max_len : sz);
+        if(option.varying_) {
+            auto len = static_cast<details::binary_encoding_prefix_type>(sz);
             do_write<details::binary_encoding_prefix_type_bits>(details::key_encode<details::binary_encoding_prefix_type_bits>(len, odr));
         }
         do_write(sv.data(), sz, odr);
-        if(is_fixed_length) {
+        if(! option.varying_) {
             // padding
             if(sz < max_len) {
                 do_write(padding_octet, max_len-sz, odr);

@@ -70,7 +70,7 @@ public:
 using namespace std::string_view_literals;
 
 // union operator not supported by current compiler
-TEST_F(sql_variations_test, union_all) {
+TEST_F(sql_variations_test, DISABLED_union_all) {
     utils::set_global_tx_option(utils::create_tx_option{false, false});
     execute_statement("create table TT (C0 int primary key, C1 int)");
     execute_statement("INSERT INTO TT (C0, C1) VALUES (1,1)");

@@ -94,11 +94,23 @@ TEST_F(sql_function_type_matrix_test, max_time) {
 }
 
 TEST_F(sql_function_type_matrix_test, max_timestamp) {
-    test_function_with_type<kind::time_point>("max(", "TIMESTAMP", "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:03')", time_point{date{2000, 1, 1}, time_of_day{0, 0, 3}});
+    test_function_with_type<kind::time_point>(
+        "max(",
+        "TIMESTAMP",
+        "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:03')",
+        time_point{date{2000, 1, 1}, time_of_day{0, 0, 3}}
+    );
 }
 
-TEST_F(sql_function_type_matrix_test, DISABLED_max_timestamptz) {
-    test_function_with_type<kind::time_point>("max(", "TIMESTAMP WITH TIME ZONE", "(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:03+09:00')", time_point{date{2000, 1, 1}, time_of_day{0, 0, 3}});
+TEST_F(sql_function_type_matrix_test, max_timestamptz) {
+    test_function_with_type<kind::time_point>(
+        "max(",
+        "TIMESTAMP WITH TIME ZONE",
+        "(TIMESTAMP WITH TIME ZONE'2000-01-01 09:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 "
+        "09:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 09:00:03+09:00')",
+        time_point{date{2000, 1, 1}, time_of_day{0, 0, 3}},
+        meta::time_point_type(true)
+    );
 }
 
 }  // namespace jogasaki::testing

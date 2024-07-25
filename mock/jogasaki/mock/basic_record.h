@@ -52,6 +52,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/meta/type_helper.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::mock {
@@ -145,36 +146,6 @@ std::vector<std::size_t> index_vector(std::size_t init, std::index_sequence<Is..
     return std::vector<std::size_t>{(init + Is)...};
 }
 
-template <meta::field_type_kind Kind>
-meta::field_type create_field_type() {
-    return meta::field_type(meta::field_enum_tag<Kind>);
-}
-
-template <>
-inline meta::field_type create_field_type<meta::field_type_kind::time_of_day>() {
-    return meta::field_type(std::make_shared<meta::time_of_day_field_option>());
-}
-
-template <>
-inline meta::field_type create_field_type<meta::field_type_kind::time_point>() {
-    return meta::field_type(std::make_shared<meta::time_point_field_option>());
-}
-
-template <>
-inline meta::field_type create_field_type<meta::field_type_kind::decimal>() {
-    return meta::field_type(std::make_shared<meta::decimal_field_option>());
-}
-
-template <>
-inline meta::field_type create_field_type<meta::field_type_kind::character>() {
-    return meta::field_type(std::make_shared<meta::character_field_option>());
-}
-
-template <>
-inline meta::field_type create_field_type<meta::field_type_kind::octet>() {
-    return meta::field_type(std::make_shared<meta::octet_field_option>());
-}
-
 }  //namespace details
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
@@ -211,7 +182,7 @@ std::shared_ptr<meta::record_meta> create_meta(
     boost::dynamic_bitset<std::uint64_t> nullability,
     bool all_fields_nullable = false
 ) {
-    std::vector<meta::field_type> types{details::create_field_type<Kinds>()...};
+    std::vector<meta::field_type> types{meta::create_field_type<Kinds>()...};
     return create_meta<Kinds...>(std::move(types), std::move(nullability), all_fields_nullable);
 }
 

@@ -92,7 +92,8 @@ public:
         std::string_view fn_name,
         std::string_view type_name,
         std::string_view values,
-        std::optional<runtime_t<ResultKind>> exp
+        std::optional<runtime_t<ResultKind>> exp,
+        meta::field_type type = meta::create_field_type<ResultKind>()
     ) {
         execute_statement("create table t (c0 "+std::string{type_name}+")");
         execute_statement("insert into t values "+std::string{values}+"");
@@ -101,9 +102,9 @@ public:
             execute_query("SELECT "+std::string{fn_name}+"c0) FROM t", result);
             ASSERT_EQ(1, result.size());
             if(exp.has_value()) {
-                EXPECT_EQ((create_nullable_record<ResultKind>(*exp)), result[0]);
+                EXPECT_EQ((typed_nullable_record<ResultKind>(std::tuple{type}, {*exp})), result[0]);
             } else {
-                EXPECT_EQ((create_nullable_record<ResultKind>({}, {false})), result[0]);
+                EXPECT_EQ((typed_nullable_record<ResultKind>(std::tuple{type}, {}, {true})), result[0]);
             }
         }
     }

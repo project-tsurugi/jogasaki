@@ -82,7 +82,7 @@ TEST_F(sql_function_type_matrix_test, count_char) {
 
 TEST_F(sql_function_type_matrix_test, count_varbinary) {
     db_impl()->configuration()->support_octet(true);
-    test_function_with_type<kind::int8>("count(", "VARBINARY", "('010101'),('020202'),('030303')", 3);
+    test_function_with_type<kind::int8>("count(", "VARBINARY(3)", "('010101'),('020202'),('030303')", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_binary) {

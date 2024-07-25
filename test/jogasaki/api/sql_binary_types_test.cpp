@@ -190,4 +190,23 @@ TEST_F(sql_binary_types_test, insert_by_literal_cast_on_context) {
     }
 }
 
+TEST_F(sql_binary_types_test, length_unspecified_for_types) {
+    execute_statement("CREATE TABLE T (C0 VARBINARY, C1 BINARY)");
+    execute_statement("INSERT INTO T VALUES ('000102', '00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1 FROM T", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
+            std::tuple{
+                meta::octet_type(true),
+                meta::octet_type(false, 1),
+            }, {
+                accessor::binary{"\x00\x01\x02"sv},
+                accessor::binary{"\x00"sv},
+            }
+        )), result[0]);
+    }
+}
+
 }  // namespace jogasaki::testing

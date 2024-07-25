@@ -187,7 +187,7 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, meta::octet_field_option const& option) {
-        std::size_t max_len = *option.length_;
+        std::size_t max_len = option.length_.has_value() ? *option.length_ : storage_spec::system_max_length;
         std::string_view sv{data};
         auto sz = sv.length();
         if(max_len < sz) {

@@ -35,10 +35,6 @@ using kind = meta::field_type_kind;
 
 using namespace std::string_view_literals;
 
-//////////////////
-// count
-//////////////////
-
 TEST_F(sql_function_type_matrix_test, count_boolean) {
     db_impl()->configuration()->support_smallint(true);
     test_function_with_type<kind::int8>("count(", "BOOLEAN", "(true),(false),(true)", 3);
@@ -70,6 +66,10 @@ TEST_F(sql_function_type_matrix_test, count_real) {
 
 TEST_F(sql_function_type_matrix_test, count_double) {
     test_function_with_type<kind::int8>("count(", "double", "(1.0e0),(2.0e0),(3.0e0)", 3);
+}
+
+TEST_F(sql_function_type_matrix_test, count_decimal) {
+    test_function_with_type<kind::int8>("count(", "decimal", "(1.0),(2.0),(3.0)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_varchar) {

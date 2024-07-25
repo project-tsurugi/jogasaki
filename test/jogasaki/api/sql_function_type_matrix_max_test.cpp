@@ -67,6 +67,10 @@ TEST_F(sql_function_type_matrix_test, max_double) {
     test_function_with_type<kind::float8>("max(", "double", "(1.0e0),(2.0e0),(3.0e0)", 3);
 }
 
+TEST_F(sql_function_type_matrix_test, max_decimal) {
+    test_function_with_type<kind::decimal>("max(", "decimal", "(1.0),(2.0),(3.0)", 3, meta::decimal_type());
+}
+
 TEST_F(sql_function_type_matrix_test, max_varchar) {
     test_function_with_type<kind::character>("max(", "VARCHAR", "('AAA'),('BBB'),('CCC')", accessor::text{"CCC"});
 }
@@ -77,7 +81,7 @@ TEST_F(sql_function_type_matrix_test, max_char) {
 
 TEST_F(sql_function_type_matrix_test, max_varbinary) {
     db_impl()->configuration()->support_octet(true);
-    test_function_with_type<kind::octet>("max(", "VARBINARY", "('010101'),('020202'),('030303')", accessor::binary{"\x03\x03\x03"});
+    test_function_with_type<kind::octet>("max(", "VARBINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x03\x03\x03"});
 }
 
 TEST_F(sql_function_type_matrix_test, max_binary) {

@@ -72,6 +72,10 @@ TEST_F(sql_function_type_matrix_test, count_distinct_double) {
     test_function_with_type<kind::int8>("count(distinct ", "double", "(1.0e0),(2.0e0),(1.0e0)", 2);
 }
 
+TEST_F(sql_function_type_matrix_test, count_distinct_decimal) {
+    test_function_with_type<kind::int8>("count(distinct ", "decimal", "(1.0),(2.0),(1.0)", 2);
+}
+
 TEST_F(sql_function_type_matrix_test, count_distinct_varchar) {
     test_function_with_type<kind::int8>("count(distinct ", "VARCHAR", "('AAA'),('BBB'),('AAA')", 2);
 }

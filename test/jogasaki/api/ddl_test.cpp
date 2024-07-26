@@ -617,9 +617,15 @@ TEST_F(ddl_test, decimal_default_value) {
     }
 }
 
+TEST_F(ddl_test, binary_default_value) {
+    // binary literal is not supported yet but string literal can be casted
+    test_prepare_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 VARBINARY(5) DEFAULT '00010203')", error_code::type_analyze_exception);
+    test_prepare_err("CREATE TABLE T (C0 INT PRIMARY KEY, C1 BINARY(5) DEFAULT '00010203')", error_code::type_analyze_exception);
+}
+
 TEST_F(ddl_test, default_numeric_for_char_column) {
     test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 VARCHAR(3) DEFAULT 1)", error_code::type_analyze_exception);
-      test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 VARCHAR(3) DEFAULT 1)", error_code::type_analyze_exception);
+    test_prepare_err("CREATE TABLE T (C0 INT NOT NULL PRIMARY KEY, C1 VARCHAR(3) DEFAULT 1)", error_code::type_analyze_exception);
 }
 
 TEST_F(ddl_test, default_char_values_for_numeric_column) {

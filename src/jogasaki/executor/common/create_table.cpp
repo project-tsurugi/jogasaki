@@ -138,7 +138,7 @@ bool validate_type(
     takatori::type::character const& typ
 ) {
     std::string_view reason{};
-    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= 30716)) {
+    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= character_type_max_length)) {
         reason = "invalid length";
     } else {
         return true;
@@ -158,7 +158,7 @@ bool validate_type(
     takatori::type::octet const& typ
 ) {
     std::string_view reason{};
-    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= 30716)) {
+    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= octet_type_max_length)) {
         reason = "invalid length";
     } else {
         return true;

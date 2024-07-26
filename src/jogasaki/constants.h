@@ -98,6 +98,16 @@ constexpr std::size_t decimal_default_precision = decimal_max_precision;
 constexpr std::size_t decimal_default_precision_no_parenthesis = decimal_max_precision;
 
 /**
+ * @brief max length for varchar/char types
+ */
+constexpr std::size_t character_type_max_length = 30716;
+
+/**
+ * @brief max length for varbinary/binary types
+ */
+constexpr std::size_t octet_type_max_length = 30716;
+
+/**
  * @brief default precision for scale for dump
  * @details default precision for decimal types that has no scale information defined (e.g. DECIMAL(*, *))
  */

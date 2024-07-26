@@ -55,6 +55,7 @@
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/plan/compile_option.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/request_info.h>
 #include <jogasaki/scheduler/job_context.h>
@@ -119,7 +120,8 @@ public:
     [[nodiscard]] status prepare(
         std::string_view sql,
         api::statement_handle& statement,
-        std::shared_ptr<error::error_info>& out
+        std::shared_ptr<error::error_info>& out,
+        plan::compile_option const& option = {}
     );
 
     [[nodiscard]] status prepare(
@@ -132,7 +134,8 @@ public:
         std::string_view sql,
         std::unordered_map<std::string, api::field_type_kind> const& variables,
         api::statement_handle& statement,
-        std::shared_ptr<error::error_info>& out
+        std::shared_ptr<error::error_info>& out,
+        plan::compile_option const& option = {}
     );
 
     [[nodiscard]] status create_executable(
@@ -143,7 +146,8 @@ public:
     [[nodiscard]] status create_executable(
         std::string_view sql,
         std::unique_ptr<api::executable_statement>& statement,
-        std::shared_ptr<error::error_info>& out
+        std::shared_ptr<error::error_info>& out,
+        plan::compile_option const& option = {}
     );
 
     [[nodiscard]] status resolve(
@@ -314,14 +318,16 @@ private:
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
         std::unique_ptr<impl::prepared_statement>& statement,
-        std::shared_ptr<error::error_info>& out
+        std::shared_ptr<error::error_info>& out,
+        plan::compile_option const& option
     );
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,
         std::shared_ptr<yugawara::variable::configurable_provider> provider,
         api::statement_handle& statement,
-        std::shared_ptr<error::error_info>& out
+        std::shared_ptr<error::error_info>& out,
+        plan::compile_option const& option
     );
 
     [[nodiscard]] status resolve_common(

@@ -670,7 +670,9 @@ void service::command_explain_by_text(
 
     jogasaki::api::statement_handle statement{};
     std::shared_ptr<error::error_info> err_info{};
-    if(auto rc = get_impl(*db_).prepare(sql, statement, err_info); rc != jogasaki::status::ok) {
+    plan::compile_option option{};
+    option.explain_by_text_only(true);
+    if(auto rc = get_impl(*db_).prepare(sql, statement, err_info, option); rc != jogasaki::status::ok) {
         details::error<sql::response::Explain>(*res, err_info.get(), req_info);
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, false);

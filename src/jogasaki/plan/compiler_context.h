@@ -18,18 +18,19 @@
 #include <cstddef>
 #include <functional>
 
+#include <yugawara/aggregate/configurable_provider.h>
 #include <yugawara/compiler_result.h>
+#include <yugawara/function/configurable_provider.h>
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/variable/configurable_provider.h>
-#include <yugawara/function/configurable_provider.h>
-#include <yugawara/aggregate/configurable_provider.h>
 
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/graph.h>
-#include <jogasaki/utils/interference_size.h>
-#include <jogasaki/plan/prepared_statement.h>
+#include <jogasaki/plan/compile_option.h>
 #include <jogasaki/plan/executable_statement.h>
-#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/plan/prepared_statement.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::plan {
 
@@ -117,6 +118,14 @@ public:
     [[nodiscard]] std::shared_ptr<error::error_info> const& error_info() const noexcept {
         return error_info_;
     }
+
+    void option(compile_option option) noexcept {
+        option_ = option;
+    }
+
+    [[nodiscard]] compile_option const& option() const noexcept {
+        return option_;
+    }
 private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};
@@ -127,6 +136,7 @@ private:
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
     std::shared_ptr<std::string> sql_text_{};
     std::shared_ptr<error::error_info> error_info_{};
+    compile_option option_{};
 
 };
 

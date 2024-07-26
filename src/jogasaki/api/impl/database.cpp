@@ -361,7 +361,8 @@ status database::prepare_common(
     std::string_view sql,
     std::shared_ptr<yugawara::variable::configurable_provider> provider,
     std::unique_ptr<impl::prepared_statement>& statement,
-    std::shared_ptr<error::error_info>& out
+    std::shared_ptr<error::error_info>& out,
+    plan::compile_option const& option
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::prepare);
     req->statement_text(std::make_shared<std::string>(sql)); //TODO want to use shared_ptr created in plan::prepare
@@ -373,6 +374,7 @@ status database::prepare_common(
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     ctx->variable_provider(std::move(provider));
+    ctx->option(option);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, false);
@@ -389,10 +391,11 @@ status database::prepare_common(
     std::string_view sql,
     std::shared_ptr<yugawara::variable::configurable_provider> provider,
     statement_handle& statement,
-    std::shared_ptr<error::error_info>& out
+    std::shared_ptr<error::error_info>& out,
+    plan::compile_option const& option
 ) {
     std::unique_ptr<impl::prepared_statement> ptr{};
-    auto st = prepare_common(sql, std::move(provider), ptr, out);
+    auto st = prepare_common(sql, std::move(provider), ptr, out, option);
     if (st == status::ok) {
         decltype(prepared_statements_)::accessor acc{};
         api::statement_handle handle{ptr.get()};
@@ -414,9 +417,10 @@ status database::prepare(std::string_view sql, statement_handle& statement) {
 status database::prepare(
     std::string_view sql,
     statement_handle& statement,
-    std::shared_ptr<error::error_info>& out
+    std::shared_ptr<error::error_info>& out,
+    plan::compile_option const& option
 ) {
-    return prepare_common(sql, {}, statement, out);
+    return prepare_common(sql, {}, statement, out, option);
 }
 
 status database::prepare(
@@ -425,20 +429,21 @@ status database::prepare(
     statement_handle& statement
 ) {
     std::shared_ptr<error::error_info> info{};
-    return prepare(sql, variables, statement, info);
+    return prepare(sql, variables, statement, info, {});
 }
 
 status database::prepare(
     std::string_view sql,
     std::unordered_map<std::string, api::field_type_kind> const& variables,
     statement_handle& statement,
-    std::shared_ptr<error::error_info>& out
+    std::shared_ptr<error::error_info>& out,
+    plan::compile_option const& option
 ) {
     auto host_variables = std::make_shared<yugawara::variable::configurable_provider>();
     for(auto&& [n, t] : variables) {
         add_variable(*host_variables, n, t);
     }
-    return prepare_common(sql, std::move(host_variables), statement, out);
+    return prepare_common(sql, std::move(host_variables), statement, out, option);
 }
 
 status database::create_executable(std::string_view sql, std::unique_ptr<api::executable_statement>& statement) {
@@ -449,10 +454,11 @@ status database::create_executable(std::string_view sql, std::unique_ptr<api::ex
 status database::create_executable(
     std::string_view sql,
     std::unique_ptr<api::executable_statement>& statement,
-    std::shared_ptr<error::error_info>& out
+    std::shared_ptr<error::error_info>& out,
+    plan::compile_option const& option
 ) {
     std::unique_ptr<impl::prepared_statement> prepared{};
-    if(auto rc = prepare_common(sql, {}, prepared, out); rc != status::ok) {
+    if(auto rc = prepare_common(sql, {}, prepared, out, option); rc != status::ok) {
         return rc;
     }
     std::unique_ptr<api::executable_statement> exec{};

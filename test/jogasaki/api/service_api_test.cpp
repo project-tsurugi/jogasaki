@@ -1441,6 +1441,22 @@ TEST_F(service_api_test, explain_by_text_error_on_prepare) {
     LOG(INFO) << result;
 }
 
+TEST_F(service_api_test, explain_by_text_bypass_restriction) {
+    // verify explain by text does not return on restricted features
+    auto s = encode_explain_by_text("select * from T0 union all select * from T0");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, id, version, cols, error] = decode_explain(res->body_);
+    ASSERT_FALSE(result.empty());
+    LOG(INFO) << result;
+}
+
 TEST_F(service_api_test, null_host_variable) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);

@@ -14,31 +14,34 @@
  * limitations under the License.
  */
 
+#include <any>
 #include <sstream>
 #include <vector>
-#include <any>
-
 #include <boost/dynamic_bitset.hpp>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
-#include "jogasaki/proto/sql/request.pb.h"
-#include "jogasaki/proto/sql/response.pb.h"
-#include "jogasaki/proto/sql/common.pb.h"
-
 #include <jogasaki/api.h>
-#include <jogasaki/request_statistics.h>
+#include <jogasaki/api/impl/map_error_code.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/request_statistics.h>
+#include <jogasaki/utils/convert_offset.h>
 #include <jogasaki/utils/decimal.h>
-#include <jogasaki/api/impl/map_error_code.h>
+#include "jogasaki/proto/sql/common.pb.h"
+#include "jogasaki/proto/sql/request.pb.h"
+#include "jogasaki/proto/sql/response.pb.h"
 
 namespace jogasaki::utils {
 
 using namespace std::string_view_literals;
 using namespace std::literals::string_literals;
 using namespace jogasaki;
+
+using utils::time_of_day_tz;
+using utils::time_point_tz;
+
 namespace sql = jogasaki::proto::sql;
 
 using takatori::util::unsafe_downcast;
@@ -433,8 +436,10 @@ inline void fill_parameters(
             }
             case ValueCase::kTimeOfDayWithTimeZoneValue: {
                 auto* v = c0->mutable_time_of_day_with_time_zone_value();
-                v->set_offset_nanoseconds(std::any_cast<runtime_t<meta::field_type_kind::time_of_day>>(p.value_).time_since_epoch().count());
-                v->set_time_zone_offset(0);  //TOOD pass correct offset
+                auto tod = std::any_cast<time_of_day_tz>(p.value_).first;
+                auto offset = std::any_cast<time_of_day_tz>(p.value_).second;
+                v->set_offset_nanoseconds(tod.time_since_epoch().count());
+                v->set_time_zone_offset(offset);
                 break;
             }
             case ValueCase::kTimePointValue: {
@@ -445,11 +450,12 @@ inline void fill_parameters(
                 break;
             }
             case ValueCase::kTimePointWithTimeZoneValue: {
-                auto tp = std::any_cast<runtime_t<meta::field_type_kind::time_point>>(p.value_);
                 auto* v = c0->mutable_time_point_with_time_zone_value();
+                auto tp = std::any_cast<time_point_tz>(p.value_).first;
+                auto offset = std::any_cast<time_point_tz>(p.value_).second;
                 v->set_offset_seconds(tp.seconds_since_epoch().count());
                 v->set_nano_adjustment(tp.subsecond().count());
-                v->set_time_zone_offset(0);  //TOOD pass correct offset
+                v->set_time_zone_offset(offset);
                 break;
             }
             case ValueCase::kReferenceColumnPosition: c0->set_reference_column_position(std::any_cast<std::uint64_t>(p.value_)); break;

@@ -76,6 +76,8 @@ using takatori::datetime::time_point;
 using date_v = takatori::datetime::date;
 using time_of_day_v = takatori::datetime::time_of_day;
 using time_point_v = takatori::datetime::time_point;
+using time_of_day_tz = utils::time_of_day_tz;
+using time_point_tz = utils::time_point_tz;
 using decimal_v = takatori::decimal::triple;
 using ft = meta::field_type_kind;
 
@@ -830,15 +832,17 @@ TEST_F(service_api_test, temporal_types) {
 
     auto d2000_1_1 = date_v{2000, 1, 1};
     auto t12_0_0 = time_of_day_v{12, 0, 0};
+    auto t3_0_0 = time_of_day_v{3, 0, 0};
     auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto tp2000_1_1_3_0_0 = time_point_v{d2000_1_1, t3_0_0};
 
     {
         std::vector<parameter> parameters{
             {"p0"s, ValueCase::kDateValue, std::any{std::in_place_type<date_v>, d2000_1_1}},
             {"p1"s, ValueCase::kTimeOfDayValue, std::any{std::in_place_type<time_of_day_v>, t12_0_0}},
-            {"p2"s, ValueCase::kTimeOfDayWithTimeZoneValue, std::any{std::in_place_type<time_of_day_v>, t12_0_0}},
+            {"p2"s, ValueCase::kTimeOfDayWithTimeZoneValue, std::any{std::in_place_type<time_of_day_tz>, time_of_day_tz{t12_0_0, 9*60}}},
             {"p3"s, ValueCase::kTimePointValue, std::any{std::in_place_type<time_point_v>, tp2000_1_1_12_0_0}},
-            {"p4"s, ValueCase::kTimePointWithTimeZoneValue, std::any{std::in_place_type<time_point_v>, tp2000_1_1_12_0_0}},
+            {"p4"s, ValueCase::kTimePointWithTimeZoneValue, std::any{std::in_place_type<time_point_tz>, time_point_tz{tp2000_1_1_12_0_0, 9*60}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
@@ -907,8 +911,8 @@ TEST_F(service_api_test, temporal_types) {
                         dat, tod, todtz, tp, tptz,
                     },
                     {
-                        d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
-                        d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
+                        d2000_1_1, t12_0_0, t3_0_0, tp2000_1_1_12_0_0, tp2000_1_1_3_0_0,
+                        d2000_1_1, t12_0_0, t3_0_0, tp2000_1_1_12_0_0, tp2000_1_1_3_0_0,
                     }
                 )), v[0]);
             }
@@ -938,9 +942,11 @@ TEST_F(service_api_test, timestamptz) {
     auto tod = time_of_day{0, 2, 48, 91383000ns};
     auto tp = time_point{date{1, 1, 1}, tod};
 
+    auto exp_tp = time_point{date{0, 12, 31}, time_of_day{15, 2, 48, 91383000ns}};
+
     {
         std::vector<parameter> parameters{
-            {"p0"s, ValueCase::kTimePointWithTimeZoneValue, std::any{std::in_place_type<time_point_v>, tp}},
+            {"p0"s, ValueCase::kTimePointWithTimeZoneValue, std::any{std::in_place_type<time_point_tz>, time_point_tz{tp, 9*60}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
@@ -989,7 +995,7 @@ TEST_F(service_api_test, timestamptz) {
 
                 auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
                 EXPECT_EQ((mock::typed_nullable_record<ft::time_point>(
-                    std::tuple{tptz}, {tp}
+                    std::tuple{tptz}, {exp_tp}
                 )), v[0]);
             }
         }

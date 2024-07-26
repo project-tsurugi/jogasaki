@@ -78,6 +78,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/convert_offset.h>
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/proto_field_types.h>
@@ -1093,20 +1094,27 @@ void service::set_params(
                 });
                 break;
             }
-            case sql::request::Parameter::ValueCase::kTimeOfDayWithTimeZoneValue:
-                // TODO pass time zone offset
-                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{
+            case sql::request::Parameter::ValueCase::kTimeOfDayWithTimeZoneValue: {
+                takatori::datetime::time_of_day tod{
                     std::chrono::duration<std::uint64_t, std::nano>{
                         p.time_of_day_with_time_zone_value().offset_nanoseconds()
                     }
+                };
+                auto offset_min = p.time_of_day_with_time_zone_value().time_zone_offset();
+                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{
+                    utils::remove_offset({tod, offset_min})
                 });
                 break;
+            }
             case sql::request::Parameter::ValueCase::kTimePointWithTimeZoneValue: {
-                // TODO pass time zone offset
                 auto& v = p.time_point_with_time_zone_value();
-                params->set_time_point(p.name(), field_type_traits<kind::time_point>::runtime_type{
+                takatori::datetime::time_point tp{
                     std::chrono::duration<std::int64_t>{v.offset_seconds()},
                     std::chrono::nanoseconds{v.nano_adjustment()}
+                };
+                auto offset_min = v.time_zone_offset();
+                params->set_time_point(p.name(), field_type_traits<kind::time_point>::runtime_type{
+                    utils::remove_offset({tp, offset_min})
                 });
                 break;
             }

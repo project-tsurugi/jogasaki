@@ -60,7 +60,7 @@ using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
 
-class sql_binary_types_test :
+class sql_character_types_test :
     public ::testing::Test,
     public api_test_base {
 
@@ -84,30 +84,30 @@ using namespace std::string_view_literals;
 
 using jogasaki::accessor::text;
 
-TEST_F(sql_binary_types_test, insert_select) {
-    execute_statement("CREATE TABLE T (C0 VARBINARY(3), C1 BINARY(3))");
-    execute_statement("INSERT INTO T VALUES (CAST('00' AS VARBINARY(3)), CAST('00' AS BINARY(3)))");
+TEST_F(sql_character_types_test, insert_select) {
+    execute_statement("CREATE TABLE T (C0 VARCHAR(3), C1 CHAR(3))");
+    execute_statement("INSERT INTO T VALUES (' ', ' ')");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
             std::tuple{
-                meta::octet_type(true, 3),
-                meta::octet_type(false, 3),
+                meta::character_type(true, 3),
+                meta::character_type(false, 3),
             }, {
-                accessor::binary{"\x00"sv},
-                accessor::binary{"\x00\x00\x00"sv},
+                accessor::text{" "sv},
+                accessor::text{"   "sv},
             }
         )), result[0]);
     }
 }
 
-TEST_F(sql_binary_types_test, order_by) {
-    execute_statement("CREATE TABLE T (PK INT PRIMARY KEY, C0 VARBINARY(3), C1 BINARY(3))");
-    execute_statement("INSERT INTO T VALUES (0, CAST('00' AS VARBINARY(3)), CAST('02' AS BINARY(3)))");
-    execute_statement("INSERT INTO T VALUES (1, CAST('0001' AS VARBINARY(3)), CAST('0001' AS BINARY(3)))");
-    execute_statement("INSERT INTO T VALUES (2, CAST('0002' AS VARBINARY(3)), CAST('0000' AS BINARY(3)))");
+TEST_F(sql_character_types_test, order_by) {
+    execute_statement("CREATE TABLE T (PK INT PRIMARY KEY, C0 VARCHAR(3), C1 CHAR(3))");
+    execute_statement("INSERT INTO T VALUES (0, '0', '2')");
+    execute_statement("INSERT INTO T VALUES (1, '01', '01')");
+    execute_statement("INSERT INTO T VALUES (2, '02', '00')");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT PK FROM T ORDER BY C0", result);
@@ -126,31 +126,31 @@ TEST_F(sql_binary_types_test, order_by) {
     }
 }
 
-TEST_F(sql_binary_types_test, update) {
-    execute_statement("CREATE TABLE T (C0 VARBINARY(3), C1 BINARY(3))");
-    execute_statement("INSERT INTO T VALUES (CAST('00' AS VARBINARY(3)), CAST('00' AS BINARY(3)))");
-    execute_statement("UPDATE T SET C0=CAST('000102' AS VARBINARY(3)), C1=CAST('000102' AS BINARY(3))");
+TEST_F(sql_character_types_test, update) {
+    execute_statement("CREATE TABLE T (C0 VARCHAR(3), C1 CHAR(3))");
+    execute_statement("INSERT INTO T VALUES (' ', ' ')");
+    execute_statement("UPDATE T SET C0='012', C1='012'");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
             std::tuple{
-                meta::octet_type(true, 3),
-                meta::octet_type(false, 3),
+                meta::character_type(true, 3),
+                meta::character_type(false, 3),
             }, {
-                accessor::binary{"\x00\x01\x02"sv},
-                accessor::binary{"\x00\x01\x02"sv},
+                accessor::text{"012"sv},
+                accessor::text{"012"sv},
             }
         )), result[0]);
     }
 }
 
-TEST_F(sql_binary_types_test, comparison) {
-    execute_statement("CREATE TABLE T (PK INT PRIMARY KEY, C0 VARBINARY(3), C1 VARBINARY(3))");
-    execute_statement("INSERT INTO T VALUES (0, CAST('00' AS VARBINARY(3)), CAST('02' AS VARBINARY(3)))");
-    execute_statement("INSERT INTO T VALUES (1, CAST('0002' AS VARBINARY(3)), CAST('0001' AS VARBINARY(3)))");
-    execute_statement("INSERT INTO T VALUES (2, CAST('0000' AS VARBINARY(3)), CAST('0000' AS VARBINARY(3)))");
+TEST_F(sql_character_types_test, comparison) {
+    execute_statement("CREATE TABLE T (PK INT PRIMARY KEY, C0 VARCHAR(3), C1 VARCHAR(3))");
+    execute_statement("INSERT INTO T VALUES (0, '0', '2')");
+    execute_statement("INSERT INTO T VALUES (1, '02', '01')");
+    execute_statement("INSERT INTO T VALUES (2, '00', '00')");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT PK FROM T WHERE C0 < C1", result);
@@ -171,64 +171,64 @@ TEST_F(sql_binary_types_test, comparison) {
     }
 }
 
-TEST_F(sql_binary_types_test, insert_by_literal_cast_on_context) {
-    execute_statement("CREATE TABLE T (C0 VARBINARY(3), C1 BINARY(3))");
-    execute_statement("INSERT INTO T VALUES ('000102', '000304')");
+TEST_F(sql_character_types_test, insert_by_literal_cast_on_context) {
+    execute_statement("CREATE TABLE T (C0 VARCHAR(3), C1 CHAR(3))");
+    execute_statement("INSERT INTO T VALUES (12, 34)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
             std::tuple{
-                meta::octet_type(true, 3),
-                meta::octet_type(false, 3),
+                meta::character_type(true, 3),
+                meta::character_type(false, 3),
             }, {
-                accessor::binary{"\x00\x01\x02"sv},
-                accessor::binary{"\x00\x03\x04"sv},
+                accessor::text{"12"sv},
+                accessor::text{"34 "sv},
             }
         )), result[0]);
     }
 }
 
-TEST_F(sql_binary_types_test, length_unspecified_for_types) {
-    execute_statement("CREATE TABLE T (C0 VARBINARY, C1 BINARY)");
-    execute_statement("INSERT INTO T VALUES ('000102', '00')");
+TEST_F(sql_character_types_test, length_unspecified_for_types) {
+    execute_statement("CREATE TABLE T (C0 VARCHAR, C1 CHAR)");
+    execute_statement("INSERT INTO T VALUES ('012', '0')");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
             std::tuple{
-                meta::octet_type(true),
-                meta::octet_type(false, 1),
+                meta::character_type(true),
+                meta::character_type(false, 1),
             }, {
-                accessor::binary{"\x00\x01\x02"sv},
-                accessor::binary{"\x00"sv},
+                accessor::text{"012"sv},
+                accessor::text{"0"sv},
             }
         )), result[0]);
     }
 }
 
-TEST_F(sql_binary_types_test, scan_by_longer_data) {
+TEST_F(sql_character_types_test, scan_by_longer_data) {
     // verify coder correctly distinguish runtime type and storage type
     // even if search key is longer than the column length, encode should be successful
-    execute_statement("CREATE TABLE T (C0 BINARY(3), C1 BINARY(3), PRIMARY KEY(C0,C1))");
-    execute_statement("INSERT INTO T VALUES ('000000', '000000')");
+    execute_statement("CREATE TABLE T (C0 VARCHAR(3), C1 VARCHAR(3), PRIMARY KEY(C0,C1))");
+    execute_statement("INSERT INTO T VALUES ('000', '000')");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, C1 FROM T WHERE C0 = CAST('00000000' AS BINARY(4))", result);
+        execute_query("SELECT C0, C1 FROM T WHERE C0 = '0000'", result);
         ASSERT_EQ(0, result.size());
     }
 }
 
-TEST_F(sql_binary_types_test, find_by_longer_data) {
+TEST_F(sql_character_types_test, find_by_longer_data) {
     // verify coder correctly distinguish runtime type and storage type
     // even if search key is longer than the column length, encode should be successful
-    execute_statement("CREATE TABLE T (C0 BINARY(3), C1 BINARY(3), PRIMARY KEY(C0))");
-    execute_statement("INSERT INTO T VALUES ('000000', '000000')");
+    execute_statement("CREATE TABLE T (C0 VARCHAR(3), C1 VARCHAR(3), PRIMARY KEY(C0))");
+    execute_statement("INSERT INTO T VALUES ('000', '000')");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, C1 FROM T WHERE C0 = CAST('00000000' AS BINARY(4))", result);
+        execute_query("SELECT C0, C1 FROM T WHERE C0 = '0000'", result);
         ASSERT_EQ(0, result.size());
     }
 }

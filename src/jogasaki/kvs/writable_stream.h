@@ -155,7 +155,13 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text>, status> write(T data, order odr, bool add_padding, std::size_t max_len) {
+    std::enable_if_t<std::is_same_v<T, accessor::text>, status> write(T data, order odr, meta::character_field_option const& option) {
+        constexpr static std::size_t system_varchar_default_length = 1UL << 32U;
+        constexpr static std::size_t system_char_default_length = 1UL;
+
+        bool add_padding = ! option.varying_;
+        std::size_t max_len = option.length_ ? *option.length_ : (option.varying_ ? system_varchar_default_length : system_char_default_length);
+
         std::string_view sv{data};
         auto sz = sv.length();
         if(max_len < sz) {

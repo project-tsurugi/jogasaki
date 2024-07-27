@@ -100,7 +100,7 @@ TEST_F(coder_test, simple) {
     EXPECT_EQ(status::ok, s.write(f32, asc));
     EXPECT_EQ(status::ok, s.write(i64, asc));
     EXPECT_EQ(status::ok, s.write(f64, asc));
-    EXPECT_EQ(status::ok, s.write(txt, asc, false, 3));
+    EXPECT_EQ(status::ok, s.write(txt, asc, meta::character_field_option{true, 3}));
 
     auto rs = s.readable();
     ASSERT_EQ(i32, rs.read<std::int32_t>(asc, false));
@@ -124,7 +124,7 @@ TEST_F(coder_test, descendant) {
     EXPECT_EQ(status::ok, s.write(f32, desc));
     EXPECT_EQ(status::ok, s.write(i64, desc));
     EXPECT_EQ(status::ok, s.write(f64, desc));
-    EXPECT_EQ(status::ok, s.write(txt, desc, false, 3));
+    EXPECT_EQ(status::ok, s.write(txt, desc, meta::character_field_option{true, 3}));
 
     auto rs = s.readable();
     ASSERT_EQ(i32, rs.read<std::int32_t>(desc, false));
@@ -407,7 +407,7 @@ TEST_F(coder_test, text_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    EXPECT_EQ(status::ok, s.write(txt, asc, false, 3));
+    EXPECT_EQ(status::ok, s.write(txt, asc, meta::character_field_option{true, 3}));
 
     auto rs = s.readable();
 
@@ -430,7 +430,7 @@ TEST_F(coder_test, text_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    EXPECT_EQ(status::ok, s.write(txt, desc, false, 3));
+    EXPECT_EQ(status::ok, s.write(txt, desc, meta::character_field_option{true, 3}));
     auto rs = s.readable();
 
     ASSERT_EQ(txt, rs.read<accessor::text>(desc, false, &resource));
@@ -448,7 +448,7 @@ TEST_F(coder_test, empty_text_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, ""sv};
-    EXPECT_EQ(status::ok, s.write(txt, asc, false, 3));
+    EXPECT_EQ(status::ok, s.write(txt, asc, meta::character_field_option{true, 3}));
 
     auto rs = s.readable();
     auto result = rs.read<accessor::text>(asc, false, &resource);
@@ -465,7 +465,7 @@ TEST_F(coder_test, empty_text_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, ""sv};
-    EXPECT_EQ(status::ok, s.write(txt, desc, false, 3));
+    EXPECT_EQ(status::ok, s.write(txt, desc, meta::character_field_option{true, 3}));
 
     auto rs = s.readable();
     auto result = rs.read<accessor::text>(desc, false, &resource);
@@ -482,7 +482,7 @@ TEST_F(coder_test, text_non_variant_asc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    EXPECT_EQ(status::ok, s.write(txt, asc, true, 6));
+    EXPECT_EQ(status::ok, s.write(txt, asc, meta::character_field_option{false, 6}));
     auto rs = s.readable();
 
     accessor::text exp{&resource, "ABC   "sv};
@@ -504,7 +504,7 @@ TEST_F(coder_test, text_non_variant_desc) {
     kvs::writable_stream s{buf};
     mock_memory_resource resource{};
     accessor::text txt{&resource, "ABC"sv};
-    EXPECT_EQ(status::ok, s.write(txt, desc, true, 6));
+    EXPECT_EQ(status::ok, s.write(txt, desc, meta::character_field_option{false, 6}));
     auto rs = s.readable();
 
     accessor::text exp{&resource, "ABC   "sv};

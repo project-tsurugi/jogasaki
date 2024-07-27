@@ -76,7 +76,6 @@ status encode(
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
-        auto vi = spec.storage();
         switch(type.kind()) {
             case kind::boolean: return dest.write<runtime_t<kind::boolean>>(src.get_value<runtime_t<kind::boolean>>(offset), odr);
             case kind::int1: return dest.write<runtime_t<kind::int1>>(src.get_value<runtime_t<kind::int1>>(offset), odr);
@@ -86,7 +85,7 @@ status encode(
             case kind::float4: return dest.write<runtime_t<kind::float4>>(src.get_value<runtime_t<kind::float4>>(offset), odr);
             case kind::float8: return dest.write<runtime_t<kind::float8>>(src.get_value<runtime_t<kind::float8>>(offset), odr);
             case kind::decimal: return dest.write<runtime_t<kind::decimal>>(src.get_value<runtime_t<kind::decimal>>(offset), odr, *type.option<kind::decimal>());
-            case kind::character: return dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr, vi.add_padding(), vi.length());
+            case kind::character: return dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr, *type.option<kind::character>());
             case kind::octet: return dest.write<runtime_t<kind::octet>>(src.get_value<runtime_t<kind::octet>>(offset), odr, *type.option<kind::octet>());
             case kind::date: return dest.write<runtime_t<kind::date>>(src.get_value<runtime_t<kind::date>>(offset), odr);
             case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.get_value<runtime_t<kind::time_of_day>>(offset), odr);
@@ -129,7 +128,6 @@ status encode(
         using kind = meta::field_type_kind;
         if(src.empty()) throw_exception(std::domain_error{"unexpected null value"});
         auto odr = spec.ordering();
-        auto vi = spec.storage();
         switch(type.kind()) {
             case kind::boolean: return dest.write<runtime_t<kind::boolean>>(src.to<runtime_t<kind::boolean>>(), odr);
             case kind::int1: return dest.write<runtime_t<kind::int1>>(src.to<runtime_t<kind::int1>>(), odr);
@@ -139,7 +137,7 @@ status encode(
             case kind::float4: return dest.write<runtime_t<kind::float4>>(src.to<runtime_t<kind::float4>>(), odr);
             case kind::float8: return dest.write<runtime_t<kind::float8>>(src.to<runtime_t<kind::float8>>(), odr);
             case kind::decimal: return dest.write<runtime_t<kind::decimal>>(src.to<runtime_t<kind::decimal>>(), odr, *type.option<kind::decimal>());
-            case kind::character: return dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr, vi.add_padding(), vi.length());
+            case kind::character: return dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr, *type.option<kind::character>());
             case kind::octet: return dest.write<runtime_t<kind::octet>>(src.to<runtime_t<kind::octet>>(), odr, *type.option<kind::octet>());
             case kind::date: return dest.write<runtime_t<kind::date>>(src.to<runtime_t<kind::date>>(), odr);
             case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.to<runtime_t<kind::time_of_day>>(), odr);

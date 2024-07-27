@@ -673,6 +673,30 @@ TEST_F(coder_test, encode_decode_any) {
     EXPECT_EQ(2.0, res.to<double>());
 }
 
+TEST_F(coder_test, nullity_bit) {
+    // verify encoded value of nullity bit
+    // originally, the byte for nullity bit is defined to store std::uint8_t,
+    // but it's accidentally implemented using std::int8_t.
+    // We cannot change the encoding, so this is to verify the current behavior.
+    mock_memory_resource resource{};
+
+    std::string src(100, 0);
+    kvs::writable_stream s{src};
+    auto source_record = mock::create_nullable_record<kind::int4, kind::int4>(std::tuple{3, 0}, {false, true});
+    auto src_meta = source_record.record_meta();
+    EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s));
+    EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s));
+
+    ASSERT_EQ(s.size(), 6);
+
+    EXPECT_EQ('\x81', src[0]);  // nullity bit (MSB is flipped because this is signed)
+    EXPECT_EQ('\x80', src[1]);
+    EXPECT_EQ('\x00', src[2]);
+    EXPECT_EQ('\x00', src[3]);
+    EXPECT_EQ('\x03', src[4]);
+    EXPECT_EQ('\x80', src[5]);  // nullity bit
+}
+
 TEST_F(coder_test, nullable) {
     mock_memory_resource resource{};
     {

@@ -83,6 +83,13 @@ bool convert_any(any& a, meta::field_type const& type) {
             }
             break;
         }
+        case k::octet: {
+            switch(a.type_index()) {
+                case any::index<accessor::binary>: break;
+                default: return false;
+            }
+            break;
+        }
         case k::decimal: {
             switch(a.type_index()) {
                 case any::index<takatori::decimal::triple>: break;

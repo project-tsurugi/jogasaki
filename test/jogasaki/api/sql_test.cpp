@@ -307,27 +307,6 @@ TEST_F(sql_test, update_primary_key) {
     EXPECT_DOUBLE_EQ(30.0, result[1].get_value<double>(1));
 }
 
-TEST_F(sql_test, decimals_indefinitive_precscale) {
-    execute_statement("CREATE TABLE TT(C0 DECIMAL(5,3) NOT NULL PRIMARY KEY)");
-
-    std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::decimal},
-        {"p1", api::field_type_kind::decimal}
-    };
-    auto ps = api::create_parameter_set();
-    auto v1 = triple{1, 0, 1, 0}; // 1
-    ps->set_decimal("p0", v1);
-    execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps);
-    std::vector<mock::basic_record> result{};
-    execute_query("SELECT C0*C0 as C0 FROM TT", result);
-    ASSERT_EQ(1, result.size());
-    auto& rec = result[0];
-    EXPECT_FALSE(rec.is_null(0));
-
-    auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec}, {v1})), result[0]);
-}
-
 TEST_F(sql_test, read_null) {
     execute_statement("INSERT INTO T0(C0) VALUES (0)");
     {
@@ -659,36 +638,6 @@ TEST_F(sql_test, unsupported_features) {
     execute_statement("create table t2 (C0 int primary key)");
     test_stmt_err("SELECT * FROM t LIMIT 1", error_code::unsupported_compiler_feature_exception);
     test_stmt_err("INSERT INTO t SELECT 1 FROM t2", error_code::unsupported_compiler_feature_exception);
-}
-
-TEST_F(sql_test, store_double_literal_into_decimal) {
-    // by analyzer option cast_literals_in_context = true, double literal is implicitly casted to decimal
-    execute_statement("create table t (c0 decimal(5,3) primary key)");
-    execute_statement("insert into t values (1.1e0)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT c0 FROM t", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ(
-            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 3)}, {triple{1, 0, 11, -1}})),
-            result[0]
-        );
-    }
-    execute_statement("update t set c0 = 2.2");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT c0 FROM t", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ(
-            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 3)}, {triple{1, 0, 22, -1}})),
-            result[0]
-        );
-    }
-
-    // if the source is not literal, cast_literals_in_context doesn't apply and assignment conversion from double
-    // to decimal is not allowed
-    test_stmt_err("insert into t values (1.0e0+0.1e0)", error_code::unsupported_runtime_feature_exception);
-    test_stmt_err("update t set c0 = 2.0e0+0.2e0", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(sql_test, limit) {

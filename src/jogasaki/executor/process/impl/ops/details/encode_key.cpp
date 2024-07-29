@@ -63,8 +63,9 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
                 message = ss.str();
                 return status::err_type_mismatch;
             }
+            kvs::coding_context cctx{};
             if (k.nullable_) {
-                if(auto res = kvs::encode_nullable(a, k.type_, k.spec_, s);res != status::ok) {
+                if(auto res = kvs::encode_nullable(a, k.type_, k.spec_, cctx, s);res != status::ok) {
                     return res;
                 }
             } else {
@@ -72,7 +73,7 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
                     VLOG_LP(log_error) << "Null assigned for non-nullable field.";
                     return status::err_integrity_constraint_violation;
                 }
-                if(auto res = kvs::encode(a, k.type_, k.spec_, s);res != status::ok) {
+                if(auto res = kvs::encode(a, k.type_, k.spec_, cctx, s);res != status::ok) {
                     return res;
                 }
             }

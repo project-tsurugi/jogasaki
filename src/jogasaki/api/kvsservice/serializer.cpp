@@ -44,6 +44,7 @@
 #include <jogasaki/api/kvsservice/status.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/coding_context.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
@@ -75,10 +76,11 @@ status get_bufsize(jogasaki::kvs::coding_spec const &spec, std::vector<column_da
 static inline status encode(bool nullable, data::any const& data,
     meta::field_type const& type, jogasaki::kvs::coding_spec const & spec, jogasaki::kvs::writable_stream & results) {
     jogasaki::status s{};
+    kvs::coding_context ctx{};
     if (nullable) {
-        s = jogasaki::kvs::encode_nullable(data, type, spec, results);
+        s = jogasaki::kvs::encode_nullable(data, type, spec, ctx, results);
     } else {
-        s = jogasaki::kvs::encode(data, type, spec, results);
+        s = jogasaki::kvs::encode(data, type, spec, ctx, results);
     }
     return s == jogasaki::status::ok ? status::ok : status::err_invalid_argument;
 }
@@ -212,10 +214,11 @@ status serialize(jogasaki::kvs::coding_spec const &spec, std::vector<column_data
 static inline status decode(bool nullable, jogasaki::kvs::readable_stream &stream,
     meta::field_type const& type, jogasaki::kvs::coding_spec const &spec, data::any& dest) {
     jogasaki::status s{};
+    kvs::coding_context ctx{};
     if (nullable) {
-        s = jogasaki::kvs::decode_nullable(stream, type, spec, dest);
+        s = jogasaki::kvs::decode_nullable(stream, type, spec, ctx, dest);
     } else {
-        s = jogasaki::kvs::decode(stream, type, spec, dest);
+        s = jogasaki::kvs::decode(stream, type, spec, ctx, dest);
     }
     return s == jogasaki::status::ok ? status::ok : status::err_invalid_argument;
 }
@@ -230,10 +233,11 @@ static status decode_character(jogasaki::kvs::coding_spec const &spec, yugawara:
     jogasaki::memory::page_pool pool{};
     jogasaki::memory::lifo_paged_memory_resource mem{&pool};
     jogasaki::status st{};
+    kvs::coding_context ctx{};
     if (nullable) {
-        st = jogasaki::kvs::decode_nullable(stream, type, spec, dest, &mem);
+        st = jogasaki::kvs::decode_nullable(stream, type, spec, ctx, dest, &mem);
     } else {
-        st = jogasaki::kvs::decode(stream, type, spec, dest, &mem);
+        st = jogasaki::kvs::decode(stream, type, spec, ctx, dest, &mem);
     }
     if (st != jogasaki::status::ok) {
         return status::err_invalid_argument;

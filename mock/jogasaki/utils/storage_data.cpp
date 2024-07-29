@@ -185,11 +185,12 @@ inline void encode_field(
     bool nullable,
     kvs::writable_stream& target
 ) {
+    kvs::coding_context ctx{};
     if (nullable) {
-        kvs::encode_nullable(a.view(), f, spec, target);
+        kvs::encode_nullable(a.view(), f, spec, ctx, target);
         return;
     }
-    kvs::encode(a.view(), f, spec, target);
+    kvs::encode(a.view(), f, spec, ctx, target);
 }
 
 static void fill_fields(

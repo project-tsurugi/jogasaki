@@ -38,6 +38,7 @@ status encode_any(  //NOLINT(readability-function-cognitive-complexity)
     meta::field_type const& type,
     bool nullable,
     kvs::coding_spec spec,
+    kvs::coding_context& ctx,
     std::initializer_list<data::any> sources
 ) {
     std::size_t length = 0;
@@ -49,16 +50,16 @@ status encode_any(  //NOLINT(readability-function-cognitive-complexity)
                 if (! nullable) {
                     throw_exception(std::logic_error{""});
                 }
-                if(auto res = kvs::encode_nullable(f, type, spec, s); res != status::ok) {
+                if(auto res = kvs::encode_nullable(f, type, spec, ctx, s); res != status::ok) {
                     return res;
                 }
             } else {
                 if (nullable) {
-                    if(auto res = kvs::encode_nullable(f, type, spec, s); res != status::ok) {
+                    if(auto res = kvs::encode_nullable(f, type, spec, ctx, s); res != status::ok) {
                         return res;
                     }
                 } else {
-                    if(auto res = kvs::encode(f, type, spec, s); res != status::ok) {
+                    if(auto res = kvs::encode(f, type, spec, ctx, s); res != status::ok) {
                         return res;
                     }
                 }

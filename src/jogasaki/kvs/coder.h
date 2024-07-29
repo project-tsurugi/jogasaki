@@ -26,6 +26,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/kvs/coding_context.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/status.h>
@@ -220,18 +221,19 @@ static constexpr uint_t<N> SIGN_BIT = static_cast<uint_t<N>>(1) << (N - 1); // N
  * @param offset byte offset of the field containing data to encode
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
  * @return status::err_expression_evaluation_failure if encoding requires inexact operation
  * @return any error otherwise. When error occurs, write might have happened partially,
  * so the destination stream should be reset or discarded.
- *
  */
 status encode(accessor::record_ref src,
     std::size_t offset,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest);
 
 /**
@@ -241,6 +243,7 @@ status encode(accessor::record_ref src,
  * @param nullity_offset bit offset of the field nullity
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
@@ -254,6 +257,7 @@ status encode_nullable(
     std::size_t nullity_offset,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest
 );
 
@@ -262,6 +266,7 @@ status encode_nullable(
  * @param src the source data to encode
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
@@ -272,6 +277,7 @@ status encode_nullable(
 status encode(data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest);
 
 /**
@@ -279,6 +285,7 @@ status encode(data::any const& src,
  * @param src the source data to encode
  * @param type the type of the field
  * @param spec the coding spec for the encoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the stream where the encoded data is written
  * @return status::ok when successful
  * @return status::err_data_corruption if encoded data is not valid
@@ -290,6 +297,7 @@ status encode_nullable(
     data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest
 );
 
@@ -298,6 +306,7 @@ status encode_nullable(
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the any container for the result value
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  * @return status::ok when successful
@@ -309,6 +318,7 @@ status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     data::any& dest,
     memory::paged_memory_resource* resource = nullptr
 );
@@ -318,6 +328,7 @@ status decode(
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the record to containing the field
  * @param offset byte offset of the field
  * @param nullity_offset bit offset of the field nullity
@@ -331,6 +342,7 @@ status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     accessor::record_ref dest,
     std::size_t offset,
     memory::paged_memory_resource* resource = nullptr
@@ -341,6 +353,7 @@ status decode(
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the record to containing the field
  * @param offset byte offset of the field
  * @param nullity_offset bit offset of the field nullity
@@ -354,6 +367,7 @@ status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     accessor::record_ref dest,
     std::size_t offset,
     std::size_t nullity_offset,
@@ -365,6 +379,7 @@ status decode_nullable(
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @param ctx the context of the encoding/decoding
  * @param dest the any container for the result value
  * @param resource the memory resource used to generate text data. nullptr can be passed if no text field is processed.
  * @return status::ok when successful
@@ -376,6 +391,7 @@ status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     data::any& dest,
     memory::paged_memory_resource* resource = nullptr
 );
@@ -385,6 +401,7 @@ status decode_nullable(
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @param ctx the context of the encoding/decoding
  * @return status::ok when successful
  * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
@@ -393,13 +410,15 @@ status decode_nullable(
 status consume_stream(
     readable_stream& src,
     meta::field_type const& type,
-    coding_spec spec);
+    coding_spec spec,
+    coding_context& ctx);
 
 /**
  * @brief read kvs binary representation which is nullable, proceed the stream, and discard the result
  * @param src the stream where the encoded data is read
  * @param type the type of the field that holds decoded data
  * @param spec the coding spec for the decoded field
+ * @param ctx the context of the encoding/decoding
  * @return status::ok when successful
  * @return status::err_data_corruption if decoded data is not valid
  * @return any error otherwise. When error occurs, decode might have happened partially,
@@ -408,7 +427,8 @@ status consume_stream(
 status consume_stream_nullable(
     readable_stream& src,
     meta::field_type const& type,
-    coding_spec spec);
+    coding_spec spec,
+    coding_context& ctx);
 
 }
 

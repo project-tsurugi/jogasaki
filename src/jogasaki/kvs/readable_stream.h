@@ -292,10 +292,18 @@ public:
      */
     [[nodiscard]] std::string_view rest() const noexcept;
 
+    /**
+     * @brief coding context setter
+     * @details context information during read is stored in the context
+     */
+    void set_context(coding_context& arg) noexcept {
+        context_ = std::addressof(arg);
+    }
 private:
     char const* base_{};
     std::size_t pos_{};
     std::size_t capacity_{};
+    coding_context* context_{};
 
     runtime_t<meta::field_type_kind::decimal> do_read(order odr, bool discard, std::size_t precision, std::size_t scale);
 };

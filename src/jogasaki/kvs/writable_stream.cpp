@@ -160,8 +160,19 @@ void decimal_error_logging(std::string_view operation, runtime_t<meta::field_typ
     VLOG_LP(log_error) << "decimal operation (" << operation << ") failed. src=" << data << " precision= " << precision << " scale=" << scale << " digits=" << digits;
 }
 
-status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale) {
-    auto sz = utils::bytes_required_for_digits(precision);
+status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, meta::decimal_field_option const& option) {
+    if(! option.precision_.has_value() || ! option.scale_.has_value()) {
+        decimal_error_logging(
+            "validate prec/scale",
+            data,
+            (option.precision_.has_value() ? option.precision_.value() : -1),
+            (option.scale_.has_value() ? option.scale_.value() : -1),
+            -1
+        );
+        return status::err_expression_evaluation_failure;
+    }
+    std::size_t precision = option.precision_.value();
+    std::size_t scale = option.scale_.value();
     decimal::Decimal x{data};
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
         decimal_error_logging("value creation", data, precision, scale, -1);
@@ -181,6 +192,7 @@ status writable_stream::do_write(runtime_t<meta::field_type_kind::decimal> data,
     takatori::decimal::triple tri{y};
     auto [hi, lo, s] = utils::make_signed_coefficient_full(tri);
     (void)s;
+    auto sz = utils::bytes_required_for_digits(precision);
     write_decimal(data.sign(), lo, hi, sz, odr);
     return status::ok;
 }

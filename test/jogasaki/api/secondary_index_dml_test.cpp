@@ -387,12 +387,13 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
         {
             data::aligned_buffer buf{};
             auto v = secondary_key.has_value() ? data::any{std::in_place_type<std::int32_t>, *secondary_key} : data::any{};
-
+            kvs::coding_context ctx{};
             if(auto res = utils::encode_any(
                     buf,
                     meta::field_type{field_enum_tag_t<k::int4>{}},
                     true,
                     kvs::spec_key_ascending,
+                    ctx,
                     {v}
                 ); res != status::ok) {
                 fail();

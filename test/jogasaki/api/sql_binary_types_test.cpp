@@ -222,8 +222,7 @@ TEST_F(sql_binary_types_test, DISABLED_scan_by_longer_data) {
     }
 }
 
-// TODO enable after fixing insufficient storage by encoder
-TEST_F(sql_binary_types_test, DISABLED_find_by_longer_data) {
+TEST_F(sql_binary_types_test, find_by_longer_data) {
     // verify coder correctly distinguish runtime type and storage type
     // even if search key is longer than the column length, encode should be successful
     execute_statement("CREATE TABLE T (C0 BINARY(3), C1 BINARY(3), PRIMARY KEY(C0))");

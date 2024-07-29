@@ -234,11 +234,13 @@ status primary_target::decode_fields(
     memory::lifo_paged_memory_resource* varlen_resource
 ) const {
     for(auto&& f : fields) {
+        kvs::coding_context ctx{};
         if (f.nullable_) {
             if(auto res = kvs::decode_nullable(
                     stream,
                     f.type_,
                     f.spec_,
+                    ctx,
                     target,
                     f.offset_,
                     f.nullity_offset_,
@@ -248,7 +250,7 @@ status primary_target::decode_fields(
             }
             continue;
         }
-        if(auto res = kvs::decode(stream, f.type_, f.spec_, target, f.offset_, varlen_resource); res != status::ok) {
+        if(auto res = kvs::decode(stream, f.type_, f.spec_, ctx, target, f.offset_, varlen_resource); res != status::ok) {
             return res;
         }
         target.set_null(f.nullity_offset_, false); // currently assuming fields are nullable and
@@ -263,8 +265,10 @@ status encode_fields(
     accessor::record_ref source
 ) {
     for(auto const& f : fields) {
+        kvs::coding_context ctx{};
+        ctx.coding_for_write(true);
         if(f.nullable_) {
-            if(auto res = kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, target);
+            if(auto res = kvs::encode_nullable(source, f.offset_, f.nullity_offset_, f.type_, f.spec_, ctx, target);
                 res != status::ok) {
                 return res;
             }
@@ -273,7 +277,7 @@ status encode_fields(
                 VLOG_LP(log_error) << "Null assigned for non-nullable field.";
                 return status::err_integrity_constraint_violation;
             }
-            if(auto res = kvs::encode(source, f.offset_, f.type_, f.spec_, target); res != status::ok) {
+            if(auto res = kvs::encode(source, f.offset_, f.type_, f.spec_, ctx, target); res != status::ok) {
                 return res;
             }
         }

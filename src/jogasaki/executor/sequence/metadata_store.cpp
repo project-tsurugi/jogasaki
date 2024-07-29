@@ -28,6 +28,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/coding_context.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/readable_stream.h>
@@ -53,13 +54,13 @@ void metadata_store::put(std::size_t def_id, std::size_t id) {
     kvs::writable_stream value{val_buf.data(), val_buf.capacity()};
     data::any k{std::in_place_type<std::int64_t>, def_id};
     data::any v{std::in_place_type<std::int64_t>, id};
-    // no storage spec because field type is fixed
-    if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key);
+    kvs::coding_context ctx{};
+    if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, ctx, key);
         res != status::ok) {
         (void) tx_->abort();
         throw_exception(exception{res, "encode failed"});
     }
-    if(auto res = kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, value);
+    if(auto res = kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, ctx, value);
         res != status::ok) {
         (void) tx_->abort();
         throw_exception(exception{res, "encode_nullable failed"});
@@ -98,8 +99,8 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
     kvs::readable_stream key{k.data(), k.size()};
     kvs::readable_stream value{v.data(), v.size()};
     data::any dest{};
-    // no storage spec because field type is fixed
-    if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, dest);
+    kvs::coding_context ctx{};
+    if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, ctx, dest);
         res != status::ok) {
         (void) tx.abort();
         throw_exception(exception{res});
@@ -107,7 +108,7 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
     sequence_definition_id def_id{};
     sequence_id id{};
     def_id = dest.to<std::int64_t>();
-    if(auto res = kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, dest);
+    if(auto res = kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, ctx, dest);
         res != status::ok) {
         (void) tx.abort();
         throw_exception(exception{res});
@@ -155,8 +156,8 @@ bool metadata_store::remove(std::size_t def_id) {
     data::aligned_buffer key_buf{10};
     kvs::writable_stream key{key_buf.data(), key_buf.capacity()};
     data::any k{std::in_place_type<std::int64_t>, def_id};
-    // no storage spec because field type is fixed
-    if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, key); res != status::ok) {
+    kvs::coding_context ctx{};
+    if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, ctx, key); res != status::ok) {
         (void) tx_->abort();
         throw_exception(exception{res, "encode failed"});
     }

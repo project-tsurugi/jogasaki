@@ -65,14 +65,16 @@ status secondary_target::create_secondary_key(
         kvs::writable_stream s{buf.data(), buf.capacity(), loop == 0};
         for(auto&& f : secondary_key_fields_) {
             auto src = f.key_ ? primary_key : primary_value;
+            kvs::coding_context cctx{};
+            cctx.coding_for_write(true);
             if (f.nullable_) {
-                if(auto res = kvs::encode_nullable(src, f.offset_, f.nullity_offset_, f.type_, f.spec_, s);
+                if(auto res = kvs::encode_nullable(src, f.offset_, f.nullity_offset_, f.type_, f.spec_, cctx, s);
                     res != status::ok) {
                     handle_encode_errors(*ctx.req_context(), res);
                     return res;
                 }
             } else {
-                if(auto res = kvs::encode(src, f.offset_, f.type_, f.spec_, s); res != status::ok) {
+                if(auto res = kvs::encode(src, f.offset_, f.type_, f.spec_, cctx, s); res != status::ok) {
                     handle_encode_errors(*ctx.req_context(), res);
                     return res;
                 }

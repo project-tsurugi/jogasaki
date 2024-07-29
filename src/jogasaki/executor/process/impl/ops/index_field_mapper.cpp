@@ -104,13 +104,14 @@ status index_field_mapper::consume_secondary_key_fields(
     kvs::readable_stream& stream
 ) {
     for(auto&& f : fields) {
+        kvs::coding_context ctx{};
         if (f.source_nullable_) {
-            if(auto res = kvs::consume_stream_nullable(stream, f.type_, f.spec_); res != status::ok) {
+            if(auto res = kvs::consume_stream_nullable(stream, f.type_, f.spec_, ctx); res != status::ok) {
                 return res;
             }
             continue;
         }
-        if(auto res = kvs::consume_stream(stream, f.type_, f.spec_); res != status::ok) {
+        if(auto res = kvs::consume_stream(stream, f.type_, f.spec_, ctx); res != status::ok) {
             return res;
         }
     }

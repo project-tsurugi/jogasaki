@@ -15,27 +15,35 @@
  */
 #pragma once
 
-#include <cstddef>
-#include <initializer_list>
+namespace jogasaki::kvs {
 
-#include <jogasaki/data/aligned_buffer.h>
-#include <jogasaki/data/any.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/meta/field_type.h>
-#include <jogasaki/status.h>
+/**
+ * @brief context for encoding/decoding
+ */
+class coding_context {
+public:
+    /**
+     * @brief create default coding context
+     */
+    coding_context() = default;
 
-namespace jogasaki::utils {
+    /**
+     * @brief returns whether the encoding request is to write
+     */
+    [[nodiscard]] bool coding_for_write() const noexcept {
+        return coding_for_write_;
+    }
 
-status encode_any(
-    data::aligned_buffer& target,
-    meta::field_type const& type,
-    bool nullable,
-    kvs::coding_spec spec,
-    kvs::coding_context& ctx,
-    std::initializer_list<data::any> sources
-);
+    /**
+     * @brief setter for varlen info
+     */
+    void coding_for_write(bool arg) noexcept {
+        coding_for_write_ = arg;
+    }
 
-std::size_t bytes_required_for_digits(std::size_t digits);
+private:
+    bool coding_for_write_{false};
 
-}
+};
 
+}  // namespace jogasaki::kvs

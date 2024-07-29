@@ -57,24 +57,27 @@ std::string kvs_test_utils::put(
 
     auto& key_meta = key.record_meta();
     for(std::size_t i=0, n=key_meta->field_count(); i < n; ++i) {
+        kvs::coding_context ctx{};
         if (key_meta->nullable(i)) {
+
             kvs::encode_nullable(
                 key.ref(), key_meta->value_offset(i), key_meta->nullity_offset(i),
-                key_meta->at(i), spec_asc, key_stream);
+                key_meta->at(i), spec_asc, ctx, key_stream);
             continue;
         }
-        kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, key_stream);
+        kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, ctx, key_stream);
     }
     if (value) {
         auto& val_meta = value.record_meta();
+        kvs::coding_context ctx{};
         for(std::size_t i=0, n=val_meta->field_count(); i < n; ++i) {
             if (val_meta->nullable(i)) {
                 kvs::encode_nullable(
                     value.ref(), val_meta->value_offset(i), val_meta->nullity_offset(i),
-                    val_meta->at(i), spec_val, val_stream);
+                    val_meta->at(i), spec_val, ctx, val_stream);
                 continue;
             }
-            kvs::encode(value.ref(), val_meta->value_offset(i), val_meta->at(i), spec_val, val_stream);
+            kvs::encode(value.ref(), val_meta->value_offset(i), val_meta->at(i), spec_val, ctx, val_stream);
         }
     }
     if(auto res = stg->content_put(*tx,
@@ -106,13 +109,14 @@ void kvs_test_utils::put_secondary(
 
     auto& key_meta = key.record_meta();
     for(std::size_t i=0, n=key_meta->field_count(); i < n; ++i) {
+        kvs::coding_context ctx{};
         if (key_meta->nullable(i)) {
             kvs::encode_nullable(
                 key.ref(), key_meta->value_offset(i), key_meta->nullity_offset(i),
-                key_meta->at(i), spec_asc, key_stream);
+                key_meta->at(i), spec_asc, ctx, key_stream);
             continue;
         }
-        kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, key_stream);
+        kvs::encode(key.ref(), key_meta->value_offset(i), key_meta->at(i), spec_asc, ctx, key_stream);
     }
     key_stream.write(encoded_primary_key.data(), encoded_primary_key.size());
     if(auto res = stg->content_put(*tx,
@@ -169,12 +173,14 @@ void kvs_test_utils::get(
         kvs::readable_stream key_stream{key_buf};
         kvs::readable_stream val_stream{val_buf};
 
+        kvs::coding_context ctx{};
         for(std::size_t i=0, n=key_meta->field_count(); i < n; ++i) {
             if (key_meta->nullable(i)) {
                 kvs::decode_nullable(
                     key_stream,
                     key_meta->at(i),
                     spec_asc,
+                    ctx,
                     key_model.ref(),
                     key_meta->value_offset(i),
                     key_meta->nullity_offset(i)
@@ -185,6 +191,7 @@ void kvs_test_utils::get(
                 key_stream,
                 key_meta->at(i),
                 spec_asc,
+                ctx,
                 key_model.ref(),
                 key_meta->value_offset(i)
             );
@@ -195,6 +202,7 @@ void kvs_test_utils::get(
                     val_stream,
                     val_meta->at(i),
                     spec_val,
+                    ctx,
                     value_model.ref(),
                     val_meta->value_offset(i),
                     val_meta->nullity_offset(i)
@@ -205,6 +213,7 @@ void kvs_test_utils::get(
                 val_stream,
                 val_meta->at(i),
                 spec_val,
+                ctx,
                 value_model.ref(),
                 val_meta->value_offset(i)
             );

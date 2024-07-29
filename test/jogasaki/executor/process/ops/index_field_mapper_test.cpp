@@ -93,14 +93,15 @@ TEST_F(index_field_mapper_test, simple) {
 
             basic_record secondary_rec{create_nullable_record<k::int4, k::int4, k::int8>(1, 1, 10)};
             auto secondary_rec_meta = secondary_rec.record_meta();
-            encode_nullable(secondary_rec.ref(), secondary_rec_meta->value_offset(0), secondary_rec_meta->nullity_offset(0), secondary_rec_meta->at(0), spec_asc, s);
-            encode_nullable(secondary_rec.ref(), secondary_rec_meta->value_offset(1), secondary_rec_meta->nullity_offset(1), secondary_rec_meta->at(1), spec_asc, s);
-            encode_nullable(secondary_rec.ref(), secondary_rec_meta->value_offset(2), secondary_rec_meta->nullity_offset(2), secondary_rec_meta->at(2), spec_asc, s);
+            coding_context ctx{};
+            encode_nullable(secondary_rec.ref(), secondary_rec_meta->value_offset(0), secondary_rec_meta->nullity_offset(0), secondary_rec_meta->at(0), spec_asc, ctx, s);
+            encode_nullable(secondary_rec.ref(), secondary_rec_meta->value_offset(1), secondary_rec_meta->nullity_offset(1), secondary_rec_meta->at(1), spec_asc, ctx, s);
+            encode_nullable(secondary_rec.ref(), secondary_rec_meta->value_offset(2), secondary_rec_meta->nullity_offset(2), secondary_rec_meta->at(2), spec_asc, ctx, s);
 
             basic_record primary_rec{create_nullable_record<k::int8, k::int4>(10, 100)};
             auto primary_rec_meta = primary_rec.record_meta();
-            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(0), primary_rec_meta->nullity_offset(0), primary_rec_meta->at(0), spec_asc, t_k);
-            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
+            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(0), primary_rec_meta->nullity_offset(0), primary_rec_meta->at(0), spec_asc, ctx, t_k);
+            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, ctx, t_v);
 
             auto tx = db_->create_transaction();
             ASSERT_EQ(status::ok, i2->content_put(*tx, {s.data(), s.size()}, ""));
@@ -177,8 +178,9 @@ TEST_F(index_field_mapper_test, without_secondary) {
 
             basic_record primary_rec{create_nullable_record<k::int8, k::int4>(10, 100)};
             auto primary_rec_meta = primary_rec.record_meta();
-            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(0), primary_rec_meta->nullity_offset(0), primary_rec_meta->at(0), spec_asc, t_k);
-            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, t_v);
+            coding_context ctx{};
+            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(0), primary_rec_meta->nullity_offset(0), primary_rec_meta->at(0), spec_asc, ctx, t_k);
+            encode_nullable(primary_rec.ref(), primary_rec_meta->value_offset(1), primary_rec_meta->nullity_offset(1), primary_rec_meta->at(1), spec_asc, ctx, t_v);
 
             auto tx = db_->create_transaction();
             ASSERT_EQ(status::ok, t1->content_put(*tx, {t_k.data(), t_k.size()}, {t_v.data(), t_v.size()}));

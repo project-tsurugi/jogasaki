@@ -37,6 +37,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/coding_context.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
@@ -164,7 +165,7 @@ public:
 
         std::string_view sv{data};
         auto sz = sv.length();
-        if(max_len < sz) {
+        if((! context_ || context_->coding_for_write()) && max_len < sz) {
             VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
             return status::err_insufficient_field_storage;
         }
@@ -172,7 +173,7 @@ public:
             return status::err_invalid_runtime_value;
         }
         do_write(sv.data(), sz, odr);
-        if(add_padding) {
+        if((! context_ || context_->coding_for_write()) && add_padding) {
             // padding chars
             if(sv.size() < max_len) {
                 do_write(padding_character, max_len-sv.size(), odr);
@@ -196,7 +197,7 @@ public:
         std::size_t max_len = option.length_.has_value() ? *option.length_ : storage_spec::system_max_length;
         std::string_view sv{data};
         auto sz = sv.length();
-        if(max_len < sz) {
+        if((! context_ || context_->coding_for_write()) && max_len < sz) {
             VLOG_LP(log_error) << "insufficient storage to store field data. storage max:" << max_len << " data length:" << sz;
             return status::err_insufficient_field_storage;
         }
@@ -205,7 +206,7 @@ public:
             do_write<details::binary_encoding_prefix_type_bits>(details::key_encode<details::binary_encoding_prefix_type_bits>(len, odr));
         }
         do_write(sv.data(), sz, odr);
-        if(! option.varying_) {
+        if((! context_ || context_->coding_for_write()) && ! option.varying_) {
             // padding
             if(sz < max_len) {
                 do_write(padding_octet, max_len-sz, odr);
@@ -266,7 +267,7 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, status>
     write(T data, order odr, meta::decimal_field_option const& option) {
-        return do_write(data, odr, *option.precision_, *option.scale_); //TDOO if precision scale doesn't exist
+        return do_write(data, odr, option);
     }
     /**
      * @brief write raw data to the stream buffer
@@ -310,11 +311,20 @@ public:
      */
     void ignore_overflow(bool arg) noexcept;
 
+    /**
+     * @brief coding context setter
+     * @details context information during write is stored in the context
+     */
+    void set_context(coding_context& arg) noexcept {
+        context_ = std::addressof(arg);
+    }
+
 private:
     char* base_{};
     std::size_t pos_{};
     std::size_t capacity_{};
     bool ignore_overflow_{false};
+    coding_context* context_{};
 
     template<std::size_t N>
     void do_write(details::uint_t<N> data) {
@@ -331,7 +341,7 @@ private:
 
     void do_write(char const* dt, std::size_t sz, order odr);
     void do_write(char ch, std::size_t sz, order odr);
-    status do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, std::size_t precision, std::size_t scale);
+    status do_write(runtime_t<meta::field_type_kind::decimal> data, order odr, meta::decimal_field_option const& option);
     void write_decimal(std::int8_t sign, std::uint64_t lo, std::uint64_t hi, std::size_t sz, order odr);
 };
 

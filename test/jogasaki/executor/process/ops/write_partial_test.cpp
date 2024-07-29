@@ -105,11 +105,13 @@ public:
         kvs::readable_stream key_stream{in};
         std::string out(meta.record_size(), '\0');
         accessor::record_ref target{out.data(), out.capacity()};
+        kvs::coding_context ctx{};
         for(std::size_t i=0, n=meta.field_count(); i<n; ++i) {
             kvs::decode_nullable(
                 key_stream,
                 meta.at(i),
                 spec_asc,
+                ctx,
                 target,
                 meta.value_offset(i),
                 meta.nullity_offset(i)

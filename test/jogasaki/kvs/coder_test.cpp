@@ -630,12 +630,13 @@ TEST_F(coder_test, encode_decode) {
     test::record source_record{2, 2.0};
     test::record target_record{1, 1.0};
     auto src_meta = source_record.record_meta();
-    EXPECT_EQ(status::ok, encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), spec_asc, s));
-    EXPECT_EQ(status::ok, encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), spec_asc, s));
+    kvs::coding_context ctx{};
+    EXPECT_EQ(status::ok, encode(source_record.ref(), src_meta->value_offset(0), src_meta->at(0), spec_asc, ctx, s));
+    EXPECT_EQ(status::ok, encode(source_record.ref(), src_meta->value_offset(1), src_meta->at(1), spec_asc, ctx, s));
     auto rs = s.readable();
     auto tgt_meta = target_record.record_meta();
-    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), &resource));
-    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), &resource));
+    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(0), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(0), &resource));
+    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(1), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(1), &resource));
 
     ASSERT_EQ(2, target_record.ref().get_value<std::int64_t>(tgt_meta->value_offset(0)));
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
@@ -655,21 +656,22 @@ TEST_F(coder_test, encode_decode_any) {
 
     data::any src0{std::in_place_type<std::int64_t>, 2};
     data::any src1{std::in_place_type<double>, 2.0};
-    EXPECT_EQ(status::ok, encode(src0, src_meta->at(0), spec_asc, s));
-    EXPECT_EQ(status::ok, encode(src1, src_meta->at(1), spec_asc, s));
+    kvs::coding_context ctx{};
+    EXPECT_EQ(status::ok, encode(src0, src_meta->at(0), spec_asc, ctx, s));
+    EXPECT_EQ(status::ok, encode(src1, src_meta->at(1), spec_asc, ctx, s));
     auto rs = s.readable();
     auto tgt_meta = target_record.record_meta();
-    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), &resource));
-    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), &resource));
+    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(0), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(0), &resource));
+    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(1), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(1), &resource));
 
     ASSERT_EQ(2, target_record.ref().get_value<std::int64_t>(tgt_meta->value_offset(0)));
     ASSERT_EQ(2.0, target_record.ref().get_value<double>(tgt_meta->value_offset(1)));
 
     rs = s.readable();
     data::any res{};
-    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(0), spec_asc, res, &resource));
+    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(0), spec_asc, ctx, res, &resource));
     EXPECT_EQ(2, res.to<std::int64_t>());
-    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(1), spec_asc, res, &resource));
+    EXPECT_EQ(status::ok, decode(rs, tgt_meta->at(1), spec_asc, ctx, res, &resource));
     EXPECT_EQ(2.0, res.to<double>());
 }
 
@@ -684,8 +686,9 @@ TEST_F(coder_test, nullity_bit) {
     kvs::writable_stream s{src};
     auto source_record = mock::create_nullable_record<kind::int4, kind::int4>(std::tuple{3, 0}, {false, true});
     auto src_meta = source_record.record_meta();
-    EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s));
-    EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s));
+    kvs::coding_context ctx{};
+    EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, ctx, s));
+    EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, ctx, s));
 
     ASSERT_EQ(s.size(), 6);
 
@@ -707,12 +710,13 @@ TEST_F(coder_test, nullable) {
         test::record source_record{2, 2.0};
         test::record target_record{1, 1.0};
         auto src_meta = source_record.record_meta();
-        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s));
-        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s));
+        kvs::coding_context ctx{};
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, ctx, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, ctx, s));
         auto rs = s.readable();
         auto tgt_meta = target_record.record_meta();
-        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource));
-        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource));
+        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource));
+        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource));
 
         ASSERT_EQ(2, *target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
         ASSERT_EQ(2.0, *target_record.ref().get_if<double>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));
@@ -725,16 +729,18 @@ TEST_F(coder_test, nullable) {
         mock::basic_record source_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(2, 2, 2.0, 2.0), {false, true, false, true})};
         mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(1, 1, 1.0, 1.0), {false, false, false, false})};
         auto src_meta = source_record.record_meta();
-        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, s));
-        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, s));
-        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(2), src_meta->nullity_offset(2), src_meta->at(2), spec_asc, s));
-        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(3), src_meta->nullity_offset(3), src_meta->at(3), spec_asc, s));
+
+        kvs::coding_context ctx{};
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, ctx, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(1), src_meta->nullity_offset(1), src_meta->at(1), spec_asc, ctx, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(2), src_meta->nullity_offset(2), src_meta->at(2), spec_asc, ctx, s));
+        EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(3), src_meta->nullity_offset(3), src_meta->at(3), spec_asc, ctx, s));
         auto rs = s.readable();
         auto tgt_meta = target_record.record_meta();
-        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource));
-        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource));
-        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(2), spec_asc, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource));
-        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(3), spec_asc, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource));
+        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource));
+        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource));
+        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(2), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource));
+        EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(3), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource));
 
         ASSERT_EQ(2, *target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
         ASSERT_FALSE(target_record.ref().get_if<std::int64_t>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));
@@ -758,16 +764,17 @@ TEST_F(coder_test, encode_decode_any_nullable) {
     data::any src2{std::in_place_type<double>, 2.0};
     data::any src3{};
 
-    EXPECT_EQ(status::ok, encode_nullable(src0, src_meta->at(0), spec_asc, s));
-    EXPECT_EQ(status::ok, encode_nullable(src1, src_meta->at(1), spec_asc, s));
-    EXPECT_EQ(status::ok, encode_nullable(src2, src_meta->at(2), spec_asc, s));
-    EXPECT_EQ(status::ok, encode_nullable(src3, src_meta->at(3), spec_asc, s));
+    kvs::coding_context ctx{};
+    EXPECT_EQ(status::ok, encode_nullable(src0, src_meta->at(0), spec_asc, ctx, s));
+    EXPECT_EQ(status::ok, encode_nullable(src1, src_meta->at(1), spec_asc, ctx, s));
+    EXPECT_EQ(status::ok, encode_nullable(src2, src_meta->at(2), spec_asc, ctx, s));
+    EXPECT_EQ(status::ok, encode_nullable(src3, src_meta->at(3), spec_asc, ctx, s));
     auto rs = s.readable();
     auto tgt_meta = target_record.record_meta();
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource));
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource));
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(2), spec_asc, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource));
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(3), spec_asc, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(0), tgt_meta->nullity_offset(0), &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(1), tgt_meta->nullity_offset(1), &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(2), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(2), tgt_meta->nullity_offset(2), &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(3), spec_asc, ctx, target_record.ref(), tgt_meta->value_offset(3), tgt_meta->nullity_offset(3), &resource));
 
     ASSERT_EQ(2, *target_record.ref().get_if<std::int32_t>(tgt_meta->nullity_offset(0), tgt_meta->value_offset(0)));
     ASSERT_FALSE(target_record.ref().get_if<std::int32_t>(tgt_meta->nullity_offset(1), tgt_meta->value_offset(1)));
@@ -776,13 +783,13 @@ TEST_F(coder_test, encode_decode_any_nullable) {
 
     rs = s.readable();
     data::any res{};
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, res, &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(0), spec_asc, ctx, res, &resource));
     EXPECT_EQ(2, res.to<std::int32_t>());
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, res, &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(1), spec_asc, ctx, res, &resource));
     EXPECT_FALSE(res);
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(2), spec_asc, res, &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(2), spec_asc, ctx, res, &resource));
     EXPECT_EQ(2.0, res.to<double>());
-    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(3), spec_asc, res, &resource));
+    EXPECT_EQ(status::ok, decode_nullable(rs, tgt_meta->at(3), spec_asc, ctx, res, &resource));
     EXPECT_FALSE(res);
 }
 
@@ -825,21 +832,23 @@ void verify_order(meta::field_type type, data::any a, data::any b, bool only_nul
     std::string src1(100, 0);
     kvs::writable_stream s0{src0};
     kvs::writable_stream s1{src1};
+    kvs::coding_context ctx{};
+    ctx.coding_for_write(true);
     if (! only_nullable) {
         {
             // ascending non nullable
             auto spec = spec_asc;
             spec.storage({});
-            EXPECT_EQ(status::ok, encode(a, type, spec_asc, s0));
-            EXPECT_EQ(status::ok, encode(b, type, spec_asc, s1));
+            EXPECT_EQ(status::ok, encode(a, type, spec_asc, ctx, s0));
+            EXPECT_EQ(status::ok, encode(b, type, spec_asc, ctx, s1));
             EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         }
         s0.reset();
         s1.reset();
         {
             // descending non nullable
-            EXPECT_EQ(status::ok, encode(a, type, spec_desc, s0));
-            EXPECT_EQ(status::ok, encode(b, type, spec_desc, s1));
+            EXPECT_EQ(status::ok, encode(a, type, spec_desc, ctx, s0));
+            EXPECT_EQ(status::ok, encode(b, type, spec_desc, ctx, s1));
             EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
         }
         s0.reset();
@@ -848,16 +857,16 @@ void verify_order(meta::field_type type, data::any a, data::any b, bool only_nul
 
     {
         // ascending nullable
-        EXPECT_EQ(status::ok, encode_nullable(a, type, spec_asc, s0));
-        EXPECT_EQ(status::ok, encode_nullable(b, type, spec_asc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(a, type, spec_asc, ctx, s0));
+        EXPECT_EQ(status::ok, encode_nullable(b, type, spec_asc, ctx, s1));
         EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
     }
     s0.reset();
     s1.reset();
     {
         // descending nullable
-        EXPECT_EQ(status::ok, encode_nullable(a, type, spec_desc, s0));
-        EXPECT_EQ(status::ok, encode_nullable(b, type, spec_desc, s1));
+        EXPECT_EQ(status::ok, encode_nullable(a, type, spec_desc, ctx, s0));
+        EXPECT_EQ(status::ok, encode_nullable(b, type, spec_desc, ctx, s1));
         EXPECT_GT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));
     }
 }

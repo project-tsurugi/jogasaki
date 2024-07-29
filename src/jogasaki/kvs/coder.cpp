@@ -71,11 +71,13 @@ status encode(
     std::size_t offset,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        dest.set_context(ctx);
         switch(type.kind()) {
             case kind::boolean: return dest.write<runtime_t<kind::boolean>>(src.get_value<runtime_t<kind::boolean>>(offset), odr);
             case kind::int1: return dest.write<runtime_t<kind::int1>>(src.get_value<runtime_t<kind::int1>>(offset), odr);
@@ -102,17 +104,19 @@ status encode_nullable(
     std::size_t nullity_offset,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        dest.set_context(ctx);
         bool is_null = src.is_null(nullity_offset);
         if(auto res = dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr); res != status::ok) {
             return res;
         }
         if (! is_null) {
-            return encode(src, offset, type, spec, dest);
+            return encode(src, offset, type, spec, ctx, dest);
         }
         return status::ok;
     });
@@ -122,12 +126,14 @@ status encode(
     data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         if(src.empty()) throw_exception(std::domain_error{"unexpected null value"});
         auto odr = spec.ordering();
+        dest.set_context(ctx);
         switch(type.kind()) {
             case kind::boolean: return dest.write<runtime_t<kind::boolean>>(src.to<runtime_t<kind::boolean>>(), odr);
             case kind::int1: return dest.write<runtime_t<kind::int1>>(src.to<runtime_t<kind::int1>>(), odr);
@@ -152,17 +158,19 @@ status encode_nullable(
     data::any const& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     writable_stream& dest
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        dest.set_context(ctx);
         bool is_null = src.empty();
         if(auto res = dest.write<runtime_t<kind::boolean>>(is_null ? 0 : 1, odr); res != status::ok) {
             return res;
         }
         if(! is_null) {
-            return encode(src, type, spec, dest);
+            return encode(src, type, spec, ctx, dest);
         }
         return status::ok;
     });
@@ -172,6 +180,7 @@ status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     data::any& dest,
     memory::paged_memory_resource* resource
 ) {
@@ -179,6 +188,7 @@ status decode(
         using kind = meta::field_type_kind;
         using any = data::any;
         auto odr = spec.ordering();
+        src.set_context(ctx);
         switch(type.kind()) {
             case kind::boolean: dest = any{std::in_place_type<runtime_t<kind::boolean>>, src.read<runtime_t<kind::boolean>>(odr, false)}; break;
             case kind::int1: dest = any{std::in_place_type<runtime_t<kind::int1>>, src.read<runtime_t<kind::int1>>(odr, false)}; break;
@@ -204,6 +214,7 @@ status decode(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     accessor::record_ref dest,
     std::size_t offset,
     memory::paged_memory_resource* resource
@@ -211,6 +222,7 @@ status decode(
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        src.set_context(ctx);
         switch(type.kind()) {
             case kind::boolean: dest.set_value<runtime_t<kind::boolean>>(offset, src.read<runtime_t<kind::boolean>>(odr, false)); break;
             case kind::int1: dest.set_value<runtime_t<kind::int1>>(offset, src.read<runtime_t<kind::int1>>(odr, false)); break;
@@ -236,6 +248,7 @@ status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     accessor::record_ref dest,
     std::size_t offset,
     std::size_t nullity_offset,
@@ -244,6 +257,7 @@ status decode_nullable(
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        src.set_context(ctx);
         auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
         if(! (flag == 0 || flag == 1)) {
             LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag; //NOLINT
@@ -252,7 +266,7 @@ status decode_nullable(
         bool is_null = flag == 0;
         dest.set_null(nullity_offset, is_null);
         if (! is_null) {
-            return decode(src, type, spec, dest, offset, resource);
+            return decode(src, type, spec, ctx, dest, offset, resource);
         }
         return status::ok;
     });
@@ -262,12 +276,14 @@ status decode_nullable(
     readable_stream& src,
     meta::field_type const& type,
     coding_spec spec,
+    coding_context& ctx,
     data::any& dest,
     memory::paged_memory_resource* resource
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        src.set_context(ctx);
         auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
         if(! (flag == 0 || flag == 1)) {
             LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag; //NOLINT
@@ -278,18 +294,20 @@ status decode_nullable(
             dest = {};
             return status::ok;
         }
-        return decode(src, type, spec, dest, resource);
+        return decode(src, type, spec, ctx, dest, resource);
     });
 }
 
 status consume_stream(
     readable_stream& src,
     meta::field_type const& type,
-    coding_spec spec
+    coding_spec spec,
+    coding_context& ctx
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        src.set_context(ctx);
         switch(type.kind()) {
             case kind::boolean: src.read<runtime_t<kind::boolean>>(odr, true); break;
             case kind::int1: src.read<runtime_t<kind::int1>>(odr, true); break;
@@ -314,11 +332,13 @@ status consume_stream(
 status consume_stream_nullable(
     readable_stream& src,
     meta::field_type const& type,
-    coding_spec spec
+    coding_spec spec,
+    coding_context& ctx
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
         auto odr = spec.ordering();
+        src.set_context(ctx);
         auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
         if(! (flag == 0 || flag == 1)) {
             LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag; //NOLINT
@@ -326,7 +346,7 @@ status consume_stream_nullable(
         }
         bool is_null = flag == 0;
         if (! is_null) {
-            return consume_stream(src, type, spec);
+            return consume_stream(src, type, spec, ctx);
         }
         return status::ok;
     });

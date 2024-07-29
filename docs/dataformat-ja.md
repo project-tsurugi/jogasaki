@@ -127,14 +127,16 @@ version: 2 (2020-11 kurosawa jogasaki用に修正)
 ### nullable values
 
 * エンコード形式
-  1. `u1 present`
+  1. `uint8_t present` 
      * 値が存在するかどうか
-       * `0` - 存在しない
-       * `1` - 存在する
+       * `0x80` - 存在しない (*1)
+       * `0x81` - 存在する (*1)
   2. `T value`
      * 実際の値 (値が存在する場合のみ)
        * key encoded value - 実際の値
      * 値が存在しない場合、`value`も存在しない
+
+(*1) 本来 `0x00`, `0x01` で十分だが、過去実装との互換性のためにこれらの値を選んでいる 
 
 ### ascendant/descendant order
 

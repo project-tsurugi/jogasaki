@@ -42,7 +42,6 @@ std::vector<field_info> index_fields(
             auto t = utils::type_for(k.column().type());
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            spec.storage(extract_storage_spec(k.column().type()));
             ret.emplace_back(
                 t,
                 true,
@@ -62,7 +61,6 @@ std::vector<field_info> index_fields(
         auto& c = static_cast<yugawara::storage::column const&>(v);
         auto t = utils::type_for(c.type());
         auto spec = kvs::spec_value;
-        spec.storage(extract_storage_spec(c.type()));
         ret.emplace_back(
             t,
             true,

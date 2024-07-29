@@ -57,20 +57,4 @@ maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& 
     return std::make_shared<meta::record_meta>(std::move(types), std::move(nullities));
 }
 
-kvs::storage_spec extract_storage_spec(takatori::type::data const& type) {
-    if(type.kind() == takatori::type::type_kind::character) {
-        auto& ct = takatori::util::unsafe_downcast<takatori::type::character>(type);
-        auto varying = ct.varying();
-        auto len = ct.length() ? *ct.length() : (varying ? system_varchar_default_length : system_char_default_length);
-        return {!varying, len};
-    }
-    if(type.kind() == takatori::type::type_kind::octet) {
-        auto& ct = takatori::util::unsafe_downcast<takatori::type::octet>(type);
-        auto varying = ct.varying();
-        auto len = ct.length() ? *ct.length() : (varying ? system_varchar_default_length : system_char_default_length);
-        return {!varying, len};
-    }
-    return {};
-}
-
 }

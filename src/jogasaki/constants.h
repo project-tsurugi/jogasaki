@@ -103,9 +103,19 @@ constexpr std::size_t decimal_default_precision_no_parenthesis = decimal_max_pre
 constexpr std::size_t character_type_max_length = 30716;
 
 /**
+ * @brief default length for char type
+ */
+constexpr std::size_t character_type_default_length = 1;
+
+/**
  * @brief max length for varbinary/binary types
  */
 constexpr std::size_t octet_type_max_length = 30716;
+
+/**
+ * @brief max length for varbinary/binary types
+ */
+constexpr std::size_t octet_type_default_length = 1;
 
 /**
  * @brief default precision for scale for dump

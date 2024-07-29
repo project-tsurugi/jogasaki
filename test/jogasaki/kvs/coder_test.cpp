@@ -838,7 +838,6 @@ void verify_order(meta::field_type type, data::any a, data::any b, bool only_nul
         {
             // ascending non nullable
             auto spec = spec_asc;
-            spec.storage({});
             EXPECT_EQ(status::ok, encode(a, type, spec_asc, ctx, s0));
             EXPECT_EQ(status::ok, encode(b, type, spec_asc, ctx, s1));
             EXPECT_LT(bin(src0.data(), s0.size()), bin(src1.data(), s1.size()));

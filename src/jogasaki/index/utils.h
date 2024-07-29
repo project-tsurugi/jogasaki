@@ -41,12 +41,4 @@ using takatori::util::maybe_shared_ptr;
  */
 maybe_shared_ptr<meta::record_meta> create_meta(yugawara::storage::index const& idx, bool for_key);
 
-constexpr static std::size_t system_varchar_default_length = 1UL << 32U;
-constexpr static std::size_t system_char_default_length = 1UL;
-constexpr static std::size_t system_char_max_length = 1UL << 10U;
-
-// padding occurs only on write operations. search/find/scan don't add padding,
-// and use the data in the storage or given condition expression.
-kvs::storage_spec extract_storage_spec(takatori::type::data const& type);
-
 }

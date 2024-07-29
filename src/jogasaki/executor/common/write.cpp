@@ -343,8 +343,6 @@ std::vector<details::write_field> create_fields(
             auto& type = k.column().type();
             auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                 kvs::spec_key_ascending : kvs::spec_key_descending;
-            // pass storage spec with fields for write
-            spec.storage(index::extract_storage_spec(type));
             bool nullable = k.column().criteria().nullity().nullable();
             if(variable_indices.count(kc.reference()) == 0) {
                 // no column specified - use default value
@@ -382,8 +380,6 @@ std::vector<details::write_field> create_fields(
             auto& type = c.type();
             bool nullable = c.criteria().nullity().nullable();
             auto spec = kvs::spec_value;
-            // pass storage spec with fields for write
-            spec.storage(index::extract_storage_spec(type));
             if(variable_indices.count(b.reference()) == 0) {
                 // no column specified - use default value
                 auto& dv = c.default_value();

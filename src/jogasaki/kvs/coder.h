@@ -52,32 +52,6 @@ inline constexpr order operator~(order o) noexcept {
     }
 }
 
-class storage_spec {
-public:
-    constexpr static std::size_t system_max_length = 2UL * 1024 * 1024;
-
-    storage_spec() = default;
-    storage_spec(
-        bool add_padding,
-        std::size_t length
-    ) :
-        add_padding_(add_padding),
-        length_(length)
-    {}
-
-    [[nodiscard]] bool add_padding() const noexcept {
-        return add_padding_;
-    }
-
-    [[nodiscard]] std::size_t length() const noexcept {
-        return length_;
-    }
-
-private:
-    bool add_padding_{};  //NOLINT
-    std::size_t length_{system_max_length};  //NOLINT
-};
-
 /**
  * @brief specification on encoding/decoding
  */
@@ -93,12 +67,10 @@ public:
      */
     constexpr coding_spec(
         bool is_key,
-        order order,
-        storage_spec vi = {}
+        order order
     ) noexcept :
         is_key_(is_key),
-        order_(order),
-        storage_spec_(vi)
+        order_(order)
     {}
 
     /**
@@ -115,24 +87,9 @@ public:
         return order_;
     }
 
-    /**
-     * @brief returns the varlen info
-     */
-    [[nodiscard]] storage_spec const& storage() const noexcept {
-        return storage_spec_;
-    }
-
-    /**
-     * @brief setter for varlen info
-     */
-    void storage(storage_spec vi) noexcept {
-        storage_spec_ = vi;
-    }
-
 private:
     bool is_key_{false};
     order order_{order::undefined};
-    storage_spec storage_spec_{};
 
 };
 

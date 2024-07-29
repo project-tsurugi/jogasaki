@@ -160,8 +160,6 @@ secondary_target::field_mapping_type secondary_target::create_fields(
             if(primary->keys().at(i) == k) {
                 auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                     kvs::spec_key_ascending : kvs::spec_key_descending;
-                // pass storage spec with fields for write
-                spec.storage(index::extract_storage_spec(k.column().type()));
                 ret.emplace_back(
                     primary_key_meta->at(i),
                     primary_key_meta->value_offset(i),
@@ -179,8 +177,6 @@ secondary_target::field_mapping_type secondary_target::create_fields(
             if(primary->values().at(i) == k.column()) {
                 auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
                     kvs::spec_key_ascending : kvs::spec_key_descending;
-                // pass storage spec with fields for write
-                spec.storage(index::extract_storage_spec(k.column().type()));
                 ret.emplace_back(
                     primary_value_meta->at(i),
                     primary_value_meta->value_offset(i),

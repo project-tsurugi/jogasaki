@@ -157,11 +157,9 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::text>, status> write(T data, order odr, meta::character_field_option const& option) {
-        constexpr static std::size_t system_varchar_default_length = 1UL << 32U;
-        constexpr static std::size_t system_char_default_length = 1UL;
-
-        bool add_padding = ! option.varying_;
-        std::size_t max_len = option.length_ ? *option.length_ : (option.varying_ ? system_varchar_default_length : system_char_default_length);
+        std::size_t max_len = option.length_
+            ? *option.length_
+            : (option.varying_ ? character_type_max_length : character_type_default_length);
 
         std::string_view sv{data};
         auto sz = sv.length();
@@ -173,7 +171,7 @@ public:
             return status::err_invalid_runtime_value;
         }
         do_write(sv.data(), sz, odr);
-        if((! context_ || context_->coding_for_write()) && add_padding) {
+        if((! context_ || context_->coding_for_write()) && ! option.varying_) {
             // padding chars
             if(sv.size() < max_len) {
                 do_write(padding_character, max_len-sv.size(), odr);
@@ -194,7 +192,9 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, meta::octet_field_option const& option) {
-        std::size_t max_len = option.length_.has_value() ? *option.length_ : storage_spec::system_max_length;
+        std::size_t max_len = option.length_.has_value()
+            ? *option.length_
+            : (option.varying_ ? octet_type_max_length : octet_type_default_length);
         std::string_view sv{data};
         auto sz = sv.length();
         if((! context_ || context_->coding_for_write()) && max_len < sz) {

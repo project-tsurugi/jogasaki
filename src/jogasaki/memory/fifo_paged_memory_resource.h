@@ -76,7 +76,7 @@ public:
      */
     void deallocate_before(checkpoint const& point);
 
-    void end_current_page() noexcept override;
+    void end_current_page() override;
 
 protected:
     /**

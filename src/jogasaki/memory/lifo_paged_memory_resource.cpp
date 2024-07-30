@@ -19,12 +19,18 @@
 #include <cstdlib>
 #include <memory>
 #include <new>
+#include <glog/logging.h>
 
+#include <takatori/util/exception.h>
+
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/details/page_allocation_info.h>
 #include <jogasaki/memory/page_pool.h>
 
 namespace jogasaki::memory {
 
+using takatori::util::throw_exception;
 
 lifo_paged_memory_resource::~lifo_paged_memory_resource() {
     for (const auto& p : pages_) {
@@ -74,7 +80,7 @@ void lifo_paged_memory_resource::deallocate_after(lifo_paged_memory_resource::ch
     }
 }
 
-void lifo_paged_memory_resource::end_current_page() noexcept {
+void lifo_paged_memory_resource::end_current_page() {
     if (!pages_.empty()) {
         if (pages_.back().remaining(1) == page_size) {
             return;
@@ -99,7 +105,8 @@ void *lifo_paged_memory_resource::do_allocate(std::size_t bytes, std::size_t ali
         return ptr;
     }
 
-    throw std::bad_alloc();
+    LOG_LP(ERROR) << "invalid memory request bytes:" << bytes << " alignment:" << alignment;
+    throw_exception(std::bad_alloc());
 }
 
 void lifo_paged_memory_resource::do_deallocate(void *p, std::size_t bytes, std::size_t alignment) {
@@ -141,7 +148,7 @@ details::page_allocation_info &lifo_paged_memory_resource::acquire_new_page() {
     } else {
         new_page = page_pool_->acquire_page();
         if (!new_page) {
-            throw std::bad_alloc();
+            throw_exception(std::bad_alloc());
         }
     }
     return pages_.emplace_back(new_page);

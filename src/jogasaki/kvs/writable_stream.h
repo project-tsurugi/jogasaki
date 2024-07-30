@@ -156,10 +156,11 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::text>, status> write(T data, order odr, meta::character_field_option const& option) {
+    std::enable_if_t<std::is_same_v<T, accessor::text>, status> write(T data, order odr, meta::character_field_option const& option, bool is_key = true) {
         std::size_t max_len = option.length_
             ? *option.length_
-            : (option.varying_ ? character_type_max_length : character_type_default_length);
+            : (option.varying_ ? (is_key ? character_type_max_length_for_key : character_type_max_length_for_value)
+                               : character_type_default_length);
 
         std::string_view sv{data};
         auto sz = sv.length();
@@ -191,10 +192,11 @@ public:
      * @param odr the order of the field
      */
     template<class T>
-    std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, meta::octet_field_option const& option) {
+    std::enable_if_t<std::is_same_v<T, accessor::binary>, status> write(T data, order odr, meta::octet_field_option const& option, bool is_key = true) {
         std::size_t max_len = option.length_.has_value()
             ? *option.length_
-            : (option.varying_ ? octet_type_max_length : octet_type_default_length);
+            : (option.varying_ ? (is_key ? octet_type_max_length_for_key : octet_type_max_length_for_value)
+                               : octet_type_default_length);
         std::string_view sv{data};
         auto sz = sv.length();
         if((! context_ || context_->coding_for_write()) && max_len < sz) {

@@ -18,11 +18,18 @@
 #include <algorithm>
 #include <memory>
 #include <new>
+#include <glog/logging.h>
 
+#include <takatori/util/exception.h>
+
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/details/page_allocation_info.h>
 #include <jogasaki/memory/page_pool.h>
 
 namespace jogasaki::memory {
+
+using takatori::util::throw_exception;
 
 monotonic_paged_memory_resource::~monotonic_paged_memory_resource() {
     for (const auto& p : pages_) {
@@ -34,7 +41,7 @@ std::size_t monotonic_paged_memory_resource::count_pages() const noexcept {
     return pages_.size();
 }
 
-void monotonic_paged_memory_resource::end_current_page() noexcept {
+void monotonic_paged_memory_resource::end_current_page() {
     if (!pages_.empty()) {
         if (pages_.back().remaining(1) == page_size) {
             return;
@@ -59,7 +66,8 @@ void *monotonic_paged_memory_resource::do_allocate(std::size_t bytes, std::size_
         return ptr;
     }
 
-    throw std::bad_alloc();
+    LOG_LP(ERROR) << "invalid memory request bytes:" << bytes << " alignment:" << alignment;
+    throw_exception(std::bad_alloc());
 }
 
 void monotonic_paged_memory_resource::do_deallocate(void *p, std::size_t bytes, std::size_t alignment) {
@@ -83,7 +91,7 @@ std::size_t monotonic_paged_memory_resource::do_page_remaining(std::size_t align
 details::page_allocation_info &monotonic_paged_memory_resource::acquire_new_page() {
     page_pool::page_info new_page = page_pool_->acquire_page();
     if (!new_page) {
-        throw std::bad_alloc();
+        throw_exception(std::bad_alloc());
     }
     return pages_.emplace_back(new_page);
 }

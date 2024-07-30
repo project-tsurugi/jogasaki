@@ -98,9 +98,14 @@ constexpr std::size_t decimal_default_precision = decimal_max_precision;
 constexpr std::size_t decimal_default_precision_no_parenthesis = decimal_max_precision;
 
 /**
- * @brief max length for varchar/char types
+ * @brief max length for varchar/char types that are part of primary/secondary indices key
  */
-constexpr std::size_t character_type_max_length = 30716;
+constexpr std::size_t character_type_max_length_for_key = 30716;
+
+/**
+ * @brief max length for varchar/char types that are not part of primary/secondary indices key
+ */
+constexpr std::size_t character_type_max_length_for_value = 2UL * 1024UL * 1024UL - 20UL;
 
 /**
  * @brief default length for char type
@@ -108,9 +113,14 @@ constexpr std::size_t character_type_max_length = 30716;
 constexpr std::size_t character_type_default_length = 1;
 
 /**
- * @brief max length for varbinary/binary types
+ * @brief max length for varbinary/binary types that are part of primary/secondary indices key
  */
-constexpr std::size_t octet_type_max_length = 30716;
+constexpr std::size_t octet_type_max_length_for_key = 30716;
+
+/**
+ * @brief max length for varbinary/binary types that are not part of primary/secondary indices key
+ */
+constexpr std::size_t octet_type_max_length_for_value = 2UL * 1024UL * 1024UL - 20UL;
 
 /**
  * @brief max length for varbinary/binary types

@@ -123,6 +123,8 @@
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/string_manipulation.h>
 #include <jogasaki/utils/use_counter.h>
+#include <jogasaki/utils/validate_index_key_type.h>
+#include <jogasaki/utils/validate_table_definition.h>
 
 #include "request_context_factory.h"
 
@@ -742,96 +744,20 @@ scheduler::task_scheduler* database::task_scheduler() const noexcept {
     return task_scheduler_.get();
 }
 
-bool validate_type(
-    std::string_view colname,
-    takatori::type::decimal const& typ
-) {
-    std::string_view reason{};
-    if(! typ.scale()) {
-        reason = "invalid scale";
-    } else if(typ.precision() && ! (typ.precision().value() >= decimal_min_precision && typ.precision().value() <= decimal_max_precision)) {
-        reason = "invalid precision";
-    } else if(typ.precision() && typ.scale() && ! (typ.scale().value() <= typ.precision().value())) {
-        reason = "scale out of range for the precision";
-    } else {
-        return true;
-    }
-    VLOG_LP(log_error) << "Data type specified for column \"" << colname << "\" is unsupported (" << reason << ")";
-    return false;
-}
-
-bool validate_type(
-    std::string_view colname,
-    takatori::type::character const& typ
-) {
-    std::string_view reason{};
-    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= character_type_max_length)) {
-        reason = "invalid length";
-    } else {
-        return true;
-    }
-    VLOG_LP(log_error) << "Data type specified for column \"" << colname << "\" is unsupported (" << reason << ")";
-    return false;
-}
-
-bool validate_type(
-    std::string_view colname,
-    takatori::type::octet const& typ
-) {
-    std::string_view reason{};
-    if(typ.length() && !(typ.length().value() >= 1 && typ.length().value() <= octet_type_max_length)) {
-        reason = "invalid length";
-    } else {
-        return true;
-    }
-    VLOG_LP(log_error) << "Data type specified for column \"" << colname << "\" is unsupported (" << reason << ")";
-    return false;
-}
-
-bool validate_table_definition(yugawara::storage::table const& t) {
-    // should be sync with the same name function in create_table.cpp
-    using takatori::type::type_kind;
-    for(auto&& c : t.columns()) {
-        switch(c.type().kind()) {
-            case type_kind::decimal:
-                if(! validate_type(c.simple_name(), unsafe_downcast<takatori::type::decimal const>(c.type()))) {
-                    return false;
-                }
-                break;
-            case type_kind::character:
-                if(! validate_type(c.simple_name(), unsafe_downcast<takatori::type::character const>(c.type()))) {
-                    return false;
-                }
-                break;
-            case type_kind::octet:
-                if(! validate_type(c.simple_name(), unsafe_downcast<takatori::type::octet const>(c.type()))) {
-                    return false;
-                }
-                break;
-            case type_kind::boolean:
-            case type_kind::int1:
-            case type_kind::int2:
-            case type_kind::int4:
-            case type_kind::int8:
-            case type_kind::float4:
-            case type_kind::float8:
-            case type_kind::date:
-            case type_kind::time_of_day:
-            case type_kind::time_point:
-                break;
-            default:
-                VLOG_LP(log_error) << "Data type specified for column \"" << c.simple_name() << "\" is unsupported.";
-                return false;
-        }
-    }
-    return true;
-}
-
 status database::do_create_table(std::shared_ptr<yugawara::storage::table> table, std::string_view schema) {
     (void)schema;
     BOOST_ASSERT(table != nullptr);  //NOLINT
-    if(! validate_table_definition(*table)) {
-        return status::err_unsupported;
+    // request context is just to call validate_table_definition and receive error info
+    auto context = impl::create_request_context(
+        *this,
+        nullptr,
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        {},
+        {}
+    );
+    if(! utils::validate_table_definition(*context, *table)) {
+        return context->error_info()->status();
     }
 
     std::string name{table->simple_name()};
@@ -900,6 +826,19 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
     if(tables_->find_index(name)) {
         VLOG_LP(log_error) << "index " << name << " already exists";
         return status::err_already_exists;
+    }
+
+    // request context is just to call validate_index_key_type and receive error info
+    auto context = impl::create_request_context(
+        *this,
+        nullptr,
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        {},
+        {}
+    );
+    if(! utils::validate_index_key_type(*context, *index)) {
+        return context->error_info()->status();
     }
 
     std::string storage{};

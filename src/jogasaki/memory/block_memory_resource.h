@@ -24,13 +24,22 @@
 #include <stdexcept>
 #include <utility>
 #include <boost/container/pmr/memory_resource.hpp>
+#include <glog/logging.h>
 
+#include <takatori/util/exception.h>
+#include <takatori/util/string_builder.h>
+
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/interference_size.h>
 
 #include "page_pool.h"
 #include "paged_memory_resource.h"
 
 namespace jogasaki::memory {
+
+using takatori::util::string_builder;
+using takatori::util::throw_exception;
 
 /**
  * @brief an implementation of paged_memory_resource that divides pages into fixed size small blocks.
@@ -104,7 +113,8 @@ protected:
      */
     [[nodiscard]] void* do_allocate(std::size_t bytes, std::size_t alignment) override {
         if (alignment > block_size / 2) {
-            throw std::bad_alloc();
+            LOG_LP(ERROR) << "invalid memory request bytes:" << bytes << " alignment:" << alignment;
+            throw_exception(std::bad_alloc());
         }
 
         // try acquire blocks from the current page only if it exists
@@ -118,7 +128,8 @@ protected:
         auto next_head = page_pool_->acquire_page();
         auto [iter, success] = blocks_.emplace(next_head, block_info { next_head });
         if (!success) {
-            throw std::bad_alloc();
+            LOG_LP(ERROR) << "invalid memory request bytes:" << bytes << " alignment:" << alignment;
+            throw_exception(std::bad_alloc());
         }
         auto&& next = iter->second;
 
@@ -132,7 +143,8 @@ protected:
             return r;
         }
 
-        throw std::bad_alloc();
+        LOG_LP(ERROR) << "invalid memory request bytes:" << bytes << " alignment:" << alignment;
+        throw_exception(std::bad_alloc());
     }
 
     /**

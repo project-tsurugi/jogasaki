@@ -94,6 +94,7 @@ public:
     }
 
     void test_unsupported_column_type(type::data&& typ);
+    void test_unsupported_type_for_key(type::data&& typ);
 
     void verify_index_storage_metadata(std::string_view name) {
         // synthesized flag is not in yugawara config. provider, so check manually
@@ -425,11 +426,53 @@ TEST_F(metadata_test, unsupported_column_types) {
     test_unsupported_column_type(type::decimal(5, {}));
     test_unsupported_column_type(type::character(0));
     test_unsupported_column_type(type::character(type::varying, 0));
-    test_unsupported_column_type(type::character(30717));
-    test_unsupported_column_type(type::character(type::varying, 30717));
-    test_unsupported_column_type(type::octet(30717));
-    test_unsupported_column_type(type::octet(type::varying, 30717));
+    test_unsupported_column_type(type::character(character_type_max_length_for_value + 1));
+    test_unsupported_column_type(type::character(type::varying, character_type_max_length_for_value + 1));
+    test_unsupported_column_type(type::octet(octet_type_max_length_for_value + 1));
+    test_unsupported_column_type(type::octet(type::varying, octet_type_max_length_for_value + 1));
 }
 
+void metadata_test::test_unsupported_type_for_key(type::data&& typ) {
+    auto t = std::make_shared<table>(
+        "TEST",
+        std::initializer_list<column>{
+            column{ "C0", type::int4(), nullity{false} },
+            column{ "C1", std::move(typ), nullity{false} },
+        }
+    );
+
+    ASSERT_EQ(status::ok, db_->create_table(t));
+    auto i = std::make_shared<yugawara::storage::index>(
+        t,
+        "TEST",
+        std::initializer_list<index::key>{
+            t->columns()[1],
+        },
+        std::initializer_list<index::column_ref>{
+            t->columns()[0],
+        },
+        index_feature_set{
+            ::yugawara::storage::index_feature::find,
+            ::yugawara::storage::index_feature::scan,
+            ::yugawara::storage::index_feature::unique,
+            ::yugawara::storage::index_feature::primary,
+        }
+    );
+    ASSERT_EQ(status::err_unsupported, db_->create_index(i));
+}
+
+TEST_F(metadata_test, unsupported_types_for_key) {
+    test_unsupported_type_for_key(type::octet(type::varying, 5));
+}
+
+TEST_F(metadata_test, unsupported_type_length_for_binary_key) {
+    test_unsupported_type_for_key(type::octet(~type::varying, 30717));
+}
+TEST_F(metadata_test, unsupported_type_length_for_varchar_key) {
+    test_unsupported_type_for_key(type::character(type::varying, 30717));
+}
+TEST_F(metadata_test, unsupported_type_length_for_char_key) {
+    test_unsupported_type_for_key(type::character(~type::varying, 30717));
+}
 
 }

@@ -1089,6 +1089,85 @@ TEST_F(service_api_test, binary_type) {
     test_dispose_prepare(query_handle);
 }
 
+TEST_F(service_api_test, long_binary_data) {
+    execute_statement("create table T (C0 BIGINT, C1 VARBINARY(*))");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T(C0, C1) values (:p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::INT8},
+        std::pair{"p1"s, sql::common::AtomType::OCTET}
+    );
+
+    std::string long_str(octet_type_max_length_for_value, '\x01');
+    {
+        std::vector<parameter> parameters{
+            {"p0"s, ValueCase::kInt8Value, std::any{std::in_place_type<std::int64_t>, 0}},
+            {"p1"s, ValueCase::kOctetValue, std::any{std::in_place_type<std::string>, long_str}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto [success, error, stats] = decode_execute_result(res->body_);
+        ASSERT_TRUE(success);
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select C1 from T"
+    );
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(1, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::OCTET, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                EXPECT_EQ((mock::typed_nullable_record<ft::octet>(
+                    std::tuple{meta::octet_type(true)}, // currently service.cpp layer does not handle varying=true/false and all octet columns are varying
+                    {accessor::binary{long_str}}
+                )), v[0]);
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
+}
+
 TEST_F(service_api_test, boolean_type) {
     db_impl()->configuration()->support_boolean(true);
     execute_statement("create table T (C0 BOOLEAN PRIMARY KEY, C1 BOOLEAN)");

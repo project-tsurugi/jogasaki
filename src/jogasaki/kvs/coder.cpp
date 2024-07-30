@@ -87,8 +87,8 @@ status encode(
             case kind::float4: return dest.write<runtime_t<kind::float4>>(src.get_value<runtime_t<kind::float4>>(offset), odr);
             case kind::float8: return dest.write<runtime_t<kind::float8>>(src.get_value<runtime_t<kind::float8>>(offset), odr);
             case kind::decimal: return dest.write<runtime_t<kind::decimal>>(src.get_value<runtime_t<kind::decimal>>(offset), odr, *type.option<kind::decimal>());
-            case kind::character: return dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr, *type.option<kind::character>());
-            case kind::octet: return dest.write<runtime_t<kind::octet>>(src.get_value<runtime_t<kind::octet>>(offset), odr, *type.option<kind::octet>());
+            case kind::character: return dest.write<runtime_t<kind::character>>(src.get_value<runtime_t<kind::character>>(offset), odr, *type.option<kind::character>(), spec.is_key());
+            case kind::octet: return dest.write<runtime_t<kind::octet>>(src.get_value<runtime_t<kind::octet>>(offset), odr, *type.option<kind::octet>(), spec.is_key());
             case kind::date: return dest.write<runtime_t<kind::date>>(src.get_value<runtime_t<kind::date>>(offset), odr);
             case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.get_value<runtime_t<kind::time_of_day>>(offset), odr);
             case kind::time_point: return dest.write<runtime_t<kind::time_point>>(src.get_value<runtime_t<kind::time_point>>(offset), odr);
@@ -143,8 +143,8 @@ status encode(
             case kind::float4: return dest.write<runtime_t<kind::float4>>(src.to<runtime_t<kind::float4>>(), odr);
             case kind::float8: return dest.write<runtime_t<kind::float8>>(src.to<runtime_t<kind::float8>>(), odr);
             case kind::decimal: return dest.write<runtime_t<kind::decimal>>(src.to<runtime_t<kind::decimal>>(), odr, *type.option<kind::decimal>());
-            case kind::character: return dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr, *type.option<kind::character>());
-            case kind::octet: return dest.write<runtime_t<kind::octet>>(src.to<runtime_t<kind::octet>>(), odr, *type.option<kind::octet>());
+            case kind::character: return dest.write<runtime_t<kind::character>>(src.to<runtime_t<kind::character>>(), odr, *type.option<kind::character>(), spec.is_key());
+            case kind::octet: return dest.write<runtime_t<kind::octet>>(src.to<runtime_t<kind::octet>>(), odr, *type.option<kind::octet>(), spec.is_key());
             case kind::date: return dest.write<runtime_t<kind::date>>(src.to<runtime_t<kind::date>>(), odr);
             case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.to<runtime_t<kind::time_of_day>>(), odr);
             case kind::time_point: return dest.write<runtime_t<kind::time_point>>(src.to<runtime_t<kind::time_point>>(), odr);

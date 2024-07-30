@@ -54,7 +54,7 @@ public:
      */
     [[nodiscard]] std::size_t count_pages() const noexcept;
 
-    void end_current_page() noexcept override;
+    void end_current_page() override;
 
 protected:
     /**

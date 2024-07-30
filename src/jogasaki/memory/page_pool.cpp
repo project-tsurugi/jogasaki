@@ -62,9 +62,11 @@ page_pool::page_info memory::page_pool::acquire_page(bool brandnew) {
     page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
         (MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB), -1, 0); //NOLINT
     if (page == MAP_FAILED) { //NOLINT
+        LOG_FIRST_N(INFO, 1) << "SQL engine page pool uses non-huge pages page_size:" << page_size;
         page = mmap(nullptr, page_size, PROT_READ | PROT_WRITE, //NOLINT
             (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0); //NOLINT
         if (page == MAP_FAILED) { //NOLINT
+            LOG_LP(ERROR) << "memory allocation failed page_size:" << page_size << " node:" << node;
             return {nullptr, node};
         }
     }

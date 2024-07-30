@@ -70,11 +70,11 @@ any supports_small_integers(evaluator_context& ctx) {
     return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
-any supports_octet(evaluator_context& ctx) {
-    if(global::config_pool()->support_octet()) {
+any supports_boolean(evaluator_context& ctx) {
+    if(global::config_pool()->support_boolean()) {
         return {};
     }
-    ctx.add_error({error_kind::unsupported, "binary types are unsupported"});
+    ctx.add_error({error_kind::unsupported, "boolean type is unsupported"});
     return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
@@ -1473,18 +1473,15 @@ any conduct_cast(
     using k = takatori::type::type_kind;
     // until we officially support boolean and small integers, these types are only available for testing
     // src unknown is the special case allowed
-    if(src.kind() != k::unknown &&
-       (src.kind() == k::boolean || src.kind() == k::int1 || src.kind() == k::int2 || tgt.kind() == k::boolean ||
-        tgt.kind() == k::int1 || tgt.kind() == k::int2)) {
-        if(auto a = supports_small_integers(ctx); a.error()) {
-            return a;
-        }
-    }
-    // until we officially support binary/varbinary, these types are only available for testing
-    // src unknown is the special case allowed
-    if(src.kind() != k::unknown && (src.kind() == k::octet || tgt.kind() == k::octet)) {
-        if(auto a = supports_octet(ctx); a.error()) {
-            return a;
+    if(src.kind() != k::unknown) {
+        if(src.kind() == k::boolean || tgt.kind() == k::boolean) {
+            if(auto a = supports_boolean(ctx); a.error()) {
+                return a;
+            }
+        } else if(src.kind() == k::int1 || src.kind() == k::int2 || tgt.kind() == k::int1 || tgt.kind() == k::int2) {
+            if(auto a = supports_small_integers(ctx); a.error()) {
+                return a;
+            }
         }
     }
     if((src.kind() == k::float4 || src.kind() == k::float8) &&

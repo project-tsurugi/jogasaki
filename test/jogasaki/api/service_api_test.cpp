@@ -1010,7 +1010,6 @@ TEST_F(service_api_test, timestamptz) {
 }
 
 TEST_F(service_api_test, binary_type) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table T (C0 VARBINARY(5), C1 BINARY(5))");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
@@ -1091,7 +1090,7 @@ TEST_F(service_api_test, binary_type) {
 }
 
 TEST_F(service_api_test, boolean_type) {
-    db_impl()->configuration()->support_smallint(true);
+    db_impl()->configuration()->support_boolean(true);
     execute_statement("create table T (C0 BOOLEAN PRIMARY KEY, C1 BOOLEAN)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);

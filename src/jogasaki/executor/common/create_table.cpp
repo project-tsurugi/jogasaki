@@ -221,18 +221,15 @@ bool validate_table_definition(
             case type_kind::time_point:
                 continue;
             case type_kind::octet:
-                if(context.configuration()->support_octet()) {
-                    if(! validate_type(
-                           context,
-                           c.simple_name(),
-                           unsafe_downcast<takatori::type::octet const>(c.type())
-                       )) {
-                        return false;
-                    }
+                if(! validate_type(context, c.simple_name(), unsafe_downcast<takatori::type::octet const>(c.type()))) {
+                    return false;
+                }
+                continue;
+            case type_kind::boolean:
+                if(context.configuration()->support_boolean()) {
                     continue;
                 }
                 break;
-            case type_kind::boolean:
             case type_kind::int1:
             case type_kind::int2:
                 if(context.configuration()->support_smallint()) {

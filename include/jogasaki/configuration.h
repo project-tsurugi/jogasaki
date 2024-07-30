@@ -378,12 +378,12 @@ public:
         return try_insert_on_upserting_secondary_;
     }
 
-    void support_octet(bool arg) noexcept {
-        support_octet_ = arg;
+    void support_boolean(bool arg) noexcept {
+        support_boolean_ = arg;
     }
 
-    [[nodiscard]] bool support_octet() const noexcept {
-        return support_octet_;
+    [[nodiscard]] bool support_boolean() const noexcept {
+        return support_boolean_;
     }
 
     void support_smallint(bool arg) noexcept {
@@ -493,7 +493,7 @@ public:
         print_non_default(trace_external_log);
         print_non_default(external_log_explain);
         print_non_default(try_insert_on_upserting_secondary);
-        print_non_default(support_octet);
+        print_non_default(support_boolean);
         print_non_default(support_smallint);
         print_non_default(scan_concurrent_operation_as_not_found);
         print_non_default(point_read_concurrent_operation_as_not_found);
@@ -547,7 +547,7 @@ private:
     bool trace_external_log_ = false;
     bool external_log_explain_ = true;
     bool try_insert_on_upserting_secondary_ = true;
-    bool support_octet_ = true;
+    bool support_boolean_ = false;
     bool support_smallint_ = false;
     bool scan_concurrent_operation_as_not_found_ = true;
     bool point_read_concurrent_operation_as_not_found_ = true;

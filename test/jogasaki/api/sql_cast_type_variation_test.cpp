@@ -683,7 +683,6 @@ TEST_F(sql_cast_type_variation_test, varchar_to_varchar) {
 // from binary
 
 TEST_F(sql_cast_type_variation_test, binary_to_varchar) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 BINARY(10) primary key)");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS BINARY(10)))");
     {
@@ -697,7 +696,6 @@ TEST_F(sql_cast_type_variation_test, binary_to_varchar) {
 }
 
 TEST_F(sql_cast_type_variation_test, binary_to_char) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 BINARY(10) primary key)");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS BINARY(10)))");
     {
@@ -711,7 +709,6 @@ TEST_F(sql_cast_type_variation_test, binary_to_char) {
 }
 
 TEST_F(sql_cast_type_variation_test, binary_to_binary) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 BINARY(10) primary key)");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS BINARY(10)))");
     {
@@ -725,7 +722,6 @@ TEST_F(sql_cast_type_variation_test, binary_to_binary) {
 }
 
 TEST_F(sql_cast_type_variation_test, binary_to_varbinary) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 BINARY(10) primary key)");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS BINARY(10)))");
     {
@@ -741,7 +737,6 @@ TEST_F(sql_cast_type_variation_test, binary_to_varbinary) {
 // from varbinary
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_varchar) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 VARBINARY(10) )");  // varbinary cannot be used for pk
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {
@@ -755,7 +750,6 @@ TEST_F(sql_cast_type_variation_test, varbinary_to_varchar) {
 }
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_char) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 VARBINARY(10))");  // varbinary cannot be used for pk
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {
@@ -769,7 +763,6 @@ TEST_F(sql_cast_type_variation_test, varbinary_to_char) {
 }
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_binary) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 VARBINARY(10))");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {
@@ -783,7 +776,6 @@ TEST_F(sql_cast_type_variation_test, varbinary_to_binary) {
 }
 
 TEST_F(sql_cast_type_variation_test, varbinary_to_varbinary) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table TT (C0 VARBINARY(10))");
     execute_statement("INSERT INTO TT VALUES (CAST('00010203' AS VARBINARY(10)))");
     {

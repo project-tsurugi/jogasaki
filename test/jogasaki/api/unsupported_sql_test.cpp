@@ -104,20 +104,6 @@ TEST_F(unsupported_sql_test, join_scan) {
 }
 
 TEST_F(unsupported_sql_test, ddl_with_binary_type) {
-    db_impl()->configuration()->support_octet(false);
-    test_stmt_err(
-        "create table T ("
-        "C0 INT NOT NULL PRIMARY KEY,"
-        "C1 binary(10)"
-        ")",
-        error_code::unsupported_runtime_feature_exception,
-        "Data type specified for column \"C1\" is unsupported."
-    );
-}
-
-TEST_F(unsupported_sql_test, ddl_with_binary_type_allowed) {
-    // verify ddl when cfg allows
-    db_impl()->configuration()->support_octet(true);
     execute_statement(
         "create table T ("
         "C0 INT NOT NULL PRIMARY KEY,"
@@ -135,20 +121,7 @@ TEST_F(unsupported_sql_test, ddl_with_binary_type_allowed) {
         std::forward_as_tuple(accessor::binary{"\x01\x02\x03"}, accessor::binary{"\x01\x02\x03"}))), result[0]);
 }
 
-TEST_F(unsupported_sql_test, ddl_with_varbinary_type) {
-    db_impl()->configuration()->support_octet(false);
-    test_stmt_err(
-        "create table T ("
-        "C0 INT NOT NULL PRIMARY KEY,"
-        "C1 varbinary(10)"
-        ")",
-        error_code::unsupported_runtime_feature_exception,
-        "Data type specified for column \"C1\" is unsupported."
-    );
-}
-
 TEST_F(unsupported_sql_test, ddl_with_varbinary_type_in_pk) {
-    db_impl()->configuration()->support_octet(true);
     test_stmt_err(
         "create table T ("
         "C0 varbinary(10) NOT NULL PRIMARY KEY,"
@@ -160,7 +133,6 @@ TEST_F(unsupported_sql_test, ddl_with_varbinary_type_in_pk) {
 }
 
 TEST_F(unsupported_sql_test, ddl_with_binary_type_in_pk) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table T ("
                       "C0 binary(10) NOT NULL PRIMARY KEY,"
                       "C1 int"
@@ -168,7 +140,6 @@ TEST_F(unsupported_sql_test, ddl_with_binary_type_in_pk) {
 }
 
 TEST_F(unsupported_sql_test, ddl_with_varbinary_type_in_secondary_index) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table T (C0 INT PRIMARY KEY, C1 varbinary(10) NOT NULL)");
     test_stmt_err(
         "create index I on T (C1)",
@@ -178,7 +149,6 @@ TEST_F(unsupported_sql_test, ddl_with_varbinary_type_in_secondary_index) {
 }
 
 TEST_F(unsupported_sql_test, ddl_with_binary_type_in_secondary_index) {
-    db_impl()->configuration()->support_octet(true);
     execute_statement("create table T (C0 INT PRIMARY KEY, C1 binary(10) NOT NULL)");
     execute_statement("create index I on T (C1)");
 }

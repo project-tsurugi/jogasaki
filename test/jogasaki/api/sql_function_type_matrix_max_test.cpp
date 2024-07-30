@@ -80,12 +80,10 @@ TEST_F(sql_function_type_matrix_test, max_char) {
 }
 
 TEST_F(sql_function_type_matrix_test, max_varbinary) {
-    db_impl()->configuration()->support_octet(true);
     test_function_with_type<kind::octet>("max(", "VARBINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x03\x03\x03"});
 }
 
 TEST_F(sql_function_type_matrix_test, max_binary) {
-    db_impl()->configuration()->support_octet(true);
     test_function_with_type<kind::octet>("max(", "BINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x03\x03\x03"});
 }
 

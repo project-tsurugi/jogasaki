@@ -40,7 +40,7 @@ using namespace std::string_view_literals;
 //////////////////
 
 TEST_F(sql_function_type_matrix_test, count_distinct_boolean) {
-    db_impl()->configuration()->support_smallint(true);
+    db_impl()->configuration()->support_boolean(true);
     test_function_with_type<kind::int8>("count(distinct ", "BOOLEAN", "(true),(false),(true)", 2);
 }
 
@@ -85,12 +85,10 @@ TEST_F(sql_function_type_matrix_test, count_distinct_char) {
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_varbinary) {
-    db_impl()->configuration()->support_octet(true);
     test_function_with_type<kind::int8>("count(distinct ", "VARBINARY(3)", "('010101'),('020202'),('010101')", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_binary) {
-    db_impl()->configuration()->support_octet(true);
     test_function_with_type<kind::int8>("count(distinct ", "BINARY(3)", "('010101'),('020202'),('010101')", 2);
 }
 

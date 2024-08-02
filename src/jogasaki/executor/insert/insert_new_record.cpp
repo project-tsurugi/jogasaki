@@ -66,13 +66,8 @@
 namespace jogasaki::executor::insert {
 
 using jogasaki::executor::process::impl::ops::write_kind;
-using jogasaki::executor::process::impl::expression::evaluator;
 
-using takatori::util::throw_exception;
 using takatori::util::string_builder;
-using takatori::util::sequence_view;
-
-constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
 insert_new_record::insert_new_record(
     write_kind kind,
@@ -328,10 +323,7 @@ bool insert_new_record::process_record(
     std::string_view encoded_primary_key{};
     bool skip_error = false;
     if(! put_primary(wctx, skip_error, encoded_primary_key)) {
-        if(skip_error) {
-            return true;
-        }
-        return false;
+        return skip_error;
     }
 
     if(kind_ == write_kind::insert_overwrite) {

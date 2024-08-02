@@ -68,7 +68,7 @@ public:
     std::vector<secondary_context> secondary_contexts_{};  //NOLINT
     data::small_record_store key_store_{};  //NOLINT
     data::small_record_store value_store_{};  //NOLINT
-    memory::lifo_paged_memory_resource* resource_{};
+    memory::lifo_paged_memory_resource* resource_{};  //NOLINT
 };
 
 /**

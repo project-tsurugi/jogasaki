@@ -708,4 +708,16 @@ TEST_F(sql_test, having_witout_group_by) {
     }
 }
 
+TEST_F(sql_test, insert_from_select) {
+    execute_statement("create table t0 (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 10), (2, 20), (3, 30)");
+    execute_statement("create table t1 (c0 int primary key, c1 int)");
+    execute_statement("insert into t1 select * from t0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t1", result);
+        ASSERT_EQ(3, result.size());
+    }
+}
+
 }

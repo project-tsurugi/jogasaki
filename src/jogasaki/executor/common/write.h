@@ -30,6 +30,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/common/step.h>
+#include <jogasaki/executor/insert/insert_new_record.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -121,25 +122,6 @@ struct write_field : process::impl::ops::default_value_property {
 
 }  // namespace details
 
-class write_context {
-public:
-    write_context(
-        request_context& context,
-        std::string_view storage_name,
-        maybe_shared_ptr<meta::record_meta> key_meta,
-        maybe_shared_ptr<meta::record_meta> value_meta,
-        std::vector<secondary_target> const& secondaries,
-        kvs::database& db,
-        memory::lifo_paged_memory_resource* resource
-    );
-
-    request_context* request_context_{};  //NOLINT
-    primary_context primary_context_{};  //NOLINT
-    std::vector<secondary_context> secondary_contexts_{};  //NOLINT
-    data::small_record_store key_store_{};  //NOLINT
-    data::small_record_store value_store_{};  //NOLINT
-};
-
 /**
  * @brief write statement (to execute Insert)
  */
@@ -182,17 +164,7 @@ private:
     maybe_shared_ptr<meta::record_meta> value_meta_{};
     std::vector<details::write_field> key_fields_{};
     std::vector<details::write_field> value_fields_{};
-    primary_target primary_{};
-    std::vector<secondary_target> secondaries_{};
-
-    bool put_primary(write_context& wctx, bool& skip_error, std::string_view& encoded_primary_key);
-    bool try_insert_primary(write_context& wctx, bool& primary_already_exists, std::string_view& encoded_primary_key);
-    bool put_secondaries(write_context& wctx, std::string_view encoded_primary_key);
-    bool update_secondaries_before_upsert(
-        write_context& wctx,
-        std::string_view encoded_primary_key,
-        bool primary_already_exists
-    );
+    std::shared_ptr<insert::insert_new_record> entity_{};
 };
 
 }  // namespace jogasaki::executor::common

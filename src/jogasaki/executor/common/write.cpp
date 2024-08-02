@@ -53,6 +53,7 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
+#include <jogasaki/executor/insert/insert_new_record.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -264,6 +265,7 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
     }
     return status::ok;
 }
+
 
 void create_generated_field(
     std::vector<details::write_field>& ret,
@@ -501,8 +503,12 @@ write::write(
     value_meta_(index::create_meta(*idx_, false)),
     key_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true, resource_)),
     value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false, resource_)),
-    primary_(create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_)),
-    secondaries_(create_secondary_targets(*idx_, key_meta_, value_meta_))
+    entity_(std::make_shared<insert::insert_new_record>(
+        kind_,
+        *idx_,
+        create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
+        create_secondary_targets(*idx_, key_meta_, value_meta_)
+    ))
 {}
 
 model::statement_kind write::kind() const noexcept {
@@ -519,233 +525,16 @@ bool write::operator()(request_context& context) {
     }
     return res;
 }
-
-
-std::vector<secondary_context> create_secondary_contexts(
-    std::vector<secondary_target> const& targets,
-    kvs::database& db,
-    request_context& context
-) {
-    std::vector<secondary_context> ret{};
-    ret.reserve(targets.size());
-    for (auto&& e: targets) {
-        ret.emplace_back(
-            db.get_or_create_storage(e.storage_name()),
-            std::addressof(context));
-    }
-    return ret;
-}
-
-bool write::try_insert_primary(
-    write_context& wctx,
-    bool& primary_already_exists,
-    std::string_view& encoded_primary_key
-) {
-    primary_already_exists = false;
-    if(auto res = primary_.encode_put(
-        wctx.primary_context_,
-        *wctx.request_context_->transaction(),
-        kvs::put_option::create,
-        wctx.key_store_.ref(),
-        wctx.value_store_.ref(),
-        encoded_primary_key
-    ); res != status::ok) {
-        if (res == status::already_exists) {
-            primary_already_exists = true;
-            return true;
-        }
-        handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-        return false;
-    }
-    wctx.request_context_->enable_stats()->counter(counter_kind::merged).count(1);
-    return true;
-}
-
-bool write::put_primary(
-    write_context& wctx,
-    bool& skip_error,
-    std::string_view& encoded_primary_key
-) {
-    skip_error = false;
-    kvs::put_option opt = (kind_ == write_kind::insert || kind_ == write_kind::insert_skip) ?
-        kvs::put_option::create :
-        kvs::put_option::create_or_update;
-    if(auto res = primary_.encode_put(
-        wctx.primary_context_,
-        *wctx.request_context_->transaction(),
-        opt,
-        wctx.key_store_.ref(),
-        wctx.value_store_.ref(),
-        encoded_primary_key
-    ); res != status::ok) {
-        if (opt == kvs::put_option::create && res == status::already_exists) {
-            if (kind_ == write_kind::insert) {
-                // integrity violation should be handled in SQL layer and forces transaction abort
-                // status::already_exists is an internal code, raise it as constraint violation
-                set_error(
-                    *wctx.request_context_,
-                    error_code::unique_constraint_violation_exception,
-                    string_builder{} << "Unique constraint violation occurred. Table:" << primary_.storage_name()
-                                     << string_builder::to_string,
-                    status::err_unique_constraint_violation
-                );
-                return false;
-            }
-            // write_kind::insert_skip
-            // duplicated key is simply ignored
-            // simply set stats 0 in order to mark INSERT IF NOT EXISTS statement executed
-            wctx.request_context_->enable_stats()->counter(counter_kind::inserted).count(0);
-
-            // skip error and move to next tuple
-            skip_error = true;
-            return false;
-        }
-        handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-        return false;
-    }
-    auto kind = opt == kvs::put_option::create ? counter_kind::inserted : counter_kind::merged;
-    wctx.request_context_->enable_stats()->counter(kind).count(1);
-    return true;
-}
-
-write_context::write_context(
-    request_context& context,
-    std::string_view storage_name,
-    maybe_shared_ptr<meta::record_meta> key_meta,    //NOLINT(performance-unnecessary-value-param)
-    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
-    std::vector<secondary_target> const& secondaries,
-    kvs::database& db,
-    memory::lifo_paged_memory_resource* resource
-) :
-    request_context_(std::addressof(context)),
-    primary_context_(db.get_or_create_storage(storage_name), key_meta, value_meta, std::addressof(context)),
-    secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
-    key_store_(key_meta, resource),
-    value_store_(value_meta, resource)
-{}
-
-bool write::put_secondaries(
-    write_context& wctx,
-    std::string_view encoded_primary_key
-) {
-    for(std::size_t i=0, n=secondaries_.size(); i < n; ++i) {
-        auto& e = secondaries_[i];
-        if(auto res = e.encode_put(
-            wctx.secondary_contexts_[i],
-            *wctx.request_context_->transaction(),
-            wctx.key_store_.ref(),
-            wctx.value_store_.ref(),
-            encoded_primary_key
-        ); res != status::ok) {
-            handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-            return false;
-        }
-    }
-    return true;
-}
-
-bool write::update_secondaries_before_upsert(
-    write_context& wctx,
-    std::string_view encoded_primary_key,
-    bool primary_already_exists
-) {
-    status res{};
-    if(encoded_primary_key.empty()) {
-        res = primary_.encode_find(
-            wctx.primary_context_,
-            *wctx.request_context_->transaction(),
-            wctx.key_store_.ref(),
-            resource_,
-            wctx.primary_context_.extracted_key(),
-            wctx.primary_context_.extracted_value(),
-            encoded_primary_key
-        );
-    } else {
-        res = primary_.find_by_encoded_key(
-            wctx.primary_context_,
-            *wctx.request_context_->transaction(),
-            encoded_primary_key,
-            resource_,
-            wctx.primary_context_.extracted_key(),
-            wctx.primary_context_.extracted_value()
-        );
-    }
-    if(res != status::ok && res != status::not_found) {
-        handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-        return false;
-    }
-
-    data::aligned_buffer buf_i{};
-    data::aligned_buffer buf_e{};
-    //TODO remove found_primary which is always true if dev_try_insert_on_upserting_secondary=true
-    bool found_primary = res != status::not_found;
-    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        auto& e = secondaries_[i];
-        auto& c = wctx.secondary_contexts_[i];
-        if (found_primary && primary_already_exists) {
-            // try update existing secondary entry
-            std::string_view encoded_i{};
-            if(auto res = e.create_secondary_key(
-                   c,
-                   buf_i,
-                   wctx.key_store_.ref(),
-                   wctx.value_store_.ref(),
-                   encoded_primary_key,
-                   encoded_i
-               );
-               res != status::ok) {
-                handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-                return false;
-            }
-            std::string_view encoded_e{};
-            if(auto res = e.create_secondary_key(
-                   c,
-                   buf_e,
-                   wctx.primary_context_.extracted_key(),
-                   wctx.primary_context_.extracted_value(),
-                   encoded_primary_key,
-                   encoded_e
-               );
-               res != status::ok) {
-                handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-                return false;
-            }
-            if(encoded_e.size() != encoded_i.size() ||
-               std::memcmp(encoded_i.data(), encoded_e.data(), encoded_e.size()) != 0) {
-                // secondary entry needs to be updated - first remove it
-                if (auto res = e.remove_by_encoded_key(
-                        c,
-                        *wctx.request_context_->transaction(),
-                        encoded_e); res != status::ok) {
-                    handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-                    return false;
-                }
-            }
-        }
-        if(auto res = e.encode_put(
-            c,
-            *wctx.request_context_->transaction(),
-            wctx.key_store_.ref(),
-            wctx.value_store_.ref(),
-            encoded_primary_key
-        ); res != status::ok) {
-            handle_generic_error(*wctx.request_context_, res, error_code::sql_service_exception);
-            return false;
-        }
-    }
-    return true;
-}
-
-bool write::process(request_context& context) {  //NOLINT(readability-function-cognitive-complexity)
+bool write::process(request_context& context) {
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
 
-    write_context wctx(context,
+    insert::write_context wctx(context,
         idx_->simple_name(),
         key_meta_,
         value_meta_,
-        secondaries_,
+        entity_->secondaries(),
         *db,
         resource_); // currently common::write uses the same resource for building mirror and executing runtime
 
@@ -773,44 +562,10 @@ bool write::process(request_context& context) {  //NOLINT(readability-function-c
         ); res != status::ok) {
             return false;
         }
-
-        if(kind_ == write_kind::insert_overwrite && ! secondaries_.empty()) {
-            bool primary_already_exists = true; // default true
-            std::string_view encoded_primary_key{};
-            if(wctx.request_context_->configuration()->try_insert_on_upserting_secondary()) {
-                if(! try_insert_primary(wctx, primary_already_exists, encoded_primary_key)) {
-                    return false;
-                }
-            }
-            if(! update_secondaries_before_upsert(wctx, encoded_primary_key, primary_already_exists)) {
-                return false;
-            }
-            if(! primary_already_exists) {
-                // there was no entry conflicting with insert, so there is nothing to update
-                continue;
-            }
-        }
-        // TODO consider to re-use `encoded_primary_key` above to optimize cost,
-        // though value part encoding is still required
-        std::string_view encoded_primary_key{};
-        bool skip_error = false;
-        if(! put_primary(wctx, skip_error, encoded_primary_key)) {
-            if(skip_error) {
-                continue;
-            }
+        if(! entity_->process_record(context, wctx)) {
             return false;
         }
-
-        if(kind_ == write_kind::insert_overwrite) {
-            // updating secondaries is done already
-            continue;
-        }
-
-        if(! put_secondaries(wctx, encoded_primary_key)) {
-            return false;
-        };
     }
     return true;
 }
-
 }  // namespace jogasaki::executor::common

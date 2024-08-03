@@ -60,6 +60,7 @@
 #include "take_cogroup.h"
 #include "take_flat.h"
 #include "take_group.h"
+#include "write_create.h"
 #include "write_kind.h"
 #include "write_partial.h"
 
@@ -208,8 +209,16 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
             node.columns()
         );
     }
-    // INSERT is handled in other path and should not reach here
-    throw_exception(std::logic_error{""});
+    // INSERT from SELECT
+    return std::make_unique<write_create>(
+        index_++,
+        *info_,
+        block_index,
+        write_kind_from(node.operator_kind()),
+        index,
+        node.keys(),
+        node.columns()
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {

@@ -764,7 +764,6 @@ status prepare(
             yugawara::restricted_feature::relation_buffer,
             yugawara::restricted_feature::relation_identify,
             // yugawara::restricted_feature::relation_join_scan,  // jogasaki manually check and create error message
-            yugawara::restricted_feature::relation_write_insert,
             yugawara::restricted_feature::relation_values,
             yugawara::restricted_feature::relation_difference,
             yugawara::restricted_feature::relation_intersection,

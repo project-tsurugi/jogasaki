@@ -505,7 +505,6 @@ write::write(
     value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false, resource_)),
     entity_(std::make_shared<insert::insert_new_record>(
         kind_,
-        *idx_,
         create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
         create_secondary_targets(*idx_, key_meta_, value_meta_)
     ))

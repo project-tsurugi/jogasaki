@@ -86,19 +86,20 @@ public:
      */
     insert_new_record(
         write_kind kind,
-        yugawara::storage::index const& idx,
         primary_target primary,
         std::vector<secondary_target> secondaries
     );
 
     bool process_record(request_context& context, write_context& wctx);
 
+    primary_target& primary() noexcept {
+        return primary_;
+    }
     std::vector<secondary_target>& secondaries() noexcept {
         return secondaries_;
     }
 private:
     write_kind kind_{};
-    yugawara::storage::index const* idx_{};
     primary_target primary_{};
     std::vector<secondary_target> secondaries_{};
 

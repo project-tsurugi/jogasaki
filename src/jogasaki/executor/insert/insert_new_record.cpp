@@ -71,12 +71,10 @@ using takatori::util::string_builder;
 
 insert_new_record::insert_new_record(
     write_kind kind,
-    yugawara::storage::index const& idx,
     primary_target primary,
     std::vector<secondary_target> secondaries
 ) :
     kind_(kind),
-    idx_(std::addressof(idx)),
     primary_(std::move(primary)),
     secondaries_(std::move(secondaries))
 {}

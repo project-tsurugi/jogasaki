@@ -54,6 +54,7 @@
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
 #include <jogasaki/executor/insert/insert_new_record.h>
+#include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -108,7 +109,7 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
 }
 
 status fill_default_value(
-    details::write_field const& f,
+    insert::write_field const& f,
     request_context& ctx,
     memory::lifo_paged_memory_resource& resource,
     data::small_record_store& out
@@ -170,7 +171,7 @@ status fill_default_value(
 
 
 status fill_evaluated_value(
-    details::write_field const& f,
+    insert::write_field const& f,
     request_context& ctx,
     write::tuple const& t,
     compiled_info const& info,
@@ -245,7 +246,7 @@ status fill_evaluated_value(
 status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
     write::tuple const& t,
-    std::vector<details::write_field> const& fields,
+    std::vector<insert::write_field> const& fields,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
     executor::process::impl::variable_table const* host_variables,
@@ -268,7 +269,7 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
 
 
 void create_generated_field(
-    std::vector<details::write_field>& ret,
+    std::vector<insert::write_field>& ret,
     std::size_t index,
     yugawara::storage::column_value const& dv,
     takatori::type::data const& type,
@@ -322,7 +323,7 @@ void create_generated_field(
     );
 }
 
-std::vector<details::write_field> create_fields(
+std::vector<insert::write_field> create_fields(
     yugawara::storage::index const& idx,
     sequence_view<write::column const> columns,
     maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
@@ -332,7 +333,7 @@ std::vector<details::write_field> create_fields(
 ) {
     using reference = takatori::descriptor::variable::reference_type;
     yugawara::binding::factory bindings{};
-    std::vector<details::write_field> out{};
+    std::vector<insert::write_field> out{};
     std::unordered_map<reference, std::size_t> variable_indices{};
     for(std::size_t i=0, n=columns.size(); i<n; ++i) {
         auto&& c = columns[i];
@@ -417,8 +418,8 @@ primary_target create_primary_target(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
-    std::vector<details::write_field> const& key_fields,
-    std::vector<details::write_field> const& value_fields
+    std::vector<insert::write_field> const& key_fields,
+    std::vector<insert::write_field> const& value_fields
 ) {
     std::vector<index::field_info> input_key_fields{};
     input_key_fields.reserve(key_fields.size());

@@ -31,6 +31,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/insert/insert_new_record.h>
+#include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -55,72 +56,6 @@ using primary_target = jogasaki::index::primary_target;
 using primary_context = jogasaki::index::primary_context;
 using secondary_target = jogasaki::index::secondary_target;
 using secondary_context = jogasaki::index::secondary_context;
-
-namespace details {
-
-/**
- * @brief field info. for write
- */
-struct write_field : process::impl::ops::default_value_property {
-    write_field(
-        std::size_t index,
-        takatori::type::data const& target_type,
-        kvs::coding_spec spec,
-        bool nullable,
-        std::size_t offset,
-        std::size_t nullity_offset
-    ) :
-        index_(index),
-        type_(utils::type_for(target_type)),
-        spec_(spec),
-        nullable_(nullable),
-        offset_(offset),
-        nullity_offset_(nullity_offset),
-        target_type_(std::addressof(target_type))
-    {}
-
-    write_field(
-        std::size_t index,
-        takatori::type::data const& target_type,
-        kvs::coding_spec spec,
-        bool nullable,
-        std::size_t offset,
-        std::size_t nullity_offset,
-        process::impl::ops::default_value_kind kind,
-        data::any immediate_value,
-        sequence_definition_id def_id
-    ) :
-        default_value_property(
-            kind,
-            immediate_value,
-            def_id
-        ),
-        index_(index),
-        type_(utils::type_for(target_type)),
-        spec_(spec),
-        nullable_(nullable),
-        offset_(offset),
-        nullity_offset_(nullity_offset),
-        target_type_(std::addressof(target_type))
-    {}
-
-    //@brief value position in the tuple. npos if values clause doesn't contain one for this field.
-    std::size_t index_{};  //NOLINT
-    //@brief field type
-    meta::field_type type_{};  //NOLINT
-    //@brief coding spec
-    kvs::coding_spec spec_{};  //NOLINT
-    //@brief if the field is nullable
-    bool nullable_{};  //NOLINT
-    //@brief value offset
-    std::size_t offset_{};  //NOLINT
-    //@brief nullity bit offset
-    std::size_t nullity_offset_{};  //NOLINT
-    //@brief original target type
-    takatori::type::data const* target_type_{};  //NOLINT
-};
-
-}  // namespace details
 
 /**
  * @brief write statement (to execute Insert)
@@ -162,8 +97,8 @@ private:
     executor::process::impl::variable_table const* host_variables_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
-    std::vector<details::write_field> key_fields_{};
-    std::vector<details::write_field> value_fields_{};
+    std::vector<insert::write_field> key_fields_{};
+    std::vector<insert::write_field> value_fields_{};
     std::shared_ptr<insert::insert_new_record> entity_{};
 };
 

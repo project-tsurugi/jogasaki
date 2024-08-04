@@ -23,6 +23,7 @@
 #include <yugawara/compiled_info.h>
 #include <yugawara/compiler_result.h>
 
+#include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/plan/parameter_set.h>
@@ -31,6 +32,7 @@ namespace jogasaki::executor::process {
 
 namespace relation = takatori::relation;
 using executor::process::impl::variable_table;
+using executor::process::impl::ops::write_kind;
 
 using takatori::util::maybe_shared_ptr;
 
@@ -44,7 +46,7 @@ public:
         bool has_find_operator,
         bool has_join_find_or_scan_operator,
         bool has_write_operations,
-        bool write_for_update
+        write_kind write_kind
     );
 
     [[nodiscard]] bool has_scan_operator() const noexcept;
@@ -52,7 +54,7 @@ public:
     [[nodiscard]] bool has_find_operator() const noexcept;
     [[nodiscard]] bool has_join_find_or_scan_operator() const noexcept;
     [[nodiscard]] bool has_write_operations() const noexcept;
-    [[nodiscard]] bool write_for_update() const noexcept;
+    [[nodiscard]] write_kind get_write_kind() const noexcept;
 
 private:
     bool has_scan_operator_ = false;
@@ -60,7 +62,7 @@ private:
     bool has_find_operator_ = false;
     bool has_join_find_or_scan_operator_ = false;
     bool has_write_operations_ = false;
-    bool write_for_update_ = false;
+    write_kind write_kind_ = write_kind::delete_;
 };
 
 /**

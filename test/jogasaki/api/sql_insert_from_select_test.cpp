@@ -104,6 +104,70 @@ TEST_F(sql_insert_from_select_test, simple) {
     }
 }
 
+TEST_F(sql_insert_from_select_test, column_name_does_not_matter) {
+    // verify column names are not used to match the result and target column
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 10)");
+    execute_statement("create table t1 (c1 int, c0 int)");
+    execute_statement("insert into t1 select * from t0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c1, c0 FROM t1 ORDER BY c0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+    }
+}
+
+TEST_F(sql_insert_from_select_test, column_list_specified) {
+    // verify column names are not used to match the result and target column
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 10)");
+    execute_statement("create table t1 (c1 int, c0 int)");
+    execute_statement("insert into t1 (c0, c1) select * from t0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0, c1 FROM t1 ORDER BY c0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+    }
+}
+
+TEST_F(sql_insert_from_select_test, query_has_too_many_columns) {
+    execute_statement("create table t0 (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 10)");
+    execute_statement("create table t1 (c0 int primary key)");
+    test_stmt_err("insert into t1 select * from t0", error_code::analyze_exception);
+}
+
+TEST_F(sql_insert_from_select_test, table_has_less_columns_than_query) {
+    // even though the query result can fit top columns of the target table, it is not allowed
+    // column list should be specified when the number of columns does not match
+    execute_statement("create table t0 (c0 int primary key)");
+    execute_statement("INSERT INTO t0 VALUES (1)");
+    execute_statement("create table t1 (c1 int primary key, c2 int default 100)");
+    test_stmt_err("insert into t1 select * from t0", error_code::analyze_exception);
+}
+
+TEST_F(sql_insert_from_select_test, type_mismatch) {
+    execute_statement("create table t0 (c0 int primary key)");
+    execute_statement("INSERT INTO t0 VALUES (1)");
+    execute_statement("create table t1 (c0 varchar(3) primary key)");
+    test_stmt_err("insert into t1 select * from t0", error_code::type_analyze_exception);
+}
+
+TEST_F(sql_insert_from_select_test, complicated_column_order) {
+    execute_statement("create table t0 (c0 int default 999, c1 int, c2 int, c3 int, primary key(c2, c1))");
+    execute_statement("INSERT INTO t0 VALUES (1, 10, 100, 1000)");
+    execute_statement("create table t1 (c0 int primary key, c1 int, c2 int, c3 int)");
+    execute_statement("insert into t1 (c1, c3, c2, c0) select c1, c3, c2, c0 from t0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t1 ORDER BY c0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 10, 100, 1000)), result[0]);
+    }
+}
+
 TEST_F(sql_insert_from_select_test, default_value) {
     execute_statement("create table t0 (c0 int primary key, c1 int)");
     execute_statement("INSERT INTO t0 VALUES (1, 10), (2, 20), (3, 30)");
@@ -204,6 +268,19 @@ TEST_F(sql_insert_from_select_test, duplicate_pk) {
 }
 
 TEST_F(sql_insert_from_select_test, null) {
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)"); // (c0, c1) = (1, null)
+    execute_statement("create table t1 (c0 int, c1 int)");
+    execute_statement("insert into t1 select null, c1 from t0");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t1 ORDER BY c0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>({0, 0}, {true, true})), result[0]);
+    }
+}
+
+TEST_F(sql_insert_from_select_test, null_for_not_null) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory cannot rollback on error abort";
     }
@@ -217,4 +294,5 @@ TEST_F(sql_insert_from_select_test, null) {
         ASSERT_EQ(0, result.size());
     }
 }
+
 }

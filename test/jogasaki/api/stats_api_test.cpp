@@ -94,7 +94,10 @@ TEST_F(stats_api_test, insert) {
     execute_statement_with_stats("INSERT INTO T VALUES (1)", stats);
     ASSERT_TRUE(stats);
     EXPECT_EQ(1, stats->counter(counter_kind::inserted).count());
-    EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, insert_skip) {
@@ -104,7 +107,10 @@ TEST_F(stats_api_test, insert_skip) {
     execute_statement_with_stats("INSERT IF NOT EXISTS INTO T VALUES (1)", stats);
     ASSERT_TRUE(stats);
     EXPECT_EQ(0, stats->counter(counter_kind::inserted).count());
-    EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, insert_replace) {
@@ -113,8 +119,11 @@ TEST_F(stats_api_test, insert_replace) {
     execute_statement("INSERT INTO T VALUES (1)");
     execute_statement_with_stats("INSERT OR REPLACE INTO T VALUES (1)", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
     EXPECT_EQ(1, stats->counter(counter_kind::merged).count());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, insert_replace_with_secondary) {
@@ -124,12 +133,19 @@ TEST_F(stats_api_test, insert_replace_with_secondary) {
     execute_statement("CREATE INDEX I ON T(C1)");
     execute_statement_with_stats("INSERT OR REPLACE INTO T VALUES (1,10)", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
     EXPECT_EQ(1, stats->counter(counter_kind::merged).count());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+
     execute_statement_with_stats("INSERT OR REPLACE INTO T VALUES (1,10)", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
     EXPECT_EQ(1, stats->counter(counter_kind::merged).count());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, update) {
@@ -138,9 +154,11 @@ TEST_F(stats_api_test, update) {
     execute_statement("INSERT INTO T VALUES (1)");
     execute_statement_with_stats("UPDATE T SET C0=2 WHERE C0=1", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
     EXPECT_EQ(1, stats->counter(counter_kind::updated).count());
-    EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, update_wo_change) {
@@ -149,9 +167,11 @@ TEST_F(stats_api_test, update_wo_change) {
     execute_statement("INSERT INTO T VALUES (1)");
     execute_statement_with_stats("UPDATE T SET C0=2 WHERE C0=10", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
     EXPECT_EQ(0, stats->counter(counter_kind::updated).count());
-    EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, update_multiple_rows) {
@@ -165,9 +185,11 @@ TEST_F(stats_api_test, update_multiple_rows) {
     execute_statement("INSERT INTO T VALUES (5)");
     execute_statement_with_stats("UPDATE T SET C0=C0+1", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
     EXPECT_EQ(3, stats->counter(counter_kind::updated).count());
-    EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, delete) {
@@ -178,9 +200,11 @@ TEST_F(stats_api_test, delete) {
     execute_statement("INSERT INTO T VALUES (5)");
     execute_statement_with_stats("DELETE FROM T WHERE C0 > 1", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_EQ(2, stats->counter(counter_kind::deleted).count());
-    EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, delete_wo_change) {
@@ -188,9 +212,11 @@ TEST_F(stats_api_test, delete_wo_change) {
     execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY)");
     execute_statement_with_stats("DELETE FROM T WHERE C0 = 10", stats);
     ASSERT_TRUE(stats);
-    EXPECT_FALSE(stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_EQ(0, stats->counter(counter_kind::deleted).count());
-    EXPECT_FALSE(stats->counter(counter_kind::merged).has_value());
+    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, fetched) {
@@ -200,6 +226,10 @@ TEST_F(stats_api_test, fetched) {
     execute_statement("INSERT INTO T VALUES (3)");
     execute_statement_with_stats("select * from T", stats);
     ASSERT_TRUE(stats);
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
     EXPECT_EQ(2, stats->counter(counter_kind::fetched).count());
 }
 
@@ -214,6 +244,27 @@ TEST_F(stats_api_test, fetched_multi_partitions) {
     execute_statement("INSERT INTO T VALUES (5)");
     execute_statement_with_stats("select DISTINCT C0 from T", stats);
     ASSERT_TRUE(stats);
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
     EXPECT_EQ(5, stats->counter(counter_kind::fetched).count());
 }
+
+TEST_F(stats_api_test, insert_from_select) {
+    std::shared_ptr<request_statistics> stats{};
+    execute_statement("CREATE TABLE T0(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T0 VALUES (1)");
+    execute_statement("INSERT INTO T0 VALUES (2)");
+    execute_statement("CREATE TABLE T1(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement_with_stats("insert into T1 select * from T0", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_EQ(2, stats->counter(counter_kind::inserted).count());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+}
+
+
 }

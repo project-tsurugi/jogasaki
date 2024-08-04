@@ -36,14 +36,14 @@ processor_details::processor_details(
     bool has_find_operator,
     bool has_join_find_or_scan_operator,
     bool has_write_operations,
-    bool write_for_update
+    write_kind write_kind
 ) :
     has_scan_operator_(has_scan_operator),
     has_emit_operator_(has_emit_operator),
     has_find_operator_(has_find_operator),
     has_join_find_or_scan_operator_(has_join_find_or_scan_operator),
     has_write_operations_(has_write_operations),
-    write_for_update_(write_for_update)
+    write_kind_(write_kind)
 {}
 
 bool processor_details::has_scan_operator() const noexcept {
@@ -62,8 +62,8 @@ bool processor_details::has_write_operations() const noexcept {
     return has_write_operations_;
 }
 
-bool processor_details::write_for_update() const noexcept {
-    return write_for_update_;
+write_kind processor_details::get_write_kind() const noexcept {
+    return write_kind_;
 }
 
 bool processor_details::has_join_find_or_scan_operator() const noexcept {
@@ -127,7 +127,7 @@ processor_details processor_info::create_details() {
     bool has_find_operator = false;
     bool has_join_find_or_scan_operator = false;
     bool has_write_operator = false;
-    bool write_for_update = false;
+    write_kind write_kind = write_kind::delete_;
     using kind = relation::expression_kind;
     takatori::relation::sort_from_upstream(*relations_, [&](relation::expression const& node) {
         switch(node.kind()) {
@@ -142,8 +142,7 @@ processor_details processor_info::create_details() {
                 break;
             case kind::write:
                 has_write_operator = true;
-                write_for_update =
-                    unsafe_downcast<relation::write const&>(node).operator_kind() == relation::write_kind::update;
+                write_kind = impl::ops::write_kind_from(unsafe_downcast<relation::write const&>(node).operator_kind());
                 break;
             case kind::join_find:
                 has_join_find_or_scan_operator = true;
@@ -161,7 +160,7 @@ processor_details processor_info::create_details() {
         has_find_operator,
         has_join_find_or_scan_operator,
         has_write_operator,
-        write_for_update
+        write_kind
     };
 }
 

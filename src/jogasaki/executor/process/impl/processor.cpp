@@ -65,11 +65,18 @@ abstract::status processor::run(abstract::task_context *context) {
         for(auto& block_info : info_->vars_info_list()) {
             work->variable_tables().emplace_back(block_info);
         }
-        // initialize req. stats to zero for UPDATE/DELETE statements
+        // initialize req. stats to zero for INSERT/UPDATE/DELETE statements
         if(info_->details().has_write_operations()) {
-            auto update = info_->details().write_for_update();
             if(work->req_context()) {
-                work->req_context()->stats()->counter(update ? counter_kind::updated : counter_kind::deleted).count(0);
+                counter_kind kind = counter_kind::undefined;
+                switch(info_->details().get_write_kind()) {
+                    case write_kind::update: kind = counter_kind::updated; break;
+                    case write_kind::delete_: kind = counter_kind::deleted; break;
+                    case write_kind::insert: kind = counter_kind::inserted; break;
+                    case write_kind::insert_overwrite: kind = counter_kind::inserted; break;
+                    case write_kind::insert_skip: kind = counter_kind::inserted; break;
+                }
+                work->req_context()->stats()->counter(kind).count(0);
             }
         }
     }

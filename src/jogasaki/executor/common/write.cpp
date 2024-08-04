@@ -53,6 +53,7 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
+#include <jogasaki/executor/insert/fill_record_fields.h>
 #include <jogasaki/executor/insert/insert_new_record.h>
 #include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
@@ -90,85 +91,6 @@ using takatori::util::throw_exception;
 using takatori::util::string_builder;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
-
-status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out) {
-    BOOST_ASSERT(ctx.sequence_manager() != nullptr); //NOLINT
-    auto& mgr = *ctx.sequence_manager();
-    auto* seq = mgr.find_sequence(def_id);
-    if(seq == nullptr) {
-        throw_exception(std::logic_error{""});
-    }
-    auto ret = seq->next(*ctx.transaction()->object());
-    try {
-        mgr.notify_updates(*ctx.transaction()->object());
-    } catch(executor::sequence::exception const& e) {
-        return e.get_status();
-    }
-    out = ret;
-    return status::ok;
-}
-
-status fill_default_value(
-    insert::write_field const& f,
-    request_context& ctx,
-    memory::lifo_paged_memory_resource& resource,
-    data::small_record_store& out
-) {
-    switch (f.kind_) {
-        case process::impl::ops::default_value_kind::nothing:
-            if (!f.nullable_) {
-                set_error(
-                    ctx,
-                    error_code::not_null_constraint_violation_exception,
-                    string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                    status::err_integrity_constraint_violation);
-                return status::err_integrity_constraint_violation;
-            }
-            out.ref().set_null(f.nullity_offset_, true);
-            break;
-        case process::impl::ops::default_value_kind::immediate: {
-            auto src = f.immediate_value_;
-            auto is_null = src.empty();
-            if (is_null && !f.nullable_) {
-                auto rc = status::err_integrity_constraint_violation;
-                set_error(
-                    ctx,
-                    error_code::not_null_constraint_violation_exception,
-                    string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                    rc);
-                return rc;
-            }
-            out.ref().set_null(f.nullity_offset_, is_null);
-            if (f.nullable_) {
-                utils::copy_nullable_field(
-                    f.type_,
-                    out.ref(),
-                    f.offset_,
-                    f.nullity_offset_,
-                    src,
-                    std::addressof(resource)
-                );
-            } else {
-                utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
-            }
-            break;
-        }
-        case process::impl::ops::default_value_kind::sequence: {
-            // increment sequence - loop might increment the sequence twice
-            sequence_value v{};
-            if (auto res = next_sequence_value(ctx, f.def_id_, v); res != status::ok) {
-                handle_encode_errors(ctx, res);
-                handle_generic_error(ctx, res, error_code::sql_service_exception);
-                return res;
-            }
-            out.ref().set_null(f.nullity_offset_, false);
-            out.ref().set_value<std::int64_t>(f.offset_, v);
-            break;
-        }
-    }
-    return status::ok;
-}
-
 
 status fill_evaluated_value(
     insert::write_field const& f,
@@ -267,225 +189,6 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
     return status::ok;
 }
 
-
-void create_generated_field(
-    std::vector<insert::write_field>& ret,
-    std::size_t index,
-    yugawara::storage::column_value const& dv,
-    takatori::type::data const& type,
-    bool nullable,
-    kvs::coding_spec spec,
-    std::size_t offset,
-    std::size_t nullity_offset,
-    memory::lifo_paged_memory_resource* resource
-) {
-    using yugawara::storage::column_value_kind;
-    sequence_definition_id def_id{};
-    data::aligned_buffer buf{};
-    auto knd = process::impl::ops::default_value_kind::nothing;
-    data::any immediate_val{};
-    switch(dv.kind()) {
-        case column_value_kind::nothing:
-            break;
-        case column_value_kind::immediate: {
-            knd = process::impl::ops::default_value_kind::immediate;
-            auto& v = *dv.element<column_value_kind::immediate>();
-            if(auto a = conv::create_immediate_default_value(v, type, resource); ! a.error()) {
-                immediate_val = a; // varlen resource of the any content is owned by the executable_statement
-                break;
-            }
-            // the value must have been validated when ddl is issued
-            fail_with_exception();
-        }
-        case column_value_kind::sequence: {
-            knd = process::impl::ops::default_value_kind::sequence;
-            if (auto id = dv.element<column_value_kind::sequence>()->definition_id()) {
-                def_id = *id;
-            } else {
-                throw_exception(std::logic_error{"sequence must be defined with definition_id"});
-            }
-            break;
-        }
-        case column_value_kind::function: {
-            throw_exception(std::logic_error{"function default value is unsupported now"});
-        }
-    }
-    ret.emplace_back(
-        index,
-        type,
-        spec,
-        nullable,
-        offset,
-        nullity_offset,
-        knd,
-        immediate_val,
-        def_id
-    );
-}
-
-std::vector<insert::write_field> create_fields(
-    yugawara::storage::index const& idx,
-    sequence_view<write::column const> columns,
-    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
-    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
-    bool key,
-    memory::lifo_paged_memory_resource* resource
-) {
-    using reference = takatori::descriptor::variable::reference_type;
-    yugawara::binding::factory bindings{};
-    std::vector<insert::write_field> out{};
-    std::unordered_map<reference, std::size_t> variable_indices{};
-    for(std::size_t i=0, n=columns.size(); i<n; ++i) {
-        auto&& c = columns[i];
-        variable_indices[c.reference()] = i;
-    }
-    if (key) {
-        out.reserve(idx.keys().size());
-        for(auto&& k : idx.keys()) {
-            auto kc = bindings(k.column());
-            auto& type = k.column().type();
-            auto spec = k.direction() == takatori::relation::sort_direction::ascendant ?
-                kvs::spec_key_ascending : kvs::spec_key_descending;
-            bool nullable = k.column().criteria().nullity().nullable();
-            if(variable_indices.count(kc.reference()) == 0) {
-                // no column specified - use default value
-                auto& dv = k.column().default_value();
-                auto pos = out.size();
-                create_generated_field(
-                    out,
-                    npos,
-                    dv,
-                    type,
-                    nullable,
-                    spec,
-                    key_meta->value_offset(pos),
-                    key_meta->nullity_offset(pos),
-                    resource
-                );
-                continue;
-            }
-            auto pos = out.size();
-            out.emplace_back(
-                variable_indices[kc.reference()],
-                type,
-                spec,
-                nullable,
-                key_meta->value_offset(pos),
-                key_meta->nullity_offset(pos)
-            );
-        }
-    } else {
-        out.reserve(idx.values().size());
-        for(auto&& v : idx.values()) {
-            auto b = bindings(v);
-
-            auto& c = static_cast<yugawara::storage::column const&>(v);
-            auto& type = c.type();
-            bool nullable = c.criteria().nullity().nullable();
-            auto spec = kvs::spec_value;
-            if(variable_indices.count(b.reference()) == 0) {
-                // no column specified - use default value
-                auto& dv = c.default_value();
-                auto pos = out.size();
-                create_generated_field(
-                    out,
-                    npos,
-                    dv,
-                    type,
-                    nullable,
-                    spec,
-                    value_meta->value_offset(pos),
-                    value_meta->nullity_offset(pos),
-                    resource
-                );
-                continue;
-            }
-            auto pos = out.size();
-            out.emplace_back(
-                variable_indices[b.reference()],
-                type,
-                spec,
-                nullable,
-                value_meta->value_offset(pos),
-                value_meta->nullity_offset(pos)
-            );
-        }
-    }
-    return out;
-}
-
-primary_target create_primary_target(
-    std::string_view storage_name,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta,
-    std::vector<insert::write_field> const& key_fields,
-    std::vector<insert::write_field> const& value_fields
-) {
-    std::vector<index::field_info> input_key_fields{};
-    input_key_fields.reserve(key_fields.size());
-    for(auto&& f : key_fields) {
-        input_key_fields.emplace_back(
-            f.type_,
-            true,
-            f.offset_,
-            f.nullity_offset_,
-            f.nullable_,
-            f.spec_
-        );
-    }
-    std::vector<index::field_info> input_value_fields{};
-    input_value_fields.reserve(value_fields.size());
-    for(auto&& f : value_fields) {
-        input_value_fields.emplace_back(
-            f.type_,
-            true,
-            f.offset_,
-            f.nullity_offset_,
-            f.nullable_,
-            f.spec_
-        );
-    }
-    return {
-        storage_name,
-        std::move(key_meta),
-        std::move(value_meta),
-        input_key_fields,
-        input_key_fields,
-        std::move(input_value_fields)
-    };
-}
-
-std::vector<secondary_target> create_secondary_targets(
-    yugawara::storage::index const& idx,
-    maybe_shared_ptr<meta::record_meta> key_meta,
-    maybe_shared_ptr<meta::record_meta> value_meta
-) {
-    std::vector<secondary_target> ret{};
-    auto cnt = 0;
-    idx.table().owner()->each_table_index(idx.table(),
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ++cnt;
-        }
-    );
-    ret.reserve(cnt);
-    idx.table().owner()->each_table_index(idx.table(),
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ret.emplace_back(
-                *entry,
-                key_meta,
-                value_meta
-            );
-        }
-    );
-    return ret;
-}
-
 write::write(
     write_kind kind,
     yugawara::storage::index const& idx,
@@ -502,12 +205,12 @@ write::write(
     host_variables_(host_variables),
     key_meta_(index::create_meta(*idx_, true)),
     value_meta_(index::create_meta(*idx_, false)),
-    key_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true, resource_)),
-    value_fields_(create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false, resource_)),
+    key_fields_(insert::create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true, resource_)),
+    value_fields_(insert::create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false, resource_)),
     entity_(std::make_shared<insert::insert_new_record>(
         kind_,
-        create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
-        create_secondary_targets(*idx_, key_meta_, value_meta_)
+        insert::create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
+        insert::create_secondary_targets(*idx_, key_meta_, value_meta_)
     ))
 {}
 

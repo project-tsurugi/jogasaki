@@ -32,7 +32,6 @@
 #include <takatori/tree/tree_element_vector.h>
 #include <takatori/tree/tree_fragment_vector.h>
 #include <takatori/type/data.h>
-#include <takatori/util/exception.h>
 #include <takatori/util/optional_ptr.h>
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/string_builder.h>
@@ -87,7 +86,6 @@ namespace jogasaki::executor::common {
 using jogasaki::executor::process::impl::ops::write_kind;
 using jogasaki::executor::process::impl::expression::evaluator;
 
-using takatori::util::throw_exception;
 using takatori::util::string_builder;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);

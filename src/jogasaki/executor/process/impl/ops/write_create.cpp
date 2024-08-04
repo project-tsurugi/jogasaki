@@ -28,12 +28,11 @@
 #include <takatori/descriptor/element.h>
 #include <takatori/descriptor/variable.h>
 #include <takatori/relation/write.h>
-// #include <takatori/util/exception.h>
+#include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/optional_ptr.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
-#include <takatori/util/string_builder.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
 #include <yugawara/storage/column.h>
@@ -75,9 +74,8 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using variable = takatori::descriptor::variable;
-// using takatori::util::throw_exception;
-using takatori::util::string_builder;
 
+using takatori::util::throw_exception;
 namespace details {
 
 std::vector<index::secondary_target> create_secondary_targets(
@@ -88,6 +86,12 @@ std::vector<index::secondary_target> create_secondary_targets(
     auto key_meta = index::create_meta(primary, true);
     auto value_meta = index::create_meta(primary, false);
     return insert::create_secondary_targets(idx, std::move(key_meta), std::move(value_meta));
+}
+
+void abort_transaction(transaction_context& tx) {
+    if (auto res = tx.abort(); res != status::ok) {
+        throw_exception(std::logic_error{"abort failed unexpectedly"});
+    }
 }
 
 }  // namespace details
@@ -115,14 +119,12 @@ status fill_default_value_for_fields(
     memory::lifo_paged_memory_resource& resource,
     data::small_record_store& out
 ) {
-    for(std::size_t i=0, n=fields.size(); i<n; ++i) {
-        auto& f = fields[i];
+    for(auto&& f : fields) {
         if (f.index_ == insert::npos) {
             // value not specified for the field use default value or null
             if(auto res = insert::fill_default_value(f, *ctx.req_context(), resource, out); res != status::ok) {
                 return res;
             }
-            continue;
         }
     }
     return status::ok;
@@ -154,7 +156,8 @@ operation_status write_create::operator()(write_create_context& ctx) {
            wctx.key_store_
        );
        res != status::ok) {
-        return {operation_status_kind::aborted};
+        details::abort_transaction(*ctx.transaction());
+        return error_abort(ctx, res);
     }
     if(auto res = fill_default_value_for_fields(
            ctx,
@@ -163,14 +166,20 @@ operation_status write_create::operator()(write_create_context& ctx) {
            wctx.value_store_
        );
        res != status::ok) {
-        return {operation_status_kind::aborted};
+        details::abort_transaction(*ctx.transaction());
+        return error_abort(ctx, res);
     }
 
-    update_record(update_fields_, *ctx.req_context(), ctx.varlen_resource(),
+    if(auto res = update_record(update_fields_, *ctx.req_context(), ctx.varlen_resource(),
            wctx.key_store_.ref(), wctx.value_store_.ref(), ctx.input_variables().store().ref(), {}
-    );
+    ); res != status::ok) {
+        details::abort_transaction(*ctx.transaction());
+        return error_abort(ctx, res);
+    }
 
     if(! entity_->process_record(*ctx.req_context(), wctx)) {
+        // error already logged in error_info in request context
+        details::abort_transaction(*ctx.transaction());
         return {operation_status_kind::aborted};
     }
     return {};

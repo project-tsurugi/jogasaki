@@ -109,6 +109,15 @@ struct cache_align update_field {
 
 }  // namespace details
 
+std::vector<details::update_field> create_update_fields(
+    yugawara::storage::index const& idx,
+    sequence_view<takatori::relation::write::key const> keys, // keys to identify the updated record, possibly part of idx.keys()
+    sequence_view<takatori::relation::write::column const> columns, // columns to be updated
+    variable_table_info const* host_variable_info,
+    variable_table_info const& input_variable_info,
+    yugawara::compiled_info const& cinfo
+);
+
 /**
  * @brief partial write operator
  * @details write operator that partially specifies the data to target columns. Used for Update/Delete operation.
@@ -220,13 +229,16 @@ private:
 
     operation_status do_update(write_partial_context& ctx);
     operation_status do_delete(write_partial_context& ctx);
+};
+
     status update_record(
-        write_partial_context& ctx,
+        std::vector<details::update_field>& fields,
+        request_context & ctx,
+        memory::lifo_paged_memory_resource* resource,
         accessor::record_ref extracted_key_record,
         accessor::record_ref extracted_value_record,
         accessor::record_ref input_variables,
         accessor::record_ref host_variables
     );
-};
 
 }  // namespace jogasaki::executor::process::impl::ops

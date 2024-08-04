@@ -115,14 +115,16 @@ bool update_skips_deletion(write_partial_context& ctx) {
     return ctx.req_context()->configuration()->update_skips_deletion();
 }
 
-status write_partial::update_record(
-    write_partial_context& ctx,
+status update_record(
+    std::vector<details::update_field>& fields,
+    request_context & ctx,
+    memory::lifo_paged_memory_resource* resource,
     accessor::record_ref extracted_key_record,
     accessor::record_ref extracted_value_record,
     accessor::record_ref input_variables,
     accessor::record_ref host_variables
 ) {
-    for(auto const& f : updates_) {
+    for(auto const& f : fields) {
         auto target = f.key_ ? extracted_key_record : extracted_value_record;
         if(! f.requires_conversion_) {
             // assuming intermediate fields are nullable. Nullability check is done on encoding.
@@ -156,8 +158,8 @@ status write_partial::update_record(
                *f.target_type_,
                a,
                converted,
-               *ctx.req_context(),
-               ctx.resource()
+               ctx,
+               resource
            );
            res != status::ok) {
             return res;
@@ -226,7 +228,9 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
 
     // update extracted key/value in primary target with values from variable table
     if(auto res = update_record(
-           ctx,
+           updates_,
+           *ctx.req_context(),
+           ctx.resource(),
            context.extracted_key(),
            context.extracted_value(),
            ctx.input_variables().store().ref(),
@@ -394,7 +398,7 @@ std::vector<details::update_field> create_update_fields(
             auto&& k = idx.keys()[i];
             auto kc = bindings(k.column());
             if (key_dest_to_src.count(kc) == 0) {
-                throw_exception(std::logic_error{""}); // TODO update by non-unique keys
+                // throw_exception(std::logic_error{""}); // TODO update by non-unique keys
             }
             if (column_dest_to_src.count(kc) != 0) {
                 auto&& src = column_dest_to_src.at(kc);

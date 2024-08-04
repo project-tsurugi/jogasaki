@@ -33,6 +33,7 @@
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
+#include <jogasaki/executor/process/impl/ops/write_partial.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/index/primary_target.h>
@@ -42,10 +43,12 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/utils/interference_size.h>
 
-#include "write_kind.h"
 #include "write_create_context.h"
+#include "write_kind.h"
 
 namespace jogasaki::executor::process::impl::ops {
+
+
 
 /**
  * @brief write operator to create new record
@@ -126,11 +129,10 @@ private:
     write_kind kind_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
-    std::vector<insert::write_field> key_fields_to_write_{};
-    std::vector<insert::write_field> value_fields_to_write_{};
-    std::vector<index::field_info> key_fields_to_read_{};
-    std::vector<index::field_info> value_fields_to_read_{};
+    std::vector<insert::write_field> key_fields_{};
+    std::vector<insert::write_field> value_fields_{};
     std::shared_ptr<insert::insert_new_record> entity_{};
+    std::vector<details::update_field> update_fields_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

@@ -108,87 +108,21 @@ operator_kind write_create::kind() const noexcept {
     return operator_kind::write_create;
 }
 
-status fill_from_input_variables(
-    insert::write_field const& write_field,
-    index::field_info const& read_field,
+
+status fill_default_value_for_fields(
     write_create_context& ctx,
-    // compiled_info const& info,
+    std::vector<insert::write_field> const& fields,
     memory::lifo_paged_memory_resource& resource,
     data::small_record_store& out
 ) {
-    (void) resource;
-    // auto& source_type = info.type_of(t.elements()[f.index_]);
-    auto nocopy = nullptr;
-    auto src = ctx.input_variables().store().ref();
-    if (write_field.nullable_) { // assuming read field is always nullable
-        utils::copy_nullable_field(
-            read_field.type_,
-            out.ref(),
-            write_field.offset_,
-            write_field.nullity_offset_,
-            src,
-            read_field.offset_,
-            read_field.nullity_offset_,
-            nocopy
-        );
-    } else {
-        if (src.is_null(read_field.nullity_offset_)) {
-            auto rc = status::err_integrity_constraint_violation;
-            set_error(
-                *ctx.req_context(),
-                error_code::not_null_constraint_violation_exception,
-                string_builder{} << "null assigned for non-nullable field." << string_builder::to_string,
-                rc);
-            return rc;
-        }
-        utils::copy_field(read_field.type_, out.ref(), write_field.offset_, src, read_field.offset_, nocopy);
-    }
-
-    // To clean up varlen data resource in data::any, we rely on upper layer that does clean up
-    // on evey process invocation. Otherwise, we have to copy the result of conversion and
-    // lifo resource is not convenient to copy the result when caller and callee use the same resource.
-
-    /*
-    data::any converted{res};
-    if(conv::to_require_conversion(source_type, *f.target_type_)) {
-        if(auto st = conv::conduct_assignment_conversion(
-            source_type,
-            *f.target_type_,
-            res,
-            converted,
-            ctx,
-            std::addressof(resource)
-        );
-        st != status::ok) {
-            return st;
-        }
-    }
-    */
-
-    return status::ok;
-}
-
-status create_record_from_input_variables(
-    write_create_context& ctx,
-    std::vector<insert::write_field> const& write_fields,
-    std::vector<index::field_info> const& read_fields,
-    // compiled_info const& info,
-    memory::lifo_paged_memory_resource& resource,
-    data::small_record_store& out
-) {
-    BOOST_ASSERT(write_fields.size() == read_fields.size());  //NOLINT
-    for(std::size_t i=0, n=write_fields.size(); i<n; ++i) {
-        auto& wf = write_fields[i];
-        auto& rf = read_fields[i];
-        if (wf.index_ == insert::npos) {
+    for(std::size_t i=0, n=fields.size(); i<n; ++i) {
+        auto& f = fields[i];
+        if (f.index_ == insert::npos) {
             // value not specified for the field use default value or null
-            if(auto res = insert::fill_default_value(wf, *ctx.req_context(), resource, out); res != status::ok) {
+            if(auto res = insert::fill_default_value(f, *ctx.req_context(), resource, out); res != status::ok) {
                 return res;
             }
             continue;
-        }
-        if(auto res = fill_from_input_variables(wf, rf, ctx, resource, out); res != status::ok) {
-            return res;
         }
     }
     return status::ok;
@@ -213,26 +147,28 @@ operation_status write_create::operator()(write_create_context& ctx) {
 
     utils::checkpoint_holder cph(ctx.varlen_resource());
 
-    if(auto res = create_record_from_input_variables(
+    if(auto res = fill_default_value_for_fields(
            ctx,
-           key_fields_to_write_,
-           key_fields_to_read_,
+           key_fields_,
            *ctx.varlen_resource(),
            wctx.key_store_
        );
        res != status::ok) {
         return {operation_status_kind::aborted};
     }
-    if(auto res = create_record_from_input_variables(
+    if(auto res = fill_default_value_for_fields(
            ctx,
-           value_fields_to_write_,
-           value_fields_to_read_,
+           value_fields_,
            *ctx.varlen_resource(),
            wctx.value_store_
        );
        res != status::ok) {
         return {operation_status_kind::aborted};
     }
+
+    update_record(update_fields_, *ctx.req_context(), ctx.varlen_resource(),
+           wctx.key_store_.ref(), wctx.value_store_.ref(), ctx.input_variables().store().ref(), {}
+    );
 
     if(! entity_->process_record(*ctx.req_context(), wctx)) {
         return {operation_status_kind::aborted};
@@ -282,15 +218,23 @@ write_create::write_create(
     kind_(kind),
     key_meta_(index::create_meta(idx, true)),
     value_meta_(index::create_meta(idx, false)),
-    key_fields_to_write_(insert::create_fields(idx, columns, key_meta_, value_meta_, true, resource)),
-    value_fields_to_write_(insert::create_fields(idx, columns, key_meta_, value_meta_, false, resource)),
-    key_fields_to_read_(index::create_fields(idx, columns, (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]), true, false)),
-    value_fields_to_read_(index::create_fields(idx, columns, (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]), false, false)),
+    key_fields_(insert::create_fields(idx, columns, key_meta_, value_meta_, true, resource)),
+    value_fields_(insert::create_fields(idx, columns, key_meta_, value_meta_, false, resource)),
     entity_(std::make_shared<insert::insert_new_record>(
         kind_,
-        insert::create_primary_target(idx.simple_name(), key_meta_, value_meta_, key_fields_to_write_, value_fields_to_write_),
+        insert::create_primary_target(idx.simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
         insert::create_secondary_targets(idx, key_meta_, value_meta_)
-    ))
+    )),
+    update_fields_(
+        create_update_fields(
+            idx,
+            {},
+            columns,
+            nullptr,
+            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index],
+            info.compiled_info()
+        )
+    )
 {}
 
 index::primary_target const& write_create::primary() const noexcept {

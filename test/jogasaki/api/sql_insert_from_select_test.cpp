@@ -203,4 +203,18 @@ TEST_F(sql_insert_from_select_test, duplicate_pk) {
     }
 }
 
+TEST_F(sql_insert_from_select_test, null) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory cannot rollback on error abort";
+    }
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 10)");
+    execute_statement("create table t1 (c0 int primary key, c1 int)");
+    test_stmt_err("insert into t1 select null, null from t0", error_code::sql_service_exception);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t1 ORDER BY c0", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
 }

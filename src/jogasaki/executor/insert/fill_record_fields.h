@@ -75,6 +75,15 @@ void create_generated_field(
 
 std::vector<insert::write_field> create_fields(
     yugawara::storage::index const& idx,
+    sequence_view<takatori::relation::details::mapping_element const> columns,
+    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
+    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
+    bool key,
+    memory::lifo_paged_memory_resource* resource
+);
+
+std::vector<insert::write_field> create_fields(
+    yugawara::storage::index const& idx,
     sequence_view<takatori::descriptor::variable const> columns,
     maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
     maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)

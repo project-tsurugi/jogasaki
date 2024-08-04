@@ -28,6 +28,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/insert/insert_new_record.h>
+#include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
@@ -79,30 +80,9 @@ public:
         processor_info const& info,
         block_index_type block_index,
         write_kind kind,
-        index::primary_target primary,
-        std::vector<index::secondary_target> secondaries,
-        variable_table_info const* input_variable_info = nullptr
-    );
-
-    /**
-     * @brief create new object from takatori columns
-     * @param index the index to identify the operator in the process
-     * @param info processor's information where this operation is contained
-     * @param block_index the index of the block that this operation belongs to
-     * @param kind write operation kind
-     * @param idx the primary index that this write operation depends (secondaries under this primary are also handled)
-     * @param keys takatori write keys information in the sense of primary index
-     * @param columns takatori write columns information
-     * @param input_variable_info input variable information
-     */
-    write_create(
-        operator_index_type index,
-        processor_info const& info,
-        block_index_type block_index,
-        write_kind kind,
         yugawara::storage::index const& idx,
-        sequence_view<key const> keys,
-        sequence_view<column const> columns,
+        sequence_view<takatori::relation::details::mapping_element const> columns,
+        memory::lifo_paged_memory_resource* resource,
         variable_table_info const* input_variable_info = nullptr
     );
 
@@ -144,6 +124,12 @@ public:
 
 private:
     write_kind kind_{};
+    maybe_shared_ptr<meta::record_meta> key_meta_{};
+    maybe_shared_ptr<meta::record_meta> value_meta_{};
+    std::vector<insert::write_field> key_fields_to_write_{};
+    std::vector<insert::write_field> value_fields_to_write_{};
+    std::vector<index::field_info> key_fields_to_read_{};
+    std::vector<index::field_info> value_fields_to_read_{};
     std::shared_ptr<insert::insert_new_record> entity_{};
 };
 

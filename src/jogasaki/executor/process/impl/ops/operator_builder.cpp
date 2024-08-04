@@ -210,14 +210,17 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
         );
     }
     // INSERT from SELECT
+    std::vector columns{node.keys()};
+    columns.insert(columns.end(), node.columns().begin(), node.columns().end());
     return std::make_unique<write_create>(
         index_++,
         *info_,
         block_index,
         write_kind_from(node.operator_kind()),
         index,
-        node.keys(),
-        node.columns()
+        columns,
+
+        resource_
     );
 }
 

@@ -43,6 +43,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/conv/assignment.h>
+#include <jogasaki/executor/insert/fill_record_fields.h>
 #include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
@@ -76,38 +77,13 @@ using variable = takatori::descriptor::variable;
 namespace details {
 
 std::vector<index::secondary_target> create_secondary_targets(
-    yugawara::storage::index const& idx,
-    sequence_view<write_create::column const> columns
+    yugawara::storage::index const& idx
 ) {
-    (void) columns;
     auto& table = idx.table();
     auto& primary = *table.owner()->find_primary_index(table);
     auto key_meta = index::create_meta(primary, true);
     auto value_meta = index::create_meta(primary, false);
-    std::vector<index::secondary_target> ret{};
-    std::size_t count{};
-    table.owner()->each_table_index(table,
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ++count;
-        }
-    );
-    ret.reserve(count);
-    table.owner()->each_table_index(table,
-        [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
-            if (*entry == idx) {
-                return;
-            }
-            ret.emplace_back(
-                *entry,
-                key_meta,
-                value_meta
-            );
-        }
-    );
-    return ret;
+    return insert::create_secondary_targets(idx, std::move(key_meta), std::move(value_meta));
 }
 
 }  // namespace details
@@ -143,149 +119,16 @@ operation_status write_create::operator()(write_create_context& ctx) {
         ctx.varlen_resource()
     );  // currently common::write uses the same resource for building mirror and executing runtime
 
+    // create record from input variables
+
+
+
 
     if(! entity_->process_record(*ctx.req_context(), wctx)) {
         return {operation_status_kind::aborted};
     }
     return {};
 }
-
-/*
-void abort_transaction(transaction_context& tx) {
-    if (auto res = tx.abort(); res != status::ok) {
-        throw_exception(std::logic_error{"abort failed unexpectedly"});
-    }
-}
-
-operation_status write_create::do_update(write_create_context& ctx) {
-    auto& context = ctx.primary_context();
-    // find update target and fill internal extracted key/values in primary target
-    std::string_view encoded{};
-    if(auto res = primary_.encode_find(
-            context,
-            *ctx.transaction(),
-            ctx.input_variables().store().ref(),
-            ctx.varlen_resource(),
-            context.extracted_key(),
-            context.extracted_value(),
-            encoded
-        ); res != status::ok) {
-        abort_transaction(*ctx.transaction());
-        return error_abort(ctx, res);
-    }
-
-    // if(primary_key_updated_ || ! update_skips_deletion(ctx)) {
-        // remove and recreate records
-        if(auto res = primary_.remove_by_encoded_key(
-                context,
-                *ctx.transaction(),
-                encoded
-            ); res != status::ok) {
-            abort_transaction(*ctx.transaction());
-            return error_abort(ctx, res);
-        }
-    // }
-
-    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        // if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
-        //     continue;
-        // }
-        if(auto res = secondaries_[i].encode_remove(
-            ctx.secondary_contexts_[i],
-            *ctx.transaction(),
-            context.extracted_key(),
-            context.extracted_value(),
-            context.encoded_key()
-        ); res != status::ok) {
-            abort_transaction(*ctx.transaction());
-            return error_abort(ctx, res);
-        }
-    }
-
-    // encode extracted key/value in primary target and send to kvs
-    kvs::put_option opt = kind_ == write_kind::insert_overwrite ? kvs::put_option::create_or_update : kvs::put_option::create ;
-    std::string_view encoded_key{};
-    if(auto res = primary_.encode_put(
-           context,
-           *ctx.transaction(),
-           opt,
-           context.extracted_key(),
-           context.extracted_value(),
-           encoded_key
-       );
-       res != status::ok) {
-        abort_transaction(*ctx.transaction());
-        if(res == status::already_exists) {
-            res = status::err_unique_constraint_violation;
-        }
-        return error_abort(ctx, res);
-    }
-    if(context.req_context()) {
-        context.req_context()->enable_stats()->counter(counter_kind::updated).count(1);
-    }
-
-    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        // if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
-        //     continue;
-        // }
-        if(auto res = secondaries_[i].encode_put(
-                ctx.secondary_contexts_[i],
-                *ctx.transaction(),
-                context.extracted_key(),
-                context.extracted_value(),
-                context.encoded_key()
-            ); res != status::ok) {
-            abort_transaction(*ctx.transaction());
-            return error_abort(ctx, res);
-        }
-    }
-    return {};
-}
-
-operation_status write_create::do_delete(write_create_context& ctx) {
-    auto& context = ctx.primary_context();
-    if(secondaries_.empty()) {
-        if(auto res = primary_.encode_remove(
-                context,
-                *ctx.transaction(),
-                ctx.input_variables().store().ref()
-            ); res != status::ok) {
-            return error_abort(ctx, res);
-        }
-        if(context.req_context()) {
-            context.req_context()->enable_stats()->counter(counter_kind::deleted).count(1);
-        }
-        return {};
-    }
-
-    if(auto res = primary_.encode_find_remove(
-            context,
-            *ctx.transaction(),
-            ctx.input_variables().store().ref(),
-            ctx.varlen_resource(),
-            context.extracted_key(),
-            context.extracted_value()
-        ); res != status::ok) {
-        return error_abort(ctx, res);
-    }
-    if(context.req_context()) {
-        context.req_context()->enable_stats()->counter(counter_kind::deleted).count(1);
-    }
-
-    for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        if(auto res = secondaries_[i].encode_remove(
-                ctx.secondary_contexts_[i],
-                *ctx.transaction(),
-                context.extracted_key(),
-                context.extracted_value(),
-                context.encoded_key()
-            ); res != status::ok) {
-            return error_abort(ctx, res);
-        }
-    }
-    return {};
-}
-*/
 
 operation_status write_create::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
@@ -321,37 +164,24 @@ write_create::write_create(
     operator_base::block_index_type block_index,
     write_kind kind,
     yugawara::storage::index const& idx,
-    sequence_view<key const> keys,
-    sequence_view<column const> columns,
-    variable_table_info const* input_variable_info
-) :
-    write_create(
-        index,
-        info,
-        block_index,
-        kind,
-        index::primary_target{
-            idx,
-            keys,
-            input_variable_info ? *input_variable_info : info.vars_info_list()[block_index]
-        },
-        details::create_secondary_targets(idx, columns),
-        input_variable_info
-    )
-{}
-
-write_create::write_create(
-    operator_base::operator_index_type index,
-    processor_info const& info,
-    operator_base::block_index_type block_index,
-    write_kind kind,
-    index::primary_target primary,
-    std::vector<index::secondary_target> secondaries,
+    sequence_view<takatori::relation::details::mapping_element const> columns,
+    memory::lifo_paged_memory_resource* resource,
     variable_table_info const* input_variable_info
 ) :
     record_operator(index, info, block_index, input_variable_info),
     kind_(kind),
-    entity_(std::make_shared<insert::insert_new_record>(kind_, std::move(primary), std::move(secondaries))) {}
+    key_meta_(index::create_meta(idx, true)),
+    value_meta_(index::create_meta(idx, false)),
+    key_fields_to_write_(insert::create_fields(idx, columns, key_meta_, value_meta_, true, resource)),
+    value_fields_to_write_(insert::create_fields(idx, columns, key_meta_, value_meta_, false, resource)),
+    key_fields_to_read_(index::create_fields(idx, columns, (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]), true, false)),
+    value_fields_to_read_(index::create_fields(idx, columns, (input_variable_info != nullptr ? *input_variable_info : info.vars_info_list()[block_index]), false, false)),
+    entity_(std::make_shared<insert::insert_new_record>(
+        kind_,
+        insert::create_primary_target(idx.simple_name(), key_meta_, value_meta_, key_fields_to_write_, value_fields_to_write_),
+        insert::create_secondary_targets(idx, key_meta_, value_meta_)
+    ))
+{}
 
 index::primary_target const& write_create::primary() const noexcept {
     return entity_->primary();

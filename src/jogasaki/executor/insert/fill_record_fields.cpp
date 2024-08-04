@@ -22,6 +22,7 @@
 
 #include <takatori/util/exception.h>
 #include <takatori/util/string_builder.h>
+#include <takatori/descriptor/variable.h>
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/common_types.h>
@@ -190,6 +191,21 @@ void create_generated_field(
         immediate_val,
         def_id
     );
+}
+
+std::vector<insert::write_field> create_fields(
+    yugawara::storage::index const& idx,
+    sequence_view<takatori::relation::details::mapping_element const> columns,
+    maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
+    maybe_shared_ptr<meta::record_meta> value_meta,  //NOLINT(performance-unnecessary-value-param)
+    bool key,
+    memory::lifo_paged_memory_resource* resource
+) {
+    std::vector<takatori::descriptor::variable> destination{};
+    for(auto&& c : columns) {
+        destination.emplace_back(c.destination());
+    }
+    return create_fields(idx, destination, std::move(key_meta), std::move(value_meta), key, resource);
 }
 
 std::vector<insert::write_field> create_fields(

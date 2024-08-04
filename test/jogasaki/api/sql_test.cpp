@@ -707,7 +707,7 @@ TEST_F(sql_test, having_witout_group_by) {
 }
 
 // TODO enable test when fixed
-TEST_F(sql_test, DISABLED_insert_from_select) {
+TEST_F(sql_test, insert_from_select) {
     execute_statement("create table t0 (c0 int primary key, c1 int)");
     execute_statement("INSERT INTO t0 VALUES (1, 10), (2, 20), (3, 30)");
     execute_statement("create table t1 (c0 int primary key, c1 int)");

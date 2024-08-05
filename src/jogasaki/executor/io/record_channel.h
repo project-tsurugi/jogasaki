@@ -118,7 +118,7 @@ public:
     /**
      * @brief accessor for record channel kind
      */
-    virtual record_channel_kind kind() const noexcept = 0;
+    [[nodiscard]] virtual record_channel_kind kind() const noexcept = 0;
 };
 
 }  // namespace jogasaki::executor::io

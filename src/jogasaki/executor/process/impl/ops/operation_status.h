@@ -36,6 +36,10 @@ enum class operation_status_kind {
      * @brief the operation aborted
      */
     aborted,
+    /**
+     * @brief the operation yield
+     */
+    yield,
 };
 
 /**
@@ -48,6 +52,7 @@ constexpr inline std::string_view to_string_view(operation_status_kind value) no
     switch (value) {
         case operation_status_kind::ok: return "ok"sv;
         case operation_status_kind::aborted: return "aborted"sv;
+        case operation_status_kind::yield: return "yield"sv;
     }
     std::abort();
 }

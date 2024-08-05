@@ -123,6 +123,12 @@ public:
      */
     executor::io::record_channel_stats& statistics() override;
 
+    /**
+     * @brief accessor for record channel kind
+     */
+    [[nodiscard]] executor::io::record_channel_kind kind() const noexcept override{
+        return executor::io::record_channel_kind::result_store_channel;
+    }
 private:
     maybe_shared_ptr<data::result_store> store_{};
     executor::io::record_channel_stats stats_{};

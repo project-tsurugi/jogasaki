@@ -202,6 +202,7 @@ std::vector<insert::write_field> create_fields(
     memory::lifo_paged_memory_resource* resource
 ) {
     std::vector<takatori::descriptor::variable> destination{};
+    destination.reserve(columns.size());
     for(auto&& c : columns) {
         destination.emplace_back(c.destination());
     }

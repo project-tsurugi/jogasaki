@@ -28,6 +28,45 @@ namespace jogasaki::executor::io {
 using takatori::util::maybe_shared_ptr;
 
 /**
+ * @brief record channel kind
+ */
+enum class record_channel_kind : std::size_t {
+    undefined = 0,
+    record_channel_adapter,
+    result_store_channel,
+    null_record_channel,
+    dump_channel,
+};
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target valuen
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(record_channel_kind value) noexcept {
+    using namespace std::string_view_literals;
+    using kind = record_channel_kind;
+    switch (value) {
+        case kind::undefined: return "undefined"sv;
+        case kind::record_channel_adapter: return "record_channel_adapter"sv;
+        case kind::result_store_channel: return "result_store_channel"sv;
+        case kind::null_record_channel: return "null_record_channel"sv;
+        case kind::dump_channel: return "dump_channel"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, record_channel_kind value) {
+    return out << to_string_view(value);
+}
+
+/**
  * @brief record data channel interface
  * @details like api::data_channel, this object represents a channel for application output. The difference is
  * this channel handles records while data_channel does binary bytes.
@@ -75,6 +114,11 @@ public:
      * @brief accessor for channel stats
      */
     virtual record_channel_stats& statistics() = 0;
+
+    /**
+     * @brief accessor for record channel kind
+     */
+    virtual record_channel_kind kind() const noexcept = 0;
 };
 
 }  // namespace jogasaki::executor::io

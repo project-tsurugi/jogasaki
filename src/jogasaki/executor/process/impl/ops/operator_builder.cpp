@@ -219,7 +219,6 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
         write_kind_from(node.operator_kind()),
         index,
         columns,
-
         resource_
     );
 }

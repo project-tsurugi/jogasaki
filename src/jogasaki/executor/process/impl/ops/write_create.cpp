@@ -105,7 +105,7 @@ void write_create::finish(abstract::task_context* context) {
 }
 
 std::string_view write_create::storage_name() const noexcept {
-    return entity_->primary().storage_name();
+    return core_->primary().storage_name();
 }
 
 operator_kind write_create::kind() const noexcept {
@@ -138,9 +138,9 @@ operation_status write_create::operator()(write_create_context& ctx) {
     insert::write_context wctx(
         *ctx.req_context(),
         storage_name(),
-        entity_->primary().key_meta(),
-        entity_->primary().value_meta(),
-        entity_->secondaries(),
+        core_->primary().key_meta(),
+        core_->primary().value_meta(),
+        core_->secondaries(),
         *ctx.req_context()->database(),
         ctx.varlen_resource()
     );  // currently common::write uses the same resource for building mirror and executing runtime
@@ -177,7 +177,7 @@ operation_status write_create::operator()(write_create_context& ctx) {
         return error_abort(ctx, res);
     }
 
-    if(! entity_->process_record(*ctx.req_context(), wctx)) {
+    if(! core_->process_record(*ctx.req_context(), wctx)) {
         // error already logged in error_info in request context
         details::abort_transaction(*ctx.transaction());
         return {operation_status_kind::aborted};
@@ -191,8 +191,8 @@ operation_status write_create::process_record(abstract::task_context* context) {
     auto* p = find_context<write_create_context>(index(), ctx.contexts());
     if (! p) {
         std::vector<index::secondary_context> contexts{};
-        contexts.reserve(entity_->secondaries().size());
-        for(auto&& s : entity_->secondaries()) {
+        contexts.reserve(core_->secondaries().size());
+        for(auto&& s : core_->secondaries()) {
             contexts.emplace_back(
                 ctx.database()->get_or_create_storage(s.storage_name()),
                 ctx.req_context()
@@ -203,8 +203,8 @@ operation_status write_create::process_record(abstract::task_context* context) {
             ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
             ctx.transaction(),
-            entity_->primary().key_meta(),
-            entity_->primary().value_meta(),
+            core_->primary().key_meta(),
+            core_->primary().value_meta(),
             ctx.resource(),
             ctx.varlen_resource(),
             std::move(contexts)
@@ -219,7 +219,7 @@ write_create::write_create(
     operator_base::block_index_type block_index,
     write_kind kind,
     yugawara::storage::index const& idx,
-    sequence_view<takatori::relation::details::mapping_element const> columns,
+    sequence_view<column const> columns,
     memory::lifo_paged_memory_resource* resource,
     variable_table_info const* input_variable_info
 ) :
@@ -229,7 +229,7 @@ write_create::write_create(
     value_meta_(index::create_meta(idx, false)),
     key_fields_(insert::create_fields(idx, columns, key_meta_, value_meta_, true, resource)),
     value_fields_(insert::create_fields(idx, columns, key_meta_, value_meta_, false, resource)),
-    entity_(std::make_shared<insert::insert_new_record>(
+    core_(std::make_shared<insert::insert_new_record>(
         kind_,
         insert::create_primary_target(idx.simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
         insert::create_secondary_targets(idx, key_meta_, value_meta_)
@@ -247,7 +247,7 @@ write_create::write_create(
 {}
 
 index::primary_target const& write_create::primary() const noexcept {
-    return entity_->primary();
+    return core_->primary();
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

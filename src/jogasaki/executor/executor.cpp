@@ -562,8 +562,11 @@ bool execute_async_on_context(
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
             if(rctx->record_channel()) {
-                auto fetched = static_cast<std::int64_t>(rctx->record_channel()->statistics().total_record_count());
-                rctx->stats()->counter(counter_kind::fetched).count(fetched);
+                auto k = rctx->record_channel()->kind();
+                if(k != executor::io::record_channel_kind::dump_channel && k != executor::io::record_channel_kind::null_record_channel) {
+                    auto fetched = static_cast<std::int64_t>(rctx->record_channel()->statistics().total_record_count());
+                    rctx->stats()->counter(counter_kind::fetched).count(fetched);
+                }
             }
             external_log_stmt_end(*rctx, req_info, statement);
             on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());

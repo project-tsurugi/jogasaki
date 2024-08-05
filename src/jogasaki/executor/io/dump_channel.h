@@ -127,6 +127,13 @@ public:
     executor::io::record_channel_stats& statistics() override {
         return stats_;
     }
+
+    /**
+     * @brief accessor for record channel kind
+     */
+    [[nodiscard]] record_channel_kind kind() const noexcept override{
+        return record_channel_kind::dump_channel;
+    }
 private:
     maybe_shared_ptr<record_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};

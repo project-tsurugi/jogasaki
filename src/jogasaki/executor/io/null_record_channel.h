@@ -64,6 +64,13 @@ public:
     executor::io::record_channel_stats& statistics() override {
         return stats_;
     }
+
+    /**
+     * @brief accessor for record channel kind
+     */
+    [[nodiscard]] record_channel_kind kind() const noexcept override{
+        return record_channel_kind::null_record_channel;
+    }
 private:
     std::vector<std::shared_ptr<null_record_channel_writer>> writers_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};

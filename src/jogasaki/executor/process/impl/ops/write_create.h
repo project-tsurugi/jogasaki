@@ -84,7 +84,7 @@ public:
         block_index_type block_index,
         write_kind kind,
         yugawara::storage::index const& idx,
-        sequence_view<takatori::relation::details::mapping_element const> columns,
+        sequence_view<column const> columns,
         memory::lifo_paged_memory_resource* resource,
         variable_table_info const* input_variable_info = nullptr
     );
@@ -131,7 +131,7 @@ private:
     maybe_shared_ptr<meta::record_meta> value_meta_{};
     std::vector<insert::write_field> key_fields_{};
     std::vector<insert::write_field> value_fields_{};
-    std::shared_ptr<insert::insert_new_record> entity_{};
+    std::shared_ptr<insert::insert_new_record> core_{};
     std::vector<details::update_field> update_fields_{};
 };
 

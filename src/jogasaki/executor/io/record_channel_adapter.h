@@ -68,6 +68,12 @@ public:
      */
     record_channel_stats& statistics() override;
 
+    /**
+     * @brief accessor for record channel kind
+     */
+    [[nodiscard]] record_channel_kind kind() const noexcept override{
+        return record_channel_kind::record_channel_adapter;
+    }
 private:
     maybe_shared_ptr<api::data_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};

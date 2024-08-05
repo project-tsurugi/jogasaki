@@ -1,6 +1,5 @@
 add_subdirectory(group_cli)
 add_subdirectory(cogroup_cli)
-add_subdirectory(compile_cli)
 add_subdirectory(mock_aggregate_cli)
 add_subdirectory(sql_cli)
 add_subdirectory(process_cli)

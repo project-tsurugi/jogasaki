@@ -90,15 +90,6 @@
 #include <yugawara/variable/declaration.h>
 #include <mizugaki/analyzer/sql_analyzer.h>
 #include <mizugaki/parser/sql_parser.h>
-#include <mizugaki/translator/shakujo_translator.h>
-#include <mizugaki/translator/shakujo_translator_code.h>
-#include <mizugaki/translator/shakujo_translator_options.h>
-#include <mizugaki/translator/shakujo_translator_result.h>
-#include <shakujo/analyzer/Diagnostic.h>
-#include <shakujo/analyzer/Reporter.h>
-#include <shakujo/analyzer/SyntaxValidator.h>
-#include <shakujo/model/program/Program.h>
-#include <shakujo/parser/Parser.h>
 
 #include <jogasaki/constants.h>
 #include <jogasaki/data/small_record_store.h>
@@ -309,14 +300,6 @@ std::shared_ptr<mirror_container> preprocess_mirror(
     return container;
 }
 
-template <mizugaki::translator::shakujo_translator::result_type::kind_type Kind>
-yugawara::compiler_result compile_internal_legacy(
-    mizugaki::translator::shakujo_translator::result_type& r,
-    yugawara::compiler_options& c_options) {
-    auto ptr = r.release<Kind>();
-    return yugawara::compiler()(c_options, std::move(*ptr));
-}
-
 template <mizugaki::analyzer::sql_analyzer_result_kind Kind>
 yugawara::compiler_result compile_internal(
     mizugaki::analyzer::sql_analyzer_result r,
@@ -392,31 +375,6 @@ error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
         default: break;
     }
     return ec::compile_exception;
-}
-
-error_code map_compiler_error(mizugaki::translator::shakujo_translator_code code) {
-    using stc = mizugaki::translator::shakujo_translator_code;
-    using ec = error_code;
-    switch(code) {
-        case stc::table_not_found: return ec::symbol_analyze_exception;
-        case stc::index_not_found: return ec::symbol_analyze_exception;
-        case stc::column_not_found: return ec::symbol_analyze_exception;
-        case stc::variable_not_found: return ec::symbol_analyze_exception;
-        case stc::function_not_found: return ec::symbol_analyze_exception;
-        case stc::unresolved_variable: return ec::symbol_analyze_exception;
-
-        case stc::inconsistent_type: return ec::type_analyze_exception;
-        case stc::ambiguous_type: return ec::type_analyze_exception;
-
-        case stc::unsupported_type: return ec::unsupported_compiler_feature_exception;
-        case stc::unsupported_value: return ec::unsupported_compiler_feature_exception;
-        case stc::unsupported_statement: return ec::unsupported_compiler_feature_exception;
-        case stc::unsupported_scalar_expression: return ec::unsupported_compiler_feature_exception;
-        case stc::unsupported_relational_operator: return ec::unsupported_compiler_feature_exception;
-
-        default: return ec::compile_exception;
-    }
-    std::abort();
 }
 
 error_code map_compiler_error(yugawara::compiler_code code) {
@@ -504,31 +462,6 @@ status create_prepared_statement(
     return status::ok;
 }
 
-status create_prepared_statement_legacy(
-    mizugaki::translator::shakujo_translator::result_type& r,
-    std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
-    yugawara::compiler_options& c_options,
-    std::shared_ptr<storage_processor> const& sp,
-    compiler_context &ctx,
-    std::shared_ptr<plan::prepared_statement>& out
-) {
-    using result_kind = mizugaki::translator::shakujo_translator::result_type::kind_type;
-    yugawara::compiler_result result{};
-    switch(r.kind()) {
-        case result_kind::execution_plan: {
-            result = compile_internal_legacy<result_kind::execution_plan>(r, c_options);
-            break;
-        }
-        case result_kind::statement: {
-            result = compile_internal_legacy<result_kind::statement>(r, c_options);
-            break;
-        }
-        default:
-            throw_exception(std::logic_error{""});
-    }
-    return create_prepared_statement(std::move(result), provider, sp, ctx, out);
-}
-
 status create_prepared_statement(
     mizugaki::analyzer::sql_analyzer_result r,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
@@ -554,123 +487,11 @@ status create_prepared_statement(
     return create_prepared_statement(std::move(result), provider, sp, ctx, out);
 }
 
-status parse_validate(
-    std::string_view sql,
-    compiler_context &ctx,
-    std::unique_ptr<shakujo::model::program::Program>& program
-) {
-    shakujo::parser::Parser parser{};
-    try {
-        std::stringstream ss{std::string(sql)};
-        program = parser.parse_program("<input>", ss);
-        shakujo::analyzer::SyntaxValidator validator{};
-        shakujo::analyzer::Reporter reporter{};
-        if(! validator.analyze(reporter, program.get())) {
-            std::stringstream errs{};
-            for(auto&& e : reporter.diagnostics()) {
-                // skip unresolved place holder
-                if(e.code() == shakujo::analyzer::Diagnostic::Code::UNEXPECTED_ELEMENT) {
-                    continue;
-                }
-                errs << e << " ";
-            }
-            if (errs.str().empty()) {
-                return status::ok;
-            }
-            std::stringstream msg{};
-            msg << "syntax validation failed: " << errs.str();
-            auto res = status::err_parse_error;
-            VLOG_LP(log_error) << res << ": " << msg.str();
-            set_compile_error(
-                ctx,
-                error_code::syntax_exception, // TODO revisit after mizugaki upgrade
-                msg.str(),
-                res
-            );
-            return res;
-        }
-    } catch (shakujo::parser::Parser::Exception &e) {
-        std::stringstream msg{};
-        msg << "parsing statement failed: " << e.message() << " (" << e.region() << ")";
-        auto res = status::err_parse_error;
-        VLOG_LP(log_error) << res << ": " <<  msg.str();
-        set_compile_error(
-            ctx,
-            error_code::syntax_exception, // TODO revisit after mizugaki upgrade
-            msg.str(),
-            res
-        );
-        return res;
-    }
-    return status::ok;
-}
-
-status prepare_legacy(
-    std::string_view sql,
-    compiler_context &ctx,
-    std::shared_ptr<plan::prepared_statement>& out
-) {
-    ctx.sql_text(std::make_shared<std::string>(sql));
-
-    std::unique_ptr<shakujo::model::program::Program> program{};
-    if(auto res = parse_validate(sql, ctx, program); res != status::ok) {
-        return res;
-    }
-
-    mizugaki::translator::shakujo_translator translator;
-    mizugaki::translator::shakujo_translator_options options {
-        ctx.storage_provider(),
-        ctx.variable_provider(),
-        ctx.function_provider(),
-        ctx.aggregate_provider(),
-        ctx.variable_provider()
-    };
-    // used when SQL has no parenthesis for decimal: "create table T (c0 decimal)" or "CAST(... AS decimal)"
-    options.default_decimal_precision() = decimal_default_precision_no_parenthesis;
-
-    yugawara::runtime_feature_set runtime_features {
-        //TODO enable features
-//        yugawara::runtime_feature::broadcast_exchange,
-
-        yugawara::runtime_feature::aggregate_exchange,
-
-//        yugawara::runtime_feature::broadcast_join_scan,
-    };
-
-    auto cfg = global::config_pool();
-    if(cfg && cfg->enable_index_join()) {
-        runtime_features.insert(yugawara::runtime_feature::index_join);
-    }
-    std::shared_ptr<yugawara::analyzer::index_estimator> indices {};
-
-    auto sp = std::make_shared<storage_processor>();
-    yugawara::compiler_options c_options{
-        runtime_features,
-        sp,
-        indices,
-    };
-
-    ::takatori::document::document_map documents;
-    auto r = translator(options, *program->main(), documents);
-    if (! r) {
-        auto res = status::err_compiler_error;
-        auto errors = r.release<mizugaki::translator::shakujo_translator::result_type::kind_type::diagnostics>();
-        handle_compile_errors(errors, res, ctx);
-        return res;
-    }
-    return create_prepared_statement_legacy(r, ctx.variable_provider(), c_options, sp, ctx, out);
-}
-
 status prepare(
     std::string_view sql,
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
-    auto cfg = global::config_pool();
-    if(cfg && cfg->compiler_support() == 0) {
-        return prepare_legacy(sql, ctx, out);
-    }
-
     ctx.sql_text(std::make_shared<std::string>(sql));
     mizugaki::parser::sql_parser parser{};
     auto result = parser("<input>", std::string{sql});
@@ -703,6 +524,7 @@ status prepare(
     // allow null literals
     opts.allow_context_independent_null() = true;
 
+    auto cfg = global::config_pool();
     if(cfg) {
         opts.lowercase_regular_identifiers() = cfg->lowercase_regular_identifiers();
     }

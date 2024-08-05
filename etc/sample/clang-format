@@ -57,10 +57,6 @@ IncludeCategories:
     Priority:        20
     SortPriority:    23
     CaseSensitive:   true
-  - Regex:           '^<shakujo/'
-    Priority:        20
-    SortPriority:    24
-    CaseSensitive:   true
   - Regex:           '^<tateyama/'
     Priority:        20
     SortPriority:    25

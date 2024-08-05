@@ -158,9 +158,6 @@ target_link_libraries(${ENGINE}
         PUBLIC takatori
         PUBLIC yugawara
         PRIVATE mizugaki
-        PRIVATE shakujo-model
-        PRIVATE shakujo-parser
-        PRIVATE shakujo-analyzer
         PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         PRIVATE tbb
         PRIVATE numa

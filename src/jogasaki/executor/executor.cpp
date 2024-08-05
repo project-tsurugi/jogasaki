@@ -315,7 +315,8 @@ bool execute_async(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     error_info_stats_callback on_completion,  //NOLINT(performance-unnecessary-value-param)
-    request_info const& req_info
+    request_info const& req_info,
+    bool sync
 ) {
     return details::execute_internal(
         database,
@@ -326,7 +327,7 @@ bool execute_async(
                   )}
                 : maybe_shared_ptr<executor::io::record_channel>{std::make_shared<executor::io::null_record_channel>()},
         std::move(on_completion),
-        false,
+        sync,
         req_info
     );
 }

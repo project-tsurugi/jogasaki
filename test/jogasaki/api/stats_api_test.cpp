@@ -84,6 +84,23 @@ public:
                 .report()
         );
     }
+    void execute_query_with_stats(
+        std::string_view query,
+        std::shared_ptr<request_statistics>& stats
+    ) {
+        status result{};
+        std::vector<mock::basic_record> recs{};
+        ASSERT_EQ("",
+            builder()
+                .text(query)
+                .st(result)
+                .stats(stats)
+                .expect_error(false)
+                .output_records(recs)
+                .run()
+                .report()
+        );
+    }
 };
 
 using namespace std::string_view_literals;
@@ -158,7 +175,7 @@ TEST_F(stats_api_test, update) {
     EXPECT_EQ(1, stats->counter(counter_kind::updated).count());
     EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
-    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, update_wo_change) {
@@ -171,7 +188,7 @@ TEST_F(stats_api_test, update_wo_change) {
     EXPECT_EQ(0, stats->counter(counter_kind::updated).count());
     EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
-    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, update_multiple_rows) {
@@ -189,7 +206,7 @@ TEST_F(stats_api_test, update_multiple_rows) {
     EXPECT_EQ(3, stats->counter(counter_kind::updated).count());
     EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
-    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, delete) {
@@ -204,7 +221,7 @@ TEST_F(stats_api_test, delete) {
     EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_EQ(2, stats->counter(counter_kind::deleted).count());
-    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, delete_wo_change) {
@@ -216,7 +233,7 @@ TEST_F(stats_api_test, delete_wo_change) {
     EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_EQ(0, stats->counter(counter_kind::deleted).count());
-    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 TEST_F(stats_api_test, fetched) {
@@ -224,7 +241,7 @@ TEST_F(stats_api_test, fetched) {
     execute_statement("CREATE TABLE T(C0 INT NOT NULL PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES (1)");
     execute_statement("INSERT INTO T VALUES (3)");
-    execute_statement_with_stats("select * from T", stats);
+    execute_query_with_stats("select * from T", stats);
     ASSERT_TRUE(stats);
     EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
@@ -242,7 +259,7 @@ TEST_F(stats_api_test, fetched_multi_partitions) {
     execute_statement("INSERT INTO T VALUES (3)");
     execute_statement("INSERT INTO T VALUES (4)");
     execute_statement("INSERT INTO T VALUES (5)");
-    execute_statement_with_stats("select DISTINCT C0 from T", stats);
+    execute_query_with_stats("select DISTINCT C0 from T", stats);
     ASSERT_TRUE(stats);
     EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
@@ -263,7 +280,7 @@ TEST_F(stats_api_test, insert_from_select) {
     EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
     EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
-    // EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
 

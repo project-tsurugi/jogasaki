@@ -90,6 +90,7 @@ status commit(
  * @param tx the transaction used to execute the request
  * @param on_completion callback on completion of commit
  * @param option commit options
+ * @param info exchange the original request/response info (mainly for logging purpose)
  * @return id of the job to execute commit
  * @note normal error such as SQL runtime processing failure will be reported by callback
  */
@@ -122,6 +123,7 @@ status abort_transaction(
  * @param result [out] the result set to be filled on completion
  * @param error [out] the info object to be filled on error
  * @param stats [out] the stats object to be filled
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -145,6 +147,7 @@ status execute(
  * @param result [out] the result set to be filled on completion
  * @param error [out] the info object to be filled on error
  * @param stats [out] the stats object to be filled
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return status::ok when successful
  * @return error otherwise
  * @deprecated This is kept for testing. Use execute_async for production.
@@ -167,6 +170,8 @@ status execute(
  * @param statement statement to execute
  * @param channel channel to receive statement result records, pass nullptr if no records are to be received
  * @param on_completion callback on completion of statement execution
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
+ * @param sync specify true if execution waits for it completion before function finishes. Testing purpose only.
  * @return status::ok when successful
  * @return error otherwise
  */
@@ -176,7 +181,8 @@ bool execute_async(
     maybe_shared_ptr<api::executable_statement> const& statement,
     maybe_shared_ptr<api::data_channel> const& channel,
     error_info_stats_callback on_completion,
-    request_info const& req_info = {}
+    request_info const& req_info = {},
+    bool sync = false
 );
 
 /**
@@ -188,6 +194,7 @@ bool execute_async(
  * @param channel channel to receive statement result records, pass nullptr if no records are to be received
  * @param on_completion callback on completion of statement execution
  * @param sync specify true if execution waits for it completion before function finishes. Testing purpose only.
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return status::ok when successful
  * @return error otherwise
  */
@@ -209,6 +216,7 @@ bool execute_async(
  * @param statement statement to execute
  * @param on_completion callback on completion of statement execution
  * @param sync specify true if execution waits for it completion before function finishes. Testing purpose only.
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return status::ok when successful
  * @return error otherwise
  */
@@ -233,6 +241,7 @@ constexpr static std::size_t undefined = static_cast<std::size_t>(-1);
  * @param directory the directory where the dump result files will be created
  * @param on_completion callback on completion of statement execution
  * @param cfg dump setting options
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return status::ok when successful
  * @return error otherwise
  */
@@ -255,6 +264,7 @@ bool execute_dump(
  * @param parameters the parameters prototype that will be filled for each loaded records
  * @param files the list of file path to be loaded
  * @param on_completion callback on completion of load
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return status::ok when successful
  * @return error otherwise
  */

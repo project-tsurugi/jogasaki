@@ -95,6 +95,7 @@ runner& runner::run() {
     auto* out_stats = stats_ ? stats_ : &temp_stats;
     auto tc = api::get_transaction_context(tx);
     if(output_records_) {
+        // call api for query
         std::unique_ptr<api::result_set> rs{};
         if(res = executor::execute(get_impl(*db_), tc, *stmt, rs, *out, *out_stats); res != status::ok && ! expect_error_) {
             exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
@@ -116,8 +117,22 @@ runner& runner::run() {
         }
         rs->close();
     } else {
-        std::unique_ptr<api::result_set> result{};
-        if(res = executor::execute(get_impl(*db_), tc, *stmt, result, *out, *out_stats); res != status::ok && ! expect_error_) {
+        // Call api for statement (i.e. no result records).
+        // There is no execute() api without requesting result set, so use execute_async with sync = true
+        if(! executor::execute_async(
+               get_impl(*db_),
+               tc,
+               maybe_shared_ptr{stmt.get()},
+               nullptr,
+               [&](status st, std::shared_ptr<error::error_info> err, std::shared_ptr<request_statistics> stats) {
+                   res = st;
+                   *out = err;
+                   *out_stats = stats;
+               },
+               request_info{},
+               true
+           ) &&
+           ! expect_error_) {
             exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }
     }

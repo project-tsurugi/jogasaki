@@ -57,6 +57,34 @@ transaction_context* scan_context::transaction() const noexcept {
     return tx_;
 }
 
+std::ostream& operator<<(std::ostream& os, const scan_context& sc) {
+    os << static_cast<const context_base&>(sc);
+    os << "  scan_context:\n";
+
+    os << "    " << std::left << std::setw(20) << "stg:"
+       << std::hex << (sc.stg_ ? sc.stg_.get() : nullptr) << "\n";
+
+    os << "    " << std::left << std::setw(20) << "secondary_stg:"
+       << std::hex << (sc.secondary_stg_ ? sc.secondary_stg_.get() : nullptr) << "\n";
+
+    os << "    " << std::left << std::setw(20) << "transaction_context:"
+       << std::hex << (sc.tx_ ? sc.tx_ : nullptr) << "\n";
+
+    os << "    " << std::left << std::setw(20) << "iterator:"
+       << std::hex << (sc.it_ ? sc.it_.get() : nullptr) << "\n";
+
+    os << "    " << std::left << std::setw(20) << "scan_info:"
+       << std::hex << (sc.scan_info_ ? sc.scan_info_ : nullptr) << "\n";
+
+    os << "    " << std::left << std::setw(20) << "key_begin_size:"
+       << sc.key_begin_.size() << "\n";
+
+    os << "    " << std::left << std::setw(20) << "key_end_size:"
+       << sc.key_end_.size() << "\n";
+
+    return os;
+}
+
 }
 
 

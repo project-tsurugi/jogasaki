@@ -97,4 +97,36 @@ void context_base::abort() noexcept {
     state(context_state::abort);
 }
 
+std::ostream& operator<<(std::ostream& os, const context_base& ctx) {
+    os << "context_base:\n";
+
+    os << "  " << std::left << std::setw(22) << "task_context:"
+       << std::hex << (ctx.task_context_ ? ctx.task_context_ : nullptr) << "\n";
+
+    os << "  " << std::left << std::setw(22) << "input_variables:"
+       << std::hex << (ctx.input_variables_ ? ctx.input_variables_ : nullptr) << "\n";
+
+    if (ctx.input_variables_) {
+        ctx.input_variables_->debug_print(os, "    ");
+    }
+
+    os << "  " << std::left << std::setw(22) << "output_variables:"
+       << std::hex << (ctx.output_variables_ ? ctx.output_variables_ : nullptr) << "\n";
+
+    if (ctx.output_variables_) {
+        ctx.output_variables_->debug_print(os, "    ");
+    }
+
+    os << "  " << std::left << std::setw(22) << "resource:"
+       << std::hex << (ctx.resource_ ? ctx.resource_ : nullptr) << "\n";
+
+    os << "  " << std::left << std::setw(22) << "varlen_resource:"
+       << std::hex << (ctx.varlen_resource_ ? ctx.varlen_resource_ : nullptr) << "\n";
+
+    os << "  " << std::left << std::setw(22) << "state:"
+       << static_cast<int>(ctx.state_) << "\n";
+
+    return os;
+}
+
 }

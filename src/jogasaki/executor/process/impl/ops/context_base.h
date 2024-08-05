@@ -164,6 +164,8 @@ public:
      */
     [[nodiscard]] request_context* req_context() noexcept;
 
+    friend std::ostream& operator<<(std::ostream& os, const context_base& ctx);
+
 private:
     class abstract::task_context* task_context_{};
     variable_table* input_variables_{};

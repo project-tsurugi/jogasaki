@@ -64,6 +64,8 @@ public:
 
     [[nodiscard]] transaction_context* transaction() const noexcept;
 
+    friend std::ostream& operator<<(std::ostream& os, const scan_context& sc);
+
 private:
     std::unique_ptr<kvs::storage> stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};

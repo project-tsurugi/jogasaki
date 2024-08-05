@@ -88,6 +88,17 @@ std::ostream& operator<<(std::ostream& out, variable_table const& value) {
     return out;
 }
 
+void variable_table::debug_print(std::ostream& os, const std::string& indent) const {
+    os << indent << "variable_table:\n";
+    os << indent << "  " << std::left << std::setw(18) << "info:"
+       << std::hex << (info_ ? info_ : nullptr) << "\n";
+    os << indent << "  " << std::left << std::setw(18) << "store:"
+       << std::hex << (store_ ? store_.get() : nullptr) << "\n";
+    if (store_) {
+       os << indent << "  " << std::left << std::setw(18) << "store value:" << *store_ << "\n";
+    }
+}
+
 }
 
 

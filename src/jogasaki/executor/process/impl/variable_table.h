@@ -65,6 +65,15 @@ public:
      */
     [[nodiscard]] explicit operator bool() const noexcept;
 
+    /**
+     * @brief Outputs a textual representation of the object for debugging purposes.
+     *
+     * @param os The output stream to which the object's details will be written.
+     * @param indent A string used for indentation in the output,
+     * making it easier to read nested structures. Default is an empty string.
+     */
+    void debug_print(std::ostream& os, const std::string& indent = "") const;
+
 private:
     variable_table_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};

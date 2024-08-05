@@ -65,6 +65,14 @@ public:
      */
     [[nodiscard]] explicit operator bool() const noexcept;
 
+    /**
+     * @brief Support for debugging, callable in GDB: vt->dump()
+     *
+     * @param indent A string used for indentation in the output,
+     * making it easier to read nested structures. Default is an empty string.
+     */
+    void dump(std::string const& indent = "") const noexcept;
+
 private:
     variable_table_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};

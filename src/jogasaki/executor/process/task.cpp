@@ -65,11 +65,16 @@ model::task_result task::operator()() {
             VLOG_LP(log_warning) << *this << " task completed with errors";
             break;
         case abstract::status::to_sleep:
-        case abstract::status::to_yield:
             // TODO support sleep/yield
 
             fail_with_exception();
-
+	    break;
+        case abstract::status::to_yield:
+            VLOG_LP(log_warning) << *this << " process::task to_yield.";
+            break;
+        default:
+            fail_with_exception();
+            break;
     }
     // raise appropriate event if needed
     common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
@@ -85,7 +90,16 @@ model::task_result task::operator()() {
         callback_arg arg{ id() };
         (*cb)(&arg);
     }
-    return jogasaki::model::task_result::complete;
+    switch (status) {
+        case abstract::status::completed:
+        case abstract::status::completed_with_errors:
+        case abstract::status::to_sleep:
+            return jogasaki::model::task_result::complete;
+        case abstract::status::to_yield:
+            return jogasaki::model::task_result::yield;
+        default:
+            return jogasaki::model::task_result::complete;
+    }
 }
 
 bool task::has_transactional_io() {

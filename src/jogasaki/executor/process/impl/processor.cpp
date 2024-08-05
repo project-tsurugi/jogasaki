@@ -73,9 +73,16 @@ abstract::status processor::run(abstract::task_context *context) {
             }
         }
     }
-    unsafe_downcast<ops::record_operator>(operators_.root()).process_record(context);
-    // TODO handling status code
-    return abstract::status::completed;
+    auto status = unsafe_downcast<ops::record_operator>(operators_.root()).process_record(context);
+    switch(status.kind()) {
+        case ops::operation_status_kind::ok:
+        case ops::operation_status_kind::aborted:
+            return abstract::status::completed;
+        case ops::operation_status_kind::yield:
+            return abstract::status::to_yield;
+        default:
+            return abstract::status::completed;
+    }
 }
 
 ops::operator_container const& processor::operators() const noexcept {

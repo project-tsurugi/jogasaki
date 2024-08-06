@@ -73,7 +73,7 @@ abstract::status processor::run(abstract::task_context *context) {
                     case write_kind::update: kind = counter_kind::updated; break;
                     case write_kind::delete_: kind = counter_kind::deleted; break;
                     case write_kind::insert: kind = counter_kind::inserted; break;
-                    case write_kind::insert_overwrite: kind = counter_kind::inserted; break;
+                    case write_kind::insert_overwrite: kind = counter_kind::merged; break;
                     case write_kind::insert_skip: kind = counter_kind::inserted; break;
                 }
                 work->req_context()->stats()->counter(kind).count(0);

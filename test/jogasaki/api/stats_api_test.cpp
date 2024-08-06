@@ -283,5 +283,53 @@ TEST_F(stats_api_test, insert_from_select) {
     EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
 }
 
+TEST_F(stats_api_test, insert_or_replace_from_select) {
+    std::shared_ptr<request_statistics> stats{};
+    execute_statement("CREATE TABLE T0(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T0 VALUES (1)");
+    execute_statement("INSERT INTO T0 VALUES (2)");
+    execute_statement("CREATE TABLE T1(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T1 VALUES (1)");
+    execute_statement_with_stats("insert or replace into T1 select * from T0", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_TRUE(! stats->counter(counter_kind::inserted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_EQ(2, stats->counter(counter_kind::merged).count());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+}
+
+TEST_F(stats_api_test, insert_or_ignore_from_select) {
+    std::shared_ptr<request_statistics> stats{};
+    execute_statement("CREATE TABLE T0(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T0 VALUES (1)");
+    execute_statement("INSERT INTO T0 VALUES (2)");
+    execute_statement("CREATE TABLE T1(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T1 VALUES (1)");
+    execute_statement_with_stats("insert or ignore into T1 select * from T0", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_EQ(1, stats->counter(counter_kind::inserted).count());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+}
+
+TEST_F(stats_api_test, insert_or_ignore_from_select_no_change) {
+    std::shared_ptr<request_statistics> stats{};
+    execute_statement("CREATE TABLE T0(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T0 VALUES (1)");
+    execute_statement("INSERT INTO T0 VALUES (2)");
+    execute_statement("CREATE TABLE T1(C0 INT NOT NULL PRIMARY KEY)");
+    execute_statement("INSERT INTO T1 VALUES (1)");
+    execute_statement("INSERT INTO T1 VALUES (2)");
+    execute_statement_with_stats("insert or ignore into T1 select * from T0", stats);
+    ASSERT_TRUE(stats);
+    EXPECT_EQ(0, stats->counter(counter_kind::inserted).count());
+    EXPECT_TRUE(! stats->counter(counter_kind::updated).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::merged).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::deleted).has_value());
+    EXPECT_TRUE(! stats->counter(counter_kind::fetched).has_value());
+}
 
 }

@@ -98,7 +98,16 @@ operation_status emit::operator()(emit_context &ctx) {
         ctx.writer_ = ctx.task_context().external_writer();
     }
     if(! ctx.writer_->write(target)) {
-        return error_abort(ctx, status::err_io_error);
+        // possibly writer error due to buffer overflow
+        // TODO retrieve the exact reason from writer and construct error message based on it
+        set_error(
+            *ctx.req_context(),
+            error_code::sql_execution_exception,
+            "an error occurred in writing output records, possibly due to buffer overflow in endpoint",
+            status::err_io_error
+        );
+        ctx.abort();
+        return {operation_status_kind::aborted};
     }
     return {};
 }

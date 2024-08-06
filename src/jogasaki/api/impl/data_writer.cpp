@@ -35,24 +35,31 @@ data_writer::data_writer(std::shared_ptr<tateyama::api::server::writer> origin) 
 
 status data_writer::write(char const* data, std::size_t length) {
     log_entry << binstring(data, length);
+    status ret = status::ok;
     if (auto rc = origin_->write(data, length); rc != tateyama::status::ok) {
-        fail_with_exception();
+        // writer overflow may be specific to some request, but it's possibly
+        // a system-wide issue (e.g. bad configuration), so use LOG instead of VLOG to notify DB admin
+        LOG_LP(ERROR) << "failed to write data possibly due to writer buffer overflow";
+        ret = status::err_io_error;
     }
-    log_exit;
-    return status::ok;
+    log_exit << ret;
+    return ret;
 }
 
 status data_writer::commit() {
     log_entry;
+    status ret = status::ok;
     if (auto rc = origin_->commit(); rc != tateyama::status::ok) {
-        fail_with_exception();
+        // using LOG for same reason as in data_writer::write failure
+        LOG_LP(ERROR) << "failed to commit writer data";
+        ret = status::err_io_error;
     }
-    log_exit;
-    return status::ok;
+    log_exit << ret;
+    return ret;
 }
 
 std::shared_ptr<tateyama::api::server::writer> const& data_writer::origin() const noexcept {
     return origin_;
 }
-}
 
+}  // namespace jogasaki::api::impl

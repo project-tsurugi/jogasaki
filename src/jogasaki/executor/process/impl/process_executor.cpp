@@ -40,10 +40,17 @@ process_executor::status process_executor::run() {
 
     // execute task
     auto rc = processor_->run(context.get());
-
-    if (rc != status::completed && rc != status::completed_with_errors) {
-        // task is suspended in the middle, put the current context back
-        contexts_->push(std::move(context));
+    switch(rc) {
+        case status::completed:
+        case status::completed_with_errors:
+             // Do Nothing
+            break;
+        case status::to_sleep:
+        case status::to_yield:
+        default:
+            // task is suspended in the middle, put the current context back
+            contexts_->push(std::move(context));
+            break;
     }
     return rc;
 }

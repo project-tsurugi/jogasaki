@@ -64,6 +64,11 @@ public:
 
     [[nodiscard]] transaction_context* transaction() const noexcept;
 
+    /**
+     * @brief Support for debugging, callable in GDB: ctx->dump()
+     */
+    void dump() const noexcept;
+
 private:
     std::unique_ptr<kvs::storage> stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};

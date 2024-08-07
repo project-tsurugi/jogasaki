@@ -57,6 +57,25 @@ transaction_context* scan_context::transaction() const noexcept {
     return tx_;
 }
 
+void scan_context::dump() const noexcept {
+    context_base::dump();
+    std::cerr << "  scan_context:\n"
+       << "    " << std::left << std::setw(20) << "stg:"
+       << std::hex << (stg_ ? stg_.get() : nullptr) << "\n"
+       << "    " << std::setw(20) << "secondary_stg:"
+       << (secondary_stg_ ? secondary_stg_.get() : nullptr) << "\n"
+       << "    " << std::setw(20) << "transaction_context:"
+       << (tx_ ? tx_ : nullptr) << "\n"
+       << "    " << std::setw(20) << "iterator:"
+       << (it_ ? it_.get() : nullptr) << "\n"
+       << "    " << std::setw(20) << "scan_info:"
+       << (scan_info_ ? scan_info_ : nullptr) << "\n"
+       << "    " << std::setw(20) << "key_begin_size:"
+       << key_begin_.size() << "\n"
+       << "    " << std::setw(20) << "key_end_size:"
+       << key_end_.size() << std::endl;
+}
+
 }
 
 

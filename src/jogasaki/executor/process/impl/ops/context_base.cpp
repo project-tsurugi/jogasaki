@@ -97,4 +97,30 @@ void context_base::abort() noexcept {
     state(context_state::abort);
 }
 
+void context_base::dump() const noexcept {
+    std::cerr << "context_base:\n"
+       << "  " << std::left << std::setw(22) << "task_context:"
+       << std::hex << (task_context_ ? task_context_ : nullptr) << "\n"
+       << "  " << std::setw(22) << "input_variables:"
+       << (input_variables_ ? input_variables_ : nullptr) << std::endl;
+
+    if (input_variables_) {
+        input_variables_->dump("    ");
+    }
+
+    std::cerr << "  " << std::setw(22) << "output_variables:"
+       << (output_variables_ ? output_variables_ : nullptr) << std::endl;
+
+    if (output_variables_) {
+       output_variables_->dump("    ");
+    }
+
+    std::cerr << "  " << std::setw(22) << "resource:"
+       << (resource_ ? resource_ : nullptr) << "\n"
+       << "  " << std::setw(22) << "varlen_resource:"
+       << (varlen_resource_ ? varlen_resource_ : nullptr) << "\n"
+       << "  " << std::setw(22) << "state:"
+       << to_string_view(state_) << std::endl;
+}
+
 }

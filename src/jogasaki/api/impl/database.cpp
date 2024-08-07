@@ -77,6 +77,7 @@
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/function/builtin_functions.h>
+#include <jogasaki/executor/function/builtin_scalar_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/exception.h>
@@ -304,10 +305,15 @@ void database::init() {
     global::config_pool(cfg_);
     if(initialized_) return;
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
-    aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     if(cfg_->prepare_test_tables()) {
         executor::add_test_tables(*tables_);
     }
+    scalar_functions_ = std::make_shared<yugawara::function::configurable_provider>();
+    executor::function::add_builtin_scalar_functions(
+        *scalar_functions_,
+        global::scalar_function_repository()
+    );
+    aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,
         global::incremental_aggregate_function_repository()
@@ -375,6 +381,7 @@ status database::prepare_common(
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
+    ctx->function_provider(scalar_functions_);
     ctx->variable_provider(std::move(provider));
     ctx->option(option);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
@@ -668,6 +675,7 @@ status database::resolve_common(
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
+    ctx->function_provider(scalar_functions_);
     auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);

@@ -34,12 +34,15 @@
 #include <takatori/type/data.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/string_builder.h>
+#include <yugawara/binding/extract.h>
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/equal_to.h>
+#include <jogasaki/executor/function/scalar_function_repository.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/less.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -591,8 +594,22 @@ any engine::operator()(takatori::scalar::let const&) {
     return return_unsupported();
 }
 
-any engine::operator()(takatori::scalar::function_call const&) {
-    return return_unsupported();
+any engine::operator()(takatori::scalar::function_call const& arg) {
+    std::vector<any> inputs{};
+    inputs.reserve(arg.arguments().size());
+    for(auto const& e : arg.arguments()) {
+        auto v = dispatch(*this, e);
+        if(v.error()) {
+            return v;
+        }
+        inputs.emplace_back(v);
+    }
+    if(auto f = yugawara::binding::extract_if<yugawara::function::declaration>(arg.function()); f.has_value()) {
+        if(auto info = global::scalar_function_repository().find(f->definition_id()); info != nullptr) {
+            return info->function_body()(inputs);
+        }
+    }
+    return return_unsupported(); //TODO handle unexpected error
 }
 
 any engine::operator()(takatori::scalar::extension const&) {

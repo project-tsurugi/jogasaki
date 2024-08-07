@@ -29,6 +29,10 @@ namespace jogasaki::executor::function {
 class aggregate_function_repository;
 }
 
+namespace jogasaki::executor::function {
+class scalar_function_repository;
+}
+
 namespace jogasaki::memory {
 class page_pool;
 }
@@ -75,6 +79,13 @@ enum class pool_operation : std::int32_t {
  * @return reference to the repository
  */
 [[nodiscard]] executor::function::aggregate_function_repository& aggregate_function_repository();
+
+/**
+ * @brief thread-safe accessor to the global repository for aggregate functions
+ * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @return reference to the repository
+ */
+[[nodiscard]] executor::function::scalar_function_repository& scalar_function_repository();
 
 /**
  * @brief thread-safe accessor to the global configuration pool

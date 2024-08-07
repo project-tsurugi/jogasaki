@@ -21,6 +21,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/memory/page_pool.h>
 
 namespace jogasaki::global {
@@ -46,6 +47,11 @@ executor::function::incremental::aggregate_function_repository& incremental_aggr
 
 executor::function::aggregate_function_repository& aggregate_function_repository() {
     static executor::function::aggregate_function_repository repo{};
+    return repo;
+}
+
+executor::function::scalar_function_repository& scalar_function_repository() {
+    static executor::function::scalar_function_repository repo{};
     return repo;
 }
 

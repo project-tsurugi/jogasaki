@@ -706,4 +706,16 @@ TEST_F(sql_test, having_witout_group_by) {
     }
 }
 
+TEST_F(sql_test, union_all) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t VALUES (1,10),(2,20)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0, c1 from t UNION ALL SELECT c1, c0 from t", result);
+        ASSERT_EQ(2, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[0]);
+    }
+}
+
 }

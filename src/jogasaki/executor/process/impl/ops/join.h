@@ -166,18 +166,16 @@ public:
     data::any assign_and_evaluate_condition(
         join_context& ctx,
         cogroup<iterator>& cgrp,
-        iterator_incrementer& incr
+        iterator_incrementer& incr,
+        expression::evaluator_context& context
     ) {
         assign_values(ctx, cgrp, incr, false);
         auto resource = ctx.varlen_resource();
         auto& vars = ctx.input_variables();
-        expression::evaluator_context c {
-            resource, utils::make_function_context(*ctx.req_context()->transaction())
-        };
         if(!has_condition_) {
             return data::any{std::in_place_type<bool>, true};
         }
-        return evaluate_bool(c, evaluator_, vars, resource);
+        return evaluate_bool(context, evaluator_, vars, resource);
     }
 
     bool call_downstream(
@@ -223,9 +221,12 @@ public:
                     break;
                 }
                 do {
-                    auto a = assign_and_evaluate_condition(ctx, cgrp, incr);
+                    expression::evaluator_context c {
+                        ctx.varlen_resource(), utils::make_function_context(*ctx.req_context()->transaction())
+                    };
+                    auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                     if(a.error()) {
-                        return handle_expression_error(ctx, a);
+                        return handle_expression_error(ctx, a, c);
                     }
                     if(a.template to<bool>()) {
                         if(! call_downstream(context)) {
@@ -245,9 +246,12 @@ public:
                     bool exists_match = false;
                     if(secondary_group_available) {
                         do {
-                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr);
+                            expression::evaluator_context c {
+                                ctx.varlen_resource(), utils::make_function_context(*ctx.req_context()->transaction())
+                            };
+                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
-                                return handle_expression_error(ctx, a);
+                                return handle_expression_error(ctx, a, c);
                             }
                             if (a.template to<bool>()) {
                                 exists_match = true;
@@ -279,9 +283,12 @@ public:
                     bool exists_match = false;
                     if(groups_available(cgrp, true)) {
                         do {
-                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr);
+                            expression::evaluator_context c {
+                                ctx.varlen_resource(), utils::make_function_context(*ctx.req_context()->transaction())
+                            };
+                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
-                                return handle_expression_error(ctx, a);
+                                return handle_expression_error(ctx, a, c);
                             }
                             if (a.template to<bool>()) {
                                 exists_match = true;

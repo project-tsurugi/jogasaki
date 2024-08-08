@@ -100,7 +100,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {
-            return handle_expression_error(ctx, result);
+            return handle_expression_error(ctx, result, c);
         }
         using t = takatori::type::type_kind;
         bool is_null = result.empty();

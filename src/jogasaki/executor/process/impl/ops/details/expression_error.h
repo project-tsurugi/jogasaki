@@ -17,11 +17,12 @@
 
 #include <takatori/util/string_builder.h>
 
-#include <jogasaki/status.h>
-#include <jogasaki/error_code.h>
-#include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
+#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/status.h>
 
 #include "../operation_status.h"
 
@@ -29,12 +30,20 @@ namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::string_builder;
 
-#define handle_expression_error(ctx, a) ::jogasaki::executor::process::impl::ops::details::handle_expression_error_impl(ctx, a, __FILE__, line_number_string) //NOLINT
+#define handle_expression_error(ctx, a, ectx)                                                                           \
+    ::jogasaki::executor::process::impl::ops::details::handle_expression_error_impl(                                   \
+        ctx,                                                                                                           \
+        a,                                                                                                             \
+        ectx,                                                                                                          \
+        __FILE__,                                                                                                      \
+        line_number_string                                                                                             \
+    )  //NOLINT
 
 template<class Context>
 operation_status handle_expression_error_impl(
     Context& ctx,
     data::any res,
+    jogasaki::executor::process::impl::expression::evaluator_context const& ectx,
     std::string_view filepath,
     std::string_view position) {
     auto err = res.to<process::impl::expression::error>();
@@ -65,10 +74,22 @@ operation_status handle_expression_error_impl(
         return {operation_status_kind::aborted};
     }
     auto rc = status::err_expression_evaluation_failure;
+
+    std::stringstream ss{};
+    ss << "an error (" << res.to<process::impl::expression::error>() << ") occurred:[";
+    bool first = true;
+    for(auto&& e : ectx.errors()) {
+        if (! first) {
+            ss << ", ";
+        }
+        ss << e;
+        first = false;
+    }
+    ss << "]";
     error::set_error_impl(
         *ctx.req_context(),
         error_code::value_evaluation_exception,
-        string_builder{} << "an error occurred in evaluating values:" << res.to<process::impl::expression::error>() << string_builder::to_string,
+        ss.str(),
         filepath,
         position,
         rc,
@@ -76,7 +97,5 @@ operation_status handle_expression_error_impl(
     ctx.abort();
     return {operation_status_kind::aborted};
 }
-}
 
-
-
+}  // namespace jogasaki::executor::process::impl::ops::details

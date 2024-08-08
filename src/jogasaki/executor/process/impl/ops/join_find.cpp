@@ -219,7 +219,7 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
                 };
                 auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                 if (r.error()) {
-                    return handle_expression_error(ctx, r);
+                    return handle_expression_error(ctx, r, c);
                 }
                 if(! r.to<bool>()) {
                     continue;

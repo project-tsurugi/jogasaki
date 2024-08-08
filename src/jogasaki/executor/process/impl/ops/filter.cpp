@@ -76,7 +76,7 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     };
     auto res = evaluate_bool(c, evaluator_, vars, resource);
     if (res.error()) {
-        return handle_expression_error(ctx, res);
+        return handle_expression_error(ctx, res, c);
     }
     if (res.to<bool>()) {
         if (downstream_) {

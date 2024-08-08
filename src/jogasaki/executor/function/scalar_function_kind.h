@@ -26,6 +26,10 @@ namespace jogasaki::executor::function {
 enum class scalar_function_kind : std::size_t {
     undefined = 0,
     octet_length,
+    current_date,
+    localtime,
+    current_timestamp,
+    localtimestamp,
 };
 
 /**
@@ -39,6 +43,10 @@ enum class scalar_function_kind : std::size_t {
     switch (value) {
         case kind::undefined: return "undefined"sv;
         case kind::octet_length: return "octet_length"sv;
+        case kind::current_date: return "current_date"sv;
+        case kind::localtime: return "localtime"sv;
+        case kind::current_timestamp: return "current_timestamp"sv;
+        case kind::localtimestamp: return "localtimestamp"sv;
     }
     std::abort();
 }

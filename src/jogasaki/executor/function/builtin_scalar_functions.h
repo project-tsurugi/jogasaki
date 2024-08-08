@@ -23,7 +23,6 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/value_store.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
-#include <jogasaki/executor/function/field_locator.h>
 
 namespace jogasaki::executor::function {
 
@@ -42,10 +41,27 @@ namespace builtin {
 using takatori::util::sequence_view;
 
 data::any octet_length(
+    evaluator_context& ctx,
     sequence_view<data::any> args
 );
 
 data::any current_date(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+data::any localtime(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+data::any current_timestamp(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+data::any localtimestamp(
+    evaluator_context& ctx,
     sequence_view<data::any> args
 );
 

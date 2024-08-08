@@ -23,9 +23,9 @@
 
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/executor/diagnostic_record.h>
+#include <jogasaki/executor/function/function_evaluation_context.h>
 
 #include "error.h"
-#include "function_evaluation_context.h"
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -137,7 +137,7 @@ public:
      */
     explicit evaluator_context(
         memory_resource* resource,
-        std::shared_ptr<function_evaluation_context> fctx = nullptr
+        std::shared_ptr<function::function_evaluation_context> fctx = nullptr
     ) :
         resource_(resource),
         func_ctx_(std::move(fctx))
@@ -211,7 +211,7 @@ public:
     /**
      * @brief the function evaluation context
      */
-    [[nodiscard]] std::shared_ptr<function_evaluation_context> const& func_ctx() noexcept {
+    [[nodiscard]] std::shared_ptr<function::function_evaluation_context> const& func_ctx() noexcept {
         return func_ctx_;
     }
 
@@ -221,7 +221,7 @@ private:
     range_error_policy range_error_policy_{range_error_policy::ignore};
     std::vector<error_type> errors_{};
     bool lost_precision_{};
-    std::shared_ptr<function_evaluation_context> func_ctx_{};
+    std::shared_ptr<function::function_evaluation_context> func_ctx_{};
 
 };
 

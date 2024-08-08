@@ -49,12 +49,13 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/scalar_function_info.h>
 #include <jogasaki/executor/function/scalar_function_kind.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
-#include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type.h>
@@ -66,6 +67,9 @@
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
+using executor::process::impl::expression::evaluator_context;
+using jogasaki::executor::process::impl::expression::error_kind;
+using jogasaki::executor::process::impl::expression::error;
 
 using kind = meta::field_type_kind;
 
@@ -83,12 +87,13 @@ void add_builtin_scalar_functions(
     // octet_length
     /////////
     {
-        auto octet_length = std::make_shared<scalar_function_info>(
+        auto info = std::make_shared<scalar_function_info>(
             scalar_function_kind::octet_length,
-            builtin::octet_length
+            builtin::octet_length,
+            1
         );
         auto name = "octet_length";
-        repo.add(id, octet_length);
+        repo.add(id, info);
         functions.add({
             id++,
             name,
@@ -97,7 +102,7 @@ void add_builtin_scalar_functions(
                 t::character(t::varying),
             },
         });
-        repo.add(id, octet_length);
+        repo.add(id, info);
         functions.add({
             id++,
             name,
@@ -112,17 +117,71 @@ void add_builtin_scalar_functions(
     // current_date
     /////////
     {
-        auto current_date = std::make_shared<scalar_function_info>(
-            scalar_function_kind::octet_length,
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::current_date,
             builtin::current_date,
             0
         );
         auto name = "current_date";
-        repo.add(id, current_date);
+        repo.add(id, info);
         functions.add({
             id++,
             name,
             t::date(),
+            {},
+        });
+    }
+    /////////
+    // localtime
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::localtime,
+            builtin::localtime,
+            0
+        );
+        auto name = "localtime";
+        repo.add(id, info);
+        functions.add({
+            id++,
+            name,
+            t::time_of_day(),
+            {},
+        });
+    }
+    /////////
+    // current_timestamp
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::current_timestamp,
+            builtin::current_timestamp,
+            0
+        );
+        auto name = "current_timestamp";
+        repo.add(id, info);
+        functions.add({
+            id++,
+            name,
+            t::time_point(t::with_time_zone),
+            {},
+        });
+    }
+    /////////
+    // localtimestamp
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::localtimestamp,
+            builtin::localtimestamp,
+            0
+        );
+        auto name = "localtimestamp";
+        repo.add(id, info);
+        functions.add({
+            id++,
+            name,
+            t::time_point(),
             {},
         });
     }
@@ -131,6 +190,7 @@ void add_builtin_scalar_functions(
 namespace builtin {
 
 data::any octet_length(
+    evaluator_context&,
     sequence_view<data::any> args
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
@@ -152,11 +212,68 @@ data::any octet_length(
     std::abort();
 }
 
+data::any tx_ts_is_available(evaluator_context& ctx) {
+    auto fctx = ctx.func_ctx();
+    if(! fctx) {
+        // programming error
+        ctx.add_error({error_kind::unknown, "missing function context"});
+        return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+    }
+    if(fctx->transaction_begin().has_value()) {
+        ctx.add_error({error_kind::unknown, "no tx begin recorded"});
+        return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+    }
+    return {};
+}
+
 data::any current_date(
+    evaluator_context& ctx,
     sequence_view<data::any> args
 ) {
     BOOST_ASSERT(args.size() == 0);  //NOLINT
-    return data::any{std::in_place_type<runtime_t<kind::date>>, takatori::datetime::date{2000, 1, 1}};
+    if(auto a = tx_ts_is_available(ctx); a.error()) {
+        return a;
+    }
+    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    return data::any{std::in_place_type<runtime_t<kind::date>>, tp.date()};
+}
+
+data::any localtime(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+) {
+    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    if(auto a = tx_ts_is_available(ctx); a.error()) {
+        return a;
+    }
+    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp.time()};
+}
+
+data::any current_timestamp(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+) {
+    // same as localtimestamp
+    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    if(auto a = tx_ts_is_available(ctx); a.error()) {
+        return a;
+    }
+    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    return data::any{std::in_place_type<runtime_t<kind::time_point>>, tp};
+}
+
+data::any localtimestamp(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+) {
+    // same as current_timestamp
+    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    if(auto a = tx_ts_is_available(ctx); a.error()) {
+        return a;
+    }
+    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    return data::any{std::in_place_type<runtime_t<kind::time_point>>, tp};
 }
 
 }  // namespace builtin

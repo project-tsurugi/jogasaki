@@ -16,11 +16,10 @@
 #pragma once
 
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/executor/process/impl/expression/function_evaluation_context.h>
+#include <jogasaki/executor/function/function_evaluation_context.h>
 
 namespace jogasaki::utils {
 
-std::shared_ptr<executor::process::impl::expression::function_evaluation_context>
-make_function_context(transaction_context const& tx);
+std::shared_ptr<executor::function::function_evaluation_context> make_function_context(transaction_context const& tx);
 
 }  // namespace jogasaki::utils

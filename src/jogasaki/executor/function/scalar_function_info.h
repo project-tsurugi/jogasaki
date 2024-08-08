@@ -26,17 +26,19 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/value_store.h>
+#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/function/scalar_function_kind.h>
 #include <jogasaki/executor/function/value_generator.h>
 
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
+using executor::process::impl::expression::evaluator_context;
 
 /**
  * @brief definition of scalar function type
  */
-using scalar_function_type = std::function<data::any (sequence_view<data::any>)>;
+using scalar_function_type = std::function<data::any(evaluator_context& ctx, sequence_view<data::any>)>;
 
 /**
  * @brief scalar function information interface
@@ -57,7 +59,7 @@ public:
     scalar_function_info(
         scalar_function_kind kind,
         scalar_function_type function_body,
-        std::size_t arg_count = 1
+        std::size_t arg_count
     );
 
     /**

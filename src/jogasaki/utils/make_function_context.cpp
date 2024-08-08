@@ -16,18 +16,16 @@
 #include "make_function_context.h"
 
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/executor/process/impl/expression/function_evaluation_context.h>
+#include <jogasaki/executor/function/function_evaluation_context.h>
 
 namespace jogasaki::utils {
 
-using jogasaki::executor::process::impl::expression::function_evaluation_context;
-
-std::shared_ptr<function_evaluation_context> make_function_context(transaction_context const& tx) {
-    auto ret = std::make_shared<function_evaluation_context>();
+std::shared_ptr<executor::function::function_evaluation_context> make_function_context(transaction_context const& tx) {
+    auto ret = std::make_shared<executor::function::function_evaluation_context>();
     ret->transaction_begin(tx.start_time());
     return ret;
 }
 
-static_assert(std::is_same_v<transaction_context::clock, function_evaluation_context::clock>);
+static_assert(std::is_same_v<transaction_context::clock, executor::function::function_evaluation_context::clock>);
 
 }  // namespace jogasaki::utils

@@ -33,6 +33,7 @@
 #include <takatori/scalar/unary_operator.h>
 #include <takatori/type/data.h>
 #include <takatori/type/type_kind.h>
+#include <takatori/util/exception.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
 
@@ -63,6 +64,7 @@ namespace jogasaki::executor::process::impl::expression {
 using jogasaki::data::any;
 using takatori::decimal::triple;
 using takatori::util::string_builder;
+using takatori::util::throw_exception;
 
 namespace details {
 
@@ -606,10 +608,13 @@ any engine::operator()(takatori::scalar::function_call const& arg) {
     }
     if(auto f = yugawara::binding::extract_if<yugawara::function::declaration>(arg.function()); f.has_value()) {
         if(auto info = global::scalar_function_repository().find(f->definition_id()); info != nullptr) {
-            return info->function_body()(inputs);
+            if(! ctx_.func_ctx()) {
+                throw_exception(std::logic_error{""});
+            }
+            return info->function_body()(ctx_, inputs);
         }
     }
-    return return_unsupported(); //TODO handle unexpected error
+    throw_exception(std::logic_error{""});
 }
 
 any engine::operator()(takatori::scalar::extension const&) {

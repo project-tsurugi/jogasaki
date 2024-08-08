@@ -23,7 +23,7 @@
 #include <mutex>
 #include <optional>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::function {
 
 /**
  * @brief object to hold transaction (begin) timestamp
@@ -46,4 +46,4 @@ private:
     std::optional<clock::time_point> transaction_begin_{};
 };
 
-}  // namespace jogasaki
+}  // namespace jogasaki::executor::function

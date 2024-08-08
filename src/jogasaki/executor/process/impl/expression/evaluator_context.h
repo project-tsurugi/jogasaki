@@ -25,6 +25,7 @@
 #include <jogasaki/executor/diagnostic_record.h>
 
 #include "error.h"
+#include "function_evaluation_context.h"
 
 namespace jogasaki::executor::process::impl::expression {
 
@@ -130,11 +131,16 @@ public:
 
     /**
      * @brief create new object
+     * @param resource the memory resource
+     * @param fctx the function evaluation context to retrieve the context for function call (e.g. tx begin ts.)
+     * You can specify nullptr if no function call will be evaluated.
      */
     explicit evaluator_context(
-        memory_resource* resource
+        memory_resource* resource,
+        std::shared_ptr<function_evaluation_context> fctx = nullptr
     ) :
-        resource_(resource)
+        resource_(resource),
+        func_ctx_(std::move(fctx))
     {}
 
     /**
@@ -202,12 +208,21 @@ public:
         lost_precision_ = arg;
     }
 
+    /**
+     * @brief the function evaluation context
+     */
+    [[nodiscard]] std::shared_ptr<function_evaluation_context> const& func_ctx() noexcept {
+        return func_ctx_;
+    }
+
 private:
     memory_resource* resource_{};
     loss_precision_policy loss_precision_policy_{loss_precision_policy::ignore};
     range_error_policy range_error_policy_{range_error_policy::ignore};
     std::vector<error_type> errors_{};
     bool lost_precision_{};
+    std::shared_ptr<function_evaluation_context> func_ctx_{};
+
 };
 
 /**

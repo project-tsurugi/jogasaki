@@ -262,6 +262,7 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     std::size_t blen{};
     std::string msg{};
     if(auto res = details::encode_key(
+           *ctx.req_context(),
            ctx.scan_info_->begin_columns(),
            vars,
            *ctx.varlen_resource(),
@@ -277,8 +278,15 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
         return res;
     }
     std::size_t elen{};
-    if(auto res =
-           details::encode_key(ctx.scan_info_->end_columns(), vars, *ctx.varlen_resource(), ctx.key_end_, elen, msg);
+    if(auto res = details::encode_key(
+           *ctx.req_context(),
+           ctx.scan_info_->end_columns(),
+           vars,
+           *ctx.varlen_resource(),
+           ctx.key_end_,
+           elen,
+           msg
+       );
        res != status::ok) {
         if(res == status::err_type_mismatch) {
             // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context

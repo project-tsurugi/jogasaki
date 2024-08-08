@@ -80,6 +80,7 @@
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/make_function_context.h>
 
 namespace jogasaki::executor::common {
 
@@ -102,7 +103,10 @@ status fill_evaluated_value(
     auto& source_type = info.type_of(t.elements()[f.index_]);
     evaluator eval{t.elements()[f.index_], info, host_variables};
     process::impl::variable_table empty{};
-    process::impl::expression::evaluator_context c{std::addressof(resource)};
+    process::impl::expression::evaluator_context c{
+        std::addressof(resource),
+        utils::make_function_context(*ctx.transaction())
+    };
     auto res = eval(c, empty, std::addressof(resource));
     if (res.error()) {
         auto err = res.to<process::impl::expression::error>();

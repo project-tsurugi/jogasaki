@@ -34,10 +34,12 @@
 #include <jogasaki/status.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/convert_any.h>
+#include <jogasaki/utils/make_function_context.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
 
 status encode_key(  //NOLINT(readability-function-cognitive-complexity)
+    request_context& context,
     std::vector<details::search_key_field_info> const& keys,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
@@ -50,7 +52,10 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
         kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
         for(auto&& k : keys) {
-            expression::evaluator_context ctx{std::addressof(resource)};
+            expression::evaluator_context ctx{
+                std::addressof(resource),
+                utils::make_function_context(*context.transaction())
+            };
             auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {
                 VLOG_LP(log_error) << "evaluation error: " << a.to<expression::error>();

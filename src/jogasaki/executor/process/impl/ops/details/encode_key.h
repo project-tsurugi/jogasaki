@@ -22,6 +22,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 
 #include "search_key_field_info.h"
@@ -31,6 +32,7 @@ namespace jogasaki::executor::process::impl::ops::details {
 /**
  * @brief evaluate the search key and encode
  * @details evaluate the search key and encode it so that it can be used for search
+ * @param context the request context
  * @param keys the key fields to be evaluated
  * @param input_variables the variables to be used for evaluation
  * @param resource the memory resource
@@ -43,6 +45,7 @@ namespace jogasaki::executor::process::impl::ops::details {
  * @return status::err_expression_evaluation_failure any other evaluation failure
  */
 status encode_key(
+    request_context& context,
     std::vector<details::search_key_field_info> const& keys,
     executor::process::impl::variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,

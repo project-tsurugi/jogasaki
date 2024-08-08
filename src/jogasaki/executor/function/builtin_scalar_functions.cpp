@@ -107,6 +107,25 @@ void add_builtin_scalar_functions(
             },
         });
     }
+
+    /////////
+    // current_date
+    /////////
+    {
+        auto current_date = std::make_shared<scalar_function_info>(
+            scalar_function_kind::octet_length,
+            builtin::current_date,
+            0
+        );
+        auto name = "current_date";
+        repo.add(id, current_date);
+        functions.add({
+            id++,
+            name,
+            t::date(),
+            {},
+        });
+    }
 }
 
 namespace builtin {
@@ -131,6 +150,13 @@ data::any octet_length(
         return data::any{std::in_place_type<runtime_t<kind::int8>>, text.size()};
     }
     std::abort();
+}
+
+data::any current_date(
+    sequence_view<data::any> args
+) {
+    BOOST_ASSERT(args.size() == 0);  //NOLINT
+    return data::any{std::in_place_type<runtime_t<kind::date>>, takatori::datetime::date{2000, 1, 1}};
 }
 
 }  // namespace builtin

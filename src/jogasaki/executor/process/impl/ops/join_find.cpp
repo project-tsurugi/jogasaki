@@ -38,6 +38,7 @@
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/make_function_context.h>
 #include <jogasaki/utils/modify_status.h>
 
 #include "context_helper.h"
@@ -84,16 +85,16 @@ matcher::matcher(
 {}
 
 bool matcher::operator()(
+    request_context& ctx,
     variable_table& input_variables,
     variable_table& output_variables,
     kvs::storage& primary_stg,
     kvs::storage* secondary_stg,
-    transaction_context& tx,
     matcher::memory_resource* resource
 ) {
     std::size_t len{};
     std::string msg{};
-    if(auto res = details::encode_key(key_fields_, input_variables, *resource, buf_, len, msg); res != status::ok) {
+    if(auto res = details::encode_key(ctx, key_fields_, input_variables, *resource, buf_, len, msg); res != status::ok) {
         status_ = res;
         // TODO handle msg
         return false;
@@ -102,17 +103,18 @@ bool matcher::operator()(
     std::string_view value{};
 
     if (! use_secondary_) {
-        auto res = primary_stg.content_get(tx, key, value);
+        auto res = primary_stg.content_get(*ctx.transaction(), key, value);
         status_ = res;
         if (res != status::ok) {
-            utils::modify_concurrent_operation_status(tx, res, false);
+            utils::modify_concurrent_operation_status(*ctx.transaction(), res, false);
             status_ = res;
             return false;
         }
-        return field_mapper_(key, value, output_variables.store().ref(), primary_stg, tx, resource) == status::ok;
+        return field_mapper_(key, value, output_variables.store().ref(), primary_stg, *ctx.transaction(), resource) ==
+            status::ok;
     }
     auto& stg = *secondary_stg;
-    if(auto res = stg.content_scan(tx,
+    if(auto res = stg.content_scan(*ctx.transaction(),
             key, kvs::end_point_kind::prefixed_inclusive,
             key, kvs::end_point_kind::prefixed_inclusive,
             it_
@@ -124,7 +126,7 @@ bool matcher::operator()(
     // remember parameters for current scan
     output_variables_ = std::addressof(output_variables);
     primary_storage_ = std::addressof(primary_stg);
-    tx_ = std::addressof(tx);
+    tx_ = std::addressof(*ctx.transaction());
     resource_ = resource;
     return next();
 }
@@ -202,16 +204,19 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
     }
     auto resource = ctx.varlen_resource();
     if((*ctx.matcher_)(
+        *ctx.req_context(),
         ctx.input_variables(),
         ctx.output_variables(),
         *ctx.primary_stg_,
         ctx.secondary_stg_.get(),
-        *ctx.tx_,
         resource
     )) {
         do {
             if (condition_) {
-                expression::evaluator_context c{resource};
+                expression::evaluator_context c{
+                    resource,
+                    utils::make_function_context(*ctx.req_context()->transaction())
+                };
                 auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                 if (r.error()) {
                     return handle_expression_error(ctx, r);

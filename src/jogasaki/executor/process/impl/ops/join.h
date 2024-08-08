@@ -58,6 +58,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/iterator_incrementer.h>
 #include <jogasaki/utils/iterator_pair.h>
+#include <jogasaki/utils/make_function_context.h>
 
 #include "context_helper.h"
 #include "join_context.h"
@@ -170,7 +171,9 @@ public:
         assign_values(ctx, cgrp, incr, false);
         auto resource = ctx.varlen_resource();
         auto& vars = ctx.input_variables();
-        expression::evaluator_context c{resource};
+        expression::evaluator_context c {
+            resource, utils::make_function_context(*ctx.req_context()->transaction())
+        };
         if(!has_condition_) {
             return data::any{std::in_place_type<bool>, true};
         }

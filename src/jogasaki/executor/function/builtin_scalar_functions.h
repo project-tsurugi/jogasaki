@@ -45,6 +45,10 @@ data::any octet_length(
     sequence_view<data::any> args
 );
 
+data::any current_date(
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

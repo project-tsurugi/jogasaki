@@ -50,7 +50,7 @@ status conduct_assignment_conversion(
     request_context& ctx,
     memory::lifo_paged_memory_resource* resource
 ) {
-    expression::evaluator_context ectx{resource};
+    expression::evaluator_context ectx{resource, nullptr}; // evaluate no function
     ectx.set_loss_precision_policy(expression::loss_precision_policy::implicit);
     auto converted = expression::details::conduct_cast(ectx, source_type, target_type, in);
     if(! converted.error()) {

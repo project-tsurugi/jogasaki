@@ -40,6 +40,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/make_function_context.h>
 
 #include "context_helper.h"
 #include "operator_base.h"
@@ -92,7 +93,10 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& v = variables_[i];
         auto info = vars.info().at(variables_[i]);
         auto& ev = evaluators_[i];
-        expression::evaluator_context c{ctx.varlen_resource()};
+        expression::evaluator_context c{
+            ctx.varlen_resource(),
+            utils::make_function_context(*ctx.req_context()->transaction())
+        };
         auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {

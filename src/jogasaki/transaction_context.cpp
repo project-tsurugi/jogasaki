@@ -151,8 +151,17 @@ std::shared_ptr<kvs::transaction_option const> const& transaction_context::optio
 void transaction_context::start_time(transaction_context::clock::time_point arg) noexcept {
     start_time_ = arg;
 }
+
+transaction_context::clock::time_point transaction_context::start_time() const noexcept {
+    return start_time_;
+}
+
 void transaction_context::end_time(transaction_context::clock::time_point arg) noexcept {
     end_time_ = arg;
+}
+
+transaction_context::clock::time_point transaction_context::end_time() const noexcept {
+    return end_time_;
 }
 
 void transaction_context::label(std::string_view arg) noexcept {

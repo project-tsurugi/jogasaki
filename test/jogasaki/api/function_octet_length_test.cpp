@@ -68,7 +68,7 @@ using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
 
-class sql_scalar_function_test :
+class function_octet_length_test :
     public ::testing::Test,
     public api_test_base {
 
@@ -90,7 +90,7 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(sql_scalar_function_test, octet_length_varbinary) {
+TEST_F(function_octet_length_test, varbinary) {
     std::vector<mock::basic_record> result{};
     execute_statement("create table t (c0 varbinary(5))");
     execute_statement("insert into t values ('010203')");
@@ -99,7 +99,7 @@ TEST_F(sql_scalar_function_test, octet_length_varbinary) {
     EXPECT_EQ((create_nullable_record<kind::int8>(3)), result[0]);
 }
 
-TEST_F(sql_scalar_function_test, octet_length_binary) {
+TEST_F(function_octet_length_test, binary) {
     std::vector<mock::basic_record> result{};
     execute_statement("create table t (c0 binary(5))");
     execute_statement("insert into t values ('010203')");
@@ -108,7 +108,7 @@ TEST_F(sql_scalar_function_test, octet_length_binary) {
     EXPECT_EQ((create_nullable_record<kind::int8>(5)), result[0]);
 }
 
-TEST_F(sql_scalar_function_test, octet_length_varchar) {
+TEST_F(function_octet_length_test, varchar) {
     std::vector<mock::basic_record> result{};
     execute_statement("create table t (c0 varchar(5))");
     execute_statement("insert into t values ('123')");
@@ -117,7 +117,7 @@ TEST_F(sql_scalar_function_test, octet_length_varchar) {
     EXPECT_EQ((create_nullable_record<kind::int8>(3)), result[0]);
 }
 
-TEST_F(sql_scalar_function_test, octet_length_char) {
+TEST_F(function_octet_length_test, char) {
     std::vector<mock::basic_record> result{};
     execute_statement("create table t (c0 char(5))");
     execute_statement("insert into t values ('123')");

@@ -93,7 +93,7 @@ data::any create_immediate_default_value(
     );
     if(conv::to_require_conversion(*lt, type)) {
         // constant assignment conversion is required
-        expression::evaluator_context ectx{resource};
+        expression::evaluator_context ectx{resource, nullptr};  // immediate value won't evaluate any function
         ectx.set_loss_precision_policy(expression::loss_precision_policy::ignore);
         return expression::details::conduct_cast(ectx, *lt, type, a);
     }

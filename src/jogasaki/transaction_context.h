@@ -280,8 +280,10 @@ public:
     [[nodiscard]] std::shared_ptr<kvs::transaction_option const> const& option() const noexcept;
 
     void start_time(clock::time_point arg) noexcept;
+    clock::time_point start_time() const noexcept;
 
     void end_time(clock::time_point arg) noexcept;
+    clock::time_point end_time() const noexcept;
 
     template<class Duration>
     [[nodiscard]] Duration duration() const noexcept {

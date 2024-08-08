@@ -73,11 +73,11 @@ public:
      * simply not-found or other error happened.
      */
     [[nodiscard]] bool operator()(
+        request_context& ctx,
         variable_table& input_variables,
         variable_table& output_variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
-        transaction_context& tx,
         memory_resource* resource = nullptr
     );
 

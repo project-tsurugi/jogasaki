@@ -111,7 +111,7 @@ class request_statistics {
 public:
     using each_counter_consumer = std::function<void(counter_kind kind, request_execution_counter const&)>;
 
-    using clock = std::chrono::steady_clock;
+    using clock = std::chrono::system_clock;
 
     /**
      * @brief create new object

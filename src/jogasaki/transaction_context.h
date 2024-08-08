@@ -105,7 +105,7 @@ public:
 
     using commit_callback_type = kvs::transaction::commit_callback_type;
 
-    using clock = std::chrono::steady_clock;
+    using clock = std::chrono::system_clock; // we need to know the current time, so steady_clock is not suitable
 
     /**
      * @brief create empty object

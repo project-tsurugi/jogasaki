@@ -22,7 +22,7 @@
 
 namespace jogasaki::external_log {
 
-using clock = std::chrono::steady_clock;
+using clock = std::chrono::system_clock;
 
 void tx_start(
     request_info const& req_info,

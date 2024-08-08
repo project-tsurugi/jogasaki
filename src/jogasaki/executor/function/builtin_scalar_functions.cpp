@@ -219,8 +219,8 @@ data::any tx_ts_is_available(evaluator_context& ctx) {
         ctx.add_error({error_kind::unknown, "missing function context"});
         return data::any{std::in_place_type<error>, error(error_kind::unknown)};
     }
-    if(fctx->transaction_begin().has_value()) {
-        ctx.add_error({error_kind::unknown, "no tx begin recorded"});
+    if(! fctx->transaction_begin().has_value()) {
+        ctx.add_error({error_kind::unknown, "no tx begin time was recorded"});
         return data::any{std::in_place_type<error>, error(error_kind::unknown)};
     }
     return {};
@@ -235,6 +235,9 @@ data::any current_date(
         return a;
     }
     takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    // Contrary to the name `current_date`, it returns the date part of the local timestamp.
+    // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
+    // FIXME: get the system offset and convert to local
     return data::any{std::in_place_type<runtime_t<kind::date>>, tp.date()};
 }
 
@@ -246,6 +249,9 @@ data::any localtime(
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
+    // This func. returns the time part of the local timestamp.
+    // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
+    // FIXME: get the system offset and convert to local
     takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
     return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp.time()};
 }
@@ -272,6 +278,8 @@ data::any localtimestamp(
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
+    // Unlike localtime or current_date, this function doesn't need to convert the system clock to local.
+    // Because the type "WITH TIME ZONE" values are internally UTC and converted when they are passed back to clients.
     takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
     return data::any{std::in_place_type<runtime_t<kind::time_point>>, tp};
 }

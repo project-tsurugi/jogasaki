@@ -30,7 +30,7 @@ namespace jogasaki::executor::function {
  */
 class function_evaluation_context {
 public:
-    using clock = std::chrono::steady_clock;
+    using clock = std::chrono::system_clock;
 
     function_evaluation_context() = default;
 

@@ -68,7 +68,7 @@ using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
 
-class function_current_time_test:
+class function_localtime_test:
     public ::testing::Test,
     public api_test_base {
 
@@ -90,13 +90,37 @@ public:
 
 using namespace std::string_view_literals;
 
-TEST_F(function_current_time_test, current_date) {
+void set_tx_begin_ts(api::transaction_handle tx, transaction_context::clock::time_point ts) {
+    auto& t = *reinterpret_cast<transaction_context*>(tx.get());
+    t.start_time(ts);
+}
+
+TEST_F(function_localtime_test, at_the_begining_of_the_day) {
     std::vector<mock::basic_record> result{};
     execute_statement("create table t (c0 int)");
     execute_statement("insert into t values (1)");
-    execute_query("SELECT current_date FROM t", result);
+
+    auto tx = utils::create_transaction(*db_);
+    time_point tp{date{2000, 1, 1}, time_of_day{0, 0, 0}};
+    set_tx_begin_ts(*tx, transaction_context::clock::time_point{tp.seconds_since_epoch()});
+    execute_query("SELECT localtime FROM t", *tx, result);
+    ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, {date{2000, 1, 1}})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{0, 0, 0}})), result[0]);
+}
+
+TEST_F(function_localtime_test, at_the_end_of_the_day) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 int)");
+    execute_statement("insert into t values (1)");
+
+    auto tx = utils::create_transaction(*db_);
+    time_point tp{date{1999, 12, 31}, time_of_day{23, 59, 59}};
+    set_tx_begin_ts(*tx, transaction_context::clock::time_point{tp.seconds_since_epoch()});
+    execute_query("SELECT localtime FROM t", *tx, result);
+    ASSERT_EQ(status::ok, tx->commit());
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{23, 59, 59}})), result[0]);
 }
 
 }  // namespace jogasaki::testing

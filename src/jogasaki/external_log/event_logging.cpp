@@ -47,7 +47,7 @@ void tx_start(
 ) {
     auto& cfg = global::config_pool();
     if(cfg && cfg->trace_external_log()) {
-        VLOG_LP(log_info) <<
+        VLOG_LP(log_trace) <<
             "message:\"" << message << "\"" <<
             " tx_id:" << tx_id <<
             " tx_type:" << tx_type <<
@@ -70,8 +70,8 @@ void tx_end(
     std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
-    if(cfg  && cfg->trace_external_log()) {
-        VLOG_LP(log_info) <<
+    if(cfg && cfg->trace_external_log()) {
+        VLOG_LP(log_trace) <<
         "message:\"" << message << "\"" <<
         " tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
@@ -97,8 +97,8 @@ void stmt_start(
     std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
-    if(cfg  && cfg->trace_external_log()) {
-        VLOG_LP(log_info) <<
+    if(cfg && cfg->trace_external_log()) {
+        VLOG_LP(log_trace) <<
         "message:\"" << message << "\"" <<
         " tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
@@ -133,8 +133,8 @@ void stmt_end(
     std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
-    if(cfg  && cfg->trace_external_log()) {
-        VLOG_LP(log_info) <<
+    if(cfg && cfg->trace_external_log()) {
+        VLOG_LP(log_trace) <<
         "message:\"" << message << "\"" <<
         " tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
@@ -184,8 +184,8 @@ void stmt_explain(
     std::string_view tx_label
 ) {
     auto& cfg = global::config_pool();
-    if(cfg  && cfg->trace_external_log()) {
-        VLOG_LP(log_info) <<
+    if(cfg && cfg->trace_external_log()) {
+        VLOG_LP(log_trace) <<
         "tx_id:" << tx_id <<
         " tx_type:" << tx_type <<
         " job_id:" << job_id <<

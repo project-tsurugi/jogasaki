@@ -67,6 +67,14 @@ message SequenceDefinition {
     bool cycle = 24;
 }
 
+// -- functions
+
+// external identity of functions.
+message FunctionReference {
+    // the function definition id
+    uint64 definition_id = 10;
+}
+
 // -- tables
 
 // feature of individual table columns. (see yugawara::storage::column)
@@ -149,7 +157,8 @@ message TableColumn {
         // the next value of internally defined sequences.
         SequenceDefinition identity_next = 41;
 
-        // TODO more date-time functions like NOW()
+        // the reference of externally defined generator function.
+        FunctionReference generator = 50;
     }
 
     // the table column features.

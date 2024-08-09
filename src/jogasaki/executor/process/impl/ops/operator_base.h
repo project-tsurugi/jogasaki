@@ -130,6 +130,11 @@ public:
      */
     virtual void finish(abstract::task_context* context) = 0;
 
+    /**
+     * @brief Support for debugging, callable in GDB: ob->dump()
+     */
+    void dump(std::string_view indent = "") const noexcept;
+
 private:
     operator_index_type index_{};
     processor_info const* processor_info_{};
@@ -159,6 +164,7 @@ public:
      * @return status of the operation
      */
     virtual operation_status process_record(abstract::task_context* context) = 0;
+
 };
 
 /**
@@ -212,4 +218,22 @@ public:
     virtual operation_status process_cogroup(abstract::task_context* context, cogroup<Iterator>& cgrp) = 0;
 };
 
+/**
+ * @brief returns string representation of the operator_base
+ * @param op the target orerator_base
+ * @return the corresponded string representation
+ */
+[[nodiscard]] inline std::string_view to_parent_operator_name(operator_base const& op) noexcept {
+    using namespace std::string_view_literals;
+    if (dynamic_cast<record_operator const*>(&op)) {
+        return "record_operator"sv;
+    }
+    if (dynamic_cast<group_operator const*>(&op)) {
+	return "group_operator"sv;
+    }
+    if (dynamic_cast<cogroup_operator<void> const*>(&op)) {
+	return "cogroup_operator"sv;
+    }
+    return "unknown"sv;
+}
 }

@@ -67,6 +67,20 @@ variable_table const* operator_base::host_variables() const noexcept {
     return processor_info_->host_variables();
 }
 
+void operator_base::dump(std::string_view indent) const noexcept {
+    int width = 34 > indent.length() ? 34
+        - static_cast<int>(indent.length()) : 0;
+    std::cerr << indent <<  "operator_base:\n"
+       << indent << "  " << std::left << std::setw(width) << "index_:"
+       << index_ << "\n"
+       << indent << "  " << std::setw(width) << "processor_info_:"
+       << std::hex << (processor_info_ ? processor_info_ : nullptr) << "\n"
+       << indent << "  " << std::setw(width) << "input_variable_info_:"
+       << (input_variable_info_ ? input_variable_info_ : nullptr) << "\n"
+       << indent << "  " << std::setw(width) << "output_variable_info_:"
+       << (output_variable_info_ ? output_variable_info_ : nullptr) << std::endl;
+}
+
 record_operator::record_operator(
     operator_base::operator_index_type index,
     processor_info const&info,

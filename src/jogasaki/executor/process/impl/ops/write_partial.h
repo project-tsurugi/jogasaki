@@ -218,6 +218,11 @@ public:
      */
     [[nodiscard]] index::primary_target const& primary() const noexcept;
 
+    /**
+     * @brief return write_kind
+     */
+    [[nodiscard]] write_kind get_write_kind() const noexcept;
+
 private:
 
     write_kind kind_{};

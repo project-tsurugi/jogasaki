@@ -575,4 +575,7 @@ index::primary_target const& write_partial::primary() const noexcept {
     return primary_;
 }
 
+write_kind write_partial::get_write_kind() const noexcept {
+    return kind_;
+}
 }  // namespace jogasaki::executor::process::impl::ops

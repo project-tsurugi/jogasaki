@@ -175,7 +175,12 @@ void stmt_end(
     }
     ::altimeter::log_item item{};
     item.type(::altimeter::event::type::stmt_end);
-    item.level(::altimeter::event::level::statement);
+    item.level(
+        ::altimeter::event::event_logger::is_over_stmt_duration_threshold(duration_time_ns)
+            ? altimeter::event::level::min
+            : altimeter::event::level::statement
+    );
+
     fill_common_properties(req_info, item);
     if(! message.empty()) {
         item.add(::altimeter::event::item::message, message);

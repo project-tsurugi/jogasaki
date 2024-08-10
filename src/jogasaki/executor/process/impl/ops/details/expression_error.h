@@ -30,14 +30,16 @@ namespace jogasaki::executor::process::impl::ops::details {
 
 using takatori::util::string_builder;
 
-#define handle_expression_error(ctx, a, ectx)                                                                           \
+//NOLINTBEGIN
+#define handle_expression_error(ctx, a, ectx)                                                                          \
     ::jogasaki::executor::process::impl::ops::details::handle_expression_error_impl(                                   \
         ctx,                                                                                                           \
         a,                                                                                                             \
         ectx,                                                                                                          \
         __FILE__,                                                                                                      \
         line_number_string                                                                                             \
-    )  //NOLINT
+    )
+//NOLINTEND
 
 template<class Context>
 operation_status handle_expression_error_impl(

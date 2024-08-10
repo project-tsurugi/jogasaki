@@ -199,7 +199,7 @@ operation_status join_find::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
-operation_status join_find::operator()(join_find_context& ctx, abstract::task_context* context) {
+operation_status join_find::operator()(join_find_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }

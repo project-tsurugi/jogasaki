@@ -69,7 +69,7 @@ struct cache_align default_value_property {
     default_value_property(
         default_value_kind kind,
         data::any immediate_value,  //NOLINT
-        sequence_definition_id def_id,
+        std::size_t def_id,
         yugawara::function::configurable_provider const* functions = nullptr
     ) :
         kind_(kind),
@@ -83,7 +83,7 @@ struct cache_align default_value_property {
     // default value properties (valid if exists_ = false)
     default_value_kind kind_{};  //NOLINT
     data::any immediate_value_{};   //NOLINT
-    sequence_definition_id def_id_{};  //NOLINT
+    std::size_t def_id_{}; // used for sequence and function  //NOLINT
     expression::single_function_evaluator function_{};  //NOLINT
 };
 

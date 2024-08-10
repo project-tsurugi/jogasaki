@@ -27,6 +27,8 @@
 #include <boost/thread.hpp>
 #include <glog/logging.h>
 
+#include <takatori/datetime/conversion.h>
+
 #include <tateyama/framework/boot_mode.h>
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/repository.h>
@@ -38,6 +40,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/convert_offset_string.h>
 
 namespace jogasaki::api::resource {
 
@@ -134,12 +137,11 @@ bool validate_enum_strings(std::string_view name, std::string_view value, std::i
     return false;
 }
 
-std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
-    auto ret = std::make_shared<jogasaki::configuration>();
-
+bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+    // sql section
     auto jogasaki_config = cfg.get_section("sql");
     if (jogasaki_config == nullptr) {
-        return ret;
+        return true;
     }
 
     if (auto v = jogasaki_config->get<std::size_t>("thread_pool_size")) {
@@ -210,7 +212,8 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     if (auto v = jogasaki_config->get<std::string>(KEY_COMMIT_RESPONSE)) {
         std::int32_t idx{};
         if(! validate_enum_strings(KEY_COMMIT_RESPONSE, v.value(), idx, "ACCEPTED", "AVAILABLE", "STORED", "PROPAGATED")) {
-            return {};
+            ret = {};
+            return false;
         }
         ret->default_commit_response(static_cast<commit_response_kind>(idx));
     }
@@ -244,6 +247,35 @@ std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::
     }
     if (auto v = jogasaki_config->get<bool>("dev_point_read_concurrent_operation_as_not_found")) {
         ret->point_read_concurrent_operation_as_not_found(v.value());
+    }
+    return true;
+}
+
+bool process_session_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+    // session section
+    auto session_config = cfg.get_section("session");
+    if (session_config == nullptr) {
+        return true;
+    }
+
+    if (auto v = session_config->get<std::string>("zone_offset")) {
+        std::int32_t offset_ms{};
+        if(! utils::convert_offset_string(v.value(), offset_ms)) {
+            ret = {};
+            return false;
+        }
+        ret->zone_offset(offset_ms);
+    }
+    return true;
+}
+
+std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+    auto ret = std::make_shared<jogasaki::configuration>();
+    if(! process_sql_config(ret, cfg)) {
+        return {};
+    };
+    if(! process_session_config(ret, cfg)) {
+        return {};
     }
     return ret;
 }

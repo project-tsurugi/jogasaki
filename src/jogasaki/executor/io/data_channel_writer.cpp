@@ -28,6 +28,8 @@
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/api/data_channel.h>
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/record_channel_adapter.h>
 #include <jogasaki/executor/io/record_channel_stats.h>
 #include <jogasaki/logging_helper.h>
@@ -82,8 +84,10 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                 case k::date: check_writer_rc(value_writer_->write_date(rec.get_value<runtime_t<k::date>>(os))); break;
                 case k::time_of_day: {
                     if(type.option_unsafe<k::time_of_day>()->with_offset_) {
-                        // TODO timezone offset is zero for now
-                        check_writer_rc(value_writer_->write_time_of_day_with_offset(rec.get_value<runtime_t<k::time_of_day>>(os), 0));
+                        auto tm = rec.get_value<runtime_t<k::time_of_day>>(os);
+                        auto offset_min = global::config_pool()->zone_offset();
+                        tm += std::chrono::minutes(offset_min);
+                        check_writer_rc(value_writer_->write_time_of_day_with_offset(tm, offset_min));
                         break;
                     }
                     check_writer_rc(value_writer_->write_time_of_day(rec.get_value<runtime_t<k::time_of_day>>(os)));
@@ -91,8 +95,10 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                 }
                 case k::time_point: {
                     if(type.option_unsafe<k::time_point>()->with_offset_) {
-                        // TODO timezone offset is zero for now
-                        check_writer_rc(value_writer_->write_time_point_with_offset(rec.get_value<runtime_t<k::time_point>>(os), 0));
+                        auto tp = rec.get_value<runtime_t<k::time_point>>(os);
+                        auto offset_min = global::config_pool()->zone_offset();
+                        tp += std::chrono::minutes(offset_min);
+                        check_writer_rc(value_writer_->write_time_point_with_offset(tp, offset_min));
                         break;
                     }
                     check_writer_rc(value_writer_->write_time_point(rec.get_value<runtime_t<k::time_point>>(os)));

@@ -1009,6 +1009,64 @@ TEST_F(service_api_test, timestamptz) {
     test_dispose_prepare(query_handle);
 }
 
+TEST_F(service_api_test, timestamptz_with_offset) {
+    // offset conversion for timestamptz is done in service.cpp
+    global::config_pool()->zone_offset(9*60);
+
+    // there was an issue with timestamp close to 0000-00-00
+    execute_statement("create table T (C0 TIMESTAMP WITH TIME ZONE)");
+    execute_statement("insert into T values (TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:00+09:00')");
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select * from T"
+    );
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(1, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                // currently deserialize_msg discard the offset part because record_ref field has no room to store it
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<ft::time_point>(
+                        std::tuple{meta::time_point_type(true)},
+                        {time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
+                    )),
+                    v[0]
+                );
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(query_handle);
+}
+
 TEST_F(service_api_test, binary_type) {
     execute_statement("create table T (C0 VARBINARY(5), C1 BINARY(5))");
     std::uint64_t tx_handle{};

@@ -450,6 +450,14 @@ public:
         return lowercase_regular_identifiers_;
     }
 
+    [[nodiscard]] std::int32_t zone_offset() const noexcept {
+        return zone_offset_;
+    }
+
+    void zone_offset(std::int32_t arg) noexcept {
+        zone_offset_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -501,6 +509,7 @@ public:
         print_non_default(log_msg_user_data);
         print_non_default(compiler_support);
         print_non_default(lowercase_regular_identifiers);
+        print_non_default(zone_offset);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -556,6 +565,7 @@ private:
     std::shared_ptr<request_cancel_config> request_cancel_config_{};
     std::size_t compiler_support_ = 1;
     bool lowercase_regular_identifiers_ = false;
+    std::int32_t zone_offset_ = 0;
 
 };
 

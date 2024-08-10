@@ -48,6 +48,7 @@
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/configuration.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/scalar_function_info.h>
@@ -237,7 +238,8 @@ data::any current_date(
     takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
     // Contrary to the name `current_date`, it returns the date part of the local timestamp.
     // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
-    // FIXME: get the system offset and convert to local
+    auto os = global::config_pool()->zone_offset();
+    tp += std::chrono::minutes{os};
     return data::any{std::in_place_type<runtime_t<kind::date>>, tp.date()};
 }
 
@@ -251,8 +253,9 @@ data::any localtime(
     }
     // This func. returns the time part of the local timestamp.
     // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
-    // FIXME: get the system offset and convert to local
     takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    auto os = global::config_pool()->zone_offset();
+    tp += std::chrono::minutes{os};
     return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp.time()};
 }
 
@@ -278,9 +281,11 @@ data::any localtimestamp(
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
-    // Unlike localtime or current_date, this function doesn't need to convert the system clock to local.
-    // Because the type "WITH TIME ZONE" values are internally UTC and converted when they are passed back to clients.
+    // This func. returns the the local timestamp.
+    // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
     takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    auto os = global::config_pool()->zone_offset();
+    tp += std::chrono::minutes{os};
     return data::any{std::in_place_type<runtime_t<kind::time_point>>, tp};
 }
 

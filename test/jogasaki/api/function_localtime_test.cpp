@@ -123,4 +123,36 @@ TEST_F(function_localtime_test, at_the_end_of_the_day) {
     EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{23, 59, 59}})), result[0]);
 }
 
+TEST_F(function_localtime_test, at_the_begining_of_the_day_with_offset) {
+    global::config_pool()->zone_offset(9*60);
+
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 int)");
+    execute_statement("insert into t values (1)");
+
+    auto tx = utils::create_transaction(*db_);
+    time_point tp{date{1999, 12, 31}, time_of_day{15, 0, 0}};
+    set_tx_begin_ts(*tx, transaction_context::clock::time_point{tp.seconds_since_epoch()});
+    execute_query("SELECT localtime FROM t", *tx, result);
+    ASSERT_EQ(status::ok, tx->commit());
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{0, 0, 0}})), result[0]);
+}
+
+TEST_F(function_localtime_test, at_the_end_of_the_day_with_offset) {
+    global::config_pool()->zone_offset(9*60);
+
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 int)");
+    execute_statement("insert into t values (1)");
+
+    auto tx = utils::create_transaction(*db_);
+    time_point tp{date{1999, 12, 31}, time_of_day{14, 59, 59}};
+    set_tx_begin_ts(*tx, transaction_context::clock::time_point{tp.seconds_since_epoch()});
+    execute_query("SELECT localtime FROM t", *tx, result);
+    ASSERT_EQ(status::ok, tx->commit());
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{23, 59, 59}})), result[0]);
+}
+
 }  // namespace jogasaki::testing

@@ -527,6 +527,7 @@ status prepare(
     auto cfg = global::config_pool();
     if(cfg) {
         opts.lowercase_regular_identifiers() = cfg->lowercase_regular_identifiers();
+        opts.system_zone_offset() = std::chrono::minutes{cfg->zone_offset()};
     }
 
     mizugaki::analyzer::sql_analyzer analyzer{};

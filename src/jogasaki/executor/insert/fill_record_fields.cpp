@@ -56,6 +56,7 @@
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/make_function_context.h>
+#include <jogasaki/utils/validate_any_type.h>
 
 namespace jogasaki::executor::insert {
 
@@ -153,9 +154,20 @@ status fill_default_value(
                 utils::make_function_context(*ctx.transaction())
             };
             auto src = f.function_(c);
+            // TODO validate_any_type cannot detect the type difference
+            // such as time_point_type(true) and time_point_type(false)
+            if(! utils::validate_any_type(src, f.type_)) {
+                auto rc = status::err_unsupported;
+                set_error(
+                    ctx,
+                    error_code::invalid_runtime_value_exception,
+                    string_builder{} << "invalid value was assigned as default value field-type:" << f.type_
+                                     << " value-index:" << src.type_index() << string_builder::to_string,
+                    rc
+                );
+                return rc;
+            }
             assign_value_to_field(f, src, ctx, resource, out);
-            // FIXME
-            // check type of `a` is compatible with the field type
             break;
         }
     }

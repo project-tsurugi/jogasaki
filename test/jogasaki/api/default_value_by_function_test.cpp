@@ -155,4 +155,16 @@ TEST_F(default_value_by_function_test, localtimestamp) {
     EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, {tp})), result[0]);
 }
 
+TEST_F(default_value_by_function_test, type_mismatch_date_for_time_point) {
+    execute_statement("create table t (c0 int primary key, c1 timestamp default current_date)");
+    test_stmt_err("insert into t (c0) values (0)", error_code::invalid_runtime_value_exception);
+}
+
+// currently the mismatch between type options cannot be detected
+// TODO fix and uncomment this test
+TEST_F(default_value_by_function_test, DISABLED_type_mismatch_localtime_for_tstz) {
+    execute_statement("create table t (c0 int primary key, c1 timestamp with time zone default localtimestamp)");
+    test_stmt_err("insert into t (c0) values (0)", error_code::invalid_runtime_value_exception);
+}
+
 }  // namespace jogasaki::testing

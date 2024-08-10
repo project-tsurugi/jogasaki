@@ -72,7 +72,7 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     auto& vars = ctx.input_variables();
     auto resource = ctx.varlen_resource();
     expression::evaluator_context c{resource,
-        utils::make_function_context(*ctx.req_context()->transaction())
+        ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
     };
     auto res = evaluate_bool(c, evaluator_, vars, resource);
     if (res.error()) {

@@ -174,7 +174,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     executor::process::impl::variable_table vars{};
     std::size_t len{};
     std::string msg{};
-    if(auto res = details::encode_key(*ctx.req_context(), search_key_fields_, vars, *resource, ctx.key_, len, msg);
+    if(auto res = details::encode_key(ctx.req_context(), search_key_fields_, vars, *resource, ctx.key_, len, msg);
         res != status::ok) {
         if (res == status::err_type_mismatch) {
             // unsupported type/value mapping detected during expression evaluation

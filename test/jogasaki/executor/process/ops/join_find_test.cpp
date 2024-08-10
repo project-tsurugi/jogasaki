@@ -51,6 +51,7 @@
 #include <jogasaki/executor/process/impl/ops/join_find.h>
 #include <jogasaki/executor/process/impl/ops/join_find_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/kvs/database.h>
@@ -107,6 +108,28 @@ class join_find_test :
     }
 public:
 };
+
+std::pair<std::shared_ptr<mock::task_context>, std::shared_ptr<request_context>> create_task_context(
+    std::vector<io::reader_container> readers = {},
+    std::vector<std::shared_ptr<io::record_writer>> downstream_writers = {},
+    std::shared_ptr<io::record_writer> external_writer = {},
+    std::shared_ptr<abstract::scan_info> info = {},
+    std::shared_ptr<transaction_context> tx = {}
+) {
+    auto ret = std::make_shared<mock::task_context>(
+        std::move(readers),
+        std::move(downstream_writers),
+        std::move(external_writer),
+        std::move(info)
+    );
+
+    auto rctx = std::make_shared<request_context>();
+    rctx->transaction(tx);
+    ret->work_context(
+        std::make_unique<impl::work_context>(rctx.get(), 0, 0, nullptr, nullptr, nullptr, tx, false)
+    );
+    return {ret, rctx};
+}
 
 TEST_F(join_find_test, simple) {
     auto t1 = create_table({
@@ -172,9 +195,9 @@ TEST_F(join_find_test, simple) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
-    mock::task_context task_ctx{ {}, {}, {}, {} };
+    auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
     join_find_context ctx(
-        &task_ctx,
+        task_ctx.get(),
         input_variables,
         output_variables,
         get_storage(*db_, primary_idx_t1->simple_name()),
@@ -265,9 +288,9 @@ TEST_F(join_find_test, secondary_index) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(201), create_record<kind::int8>(20));
     put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 201), {});
     auto tx = wrap(db_->create_transaction());
-    mock::task_context task_ctx{ {}, {}, {}, {} };
+    auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
     join_find_context ctx(
-        &task_ctx,
+        task_ctx.get(),
         input_variables,
         output_variables,
         get_storage(*db_, primary_idx_t1->simple_name()),
@@ -383,9 +406,9 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(2), create_record<kind::int8>(200));
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
-    mock::task_context task_ctx{ {}, {}, {}, {} };
+    auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
     join_find_context ctx(
-        &task_ctx,
+        task_ctx.get(),
         input_variables,
         output_variables,
         get_storage(*db_, primary_idx_t1->simple_name()),

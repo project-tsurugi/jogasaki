@@ -39,7 +39,7 @@
 namespace jogasaki::executor::process::impl::ops::details {
 
 status encode_key(  //NOLINT(readability-function-cognitive-complexity)
-    request_context& context,
+    request_context* context,
     std::vector<details::search_key_field_info> const& keys,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
@@ -54,7 +54,7 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
         for(auto&& k : keys) {
             expression::evaluator_context ctx{
                 std::addressof(resource),
-                utils::make_function_context(*context.transaction())
+                context ? utils::make_function_context(*context->transaction()) : nullptr,
             };
             auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {

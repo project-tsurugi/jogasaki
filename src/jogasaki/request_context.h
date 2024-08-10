@@ -106,6 +106,12 @@ public:
     [[nodiscard]] std::shared_ptr<transaction_context> const& transaction() const;
 
     /**
+     * @brief setter for the transaction
+     * @return transaction shared within this request
+     */
+    void transaction(std::shared_ptr<transaction_context> arg);
+
+    /**
      * @brief accessor for the sequence manager
      * @return sequence manager shared within this request
      */

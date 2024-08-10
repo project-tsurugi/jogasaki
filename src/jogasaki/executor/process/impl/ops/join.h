@@ -222,7 +222,8 @@ public:
                 }
                 do {
                     expression::evaluator_context c {
-                        ctx.varlen_resource(), utils::make_function_context(*ctx.req_context()->transaction())
+                        ctx.varlen_resource(),
+                        ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
                     };
                     auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                     if(a.error()) {
@@ -246,8 +247,10 @@ public:
                     bool exists_match = false;
                     if(secondary_group_available) {
                         do {
-                            expression::evaluator_context c {
-                                ctx.varlen_resource(), utils::make_function_context(*ctx.req_context()->transaction())
+                            expression::evaluator_context c{
+                                ctx.varlen_resource(),
+                                ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
+                                                  : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
@@ -283,8 +286,10 @@ public:
                     bool exists_match = false;
                     if(groups_available(cgrp, true)) {
                         do {
-                            expression::evaluator_context c {
-                                ctx.varlen_resource(), utils::make_function_context(*ctx.req_context()->transaction())
+                            expression::evaluator_context c{
+                                ctx.varlen_resource(),
+                                ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
+                                                  : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {

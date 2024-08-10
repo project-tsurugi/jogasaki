@@ -75,6 +75,10 @@ std::shared_ptr<class configuration> const& request_context::configuration() con
     return transaction_;
 }
 
+void request_context::transaction(std::shared_ptr<transaction_context> arg) {
+    transaction_ = std::move(arg);
+}
+
 memory::lifo_paged_memory_resource* request_context::request_resource() const noexcept {
     return request_resource_.get();
 }

@@ -45,7 +45,7 @@ namespace jogasaki::executor::process::impl::ops::details {
  * @return status::err_expression_evaluation_failure any other evaluation failure
  */
 status encode_key(
-    request_context& context,
+    request_context* context,
     std::vector<details::search_key_field_info> const& keys,
     executor::process::impl::variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,

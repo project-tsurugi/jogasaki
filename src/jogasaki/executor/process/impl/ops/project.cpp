@@ -95,7 +95,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& ev = evaluators_[i];
         expression::evaluator_context c{
             ctx.varlen_resource(),
-            utils::make_function_context(*ctx.req_context()->transaction())
+            ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
         };
         auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator

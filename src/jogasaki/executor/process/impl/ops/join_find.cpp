@@ -94,7 +94,8 @@ bool matcher::operator()(
 ) {
     std::size_t len{};
     std::string msg{};
-    if(auto res = details::encode_key(ctx, key_fields_, input_variables, *resource, buf_, len, msg); res != status::ok) {
+    if(auto res = details::encode_key(std::addressof(ctx), key_fields_, input_variables, *resource, buf_, len, msg);
+       res != status::ok) {
         status_ = res;
         // TODO handle msg
         return false;
@@ -215,7 +216,7 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
             if (condition_) {
                 expression::evaluator_context c{
                     resource,
-                    utils::make_function_context(*ctx.req_context()->transaction())
+                    ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
                 };
                 auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                 if (r.error()) {

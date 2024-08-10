@@ -21,6 +21,7 @@
 
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/common_types.h>
+#include <jogasaki/executor/process/impl/expression/single_function_evaluator.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -28,6 +29,7 @@ enum class default_value_kind : std::size_t {
     nothing,
     immediate,
     sequence,
+    function,
 };
 
 /**
@@ -42,6 +44,7 @@ enum class default_value_kind : std::size_t {
         case kind::nothing: return "nothing"sv;
         case kind::immediate: return "immediate"sv;
         case kind::sequence: return "sequence"sv;
+        case kind::function: return "function"sv;
     }
     std::abort();
 }
@@ -66,17 +69,22 @@ struct cache_align default_value_property {
     default_value_property(
         default_value_kind kind,
         data::any immediate_value,  //NOLINT
-        sequence_definition_id def_id
+        sequence_definition_id def_id,
+        yugawara::function::configurable_provider const* functions = nullptr
     ) :
         kind_(kind),
         immediate_value_(immediate_value),
-        def_id_(def_id)
-    {}
+        def_id_(def_id),
+        function_(
+            kind == default_value_kind::function ? expression::single_function_evaluator(def_id, *functions)
+                                                 : expression::single_function_evaluator{}
+        ) {}
 
     // default value properties (valid if exists_ = false)
     default_value_kind kind_{};  //NOLINT
     data::any immediate_value_{};   //NOLINT
     sequence_definition_id def_id_{};  //NOLINT
+    expression::single_function_evaluator function_{};  //NOLINT
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

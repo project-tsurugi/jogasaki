@@ -76,12 +76,14 @@ struct write_field : process::impl::ops::default_value_property {
         std::size_t nullity_offset,
         process::impl::ops::default_value_kind kind,
         data::any immediate_value,
-        sequence_definition_id def_id
+        sequence_definition_id def_id,
+        yugawara::function::configurable_provider const* functions = nullptr
     ) :
         default_value_property(
             kind,
             immediate_value,
-            def_id
+            def_id,
+            functions
         ),
         index_(index),
         type_(utils::type_for(target_type)),

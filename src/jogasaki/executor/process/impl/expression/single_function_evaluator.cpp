@@ -43,6 +43,7 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/utils/find_function.h>
 
 #include "evaluator_context.h"
 
@@ -50,20 +51,9 @@ namespace jogasaki::executor::process::impl::expression {
 
 using any = jogasaki::data::any;
 
-std::shared_ptr<yugawara::function::declaration const>
-find_function(yugawara::function::configurable_provider const& functions, std::size_t id) {
-    std::shared_ptr<yugawara::function::declaration const> ret{};
-    functions.each([&](auto&& f) {
-        if(f->definition_id() == id) {
-            ret = f;
-        }
-    });
-    return ret;
-}
-
 std::shared_ptr<takatori::scalar::expression const>
 create_function_expression(std::size_t function_def_id, yugawara::function::configurable_provider const& functions) {
-    auto f = find_function(functions, function_def_id);
+    auto f = utils::find_function(functions, function_def_id);
     yugawara::binding::factory bindings{};
     auto desc = bindings(f);
     return std::make_shared<takatori::scalar::function_call>(desc);

@@ -304,7 +304,7 @@ private:
         std::make_shared<yugawara::aggregate::configurable_provider>()
     };
     std::shared_ptr<yugawara::function::configurable_provider> scalar_functions_{
-        std::make_shared<yugawara::function::configurable_provider>()
+        global::scalar_function_provider()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;

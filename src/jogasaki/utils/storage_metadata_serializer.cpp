@@ -72,12 +72,14 @@
 #include <yugawara/variable/nullity.h>
 
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/proto/metadata/common.pb.h>
 #include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/decimal.h>
+#include <jogasaki/utils/find_function.h>
 #include <jogasaki/utils/storage_metadata_exception.h>
 
 namespace jogasaki::utils {
@@ -260,7 +262,10 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
             break;
         }
         case yugawara::storage::column_value_kind::function: {
-            throw_exception(std::logic_error{"function default value is unsupported now"});
+            auto& func = c.default_value().element<yugawara::storage::column_value_kind::function>();
+            auto gen = col->mutable_generator();
+            gen->set_definition_id(func->definition_id());
+            break;
         }
     }
 }
@@ -510,6 +515,16 @@ yugawara::storage::column_value default_value(
                 return {};
             }
             return column_value{std::move(seq)};
+        }
+        case proto::metadata::storage::TableColumn::kGenerator: {
+            auto& g = column.generator();
+            auto id = g.definition_id();
+            auto decl = utils::find_function(*global::scalar_function_provider(), id);
+            if(! decl) {
+                VLOG_LP(log_error) << "default_value: function not found for given definition id:" << id;
+                return {};
+            }
+            return column_value{std::move(decl)};
         }
         case proto::metadata::storage::TableColumn::DEFAULT_VALUE_NOT_SET: break;
         default: break;

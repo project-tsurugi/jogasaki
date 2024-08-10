@@ -18,6 +18,8 @@
 #include <memory>
 #include <utility>
 
+#include <yugawara/function/configurable_provider.h>
+
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
@@ -55,6 +57,16 @@ executor::function::scalar_function_repository& scalar_function_repository() {
     return repo;
 }
 
+std::shared_ptr<yugawara::function::configurable_provider> const&
+scalar_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg) {
+    static std::shared_ptr<yugawara::function::configurable_provider> provider =
+        std::make_shared<yugawara::function::configurable_provider>();
+    if(arg) {
+        provider = std::move(arg);
+    }
+    return provider;
+}
+
 maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuration> arg) {
     static maybe_shared_ptr<configuration> pool = std::make_shared<configuration>();
     if(arg) {
@@ -63,5 +75,4 @@ maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuratio
     return pool;
 }
 
-}
-
+}  // namespace jogasaki::global

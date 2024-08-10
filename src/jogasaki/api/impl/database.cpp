@@ -308,7 +308,7 @@ void database::init() {
     if(cfg_->prepare_test_tables()) {
         executor::add_test_tables(*tables_);
     }
-    scalar_functions_ = std::make_shared<yugawara::function::configurable_provider>();
+    scalar_functions_ = global::scalar_function_provider(std::make_shared<yugawara::function::configurable_provider>());
     executor::function::add_builtin_scalar_functions(
         *scalar_functions_,
         global::scalar_function_repository()

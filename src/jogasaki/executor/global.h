@@ -17,10 +17,18 @@
 
 #include <cstdint>
 #include <memory>
+#include <shared_mutex>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
 // attention: making globals depend on lower domain slows down compile time
+namespace yugawara::function {
+template <class Mutex>
+class basic_configurable_provider;
+
+using configurable_provider = basic_configurable_provider<std::shared_mutex>;
+}
+
 namespace jogasaki::executor::function::incremental {
 class aggregate_function_repository;
 }
@@ -95,5 +103,13 @@ enum class pool_operation : std::int32_t {
  */
 takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::util::maybe_shared_ptr<configuration> arg = nullptr);
 
-}
+/**
+ * @brief thread-safe accessor to the global provider for scalar functions
+ * @details the provider will be initialized on the first call and can be shared by multiple threads
+ * @param arg updated provider. Pass nullptr just to refer current value.
+ * @return reference to the function provider
+ */
+std::shared_ptr<yugawara::function::configurable_provider> const&
+scalar_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg = nullptr);
 
+}  // namespace jogasaki::global

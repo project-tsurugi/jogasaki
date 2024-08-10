@@ -20,9 +20,9 @@
 #include <utility>
 #include <vector>
 
+#include <takatori/descriptor/variable.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/string_builder.h>
-#include <takatori/descriptor/variable.h>
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/common_types.h>
@@ -33,6 +33,7 @@
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/insert/insert_new_record.h>
 #include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
@@ -54,6 +55,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/make_function_context.h>
 
 namespace jogasaki::executor::insert {
 
@@ -77,6 +79,39 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
     return status::ok;
 }
 
+status assign_value_to_field(
+    insert::write_field const& f,
+    data::any src,
+    request_context& ctx,
+    memory::lifo_paged_memory_resource& resource,
+    data::small_record_store& out
+) {
+    auto is_null = src.empty();
+    if (is_null && !f.nullable_) {
+        auto rc = status::err_integrity_constraint_violation;
+        set_error(
+            ctx,
+            error_code::not_null_constraint_violation_exception,
+            string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
+            rc);
+        return rc;
+    }
+    out.ref().set_null(f.nullity_offset_, is_null);
+    if (f.nullable_) {
+        utils::copy_nullable_field(
+            f.type_,
+            out.ref(),
+            f.offset_,
+            f.nullity_offset_,
+            src,
+            std::addressof(resource)
+        );
+    } else {
+        utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
+    }
+    return status::ok;
+}
+
 status fill_default_value(
     insert::write_field const& f,
     request_context& ctx,
@@ -97,29 +132,7 @@ status fill_default_value(
             break;
         case process::impl::ops::default_value_kind::immediate: {
             auto src = f.immediate_value_;
-            auto is_null = src.empty();
-            if (is_null && !f.nullable_) {
-                auto rc = status::err_integrity_constraint_violation;
-                set_error(
-                    ctx,
-                    error_code::not_null_constraint_violation_exception,
-                    string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
-                    rc);
-                return rc;
-            }
-            out.ref().set_null(f.nullity_offset_, is_null);
-            if (f.nullable_) {
-                utils::copy_nullable_field(
-                    f.type_,
-                    out.ref(),
-                    f.offset_,
-                    f.nullity_offset_,
-                    src,
-                    std::addressof(resource)
-                );
-            } else {
-                utils::copy_field(f.type_, out.ref(), f.offset_, src, std::addressof(resource));
-            }
+            assign_value_to_field(f, src, ctx, resource, out);
             break;
         }
         case process::impl::ops::default_value_kind::sequence: {
@@ -132,6 +145,17 @@ status fill_default_value(
             }
             out.ref().set_null(f.nullity_offset_, false);
             out.ref().set_value<std::int64_t>(f.offset_, v);
+            break;
+        }
+        case process::impl::ops::default_value_kind::function: {
+            process::impl::expression::evaluator_context c{
+                std::addressof(resource),
+                utils::make_function_context(*ctx.transaction())
+            };
+            auto src = f.function_(c);
+            assign_value_to_field(f, src, ctx, resource, out);
+            // FIXME
+            // check type of `a` is compatible with the field type
             break;
         }
     }
@@ -154,6 +178,7 @@ void create_generated_field(
     data::aligned_buffer buf{};
     auto knd = process::impl::ops::default_value_kind::nothing;
     data::any immediate_val{};
+    yugawara::function::configurable_provider const* functions = nullptr;
     switch(dv.kind()) {
         case column_value_kind::nothing:
             break;
@@ -177,7 +202,14 @@ void create_generated_field(
             break;
         }
         case column_value_kind::function: {
-            throw_exception(std::logic_error{"function default value is unsupported now"});
+            knd = process::impl::ops::default_value_kind::function;
+            if (auto id = dv.element<column_value_kind::function>()->definition_id()) {
+                def_id = id;
+            } else {
+                throw_exception(std::logic_error{"function must be defined with definition_id"});
+            }
+            functions = global::scalar_function_provider().get();
+            break;
         }
     }
     ret.emplace_back(
@@ -189,7 +221,8 @@ void create_generated_field(
         nullity_offset,
         knd,
         immediate_val,
-        def_id
+        def_id,
+        functions
     );
 }
 

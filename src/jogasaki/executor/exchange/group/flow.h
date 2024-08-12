@@ -120,6 +120,4 @@ private:
     std::size_t downstream_partitions_{default_partitions};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::exchange::group

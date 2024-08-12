@@ -88,6 +88,4 @@ process::step *step::upstream(std::size_t index) const noexcept {
     return dynamic_cast<process::step*>(input_ports()[0]->opposites()[index]->owner());
 }
 
-}
-
-
+}  // namespace jogasaki::executor::exchange::group

@@ -100,6 +100,7 @@ public:
     [[nodiscard]] std::size_t tables_count() const noexcept;
 
 private:
+
     std::unique_ptr<memory::paged_memory_resource> resource_for_records_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
     std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
@@ -114,4 +115,4 @@ private:
     void initialize_lazy();
 };
 
-}
+}  // namespace jogasaki::executor::exchange::group

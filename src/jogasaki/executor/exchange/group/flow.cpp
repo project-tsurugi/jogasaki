@@ -144,6 +144,4 @@ model::step_kind flow::kind() const noexcept {
     return model::step_kind::group;
 }
 
-} // namespace
-
-
+}  // namespace jogasaki::executor::exchange::group

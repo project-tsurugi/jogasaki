@@ -50,4 +50,4 @@ private:
     std::vector<std::unique_ptr<input_partition>> partitions_{};
 };
 
-}
+}  // namespace jogasaki::executor::exchange::group

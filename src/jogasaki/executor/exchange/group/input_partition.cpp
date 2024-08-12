@@ -94,4 +94,5 @@ void input_partition::initialize_lazy() {
         current_pointer_table_active_ = true;
     }
 }
-}
+
+}  // namespace jogasaki::executor::exchange::group

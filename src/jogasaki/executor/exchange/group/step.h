@@ -96,6 +96,4 @@ private:
     meta::variable_order output_column_order_{};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::exchange::group

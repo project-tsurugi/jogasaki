@@ -61,4 +61,4 @@ private:
     std::unique_ptr<group::writer> writer_;
 };
 
-}
+}  // namespace jogasaki::executor::exchange::group

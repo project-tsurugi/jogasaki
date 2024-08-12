@@ -89,4 +89,4 @@ private:
     void discard_remaining_members_in_group();
 };
 
-}
+}  // namespace jogasaki::executor::exchange::group

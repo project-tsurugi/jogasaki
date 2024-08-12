@@ -162,4 +162,5 @@ bool iterator_pair_comparator::operator()(const iterator_pair &x, const iterator
     auto key_y = info_->extract_sort_key(accessor::record_ref(*it_y, record_size_));
     return key_comparator_(key_x, key_y) > 0;
 }
-} // namespace
+
+}  // namespace jogasaki::executor::exchange::group

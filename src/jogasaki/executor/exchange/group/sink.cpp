@@ -59,4 +59,4 @@ request_context* sink::context() const noexcept {
     return context_;
 }
 
-}
+}  // namespace jogasaki::executor::exchange::group

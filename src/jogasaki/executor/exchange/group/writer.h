@@ -62,4 +62,4 @@ private:
     void initialize_lazy(std::size_t partition);
 };
 
-}
+}  // namespace jogasaki::executor::exchange::group

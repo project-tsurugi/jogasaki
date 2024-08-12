@@ -167,4 +167,4 @@ std::optional<std::size_t> const &group_info::limit() const noexcept {
     return limit_;
 }
 
-}
+}  // namespace jogasaki::executor::exchange::group

@@ -55,4 +55,4 @@ io::reader_container source::acquire_reader() {
     );
 }
 
-}
+}  // namespace jogasaki::executor::exchange::group

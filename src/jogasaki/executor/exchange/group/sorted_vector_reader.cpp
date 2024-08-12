@@ -182,4 +182,4 @@ void sorted_vector_reader::init_aggregated_table() {  //NOLINT(readability-funct
     }
 }
 
-} // namespace
+}  // namespace jogasaki::executor::exchange::group

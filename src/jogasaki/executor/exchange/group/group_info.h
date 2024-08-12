@@ -155,4 +155,4 @@ private:
     );
 };
 
-}
+}  // namespace jogasaki::executor::exchange::group

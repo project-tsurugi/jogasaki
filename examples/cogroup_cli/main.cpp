@@ -31,7 +31,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/exchange/deliver/step.h>
+#include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/step.h>
@@ -114,12 +114,12 @@ static int run(params& s, std::shared_ptr<configuration> cfg) {
     auto& xch1 = g.emplace<group::step>(info, meta::variable_order{}, meta::variable_order{});
     auto& xch2 = g.emplace<group::step>(info, meta::variable_order{}, meta::variable_order{});
     auto& cgrp = g.emplace<consumer_process>(info->group_meta(), s);
-    auto& dvr = g.emplace<deliver::step>();
+    auto& fwd = g.emplace<forward::step>();
     scan1 >> xch1;
     scan2 >> xch2;
     xch1 >> cgrp;
     xch2 >> cgrp;
-    cgrp >> dvr;
+    cgrp >> fwd;
 
     jogasaki::utils::get_latches().enable(sync_wait_prepare,
         std::min(s.left_upstream_partitions_+s.right_upstream_partitions_, cfg->thread_pool_size()));

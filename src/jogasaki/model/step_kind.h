@@ -26,7 +26,6 @@ enum class step_kind {
     broadcast,
     group,
     aggregate,
-    deliver,
 };
 
 constexpr inline std::string_view to_string_view(step_kind value) noexcept {
@@ -38,7 +37,6 @@ constexpr inline std::string_view to_string_view(step_kind value) noexcept {
         case kind::broadcast: return "broadcast"sv;
         case kind::group: return "group"sv;
         case kind::aggregate: return "aggregate"sv;
-        case kind::deliver: return "deliver"sv;
     }
     std::abort();
 }

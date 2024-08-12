@@ -24,7 +24,6 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/exchange/deliver/step.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/step.h>
@@ -68,14 +67,14 @@ TEST_F(event_test, DISABLED_simple_forward) {
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto fwd = std::make_unique<forward::step>();
-    auto dvr = std::make_unique<deliver::step>();
+    auto fwd2 = std::make_unique<forward::step>();
     *scan >> *fwd;
     *fwd >> *emit;
-    *emit >> *dvr;
+    *emit >> *fwd2;
     g->insert(std::move(scan));
     g->insert(std::move(fwd));
     g->insert(std::move(emit));
-    g->insert(std::move(dvr));
+    g->insert(std::move(fwd2));
     dag_controller dc{};
     dc.schedule(*g, *ctx);
     ASSERT_TRUE(true);
@@ -87,14 +86,14 @@ TEST_F(event_test, DISABLED_simple_shuffle) {
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
-    auto dvr = std::make_unique<deliver::step>();
+    auto fwd = std::make_unique<forward::step>();
     *scan >> *xch;
     *xch >> *emit;
-    *emit >> *dvr;
+    *emit >> *fwd;
     g->insert(std::move(scan));
     g->insert(std::move(xch));
     g->insert(std::move(emit));
-    g->insert(std::move(dvr));
+    g->insert(std::move(fwd));
     dag_controller dc{};
     dc.schedule(*g, *ctx);
     ASSERT_TRUE(true);

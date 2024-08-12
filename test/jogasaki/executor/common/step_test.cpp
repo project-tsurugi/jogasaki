@@ -24,7 +24,7 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/exchange/deliver/step.h>
+#include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/meta/variable_order.h>
@@ -116,12 +116,12 @@ TEST_F(step_test, cogroup) {
     auto& xch1 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
     auto& xch2 = g.emplace<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
     auto& cgrp = g.emplace<simple_cogroup_process>();
-    auto& dvr = g.emplace<deliver::step>();
+    auto& fwd = g.emplace<forward::step>();
     scan1 >> xch1;
     scan2 >> xch2;
     xch1 >> cgrp;
     xch2 >> cgrp;
-    cgrp >> dvr;
+    cgrp >> fwd;
     ASSERT_EQ(0, scan1.input_ports().size());
     ASSERT_EQ(1, scan1.output_ports().size());
     ASSERT_EQ(0, scan2.input_ports().size());
@@ -132,8 +132,8 @@ TEST_F(step_test, cogroup) {
     ASSERT_EQ(1, xch2.output_ports().size());
     ASSERT_EQ(2, cgrp.input_ports().size());
     ASSERT_EQ(1, cgrp.output_ports().size());
-    ASSERT_EQ(1, dvr.input_ports().size());
-    ASSERT_EQ(0, dvr.output_ports().size());
+    ASSERT_EQ(1, fwd.input_ports().size());
+    ASSERT_EQ(0, fwd.output_ports().size());
 }
 
 }

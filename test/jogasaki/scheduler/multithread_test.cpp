@@ -28,7 +28,6 @@
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/port.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/exchange/deliver/step.h>
 #include <jogasaki/executor/exchange/forward/step.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/step.h>
@@ -68,14 +67,14 @@ TEST_F(multithread_test, DISABLED_simple_forward) {
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto fwd = std::make_unique<forward::step>();
-    auto dvr = std::make_unique<deliver::step>();
+    auto fwd2 = std::make_unique<forward::step>();
     *scan >> *fwd;
     *fwd >> *emit;
-    *emit >> *dvr;
+    *emit >> *fwd2;
     g->insert(std::move(scan));
     g->insert(std::move(fwd));
     g->insert(std::move(emit));
-    g->insert(std::move(dvr));
+    g->insert(std::move(fwd2));
     statement_scheduler dc{cfg};
     job_context jctx{};
     ctx->job(maybe_shared_ptr{&jctx});
@@ -94,14 +93,14 @@ TEST_F(multithread_test, DISABLED_simple_shuffle) {
     auto scan = std::make_unique<simple_scan_process>();
     auto emit = std::make_unique<simple_emit_process>();
     auto xch = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
-    auto dvr = std::make_unique<deliver::step>();
+    auto fwd = std::make_unique<forward::step>();
     *scan >> *xch;
     *xch >> *emit;
-    *emit >> *dvr;
+    *emit >> *fwd;
     g->insert(std::move(scan));
     g->insert(std::move(xch));
     g->insert(std::move(emit));
-    g->insert(std::move(dvr));
+    g->insert(std::move(fwd));
     statement_scheduler dc{cfg};
     job_context jctx{};
     ctx->job(maybe_shared_ptr{&jctx});
@@ -122,19 +121,19 @@ TEST_F(multithread_test, DISABLED_cogroup) {
     auto xch1 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
     auto xch2 = std::make_unique<group::step>(test_record_meta1(), std::vector<std::size_t>{0}, meta::variable_order{}, meta::variable_order{});
     auto cgrp = std::make_unique<simple_cogroup_process>();
-    auto dvr = std::make_unique<deliver::step>();
+    auto fwd = std::make_unique<forward::step>();
     *scan1 >> *xch1;
     *scan2 >> *xch2;
     *xch1 >> *cgrp;
     *xch2 >> *cgrp;
-    *cgrp >> *dvr;
+    *cgrp >> *fwd;
     // step id are assigned from 0 to 5
     g->insert(std::move(scan1));
     g->insert(std::move(xch1));
     g->insert(std::move(scan2));
     g->insert(std::move(xch2));
     g->insert(std::move(cgrp));
-    g->insert(std::move(dvr));
+    g->insert(std::move(fwd));
 
     statement_scheduler dc{cfg};
     job_context jctx{};

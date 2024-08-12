@@ -86,8 +86,6 @@ file(GLOB SOURCES
         "jogasaki/executor/process/abstract/*.cpp"
         "jogasaki/executor/exchange/*.cpp"
         "jogasaki/executor/exchange/aggregate/*.cpp"
-        "jogasaki/executor/exchange/broadcast/*.cpp"
-        "jogasaki/executor/exchange/deliver/*.cpp"
         "jogasaki/executor/exchange/forward/*.cpp"
         "jogasaki/executor/exchange/group/*.cpp"
         "jogasaki/executor/exchange/shuffle/*.cpp"

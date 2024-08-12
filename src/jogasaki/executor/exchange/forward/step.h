@@ -15,12 +15,17 @@
  */
 #pragma once
 
-#include <jogasaki/model/step.h>
-#include <jogasaki/model/port.h>
-#include <jogasaki/meta/variable_order.h>
+#include <takatori/util/maybe_shared_ptr.h>
+
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
+#include <jogasaki/executor/process/step.h>
+#include <jogasaki/meta/variable_order.h>
+#include <jogasaki/model/port.h>
+#include <jogasaki/model/step.h>
+
 #include "flow.h"
+#include "forward_info.h"
 
 namespace jogasaki::executor::exchange::forward {
 
@@ -30,33 +35,28 @@ public:
 
     /**
      * @brief create new instance
-     * @param meta record metadata used commonly for input/output
-     * @param column_order variable ordering information common for input/output
      */
-    explicit step(
-        maybe_shared_ptr<meta::record_meta> meta,
-        meta::variable_order column_order = {}
-    ) :
-        exchange::step(std::move(meta), std::move(column_order))
-    {}
+    step(
+        std::shared_ptr<forward_info> info,
+        meta::variable_order input_column_order
+    );
 
-    [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks(request_context& rctx) override {
-        // exchange task is nop
-        tasks_.emplace_back(std::make_shared<exchange::task>(std::addressof(rctx), this));
-        return tasks_;
-    }
+    /**
+     * @brief create new instance
+     * @param input_meta input record metadata
+     * @param input_column_order column ordering information for exchange input
+     */
+    step(
+        maybe_shared_ptr<meta::record_meta> input_meta,
+        std::optional<std::size_t> limit = {},
+        meta::variable_order input_column_order = {}
+    );
 
     [[nodiscard]] model::step_kind kind() const noexcept override {
         return model::step_kind::forward;
     }
 
-    void activate(request_context& rctx) override {
-        // create data flow object
-        data_flow_object(
-            rctx,
-            std::make_unique<forward::flow>(input_meta(), std::addressof(rctx), this)
-        );
-    }
+    void activate(request_context& rctx) override;
 
     [[nodiscard]] meta::variable_order const& output_order() const noexcept {
         return exchange::step::input_order();
@@ -65,9 +65,14 @@ public:
     [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& output_meta() const noexcept {
         return exchange::step::input_meta();
     }
+
+protected:
+    [[nodiscard]] process::step* downstream(std::size_t index) const noexcept;
+
+    [[nodiscard]] process::step* upstream(std::size_t index) const noexcept;
+
 private:
-    std::vector<std::shared_ptr<model::task>> tasks_{};
+    std::shared_ptr<forward_info> info_{};
 };
 
-}
-
+}  // namespace jogasaki::executor::exchange::forward

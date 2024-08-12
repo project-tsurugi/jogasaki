@@ -13,29 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "source.h"
 #include "reader.h"
 
-#include <jogasaki/executor/io/reader_container.h>
+#include <jogasaki/executor/io/record_reader.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace jogasaki::executor::exchange::forward {
 
-source::source() = default;
-source::~source() = default;
-
-source::source(
-    std::shared_ptr<forward_info> info,
-    request_context* context
-) :
+reader::reader(std::shared_ptr<forward_info> info, std::shared_ptr<input_partition> partition) :
     info_(std::move(info)),
-    context_(context)
+    partition_(std::move(partition))
 {}
-
-io::reader_container source::acquire_reader() {
-    if (! reader_) {
-        reader_ = std::make_unique<reader>(info_, partition_);
-    }
-    return io::reader_container{reader_.get()};
-}
 
 }  // namespace jogasaki::executor::exchange::forward

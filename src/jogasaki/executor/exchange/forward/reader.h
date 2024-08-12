@@ -18,11 +18,22 @@
 #include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/utils/interference_size.h>
 
+#include "forward_info.h"
+#include "input_partition.h"
+
 namespace jogasaki::executor::exchange::forward {
 
 class cache_align reader : public io::record_reader {
 public:
     reader() = default;
+    ~reader() override = default;
+
+    reader(reader const& other) = delete;
+    reader& operator=(reader const& other) = delete;
+    reader(reader&& other) noexcept = delete;
+    reader& operator=(reader&& other) noexcept = delete;
+
+    reader(std::shared_ptr<forward_info> info, std::shared_ptr<input_partition> partition);
 
     [[nodiscard]] bool available() const override {
         return false;
@@ -39,6 +50,11 @@ public:
     void release() override {
         //TODO
     }
+
+private:
+
+    std::shared_ptr<forward_info> info_{};
+    std::shared_ptr<input_partition> partition_{};
 };
 
-}
+}  // namespace jogasaki::executor::exchange::forward

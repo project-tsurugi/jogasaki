@@ -28,20 +28,31 @@ namespace jogasaki::executor::exchange::forward {
 class cache_align writer : public io::record_writer {
 public:
     writer() = default;
+    writer(writer const& other) = delete;
+    writer& operator=(writer const& other) = delete;
+    writer(writer&& other) noexcept = delete;
+    writer& operator=(writer&& other) noexcept = delete;
 
-    bool write(accessor::record_ref rec) override {
-        (void)rec;
-        return true;
-    }
+    writer(
+        std::size_t downstream_partitions,
+        std::shared_ptr<forward_info> info,
+        std::shared_ptr<input_partition> partition,
+        forward::sink& owner
+    );
 
-    void flush() override {
-    }
+    bool write(accessor::record_ref rec) override;
 
-    void release() override {
+    void flush() override;
 
-    }
+    void release() override;
 
 private:
+    std::size_t downstream_partitions_{default_partitions};
+    std::shared_ptr<input_partition> partition_{};
+    std::shared_ptr<forward_info> info_{};
+    sink* owner_{};
+
+    void initialize_lazy();
 };
 
-}
+}  // namespace jogasaki::executor::exchange::forward

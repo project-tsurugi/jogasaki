@@ -17,11 +17,12 @@
 
 #include <memory>
 
-#include <jogasaki/executor/exchange/group/input_partition.h>
+#include <jogasaki/executor/exchange/forward/input_partition.h>
 #include <jogasaki/executor/exchange/source.h>
-#include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_reader.h>
+
+#include "forward_info.h"
 
 namespace jogasaki::executor::exchange::forward {
 
@@ -29,10 +30,25 @@ class reader;
 
 class source : public exchange::source {
 public:
+
+    source();
+    ~source() override;
+    source(source const& other) = delete;
+    source& operator=(source const& other) = delete;
+    source(source&& other) noexcept = delete;
+    source& operator=(source&& other) noexcept = delete;
+    explicit source(
+        std::shared_ptr<forward_info> info,
+        request_context* context
+    );
     [[nodiscard]] io::reader_container acquire_reader() override;
 
+    [[nodiscard]] std::shared_ptr<input_partition> const& partition();
 private:
     std::unique_ptr<io::record_reader> reader_;
+    std::shared_ptr<forward_info> info_{};
+    request_context* context_{};
+    std::shared_ptr<input_partition> partition_{};
 };
 
-}
+}  // namespace jogasaki::executor::exchange::forward

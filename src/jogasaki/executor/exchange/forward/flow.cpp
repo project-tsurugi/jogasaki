@@ -24,8 +24,10 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/exchange/forward/reader.h>
 #include <jogasaki/executor/exchange/forward/sink.h>
 #include <jogasaki/executor/exchange/forward/source.h>
+#include <jogasaki/executor/exchange/forward/writer.h>
 #include <jogasaki/executor/exchange/sink.h>
 #include <jogasaki/executor/exchange/source.h>
 #include <jogasaki/executor/exchange/step.h>
@@ -63,6 +65,21 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::
 
 } // namespace impl
 
+flow::~flow() = default;
+
+// flow::flow() : info_(std::make_shared<forward_info>()) {}
+flow::flow(
+    std::shared_ptr<forward_info> info,
+    request_context* context,
+    step* owner, std::size_t downstream_partitions
+) :
+    info_(std::move(info)),
+    context_(context),
+    owner_(owner),
+    downstream_partitions_(downstream_partitions)
+{}
+
+/*
 flow::flow(
     maybe_shared_ptr<meta::record_meta> input_meta,
     request_context* context,
@@ -79,6 +96,7 @@ flow::flow(
         (void)setup_partitions(default_partitions);
     }
 }
+*/
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     // no tasks for forward
@@ -109,6 +127,12 @@ flow::source_list_view flow::sources() {
 }
 
 
-} // namespace
+class request_context* flow::context() const noexcept {
+    return context_;
+}
 
+model::step_kind flow::kind() const noexcept {
+    return model::step_kind::forward;
+}
 
+}  // namespace jogasaki::executor::exchange::forward

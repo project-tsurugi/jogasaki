@@ -16,22 +16,43 @@
 #include "sink.h"
 
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/request_context.h>
 
+#include "forward_info.h"
+#include "input_partition.h"
 #include "writer.h"
 
 namespace jogasaki::executor::exchange::forward {
 
-sink::sink() noexcept : writer_(std::make_unique<writer>()) {}
+sink::sink(
+    std::size_t downstream_partitions,
+    std::shared_ptr<forward_info> info,
+    request_context* context
+) :
+    downstream_partitions_(downstream_partitions),
+    info_(std::move(info)),
+    context_(context)
+{}
 
 io::record_writer& sink::acquire_writer() {
     if (! writer_) {
-        writer_ = std::make_unique<writer>();
+        writer_ = std::make_unique<forward::writer>();
     }
     return *writer_;
 }
 
 void sink::release_writer(io::record_writer& writer) {
-    (void)writer;
+    if (*writer_ != writer) {
+        fail_with_exception();
+    }
+    writer_.reset();
+}
+std::shared_ptr<input_partition> const& sink::partition() {
+    return partition_;
 }
 
+request_context* sink::context() const noexcept {
+    return context_;
 }
+
+}  // namespace jogasaki::executor::exchange::forward

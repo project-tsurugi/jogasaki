@@ -24,19 +24,41 @@
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 #include "source.h"
+#include "input_partition.h"
 
 namespace jogasaki::executor::exchange::forward {
 
+class writer;
+
 class sink : public exchange::sink {
 public:
-    sink() noexcept;
+
+    sink() = default;
+    ~sink() override = default;
+    sink(sink const& other) = delete;
+    sink& operator=(sink const& other) = delete;
+    sink(sink&& other) noexcept = delete;
+    sink& operator=(sink&& other) noexcept = delete;
+    sink(
+        std::size_t downstream_partitions,
+        std::shared_ptr<forward_info> info,
+        request_context* context
+    );
 
     [[nodiscard]] io::record_writer& acquire_writer() override;
 
     void release_writer(io::record_writer& writer);
 
+    [[nodiscard]] std::shared_ptr<input_partition> const& partition();
+
+    [[nodiscard]] request_context* context() const noexcept;
+
 private:
-    std::unique_ptr<io::record_writer> writer_;
+    std::size_t downstream_partitions_{default_partitions};
+    std::shared_ptr<input_partition> partition_{};
+    std::shared_ptr<forward_info> info_{};
+    request_context* context_{};
+    std::unique_ptr<forward::writer> writer_;
 };
 
-}
+}  // namespace jogasaki::executor::exchange::forward

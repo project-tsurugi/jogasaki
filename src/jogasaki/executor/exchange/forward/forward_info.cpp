@@ -13,29 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "source.h"
-#include "reader.h"
+#include "forward_info.h"
 
-#include <jogasaki/executor/io/reader_container.h>
+#include <memory>
+#include <set>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+#include <takatori/util/maybe_shared_ptr.h>
+
+#include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::forward {
 
-source::source() = default;
-source::~source() = default;
+using takatori::util::maybe_shared_ptr;
 
-source::source(
-    std::shared_ptr<forward_info> info,
-    request_context* context
+forward_info::forward_info(
+    maybe_shared_ptr<meta::record_meta> meta,
+    std::optional<std::size_t> limit
 ) :
-    info_(std::move(info)),
-    context_(context)
+    meta_(std::move(meta)),
+    limit_(limit)
 {}
 
-io::reader_container source::acquire_reader() {
-    if (! reader_) {
-        reader_ = std::make_unique<reader>(info_, partition_);
-    }
-    return io::reader_container{reader_.get()};
+maybe_shared_ptr<meta::record_meta> const& forward_info::record_meta() const noexcept {
+    return meta_;
+}
+
+std::optional<std::size_t> forward_info::limit() const noexcept {
+    return limit_;
 }
 
 }  // namespace jogasaki::executor::exchange::forward

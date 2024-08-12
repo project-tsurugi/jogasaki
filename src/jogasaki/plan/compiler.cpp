@@ -651,6 +651,7 @@ executor::exchange::forward::step create(
     );
     return executor::exchange::forward::step(
         std::move(meta),
+        forward.limit(),
         std::move(column_order));
 }
 

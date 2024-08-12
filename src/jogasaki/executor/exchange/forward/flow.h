@@ -22,7 +22,9 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
 
+#include <jogasaki/constants.h>
 #include <jogasaki/executor/exchange/flow.h>
+#include <jogasaki/executor/exchange/forward/forward_info.h>
 #include <jogasaki/executor/exchange/step.h>
 #include <jogasaki/executor/exchange/task.h>
 #include <jogasaki/meta/record_meta.h>
@@ -51,11 +53,12 @@ class flow : public exchange::flow {
 public:
     using field_index_type = meta::record_meta::field_index_type;
 
+    ~flow() override;
+
     flow(flow const& other) = default;
     flow& operator=(flow const& other) = default;
     flow(flow&& other) noexcept = default;
     flow& operator=(flow&& other) noexcept = default;
-    ~flow() override = default;
 
     /**
      * @brief create new instance with empty schema (for testing)
@@ -65,14 +68,25 @@ public:
     /**
      * @brief create new instance
      * @param input_meta input record metadata
-     * @param context the request context
-     * @param owner step owning this object
+     * @param key_indices indices for key fields
      */
     flow(
-        maybe_shared_ptr<meta::record_meta> input_meta,
+        std::shared_ptr<forward_info> info,
         request_context* context,
-        step* owner
+        step* owner,
+        std::size_t downstream_partitions
     );
+
+    /**
+     * @brief create new instance
+     * @param input_meta input record metadata
+     * @param key_indices indices for key fields
+     */
+    // flow(
+    //     maybe_shared_ptr<meta::record_meta> input_meta,
+    //     request_context* context,
+    //     step* owner
+    // );
 
     [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
@@ -82,18 +96,18 @@ public:
 
     [[nodiscard]] source_list_view sources() override;
 
-    [[nodiscard]] model::step_kind kind() const noexcept override {
-        return model::step_kind::forward;
-    }
+    [[nodiscard]] model::step_kind kind() const noexcept override;
+
+    [[nodiscard]] class request_context* context() const noexcept;
+
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
-    maybe_shared_ptr<meta::record_meta> input_meta_{};
+    std::shared_ptr<forward_info> info_{};
     std::vector<std::unique_ptr<forward::sink>> sinks_;
     std::vector<std::unique_ptr<forward::source>> sources_{};
     request_context* context_{};
     step* owner_{};
+    std::size_t downstream_partitions_{default_partitions};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::exchange::forward

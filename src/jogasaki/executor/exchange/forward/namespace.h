@@ -1,6 +1,6 @@
 #pragma once
 
 /**
- * @brief exchange for data forward
+ * @brief exchange for data forwarding
  */
 namespace jogasaki::executor::exchange::forward {}

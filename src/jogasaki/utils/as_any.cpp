@@ -21,9 +21,11 @@
 #include <takatori/value/character.h>
 #include <takatori/value/data.h>
 #include <takatori/value/decimal.h>
+#include <takatori/value/octet.h>
 #include <takatori/value/time_of_day.h>
 #include <takatori/value/time_point.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -57,6 +59,13 @@ data::any as_any(
                 resource == nullptr ? accessor::text{sv} : accessor::text{resource, sv}
             };
         }
+        case t::octet: {
+            auto bin = value_of<takatori::value::octet>(arg);
+            return {
+                std::in_place_type<accessor::binary>,
+                resource == nullptr ? accessor::binary{bin} : accessor::binary{resource, bin}
+            };
+        }
         case t::decimal: return {std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, value_of<takatori::value::decimal>(arg)};
         case t::date: return {std::in_place_type<runtime_t<meta::field_type_kind::date>>, value_of<takatori::value::date>(arg)};
         case t::time_of_day: return {std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, value_of<takatori::value::time_of_day>(arg)};
@@ -67,5 +76,4 @@ data::any as_any(
     std::abort();
 }
 
-}
-
+}  // namespace jogasaki::utils

@@ -32,6 +32,7 @@
 #include <takatori/value/decimal.h>
 #include <takatori/value/float.h>
 #include <takatori/value/int.h>
+#include <takatori/value/octet.h>
 #include <takatori/value/primitive.h>
 #include <takatori/value/simple_value.h>
 #include <takatori/value/time_of_day.h>
@@ -70,6 +71,8 @@ inline static typename T::view_type value_of(
         fail_with_exception();
     } else if constexpr (std::is_same_v<T, takatori::value::character>) { //NOLINT
         return unsafe_downcast<takatori::value::character>(arg).get();
+    } else if constexpr (std::is_same_v<T, takatori::value::octet>) { //NOLINT
+        return unsafe_downcast<takatori::value::octet>(arg).get();
     } else if constexpr (std::is_same_v<T, takatori::value::decimal>) { //NOLINT
         return unsafe_downcast<takatori::value::decimal>(arg).get();
     } else if constexpr (std::is_same_v<T, takatori::value::date>) { //NOLINT

@@ -144,6 +144,22 @@ TEST_F(sql_temporal_types_test, ts_literal) {
     }
 }
 
+TEST_F(sql_temporal_types_test, ts_literal_with_system_offset) {
+    // regression testcase
+    // no offset is involved with "timestamp without time zone" and its literal
+    global::config_pool()->zone_offset(9*60);
+    execute_statement("create table t (c0 timestamp)");
+    execute_statement("INSERT INTO t VALUES (TIMESTAMP'2000-01-01 00:00:00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
+            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
+        )), result[0]);
+    }
+}
+
 TEST_F(sql_temporal_types_test, tstz_literal) {
     execute_statement("create table t (c0 timestamp with time zone)");
     execute_statement("INSERT INTO t VALUES (TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:00+09:00')");

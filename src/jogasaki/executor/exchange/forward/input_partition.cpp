@@ -45,10 +45,12 @@ input_partition::input_partition(
     context_(context)
 {}
 
-bool input_partition::write(accessor::record_ref record) {
+void input_partition::push(accessor::record_ref record) {
     initialize_lazy();
     records_->push(record);
-    return false;
+}
+bool input_partition::try_pop(accessor::record_ref& out) {
+    return records_->try_pop(out);
 }
 
 void input_partition::flush() {
@@ -62,6 +64,10 @@ void input_partition::initialize_lazy() {
             resource_for_varlen_data_.get(),
             info_->record_meta());
     }
+}
+
+std::atomic_bool& input_partition::active() noexcept {
+    return active_;
 }
 
 }  // namespace jogasaki::executor::exchange::forward

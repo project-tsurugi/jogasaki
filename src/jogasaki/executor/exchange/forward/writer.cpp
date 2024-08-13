@@ -42,7 +42,7 @@ writer::writer(
 
 bool writer::write(accessor::record_ref rec) {
     initialize_lazy();
-    partition_->write(rec);
+    partition_->push(rec);
     return true;
 }
 

@@ -62,17 +62,32 @@ public:
     );
 
     /**
-     * @brief write record to the input partition
-     * @param record the record reference to write
-     * @return whether flushing pointer table happens or not
+     * @brief push record to the input partition
+     * @details the record is copied to the internal memory resource
+     * @param record the record reference to push
      */
-    bool write(accessor::record_ref record);
+    void push(accessor::record_ref record);
+
+    /**
+     * @brief pop record from the input partition
+     * @details the record data is stored in the internal store and its reference is returned
+     * @param out filled with the result record reference
+     * @return true if the record is successfully popped, false if the record is not available
+     */
+    bool try_pop(accessor::record_ref& out);
 
     /**
      * @brief finish current pointer table
      * @details the current internal pointer table is finalized and next write() will create one.
      */
     void flush();
+
+    /**
+     * @brief flag if the partition is actively used and new records can be pushed by the writer
+     * @details this flag is to coordinate writer/reader that shares this object.
+     * If this is false, the reader can stop reading from this partition.
+     */
+    std::atomic_bool& active() noexcept;
 
 private:
 
@@ -82,6 +97,7 @@ private:
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};
     std::unique_ptr<data::fifo_record_store> records_{};
+    std::atomic_bool active_{true};
 
     void initialize_lazy();
 };

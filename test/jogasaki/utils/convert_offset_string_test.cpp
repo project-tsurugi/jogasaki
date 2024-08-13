@@ -43,7 +43,10 @@ TEST_F(convert_offset_string_test, basic) {
     EXPECT_EQ(0, convert(""));  // empty string means UTC
     EXPECT_EQ(540, convert("+09"));
     EXPECT_EQ(-540, convert("-09"));
+    EXPECT_EQ(540, convert("+0900"));
+    EXPECT_EQ(-540, convert("-0900"));
 
+    // not strict for ISO standard, but tsurugi accepts these cases
     EXPECT_EQ(0, convert("-00:00"));
     EXPECT_EQ(0, convert("-00"));
     EXPECT_EQ(0, convert("-0000"));
@@ -56,8 +59,6 @@ TEST_F(convert_offset_string_test, errornous) {
     EXPECT_TRUE(! convert_offset_string(" ", offset_min));
     EXPECT_TRUE(! convert_offset_string(" +09:00", offset_min));
     EXPECT_TRUE(! convert_offset_string("09:00", offset_min));
-    EXPECT_TRUE(! convert_offset_string("+0900", offset_min));
-    EXPECT_TRUE(! convert_offset_string("-0900", offset_min));
     EXPECT_TRUE(! convert_offset_string("z", offset_min));
 }
 }  // namespace jogasaki::utils

@@ -20,7 +20,7 @@
 #include <vector>
 
 #include <jogasaki/accessor/record_ref.h>
-#include <jogasaki/data/record_store.h>
+#include <jogasaki/data/fifo_record_store.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/exchange/forward/forward_info.h>
 #include <jogasaki/executor/exchange/shuffle/pointer_table.h>
@@ -54,9 +54,9 @@ public:
      * @param pointer_table_size the number of pointers that the pointer table can store (convenient for testing)
      */
     input_partition(
-        std::unique_ptr<memory::paged_memory_resource> resource_for_records,
-        std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
-        std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
+        std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records,
+        std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_ptr_tables,
+        std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data,
         std::shared_ptr<forward_info> info,
         request_context* context
     );
@@ -76,12 +76,12 @@ public:
 
 private:
 
-    std::unique_ptr<memory::paged_memory_resource> resource_for_records_{};
-    std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables_{};
-    std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data_{};
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records_{};
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_ptr_tables_{};
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data_{};
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};
-    std::unique_ptr<data::record_store> records_{};
+    std::unique_ptr<data::fifo_record_store> records_{};
 
     void initialize_lazy();
 };

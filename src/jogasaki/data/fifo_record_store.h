@@ -32,10 +32,9 @@ namespace jogasaki::data {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief auto-expanding container to store any number of record
+ * @brief FIFO auto-expanding container to store any number of record
  * @details This container can store any number of records, which are backed by paged memory resource.
- * No iterator is provided for the stored data. Reference for each record needs to be kept and managed
- * outside the container.
+ * The stored data can be popped in FIFO order. Only one producer and one consumer can push/pop the data at a time.
  * This container support variable length data such as text field, whose non-SSO data are backed by another paged
  * memory resource.
  */
@@ -43,6 +42,10 @@ class cache_align fifo_record_store {
 public:
     /// @brief type of record pointer
     using record_pointer = void*;
+
+    using checkpoint = memory::fifo_paged_memory_resource::checkpoint;
+
+    using queue_entry = std::pair<record_pointer, checkpoint>;
 
     /**
      * @brief create empty object
@@ -63,16 +66,7 @@ public:
     );
 
     /**
-     * @brief copy and store the record
-     * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
-     * this object unless it's nullptr.
-     * @param record source of the record added to this container
-     * @return pointer to the stored record
-     */
-    record_pointer append(accessor::record_ref record);
-
-    /**
-     * @brief copy and store the record
+     * @brief push the record by copying fields data
      * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
      * this object unless it's nullptr.
      * @param record source of the record added to this container
@@ -81,10 +75,9 @@ public:
     record_pointer push(accessor::record_ref record);
 
     /**
-     * @brief pop the record from the store
-     * For varlen data such as text, the data on the varlen buffer will be copied using varlen resource assigned to
-     * this object unless it's nullptr.
-     * @param out filled with the record popped from the container
+     * @brief try pop the record from the store
+     * For varlen data such as text, the data exists on the varlen resource assigned to this object unless it's nullptr.
+     * @param out filled with the record popped from the container. The record is accessible until the next pop.
      * @return true if the record is popped successfully, false if the container is empty
      */
     bool try_pop(accessor::record_ref& out);
@@ -102,12 +95,12 @@ public:
     [[nodiscard]] std::size_t count() const noexcept;
 
     /**
-     * @return whether the region is empty or not
+     * @return whether the container is empty or not
      */
     [[nodiscard]] bool empty() const noexcept;
 
     /**
-     * @brief reset store state except the state managed by memory resource
+     * @brief reset store state including the state managed by memory resource
      * @details To keep consistency, caller needs to reset or release appropriately (e.g. deallocate to some check point)
      * the memory resources passed to constructor when calling this function.
      */
@@ -134,9 +127,13 @@ private:
     memory::fifo_paged_memory_resource* varlen_resource_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
     accessor::record_copier copier_{};
-    std::size_t count_{};
+    std::atomic_size_t count_{};
     std::size_t original_record_size_{};
     std::size_t positive_record_size_{};
+    tbb::concurrent_queue<queue_entry> queue_{};
+    record_pointer prev_{};
+    checkpoint prev_cp_{};
+
 };
 
 } // namespace

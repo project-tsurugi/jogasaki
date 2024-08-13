@@ -32,9 +32,9 @@
 namespace jogasaki::executor::exchange::forward {
 
 input_partition::input_partition(
-    std::unique_ptr<memory::paged_memory_resource> resource_for_records,
-    std::unique_ptr<memory::paged_memory_resource> resource_for_ptr_tables,
-    std::unique_ptr<memory::paged_memory_resource> resource_for_varlen_data,
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records,
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_ptr_tables,
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data,
     std::shared_ptr<forward_info> info,
     request_context *context
 ) :
@@ -47,7 +47,7 @@ input_partition::input_partition(
 
 bool input_partition::write(accessor::record_ref record) {
     initialize_lazy();
-    records_->append(record);
+    records_->push(record);
     return false;
 }
 
@@ -57,7 +57,7 @@ void input_partition::flush() {
 
 void input_partition::initialize_lazy() {
     if (! records_) {
-        records_ = std::make_unique<data::record_store>(
+        records_ = std::make_unique<data::fifo_record_store>(
             resource_for_records_.get(),
             resource_for_varlen_data_.get(),
             info_->record_meta());

@@ -24,37 +24,50 @@
 
 namespace jogasaki::data {
 
-fifo_record_store::record_pointer fifo_record_store::append(accessor::record_ref record) {
-    auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
-    if (!p) std::abort();
-    copier_(p, original_record_size_, record);
-    ++count_;
-    return p;
-}
-
 fifo_record_store::record_pointer fifo_record_store::push(accessor::record_ref record) {
+    // this is spsc queue and only one thread call the function at a time
     auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
     if (!p) std::abort();
+    auto cp = varlen_resource_->get_checkpoint();
     copier_(p, original_record_size_, record);
+    queue_.push({p, cp});
     ++count_;
     return p;
 }
 
 bool fifo_record_store::try_pop(accessor::record_ref& out) {
-    auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
-    if (!p) std::abort();
-    copier_(p, original_record_size_, out);
-    ++count_;
-    return p;
+    // when next record is requested, the previous record can be deallocated
+    if(prev_) {
+        resource_->deallocate(prev_, positive_record_size_, meta_->record_alignment());
+        prev_ = nullptr;
+    }
+    if(prev_cp_.head_) {
+        varlen_resource_->deallocate_before(prev_cp_);
+        prev_cp_ = {};
+    }
+    queue_entry e{};
+    if(! queue_.try_pop(e)) {
+        return false;
+    }
+    record_pointer p{e.first};
+    prev_ = p;
+    prev_cp_ = e.second;
+    out = {p, positive_record_size_};
+    --count_;
+    return true;
 }
 
 fifo_record_store::record_pointer fifo_record_store::allocate_record() {
     auto* p = resource_->allocate(positive_record_size_, meta_->record_alignment());
     if (!p) std::abort();
+    auto cp = varlen_resource_->get_checkpoint();
+    queue_.push({p, cp});
     ++count_;
     return p;
 }
+
 std::size_t fifo_record_store::count() const noexcept {
+    // avoid using queue_.unsafe_size() which is unsafe
     return count_;
 }
 
@@ -63,6 +76,7 @@ bool fifo_record_store::empty() const noexcept {
 }
 
 void fifo_record_store::reset() noexcept {
+    queue_.clear();
     count_ = 0;
 }
 
@@ -94,4 +108,4 @@ accessor::record_copier& fifo_record_store::copier() noexcept {
     return copier_;
 }
 
-} // namespace
+}  // namespace jogasaki::data

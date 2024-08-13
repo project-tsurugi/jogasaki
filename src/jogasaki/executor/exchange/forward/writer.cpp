@@ -59,9 +59,9 @@ void writer::release() {
 void writer::initialize_lazy() {
     if (partition_) return;
     partition_ = std::make_unique<input_partition>(
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()),
+        std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
+        std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
+        std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
         info_,
         owner_->context()
     );

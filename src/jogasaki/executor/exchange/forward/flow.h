@@ -67,26 +67,15 @@ public:
 
     /**
      * @brief create new instance
-     * @param input_meta input record metadata
-     * @param key_indices indices for key fields
+     * @param info the forward exchange information
+     * @param context the request context
+     * @param owner the step that owns this flow
      */
     flow(
         std::shared_ptr<forward_info> info,
         request_context* context,
-        step* owner,
-        std::size_t downstream_partitions
+        step* owner
     );
-
-    /**
-     * @brief create new instance
-     * @param input_meta input record metadata
-     * @param key_indices indices for key fields
-     */
-    // flow(
-    //     maybe_shared_ptr<meta::record_meta> input_meta,
-    //     request_context* context,
-    //     step* owner
-    // );
 
     [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
@@ -107,7 +96,6 @@ private:
     std::vector<std::unique_ptr<forward::source>> sources_{};
     request_context* context_{};
     step* owner_{};
-    std::size_t downstream_partitions_{default_partitions};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

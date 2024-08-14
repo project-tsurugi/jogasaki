@@ -40,7 +40,6 @@ public:
     sink(sink&& other) noexcept = delete;
     sink& operator=(sink&& other) noexcept = delete;
     sink(
-        std::size_t downstream_partitions,
         std::shared_ptr<forward_info> info,
         request_context* context,
         std::shared_ptr<std::atomic_bool> active,
@@ -62,7 +61,6 @@ public:
     void deactivate() override;
 
 private:
-    std::size_t downstream_partitions_{default_partitions};
     std::shared_ptr<input_partition> partition_{};
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};

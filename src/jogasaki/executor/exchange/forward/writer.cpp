@@ -32,12 +32,10 @@
 namespace jogasaki::executor::exchange::forward {
 
 writer::writer(
-    std::size_t downstream_partitions,
     std::shared_ptr<forward_info> info,
     sink &owner,
     std::shared_ptr<std::atomic_size_t> write_count
 ) :
-    downstream_partitions_(downstream_partitions),
     info_(std::move(info)),
     owner_(std::addressof(owner)),
     write_count_(std::move(write_count))

@@ -29,13 +29,11 @@
 namespace jogasaki::executor::exchange::forward {
 
 sink::sink(
-    std::size_t downstream_partitions,
     std::shared_ptr<forward_info> info,
     request_context* context,
     std::shared_ptr<std::atomic_bool> active,
     std::shared_ptr<std::atomic_size_t> write_count
 ) :
-    downstream_partitions_(downstream_partitions),
     info_(std::move(info)),
     context_(context),
     active_(std::move(active)),
@@ -44,7 +42,7 @@ sink::sink(
 
 io::record_writer& sink::acquire_writer() {
     if (! writer_) {
-        writer_ = std::make_unique<forward::writer>(0, info_, *this, write_count_);
+        writer_ = std::make_unique<forward::writer>(info_, *this, write_count_);
         VLOG_LP(log_trace) << "acquire writer from sink:" << this << " writer:" << writer_.get();
     }
     return *writer_;

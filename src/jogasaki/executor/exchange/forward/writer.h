@@ -34,7 +34,6 @@ public:
     writer& operator=(writer&& other) noexcept = delete;
 
     writer(
-        std::size_t downstream_partitions,
         std::shared_ptr<forward_info> info,
         forward::sink& owner,
         std::shared_ptr<std::atomic_size_t> write_count
@@ -47,7 +46,6 @@ public:
     void release() override;
 
 private:
-    std::size_t downstream_partitions_{default_partitions};
     std::shared_ptr<input_partition> partition_{};
     std::shared_ptr<forward_info> info_{};
     sink* owner_{};

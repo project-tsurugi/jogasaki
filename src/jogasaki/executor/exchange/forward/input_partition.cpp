@@ -66,8 +66,4 @@ void input_partition::initialize_lazy() {
     }
 }
 
-std::atomic_bool& input_partition::active() noexcept {
-    return active_;
-}
-
 }  // namespace jogasaki::executor::exchange::forward

@@ -70,36 +70,15 @@ flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::
 
 flow::~flow() = default;
 
-// flow::flow() : info_(std::make_shared<forward_info>()) {}
 flow::flow(
     std::shared_ptr<forward_info> info,
     request_context* context,
-    step* owner, std::size_t downstream_partitions
+    step* owner
 ) :
     info_(std::move(info)),
     context_(context),
-    owner_(owner),
-    downstream_partitions_(downstream_partitions)
-{}
-
-/*
-flow::flow(
-    maybe_shared_ptr<meta::record_meta> input_meta,
-    request_context* context,
-    step* owner
-) :
-    input_meta_(std::move(input_meta)),
-    context_(context),
     owner_(owner)
-{
-    (void)context_;
-
-    // For testing purpose, setup sinks/sources automatically even if there is no input.
-    if (owner_->input_ports().empty()) {
-        (void)setup_partitions(default_partitions);
-    }
-}
-*/
+{}
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     tasks_.emplace_back(std::make_shared<exchange::task>(context_, owner_));
@@ -116,7 +95,7 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
         active_flags.emplace_back(std::make_shared<std::atomic_bool>(true));
     }
     for(std::size_t i=0; i < partitions; ++i) {
-        sinks_.emplace_back(std::make_unique<forward::sink>(0, info_, context_, active_flags[i], write_count));
+        sinks_.emplace_back(std::make_unique<forward::sink>(info_, context_, active_flags[i], write_count));
     }
     sources_.reserve(sources_.size() + partitions);
     for(std::size_t i=0; i < partitions; ++i) {

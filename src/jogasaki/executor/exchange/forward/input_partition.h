@@ -83,13 +83,6 @@ public:
     void flush();
 
     /**
-     * @brief flag if the partition is actively used and new records can be pushed by the writer
-     * @details this flag is to coordinate writer/reader that shares this object.
-     * If this is false, the reader can stop reading from this partition.
-     */
-    std::atomic_bool& active() noexcept;
-
-    /**
      * @return whether the container is empty or not
      */
     [[nodiscard]] bool empty() const noexcept {

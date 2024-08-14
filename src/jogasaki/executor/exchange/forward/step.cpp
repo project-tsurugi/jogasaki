@@ -56,11 +56,9 @@ step::step(
 {}
 
 void step::activate(request_context& rctx) {
-    auto* down = downstream(0);
-    auto downstream_partitions = down ? down->partitions() : default_partitions;
     data_flow_object(
         rctx,
-        std::make_unique<forward::flow>(info_, std::addressof(rctx), this, downstream_partitions)
+        std::make_unique<forward::flow>(info_, std::addressof(rctx), this)
     );
 }
 

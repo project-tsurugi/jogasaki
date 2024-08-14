@@ -26,6 +26,7 @@
 #include <takatori/util/reference_iterator.h>
 
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/exchange/forward/reader.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_reader.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
@@ -35,8 +36,10 @@
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/variable_order.h>
+#include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/validation.h>
 
 #include "context_helper.h"
@@ -89,7 +92,24 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
         ctx.reader_ = r.reader<io::record_reader>();
     }
     auto resource = ctx.varlen_resource();
-    while(ctx.reader_->next_record()) {
+
+    // upstream of take_flat is always forward exchange, so we can safely cast to forward::reader
+    auto& reader = static_cast<exchange::forward::reader&>(*ctx.reader_);
+    while(reader.active()) {
+        // keep running while reader is active, even if the record is not yet available, upstream may write new one soon
+        if(utils::request_cancel_enabled(request_cancel_kind::take_flat) && ctx.req_context()) {
+            auto res_src = ctx.req_context()->req_info().response_source();
+            if(res_src && res_src->check_cancel()) {
+                set_cancel_status(*ctx.req_context());
+                ctx.abort();
+                finish(context);
+                return {operation_status_kind::aborted};
+            }
+        }
+        if(! ctx.reader_->next_record()) {
+            _mm_pause();
+            continue;
+        }
         utils::checkpoint_holder cp{resource};
         auto source = ctx.reader_->get_record();
         for(auto &f : fields_) {

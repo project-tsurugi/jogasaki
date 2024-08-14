@@ -34,6 +34,7 @@ enum class request_cancel_kind : std::int32_t {
     group,
     take_cogroup,
     take_group,
+    take_flat,
     transaction_begin_wait,
     transaction_precommit,
     transaction_durable_wait,
@@ -55,6 +56,7 @@ enum class request_cancel_kind : std::int32_t {
         case kind::group: return "group"sv;
         case kind::take_cogroup: return "take_cogroup"sv;
         case kind::take_group: return "take_group"sv;
+        case kind::take_flat: return "take_flat"sv;
         case kind::transaction_begin_wait: return "transaction_begin_wait"sv;
         case kind::transaction_precommit: return "transaction_precommit"sv;
         case kind::transaction_durable_wait: return "transaction_durable_wait"sv;

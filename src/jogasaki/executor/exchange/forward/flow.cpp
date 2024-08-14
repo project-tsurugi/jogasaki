@@ -88,20 +88,17 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
 flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
     // additional sinks/sources for requested partitions
     sinks_.reserve(sinks_.size() + partitions);
-    std::vector<std::shared_ptr<std::atomic_bool>> active_flags{};
     std::vector<std::shared_ptr<input_partition>> shared_partitions{};
     std::shared_ptr<std::atomic_size_t> write_count{
         info_->limit().has_value() ? std::make_shared<std::atomic_size_t>(0) : nullptr
     };
-    active_flags.reserve(partitions);
     shared_partitions.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
-        active_flags.emplace_back(std::make_shared<std::atomic_bool>(true));
         shared_partitions.emplace_back(std::make_shared<input_partition>(info_, context_));
     }
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(
-            std::make_unique<forward::sink>(info_, context_, active_flags[i], write_count, shared_partitions[i])
+            std::make_unique<forward::sink>(info_, context_, write_count, shared_partitions[i])
         );
     }
     sources_.reserve(sources_.size() + partitions);
@@ -109,8 +106,7 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
         sources_.emplace_back(std::make_unique<forward::source>(
             info_,
             context_,
-            std::move(shared_partitions[i]),
-            std::move(active_flags[i])
+            std::move(shared_partitions[i])
         ));
     }
 

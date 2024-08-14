@@ -40,8 +40,7 @@ public:
     explicit source(
         std::shared_ptr<forward_info> info,
         request_context* context,
-        std::shared_ptr<input_partition> partion,
-        std::shared_ptr<std::atomic_bool> sink_active
+        std::shared_ptr<input_partition> partion
     );
     [[nodiscard]] io::reader_container acquire_reader() override;
 

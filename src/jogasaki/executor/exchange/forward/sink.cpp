@@ -31,13 +31,11 @@ namespace jogasaki::executor::exchange::forward {
 sink::sink(
     std::shared_ptr<forward_info> info,
     request_context* context,
-    std::shared_ptr<std::atomic_bool> active,
     std::shared_ptr<std::atomic_size_t> write_count,
     std::shared_ptr<input_partition> partition
 ) :
     info_(std::move(info)),
     context_(context),
-    active_(std::move(active)),
     write_count_(std::move(write_count)),
     partition_(std::move(partition))
 {}
@@ -69,8 +67,7 @@ request_context* sink::context() const noexcept {
 }
 
 void sink::deactivate() {
-    VLOG_LP(log_trace) << "sink deactivated sink:" << this << " atomic_bool:" << active_.get();
-    active_->store(false);
+    partition_->active().store(false);
 }
 
 }  // namespace jogasaki::executor::exchange::forward

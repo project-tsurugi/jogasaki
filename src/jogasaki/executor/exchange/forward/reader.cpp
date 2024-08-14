@@ -20,13 +20,8 @@
 
 namespace jogasaki::executor::exchange::forward {
 
-reader::reader(
-    std::shared_ptr<forward_info> info,
-    std::shared_ptr<input_partition> partition,
-    std::shared_ptr<std::atomic_bool> sink_active
-) :
+reader::reader(std::shared_ptr<forward_info> info, std::shared_ptr<input_partition> partition) :
     info_(std::move(info)),
-    partition_(std::move(partition)),
-    sink_active_(std::move(sink_active)) {}
+    partition_(std::move(partition)) {}
 
 }  // namespace jogasaki::executor::exchange::forward

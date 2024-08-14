@@ -102,6 +102,14 @@ public:
     [[nodiscard]] std::size_t count() const noexcept {
         return records_->count();
     }
+
+    /**
+     * @brief accessor to the active flag
+     * @return the reference to the active flag
+     */
+    [[nodiscard]] std::atomic_bool& active() noexcept {
+        return active_;
+    }
 private:
 
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_{};

@@ -42,7 +42,6 @@ public:
     sink(
         std::shared_ptr<forward_info> info,
         request_context* context,
-        std::shared_ptr<std::atomic_bool> active,
         std::shared_ptr<std::atomic_size_t> write_count,
         std::shared_ptr<input_partition> partition
     );

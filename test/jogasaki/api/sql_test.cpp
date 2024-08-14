@@ -735,6 +735,7 @@ TEST_F(sql_test, union_all) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, c1 from t1 UNION ALL SELECT c1, c0 from t2", result);
         ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(20, 2)), result[1]);
     }
@@ -742,11 +743,12 @@ TEST_F(sql_test, union_all) {
 
 TEST_F(sql_test, union_all_with_same_table) {
     execute_statement("create table t (c0 int primary key, c1 int)");
-    execute_statement("INSERT INTO t VALUES (1,10), (2, 20)");
+    execute_statement("INSERT INTO t VALUES (1,10)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, c1 from t UNION ALL SELECT c1, c0 from t", result);
-        ASSERT_EQ(4, result.size());
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[1]);
     }

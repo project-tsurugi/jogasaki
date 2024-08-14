@@ -80,6 +80,8 @@ public:
 
     [[nodiscard]] io::record_channel* channel() const noexcept;
 
+    void deactivate_writer(writer_index idx) override;
+
 private:
     request_context* request_context_{};
     std::size_t partition_{};

@@ -42,7 +42,8 @@ public:
     sink(
         std::size_t downstream_partitions,
         std::shared_ptr<forward_info> info,
-        request_context* context
+        request_context* context,
+        std::shared_ptr<std::atomic_bool> active
     );
 
     [[nodiscard]] io::record_writer& acquire_writer() override;
@@ -51,7 +52,13 @@ public:
 
     [[nodiscard]] std::shared_ptr<input_partition> const& partition();
 
+    void partition(std::shared_ptr<input_partition> arg) {
+        partition_ = std::move(arg);
+    }
+
     [[nodiscard]] request_context* context() const noexcept;
+
+    void deactivate() override;
 
 private:
     std::size_t downstream_partitions_{default_partitions};
@@ -59,6 +66,7 @@ private:
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};
     std::unique_ptr<forward::writer> writer_;
+    std::shared_ptr<std::atomic_bool> active_{std::make_shared<std::atomic_bool>(true)};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

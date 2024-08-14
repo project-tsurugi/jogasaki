@@ -89,6 +89,20 @@ public:
      */
     std::atomic_bool& active() noexcept;
 
+    /**
+     * @return whether the container is empty or not
+     */
+    [[nodiscard]] bool empty() const noexcept {
+        return records_->empty();
+    }
+
+    /**
+     * @brief getter for the number of data count added to this object
+     * @return the number of records
+     */
+    [[nodiscard]] std::size_t count() const noexcept {
+        return records_->count();
+    }
 private:
 
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records_{};

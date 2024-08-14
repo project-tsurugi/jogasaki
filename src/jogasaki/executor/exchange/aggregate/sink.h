@@ -55,6 +55,8 @@ public:
     [[nodiscard]] std::vector<std::unique_ptr<input_partition>>& input_partitions();
 
     [[nodiscard]] request_context* context() const noexcept;
+
+    void deactivate() override;
 private:
     std::size_t downstream_partitions_{default_partitions};
     std::vector<std::unique_ptr<input_partition>> partitions_{};

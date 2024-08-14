@@ -634,8 +634,6 @@ TEST_F(sql_test, select_null) {
 TEST_F(sql_test, unsupported_features) {
     test_stmt_err("select 1", error_code::unsupported_compiler_feature_exception);
     test_stmt_err("values (1)", error_code::unsupported_compiler_feature_exception);
-    execute_statement("create table t (C0 int primary key)");
-    test_stmt_err("SELECT * FROM t LIMIT 1", error_code::unsupported_compiler_feature_exception);
 }
 
 TEST_F(sql_test, limit) {
@@ -704,6 +702,12 @@ TEST_F(sql_test, having_witout_group_by) {
         execute_query("SELECT sum(c0), sum(c1) FROM t having sum(c0) < 0", result);
         ASSERT_EQ(0, result.size());
     }
+}
+
+TEST_F(sql_test, limit_without_order_by) {
+    execute_statement("create table t (C0 int primary key)");
+    execute_statement("insert into t values (0), (1)");
+    test_stmt_err("SELECT * FROM t LIMIT 1", error_code::unsupported_compiler_feature_exception);
 }
 
 TEST_F(sql_test, union_all) {

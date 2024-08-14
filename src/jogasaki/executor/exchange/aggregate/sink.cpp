@@ -58,4 +58,8 @@ request_context* sink::context() const noexcept {
     return context_;
 }
 
+void sink::deactivate() {
+    // no-op for aggregate
 }
+
+}  // namespace jogasaki::executor::exchange::aggregate

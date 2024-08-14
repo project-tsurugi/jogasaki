@@ -59,4 +59,8 @@ request_context* sink::context() const noexcept {
     return context_;
 }
 
+void sink::deactivate() {
+    // no-op
 }
+
+}  // namespace jogasaki::executor::exchange::mock::aggregate

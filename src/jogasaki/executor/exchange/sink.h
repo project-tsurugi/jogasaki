@@ -31,6 +31,8 @@ public:
     sink& operator=(sink&& other) noexcept = delete;
 
     [[nodiscard]] virtual io::record_writer& acquire_writer() = 0;
+
+    virtual void deactivate() = 0;
 };
 
 }

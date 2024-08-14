@@ -73,6 +73,22 @@ io::reader_container task_context::reader(task_context::reader_index idx) {
     std::abort();
 }
 
+void task_context::deactivate_writer(writer_index idx) {
+    auto& flow = io_exchange_map_->output_at(idx)->data_flow_object(*request_context_);
+    using step_kind = model::step_kind;
+    switch(flow.kind()) {
+        case step_kind::group:
+            return unsafe_downcast<exchange::group::flow>(flow).sinks()[partition_].deactivate(); //NOLINT
+        case step_kind::aggregate:
+            return unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[partition_].deactivate(); //NOLINT
+        case step_kind::forward:
+            return unsafe_downcast<exchange::forward::flow>(flow).sinks()[partition_].deactivate(); //NOLINT
+        default:
+            fail_with_exception();
+    }
+    std::abort();
+}
+
 io::record_writer* task_context::downstream_writer(task_context::writer_index idx) {
     auto& flow = io_exchange_map_->output_at(idx)->data_flow_object(*request_context_);
     using step_kind = model::step_kind;
@@ -83,7 +99,6 @@ io::record_writer* task_context::downstream_writer(task_context::writer_index id
             return &unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
         case step_kind::forward:
             return &unsafe_downcast<exchange::forward::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
-            //TODO other exchanges
         default:
             fail_with_exception();
     }

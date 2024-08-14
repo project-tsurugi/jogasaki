@@ -104,14 +104,19 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
 }
 
 flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
+    // additional sinks/sources for requested partitions
     sinks_.reserve(sinks_.size() + partitions);
+    std::vector<std::shared_ptr<std::atomic_bool>> active_flags{};
+    active_flags.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
-        sinks_.emplace_back(std::make_unique<forward::sink>());
+        active_flags.emplace_back(std::make_shared<std::atomic_bool>(true));
     }
-
+    for(std::size_t i=0; i < partitions; ++i) {
+        sinks_.emplace_back(std::make_unique<forward::sink>(0, info_, context_, active_flags[i]));
+    }
     sources_.reserve(sources_.size() + partitions);
     for(std::size_t i=0; i < partitions; ++i) {
-        sources_.emplace_back(std::make_unique<forward::source>());
+        sources_.emplace_back(std::make_unique<forward::source>(info_, context_, sinks_[i]->partition(), active_flags[i]));
     }
 
     return {impl::cast_to_exchange_sink(sinks_),
@@ -125,7 +130,6 @@ flow::sink_list_view flow::sinks() {
 flow::source_list_view flow::sources() {
     return impl::cast_to_exchange_source(sources_);
 }
-
 
 class request_context* flow::context() const noexcept {
     return context_;

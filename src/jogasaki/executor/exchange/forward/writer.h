@@ -36,7 +36,6 @@ public:
     writer(
         std::size_t downstream_partitions,
         std::shared_ptr<forward_info> info,
-        std::shared_ptr<input_partition> partition,
         forward::sink& owner
     );
 

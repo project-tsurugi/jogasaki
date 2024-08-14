@@ -33,28 +33,48 @@ public:
     reader(reader&& other) noexcept = delete;
     reader& operator=(reader&& other) noexcept = delete;
 
-    reader(std::shared_ptr<forward_info> info, std::shared_ptr<input_partition> partition);
+    reader(
+        std::shared_ptr<forward_info> info,
+        std::shared_ptr<input_partition> const& partition,
+        std::shared_ptr<std::atomic_bool> sink_active
+    );
 
     [[nodiscard]] bool available() const override {
-        return false;
+        return partition() && ! partition()->empty();
     }
 
     [[nodiscard]] bool next_record() override {
-        return false;
+        if(! partition()) {
+            return false;
+        }
+        return partition()->try_pop(current_record_);
     }
 
     [[nodiscard]] accessor::record_ref get_record() const override {
-        return {};
+        return current_record_;
     }
 
     void release() override {
-        //TODO
+        // no-op
+    }
+
+    [[nodiscard]] bool active() const noexcept {
+        return sink_active_->load(std::memory_order_acquire);
+    }
+
+    [[nodiscard]] std::shared_ptr<input_partition> const& partition() const noexcept {
+        return *partition_ptr_;
+    }
+
+    [[nodiscard]] std::shared_ptr<forward_info> const& info() const noexcept {
+        return info_;
     }
 
 private:
-
     std::shared_ptr<forward_info> info_{};
-    std::shared_ptr<input_partition> partition_{};
+    std::shared_ptr<input_partition> const* partition_ptr_{};
+    std::shared_ptr<std::atomic_bool> sink_active_{};
+    accessor::record_ref current_record_{};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

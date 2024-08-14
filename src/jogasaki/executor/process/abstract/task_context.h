@@ -87,6 +87,14 @@ public:
     [[nodiscard]] virtual io::record_writer* downstream_writer(writer_index idx) = 0;
 
     /**
+     * @brief declare end of writing
+     * @details this is to declare there will be no acquire/write happen on the writer so that the downstream operation
+     * that waits for in-coming written records can proceed
+     * @param idx the writer's index, which corresponds to the index of output from the process step
+     */
+    virtual void deactivate_writer(writer_index idx) = 0;
+
+    /**
      * @brief accessor to external writer (e.g. one writing out record from Emit)
      * @details object in the "acquired" state will be borrowed corresponding to the given index.
      * The callers are responsible to call release() of the object when they finish using it.

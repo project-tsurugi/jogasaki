@@ -31,11 +31,9 @@ namespace jogasaki::executor::exchange::forward {
 writer::writer(
     std::size_t downstream_partitions,
     std::shared_ptr<forward_info> info,
-    std::shared_ptr<input_partition> partition,
     sink &owner
 ) :
     downstream_partitions_(downstream_partitions),
-    partition_(std::move(partition)),
     info_(std::move(info)),
     owner_(std::addressof(owner))
 {}
@@ -58,13 +56,14 @@ void writer::release() {
 
 void writer::initialize_lazy() {
     if (partition_) return;
-    partition_ = std::make_unique<input_partition>(
+    partition_ = std::make_shared<input_partition>(
         std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
         std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
         std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
         info_,
         owner_->context()
     );
+    owner_->partition(partition_);
 }
 
 }  // namespace jogasaki::executor::exchange::forward

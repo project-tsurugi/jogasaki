@@ -27,16 +27,18 @@ namespace jogasaki::executor::exchange::forward {
 sink::sink(
     std::size_t downstream_partitions,
     std::shared_ptr<forward_info> info,
-    request_context* context
+    request_context* context,
+    std::shared_ptr<std::atomic_bool> active
 ) :
     downstream_partitions_(downstream_partitions),
     info_(std::move(info)),
-    context_(context)
+    context_(context),
+    active_(std::move(active))
 {}
 
 io::record_writer& sink::acquire_writer() {
     if (! writer_) {
-        writer_ = std::make_unique<forward::writer>();
+        writer_ = std::make_unique<forward::writer>(0, info_, *this);
     }
     return *writer_;
 }
@@ -46,13 +48,21 @@ void sink::release_writer(io::record_writer& writer) {
         fail_with_exception();
     }
     writer_.reset();
+
+    // after releasing the writer, sink is no longer active
+    active_->store(false);
 }
+
 std::shared_ptr<input_partition> const& sink::partition() {
     return partition_;
 }
 
 request_context* sink::context() const noexcept {
     return context_;
+}
+
+void sink::deactivate() {
+    active_->store(false);
 }
 
 }  // namespace jogasaki::executor::exchange::forward

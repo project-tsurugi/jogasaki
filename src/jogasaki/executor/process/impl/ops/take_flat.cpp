@@ -19,12 +19,15 @@
 #include <utility>
 #include <vector>
 #include <boost/assert.hpp>
+#include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/infect_qualifier.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/exchange/forward/reader.h>
 #include <jogasaki/executor/io/reader_container.h>
@@ -95,42 +98,46 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
 
     // upstream of take_flat is always forward exchange, so we can safely cast to forward::reader
     auto& reader = static_cast<exchange::forward::reader&>(*ctx.reader_);
-    while(reader.active()) {
-        // keep running while reader is active, even if the record is not yet available, upstream may write new one soon
-        if(utils::request_cancel_enabled(request_cancel_kind::take_flat) && ctx.req_context()) {
-            auto res_src = ctx.req_context()->req_info().response_source();
-            if(res_src && res_src->check_cancel()) {
-                set_cancel_status(*ctx.req_context());
-                ctx.abort();
-                finish(context);
-                return {operation_status_kind::aborted};
+    while(true) {
+        // even if reader is not active loop next_record through all records and check is_active later
+        auto is_active = reader.active();
+        while(ctx.reader_->next_record()) {
+            if(utils::request_cancel_enabled(request_cancel_kind::take_flat) && ctx.req_context()) {
+                auto res_src = ctx.req_context()->req_info().response_source();
+                if(res_src && res_src->check_cancel()) {
+                    set_cancel_status(*ctx.req_context());
+                    ctx.abort();
+                    finish(context);
+                    return {operation_status_kind::aborted};
+                }
+            }
+            utils::checkpoint_holder cp{resource};
+            auto source = ctx.reader_->get_record();
+            for(auto &f : fields_) {
+                utils::copy_nullable_field(
+                    f.type_,
+                    target,
+                    f.target_offset_,
+                    f.target_nullity_offset_,
+                    source,
+                    f.source_offset_,
+                    f.source_nullity_offset_,
+                    resource
+                );
+            }
+            if (downstream_) {
+                if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                    ctx.abort();
+                    finish(context);
+                    return {operation_status_kind::aborted};
+                }
             }
         }
-        if(! ctx.reader_->next_record()) {
-            _mm_pause();
-            continue;
+        if(! is_active) {
+            break;
         }
-        utils::checkpoint_holder cp{resource};
-        auto source = ctx.reader_->get_record();
-        for(auto &f : fields_) {
-            utils::copy_nullable_field(
-                f.type_,
-                target,
-                f.target_offset_,
-                f.target_nullity_offset_,
-                source,
-                f.source_offset_,
-                f.source_nullity_offset_,
-                resource
-            );
-        }
-        if (downstream_) {
-            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
-                ctx.abort();
-                finish(context);
-                return {operation_status_kind::aborted};
-            }
-        }
+        // keep running while reader is active even if the record is not available right now,
+        // expecting upstream writes new one soon
     }
     finish(context);
     return {};

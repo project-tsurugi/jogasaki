@@ -59,7 +59,7 @@ public:
     }
 
     [[nodiscard]] bool active() const noexcept {
-        return sink_active_->load(std::memory_order_acquire);
+        return sink_active_->load();
     }
 
     [[nodiscard]] std::shared_ptr<input_partition> const& partition() const noexcept {

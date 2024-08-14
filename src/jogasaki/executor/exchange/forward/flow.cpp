@@ -18,10 +18,13 @@
 #include <algorithm>
 #include <utility>
 #include <vector>
+#include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/universal_extractor.h>
 
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/exchange/flow.h>
 #include <jogasaki/executor/exchange/forward/reader.h>
@@ -99,7 +102,7 @@ flow::flow(
 */
 
 takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
-    // no tasks for forward
+    tasks_.emplace_back(std::make_shared<exchange::task>(context_, owner_));
     return tasks_;
 }
 
@@ -118,6 +121,8 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
     for(std::size_t i=0; i < partitions; ++i) {
         sources_.emplace_back(std::make_unique<forward::source>(info_, context_, sinks_[i]->partition(), active_flags[i]));
     }
+
+    VLOG_LP(log_trace) << "forward exchange partitions:" << partitions << " sinks:" << sinks_.size() << " sources:" << sources_.size();
 
     return {impl::cast_to_exchange_sink(sinks_),
             impl::cast_to_exchange_source(sources_)};

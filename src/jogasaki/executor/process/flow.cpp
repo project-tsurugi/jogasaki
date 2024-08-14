@@ -61,6 +61,7 @@ std::size_t flow::check_if_empty_input_from_shuffle() {
     auto& exchange_map = step_->io_exchange_map();
     bool empty = true;
     bool shuffle_input = true;
+    // FIXME when there is no exchange input, empty_input_from_shuffle_ becomes 1
     for(std::size_t i=0, n=exchange_map->input_count(); i < n; ++i) {
         if(auto* flow = dynamic_cast<executor::exchange::shuffle::flow*>(&exchange_map->input_at(i)->data_flow_object(*context_)); flow != nullptr) {
             if (! flow->info().empty_input()) {
@@ -70,6 +71,11 @@ std::size_t flow::check_if_empty_input_from_shuffle() {
         } else {
             //other exchanges
             shuffle_input = false;
+            // if forward, downstream partition must be same as upstream partitions
+            if(auto* flow = dynamic_cast<executor::exchange::forward::flow*>(&exchange_map->input_at(i)->data_flow_object(*context_)); flow != nullptr) {
+                // for now, at most one input forward exchange exists
+                return flow->sinks().size();
+            }
             break;
         }
     }
@@ -98,13 +104,18 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         auto& emit = unsafe_downcast<impl::ops::emit>(*external_output);
         ch->meta(emit.meta());
     }
-    contexts.reserve(partitions);
-    for (std::size_t i=0; i < partitions; ++i) {
-        contexts.emplace_back(create_task_context(i, operators));
-    }
+    std::size_t sink_count = 0;
     auto& exchange_map = step_->io_exchange_map();
     for(std::size_t i=0, n=exchange_map->output_count(); i < n; ++i) {
-        (void)dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object(*context_)).setup_partitions(partitions);
+        auto [sinks, sources] =
+            dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object(*context_))
+                .setup_partitions(partitions);
+        sink_count = sinks.size() - partitions;
+    }
+
+    contexts.reserve(partitions);
+    for (std::size_t i=0; i < partitions; ++i) {
+        contexts.emplace_back(create_task_context(sink_count + i, operators));
     }
 
     auto& d = info_->details();

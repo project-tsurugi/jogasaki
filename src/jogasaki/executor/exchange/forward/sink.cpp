@@ -15,7 +15,11 @@
  */
 #include "sink.h"
 
+#include <glog/logging.h>
+
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 
 #include "forward_info.h"
@@ -39,6 +43,7 @@ sink::sink(
 io::record_writer& sink::acquire_writer() {
     if (! writer_) {
         writer_ = std::make_unique<forward::writer>(0, info_, *this);
+        VLOG_LP(log_trace) << "acquire writer from sink:" << this << " writer:" << writer_.get();
     }
     return *writer_;
 }
@@ -50,7 +55,7 @@ void sink::release_writer(io::record_writer& writer) {
     writer_.reset();
 
     // after releasing the writer, sink is no longer active
-    active_->store(false);
+    deactivate();
 }
 
 std::shared_ptr<input_partition> const& sink::partition() {
@@ -62,6 +67,7 @@ request_context* sink::context() const noexcept {
 }
 
 void sink::deactivate() {
+    VLOG_LP(log_trace) << "sink deactivated sink:" << this << " atomic_bool:" << active_.get();
     active_->store(false);
 }
 

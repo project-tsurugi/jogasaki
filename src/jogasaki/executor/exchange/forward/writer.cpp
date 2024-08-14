@@ -16,8 +16,11 @@
 #include "writer.h"
 
 #include <utility>
+#include <glog/logging.h>
 
 #include <jogasaki/executor/global.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 
 #include "forward_info.h"
@@ -51,6 +54,7 @@ void writer::flush() {
 }
 
 void writer::release() {
+    VLOG_LP(log_trace) << "writer released " << this;
     owner_->release_writer(*this);
 }
 

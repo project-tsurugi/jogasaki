@@ -35,7 +35,7 @@ public:
 
     reader(
         std::shared_ptr<forward_info> info,
-        std::shared_ptr<input_partition> const& partition,
+        std::shared_ptr<input_partition> partition,
         std::shared_ptr<std::atomic_bool> sink_active
     );
 
@@ -63,7 +63,7 @@ public:
     }
 
     [[nodiscard]] std::shared_ptr<input_partition> const& partition() const noexcept {
-        return *partition_ptr_;
+        return partition_;
     }
 
     [[nodiscard]] std::shared_ptr<forward_info> const& info() const noexcept {
@@ -72,7 +72,7 @@ public:
 
 private:
     std::shared_ptr<forward_info> info_{};
-    std::shared_ptr<input_partition> const* partition_ptr_{};
+    std::shared_ptr<input_partition> partition_{};
     std::shared_ptr<std::atomic_bool> sink_active_{};
     accessor::record_ref current_record_{};
 };

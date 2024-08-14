@@ -46,16 +46,22 @@ public:
 
     /**
      * @brief create new instance
+     * @param info the forward information
+     * @param context the request context
+     */
+    input_partition(
+        std::shared_ptr<forward_info> info,
+        request_context* context
+    );
+    /**
+     * @brief create new instance
      * @param resource_for_records the memory resource to store records
-     * @param resource_for_ptr_tables the memory resource backing pointer tables
      * @param resource_for_varlen_data the memory resource storing varlen data
      * @param info the forward information
      * @param context the request context
-     * @param pointer_table_size the number of pointers that the pointer table can store (convenient for testing)
      */
     input_partition(
         std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records,
-        std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_ptr_tables,
         std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data,
         std::shared_ptr<forward_info> info,
         request_context* context
@@ -99,7 +105,6 @@ public:
 private:
 
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records_{};
-    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_ptr_tables_{};
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data_{};
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};

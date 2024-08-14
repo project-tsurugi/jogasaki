@@ -34,11 +34,13 @@ namespace jogasaki::executor::exchange::forward {
 writer::writer(
     std::shared_ptr<forward_info> info,
     sink &owner,
-    std::shared_ptr<std::atomic_size_t> write_count
+    std::shared_ptr<std::atomic_size_t> write_count,
+    std::shared_ptr<input_partition> partition
 ) :
     info_(std::move(info)),
     owner_(std::addressof(owner)),
-    write_count_(std::move(write_count))
+    write_count_(std::move(write_count)),
+    partition_(std::move(partition))
 {}
 
 bool writer::write(accessor::record_ref rec) {
@@ -51,32 +53,17 @@ bool writer::write(accessor::record_ref rec) {
             }
         } while(! write_count_->compare_exchange_weak(cnt, cnt+1));
     }
-    initialize_lazy();
     partition_->push(rec);
     return true;
 }
 
 void writer::flush() {
-    if (partition_) {
-        partition_->flush();
-    }
+    partition_->flush();
 }
 
 void writer::release() {
     VLOG_LP(log_trace) << "writer released " << this;
     owner_->release_writer(*this);
-}
-
-void writer::initialize_lazy() {
-    if (partition_) return;
-    partition_ = std::make_shared<input_partition>(
-        std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
-        std::make_unique<memory::fifo_paged_memory_resource>(&global::page_pool()),
-        info_,
-        owner_->context()
-    );
-    owner_->partition(partition_);
 }
 
 }  // namespace jogasaki::executor::exchange::forward

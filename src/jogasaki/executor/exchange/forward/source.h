@@ -40,7 +40,7 @@ public:
     explicit source(
         std::shared_ptr<forward_info> info,
         request_context* context,
-        std::shared_ptr<input_partition> const& partion,
+        std::shared_ptr<input_partition> partion,
         std::shared_ptr<std::atomic_bool> sink_active
     );
     [[nodiscard]] io::reader_container acquire_reader() override;
@@ -50,7 +50,7 @@ private:
     std::unique_ptr<io::record_reader> reader_;
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};
-    std::shared_ptr<input_partition> const* partition_ptr_{};
+    std::shared_ptr<input_partition> partition_{};
     std::shared_ptr<std::atomic_bool> sink_active_{};
 };
 

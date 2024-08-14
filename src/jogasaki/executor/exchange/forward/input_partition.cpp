@@ -32,14 +32,20 @@
 namespace jogasaki::executor::exchange::forward {
 
 input_partition::input_partition(
+    std::shared_ptr<forward_info> info,
+    request_context *context
+) :
+    info_(std::move(info)),
+    context_(context)
+{}
+
+input_partition::input_partition(
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records,
-    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_ptr_tables,
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data,
     std::shared_ptr<forward_info> info,
     request_context *context
 ) :
     resource_for_records_(std::move(resource_for_records)),
-    resource_for_ptr_tables_(std::move(resource_for_ptr_tables)),
     resource_for_varlen_data_(std::move(resource_for_varlen_data)),
     info_(std::move(info)),
     context_(context)
@@ -50,6 +56,7 @@ void input_partition::push(accessor::record_ref record) {
     records_->push(record);
 }
 bool input_partition::try_pop(accessor::record_ref& out) {
+    initialize_lazy();
     return records_->try_pop(out);
 }
 
@@ -58,6 +65,14 @@ void input_partition::flush() {
 }
 
 void input_partition::initialize_lazy() {
+    if (! resource_for_records_) {
+        resource_for_records_ =
+            std::make_unique<memory::fifo_paged_memory_resource>(std::addressof(global::page_pool()));
+    }
+    if (! resource_for_varlen_data_) {
+        resource_for_varlen_data_ =
+            std::make_unique<memory::fifo_paged_memory_resource>(std::addressof(global::page_pool()));
+    }
     if (! records_) {
         records_ = std::make_unique<data::fifo_record_store>(
             resource_for_records_.get(),

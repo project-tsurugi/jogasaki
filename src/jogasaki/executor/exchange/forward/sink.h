@@ -43,7 +43,8 @@ public:
         std::shared_ptr<forward_info> info,
         request_context* context,
         std::shared_ptr<std::atomic_bool> active,
-        std::shared_ptr<std::atomic_size_t> write_count
+        std::shared_ptr<std::atomic_size_t> write_count,
+        std::shared_ptr<input_partition> partition
     );
 
     [[nodiscard]] io::record_writer& acquire_writer() override;
@@ -61,12 +62,12 @@ public:
     void deactivate() override;
 
 private:
-    std::shared_ptr<input_partition> partition_{};
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};
     std::unique_ptr<forward::writer> writer_;
     std::shared_ptr<std::atomic_bool> active_{std::make_shared<std::atomic_bool>(true)};
     std::shared_ptr<std::atomic_size_t> write_count_{};
+    std::shared_ptr<input_partition> partition_{};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

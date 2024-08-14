@@ -36,7 +36,8 @@ public:
     writer(
         std::shared_ptr<forward_info> info,
         forward::sink& owner,
-        std::shared_ptr<std::atomic_size_t> write_count
+        std::shared_ptr<std::atomic_size_t> write_count,
+        std::shared_ptr<input_partition> partition
     );
 
     bool write(accessor::record_ref rec) override;
@@ -46,12 +47,10 @@ public:
     void release() override;
 
 private:
-    std::shared_ptr<input_partition> partition_{};
     std::shared_ptr<forward_info> info_{};
     sink* owner_{};
     std::shared_ptr<std::atomic_size_t> write_count_{};
-
-    void initialize_lazy();
+    std::shared_ptr<input_partition> partition_{};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

@@ -26,18 +26,18 @@ source::~source() = default;
 source::source(
     std::shared_ptr<forward_info> info,
     request_context* context,
-    std::shared_ptr<input_partition> const& partition,
+    std::shared_ptr<input_partition> partition,
     std::shared_ptr<std::atomic_bool> sink_active
 ) :
     info_(std::move(info)),
     context_(context),
-    partition_ptr_(std::addressof(partition)),
+    partition_(std::move(partition)),
     sink_active_(std::move(sink_active))
 {}
 
 io::reader_container source::acquire_reader() {
     if (! reader_) {
-        reader_ = std::make_unique<reader>(info_, *partition_ptr_, sink_active_);
+        reader_ = std::make_unique<reader>(info_, partition_, sink_active_);
     }
     return io::reader_container{reader_.get()};
 }

@@ -568,6 +568,7 @@ status prepare(
 //        yugawara::runtime_feature::broadcast_exchange,
         yugawara::runtime_feature::aggregate_exchange,
 //        yugawara::runtime_feature::broadcast_join_scan,
+        yugawara::runtime_feature::always_inline_scalar_local_variables,
     };
 
     if(cfg && cfg->enable_index_join()) {

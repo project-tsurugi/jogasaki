@@ -110,12 +110,13 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
     // additional sinks/sources for requested partitions
     sinks_.reserve(sinks_.size() + partitions);
     std::vector<std::shared_ptr<std::atomic_bool>> active_flags{};
+    std::shared_ptr<std::atomic_size_t> write_count{info_->limit().has_value() ? std::make_shared<std::atomic_size_t>(0) : nullptr};
     active_flags.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         active_flags.emplace_back(std::make_shared<std::atomic_bool>(true));
     }
     for(std::size_t i=0; i < partitions; ++i) {
-        sinks_.emplace_back(std::make_unique<forward::sink>(0, info_, context_, active_flags[i]));
+        sinks_.emplace_back(std::make_unique<forward::sink>(0, info_, context_, active_flags[i], write_count));
     }
     sources_.reserve(sources_.size() + partitions);
     for(std::size_t i=0; i < partitions; ++i) {

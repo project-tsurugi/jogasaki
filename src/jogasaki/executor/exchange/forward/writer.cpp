@@ -34,14 +34,25 @@ namespace jogasaki::executor::exchange::forward {
 writer::writer(
     std::size_t downstream_partitions,
     std::shared_ptr<forward_info> info,
-    sink &owner
+    sink &owner,
+    std::shared_ptr<std::atomic_size_t> write_count
 ) :
     downstream_partitions_(downstream_partitions),
     info_(std::move(info)),
-    owner_(std::addressof(owner))
+    owner_(std::addressof(owner)),
+    write_count_(std::move(write_count))
 {}
 
 bool writer::write(accessor::record_ref rec) {
+    if(write_count_ && info_->limit().has_value()) {
+        auto cnt = write_count_->load();
+        auto limit = info_->limit().value();
+        do {
+            if(cnt >= limit) {
+                return true;
+            }
+        } while(! write_count_->compare_exchange_weak(cnt, cnt+1));
+    }
     initialize_lazy();
     partition_->push(rec);
     return true;

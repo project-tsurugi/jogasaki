@@ -36,7 +36,8 @@ public:
     writer(
         std::size_t downstream_partitions,
         std::shared_ptr<forward_info> info,
-        forward::sink& owner
+        forward::sink& owner,
+        std::shared_ptr<std::atomic_size_t> write_count
     );
 
     bool write(accessor::record_ref rec) override;
@@ -50,6 +51,7 @@ private:
     std::shared_ptr<input_partition> partition_{};
     std::shared_ptr<forward_info> info_{};
     sink* owner_{};
+    std::shared_ptr<std::atomic_size_t> write_count_{};
 
     void initialize_lazy();
 };

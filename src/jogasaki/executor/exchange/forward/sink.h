@@ -43,7 +43,8 @@ public:
         std::size_t downstream_partitions,
         std::shared_ptr<forward_info> info,
         request_context* context,
-        std::shared_ptr<std::atomic_bool> active
+        std::shared_ptr<std::atomic_bool> active,
+        std::shared_ptr<std::atomic_size_t> write_count
     );
 
     [[nodiscard]] io::record_writer& acquire_writer() override;
@@ -67,6 +68,7 @@ private:
     request_context* context_{};
     std::unique_ptr<forward::writer> writer_;
     std::shared_ptr<std::atomic_bool> active_{std::make_shared<std::atomic_bool>(true)};
+    std::shared_ptr<std::atomic_size_t> write_count_{};
 };
 
 }  // namespace jogasaki::executor::exchange::forward

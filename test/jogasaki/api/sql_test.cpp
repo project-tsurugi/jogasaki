@@ -709,9 +709,20 @@ TEST_F(sql_test, limit_without_order_by) {
     execute_statement("insert into t values (10), (10), (10)");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM t LIMIT 1", result);
-        ASSERT_EQ(1, result.size());
+        execute_query("SELECT * FROM t LIMIT 2", result);
+        ASSERT_EQ(2, result.size());
         EXPECT_EQ((create_nullable_record<kind::int4>(10)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(10)), result[1]);
+    }
+}
+
+TEST_F(sql_test, limit_without_order_by_zero) {
+    execute_statement("create table t (C0 int)");
+    execute_statement("insert into t values (10), (10), (10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t LIMIT 0", result);
+        ASSERT_EQ(0, result.size());
     }
 }
 

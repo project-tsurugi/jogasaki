@@ -24,4 +24,32 @@ reader::reader(std::shared_ptr<forward_info> info, std::shared_ptr<input_partiti
     info_(std::move(info)),
     partition_(std::move(partition)) {}
 
+bool reader::available() const {
+    return ! partition_->empty();
+}
+
+bool reader::next_record() {
+    return partition_->try_pop(current_record_);
+}
+
+accessor::record_ref reader::get_record() const {
+    return current_record_;
+}
+
+void reader::release() {
+    // no-op
+}
+
+bool reader::active() const noexcept {
+    return partition_->active().load();
+}
+
+std::shared_ptr<input_partition> const& reader::partition() const noexcept {
+    return partition_;
+}
+
+std::shared_ptr<forward_info> const& reader::info() const noexcept {
+    return info_;
+}
+
 }  // namespace jogasaki::executor::exchange::forward

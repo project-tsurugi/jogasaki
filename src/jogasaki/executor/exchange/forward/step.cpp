@@ -62,16 +62,12 @@ void step::activate(request_context& rctx) {
     );
 }
 
-process::step *step::downstream(std::size_t index) const noexcept {
-    if (output_ports().empty()) return nullptr;
-    if (output_ports()[0]->opposites().size() <= index) return nullptr;
-    return dynamic_cast<process::step*>(output_ports()[0]->opposites()[index]->owner());
+meta::variable_order const& step::output_order() const noexcept {
+    return exchange::step::input_order();
 }
 
-process::step *step::upstream(std::size_t index) const noexcept {
-    if (input_ports().empty()) return nullptr;
-    if (input_ports()[0]->opposites().size() <= index) return nullptr;
-    return dynamic_cast<process::step*>(input_ports()[0]->opposites()[index]->owner());
+maybe_shared_ptr<meta::record_meta> const& step::output_meta() const noexcept {
+    return exchange::step::input_meta();
 }
 
 }  // namespace jogasaki::executor::exchange::forward

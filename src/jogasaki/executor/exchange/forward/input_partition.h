@@ -91,25 +91,20 @@ public:
     /**
      * @return whether the container is empty or not
      */
-    [[nodiscard]] bool empty() const noexcept {
-        return records_->empty();
-    }
+    [[nodiscard]] bool empty() const noexcept;
 
     /**
      * @brief getter for the number of data count added to this object
      * @return the number of records
      */
-    [[nodiscard]] std::size_t count() const noexcept {
-        return records_->count();
-    }
+    [[nodiscard]] std::size_t count() const noexcept;
 
     /**
      * @brief accessor to the active flag
      * @return the reference to the active flag
      */
-    [[nodiscard]] std::atomic_bool& active() noexcept {
-        return active_;
-    }
+    [[nodiscard]] std::atomic_bool& active() noexcept;
+
 private:
 
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_{};

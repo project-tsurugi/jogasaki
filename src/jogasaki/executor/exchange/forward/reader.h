@@ -38,36 +38,19 @@ public:
         std::shared_ptr<input_partition> partition
     );
 
-    [[nodiscard]] bool available() const override {
-        return partition() && ! partition()->empty();
-    }
+    [[nodiscard]] bool available() const override;
 
-    [[nodiscard]] bool next_record() override {
-        if(! partition()) {
-            return false;
-        }
-        return partition()->try_pop(current_record_);
-    }
+    [[nodiscard]] bool next_record() override;
 
-    [[nodiscard]] accessor::record_ref get_record() const override {
-        return current_record_;
-    }
+    [[nodiscard]] accessor::record_ref get_record() const override;
 
-    void release() override {
-        // no-op
-    }
+    void release() override;
 
-    [[nodiscard]] bool active() const noexcept {
-        return partition_->active().load();
-    }
+    [[nodiscard]] bool active() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<input_partition> const& partition() const noexcept {
-        return partition_;
-    }
+    [[nodiscard]] std::shared_ptr<input_partition> const& partition() const noexcept;
 
-    [[nodiscard]] std::shared_ptr<forward_info> const& info() const noexcept {
-        return info_;
-    }
+    [[nodiscard]] std::shared_ptr<forward_info> const& info() const noexcept;
 
 private:
     std::shared_ptr<forward_info> info_{};

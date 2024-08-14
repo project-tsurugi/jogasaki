@@ -52,10 +52,6 @@ public:
 
     [[nodiscard]] std::shared_ptr<input_partition> const& partition();
 
-    void partition(std::shared_ptr<input_partition> arg) {
-        partition_ = std::move(arg);
-    }
-
     [[nodiscard]] request_context* context() const noexcept;
 
     void deactivate() override;
@@ -64,7 +60,6 @@ private:
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};
     std::unique_ptr<forward::writer> writer_;
-    std::shared_ptr<std::atomic_bool> active_{std::make_shared<std::atomic_bool>(true)};
     std::shared_ptr<std::atomic_size_t> write_count_{};
     std::shared_ptr<input_partition> partition_{};
 };

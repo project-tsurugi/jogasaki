@@ -82,4 +82,16 @@ void input_partition::initialize_lazy() {
     }
 }
 
+bool input_partition::empty() const noexcept {
+    return records_->empty();
+}
+
+std::size_t input_partition::count() const noexcept {
+    return records_->count();
+}
+
+std::atomic_bool& input_partition::active() noexcept {
+    return active_;
+}
+
 }  // namespace jogasaki::executor::exchange::forward

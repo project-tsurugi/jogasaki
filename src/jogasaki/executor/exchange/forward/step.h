@@ -58,18 +58,9 @@ public:
 
     void activate(request_context& rctx) override;
 
-    [[nodiscard]] meta::variable_order const& output_order() const noexcept {
-        return exchange::step::input_order();
-    }
+    [[nodiscard]] meta::variable_order const& output_order() const noexcept;
 
-    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& output_meta() const noexcept {
-        return exchange::step::input_meta();
-    }
-
-protected:
-    [[nodiscard]] process::step* downstream(std::size_t index) const noexcept;
-
-    [[nodiscard]] process::step* upstream(std::size_t index) const noexcept;
+    [[nodiscard]] maybe_shared_ptr<meta::record_meta> const& output_meta() const noexcept;
 
 private:
     std::shared_ptr<forward_info> info_{};

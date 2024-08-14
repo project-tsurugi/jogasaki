@@ -37,14 +37,17 @@ public:
     source& operator=(source const& other) = delete;
     source(source&& other) noexcept = delete;
     source& operator=(source&& other) noexcept = delete;
-    explicit source(
+
+    source(
         std::shared_ptr<forward_info> info,
         request_context* context,
         std::shared_ptr<input_partition> partion
     );
+
     [[nodiscard]] io::reader_container acquire_reader() override;
 
     [[nodiscard]] std::shared_ptr<input_partition> const& partition();
+
 private:
     std::unique_ptr<io::record_reader> reader_;
     std::shared_ptr<forward_info> info_{};

@@ -61,8 +61,8 @@ public:
      * @param context the request context
      */
     input_partition(
-        std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records,
-        std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data,
+        std::unique_ptr<memory::fifo_paged_memory_resource> resource_,
+        std::unique_ptr<memory::fifo_paged_memory_resource> varlen_resource_,
         std::shared_ptr<forward_info> info,
         request_context* context
     );
@@ -104,8 +104,8 @@ public:
     }
 private:
 
-    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records_{};
-    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data_{};
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource_{};
+    std::unique_ptr<memory::fifo_paged_memory_resource> varlen_resource_{};
     std::shared_ptr<forward_info> info_{};
     request_context* context_{};
     std::unique_ptr<data::fifo_record_store> records_{};

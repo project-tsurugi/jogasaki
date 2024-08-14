@@ -40,13 +40,13 @@ input_partition::input_partition(
 {}
 
 input_partition::input_partition(
-    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_records,
-    std::unique_ptr<memory::fifo_paged_memory_resource> resource_for_varlen_data,
+    std::unique_ptr<memory::fifo_paged_memory_resource> resource,
+    std::unique_ptr<memory::fifo_paged_memory_resource> varlen_resource,
     std::shared_ptr<forward_info> info,
     request_context *context
 ) :
-    resource_for_records_(std::move(resource_for_records)),
-    resource_for_varlen_data_(std::move(resource_for_varlen_data)),
+    resource_(std::move(resource)),
+    varlen_resource_(std::move(varlen_resource)),
     info_(std::move(info)),
     context_(context)
 {}
@@ -55,6 +55,7 @@ void input_partition::push(accessor::record_ref record) {
     initialize_lazy();
     records_->push(record);
 }
+
 bool input_partition::try_pop(accessor::record_ref& out) {
     initialize_lazy();
     return records_->try_pop(out);
@@ -65,18 +66,18 @@ void input_partition::flush() {
 }
 
 void input_partition::initialize_lazy() {
-    if (! resource_for_records_) {
-        resource_for_records_ =
+    if (! resource_) {
+        resource_=
             std::make_unique<memory::fifo_paged_memory_resource>(std::addressof(global::page_pool()));
     }
-    if (! resource_for_varlen_data_) {
-        resource_for_varlen_data_ =
+    if (! varlen_resource_) {
+        varlen_resource_ =
             std::make_unique<memory::fifo_paged_memory_resource>(std::addressof(global::page_pool()));
     }
     if (! records_) {
         records_ = std::make_unique<data::fifo_record_store>(
-            resource_for_records_.get(),
-            resource_for_varlen_data_.get(),
+            resource_.get(),
+            varlen_resource_.get(),
             info_->record_meta());
     }
 }

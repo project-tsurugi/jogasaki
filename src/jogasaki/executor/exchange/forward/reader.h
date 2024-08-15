@@ -46,7 +46,7 @@ public:
 
     void release() override;
 
-    [[nodiscard]] bool active() const noexcept;
+    [[nodiscard]] bool source_active() const noexcept override;
 
     [[nodiscard]] std::shared_ptr<input_partition> const& partition() const noexcept;
 

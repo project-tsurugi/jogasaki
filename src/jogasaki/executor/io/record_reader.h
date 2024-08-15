@@ -63,6 +63,18 @@ public:
     virtual void release() = 0;
 
     /**
+     * @brief check whether data source is still active
+     * @details This is used to check whether the source is still providing data and the state returned by
+     * `availabile()` function can change going forward.
+     * @note In order to avoid overlooking the last records that source provides, caller should check the availability
+     * of incoming record once after the source_active becomes false. Otherwise, the last few records may just arrive
+     * on the buffer being not yet processed by caller.
+     * @return true when the source is actively updated and new record may become available
+     * @return false if no more data will be provided from data source
+     */
+    [[nodiscard]] virtual bool source_active() const = 0;
+
+    /**
      * @brief creates a new instance.
      */
     record_reader() = default;

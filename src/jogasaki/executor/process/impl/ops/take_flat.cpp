@@ -95,12 +95,9 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
         ctx.reader_ = r.reader<io::record_reader>();
     }
     auto resource = ctx.varlen_resource();
-
-    // upstream of take_flat is always forward exchange, so we can safely cast to forward::reader
-    auto& reader = static_cast<exchange::forward::reader&>(*ctx.reader_);
     while(true) {
         // even if reader is not active loop next_record through all records and check is_active later
-        auto is_active = reader.active();
+        auto is_active = ctx.reader_->source_active();
         while(ctx.reader_->next_record()) {
             if(utils::request_cancel_enabled(request_cancel_kind::take_flat) && ctx.req_context()) {
                 auto res_src = ctx.req_context()->req_info().response_source();

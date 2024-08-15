@@ -35,6 +35,7 @@ class test_record_reader : public io::record_reader {
     bool next_record() override { return true; };
     accessor::record_ref get_record() const override { return {}; }
     void release() override {}
+    bool source_active() const noexcept override { return false; }
 };
 
 class test_group_reader : public io::group_reader {

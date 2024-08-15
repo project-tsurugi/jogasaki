@@ -40,7 +40,7 @@ void reader::release() {
     // no-op
 }
 
-bool reader::active() const noexcept {
+bool reader::source_active() const noexcept {
     return partition_->active().load();
 }
 

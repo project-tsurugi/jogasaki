@@ -122,6 +122,10 @@ public:
         return it_->ref();
     }
 
+    [[nodiscard]] bool source_active() const override {
+        return false;
+    }
+
     void release() override {
         records_.clear();
         released_ = true;

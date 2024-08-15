@@ -86,6 +86,10 @@ public:
     [[nodiscard]] std::size_t partition() const noexcept {
         return partition_;
     }
+
+    void deactivate_writer(writer_index) override {
+        // no-op
+    }
 private:
     std::size_t partition_{};
     std::vector<io::reader_container> readers_{};

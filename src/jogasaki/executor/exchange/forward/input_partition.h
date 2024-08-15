@@ -47,12 +47,11 @@ public:
     /**
      * @brief create new instance
      * @param info the forward information
-     * @param context the request context
      */
-    input_partition(
-        std::shared_ptr<forward_info> info,
-        request_context* context
+    explicit input_partition(
+        std::shared_ptr<forward_info> info
     );
+
     /**
      * @brief create new instance
      * @param resource_for_records the memory resource to store records
@@ -63,8 +62,7 @@ public:
     input_partition(
         std::unique_ptr<memory::fifo_paged_memory_resource> resource_,
         std::unique_ptr<memory::fifo_paged_memory_resource> varlen_resource_,
-        std::shared_ptr<forward_info> info,
-        request_context* context
+        std::shared_ptr<forward_info> info
     );
 
     /**
@@ -110,7 +108,6 @@ private:
     std::unique_ptr<memory::fifo_paged_memory_resource> resource_{};
     std::unique_ptr<memory::fifo_paged_memory_resource> varlen_resource_{};
     std::shared_ptr<forward_info> info_{};
-    request_context* context_{};
     std::unique_ptr<data::fifo_record_store> records_{};
     std::atomic_bool active_{true};
 

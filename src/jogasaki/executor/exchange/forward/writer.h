@@ -32,6 +32,7 @@ public:
     writer& operator=(writer const& other) = delete;
     writer(writer&& other) noexcept = delete;
     writer& operator=(writer&& other) noexcept = delete;
+    ~writer() override = default;
 
     writer(
         std::shared_ptr<forward_info> info,

@@ -50,11 +50,11 @@ public:
 
     /**
      * @brief construct new object
-     * @param record the metadata of the input record for forward operation
+     * @param meta the metadata of the input record for forward operation
      * @param limit the record limit set for the forward operation
      */
-    forward_info(
-        maybe_shared_ptr<meta::record_meta> record,
+    explicit forward_info(
+        maybe_shared_ptr<meta::record_meta> meta,
         std::optional<std::size_t> limit = {}
     );
 

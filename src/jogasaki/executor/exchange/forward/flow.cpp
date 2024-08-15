@@ -94,7 +94,7 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
     };
     shared_partitions.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
-        shared_partitions.emplace_back(std::make_shared<input_partition>(info_, context_));
+        shared_partitions.emplace_back(std::make_shared<input_partition>(info_));
     }
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(

@@ -649,10 +649,10 @@ executor::exchange::forward::step create(
         std::move(fields),
         boost::dynamic_bitset{cnt}.flip() // currently assuming all fields are nullable
     );
-    return executor::exchange::forward::step(
+    return executor::exchange::forward::step{
         std::move(meta),
         forward.limit(),
-        std::move(column_order));
+        std::move(column_order)};
 }
 
 executor::exchange::group::step create(

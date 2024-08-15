@@ -41,7 +41,7 @@ public:
     source(
         std::shared_ptr<forward_info> info,
         request_context* context,
-        std::shared_ptr<input_partition> partion
+        std::shared_ptr<input_partition> partition
     );
 
     [[nodiscard]] io::reader_container acquire_reader() override;

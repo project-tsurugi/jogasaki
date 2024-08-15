@@ -44,9 +44,10 @@ public:
     /**
      * @brief create new instance
      * @param input_meta input record metadata
+     * @param limit the number of records to forward
      * @param input_column_order column ordering information for exchange input
      */
-    step(
+    explicit step(
         maybe_shared_ptr<meta::record_meta> input_meta,
         std::optional<std::size_t> limit = {},
         meta::variable_order input_column_order = {}

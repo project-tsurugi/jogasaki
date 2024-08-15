@@ -32,23 +32,19 @@
 namespace jogasaki::executor::exchange::forward {
 
 input_partition::input_partition(
-    std::shared_ptr<forward_info> info,
-    request_context *context
+    std::shared_ptr<forward_info> info
 ) :
-    info_(std::move(info)),
-    context_(context)
+    info_(std::move(info))
 {}
 
 input_partition::input_partition(
     std::unique_ptr<memory::fifo_paged_memory_resource> resource,
     std::unique_ptr<memory::fifo_paged_memory_resource> varlen_resource,
-    std::shared_ptr<forward_info> info,
-    request_context *context
+    std::shared_ptr<forward_info> info
 ) :
     resource_(std::move(resource)),
     varlen_resource_(std::move(varlen_resource)),
-    info_(std::move(info)),
-    context_(context)
+    info_(std::move(info))
 {}
 
 void input_partition::push(accessor::record_ref record) {

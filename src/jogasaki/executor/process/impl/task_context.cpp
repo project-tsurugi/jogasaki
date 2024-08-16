@@ -20,6 +20,8 @@
 
 #include <takatori/util/reference_list_view.h>
 
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/executor/exchange/aggregate/flow.h>
 #include <jogasaki/executor/exchange/forward/flow.h>
 #include <jogasaki/executor/exchange/group/flow.h>
@@ -47,18 +49,21 @@ process::impl::task_context::task_context(
     std::size_t partition,
     io_exchange_map const& io_exchange_map,
     std::shared_ptr<impl::scan_info> scan_info,
-    io::record_channel* channel
+    io::record_channel* channel,
+    partition_index sink_index
 ) :
     request_context_(std::addressof(rctx)),
     partition_(partition),
     io_exchange_map_(std::addressof(io_exchange_map)),
     scan_info_(std::move(scan_info)),
-    channel_(channel)
+    channel_(channel),
+    sink_index_(sink_index)
 {}
 
 io::reader_container task_context::reader(task_context::reader_index idx) {
     auto& flow = io_exchange_map_->input_at(idx)->data_flow_object(*request_context_);
     using step_kind = model::step_kind;
+    VLOG_LP(log_trace) << "requested reader from exchange flow(" << &flow << ") partition_:" << partition_;
     switch(flow.kind()) {
         case step_kind::group:
             return unsafe_downcast<exchange::group::flow>(flow).sources()[partition_].acquire_reader(); //NOLINT
@@ -78,11 +83,11 @@ void task_context::deactivate_writer(writer_index idx) {
     using step_kind = model::step_kind;
     switch(flow.kind()) {
         case step_kind::group:
-            return unsafe_downcast<exchange::group::flow>(flow).sinks()[partition_].deactivate(); //NOLINT
+            return unsafe_downcast<exchange::group::flow>(flow).sinks()[sink_index_].deactivate(); //NOLINT
         case step_kind::aggregate:
-            return unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[partition_].deactivate(); //NOLINT
+            return unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[sink_index_].deactivate(); //NOLINT
         case step_kind::forward:
-            return unsafe_downcast<exchange::forward::flow>(flow).sinks()[partition_].deactivate(); //NOLINT
+            return unsafe_downcast<exchange::forward::flow>(flow).sinks()[sink_index_].deactivate(); //NOLINT
         default:
             fail_with_exception();
     }
@@ -94,11 +99,11 @@ io::record_writer* task_context::downstream_writer(task_context::writer_index id
     using step_kind = model::step_kind;
     switch(flow.kind()) {
         case step_kind::group:
-            return &unsafe_downcast<exchange::group::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+            return &unsafe_downcast<exchange::group::flow>(flow).sinks()[sink_index_].acquire_writer(); //NOLINT
         case step_kind::aggregate:
-            return &unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+            return &unsafe_downcast<exchange::aggregate::flow>(flow).sinks()[sink_index_].acquire_writer(); //NOLINT
         case step_kind::forward:
-            return &unsafe_downcast<exchange::forward::flow>(flow).sinks()[partition_].acquire_writer(); //NOLINT
+            return &unsafe_downcast<exchange::forward::flow>(flow).sinks()[sink_index_].acquire_writer(); //NOLINT
         default:
             fail_with_exception();
     }

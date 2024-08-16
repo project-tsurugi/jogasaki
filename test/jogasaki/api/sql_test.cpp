@@ -754,4 +754,48 @@ TEST_F(sql_test, union_all_with_same_table) {
     }
 }
 
+TEST_F(sql_test, union_all_same_table_3_times) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t VALUES (1,10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("(SELECT c0, c0 from t UNION ALL SELECT c0, c1 from t ) UNION ALL SELECT c1, c1 from t", result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 10)), result[2]);
+    }
+}
+
+TEST_F(sql_test, union_all_same_table_4_times_wide) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t VALUES (1,10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("(SELECT c0, c0 from t UNION ALL SELECT c0, c1 from t ) UNION ALL (SELECT c1, c0 from t UNION ALL SELECT c1, c1 from t)", result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[2]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 10)), result[3]);
+    }
+}
+
+TEST_F(sql_test, union_all_same_table_4_times_deep) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("INSERT INTO t VALUES (1,10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("((SELECT c0, c0 from t UNION ALL SELECT c0, c1 from t ) UNION ALL (SELECT c1, c0 from t)) UNION ALL SELECT c1, c1 from t", result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 10)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 1)), result[2]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(10, 10)), result[3]);
+    }
+}
+
 }

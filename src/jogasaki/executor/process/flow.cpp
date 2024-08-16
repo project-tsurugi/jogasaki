@@ -41,6 +41,7 @@
 #include <jogasaki/executor/process/task.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::executor::process {
 
@@ -104,18 +105,21 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         auto& emit = unsafe_downcast<impl::ops::emit>(*external_output);
         ch->meta(emit.meta());
     }
-    std::size_t sink_count = 0;
+    std::size_t sink_idx_base = 0;
     auto& exchange_map = step_->io_exchange_map();
+
+    // currently at most one output exchange exists
+    assert_with_exception(exchange_map->output_count() <= 1, exchange_map->output_count());
     for(std::size_t i=0, n=exchange_map->output_count(); i < n; ++i) {
         auto [sinks, sources] =
             dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object(*context_))
                 .setup_partitions(partitions);
-        sink_count = sinks.size() - partitions;
+        sink_idx_base = sinks.size() - partitions;
     }
 
     contexts.reserve(partitions);
     for (std::size_t i=0; i < partitions; ++i) {
-        contexts.emplace_back(create_task_context(sink_count + i, operators));
+        contexts.emplace_back(create_task_context(i, operators, sink_idx_base + i));
     }
 
     auto& d = info_->details();
@@ -147,14 +151,19 @@ model::step_kind flow::kind() const noexcept {
     return model::step_kind::process;
 }
 
-std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partition, impl::ops::operator_container const& operators) {
+std::shared_ptr<impl::task_context> flow::create_task_context(
+    std::size_t partition,
+    impl::ops::operator_container const& operators,
+    std::size_t sink_index
+) {
     auto external_output = operators.io_exchange_map().external_output();
     auto ctx = std::make_shared<impl::task_context>(
         *context_,
         partition,
         operators.io_exchange_map(),
         operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
-        (context_->record_channel() && external_output != nullptr) ? context_->record_channel().get() : nullptr
+        (context_->record_channel() && external_output != nullptr) ? context_->record_channel().get() : nullptr,
+        sink_index
     );
 
     ctx->work_context(
@@ -172,6 +181,4 @@ std::shared_ptr<impl::task_context> flow::create_task_context(std::size_t partit
     return ctx;
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process

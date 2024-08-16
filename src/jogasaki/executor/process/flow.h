@@ -82,7 +82,8 @@ private:
 
     [[nodiscard]] std::shared_ptr<impl::task_context> create_task_context(
         std::size_t partition,
-        impl::ops::operator_container const& operators
+        impl::ops::operator_container const& operators,
+        std::size_t sink_index
     );
     std::size_t check_if_empty_input_from_shuffle();
 };

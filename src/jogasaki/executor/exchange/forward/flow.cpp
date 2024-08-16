@@ -109,8 +109,8 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
             std::move(shared_partitions[i])
         ));
     }
-
-    VLOG_LP(log_trace) << "forward exchange partitions:" << partitions << " sinks:" << sinks_.size() << " sources:" << sources_.size();
+    VLOG_LP(log_trace) << "added new srcs/sinks flow:" << this << ") partitions:" << partitions
+                       << " #sinks:" << sinks_.size() << " #sources:" << sources_.size();
 
     return {impl::cast_to_exchange_sink(sinks_),
             impl::cast_to_exchange_source(sources_)};

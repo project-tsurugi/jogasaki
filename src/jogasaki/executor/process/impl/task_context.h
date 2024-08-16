@@ -55,17 +55,19 @@ public:
 
     /**
      * @brief create new object
-     * @param partition the index of partition assigned to this object
+     * @param partition the index of partition assigned to this object (used as index of source on the input exchange)
      * @param io_exchange_map mapping from input/output indices to exchanges
      * @param scan_info the scan information, nullptr if the task doesn't contain scan
      * @param channel the record channel to write the result data
+     * @param sink_index the index of sink on the output exchange
      */
     task_context(
         request_context& rctx,
         partition_index partition,
         io_exchange_map const& io_exchange_map,
         std::shared_ptr<impl::scan_info> scan_info,
-        io::record_channel* channel
+        io::record_channel* channel,
+        partition_index sink_index
     );
 
     io::reader_container reader(reader_index idx) override;
@@ -89,6 +91,7 @@ private:
     std::shared_ptr<impl::scan_info> scan_info_{};
     io::record_channel* channel_{};
     std::shared_ptr<io::record_writer> external_writer_{};
+    partition_index sink_index_{};
 };
 
 }

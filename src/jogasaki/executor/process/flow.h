@@ -85,7 +85,7 @@ private:
         impl::ops::operator_container const& operators,
         std::size_t sink_index
     );
-    std::size_t check_if_empty_input_from_shuffle();
+    std::size_t check_empty_input_and_calculate_partitions();
 };
 
 }

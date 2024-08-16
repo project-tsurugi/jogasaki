@@ -57,32 +57,31 @@ flow::flow(
     info_(std::move(info))
 {}
 
-std::size_t flow::check_if_empty_input_from_shuffle() {
-    // If upstreams are empty shuffles, make single partition.
+std::size_t flow::check_empty_input_and_calculate_partitions() {
+    // If upstreams are all empty shuffles, make single partition.
     auto& exchange_map = step_->io_exchange_map();
     bool empty = true;
-    bool shuffle_input = true;
-    // FIXME when there is no exchange input, empty_input_from_shuffle_ becomes 1
+    bool shuffle_input = false;
+    empty_input_from_shuffle_ = false;
     for(std::size_t i=0, n=exchange_map->input_count(); i < n; ++i) {
-        if(auto* flow = dynamic_cast<executor::exchange::shuffle::flow*>(&exchange_map->input_at(i)->data_flow_object(*context_)); flow != nullptr) {
-            if (! flow->info().empty_input()) {
-                empty = false;
-                break;
-            }
-        } else {
-            //other exchanges
-            shuffle_input = false;
+        auto& flow = exchange_map->input_at(i)->data_flow_object(*context_);
+        if(flow.kind() == model::step_kind::forward) {
             // if forward, downstream partition must be same as upstream partitions
-            if(auto* flow = dynamic_cast<executor::exchange::forward::flow*>(&exchange_map->input_at(i)->data_flow_object(*context_)); flow != nullptr) {
-                // for now, at most one input forward exchange exists
-                return flow->sinks().size();
-            }
+            // for now, at most one input forward exchange exists
+            return unsafe_downcast<executor::exchange::forward::flow>(flow).sinks().size();
+        }
+        if(flow.kind() != model::step_kind::group && flow.kind() != model::step_kind::aggregate) {
+            shuffle_input = false;
+            break;
+        }
+        auto& shuffle_flow = unsafe_downcast<executor::exchange::shuffle::flow>(flow);
+        shuffle_input = true;
+        if (! shuffle_flow.info().empty_input()) {
+            empty = false;
             break;
         }
     }
-    if (shuffle_input && empty) {
-        empty_input_from_shuffle_ = true;
-    }
+    empty_input_from_shuffle_ = shuffle_input && empty;
     return empty_input_from_shuffle_ ? 1 : step_->partitions();
 }
 
@@ -97,7 +96,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     // create process executor
     auto& factory = step_->executor_factory() ? *step_->executor_factory() : impl::default_process_executor_factory();
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};
-    auto partitions = check_if_empty_input_from_shuffle();
+    auto partitions = check_empty_input_and_calculate_partitions();
     auto& operators = proc->operators();
     auto external_output = operators.io_exchange_map().external_output();
     auto ch = context_->record_channel();

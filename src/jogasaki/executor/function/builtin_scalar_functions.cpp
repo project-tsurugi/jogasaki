@@ -196,12 +196,12 @@ data::any octet_length(
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& src = static_cast<data::any&>(args[0]);
-    BOOST_ASSERT(
-        (src.type_index() == data::any::index<accessor::text> || src.type_index() == data::any::index<accessor::binary>
-    ));  //NOLINT
     if(src.empty()) {
         return {};
     }
+    BOOST_ASSERT(
+        (src.type_index() == data::any::index<accessor::text> || src.type_index() == data::any::index<accessor::binary>
+    ));  //NOLINT
     if(src.type_index() == data::any::index<accessor::binary>) {
         auto bin = src.to<runtime_t<kind::octet>>();
         return data::any{std::in_place_type<runtime_t<kind::int8>>, bin.size()};

@@ -126,4 +126,20 @@ TEST_F(function_octet_length_test, char) {
     EXPECT_EQ((create_nullable_record<kind::int8>(5)), result[0]);
 }
 
+TEST_F(function_octet_length_test, null) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(5))");
+    execute_statement("insert into t values (null)");
+    execute_query("SELECT octet_length(c0) FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int8>({0}, {true})), result[0]);
+}
+
+TEST_F(function_octet_length_test, unknown) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 char(5))");
+    execute_statement("insert into t values ('123')");
+    test_stmt_err("SELECT octet_length(null) FROM t", error_code::symbol_analyze_exception);
+}
+
 }  // namespace jogasaki::testing

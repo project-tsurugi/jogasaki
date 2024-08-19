@@ -41,6 +41,7 @@
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/utils/decimal.h>
@@ -101,6 +102,7 @@ bool parquet_writer::write(accessor::record_ref ref) {
                 case k::float4: success = write_float4(i, ref.get_value<float>(meta_->value_offset(i)), null); break;
                 case k::float8: success = write_float8(i, ref.get_value<double>(meta_->value_offset(i)), null); break;
                 case k::character: success = write_character(i, ref.get_value<accessor::text>(meta_->value_offset(i)), null); break;
+                case k::octet: success = write_octet(i, ref.get_value<accessor::binary>(meta_->value_offset(i)), null); break;
                 case k::decimal: success = write_decimal(i, ref.get_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i)), null, column_options_[i]); break;
                 case k::date: success = write_date(i, ref.get_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i)), null); break;
                 case k::time_of_day: success = write_time_of_day(i, ref.get_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i)), null); break;
@@ -167,7 +169,9 @@ bool parquet_writer::write_float8(std::size_t colidx, double v, bool null) {
     return true;
 }
 
-bool parquet_writer::write_character(std::size_t colidx, accessor::text v, bool null) {
+template <class T>
+std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, bool>
+parquet_writer::write_character_or_octet(std::size_t colidx, T v, bool null) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
         return write_null(writer);
@@ -180,6 +184,14 @@ bool parquet_writer::write_character(std::size_t colidx, accessor::text v, bool 
     value.len = sv.size();
     writer->WriteBatch(1, &definition_level, nullptr, &value);
     return true;
+}
+
+bool parquet_writer::write_character(std::size_t colidx, accessor::text v, bool null) {
+    return write_character_or_octet(colidx, v, null);
+}
+
+bool parquet_writer::write_octet(std::size_t colidx, accessor::binary v, bool null) {
+    return write_character_or_octet(colidx, v, null);
 }
 
 bool parquet_writer::write_decimal(
@@ -292,6 +304,10 @@ parquet_writer::create_schema() {
                 fields.push_back(
                     PrimitiveNode::Make(name, Repetition::OPTIONAL, LogicalType::String(), Type::BYTE_ARRAY)
                 );
+                break;
+            }
+            case meta::field_type_kind::octet: {
+                fields.push_back(PrimitiveNode::Make(name, Repetition::OPTIONAL, Type::BYTE_ARRAY, ConvertedType::NONE));
                 break;
             }
             case meta::field_type_kind::decimal: {

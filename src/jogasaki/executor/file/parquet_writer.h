@@ -35,6 +35,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/file_writer.h>
@@ -139,6 +140,7 @@ private:
     bool write_float4(std::size_t colidx, float v, bool null = false);
     bool write_float8(std::size_t colidx, double v, bool null = false);
     bool write_character(std::size_t colidx, accessor::text v, bool null = false);
+    bool write_octet(std::size_t colidx, accessor::binary v, bool null = false);
     bool write_decimal(
         std::size_t colidx,
         runtime_t<meta::field_type_kind::decimal> v,
@@ -149,6 +151,10 @@ private:
     bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);
     bool write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null = false);
     bool init(std::string_view path);
+
+    template <class T>
+    std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, bool>
+    write_character_or_octet(std::size_t colidx, T v, bool null);
 };
 
 }  // namespace jogasaki::executor::file

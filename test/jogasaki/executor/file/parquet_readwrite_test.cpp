@@ -466,5 +466,160 @@ TEST_F(parquet_readwrite_test, multi_row_groups) {
     }
 }
 
+TEST_F(parquet_readwrite_test, char) {
+    // verify writing char columns data as STRING
+    boost::filesystem::path p{path()};
+    p = p / "char.parquet";
+    auto rec = mock::typed_nullable_record<kind::character, kind::character>(
+        std::tuple{meta::character_type(false, 3), meta::character_type(false, 5)},
+        std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")),
+        {false, false}
+    );
+
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ),
+        p.string()
+    );
+    ASSERT_TRUE(writer);
+
+    writer->write(rec.ref());
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = parquet_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    // originally the columns are char(n), but when reading they become varchar(*)
+    // because both char/varchar are mapped to parquet type STRING
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::character, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::character>();
+    EXPECT_TRUE(opt0->varying_);
+    EXPECT_FALSE(opt0->length_.has_value());
+    EXPECT_EQ(meta::field_type_kind::character, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::character>();
+    EXPECT_TRUE(opt1->varying_);
+    EXPECT_FALSE(opt1->length_.has_value());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        auto exp = mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{meta::character_type(true), meta::character_type(true)},
+            std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")),
+            {false, false}
+        );
+        EXPECT_EQ(exp, mock::basic_record(ref, meta->origin()));
+    }
+    EXPECT_TRUE(reader->close());
+}
+
+TEST_F(parquet_readwrite_test, fixed_len_binary) {
+    // verify writing binary columns
+    boost::filesystem::path p{path()};
+    p = p / "fixed_binary.parquet";
+    auto rec = mock::typed_nullable_record<kind::octet, kind::octet>(
+        std::tuple{meta::octet_type(false, 3), meta::octet_type(false, 5)},
+        std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
+        {false, false}
+    );
+
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ),
+        p.string()
+    );
+    ASSERT_TRUE(writer);
+
+    writer->write(rec.ref());
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = parquet_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    // originally the columns are binary(n), but when reading they become varbinary(*)
+    // because both binary/varbinary are mapped to parquet type BYTE_ARRAY with no length specified
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::octet>();
+    EXPECT_TRUE(opt0->varying_);
+    EXPECT_FALSE(opt0->length_.has_value());
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::octet>();
+    EXPECT_TRUE(opt1->varying_);
+    EXPECT_FALSE(opt1->length_.has_value());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        // note: expected results are varbinary(*) instead of varbinary(n)
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::octet, kind::octet>(
+                std::tuple{meta::octet_type(true), meta::octet_type(true)},
+                std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
+                {false, false}
+            )),
+            mock::basic_record(ref, meta->origin())
+        );
+    }
+    EXPECT_TRUE(reader->close());
+}
+
+TEST_F(parquet_readwrite_test, variable_len_binary) {
+    // verify writing varbinary columns
+    boost::filesystem::path p{path()};
+    p = p / "varbinary.parquet";
+    auto rec = mock::typed_nullable_record<kind::octet, kind::octet>(
+        std::tuple{meta::octet_type(true, 3), meta::octet_type(true, 5)},
+        std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
+        {false, false}
+    );
+
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ),
+        p.string()
+    );
+    ASSERT_TRUE(writer);
+    writer->write(rec.ref());
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = parquet_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    // originally the columns are varbinary(n), but when reading they become varbinary(*)
+    // because both binary/varbinary are mapped to parquet type BYTE_ARRAY with no length specified
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::octet>();
+    EXPECT_TRUE(opt0->varying_);
+    EXPECT_FALSE(opt0->length_.has_value());
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::octet>();
+    EXPECT_TRUE(opt1->varying_);
+    EXPECT_FALSE(opt1->length_.has_value());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        // note: expected results are varbinary(*) instead of varbinary(n)
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::octet, kind::octet>(
+                std::tuple{meta::octet_type(true), meta::octet_type(true)},
+                std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
+                {false, false}
+            )),
+            mock::basic_record(ref, meta->origin())
+        );
+    }
+    EXPECT_TRUE(reader->close());
+}
+
 }
 

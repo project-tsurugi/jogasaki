@@ -32,6 +32,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/file_writer.h>
@@ -227,6 +228,7 @@ private:
     bool write_float4(std::size_t colidx, float v);
     bool write_float8(std::size_t colidx, double v);
     bool write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt);
+    bool write_octet(std::size_t colidx, accessor::binary v, details::column_option const& colopt);
     bool write_decimal(
         std::size_t colidx,
         runtime_t<meta::field_type_kind::decimal> v,

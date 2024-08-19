@@ -231,6 +231,14 @@ TEST_F(dump_arrow_test, temporal_types) {
     execute_statement("INSERT INTO T VALUES (1, :p0, :p1, :p2)", variables, *ps);
     test_dump("select * from T");
 }
+
+TEST_F(dump_arrow_test, binary_types) {
+    execute_statement("CREATE TABLE T(PK INT NOT NULL PRIMARY KEY, C0 BINARY(3), C1 VARBINARY(3))");
+    execute_statement("INSERT INTO T (PK) VALUES (0)");
+    execute_statement("INSERT INTO T VALUES(1, x'01', x'0102')");
+    test_dump("select * from T");
+}
+
 TEST_F(dump_arrow_test, many_types) {
     execute_statement("CREATE TABLE T("
                       "PK INT NOT NULL PRIMARY KEY,"

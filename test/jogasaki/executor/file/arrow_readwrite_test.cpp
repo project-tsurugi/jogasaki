@@ -632,13 +632,16 @@ TEST_F(arrow_readwrite_test, set_record_batch_size) {
     }
 }
 
-TEST_F(arrow_readwrite_test, fixed_length_binary) {
-    // verify writing char columns data as FIXED_SIZE_BINARY
+TEST_F(arrow_readwrite_test, char_as_fixed_length_binary) {
+    // Verify writing char columns data as FIXED_SIZE_BINARY if use_fixed_size_binary_for_char is set.
+    // Reader verifies the dumped data as binary(n).
     boost::filesystem::path p{path()};
     p = p / "fixed_length_binary.arrow";
-        auto rec = mock::typed_nullable_record<kind::character, kind::character>(
-            std::tuple{meta::character_type(false, 3), meta::character_type(false, 5)},
-            std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")), {false, false});
+    auto rec = mock::typed_nullable_record<kind::character, kind::character>(
+        std::tuple{meta::character_type(false, 3), meta::character_type(false, 5)},
+        std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")),
+        {false, false}
+    );
 
     arrow_writer_option opt{};
     opt.use_fixed_size_binary_for_char(true);
@@ -657,18 +660,25 @@ TEST_F(arrow_readwrite_test, fixed_length_binary) {
     ASSERT_TRUE(reader);
     auto meta = reader->meta();
     ASSERT_EQ(2, meta->field_count());
-    EXPECT_EQ(meta::field_type_kind::character, meta->at(0).kind());
-    auto opt0 = meta->at(0).option<kind::character>();
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::octet>();
     EXPECT_FALSE(opt0->varying_);
     EXPECT_EQ(3, opt0->length_);
-    EXPECT_EQ(meta::field_type_kind::character, meta->at(1).kind());
-    auto opt1 = meta->at(1).option<kind::character>();
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::octet>();
     EXPECT_FALSE(opt1->varying_);
     EXPECT_EQ(5, opt1->length_);
     {
         accessor::record_ref ref{};
         ASSERT_TRUE(reader->next(ref));
-        EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::octet, kind::octet>(
+                std::tuple{meta::octet_type(false, 3), meta::octet_type(false, 5)},
+                std::forward_as_tuple(accessor::binary("\x31\x20\x20"), accessor::binary("\x31\x20\x20\x20\x20")),
+                {false, false}
+            )),
+            mock::basic_record(ref, meta->origin())
+        );
     }
     EXPECT_TRUE(reader->close());
 }
@@ -719,6 +729,100 @@ TEST_F(arrow_readwrite_test, char_utf8_string) {
             {false, false}
         );
         EXPECT_EQ(exp, mock::basic_record(ref, meta->origin()));
+    }
+    EXPECT_TRUE(reader->close());
+}
+
+TEST_F(arrow_readwrite_test, fixed_len_binary) {
+    // verify writing binary columns
+    boost::filesystem::path p{path()};
+    p = p / "fixed_binary.arrow";
+    auto rec = mock::typed_nullable_record<kind::octet, kind::octet>(
+        std::tuple{meta::octet_type(false, 3), meta::octet_type(false, 5)},
+        std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
+        {false, false}
+    );
+
+    arrow_writer_option opt{};
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string(), opt);
+    ASSERT_TRUE(writer);
+
+    writer->write(rec.ref());
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = arrow_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::octet>();
+    EXPECT_FALSE(opt0->varying_);
+    EXPECT_EQ(3, opt0->length_);
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::octet>();
+    EXPECT_FALSE(opt1->varying_);
+    EXPECT_EQ(5, opt1->length_);
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+    }
+    EXPECT_TRUE(reader->close());
+}
+
+TEST_F(arrow_readwrite_test, variable_len_binary) {
+    // verify writing varbinary columns
+    boost::filesystem::path p{path()};
+    p = p / "varbinary.arrow";
+    auto rec = mock::typed_nullable_record<kind::octet, kind::octet>(
+        std::tuple{meta::octet_type(true, 3), meta::octet_type(true, 5)},
+        std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
+        {false, false}
+    );
+
+    arrow_writer_option opt{};
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string(), opt);
+    ASSERT_TRUE(writer);
+
+    writer->write(rec.ref());
+    writer->close();
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = arrow_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    // originally the columns are varbinary(n), but when reading they become varbinary(*)
+    // because varbinary are mapped to arrow type BINARY
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(0).kind());
+    auto opt0 = meta->at(0).option<kind::octet>();
+    EXPECT_TRUE(opt0->varying_);
+    EXPECT_FALSE(opt0->length_.has_value());
+    EXPECT_EQ(meta::field_type_kind::octet, meta->at(1).kind());
+    auto opt1 = meta->at(1).option<kind::octet>();
+    EXPECT_TRUE(opt1->varying_);
+    EXPECT_FALSE(opt1->length_.has_value());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        // note: expected results are varbinary(*) instead of varbinary(n)
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::octet, kind::octet>(
+                std::tuple{meta::octet_type(true), meta::octet_type(true)},
+                std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
+                {false, false}
+            )),
+            mock::basic_record(ref, meta->origin())
+        );
     }
     EXPECT_TRUE(reader->close());
 }

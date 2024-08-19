@@ -55,6 +55,7 @@
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 
@@ -89,7 +90,12 @@ std::shared_ptr<arrow::ArrayBuilder> create_array_builder(
             }
             return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool);
         }
-        case k::octet: return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool); //TODO
+        case k::octet: {
+            if(type.option_unsafe<k::octet>()->varying_) {
+                return std::make_shared<arrow::BinaryBuilder>(pool);
+            }
+            return std::make_shared<arrow::FixedSizeBinaryBuilder>(arrow_type, pool);
+        }
         case k::decimal: return std::make_shared<arrow::Decimal128Builder> (arrow_type, pool);
         case k::date: return std::make_shared<arrow::Date32Builder>(pool);
         case k::time_of_day: return std::make_shared<arrow::Time64Builder>(arrow_type, pool);
@@ -177,12 +183,14 @@ std::size_t arrow_writer::estimate_avg_record_size() {
             case k::int8: sz += 8; break;
             case k::float4: sz += 4; break;
             case k::float8: sz += 8; break;
-            case k::character: {
-                std::size_t len{100};  // assuming default max len for varchar(*)/char(*)
+            case k::character: [[fallthrough]];
+            case k::octet: {
+                std::size_t len{100};  // arbitrary assumption on average length for varchar(*)/varbinary(*)
                 if(column_options_[i].length_ != details::column_option::undefined) {
                     len = column_options_[i].length_;
                 }
                 if(column_options_[i].varying_) {
+                    // assume half of the length is used on average
                     sz += len / 2;
                 } else {
                     sz += len;
@@ -285,6 +293,7 @@ bool arrow_writer::write(accessor::record_ref ref) {
                 case k::float4: success = write_float4(i, ref.get_value<float>(meta_->value_offset(i))); break;
                 case k::float8: success = write_float8(i, ref.get_value<double>(meta_->value_offset(i))); break;
                 case k::character: success = write_character(i, ref.get_value<accessor::text>(meta_->value_offset(i)), column_options_[i]); break;
+                case k::octet: success = write_octet(i, ref.get_value<accessor::binary>(meta_->value_offset(i)), column_options_[i]); break;
                 case k::decimal: success = write_decimal(i, ref.get_value<runtime_t<meta::field_type_kind::decimal>>(meta_->value_offset(i)), column_options_[i]); break;
                 case k::date: success = write_date(i, ref.get_value<runtime_t<meta::field_type_kind::date>>(meta_->value_offset(i))); break;
                 case k::time_of_day: success = write_time_of_day(i, ref.get_value<runtime_t<meta::field_type_kind::time_of_day>>(meta_->value_offset(i))); break;
@@ -361,6 +370,26 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
     if(sv.size() != colopt.length_) {
         throw_exception(std::logic_error{
             string_builder{} << "invalid length(" << sv.size() << ") for character field with length "
+                             << colopt.length_ << string_builder::to_string
+        });
+    }
+    (void) builder.Append(sv.data());
+    return true;
+}
+
+bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::column_option const& colopt) {
+    if(colopt.varying_) {
+        auto& builder = static_cast<arrow::BinaryBuilder&>(*array_builders_[colidx]);  //NOLINT
+        auto sv = static_cast<std::string_view>(v);
+        (void) builder.Append(sv.data(), static_cast<int>(sv.size()));
+        return true;
+    }
+    auto& builder = static_cast<arrow::FixedSizeBinaryBuilder&>(*array_builders_[colidx]);  //NOLINT
+    auto sv = static_cast<std::string_view>(v);
+    // arrow assumes the buffer has enough length, so check length first
+    if(sv.size() != colopt.length_) {
+        throw_exception(std::logic_error{
+            string_builder{} << "invalid length(" << sv.size() << ") for binary field with length "
                              << colopt.length_ << string_builder::to_string
         });
     }

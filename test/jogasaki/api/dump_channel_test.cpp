@@ -323,8 +323,6 @@ TEST_F(dump_channel_test, arrow_both_max_per_file_and_per_rg) {
 
 TEST_F(dump_channel_test, arrow_char_option) {
     // verify correct type when dumping char(n) data
-    // TODO currently reader cannot distinguish FIXED_SIZE_BINARY, so manually checking the server log
-    //   column name:C0 type:fixed_size_binary[3]
     execute_statement("CREATE TABLE T(C0 CHAR(3) NOT NULL PRIMARY KEY)");
     execute_statement("INSERT INTO T VALUES ('000')");
 
@@ -342,15 +340,16 @@ TEST_F(dump_channel_test, arrow_char_option) {
         ASSERT_TRUE(reader);
         auto m = reader->meta();
         auto f = m->at(0);
-        ASSERT_EQ(meta::field_type_kind::character, f.kind());
-
-        auto& o = f.option<meta::field_type_kind::character>();
         if(loop == 0) {
-            // FIXED_SIZE_BINARY -> char(3)
+            // FIXED_SIZE_BINARY -> binary(3)
+            ASSERT_EQ(meta::field_type_kind::octet, f.kind());
+            auto& o = f.option<meta::field_type_kind::octet>();
             ASSERT_FALSE(o->varying_);
             ASSERT_EQ(3, o->length_);
         } else {
             // STRING -> varchar(*)
+            ASSERT_EQ(meta::field_type_kind::character, f.kind());
+            auto& o = f.option<meta::field_type_kind::character>();
             ASSERT_TRUE(o->varying_);
             ASSERT_FALSE(o->length_.has_value());
         }

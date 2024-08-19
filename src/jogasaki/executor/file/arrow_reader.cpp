@@ -61,6 +61,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/finally.h>
 
 namespace jogasaki::executor::file {
@@ -188,7 +189,7 @@ bool arrow_reader::next(accessor::record_ref& ref) {
                 case arrow::Type::TIME64: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, arrow::Type::TIME64>(array, offset_)); break;
                 case arrow::Type::TIMESTAMP: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, arrow::Type::TIMESTAMP>(array, offset_)); break;
                 case arrow::Type::DECIMAL128: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, arrow::Type::DECIMAL128>(array, offset_)); break;
-                case arrow::Type::FIXED_SIZE_BINARY: ref.set_value<runtime_t<meta::field_type_kind::character>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, arrow::Type::FIXED_SIZE_BINARY>(array, offset_)); break;
+                case arrow::Type::FIXED_SIZE_BINARY: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>, arrow::Type::FIXED_SIZE_BINARY>(array, offset_)); break;
                 case arrow::Type::BINARY: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>, arrow::Type::BINARY>(array, offset_)); break;
                 default: {
                     VLOG_LP(log_error) << "Arrow array saw invalid type: " << parameter_meta_->at(i).kind();
@@ -272,6 +273,15 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
             return meta::field_type{meta::field_enum_tag<meta::field_type_kind::float8>};
         case arrow::Type::STRING:
             return meta::field_type{std::make_shared<meta::character_field_option>()};
+        case arrow::Type::FIXED_SIZE_BINARY: {
+            auto& typ = static_cast<arrow::FixedSizeBinaryType&>(*c.type());  //NOLINT
+            return meta::field_type{std::make_shared<meta::octet_field_option>(false, typ.byte_width())};
+        }
+        case arrow::Type::BINARY: {
+            auto& typ = static_cast<arrow::BinaryType&>(*c.type());  //NOLINT
+            assert_with_exception(typ.byte_width() == -1, typ.byte_width());
+            return meta::field_type{std::make_shared<meta::octet_field_option>(true, std::nullopt)};
+        }
         case arrow::Type::DECIMAL128: {
             auto p = static_cast<arrow::Decimal128Type&>(*c.type()).precision();  //NOLINT
             auto s = static_cast<arrow::Decimal128Type&>(*c.type()).scale();  //NOLINT
@@ -306,10 +316,6 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
                 break;
             }
             return meta::field_type{std::make_shared<meta::time_point_field_option>(! typ.timezone().empty())};
-        }
-        case arrow::Type::FIXED_SIZE_BINARY: {
-            auto& typ = static_cast<arrow::FixedSizeBinaryType&>(*c.type());  //NOLINT
-            return meta::field_type{std::make_shared<meta::character_field_option>(false, typ.byte_width())};
         }
         default:
             break;

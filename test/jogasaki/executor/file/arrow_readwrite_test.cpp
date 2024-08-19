@@ -204,6 +204,51 @@ TEST_F(arrow_readwrite_test, temporal_types) {
     EXPECT_TRUE(reader->close());
 }
 
+TEST_F(arrow_readwrite_test, time_point_with_offset) {
+    // verify UTC is set when tstz is dumped
+    // empty tz is set when ts is dumped
+    // note that existence of non-empty tz makes Arrow Timestamp timezone-aware, otherwise it's local timestamp
+    boost::filesystem::path p{path()};
+    p = p / "time_point_with_offset.arrow";
+    auto rec = mock::typed_nullable_record<
+        kind::time_point,
+        kind::time_point
+    >(
+        std::tuple{
+            meta::time_point_type(false),
+            meta::time_point_type(true),
+        },
+        {
+            runtime_t<meta::field_type_kind::time_point>(),
+            runtime_t<meta::field_type_kind::time_point>(),
+        }
+    );
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0", "C1"}
+        ), p.string());
+    ASSERT_TRUE(writer);
+
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->close());
+
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = arrow_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    ASSERT_EQ(2, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::time_point, meta->at(0).kind());
+    EXPECT_EQ(meta::field_type_kind::time_point, meta->at(1).kind());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
+    }
+    EXPECT_TRUE(reader->close());
+}
+
 void arrow_readwrite_test::test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec) {
     boost::filesystem::path p{path()};
     p = p / std::string{filename};

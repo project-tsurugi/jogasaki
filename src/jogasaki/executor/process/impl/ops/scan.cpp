@@ -142,15 +142,17 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
-    if(auto res = open(ctx); res != status::ok) {
-        if(res == status::err_integrity_constraint_violation) {
-            // range keys contain null. Nothing should match.
-            finish(context);
-            return {};
+    if(ctx.it_ == nullptr){
+        if(auto res = open(ctx); res != status::ok) {
+            if(res == status::err_integrity_constraint_violation) {
+               // range keys contain null. Nothing should match.
+               finish(context);
+               return {};
+            }
+           // res can be status::err_type_mismatch, then ctx already filled with error info
+           finish(context);
+           return error_abort(ctx, res);
         }
-        // res can be status::err_type_mismatch, then ctx already filled with error info
-        finish(context);
-        return error_abort(ctx, res);
     }
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();

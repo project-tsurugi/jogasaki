@@ -60,9 +60,13 @@ model::task_result task::operator()() {
     switch (status) {
         case abstract::status::completed:
             VLOG_LP(log_debug) << *this << " process::task completed.";
+            // raise appropriate event if needed
+            common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
             break;
         case abstract::status::completed_with_errors:
             VLOG_LP(log_warning) << *this << " task completed with errors";
+            // raise appropriate event if needed
+            common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
             break;
         case abstract::status::to_sleep:
             // TODO support sleep/yield
@@ -76,8 +80,6 @@ model::task_result task::operator()() {
             fail_with_exception();
             break;
     }
-    // raise appropriate event if needed
-    common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
 
     context()->scheduler()->schedule_task(
         scheduler::flat_task{

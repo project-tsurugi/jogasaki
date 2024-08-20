@@ -56,8 +56,13 @@
 
 namespace jogasaki::executor::file {
 
+using namespace std::chrono_literals;
+
 using kind = meta::field_type_kind;
 using accessor::text;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 
 class arrow_readwrite_test : public ::testing::Test {
 public:
@@ -73,6 +78,7 @@ public:
     }
 
     test::temporary_folder temporary_{};  //NOLINT
+    void test_time_point_time_unit(time_unit_kind kind, time_point expected, time_point input);
     void test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec);
 
     void verify_single_field_record_size(mock::basic_record const& rec, std::size_t expected_diff_in_bytes);
@@ -247,6 +253,70 @@ TEST_F(arrow_readwrite_test, time_point_with_offset) {
         EXPECT_EQ(rec, mock::basic_record(ref, meta->origin()));
     }
     EXPECT_TRUE(reader->close());
+}
+
+void arrow_readwrite_test::test_time_point_time_unit(time_unit_kind kind, time_point expected, time_point input) {
+    boost::filesystem::path p{path()};
+    p = p / "time_point_time_unit.arrow";
+    auto rec = mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, {input});
+    arrow_writer_option opt{};
+    opt.time_unit(kind);
+    auto writer = arrow_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0"}
+        ), p.string(), opt);
+    ASSERT_TRUE(writer);
+
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->close());
+
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = arrow_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    ASSERT_EQ(1, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::time_point, meta->at(0).kind());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, {expected})),
+            mock::basic_record(ref, meta->origin())
+        );
+    }
+    EXPECT_TRUE(reader->close());
+}
+
+TEST_F(arrow_readwrite_test, time_point_time_unit_ns) {
+    test_time_point_time_unit(
+        time_unit_kind::nanosecond,
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}},
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}}
+    );
+}
+TEST_F(arrow_readwrite_test, time_point_time_unit_us) {
+    test_time_point_time_unit(
+        time_unit_kind::microsecond,
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789000ns}},
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}}
+    );
+}
+TEST_F(arrow_readwrite_test, time_point_time_unit_ms) {
+    test_time_point_time_unit(
+        time_unit_kind::millisecond,
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456000000ns}},
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}}
+    );
+}
+
+TEST_F(arrow_readwrite_test, time_point_time_unit_secs) {
+    test_time_point_time_unit(
+        time_unit_kind::second,
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 000000000ns}},
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}}
+    );
 }
 
 void arrow_readwrite_test::test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec) {

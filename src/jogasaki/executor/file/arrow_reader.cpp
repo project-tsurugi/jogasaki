@@ -84,7 +84,8 @@ std::is_same_v<T, std::int64_t> ||
 std::is_same_v<T, float> ||
 std::is_same_v<T, double>
 , T>
-read_data(arrow::Array& array, std::size_t offset) {
+read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
+    (void) column_option;
     validate_ctype<T, Typeid>();
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
@@ -93,7 +94,8 @@ read_data(arrow::Array& array, std::size_t offset) {
 
 template <class T, arrow::Type::type Typeid>
 std::enable_if_t<std::is_same_v<T, accessor::text>, T>
-read_data(arrow::Array& array, std::size_t offset) {
+read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
+    (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
     return accessor::text{r.GetView(offset)};
@@ -101,7 +103,8 @@ read_data(arrow::Array& array, std::size_t offset) {
 
 template <class T, arrow::Type::type Typeid>
 std::enable_if_t<std::is_same_v<T, accessor::binary>, T>
-read_data(arrow::Array& array, std::size_t offset) {
+read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
+    (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
     return accessor::binary{r.GetView(offset)};
@@ -109,7 +112,8 @@ read_data(arrow::Array& array, std::size_t offset) {
 
 template <class T, arrow::Type::type Typeid>
 std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>> && Typeid == arrow::Type::DECIMAL, T>
-read_data(arrow::Array& array, std::size_t offset) {
+read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
+    (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
     auto scale = static_cast<arrow::Decimal128Type&>(*r.type()).scale();
@@ -136,7 +140,8 @@ read_data(arrow::Array& array, std::size_t offset) {
 
 template <class T, arrow::Type::type Typeid>
 std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::date>> && Typeid == arrow::Type::DATE32, T>
-read_data(arrow::Array& array, std::size_t offset) {
+read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
+    (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
     auto x = r.Value(offset);
@@ -145,7 +150,8 @@ read_data(arrow::Array& array, std::size_t offset) {
 
 template <class T, arrow::Type::type Typeid>
 std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_of_day>> && Typeid == arrow::Type::TIME64, T>
-read_data(arrow::Array& array, std::size_t offset) {
+read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
+    (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
     auto x = r.Value(offset);
@@ -154,11 +160,19 @@ read_data(arrow::Array& array, std::size_t offset) {
 
 template <class T, arrow::Type::type Typeid>
 std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_point>> && Typeid == arrow::Type::TIMESTAMP, T>
-read_data(arrow::Array& array, std::size_t offset) {
+read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
     auto x = r.Value(offset);
-    return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
+    using k = time_unit_kind;
+    switch(column_option.time_unit_kind_) {
+        case k::second: return runtime_t<meta::field_type_kind::time_point>{std::chrono::seconds{x}};
+        case k::millisecond: return runtime_t<meta::field_type_kind::time_point>{std::chrono::milliseconds{x}};
+        case k::microsecond: return runtime_t<meta::field_type_kind::time_point>{std::chrono::microseconds{x}};
+        case k::nanosecond: return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
+        default: return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
+    }
+    std::abort();
 }
 
 bool arrow_reader::next(accessor::record_ref& ref) {
@@ -180,17 +194,17 @@ bool arrow_reader::next(accessor::record_ref& ref) {
             ref.set_null(parameter_meta_->nullity_offset(static_cast<int>(i)), null);
             if(null) continue;
             switch(field->type()->id()) {
-                case arrow::Type::INT32: ref.set_value<runtime_t<meta::field_type_kind::int4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, arrow::Type::INT32>(array, offset_)); break;
-                case arrow::Type::INT64: ref.set_value<runtime_t<meta::field_type_kind::int8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, arrow::Type::INT64>(array, offset_)); break;
-                case arrow::Type::FLOAT: ref.set_value<runtime_t<meta::field_type_kind::float4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, arrow::Type::FLOAT>(array, offset_)); break;
-                case arrow::Type::DOUBLE: ref.set_value<runtime_t<meta::field_type_kind::float8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, arrow::Type::DOUBLE>(array, offset_)); break;
-                case arrow::Type::STRING: ref.set_value<runtime_t<meta::field_type_kind::character>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, arrow::Type::STRING>(array, offset_)); break;
-                case arrow::Type::DATE32: ref.set_value<runtime_t<meta::field_type_kind::date>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, arrow::Type::DATE32>(array, offset_)); break;
-                case arrow::Type::TIME64: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, arrow::Type::TIME64>(array, offset_)); break;
-                case arrow::Type::TIMESTAMP: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, arrow::Type::TIMESTAMP>(array, offset_)); break;
-                case arrow::Type::DECIMAL128: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, arrow::Type::DECIMAL128>(array, offset_)); break;
-                case arrow::Type::FIXED_SIZE_BINARY: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>, arrow::Type::FIXED_SIZE_BINARY>(array, offset_)); break;
-                case arrow::Type::BINARY: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>, arrow::Type::BINARY>(array, offset_)); break;
+                case arrow::Type::INT32: ref.set_value<runtime_t<meta::field_type_kind::int4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int4>, arrow::Type::INT32>(array, offset_, column_options_[i])); break;
+                case arrow::Type::INT64: ref.set_value<runtime_t<meta::field_type_kind::int8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::int8>, arrow::Type::INT64>(array, offset_, column_options_[i])); break;
+                case arrow::Type::FLOAT: ref.set_value<runtime_t<meta::field_type_kind::float4>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float4>, arrow::Type::FLOAT>(array, offset_, column_options_[i])); break;
+                case arrow::Type::DOUBLE: ref.set_value<runtime_t<meta::field_type_kind::float8>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::float8>, arrow::Type::DOUBLE>(array, offset_, column_options_[i])); break;
+                case arrow::Type::STRING: ref.set_value<runtime_t<meta::field_type_kind::character>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::character>, arrow::Type::STRING>(array, offset_, column_options_[i])); break;
+                case arrow::Type::DATE32: ref.set_value<runtime_t<meta::field_type_kind::date>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::date>, arrow::Type::DATE32>(array, offset_, column_options_[i])); break;
+                case arrow::Type::TIME64: ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_of_day>, arrow::Type::TIME64>(array, offset_, column_options_[i])); break;
+                case arrow::Type::TIMESTAMP: ref.set_value<runtime_t<meta::field_type_kind::time_point>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::time_point>, arrow::Type::TIMESTAMP>(array, offset_, column_options_[i])); break;
+                case arrow::Type::DECIMAL128: ref.set_value<runtime_t<meta::field_type_kind::decimal>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::decimal>, arrow::Type::DECIMAL128>(array, offset_, column_options_[i])); break;
+                case arrow::Type::FIXED_SIZE_BINARY: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>, arrow::Type::FIXED_SIZE_BINARY>(array, offset_, column_options_[i])); break;
+                case arrow::Type::BINARY: ref.set_value<runtime_t<meta::field_type_kind::octet>>(parameter_meta_->value_offset(i), read_data<runtime_t<meta::field_type_kind::octet>, arrow::Type::BINARY>(array, offset_, column_options_[i])); break;
                 default: {
                     VLOG_LP(log_error) << "Arrow array saw invalid type: " << parameter_meta_->at(i).kind();
                     return false;
@@ -256,7 +270,23 @@ std::shared_ptr<arrow_reader> arrow_reader::open(
     return {};
 }
 
-static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) { //NOLINT(readability-function-cognitive-complexity)
+time_unit_kind time_unit_from(arrow::TimeUnit::type arg) {
+    using t = arrow::TimeUnit::type;
+    using k = time_unit_kind;
+    switch(arg) {
+        case t::SECOND: return k::second;
+        case t::MILLI: return k::millisecond;
+        case t::MICRO: return k::microsecond;
+        case t::NANO: return k::nanosecond;
+    }
+    std::abort();
+}
+
+static meta::field_type create_column(
+    arrow::Field& c,
+    meta::field_type* parameter_type,
+    details::arrow_reader_column_option& out
+) {  //NOLINT(readability-function-cognitive-complexity)
     (void) parameter_type;
     switch(c.type()->id()) {
         case arrow::Type::INT8:
@@ -305,11 +335,7 @@ static meta::field_type type(arrow::Field& c, meta::field_type* parameter_type) 
         }
         case arrow::Type::TIMESTAMP: {
             auto& typ = static_cast<arrow::TimestampType&>(*c.type());  //NOLINT
-            if(typ.unit() != arrow::TimeUnit::NANO) {
-                VLOG_LP(log_warning) << "Column '" << c.name() << "' data type '" << c.type()->ToString()
-                                   << "' has non-nano time unit and will be ignored.";
-                break;
-            }
+            out.time_unit_kind_ = time_unit_from(typ.unit());
             if(! typ.timezone().empty() && typ.timezone() != "UTC") {
                 VLOG_LP(log_warning) << "Column '" << c.name() << "' data type '" << c.type()->ToString()
                                    << "' has non-UTC timezone and will be ignored.";
@@ -338,36 +364,39 @@ static meta::field_type parameter_type(
     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::undefined>};
 }
 
-static std::shared_ptr<meta::external_record_meta> create_meta(
-    arrow::Schema& schema,
-    meta::record_meta const* parameter_meta,
-    std::vector<std::size_t> const* parameter_to_field
-) {
+static std::pair<std::shared_ptr<meta::external_record_meta>,
+    std::vector<details::arrow_reader_column_option>> create_schema(
+        arrow::Schema& schema,
+        meta::record_meta const* parameter_meta,
+        std::vector<std::size_t> const* parameter_to_field
+    ) {
     std::vector<std::optional<std::string>> names{};
     std::vector<meta::field_type> types{};
+    std::vector<details::arrow_reader_column_option> column_options{};
     auto sz = static_cast<std::size_t>(schema.num_fields());
     names.reserve(sz);
     types.reserve(sz);
+    column_options.resize(sz);
     for(std::size_t i=0; i < sz; ++i) {
         auto& c = schema.field(static_cast<int>(i));
         names.emplace_back(c->name());
         if(parameter_meta != nullptr) {
             auto p = parameter_type(i, *parameter_meta, *parameter_to_field);
-            auto t = type(*c, std::addressof(p));
+            auto t = create_column(*c, std::addressof(p), column_options[i]);
             types.emplace_back(t);
         } else {
-            auto t = type(*c, nullptr);
+            auto t = create_column(*c, nullptr, column_options[i]);
             types.emplace_back(t);
         }
     }
 
-    return std::make_shared<meta::external_record_meta>(
-        std::make_shared<meta::record_meta>(
-            std::move(types),
-            boost::dynamic_bitset<std::uint64_t>(sz).flip()
+    return {
+        std::make_shared<meta::external_record_meta>(
+            std::make_shared<meta::record_meta>(std::move(types), boost::dynamic_bitset<std::uint64_t>(sz).flip()),
+            std::move(names)
         ),
-        std::move(names)
-    );
+        std::move(column_options)
+    };
 }
 
 static bool validate_option(reader_option const& opt, arrow::Schema& schema) {
@@ -522,14 +551,20 @@ bool arrow_reader::init(
                 return false;
             }
             parameter_to_field_ = create_parameter_to_field(*opt, *file_reader_->schema());
-            meta_ = create_meta(*file_reader_->schema(), parameter_meta_.get(), std::addressof(parameter_to_field_));
+            auto [meta, colopts] = create_schema(*file_reader_->schema(), parameter_meta_.get(), std::addressof(parameter_to_field_));
+            meta_ = std::move(meta);
+            column_options_ = std::move(colopts);
+
             if(! validate_parameter_mapping(parameter_to_field_, *parameter_meta_, *meta_)) {
                 return false;
             }
 
         } else {
             // this is for testing - create mock option
-            meta_ = create_meta(*file_reader_->schema(), nullptr, nullptr);
+            auto [meta, colopts] = create_schema(*file_reader_->schema(), nullptr, nullptr);
+            meta_ = std::move(meta);
+            column_options_ = std::move(colopts);
+
             reader_option d = create_default(*meta_->origin());
             parameter_meta_ = maybe_shared_ptr{d.meta_};
             parameter_to_field_ = create_parameter_to_field(d, *file_reader_->schema());

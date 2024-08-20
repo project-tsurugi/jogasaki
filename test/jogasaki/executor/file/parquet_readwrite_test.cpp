@@ -47,8 +47,13 @@
 
 namespace jogasaki::executor::file {
 
+using namespace std::chrono_literals;
+
 using kind = meta::field_type_kind;
 using accessor::text;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 
 class parquet_readwrite_test : public ::testing::Test {
 public:
@@ -64,6 +69,8 @@ public:
     }
 
     test::temporary_folder temporary_{};  //NOLINT
+
+    void test_time_point_time_unit(time_unit_kind kind, time_point expected, time_point input);
     void test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec);
 };
 
@@ -71,11 +78,12 @@ TEST_F(parquet_readwrite_test, simple) {
     boost::filesystem::path p{path()};
     p = p / "simple.parquet";
     auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
-    ), p.string());
+    ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     writer->write(rec.ref());
@@ -118,11 +126,12 @@ TEST_F(parquet_readwrite_test, basic_types1) {
     boost::filesystem::path p{path()};
     p = p / "basic_types1.parquet";
     auto rec = mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::character>(1, 10, 100.0, 1000.0, accessor::text("10000"));
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1", "C2", "C3", "C4"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     writer->write(rec.ref());
@@ -163,11 +172,12 @@ TEST_F(parquet_readwrite_test, temporal_types) {
             runtime_t<meta::field_type_kind::time_point>(),
         }
     );
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1", "C2"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     EXPECT_TRUE(writer->write(rec.ref()));
@@ -190,15 +200,75 @@ TEST_F(parquet_readwrite_test, temporal_types) {
     EXPECT_TRUE(reader->close());
 }
 
-void parquet_readwrite_test::test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec) {
+void parquet_readwrite_test::test_time_point_time_unit(time_unit_kind kind, time_point expected, time_point input) {
     boost::filesystem::path p{path()};
-    p = p / std::string{filename};
+    p = p / "time_point_time_unit.parquet";
+    auto rec = mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, {input});
 
+    parquet_writer_option opt{};
+    opt.time_unit(kind);
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0"}
-        ), p.string());
+        ), p.string(), opt);
+    ASSERT_TRUE(writer);
+
+    EXPECT_TRUE(writer->write(rec.ref()));
+    EXPECT_TRUE(writer->close());
+
+    ASSERT_LT(0, boost::filesystem::file_size(p));
+
+    auto reader = parquet_reader::open(p.string());
+    ASSERT_TRUE(reader);
+    auto meta = reader->meta();
+    ASSERT_EQ(1, meta->field_count());
+    EXPECT_EQ(meta::field_type_kind::time_point, meta->at(0).kind());
+    {
+        accessor::record_ref ref{};
+        ASSERT_TRUE(reader->next(ref));
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, {expected})),
+            mock::basic_record(ref, meta->origin())
+        );
+    }
+    EXPECT_TRUE(reader->close());
+}
+
+TEST_F(parquet_readwrite_test, time_point_time_unit_ns) {
+    test_time_point_time_unit(
+        time_unit_kind::nanosecond,
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}},
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}}
+    );
+}
+TEST_F(parquet_readwrite_test, time_point_time_unit_us) {
+    test_time_point_time_unit(
+        time_unit_kind::microsecond,
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789000ns}},
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}}
+    );
+}
+TEST_F(parquet_readwrite_test, time_point_time_unit_ms) {
+    test_time_point_time_unit(
+        time_unit_kind::millisecond,
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456000000ns}},
+        time_point{date{2000, 1, 1}, time_of_day{1, 2, 3, 456789012ns}}
+    );
+}
+
+// parquet does not support the second unit, so no testcase for it
+
+void parquet_readwrite_test::test_rw_decimal(meta::field_type& ftype, std::string_view filename, mock::basic_record& rec) {
+    boost::filesystem::path p{path()};
+    p = p / std::string{filename};
+
+    parquet_writer_option opt{};
+    auto writer = parquet_writer::open(
+        std::make_shared<meta::external_record_meta>(
+            rec.record_meta(),
+            std::vector<std::optional<std::string>>{"C0"}
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     EXPECT_TRUE(writer->write(rec.ref()));
@@ -257,11 +327,12 @@ TEST_F(parquet_readwrite_test, nulls) {
     auto rec0 = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
     auto rec1 = mock::create_nullable_record<kind::int8, kind::float8>({20, 200.0}, {true, true});
     auto rec2 = mock::create_nullable_record<kind::int8, kind::float8>(30, 300.0);
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec0.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     writer->write(rec0.ref());
@@ -324,11 +395,12 @@ TEST_F(parquet_readwrite_test, generate_decimal_sample) {
 
     boost::filesystem::path p{path()};
     p = p / "decimals.parquet";
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"decimal_6_3_f", "decimal_4_1_f", "decimal_20_0_f"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     writer->write(null_rec.ref());
@@ -363,11 +435,12 @@ TEST_F(parquet_readwrite_test, multi_row_groups) {
     boost::filesystem::path p{path()};
     p = p / "multi_row_groups.parquet";
     auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
 
     writer->write(rec.ref());
@@ -476,12 +549,14 @@ TEST_F(parquet_readwrite_test, char) {
         {false, false}
     );
 
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
         ),
-        p.string()
+        p.string(),
+        opt
     );
     ASSERT_TRUE(writer);
 
@@ -526,12 +601,14 @@ TEST_F(parquet_readwrite_test, fixed_len_binary) {
         {false, false}
     );
 
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
         ),
-        p.string()
+        p.string(),
+        opt
     );
     ASSERT_TRUE(writer);
 
@@ -579,12 +656,14 @@ TEST_F(parquet_readwrite_test, variable_len_binary) {
         {false, false}
     );
 
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
         ),
-        p.string()
+        p.string(),
+        opt
     );
     ASSERT_TRUE(writer);
     writer->write(rec.ref());

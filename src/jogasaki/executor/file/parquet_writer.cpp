@@ -35,7 +35,8 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/file/column_option.h>
+#include <jogasaki/executor/file/writer_column_option.h>
+#include <jogasaki/executor/file/utils.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/decimal_field_option.h>
@@ -57,8 +58,9 @@ using parquet::Type;
 using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
 
-parquet_writer::parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta) :
-    meta_(std::move(meta))
+parquet_writer::parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta, parquet_writer_option opt) :
+    meta_(std::move(meta)),
+    option_(opt)
 {}
 
 void parquet_writer::new_row_group() {
@@ -198,7 +200,7 @@ bool parquet_writer::write_decimal(
     std::size_t colidx,
     runtime_t<meta::field_type_kind::decimal> v,
     bool null,
-    details::column_option const& colopt
+    details::writer_column_option const& colopt
 ) {
     auto* writer = static_cast<parquet::ByteArrayWriter*>(column_writers_[colidx]);  //NOLINT
     if (null) {
@@ -235,9 +237,8 @@ bool parquet_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field
 }
 
 bool parquet_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v, bool null) {
-    auto secs = static_cast<std::int64_t>(v.seconds_since_epoch().count());
-    auto subsecs = static_cast<std::int64_t>(v.subsecond().count());
-    return write_int8(colidx, secs*1000*1000*1000 + subsecs, null);
+    auto value = value_in_time_unit(v, option_.time_unit());
+    return write_int8(colidx, value, null);
 }
 
 bool parquet_writer::close() {
@@ -256,19 +257,32 @@ bool parquet_writer::close() {
 }
 
 std::shared_ptr<parquet_writer>
-parquet_writer::open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path) {
-    auto ret = std::make_shared<parquet_writer>(std::move(meta));
+parquet_writer::open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path, parquet_writer_option opt) {
+    auto ret = std::make_shared<parquet_writer>(std::move(meta), opt);
     if(ret->init(path)) {
         return ret;
     }
     return {};
 }
 
-std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::column_option>>
+parquet::LogicalType::TimeUnit::unit parquet_time_unit_from(time_unit_kind kind) {
+    using k = time_unit_kind;
+    using tu = parquet::LogicalType::TimeUnit;
+    switch(kind) {
+        // no secound supported by parquet
+        case k::microsecond: return tu::MICROS;
+        case k::millisecond: return tu::MILLIS;
+        case k::nanosecond: return tu::NANOS;
+        default: return tu::NANOS;
+    }
+    std::abort();
+}
+
+std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::writer_column_option>>
 parquet_writer::create_schema() {
     parquet::schema::NodeVector fields{};
     fields.reserve(meta_->field_count());
-    std::vector<details::column_option> options{};
+    std::vector<details::writer_column_option> options{};
     options.resize(meta_->field_count());
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
         std::string name{};
@@ -343,7 +357,7 @@ parquet_writer::create_schema() {
                 fields.push_back(PrimitiveNode::Make(
                     name,
                     Repetition::OPTIONAL,
-                    LogicalType::Timestamp(opt->with_offset_, parquet::LogicalType::TimeUnit::NANOS),
+                    LogicalType::Timestamp(opt->with_offset_, parquet_time_unit_from(option_.time_unit())),
                     Type::INT64
                 ));
                 break;

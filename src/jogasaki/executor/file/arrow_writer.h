@@ -36,11 +36,11 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/file_writer.h>
+#include <jogasaki/executor/file/time_unit_kind.h>
+#include <jogasaki/executor/file/writer_column_option.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
-
-#include "column_option.h"
 
 namespace jogasaki::executor::file {
 
@@ -113,6 +113,15 @@ public:
         return *this;
     }
 
+    [[nodiscard]] time_unit_kind time_unit() const noexcept {
+        return time_unit_;
+    }
+
+    arrow_writer_option& time_unit(time_unit_kind arg) noexcept {
+        time_unit_ = arg;
+        return *this;
+    }
+
 private:
     std::string metadata_version_{"V5"};
     std::int32_t alignment_{8};
@@ -121,6 +130,7 @@ private:
     std::string codec_{};
     double min_space_saving_{};
     bool use_fixed_size_binary_for_char_{false};
+    time_unit_kind time_unit_{time_unit_kind::unspecified};
 };
 
 /**
@@ -216,23 +226,23 @@ private:
     std::vector<std::shared_ptr<arrow::Array>> arrays_{};
     boost::filesystem::path path_{};
     std::size_t write_count_{};
-    std::vector<details::column_option> column_options_{};
+    std::vector<details::writer_column_option> column_options_{};
     std::size_t calculated_batch_size_{};
     std::size_t row_group_write_count_{};
 
-    std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> create_schema();
+    std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::writer_column_option>> create_schema();
     bool write_int1(std::size_t colidx, std::int32_t v);
     bool write_int2(std::size_t colidx, std::int32_t v);
     bool write_int4(std::size_t colidx, std::int32_t v);
     bool write_int8(std::size_t colidx, std::int64_t v);
     bool write_float4(std::size_t colidx, float v);
     bool write_float8(std::size_t colidx, double v);
-    bool write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt);
-    bool write_octet(std::size_t colidx, accessor::binary v, details::column_option const& colopt);
+    bool write_character(std::size_t colidx, accessor::text v, details::writer_column_option const& colopt);
+    bool write_octet(std::size_t colidx, accessor::binary v, details::writer_column_option const& colopt);
     bool write_decimal(
         std::size_t colidx,
         runtime_t<meta::field_type_kind::decimal> v,
-        details::column_option const& colopt = {}
+        details::writer_column_option const& colopt = {}
     );
     bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v);
     bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v);

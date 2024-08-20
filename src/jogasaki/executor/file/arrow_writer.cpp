@@ -48,7 +48,9 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
-#include <jogasaki/executor/file/column_option.h>
+#include <jogasaki/executor/file/time_unit_kind.h>
+#include <jogasaki/executor/file/utils.h>
+#include <jogasaki/executor/file/writer_column_option.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/character_field_option.h>
@@ -186,7 +188,7 @@ std::size_t arrow_writer::estimate_avg_record_size() {
             case k::character: [[fallthrough]];
             case k::octet: {
                 std::size_t len{100};  // arbitrary assumption on average length for varchar(*)/varbinary(*)
-                if(column_options_[i].length_ != details::column_option::undefined) {
+                if(column_options_[i].length_ != details::writer_column_option::undefined) {
                     len = column_options_[i].length_;
                 }
                 if(column_options_[i].varying_) {
@@ -357,7 +359,7 @@ bool arrow_writer::write_float8(std::size_t colidx, double v) {
     return true;
 }
 
-bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details::column_option const& colopt) {
+bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details::writer_column_option const& colopt) {
     if(colopt.varying_ || ! option_.use_fixed_size_binary_for_char()) {
         auto& builder = static_cast<arrow::StringBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
@@ -377,7 +379,7 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
     return true;
 }
 
-bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::column_option const& colopt) {
+bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::writer_column_option const& colopt) {
     if(colopt.varying_) {
         auto& builder = static_cast<arrow::BinaryBuilder&>(*array_builders_[colidx]);  //NOLINT
         auto sv = static_cast<std::string_view>(v);
@@ -400,7 +402,7 @@ bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::
 bool arrow_writer::write_decimal(
     std::size_t colidx,
     runtime_t<meta::field_type_kind::decimal> v,
-    details::column_option const& colopt
+    details::writer_column_option const& colopt
 ) {
     (void) colopt;
     auto& builder = static_cast<arrow::Decimal128Builder&>(*array_builders_[colidx]);  //NOLINT
@@ -427,10 +429,9 @@ bool arrow_writer::write_time_of_day(std::size_t colidx, runtime_t<meta::field_t
 }
 
 bool arrow_writer::write_time_point(std::size_t colidx, runtime_t<meta::field_type_kind::time_point> v) {
-    auto secs = static_cast<std::int64_t>(v.seconds_since_epoch().count());
-    auto subsecs = static_cast<std::int64_t>(v.subsecond().count());
+    auto value = value_in_time_unit(v, option_.time_unit());
     auto& builder = static_cast<arrow::TimestampBuilder&>(*array_builders_[colidx]);  //NOLINT
-    (void) builder.Append(secs*1000*1000*1000 + subsecs);
+    (void) builder.Append(value);
     return true;
 }
 
@@ -467,10 +468,23 @@ std::shared_ptr<arrow_writer> arrow_writer::open(
     return {};
 }
 
-std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> arrow_writer::create_schema() {  //NOLINT(readability-function-cognitive-complexity)
+arrow::TimeUnit::type arrow_time_unit_from(time_unit_kind kind) {
+    using k = time_unit_kind;
+    using t = arrow::TimeUnit::type;
+    switch(kind) {
+        case k::second: return t::SECOND;
+        case k::millisecond: return t::MILLI;
+        case k::microsecond: return t::MICRO;
+        case k::nanosecond: return t::NANO;
+        default: return t::NANO;
+    }
+    std::abort();
+}
+
+std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::writer_column_option>> arrow_writer::create_schema() {  //NOLINT(readability-function-cognitive-complexity)
     std::vector<std::shared_ptr<arrow::Field>> fields{};
     fields.reserve(meta_->field_count());
-    std::vector<details::column_option> options{};
+    std::vector<details::writer_column_option> options{};
     options.resize(meta_->field_count());
 
     for(std::size_t i=0, n=meta_->field_count(); i<n; ++i) {
@@ -508,7 +522,7 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
                 auto opt = meta_->at(i).option<meta::field_type_kind::character>();
                 options[i].varying_ = opt->varying_;
                 options[i].length_ =
-                    opt->length_.has_value() ? opt->length_.value() : details::column_option::undefined;
+                    opt->length_.has_value() ? opt->length_.value() : details::writer_column_option::undefined;
                 if(opt->varying_ || ! option_.use_fixed_size_binary_for_char()) {
                     type = arrow::utf8();
                     break;
@@ -523,7 +537,7 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
                 auto opt = meta_->at(i).option<meta::field_type_kind::octet>();
                 options[i].varying_ = opt->varying_;
                 options[i].length_ =
-                    opt->length_.has_value() ? opt->length_.value() : details::column_option::undefined;
+                    opt->length_.has_value() ? opt->length_.value() : details::writer_column_option::undefined;
                 if(opt->varying_) {
                     type = arrow::binary();
                     break;
@@ -557,7 +571,7 @@ std::pair<std::shared_ptr<arrow::Schema>, std::vector<details::column_option>> a
             case meta::field_type_kind::time_point: {
                 auto opt = meta_->at(i).option<meta::field_type_kind::time_point>();
                 auto tz = opt->with_offset_ ? "UTC" : "";
-                type = arrow::timestamp(arrow::TimeUnit::type::NANO, tz);
+                type = arrow::timestamp(arrow_time_unit_from(option_.time_unit()), tz);
                 break;
             }
             default:

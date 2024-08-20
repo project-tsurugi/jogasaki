@@ -65,6 +65,7 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/file/time_unit_kind.h>
 #include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/meta/character_field_option.h>
@@ -704,6 +705,19 @@ void service::command_explain_by_text(
 //TODO put global constant file
 constexpr static std::size_t max_records_per_file = 10000;
 
+executor::file::time_unit_kind from(::jogasaki::proto::sql::common::TimeUnit kind) {
+    using tu = ::jogasaki::proto::sql::common::TimeUnit;
+    using k = executor::file::time_unit_kind;
+    switch(kind) {
+        case tu::NANOSECOND: return k::nanosecond;
+        case tu::MICROSECOND: return k::microsecond;
+        case tu::MILLISECOND: return k::millisecond;
+        // no second on proto, though internally we have one in time_unit_kind to support in the future
+        default: return k::unspecified;
+    }
+    std::abort();
+}
+
 void service::command_execute_dump(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
@@ -727,6 +741,8 @@ void service::command_execute_dump(
     opts.max_records_per_file_ = (ed.has_option() && ed.option().max_record_count_per_file() > 0) ?
         ed.option().max_record_count_per_file() : 0;
     opts.keep_files_on_error_ = ed.has_option() && ed.option().fail_behavior() == proto::sql::request::KEEP_FILES;
+    opts.time_unit_kind_ =
+        ed.has_option() ? from(ed.option().timestamp_unit()) : executor::file::time_unit_kind::unspecified;
     if(ed.has_option()) {
         auto& opt = ed.option();
         if(opt.has_arrow()) {

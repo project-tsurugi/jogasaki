@@ -79,11 +79,12 @@ public:
 
 void create_test_file(boost::filesystem::path const& p, std::vector<std::size_t> record_counts, std::size_t file_index) {
     auto rec = mock::create_nullable_record<kind::int8, kind::float8>();
+    file::parquet_writer_option opt{};
     auto writer = file::parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_TRUE(writer);
     for(auto record_count : record_counts) {
         for(std::size_t i=0; i< record_count; ++i) {

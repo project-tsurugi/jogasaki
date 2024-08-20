@@ -20,9 +20,9 @@
 namespace jogasaki::executor::file::details {
 
 /**
- * @brief column metadata options kept by arrow writer
+ * @brief column metadata options kept by arrow/parquet writers
  */
-struct column_option {
+struct writer_column_option {
     /**
      * @brief constant for undefined precision and scale
      */

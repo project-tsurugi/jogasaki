@@ -39,15 +39,32 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/file/file_writer.h>
+#include <jogasaki/executor/file/time_unit_kind.h>
+#include <jogasaki/executor/file/writer_column_option.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 
-#include "column_option.h"
-
 namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
+
+class parquet_writer_option {
+public:
+    parquet_writer_option() = default;
+
+    [[nodiscard]] time_unit_kind time_unit() const noexcept {
+        return time_unit_;
+    }
+
+    parquet_writer_option& time_unit(time_unit_kind arg) noexcept {
+        time_unit_ = arg;
+        return *this;
+    }
+
+private:
+    time_unit_kind time_unit_{time_unit_kind::unspecified};
+};
 
 /**
  * @brief parquet file writer
@@ -67,10 +84,11 @@ public:
     /**
      * @brief create new object
      * @param meta record meta with column names
+     * @param opt writer options
      * @details this function is intended to be called from open(). Use open() function because it can report error
      * during initialization.
      */
-    explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta);
+    explicit parquet_writer(maybe_shared_ptr<meta::external_record_meta> meta, parquet_writer_option opt);
 
     /**
      * @brief destruct object
@@ -111,12 +129,12 @@ public:
     /**
      * @brief factory function to construct the new parquet_writer object
      * @param meta metadata of the written records
-     * @param path the file path that is to be written
+     * @param opt writer options
      * @return newly created object on success
      * @return nullptr otherwise
      */
     static std::shared_ptr<parquet_writer>
-    open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path);
+    open(maybe_shared_ptr<meta::external_record_meta> meta, std::string_view path, parquet_writer_option opt);
 
     /**
      * @brief accessor to the (approx.) maximum size stored in a row group
@@ -126,15 +144,16 @@ public:
 
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
+    parquet_writer_option option_{};
     std::shared_ptr<::arrow::io::FileOutputStream> fs_{};
     std::shared_ptr<parquet::ParquetFileWriter> file_writer_{};
     parquet::RowGroupWriter* row_group_writer_{};
     std::vector<parquet::ColumnWriter*> column_writers_{};
     boost::filesystem::path path_{};
     std::size_t write_count_{};
-    std::vector<details::column_option> column_options_{};
+    std::vector<details::writer_column_option> column_options_{};
 
-    std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::column_option>> create_schema();
+    std::pair<std::shared_ptr<parquet::schema::GroupNode>, std::vector<details::writer_column_option>> create_schema();
     bool write_int4(std::size_t colidx, std::int32_t v, bool null = false);
     bool write_int8(std::size_t colidx, std::int64_t v, bool null = false);
     bool write_float4(std::size_t colidx, float v, bool null = false);
@@ -145,7 +164,7 @@ private:
         std::size_t colidx,
         runtime_t<meta::field_type_kind::decimal> v,
         bool null = false,
-        details::column_option const& colopt = {}
+        details::writer_column_option const& colopt = {}
     );
     bool write_date(std::size_t colidx, runtime_t<meta::field_type_kind::date> v, bool null = false);
     bool write_time_of_day(std::size_t colidx, runtime_t<meta::field_type_kind::time_of_day> v, bool null = false);

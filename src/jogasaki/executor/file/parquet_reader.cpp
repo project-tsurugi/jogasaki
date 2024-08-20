@@ -36,6 +36,7 @@
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/string_builder.h>
+#include <takatori/util/downcast.h>
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
@@ -59,6 +60,7 @@ namespace jogasaki::executor::file {
 
 using takatori::util::maybe_shared_ptr;
 using takatori::util::string_builder;
+using takatori::util::unsafe_downcast;
 
 template <class T, class Reader>
 std::enable_if_t<! std::is_same_v<T, std::int8_t>, T>
@@ -211,7 +213,14 @@ read_data<runtime_t<meta::field_type_kind::time_point>, parquet::Int64Reader>(
     bool& nodata
 ) {
     auto x = read_data<std::int64_t, parquet::Int64Reader>(reader, type, null, nodata);
-    return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
+    auto& lt = unsafe_downcast<parquet::TimestampLogicalType const>(*type.logical_type());
+    switch(lt.time_unit()) {
+        case parquet::LogicalType::TimeUnit::MILLIS: return runtime_t<meta::field_type_kind::time_point>{std::chrono::milliseconds{x}};
+        case parquet::LogicalType::TimeUnit::MICROS: return runtime_t<meta::field_type_kind::time_point>{std::chrono::microseconds{x}};
+        case parquet::LogicalType::TimeUnit::NANOS: return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
+        default: return runtime_t<meta::field_type_kind::time_point>{std::chrono::nanoseconds{x}};
+    }
+    std::abort();
 }
 
 bool parquet_reader::next(accessor::record_ref& ref) {

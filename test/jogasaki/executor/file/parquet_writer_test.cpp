@@ -47,11 +47,12 @@ TEST_F(parquet_writer_test, wrong_path) {
     // directory already exists on the specified path
     boost::filesystem::path p{path()};
     auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_FALSE(writer);
 }
 
@@ -60,11 +61,12 @@ TEST_F(parquet_writer_test, DISABLED_wrong_path2) {
     // no permission to write
     boost::filesystem::path p{"/dummy.parquet"};
     auto rec = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
+    parquet_writer_option opt{};
     auto writer = parquet_writer::open(
         std::make_shared<meta::external_record_meta>(
             rec.record_meta(),
             std::vector<std::optional<std::string>>{"C0", "C1"}
-        ), p.string());
+        ), p.string(), opt);
     ASSERT_FALSE(writer);
 }
 

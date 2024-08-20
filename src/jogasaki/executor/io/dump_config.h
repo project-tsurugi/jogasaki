@@ -20,6 +20,8 @@
 #include <ostream>
 #include <string_view>
 
+#include <jogasaki/executor/file/time_unit_kind.h>
+
 namespace jogasaki::executor::io {
 
 enum class dump_file_format_kind {
@@ -92,6 +94,11 @@ struct dump_config {
      * @brief whether arrow file uses fixed size binary for char data types
      */
     bool arrow_use_fixed_size_binary_for_char_{};
+
+    /**
+     * @brief time unit used when timestamp is dumped
+     */
+    file::time_unit_kind time_unit_kind_{file::time_unit_kind::unspecified};
 };
 
 }  // namespace jogasaki::executor::io

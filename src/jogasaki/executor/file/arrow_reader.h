@@ -32,6 +32,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/file/arrow_reader_column_option.h>
 #include <jogasaki/executor/file/file_reader.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/record_meta.h>
@@ -130,6 +131,7 @@ private:
     std::shared_ptr<arrow::ipc::RecordBatchFileReader> file_reader_{};
     std::shared_ptr<arrow::RecordBatch> record_batch_{};
 
+    std::vector<details::arrow_reader_column_option> column_options_{};
     // std::vector<parquet::ColumnDescriptor const*> columns_{};
     boost::filesystem::path path_{};
     std::size_t read_count_{};

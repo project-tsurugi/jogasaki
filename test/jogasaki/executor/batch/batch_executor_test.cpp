@@ -99,11 +99,12 @@ public:
         std::function<void(std::size_t block_index, std::size_t statement_index, std::size_t& value)> customize_value = {}
     ) {
         auto rec = mock::create_nullable_record<kind::int8, kind::float8>();
+        file::parquet_writer_option opt{};
         auto writer = file::parquet_writer::open(
             std::make_shared<meta::external_record_meta>(
                 rec.record_meta(),
                 std::vector<std::optional<std::string>>{"C0", "C1"}
-            ), p.string());
+            ), p.string(), opt);
         ASSERT_TRUE(writer);
         std::size_t pos = 0;
         std::size_t ind = initial;

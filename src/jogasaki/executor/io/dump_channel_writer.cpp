@@ -75,9 +75,12 @@ bool dump_channel_writer::write(accessor::record_ref rec) {
             opt.record_batch_size(cfg_.record_batch_size_);
             opt.record_batch_in_bytes(cfg_.record_batch_in_bytes_);
             opt.use_fixed_size_binary_for_char(cfg_.arrow_use_fixed_size_binary_for_char_);
+            opt.time_unit(cfg_.time_unit_kind_);
             file_writer_ = file::arrow_writer::open(parent_->meta(), p.string(), opt);
         } else {
-            file_writer_ = file::parquet_writer::open(parent_->meta(), p.string());
+            file::parquet_writer_option opt{};
+            opt.time_unit(cfg_.time_unit_kind_);
+            file_writer_ = file::parquet_writer::open(parent_->meta(), p.string(), opt);
         }
         if (! file_writer_) {
             VLOG_LP(log_error) << "dump file creation failed on path " << p.string();

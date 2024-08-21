@@ -494,6 +494,19 @@ status prepare(
 ) {
     ctx.sql_text(std::make_shared<std::string>(sql));
     mizugaki::parser::sql_parser parser{};
+
+
+    // currently use common limit for all element kinds
+    // choosing a number that test did not hit problems such as stack overflow
+    std::size_t common_limit = 5000;
+    auto&& limits = parser.options().element_limits();
+    for(auto value = static_cast<std::size_t>(mizugaki::parser::sql_parser_element_kind_first);
+        value <= static_cast<std::size_t>(mizugaki::parser::sql_parser_element_kind_last);
+        ++value) {
+        auto kind = static_cast<mizugaki::parser::sql_parser_element_kind>(value);
+        limits[kind] = common_limit;
+    }
+
     auto result = parser("<input>", std::string{sql});
     if(result.has_diagnostic()) {
         // warning or error raised

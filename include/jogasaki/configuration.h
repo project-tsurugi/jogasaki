@@ -450,6 +450,14 @@ public:
         return lowercase_regular_identifiers_;
     }
 
+    [[nodiscard]] std::size_t scan_block_size() const noexcept {
+        return scan_block_size_;
+    }
+
+    void scan_block_size(std::size_t arg) noexcept {
+        scan_block_size_ = arg;
+    }
+
     [[nodiscard]] std::int32_t zone_offset() const noexcept {
         return zone_offset_;
     }
@@ -510,6 +518,7 @@ public:
         print_non_default(compiler_support);
         print_non_default(lowercase_regular_identifiers);
         print_non_default(zone_offset);
+        print_non_default(scan_block_size);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -566,6 +575,7 @@ private:
     std::size_t compiler_support_ = 1;
     bool lowercase_regular_identifiers_ = false;
     std::int32_t zone_offset_ = 0;
+    std::size_t scan_block_size_ = 0;
 
 };
 

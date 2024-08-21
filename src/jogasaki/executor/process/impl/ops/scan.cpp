@@ -33,6 +33,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/executor/process/impl/ops/write_partial.h>
@@ -158,6 +159,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto resource = ctx.varlen_resource();
     status st{};
     std::size_t loop_count = 0;
+    auto scan_block_size = global::config_pool()->scan_block_size();
     while(true) {
         if(utils::request_cancel_enabled(request_cancel_kind::scan) && ctx.req_context()) {
             auto res_src = ctx.req_context()->req_info().response_source();
@@ -202,7 +204,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return {operation_status_kind::aborted};
             }
         }
-	if (maxIterations_ != 0 &&  maxIterations_ == loop_count ){
+	if (scan_block_size != 0 && scan_block_size == loop_count ){
             return {operation_status_kind::yield};
 	}
 	loop_count++;
@@ -354,7 +356,7 @@ void scan::dump() const noexcept {
        << downstream_ptr <<  std::endl;
     if (downstream_) {
          downstream_ptr->dump("          ");
-         std::cerr << "              " 
+         std::cerr << "              "
              << to_parent_operator_name(*downstream_) << ":" << std::endl;
     }
     std::cerr << head << std::setw(width) << "field_mapper_:"

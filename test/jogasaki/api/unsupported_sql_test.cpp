@@ -76,6 +76,7 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(unsupported_sql_test, join_scan) {
+    // join_scan is not implemented, but the compiler fallbacks to shuffle join then
     execute_statement("create table T ("
                       "C0 int not null,"
                       "C1 int not null,"
@@ -92,15 +93,16 @@ TEST_F(unsupported_sql_test, join_scan) {
                       ")"
     );
     execute_statement("INSERT INTO S VALUES (1, 20220101, 20221231)");
-    test_stmt_err(
+    std::vector<mock::basic_record> result{};
+    execute_query(
         "select * from T inner join S on T.C0 = S.C0 "
         "where S.C1 < T.C1 "
         "and T.C1 < S.C2 "
-        "and S.C0 = 1",
-//        "and S.C0 = 1 and S.C1 = 2",  // specifying S.C1 results in join_find
-        error_code::unsupported_runtime_feature_exception,
-        "Compiling statement resulted in unsupported relational operator. Specify configuration parameter enable_index_join=false to avoid this."
+        "and S.C0 = 1 ",
+       // "and S.C0 = 1 and S.C1 = 2",  // specifying S.C1 results in join_find
+        result
     );
+    ASSERT_EQ(1, result.size());
 }
 
 TEST_F(unsupported_sql_test, ddl_with_binary_type) {

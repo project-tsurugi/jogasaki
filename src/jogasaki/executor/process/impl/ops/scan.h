@@ -151,11 +151,6 @@ public:
      */
     void dump() const noexcept;
 
-    /**
-     * @brief Checks if downstream_ is write_partial and write_partial's kind is do_delete
-     */
-    [[nodiscard]] bool downstream_is_write_partial_do_delete() const noexcept;
-
 private:
     bool use_secondary_{};
     std::string storage_name_{};

@@ -158,7 +158,6 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto resource = ctx.varlen_resource();
     status st{};
     std::size_t loop_count = 0;
-    bool is_do_delete = downstream_is_write_partial_do_delete();
     while(true) {
         if(utils::request_cancel_enabled(request_cancel_kind::scan) && ctx.req_context()) {
             auto res_src = ctx.req_context()->req_info().response_source();
@@ -203,7 +202,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return {operation_status_kind::aborted};
             }
         }
-	if (maxIterations_ != 0 && is_do_delete &&  maxIterations_ == loop_count ){
+	if (maxIterations_ != 0 &&  maxIterations_ == loop_count ){
             return {operation_status_kind::yield};
 	}
 	loop_count++;
@@ -355,23 +354,10 @@ void scan::dump() const noexcept {
        << downstream_ptr <<  std::endl;
     if (downstream_) {
          downstream_ptr->dump("          ");
-         std::cerr << "            " << "write_partial_do_delete:";
-	 if (downstream_is_write_partial_do_delete()){
-             std::cerr << "true";
-	 }else{
-             std::cerr << "false";
-	 }
-         std::cerr << "\n"
-	     << "              " << to_parent_operator_name(*downstream_) << ":" << std::endl;
+         std::cerr << "              " 
+             << to_parent_operator_name(*downstream_) << ":" << std::endl;
     }
     std::cerr << head << std::setw(width) << "field_mapper_:"
        << "not implemented yet" << std::endl;
-}
-[[nodiscard]] bool scan::downstream_is_write_partial_do_delete() const noexcept {
-    auto wp = dynamic_cast<write_partial*>(downstream_.get());
-    if (wp){
-       return (wp->get_write_kind() == write_kind::delete_);
-    }
-    return false;
 }
 }

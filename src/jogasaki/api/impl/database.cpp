@@ -176,6 +176,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_compiler_support) " << cfg.compiler_support() << " : support level of sql compiler. 0: legacy, 1: new";
     LOGCFG << "(dev_lowercase_regular_identifiers) " << cfg.lowercase_regular_identifiers() << " : whether to lowercase regular identifiers";
     LOGCFG << "(zone_offset) " << cfg.zone_offset() << " : system time zone offset in minutes";
+    LOGCFG << "(scan_block_size) " << cfg.scan_block_size() << " : max records processed by scan operator before yielding to other task";
 }
 
 status database::start() {

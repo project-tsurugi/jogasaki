@@ -248,6 +248,9 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<bool>("dev_point_read_concurrent_operation_as_not_found")) {
         ret->point_read_concurrent_operation_as_not_found(v.value());
     }
+    if (auto v = jogasaki_config->get<std::size_t>("scan_block_size")) {
+        ret->scan_block_size(v.value());
+    }
     return true;
 }
 

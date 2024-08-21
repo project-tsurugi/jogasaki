@@ -165,7 +165,6 @@ private:
     std::vector<details::secondary_index_field_info> create_secondary_key_fields(
         yugawara::storage::index const* idx
     );
-    std::size_t maxIterations_ = 0;
 };
 
 

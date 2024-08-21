@@ -232,6 +232,7 @@ data::any current_date(
     sequence_view<data::any> args
 ) {
     BOOST_ASSERT(args.size() == 0);  //NOLINT
+    (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
@@ -248,6 +249,7 @@ data::any localtime(
     sequence_view<data::any> args
 ) {
     BOOST_ASSERT(args.size() == 0);  //NOLINT
+    (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
@@ -265,6 +267,7 @@ data::any current_timestamp(
 ) {
     // same as localtimestamp
     BOOST_ASSERT(args.size() == 0);  //NOLINT
+    (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
@@ -278,6 +281,7 @@ data::any localtimestamp(
 ) {
     // same as current_timestamp
     BOOST_ASSERT(args.size() == 0);  //NOLINT
+    (void)args;
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }

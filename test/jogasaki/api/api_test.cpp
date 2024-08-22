@@ -139,7 +139,9 @@ std::shared_ptr<error::error_info> api_test::execute(api::transaction_handle tx,
     std::unique_ptr<api::result_set> result{};
     std::shared_ptr<request_statistics> stats{};
     executor::execute(get_impl(*db_), get_transaction_context(tx), stmt, result, err, stats);
-    std::cerr << *err << std::endl;
+    if(err) {
+        std::cerr << *err << std::endl;
+    }
     return err;
 }
 
@@ -794,5 +796,80 @@ TEST_F(api_test, drop_index_if_exists) {
     execute_statement("drop index if exists I0");
     execute_statement("create index I0 on T (C0)");
 }
+
+// TODO enable after fix for 702
+TEST_F(api_test, DISABLED_use_insert_prepared_stmt_after_table_dropped) {
+    execute_statement("create table t (c0 int primary key)");
+
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int4},
+    };
+    ASSERT_EQ(status::ok, db_->prepare("insert into t values (:p0)", variables, prepared));
+
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int4("p0", 10);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+
+    execute_statement("drop table t");
+
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int4("p0", 20);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+}
+
+// TODO enable after fix for 702
+TEST_F(api_test, DISABLED_use_select_prepared_stmt_after_table_dropped) {
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (10)");
+
+    api::statement_handle prepared{};
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int4},
+    };
+    ASSERT_EQ(status::ok, db_->prepare("select * from t where c0 = :p0", variables, prepared));
+
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int4("p0", 10);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+
+    execute_statement("drop table t");
+
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_int4("p0", 10);
+        std::unique_ptr<api::executable_statement> exec{};
+        ASSERT_EQ(status::ok,db_->resolve(prepared, std::shared_ptr{std::move(ps)}, exec));
+
+        auto tx = utils::create_transaction(*db_);
+        auto err = execute(*tx, *exec);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    ASSERT_EQ(status::ok,db_->destroy_statement(prepared));
+}
+
+
 
 }

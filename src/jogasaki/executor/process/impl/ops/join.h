@@ -277,7 +277,7 @@ public:
                 } while (incr.increment(primary_group_index));
                 break;
             }
-            case join_kind::anti: //fall-thru
+            case join_kind::anti: [[fallthrough]];
             case join_kind::semi: {
                 if(cgrp.groups()[0].empty()) {
                     break;
@@ -302,7 +302,8 @@ public:
                         } while (incr.increment(secondary_group_index));
                         incr.reset(secondary_group_index);
                     }
-                    if((exists_match && kind_ == join_kind::semi) || (!exists_match && kind_ == join_kind::semi)) {
+                    if((exists_match && kind_ == join_kind::semi) || (! exists_match && kind_ == join_kind::anti)) {
+                        assign_values(ctx, cgrp, incr, true);
                         if (! call_downstream(context)) {
                             ctx.abort();
                             return {operation_status_kind::aborted};

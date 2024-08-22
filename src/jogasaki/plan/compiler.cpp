@@ -606,6 +606,8 @@ status prepare(
             yugawara::restricted_feature::relation_intersection,
             yugawara::restricted_feature::exchange_broadcast,
             yugawara::restricted_feature::exchange_discard,
+            yugawara::restricted_feature::statement_write_delete,
+            yugawara::restricted_feature::statement_write_update,
         };
     }
 

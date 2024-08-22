@@ -508,4 +508,20 @@ TEST_F(sql_test, having_witout_group_by) {
     }
 }
 
+// TODO enable when compiler supports EXISTS
+TEST_F(sql_test, DISABLED_exists) {
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (0),(1)");
+    execute_statement("create table t1 (c0 int)");
+    execute_statement("INSERT INTO t1 VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 where exists (select * from t1)", result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[1]);
+    }
+}
+
 }

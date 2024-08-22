@@ -244,4 +244,25 @@ TEST_F(sql_forward_test, DISABLED_different_types) {
     }
 }
 
+// enable when issue 943 is completed
+TEST_F(sql_forward_test, DISABLED_union_join) {
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("create table t1 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (1,10)");
+    execute_statement("INSERT INTO t1 VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 union join t1", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
+TEST_F(sql_forward_test, union_two_tables_with_different_number_of_columns) {
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("create table t1 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (1,10)");
+    execute_statement("INSERT INTO t1 VALUES (1)");
+    test_stmt_err("select * from t0 union all select * from t1", error_code::analyze_exception);
+}
+
 }

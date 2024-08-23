@@ -546,7 +546,7 @@ private:
     std::string db_location_{};
     bool scheduler_rr_workers_ = false;
     bool activate_scheduler_ = true;
-    bool enable_index_join_ = false;
+    bool enable_index_join_ = true;
     bool use_preferred_worker_for_current_thread_ = true;
     std::size_t stealing_wait_ = 1;
     std::size_t task_polling_wait_ = 0;

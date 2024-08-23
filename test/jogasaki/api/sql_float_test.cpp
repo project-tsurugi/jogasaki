@@ -93,7 +93,7 @@ TEST_F(sql_float_test, join_by_positive_negative_zeros_comparison) {
     // Even this testcase is broken, it doesn't necessarily mean that the feature is broken but it's worth to investigate
     // why the original values are not preserved.
     global::config_pool()->normalize_float(false);
-    execute_statement("create table t (c0 DOUBLE primary key)");
+    execute_statement("create table t (c0 DOUBLE)");
 
     execute_statement("insert into t values (CAST('-0' AS DOUBLE))");
     execute_statement("insert into t values (CAST('0' AS DOUBLE))");

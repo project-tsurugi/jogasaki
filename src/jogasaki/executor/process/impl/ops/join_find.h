@@ -123,6 +123,7 @@ public:
 
     using column = takatori::relation::join_find::column;
     using key = takatori::relation::join_find::key;
+    using join_kind = takatori::relation::join_kind;
 
     using memory_resource = memory::lifo_paged_memory_resource;
     /**
@@ -132,6 +133,7 @@ public:
 
     /**
      * @brief create new object
+     * @param kind the kind of the join
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
@@ -143,6 +145,7 @@ public:
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     join_find(
+        join_kind kind,
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
@@ -159,6 +162,7 @@ public:
 
     /**
      * @brief create new object from takatori columns
+     * @param kind the kind of the join
      * @param index the index to identify the operator in the process
      * @param info processor's information where this operation is contained
      * @param block_index the index of the block that this operation belongs to
@@ -169,6 +173,7 @@ public:
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
     join_find(
+        join_kind kind,
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
@@ -230,6 +235,7 @@ public:
     [[nodiscard]] std::vector<details::search_key_field_info> const& search_key_fields() const noexcept;
 
 private:
+    join_kind join_kind_{};
     bool use_secondary_{};
     std::string primary_storage_name_{};
     std::string secondary_storage_name_{};
@@ -240,6 +246,7 @@ private:
     std::unique_ptr<operator_base> downstream_{};
     expression::evaluator evaluator_{};
 
+    void nullify_output_variables(accessor::record_ref target);
 };
 
 

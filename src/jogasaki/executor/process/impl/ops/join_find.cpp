@@ -199,19 +199,33 @@ operation_status join_find::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
+void join_find::nullify_output_variables(accessor::record_ref target) {
+    for(auto&& f : key_columns_) {
+        if(f.exists_) {
+            target.set_null(f.nullity_offset_, true);
+        }
+    }
+    for(auto&& f : value_columns_) {
+        if(f.exists_) {
+            target.set_null(f.nullity_offset_, true);
+        }
+    }
+}
 operation_status join_find::operator()(join_find_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
     auto resource = ctx.varlen_resource();
-    if((*ctx.matcher_)(
+    nullify_output_variables(ctx.output_variables().store().ref());
+    bool matched = (*ctx.matcher_)(
         *ctx.req_context(),
         ctx.input_variables(),
         ctx.output_variables(),
         *ctx.primary_stg_,
         ctx.secondary_stg_.get(),
         resource
-    )) {
+    );
+    if(matched || join_kind_ == join_kind::left_outer) {
         do {
             if (condition_) {
                 expression::evaluator_context c{
@@ -223,7 +237,12 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
                     return handle_expression_error(ctx, r, c);
                 }
                 if(! r.to<bool>()) {
-                    continue;
+                    if(join_kind_ != join_kind::left_outer) {
+                        // inner join: skip record
+                        continue;
+                    }
+                    // left outer join: nullify output variables and send record downstream
+                    nullify_output_variables(ctx.output_variables().store().ref());
                 }
             }
             if (downstream_) {
@@ -232,7 +251,9 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
                     return {operation_status_kind::aborted};
                 }
             }
-        } while(ctx.matcher_->next());
+            // clean output variables for next record just in case
+            nullify_output_variables(ctx.output_variables().store().ref());
+        } while(matched && ctx.matcher_->next());
     }
     if(auto res = ctx.matcher_->result(); res != status::not_found) {
         if(res == status::err_integrity_constraint_violation) {
@@ -265,6 +286,7 @@ void join_find::finish(abstract::task_context* context) {
 }
 
 join_find::join_find(
+    join_kind kind,
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -279,6 +301,7 @@ join_find::join_find(
     variable_table_info const* output_variable_info
 ) noexcept:
     record_operator(index, info, block_index, input_variable_info, output_variable_info),
+    join_kind_(kind),
     use_secondary_(! secondary_storage_name.empty()),
     primary_storage_name_(primary_storage_name),
     secondary_storage_name_(secondary_storage_name),
@@ -294,6 +317,7 @@ join_find::join_find(
 {}
 
 join_find::join_find(
+    join_kind kind,
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -307,6 +331,7 @@ join_find::join_find(
     variable_table_info const* output_variable_info
 ) :
     join_find(
+        kind,
         index,
         info,
         block_index,

@@ -291,21 +291,21 @@ TEST_F(sql_join_test, full_outer_join) {
     }
 }
 
-// join with on clause fails for now TODO
-TEST_F(sql_join_test, DISABLED_join_condition_on_clause) {
-    execute_statement( "CREATE TABLE TT0 (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0,C1))");
-    execute_statement( "CREATE TABLE TT1 (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0,C1))");
-    execute_statement( "INSERT INTO TT0 (C0, C1) VALUES (1, 1)");
-    execute_statement( "INSERT INTO TT1 (C0, C1) VALUES (10, 2)");
+TEST_F(sql_join_test, join_condition_on_clause) {
+    // regression testcase - once join condition on clause caused wrong result
+    execute_statement("CREATE TABLE TT0 (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0,C1))");
+    execute_statement("CREATE TABLE TT1 (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0,C1))");
+    execute_statement("INSERT INTO TT0 (C0, C1) VALUES (1, 1)");
+    execute_statement("INSERT INTO TT1 (C0, C1) VALUES (1, 2)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TT0, TT1 WHERE TT0.C0=TT1.C0 AND TT0.C1 < TT1.C1", result);
-        ASSERT_EQ(0, result.size());
+        ASSERT_EQ(1, result.size());
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TT0 INNER JOIN TT1 ON TT0.C0=TT1.C0 WHERE TT0.C1 < TT1.C1", result);
-        ASSERT_EQ(0, result.size());
+        ASSERT_EQ(1, result.size());
     }
 }
 

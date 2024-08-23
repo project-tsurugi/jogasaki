@@ -176,6 +176,7 @@ TEST_F(join_find_test, simple) {
 
     std::vector<jogasaki::mock::basic_record> result{};
     join_find op{
+        relation::join_kind::inner,
         0,
         *processor_info_,
         0,
@@ -266,6 +267,7 @@ TEST_F(join_find_test, secondary_index) {
 
     std::vector<jogasaki::mock::basic_record> result{};
     join_find op{
+        relation::join_kind::inner,
         0,
         *processor_info_,
         0,
@@ -387,6 +389,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
 
     std::vector<jogasaki::mock::basic_record> result{};
     join_find op{
+        relation::join_kind::inner,
         0,
         *processor_info_,
         0,

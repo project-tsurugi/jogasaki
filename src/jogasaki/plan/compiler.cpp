@@ -672,17 +672,26 @@ executor::exchange::group::step create(
     takatori::plan::group const& group,
     compiled_info const& info
 ) {
+    // with issue #940, group keys are not included in columns, so merge before using them
+    std::vector<takatori::descriptor::variable> columns_with_group_keys{group.columns()};
+    columns_with_group_keys.reserve(columns_with_group_keys.size() + group.group_keys().size());
+    for(auto&& k : group.group_keys()) {
+        if(std::find(columns_with_group_keys.begin(), columns_with_group_keys.end(), k) ==
+           columns_with_group_keys.end()) {
+            columns_with_group_keys.emplace_back(k);
+        }
+    }
     meta::variable_order input_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::flat_record>,
-        group.columns(),
+        columns_with_group_keys
     };
     meta::variable_order output_order{
         meta::variable_ordering_enum_tag<meta::variable_ordering_kind::group_from_keys>,
-        group.columns(),
+        columns_with_group_keys,
         group.group_keys()
     };
     std::vector<meta::field_type> fields{};
-    auto sz = group.columns().size();
+    auto sz = columns_with_group_keys.size();
     fields.reserve(sz);
     for(auto&& c: input_order) {
         fields.emplace_back(utils::type_for(info, c));

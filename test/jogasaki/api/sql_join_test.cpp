@@ -72,12 +72,11 @@ class sql_join_test :
 public:
     // change this flag to debug with explain
     bool to_explain() override {
-        return false;
+        return true;
     }
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
     }
 
@@ -88,9 +87,22 @@ public:
 
 using namespace std::string_view_literals;
 
+TEST_F(sql_join_test, simple_join) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (1, 1)");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t0 join t1 on t0.c1=t1.c1", result);
+    ASSERT_EQ(1, result.size());
+}
+
 TEST_F(sql_join_test, cross_join) {
+    execute_statement("CREATE TABLE T0 (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
     execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement("CREATE TABLE T10 (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
     execute_statement("INSERT INTO T10 (C0, C1) VALUES (3, 30.0)");
     execute_statement("INSERT INTO T10 (C0, C1) VALUES (4, 40.0)");
     execute_statement("INSERT INTO T10 (C0, C1) VALUES (5, 50.0)");

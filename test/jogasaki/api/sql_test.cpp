@@ -77,7 +77,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
     }
 
@@ -89,22 +88,24 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(sql_test, update_by_part_of_primary_key) {
-    execute_statement( "INSERT INTO T20 (C0, C2, C4) VALUES (1, 100.0, '111')");
-    execute_statement( "UPDATE T20 SET C2=200.0 WHERE C0=1");
+    execute_statement("CREATE TABLE T20 (C0 BIGINT, C1 INT DEFAULT 0, C2 DOUBLE, C3 FLOAT, C4 VARCHAR(100), PRIMARY KEY(C0, C1))");
+    execute_statement("INSERT INTO T20 (C0, C2, C4) VALUES (1, 100.0, '111')");
+    execute_statement("UPDATE T20 SET C2=200.0 WHERE C0=1");
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1, C2 FROM T20", result);
     ASSERT_EQ(1, result.size());
     auto& rec = result[0];
     EXPECT_EQ(1, rec.get_value<std::int64_t>(0));
-    EXPECT_TRUE(rec.is_null(1));
+    EXPECT_EQ(0, rec.get_value<std::int32_t>(1));
     EXPECT_DOUBLE_EQ(200.0, rec.get_value<double>(2));
     EXPECT_FALSE(rec.is_null(2));
 }
 
 TEST_F(sql_test, update_primary_key) {
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
-    execute_statement( "UPDATE T0 SET C0=3, C1=30.0 WHERE C1=10.0");
+    execute_statement("CREATE TABLE T0 (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 20.0)");
+    execute_statement("UPDATE T0 SET C0=3, C1=30.0 WHERE C1=10.0");
     wait_epochs(2);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1 FROM T0 ORDER BY C0", result);
@@ -117,6 +118,7 @@ TEST_F(sql_test, update_primary_key) {
 }
 
 TEST_F(sql_test, read_null) {
+    execute_statement("CREATE TABLE T0 (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
     execute_statement("INSERT INTO T0(C0) VALUES (0)");
     {
         std::vector<mock::basic_record> result{};
@@ -126,14 +128,25 @@ TEST_F(sql_test, read_null) {
     }
 }
 
-// literal TRUE/FALSE is accepted but seems to be ignored // TODO
-TEST_F(sql_test, DISABLED_literal_true) {
+TEST_F(sql_test, literal_true_false) {
+    execute_statement("CREATE TABLE T0 (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
     execute_statement("INSERT INTO T0(C0) VALUES (0)");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, C1, TRUE FROM T0 WHERE FALSE", result);
+        execute_query("SELECT C0, C1, TRUE, FALSE FROM T0 WHERE TRUE", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>({0, 0.0}, {false, true})), result[0]);
+        EXPECT_EQ(
+            (create_nullable_record<kind::int8, kind::float8, kind::boolean, kind::boolean>(
+                {0, 0.0, true, false},
+                {false, true, false, false}
+            )),
+            result[0]
+        );
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, C1, TRUE FROM T0 WHERE FALSE", result);
+        ASSERT_EQ(0, result.size());
     }
 }
 

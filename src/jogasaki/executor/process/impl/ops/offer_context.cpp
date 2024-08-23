@@ -53,6 +53,4 @@ void offer_context::release() {
     }
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

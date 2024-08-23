@@ -48,6 +48,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/impl/ops/offer.h>
@@ -197,7 +198,9 @@ TEST_F(offer_test, simple) {
         {},
     };
 
-    offer_context ctx(&task_ctx, meta, variables);
+    memory::lifo_paged_memory_resource resource{&global::page_pool()};
+    memory::lifo_paged_memory_resource varlen_resource{&global::page_pool()};
+    offer_context ctx(&task_ctx, meta, variables, &resource, &varlen_resource);
 
     auto vars_ref = variables.store().ref();
     auto& map = variables.info();

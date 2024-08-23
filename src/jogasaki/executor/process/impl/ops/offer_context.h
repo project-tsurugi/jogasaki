@@ -64,7 +64,4 @@ private:
     io::record_writer* writer_{};
 };
 
-
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

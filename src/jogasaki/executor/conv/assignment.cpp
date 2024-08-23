@@ -98,6 +98,26 @@ status conduct_assignment_conversion(
     return res;
 }
 
+status conduct_unifying_conversion(
+    takatori::type::data const& source_type,
+    takatori::type::data const& target_type,
+    data::any const& in,
+    data::any& out,
+    request_context& ctx,
+    memory::lifo_paged_memory_resource* resource
+) {
+    (void) ctx;
+    expression::evaluator_context ectx{resource, nullptr}; // evaluate no function
+    // unifying conversion doesn't lose precision
+    ectx.set_loss_precision_policy(expression::loss_precision_policy::ignore);
+    auto converted = expression::details::conduct_cast(ectx, source_type, target_type, in);
+    if(! converted.error()) {
+        out = converted;
+        return status::ok;
+    }
+    return status::ok;
+}
+
 bool to_require_conversion(
     takatori::type::data const& source_type,
     takatori::type::data const& target_type

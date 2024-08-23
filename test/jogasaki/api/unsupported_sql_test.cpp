@@ -162,13 +162,4 @@ TEST_F(unsupported_sql_test, subquery) {
     execute_statement("select * from (select * from T t11, T t12) t1");
 }
 
-// TODO enable when issue #940 is fiexed
-TEST_F(unsupported_sql_test, DISABLED_shuffle_join_with_different_types) {
-    execute_statement("create table t0 (c0 int primary key, c1 int)");
-    execute_statement("insert into t0 values (1,1)");
-    execute_statement("create table t1 (c0 int primary key, c1 bigint)");
-    execute_statement("insert into t1 values (1,1)");
-    test_stmt_err("select * from t0, t1 where t0.c1 = t1.c1", error_code::unsupported_runtime_feature_exception);
-}
-
 }

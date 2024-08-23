@@ -43,11 +43,15 @@ namespace details {
 
 struct cache_align offer_field {
     meta::field_type type_{};
+    meta::field_type source_ftype_{};
     std::size_t source_offset_{};
     std::size_t target_offset_{};
     std::size_t source_nullity_offset_{};
     std::size_t target_nullity_offset_{};
     bool nullable_{};
+    takatori::type::data const* source_type_{};
+    takatori::type::data const* target_type_{};
+    bool requires_conversion_{};
 };
 
 }
@@ -125,10 +129,9 @@ private:
     [[nodiscard]] std::vector<details::offer_field> create_fields(
         maybe_shared_ptr<meta::record_meta> const& meta,
         meta::variable_order const& order,
-        sequence_view<column const> columns
+        sequence_view<column const> columns,
+        processor_info const& info
     );
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

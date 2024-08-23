@@ -309,4 +309,26 @@ TEST_F(sql_join_test, join_condition_on_clause) {
     }
 }
 
+TEST_F(sql_join_test, join_key_different_types) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 bigint)");
+    execute_statement("INSERT INTO t1 VALUES (1, 1)");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t0 join t1 on t0.c1=t1.c1", result);
+    ASSERT_EQ(1, result.size());
+}
+
+TEST_F(sql_join_test, join_key_different_types_decimal_float) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 decimal(5))");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 float)");
+    execute_statement("INSERT INTO t1 VALUES (1, 1)");
+
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t0 join t1 on t0.c1=t1.c1", result);
+    ASSERT_EQ(1, result.size());
+}
+
 }

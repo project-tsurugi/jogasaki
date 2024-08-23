@@ -209,8 +209,8 @@ TEST_F(sql_forward_test, complex) {
     }
 }
 
-// TODO enable when issue 887 is completed
-TEST_F(sql_forward_test, DISABLED_different_types) {
+// TODO enable when unifying type is fixed
+TEST_F(sql_forward_test, DISABLED_different_types_int_decimal) {
     execute_statement("create table t (c0 int primary key, c1 decimal(38))");
     execute_statement("INSERT INTO t VALUES (1,10)");
     {
@@ -222,27 +222,45 @@ TEST_F(sql_forward_test, DISABLED_different_types) {
         , result);
         ASSERT_EQ(2, result.size());
         std::sort(result.begin(), result.end());
-        // TODO : confirm if these types are correct (should be pair of decimal?)
-        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::decimal>(
+        // TODO : confirm if these types are correct (should be pair of decimal(38,0)?)
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
             std::tuple{
-                meta::int4_type(),
                 meta::decimal_type(38, 0),
+                meta::decimal_type(10, 0),
             }, {
-                1,
+                triple{1, 0, 1, 0},
                 triple{1, 0, 10, 0},
             }
         )), result[0]);
-        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::decimal>(
+        EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
             std::tuple{
-                meta::int4_type(),
                 meta::decimal_type(38, 0),
+                meta::decimal_type(10, 0),
             }, {
-                10,
+                triple{1, 0, 10, 0},
                 triple{1, 0, 1, 0},
             }
         )), result[1]);
     }
 }
+
+TEST_F(sql_forward_test, different_types_int_bigint) {
+    execute_statement("create table t (c0 int primary key, c1 bigint)");
+    execute_statement("INSERT INTO t VALUES (1,10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query(
+        "SELECT c0, c1 from t"
+        " UNION ALL"
+        " SELECT c1, c0 from t"
+        , result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int8, kind::int8>(1, 10)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8, kind::int8>(10, 1)), result[1]);
+    }
+}
+
 
 // enable when issue 943 is completed
 TEST_F(sql_forward_test, DISABLED_union_join) {

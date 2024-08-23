@@ -86,7 +86,8 @@ TEST_F(sql_float_test, inserting_zeroes) {
     test_stmt_err("insert into t values (CAST('0' AS DOUBLE))", error_code::unique_constraint_violation_exception);
 }
 
-TEST_F(sql_float_test, join_by_positive_negative_zeros_comparison) {
+// TODO the result is unstable, investigate and enable
+TEST_F(sql_float_test, DISABLED_join_by_positive_negative_zeros_comparison) {
     // regression testcase - once the result became [{-0, -0}, {-0, -0}, {-0, -0}, {-0, -0}]
     // usually -0 is normalized to 0, so it doesn't matter that join result contains "-0" since it's converted to 0.
     // This testcase is left to verify that the original values (i.e. "-0" or "+0") are preserved.

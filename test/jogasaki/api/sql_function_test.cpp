@@ -651,4 +651,16 @@ TEST_F(sql_function_test, verify_parameter_application_conversion) {
     }
 }
 
+TEST_F(sql_function_test, count_distinct_varlen) {
+    // regression testcase for issue 946
+    execute_statement("create table t (c0 char(20))");
+    execute_statement("insert into t values ('a'), ('a'), ('b')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT COUNT(distinct c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(2)), result[0]);
+    }
+}
+
 }  // namespace jogasaki::testing

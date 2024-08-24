@@ -122,7 +122,6 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
                     return {operation_status_kind::aborted};
                 }
             }
-            utils::checkpoint_holder member_cp{resource};
             auto value = ctx.reader_->get_member();
             for(auto &f : fields_) {
                 if (f.is_key_) continue;

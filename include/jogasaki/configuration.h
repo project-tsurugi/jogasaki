@@ -434,14 +434,6 @@ public:
         return request_cancel_config_;
     }
 
-    [[nodiscard]] std::size_t compiler_support() const noexcept {
-        return compiler_support_;
-    }
-
-    void compiler_support(std::size_t arg) noexcept {
-        compiler_support_ = arg;
-    }
-
     void lowercase_regular_identifiers(bool arg) noexcept {
         lowercase_regular_identifiers_ = arg;
     }
@@ -515,7 +507,6 @@ public:
         print_non_default(point_read_concurrent_operation_as_not_found);
         print_non_default(normalize_float);
         print_non_default(log_msg_user_data);
-        print_non_default(compiler_support);
         print_non_default(lowercase_regular_identifiers);
         print_non_default(zone_offset);
         print_non_default(scan_block_size);
@@ -572,7 +563,6 @@ private:
     bool normalize_float_ = true;
     bool log_msg_user_data_ = false;
     std::shared_ptr<request_cancel_config> request_cancel_config_{};
-    std::size_t compiler_support_ = 1;
     bool lowercase_regular_identifiers_ = false;
     std::int32_t zone_offset_ = 0;
     std::size_t scan_block_size_ = 0;

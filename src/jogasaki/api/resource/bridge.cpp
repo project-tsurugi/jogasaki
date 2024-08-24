@@ -201,9 +201,6 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<std::size_t>("worker_suspend_timeout")) {
         ret->worker_suspend_timeout(v.value());
     }
-    if (auto v = jogasaki_config->get<std::size_t>("dev_compiler_support")) {
-        ret->compiler_support(v.value());
-    }
     if (auto v = jogasaki_config->get<bool>("lowercase_regular_identifiers")) {
         ret->lowercase_regular_identifiers(v.value());
     }

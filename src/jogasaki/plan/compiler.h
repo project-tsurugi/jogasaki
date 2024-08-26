@@ -82,24 +82,24 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
 );
 
-class exception : public std::exception {
+class compile_exception : public std::exception {
 public:
     /**
      * @brief create empty object
      */
-    exception() = default;
+    compile_exception() = default;
 
     /**
      * @brief destruct the object
      */
-    ~exception() override = default;
+    ~compile_exception() override = default;
 
-    exception(exception const& other) = default;
-    exception& operator=(exception const& other) = default;
-    exception(exception&& other) noexcept = default;
-    exception& operator=(exception&& other) noexcept = default;
+    compile_exception(compile_exception const& other) = default;
+    compile_exception& operator=(compile_exception const& other) = default;
+    compile_exception(compile_exception&& other) noexcept = default;
+    compile_exception& operator=(compile_exception&& other) noexcept = default;
 
-    explicit exception(std::shared_ptr<error::error_info> info) noexcept :
+    explicit compile_exception(std::shared_ptr<error::error_info> info) noexcept :
         info_(std::move(info))
     {}
 

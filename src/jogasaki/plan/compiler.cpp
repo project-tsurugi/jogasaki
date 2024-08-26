@@ -214,7 +214,7 @@ void preprocess(
                 container->work_level().set_minimum(statement_work_level_kind::simple_multirecord_operation);
                 break;
             case takatori::relation::expression_kind::join_scan:
-                throw_exception(impl::exception(
+                throw_exception(impl::compile_exception(
                     create_error_info(
                         error_code::unsupported_runtime_feature_exception,
                         "Compiling statement resulted in unsupported relational operator. "
@@ -1127,7 +1127,7 @@ status prepare(std::string_view sql, compiler_context &ctx) {
             ctx.prepared_statement(std::move(stmt));
         }
         return rc;
-    } catch (impl::exception const& e) {
+    } catch (impl::compile_exception const& e) {
         ctx.error_info(e.info());
         return e.info()->status();
     } catch (std::exception const& e) {
@@ -1153,7 +1153,7 @@ status compile(
 ) {
     try {
         return impl::create_executable_statement(ctx, parameters);
-    } catch (impl::exception const& e) {
+    } catch (impl::compile_exception const& e) {
         ctx.error_info(e.info());
         return e.info()->status();
     }
@@ -1169,7 +1169,7 @@ status compile(
             return rc;
         }
         return impl::create_executable_statement(ctx, parameters);
-    } catch (impl::exception const& e) {
+    } catch (impl::compile_exception const& e) {
         ctx.error_info(e.info());
         return e.info()->status();
     }

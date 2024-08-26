@@ -138,6 +138,25 @@ TEST_F(sql_except_test, nulls) {
     }
 }
 
+TEST_F(sql_except_test, multiple_columns) {
+    execute_statement("create table t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 10)");
+    execute_statement("create table t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (1, 10)");
+    execute_statement("create table t2 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t2 VALUES (1, 1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("table t0 except distinct table t1", result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("table t0 except distinct table t2", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
 // enable when except all is supported
 TEST_F(sql_except_test, DISABLED_except_all) {
     execute_statement("create table t0 (c0 int)");

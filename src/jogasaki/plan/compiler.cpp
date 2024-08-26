@@ -507,6 +507,9 @@ status prepare(
         limits[kind] = common_limit;
     }
 
+    // common limit also applied to tree depth for now
+    parser.options().tree_depth_limit() = common_limit;
+
     auto result = parser("<input>", std::string{sql});
     if(result.has_diagnostic()) {
         // warning or error raised

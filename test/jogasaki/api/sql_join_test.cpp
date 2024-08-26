@@ -331,4 +331,36 @@ TEST_F(sql_join_test, join_key_different_types_decimal_float) {
     ASSERT_EQ(1, result.size());
 }
 
+TEST_F(sql_join_test, cross_join_with_where) {
+    // regression testcase - once cross join with where clause caused server crash (issue 950)
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (1, 1)");
+
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t0 cross join t1 where t1.c1 = 1", result);
+        ASSERT_EQ(1, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t0 cross join t1 where TRUE", result);
+        ASSERT_EQ(1, result.size());
+    }
+}
+
+// enable: when fixed issue #952
+TEST_F(sql_join_test, DISABLED_full_outer_with_join_condition) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t0 VALUES (1, 1)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
+    execute_statement("INSERT INTO t1 VALUES (2, 2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT t0.c0, t1.c0 FROM t0 full outer join t1 on t0.c1=t1.c1 and FALSE", result);
+        ASSERT_EQ(2, result.size());
+    }
+}
+
 }

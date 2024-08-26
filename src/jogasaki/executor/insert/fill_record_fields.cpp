@@ -51,6 +51,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/model/statement_kind.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_encode_errors.h>
@@ -295,6 +296,14 @@ std::vector<insert::write_field> create_fields(
                 );
                 continue;
             }
+            if(k.column().features().contains(::yugawara::storage::column_feature::read_only)) {
+                auto msg = string_builder{}
+                    << "write operation on read-only column name:" << k.column().simple_name()
+                    << string_builder::to_string;
+                throw_exception(plan::impl::compile_exception{
+                    create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
+                });
+            }
             auto pos = out.size();
             out.emplace_back(
                 variable_indices[kc.reference()],
@@ -330,6 +339,13 @@ std::vector<insert::write_field> create_fields(
                     resource
                 );
                 continue;
+            }
+            if(c.features().contains(::yugawara::storage::column_feature::read_only)) {
+                auto msg = string_builder{} << "write operation on read-only column name:" << c.simple_name()
+                                            << string_builder::to_string;
+                throw_exception(plan::impl::compile_exception{
+                    create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
+                });
             }
             auto pos = out.size();
             out.emplace_back(

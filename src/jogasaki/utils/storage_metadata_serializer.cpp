@@ -544,6 +544,9 @@ yugawara::storage::column::feature_set_type create_column_feature_set(
             case ::jogasaki::proto::metadata::storage::TableColumnFeature::HIDDEN:
                 ret.insert(yugawara::storage::column_feature::hidden);
                 break;
+            case ::jogasaki::proto::metadata::storage::TableColumnFeature::READ_ONLY:
+                ret.insert(yugawara::storage::column_feature::read_only);
+                break;
             default:
                 // no-op
                 break;

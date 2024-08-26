@@ -40,6 +40,7 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/task.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/assert.h>
 
@@ -86,13 +87,19 @@ std::size_t flow::check_empty_input_and_calculate_partitions() {
 }
 
 sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
-    auto proc = std::make_shared<impl::processor>(
-        info_,
-        step_->io_info(),
-        step_->relation_io_map(),
-        *step_->io_exchange_map(),
-        context_->request_resource()
-    );
+    std::shared_ptr<impl::processor> proc{};
+    try {
+        proc = std::make_shared<impl::processor>(
+            info_,
+            step_->io_info(),
+            step_->relation_io_map(),
+            *step_->io_exchange_map(),
+            context_->request_resource()
+        );
+    } catch (plan::impl::compile_exception const& e) {
+        context_->error_info(e.info());
+        return {};
+    }
     // create process executor
     auto& factory = step_->executor_factory() ? *step_->executor_factory() : impl::default_process_executor_factory();
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};

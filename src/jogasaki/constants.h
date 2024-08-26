@@ -74,6 +74,11 @@ constexpr std::size_t default_record_buffer_size = 1024;
 constexpr static std::string_view generated_pkey_column_prefix = "__generated_rowid_";
 
 /**
+ * @brief prefix used for generated primary key column name and its sequence
+ */
+constexpr static std::string_view generated_sequence_name_prefix = "__generated_sequence_";
+
+/**
  * @brief max precision for decimal
  * @details max precision allowed for decimal types
  */

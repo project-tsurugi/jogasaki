@@ -33,6 +33,7 @@
 #include <takatori/util/optional_ptr.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
+#include <takatori/util/string_builder.h>
 #include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
 #include <yugawara/storage/column.h>
@@ -56,6 +57,7 @@
 #include <jogasaki/index/utils.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/storage.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
@@ -71,6 +73,7 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using variable = takatori::descriptor::variable;
+using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
 void write_partial::finish(abstract::task_context* context) {
@@ -401,6 +404,14 @@ std::vector<details::update_field> create_update_fields(
                 // throw_exception(std::logic_error{""}); // TODO update by non-unique keys
             }
             if (column_dest_to_src.count(kc) != 0) {
+                if(k.column().features().contains(::yugawara::storage::column_feature::read_only)) {
+                    auto msg = string_builder{}
+                        << "write operation on read-only column name:" << k.column().simple_name()
+                        << string_builder::to_string;
+                    throw_exception(plan::impl::compile_exception{
+                        create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
+                    });
+                }
                 auto&& src = column_dest_to_src.at(kc);
                 auto& src_type = cinfo.type_of(src);
                 auto [os, nos, b] = resolve_variable_offsets(input_variable_info, host_variable_info, src);
@@ -424,6 +435,13 @@ std::vector<details::update_field> create_update_fields(
         auto b = bindings(v);
         auto& c = static_cast<yugawara::storage::column const&>(v);
         if (column_dest_to_src.count(b) != 0) {
+            if(c.features().contains(::yugawara::storage::column_feature::read_only)) {
+                auto msg = string_builder{} << "write operation on read-only column name:" << c.simple_name()
+                                            << string_builder::to_string;
+                throw_exception(plan::impl::compile_exception{
+                    create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
+                });
+            }
             auto&& src = column_dest_to_src.at(b);
             auto& src_type = cinfo.type_of(src);
             auto [os, nos, src_is_external ] = resolve_variable_offsets(input_variable_info, host_variable_info, src);

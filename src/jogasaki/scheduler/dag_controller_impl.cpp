@@ -369,6 +369,11 @@ void dag_controller::impl::schedule(model::graph& g, request_context& rctx) {
 
 void dag_controller::impl::start_running(step& v) {
     auto task_list = v.create_tasks(*request_context_);
+    if(request_context_->error_info()) {
+        // error occurred during task creation
+        step_state(v, step_state_kind::completed);
+        return;
+    }
     auto& tasks = steps_[v.id()];
     tasks.assign_slot(task_kind::main, task_list.size());
     step_state_table::slot_index slot = 0;

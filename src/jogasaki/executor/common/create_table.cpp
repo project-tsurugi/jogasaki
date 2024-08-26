@@ -78,7 +78,7 @@ model::statement_kind create_table::kind() const noexcept {
     return model::statement_kind::create_table;
 }
 
-bool create_sequence_for_generated_pk(
+bool create_generated_sequence(
     request_context& context,
     yugawara::storage::sequence& p
 ) {
@@ -134,7 +134,12 @@ bool create_table::operator()(request_context& context) const {
     auto rh = std::any_cast<plan::storage_processor_result>(ct_->runtime_hint());
     if(rh.primary_key_generated()) {
         auto p = rh.primary_key_sequence();
-        if(!create_sequence_for_generated_pk(context, *p)) {
+        if(! create_generated_sequence(context, *p)) {
+            return false;
+        }
+    }
+    for(auto&& s : rh.generated_sequences()) {
+        if(! create_generated_sequence(context, *s)) {
             return false;
         }
     }

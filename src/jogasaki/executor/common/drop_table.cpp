@@ -64,29 +64,51 @@ model::statement_kind drop_table::kind() const noexcept {
     return model::statement_kind::drop_table;
 }
 
+bool remove_generated_sequences(
+    request_context& context,
+    std::vector<std::string>& generated_sequences,
+    std::string_view sequence_name
+) {
+    auto& provider = *context.storage_provider();
+    generated_sequences.emplace_back(sequence_name);
+    if(auto s = provider.find_sequence(sequence_name)) {
+        if(s->definition_id().has_value()) {
+            auto def_id = s->definition_id().value();
+            try {
+                if(! context.sequence_manager()->remove_sequence(def_id, context.transaction()->object().get())) {
+                    VLOG_LP(log_error) << "sequence '" << sequence_name << "' not found";
+                    context.status_code(status::err_not_found);
+                    return false;
+                }
+            } catch(executor::sequence::exception const& e) {
+                VLOG_LP(log_error) << "removing sequence '" << sequence_name << "' not found";
+                context.status_code(e.get_status(), e.what());
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool drop_auto_generated_sequences(
     request_context& context,
     yugawara::storage::table const& t,
-    std::vector<std::string>& generated_sequences) {
-    auto& provider = *context.storage_provider();
+    std::vector<std::string>& generated_sequences
+) {
     for(auto&& col : t.columns()) {
         // normally, sequence referenced in default value should not be dropped. Only the exception is one auto-generated for primary key.
         if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
-            generated_sequences.emplace_back(col.simple_name());
-            if(auto s = provider.find_sequence(col.simple_name())) {
-                if(s->definition_id().has_value()) {
-                    auto def_id = s->definition_id().value();
-                    try {
-                        if(! context.sequence_manager()->remove_sequence(def_id, context.transaction()->object().get())) {
-                            VLOG_LP(log_error) << "sequence '" << col.simple_name() << "' not found";
-                            context.status_code(status::err_not_found);
-                            return false;
-                        }
-                    } catch(executor::sequence::exception const& e) {
-                        VLOG_LP(log_error) << "removing sequence '" << col.simple_name() << "' not found";
-                        context.status_code(e.get_status(), e.what());
-                        return false;
-                    }
+            if(! remove_generated_sequences(context, generated_sequences, col.simple_name())) {
+                return false;
+            }
+            continue;
+        }
+        if(col.default_value().kind() == yugawara::storage::column_value_kind::sequence) {
+            auto& dv = col.default_value().element<::yugawara::storage::column_value_kind::sequence>();
+            // currently any sequence in the default value is auto-generated, but check the prefix just in case
+            if(utils::is_prefix(dv->simple_name(), generated_sequence_name_prefix)) {
+                if(! remove_generated_sequences(context, generated_sequences, dv->simple_name())) {
+                    return false;
                 }
             }
         }
@@ -146,7 +168,8 @@ bool drop_table::operator()(request_context& context) const {
 
     // drop auto-generated sequences
     for(auto&& n : generated_sequences) {
-        // normally, sequence referenced in default value should not be dropped. Only the exception is one auto-generated for primary key.
+        // Normally, sequence referenced in default value should not be dropped.
+        // The exception is ones auto-generated for primary key or generated identity columns.
         provider.remove_sequence(n);
     }
 

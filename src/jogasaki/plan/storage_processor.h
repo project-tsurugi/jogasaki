@@ -35,20 +35,26 @@ namespace schema = ::yugawara::schema;
  */
 class storage_processor_result {
 public:
+    using generated_sequences_type = std::vector<std::shared_ptr<yugawara::storage::sequence>>;
+
     storage_processor_result() = default;
 
     explicit storage_processor_result(
         bool primary_key_generated,
-        std::shared_ptr<yugawara::storage::sequence> primary_key_sequence
+        std::shared_ptr<yugawara::storage::sequence> primary_key_sequence,
+        generated_sequences_type generated_sequences
     );
 
     [[nodiscard]] bool primary_key_generated() const noexcept;
 
     [[nodiscard]] std::shared_ptr<yugawara::storage::sequence> primary_key_sequence() const noexcept;
 
+    [[nodiscard]] generated_sequences_type generated_sequences() const noexcept;
+
 private:
     bool primary_key_generated_{};
     std::shared_ptr<yugawara::storage::sequence> primary_key_sequence_{};
+    std::vector<std::shared_ptr<yugawara::storage::sequence>> generated_sequences_{};
 };
 
 /**
@@ -56,6 +62,8 @@ private:
  */
 class storage_processor : public ::yugawara::storage::basic_prototype_processor {
 public:
+    using generated_sequences_type = storage_processor_result::generated_sequences_type;
+
     /**
      * @brief create empty object
      */
@@ -98,6 +106,14 @@ public:
 private:
     bool primary_key_generated_{};
     std::shared_ptr<yugawara::storage::sequence> primary_key_sequence_;
+    generated_sequences_type generated_sequences_{}; // without one for primary key
+
+    void add_pk_column_if_not_exists(
+        table& table_prototype,
+        index& primary_index_prototype,
+        std::string_view location_name,
+        std::string_view table_name
+    );
 };
 
 }

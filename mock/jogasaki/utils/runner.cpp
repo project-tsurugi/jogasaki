@@ -66,12 +66,13 @@ runner& runner::run() {
     notnull(prepared);
     api::impl::parameter_set empty_params{};
     std::unique_ptr<api::executable_statement> stmt{};
-    if(auto res = db_->resolve(
+    if(auto res = get_impl(*db_).resolve(
             prepared,
             params_ ? maybe_shared_ptr{params_} : maybe_shared_ptr{&empty_params},
-            stmt
+            stmt,
+            *out
         ); res != status::ok) {
-        exec_fail("execution failed. db_->resolve()");
+        exec_fail(expect_error_ ? "" : (*out)->message());
     }
     if(show_plan_ || explain_output_) {
         std::stringstream ss{};

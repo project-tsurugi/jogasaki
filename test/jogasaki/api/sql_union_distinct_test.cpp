@@ -185,8 +185,7 @@ TEST_F(sql_union_distinct_test, complex) {
     }
 }
 
-// TODO enable when unifying type is fixed
-TEST_F(sql_union_distinct_test, DISABLED_different_types_int_decimal) {
+TEST_F(sql_union_distinct_test, different_types_int_decimal) {
     execute_statement("create table t (c0 int primary key, c1 decimal(38))");
     execute_statement("INSERT INTO t VALUES (1,10)");
     {
@@ -198,11 +197,10 @@ TEST_F(sql_union_distinct_test, DISABLED_different_types_int_decimal) {
         , result);
         ASSERT_EQ(2, result.size());
         std::sort(result.begin(), result.end());
-        // TODO : confirm if these types are correct (should be pair of decimal(38,0)?)
         EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
             std::tuple{
                 meta::decimal_type(38, 0),
-                meta::decimal_type(10, 0),
+                meta::decimal_type(38, 0),
             }, {
                 triple{1, 0, 1, 0},
                 triple{1, 0, 10, 0},
@@ -211,7 +209,7 @@ TEST_F(sql_union_distinct_test, DISABLED_different_types_int_decimal) {
         EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
             std::tuple{
                 meta::decimal_type(38, 0),
-                meta::decimal_type(10, 0),
+                meta::decimal_type(38, 0),
             }, {
                 triple{1, 0, 10, 0},
                 triple{1, 0, 1, 0},

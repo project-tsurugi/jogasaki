@@ -24,6 +24,7 @@
 
 #include <takatori/decimal/triple.h>
 #include <takatori/type/data.h>
+#include <takatori/value/character.h>
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -214,6 +215,11 @@ any truncate_or_pad_if_needed(
         return any{std::in_place_type<T>, T{ctx.resource(), src}};
     }
     if(dlen < src.length()) {
+        if constexpr(std::is_same_v<T, accessor::text>) {
+            // text should be truncated at the correct utf8 character boundary
+            auto truncated = takatori::value::truncate_utf8(src, dlen);
+            dlen = truncated.length();
+        }
         if(lenient_remove_padding) {
             // check if truncation occurs only for padding or not
             if(! std::all_of(src.begin()+dlen, src.end(), [](auto c) { return c == PaddingChar; })) {

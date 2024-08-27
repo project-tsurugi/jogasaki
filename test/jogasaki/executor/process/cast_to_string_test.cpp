@@ -186,6 +186,31 @@ TEST_F(cast_to_string_test, truncate) {
     }
 }
 
+TEST_F(cast_to_string_test, truncate_utf8) {
+    evaluator_context ctx{&resource_};
+    {
+        // no truncation
+        bool lost_precision = false;
+        EXPECT_EQ((any{std::in_place_type<text>, "ABC\xe3\x81\x82\xe3\x81\x84"}), details::truncate_or_pad_if_needed<text>(ctx, "ABC\xe3\x81\x82\xe3\x81\x84", 9, false, false, lost_precision));
+        EXPECT_TRUE(! lost_precision);
+    }
+    {
+        bool lost_precision = false;
+        EXPECT_EQ((any{std::in_place_type<text>, "ABC\xe3\x81\x82"}), details::truncate_or_pad_if_needed<text>(ctx, "ABC\xe3\x81\x82\xe3\x81\x84", 6, false, false, lost_precision));
+        EXPECT_TRUE(lost_precision);
+    }
+    {
+        bool lost_precision = false;
+        EXPECT_EQ((any{std::in_place_type<text>, "ABC\xe3\x81\x82"}), details::truncate_or_pad_if_needed<text>(ctx, "ABC\xe3\x81\x82\xe3\x81\x84", 7, false, false, lost_precision));
+        EXPECT_TRUE(lost_precision);
+    }
+    {
+        bool lost_precision = false;
+        EXPECT_EQ((any{std::in_place_type<text>, "ABC"}), details::truncate_or_pad_if_needed<text>(ctx, "ABC\xe3\x81\x82\xe3\x81\x84", 5, false, false, lost_precision));
+        EXPECT_TRUE(lost_precision);
+    }
+}
+
 TEST_F(cast_to_string_test, padding) {
     evaluator_context ctx{&resource_};
     {

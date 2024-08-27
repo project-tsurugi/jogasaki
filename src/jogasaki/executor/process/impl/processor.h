@@ -49,6 +49,7 @@ public:
      * @param relation_io_map mapping from relation to input/output indices
      * @param io_exchange_map map from input/output to exchange operator
      * @param resource the memory resource to build the structures needed by this processor
+     * @throws plan::impl::compile_exception if the processor construction fails
      */
     processor(
         std::shared_ptr<processor_info> info,

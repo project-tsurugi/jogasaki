@@ -105,7 +105,7 @@ public:
     /**
      * @brief get next sequence value
      * @param tx the transaction associated with this sequence value update
-     * @return the next sequence value or an error 
+     * @return the next sequence value or an error
      */
     [[nodiscard]] either<sequence_error, sequence_value> next(kvs::transaction& tx);
 
@@ -136,4 +136,4 @@ inline bool operator!=(sequence const& a, sequence const& b) noexcept {
     return !(a == b);
 }
 
-}
+}  // namespace jogasaki::executor::sequence

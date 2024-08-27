@@ -184,5 +184,4 @@ std::size_t metadata_store::size() {
     return ret;
 }
 
-
-}
+}  // namespace jogasaki::executor::sequence

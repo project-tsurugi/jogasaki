@@ -83,4 +83,4 @@ bool info::cycle() const {
     return enable_cycle_;
 }
 
-}
+}  // namespace jogasaki::executor::sequence

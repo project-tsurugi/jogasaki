@@ -216,4 +216,4 @@ private:
     void remove_id_map(sequence_definition_id def_id, kvs::transaction* tx);
 };
 
-}
+}  // namespace jogasaki::executor::sequence

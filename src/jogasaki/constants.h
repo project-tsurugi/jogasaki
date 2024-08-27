@@ -176,4 +176,9 @@ constexpr static std::string_view storage_namespace_for_public_schema = "";  //N
  */
 constexpr static std::string_view system_identifier_prefix = "__";
 
+/**
+ * @brief initial sequence version
+ */
+constexpr std::size_t initial_sequence_version = 1;
+
 }  // namespace jogasaki

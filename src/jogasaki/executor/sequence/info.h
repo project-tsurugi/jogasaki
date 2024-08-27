@@ -170,4 +170,4 @@ inline bool operator!=(info const& a, info const& b) noexcept {
     return !(a == b);
 }
 
-}
+}  // namespace jogasaki::executor::sequence

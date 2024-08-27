@@ -63,4 +63,4 @@ private:
     std::string msg_;
 };
 
-}
+}  // namespace jogasaki::executor::sequence

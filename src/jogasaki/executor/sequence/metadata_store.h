@@ -99,4 +99,4 @@ private:
     kvs::transaction* tx_{};
 };
 
-}
+}  // namespace jogasaki::executor::sequence

@@ -19,6 +19,7 @@
 #include <utility>
 
 #include <jogasaki/common_types.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/info.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/kvs/transaction.h>
@@ -46,7 +47,7 @@ either<sequence_error, sequence_value> sequence::next(kvs::transaction& tx) {
     sequence_versioned_value next{};
     do {
         cur = body_.load();
-        if(cur.version_ == 1) {
+        if(cur.version_ == initial_sequence_version) {
             // the first version is the special case and use initial value
             next = {cur.version_ + 1, info_->initial_value()};
             continue;
@@ -76,4 +77,4 @@ class info const& sequence::info() const noexcept {
     return *info_;
 }
 
-}
+}  // namespace jogasaki::executor::sequence

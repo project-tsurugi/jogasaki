@@ -29,6 +29,7 @@
 #include <yugawara/storage/sequence.h>
 
 #include <jogasaki/common_types.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/info.h>
 #include <jogasaki/executor/sequence/sequence.h>
@@ -128,7 +129,7 @@ sequence* manager::register_sequence(
     }
     if(rc == status::err_not_found || v.version_ == 0) {
         // there was a confusion on initial version. Fix it by making the rule that the initial state is of version 1.
-        v.version_ = 1;
+        v.version_ = initial_sequence_version;
         v.value_ = initial_value;
     }
     sequences_[def_id].sequence(std::make_unique<sequence>(*p, *this, v.version_, v.value_));
@@ -279,4 +280,4 @@ class sequence* details::sequence_element::sequence() const noexcept {
     return sequence_.get();
 }
 
-}
+}  // namespace jogasaki::executor::sequence

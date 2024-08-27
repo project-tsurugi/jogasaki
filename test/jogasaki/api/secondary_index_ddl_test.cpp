@@ -136,7 +136,7 @@ TEST_F(secondary_index_ddl_test, pkless_table) {
             mock::create_nullable_record<kind::int8>());
         ASSERT_EQ(1, entries.size());
         EXPECT_EQ((mock::create_nullable_record<kind::int4>(10)), entries[0].first);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8>(1)), entries[0].second);  // 1 is the generated rowid, can be changed
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(0)), entries[0].second);  // 0 is the generated rowid, can be changed
     }
 }
 

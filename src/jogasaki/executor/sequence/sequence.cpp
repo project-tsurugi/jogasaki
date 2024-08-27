@@ -46,6 +46,11 @@ sequence_value sequence::next(kvs::transaction& tx) {
     sequence_versioned_value next{};
     do {
         cur = body_.load();
+        if(cur.version_ == 1) {
+            // the first version is the special case and use initial value
+            next = {cur.version_ + 1, info_->initial_value()};
+            continue;
+        }
         sequence_value val{};
         if (info_->increment() > 0 && info_->maximum_value() - cur.value_ < info_->increment()) {
             val = info_->cycle() ? info_->minimum_value() : info_->maximum_value();
@@ -55,7 +60,7 @@ sequence_value sequence::next(kvs::transaction& tx) {
             val = cur.value_ + info_->increment();
         }
         next = {cur.version_ + 1, val};
-    } while(!body_.compare_exchange_strong(cur, next));
+    } while(! body_.compare_exchange_strong(cur, next));
     return next.value_;
 }
 

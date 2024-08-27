@@ -75,7 +75,7 @@ TEST_F(sequence_manager_test, simple) {
     EXPECT_EQ(0, cur.value_);
     {
         auto tx = db_->create_transaction();
-        EXPECT_EQ(1, seq->next(*tx));
+        EXPECT_EQ(0, seq->next(*tx));
         EXPECT_TRUE(mgr.notify_updates(*tx));
         EXPECT_EQ(status::ok, tx->commit());
     }
@@ -181,6 +181,15 @@ TEST_F(sequence_manager_test, sequence_manipulation) {
 
     auto tx = db_->create_transaction();
     auto val = s->next(*tx);
+    EXPECT_EQ(0, val);
+    {
+        auto vv = s->get();
+        EXPECT_LT(v1, vv.version_);
+        EXPECT_EQ(0, vv.value_);
+        v1 = vv.version_;
+    }
+
+    val = s->next(*tx);
     EXPECT_EQ(1, val);
     {
         auto vv = s->get();
@@ -188,19 +197,7 @@ TEST_F(sequence_manager_test, sequence_manipulation) {
         EXPECT_EQ(1, vv.value_);
         v1 = vv.version_;
     }
-
-    val = s->next(*tx);
-    EXPECT_EQ(2, val);
-    {
-        auto vv = s->get();
-        EXPECT_LT(v1, vv.version_);
-        EXPECT_EQ(2, vv.value_);
-        v1 = vv.version_;
-    }
-
 }
-
-
 
 TEST_F(sequence_manager_test, sequence_manipulation_varieties) {
     manager mgr{*db_};
@@ -227,20 +224,20 @@ TEST_F(sequence_manager_test, sequence_manipulation_varieties) {
 
     auto tx = db_->create_transaction();
     auto val = s->next(*tx);
+    EXPECT_EQ(100, val);
+    {
+        auto vv = s->get();
+        EXPECT_LT(v1, vv.version_);
+        EXPECT_EQ(100, vv.value_);
+        v1 = vv.version_;
+    }
+
+    val = s->next(*tx);
     EXPECT_EQ(98, val);
     {
         auto vv = s->get();
         EXPECT_LT(v1, vv.version_);
         EXPECT_EQ(98, vv.value_);
-        v1 = vv.version_;
-    }
-
-    val = s->next(*tx);
-    EXPECT_EQ(96, val);
-    {
-        auto vv = s->get();
-        EXPECT_LT(v1, vv.version_);
-        EXPECT_EQ(96, vv.value_);
         v1 = vv.version_;
     }
 }
@@ -268,6 +265,7 @@ TEST_F(sequence_manager_test, cycle_positive_incr) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(6, s->next(*tx));
     EXPECT_EQ(9, s->next(*tx));
     EXPECT_EQ(2, s->next(*tx));
     EXPECT_EQ(5, s->next(*tx));
@@ -298,6 +296,7 @@ TEST_F(sequence_manager_test, cycle_negative_incr) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(5, s->next(*tx));
     EXPECT_EQ(2, s->next(*tx));
     EXPECT_EQ(9, s->next(*tx));
     EXPECT_EQ(6, s->next(*tx));
@@ -328,6 +327,7 @@ TEST_F(sequence_manager_test, no_cycle_positive_incr) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(4, s->next(*tx));
     EXPECT_EQ(7, s->next(*tx));
     EXPECT_EQ(9, s->next(*tx));
     EXPECT_EQ(9, s->next(*tx));
@@ -356,6 +356,7 @@ TEST_F(sequence_manager_test, no_cycle_negative_incr) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(6, s->next(*tx));
     EXPECT_EQ(3, s->next(*tx));
     EXPECT_EQ(2, s->next(*tx));
     EXPECT_EQ(2, s->next(*tx));
@@ -385,6 +386,7 @@ TEST_F(sequence_manager_test, cycle_positive_incr_around_intmax) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(mx-2, s->next(*tx));
     EXPECT_EQ(mx-3, s->next(*tx));
     EXPECT_EQ(mx, s->next(*tx));
     EXPECT_EQ(mx-3, s->next(*tx));
@@ -414,6 +416,7 @@ TEST_F(sequence_manager_test, no_cycle_positive_incr_around_intmax) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(mx-2, s->next(*tx));
     EXPECT_EQ(mx, s->next(*tx));
     EXPECT_EQ(mx, s->next(*tx));
 }
@@ -442,6 +445,7 @@ TEST_F(sequence_manager_test, cycle_negative_incr_around_intmin) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(mi+2, s->next(*tx));
     EXPECT_EQ(mi+3, s->next(*tx));
     EXPECT_EQ(mi, s->next(*tx));
     EXPECT_EQ(mi+3, s->next(*tx));
@@ -471,6 +475,7 @@ TEST_F(sequence_manager_test, no_cycle_negative_incr_around_intmin) {
         v1 = vv.version_;
     }
     auto tx = db_->create_transaction();
+    EXPECT_EQ(mi+2, s->next(*tx));
     EXPECT_EQ(mi, s->next(*tx));
     EXPECT_EQ(mi, s->next(*tx));
 }
@@ -489,7 +494,7 @@ TEST_F(sequence_manager_test, drop_sequence) {
         EXPECT_EQ(0, vv.value_);
         auto tx = db_->create_transaction();
         auto val = s->next(*tx);
-        EXPECT_EQ(1, val);
+        EXPECT_EQ(0, val);
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
         mgr.remove_sequence(2);
@@ -506,7 +511,7 @@ TEST_F(sequence_manager_test, drop_sequence) {
         EXPECT_EQ(1, vv.version_);
         auto tx = db_->create_transaction();
         auto val = s->next(*tx);
-        EXPECT_EQ(101, val);
+        EXPECT_EQ(100, val);
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
 
@@ -531,7 +536,7 @@ TEST_F(sequence_manager_test, save_and_recover) {
         EXPECT_EQ(0, vv.value_);
         auto tx = db_->create_transaction();
         auto val = s->next(*tx);
-        EXPECT_EQ(1, val);
+        EXPECT_EQ(0, val);
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
         wait_epochs(10);
@@ -547,10 +552,10 @@ TEST_F(sequence_manager_test, save_and_recover) {
 
         auto vv = s->get();
         EXPECT_EQ(2, vv.version_);
-        EXPECT_EQ(1, vv.value_);
+        EXPECT_EQ(0, vv.value_);
         auto tx = db_->create_transaction();
         auto val = s->next(*tx);
-        EXPECT_EQ(2, val);
+        EXPECT_EQ(1, val);
         mgr.notify_updates(*tx);
         ASSERT_EQ(status::ok, tx->commit());
     }

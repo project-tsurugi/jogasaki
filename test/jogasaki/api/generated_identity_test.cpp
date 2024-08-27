@@ -74,7 +74,7 @@ class generated_identity_test :
 public:
     // change this flag to debug with explain
     bool to_explain() override {
-        return true;
+        return false;
     }
 
     void SetUp() override {
@@ -104,6 +104,16 @@ TEST_F(generated_identity_test, pk_generated) {
     std::vector<mock::basic_record> result{};
     execute_query("select c1 from t0", result);
     ASSERT_EQ(1, result.size());
+}
+
+TEST_F(generated_identity_test, use_generated_identity_as_pk) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (minvalue 0 maxvalue 1) primary key)");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    test_stmt_err("INSERT INTO t0 (c0) VALUES (2)", error_code::unique_constraint_violation_exception);
+    std::vector<mock::basic_record> result{};
+    execute_query("select c1 from t0", result);
+    ASSERT_EQ(2, result.size());
 }
 
 TEST_F(generated_identity_test, updating_readonly_key_column) {
@@ -169,19 +179,18 @@ TEST_F(generated_identity_test, default_option_for_generated_sequence) {
         std::vector<mock::basic_record> result{};
         execute_query("select c1 from t0 where c0 = 0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]); // TODO initial value is somehow 2
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
     }
     execute_statement("INSERT INTO t0 (c0) VALUES (1)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("select c1 from t0 where c0 = 1", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]);
     }
 }
 
-// TODO enable when fixed
-TEST_F(generated_identity_test, DISABLED_initial_value) {
+TEST_F(generated_identity_test, initial_value) {
     execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (start 100))");
     execute_statement("INSERT INTO t0 (c0) VALUES (0)");
     {
@@ -227,6 +236,221 @@ TEST_F(generated_identity_test, drop_table_deletes_sequence_for_pk) {
     execute_statement("DROP TABLE t0");
     auto after_drop = find_next_available_seq_def_id();
     EXPECT_EQ(before, after_drop);
+}
+
+TEST_F(generated_identity_test, drop_table_deletes_sequence_multi) {
+    auto before = find_next_available_seq_def_id();
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity, c2 int generated always as "
+                      "identity, c3 int generated always as identity)");
+    auto after = find_next_available_seq_def_id();
+    EXPECT_NE(before, after);
+    execute_statement("DROP TABLE t0");
+    auto after_drop = find_next_available_seq_def_id();
+    EXPECT_EQ(before, after_drop);
+}
+
+TEST_F(generated_identity_test, various_options) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (start 3 increment 2 minvalue 3 maxvalue 5 CYCLE))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(5)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (3)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 3", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(5)), result[0]);
+    }
+}
+
+TEST_F(generated_identity_test, various_options_negative_increment) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (start 3 increment -2 minvalue 1 maxvalue 3 CYCLE))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (3)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 3", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+}
+
+// TODO: enable when fixed
+TEST_F(generated_identity_test, DISABLED_no_cycle_reach_max) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (minvalue 0 maxvalue 1 NO CYCLE))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+    test_stmt_err("INSERT INTO t0 (c0) VALUES (2)", error_code::invalid_runtime_value_exception);
+}
+
+// TODO: enable when fixed
+TEST_F(generated_identity_test, DISABLED_no_cycle_reach_min) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (start 1 increment -1 minvalue 0 maxvalue 1 NO CYCLE))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[0]);
+    }
+    test_stmt_err("INSERT INTO t0 (c0) VALUES (2)", error_code::invalid_runtime_value_exception);
+}
+
+TEST_F(generated_identity_test, cycle_int4_max) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (start 2147483646))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(2147483646)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(2147483647)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+}
+
+TEST_F(generated_identity_test, cycle_int4_min) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (start -2147483647 increment -1))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(-2147483647)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(-2147483648)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(-1)), result[0]);
+    }
+}
+
+TEST_F(generated_identity_test, cycle_int8_max) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 bigint generated always as identity (start 9223372036854775806))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(9223372036854775806)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(9223372036854775807)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]);
+    }
+}
+
+TEST_F(generated_identity_test, cycle_int8_min) {
+    execute_statement("CREATE TABLE t0 (c0 int, c1 bigint generated always as identity (start -9223372036854775807 increment -1))");
+    execute_statement("INSERT INTO t0 (c0) VALUES (0)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(-9223372036854775807)), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 1", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(std::numeric_limits<std::int64_t>::min())), result[0]);
+    }
+    execute_statement("INSERT INTO t0 (c0) VALUES (2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c1 from t0 where c0 = 2", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(-1)), result[0]);
+    }
 }
 
 }

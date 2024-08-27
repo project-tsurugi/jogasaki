@@ -72,12 +72,22 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
         throw_exception(std::logic_error{""});
     }
     auto ret = seq->next(*ctx.transaction()->object());
+    if(! ret) {
+        auto rc = status::err_illegal_operation;
+        auto min_or_max = ret.error() == sequence::sequence_error::out_of_upper_bound ? "maximum" : "minimum";
+        set_error(
+            ctx,
+            error_code::value_evaluation_exception,
+            string_builder{} << "reached " << min_or_max << " value of sequence:" << seq->info().name() << string_builder::to_string,
+            rc);
+        return rc;
+    }
     try {
         mgr.notify_updates(*ctx.transaction()->object());
     } catch(executor::sequence::exception const& e) {
         return e.get_status();
     }
-    out = ret;
+    out = ret.value();
     return status::ok;
 }
 

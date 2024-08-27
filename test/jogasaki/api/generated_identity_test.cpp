@@ -313,8 +313,7 @@ TEST_F(generated_identity_test, various_options_negative_increment) {
     }
 }
 
-// TODO: enable when fixed
-TEST_F(generated_identity_test, DISABLED_no_cycle_reach_max) {
+TEST_F(generated_identity_test, no_cycle_reach_max) {
     execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (minvalue 0 maxvalue 1 NO CYCLE))");
     execute_statement("INSERT INTO t0 (c0) VALUES (0)");
     {
@@ -330,11 +329,10 @@ TEST_F(generated_identity_test, DISABLED_no_cycle_reach_max) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
     }
-    test_stmt_err("INSERT INTO t0 (c0) VALUES (2)", error_code::invalid_runtime_value_exception);
+    test_stmt_err("INSERT INTO t0 (c0) VALUES (2)", error_code::value_evaluation_exception);
 }
 
-// TODO: enable when fixed
-TEST_F(generated_identity_test, DISABLED_no_cycle_reach_min) {
+TEST_F(generated_identity_test, no_cycle_reach_min) {
     execute_statement("CREATE TABLE t0 (c0 int, c1 int generated always as identity (start 1 increment -1 minvalue 0 maxvalue 1 NO CYCLE))");
     execute_statement("INSERT INTO t0 (c0) VALUES (0)");
     {
@@ -350,7 +348,7 @@ TEST_F(generated_identity_test, DISABLED_no_cycle_reach_min) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[0]);
     }
-    test_stmt_err("INSERT INTO t0 (c0) VALUES (2)", error_code::invalid_runtime_value_exception);
+    test_stmt_err("INSERT INTO t0 (c0) VALUES (2)", error_code::value_evaluation_exception);
 }
 
 TEST_F(generated_identity_test, cycle_int4_max) {

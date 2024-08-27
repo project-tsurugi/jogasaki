@@ -40,7 +40,7 @@ sequence_versioned_value sequence::get() const noexcept {
     return body_.load();
 }
 
-sequence_value sequence::next(kvs::transaction& tx) {
+either<sequence_error, sequence_value> sequence::next(kvs::transaction& tx) {
     parent_->mark_sequence_used_by(tx, *this);
     sequence_versioned_value cur{};
     sequence_versioned_value next{};
@@ -53,9 +53,17 @@ sequence_value sequence::next(kvs::transaction& tx) {
         }
         sequence_value val{};
         if (info_->increment() > 0 && info_->maximum_value() - cur.value_ < info_->increment()) {
-            val = info_->cycle() ? info_->minimum_value() : info_->maximum_value();
+            if(info_->cycle()) {
+                val = info_->minimum_value();
+            } else {
+                return sequence_error::out_of_upper_bound;
+            }
         } else if (info_->increment() < 0 && cur.value_ - info_->minimum_value() < -info_->increment()) {
-            val = info_->cycle() ? info_->maximum_value() : info_->minimum_value();
+            if(info_->cycle()) {
+                val = info_->maximum_value();
+            } else {
+                return sequence_error::out_of_lower_bound;
+            }
         } else {
             val = cur.value_ + info_->increment();
         }

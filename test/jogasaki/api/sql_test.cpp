@@ -524,32 +524,31 @@ TEST_F(sql_test, DISABLED_exists) {
     }
 }
 
-//TODO: enable when implement
-TEST_F(sql_test, DISABLED_case_expression) {
+TEST_F(sql_test, case_expression) {
     execute_statement("create table t0 (c0 int)");
-    execute_statement("INSERT INTO t0 VALUES (0),(1)");
+    execute_statement("INSERT INTO t0 VALUES (0),(1),(2)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("select case c0 when 0 then 100 when 1 then 101 else 200 end from t0", result);
-        ASSERT_EQ(2, result.size());
+        ASSERT_EQ(3, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((create_nullable_record<kind::int4>(100)), result[0]);
-        EXPECT_EQ((create_nullable_record<kind::int4>(101)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(100)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(101)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(200)), result[2]);
     }
 }
 
-//TODO: enable when implement
-TEST_F(sql_test, DISABLED_case_expression_search) {
+TEST_F(sql_test, case_expression_search) {
     execute_statement("create table t0 (c0 int)");
     execute_statement("INSERT INTO t0 VALUES (-1),(0),(1)");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("select case when c0 > 0 then c0 * 2 when c0 < 0 then c0 + 1 else c0 end from t0", result);
+        execute_query("select case when c0 > 0 then 1 when c0 < 0 then -1 else 0 end from t0", result);
         ASSERT_EQ(3, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[0]);
-        EXPECT_EQ((create_nullable_record<kind::int4>(0)), result[1]);
-        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[2]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(-1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(0)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[2]);
     }
 }
 

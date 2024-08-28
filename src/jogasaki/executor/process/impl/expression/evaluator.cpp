@@ -584,8 +584,23 @@ any engine::operator()(takatori::scalar::match const&) {
     return return_unsupported();
 }
 
-any engine::operator()(takatori::scalar::conditional const&) {
-    return return_unsupported();
+any engine::operator()(takatori::scalar::conditional const& arg) {
+    for(auto const& e : arg.alternatives()) {
+        auto b = dispatch(*this, e.condition());
+        if(b.error()) {
+            return b;
+        }
+        if(! b.to<bool>()) {
+            continue;
+        }
+        auto v = dispatch(*this, e.body());
+        return v;
+    }
+    if(arg.default_expression().has_value()) {
+        return dispatch(*this, arg.default_expression().value());
+    }
+    // no matching condition, no default clause - return null
+    return {};
 }
 
 any engine::operator()(takatori::scalar::coalesce const&) {

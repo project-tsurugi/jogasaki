@@ -614,6 +614,9 @@ any engine::operator()(takatori::scalar::conditional const& arg) {
         if(b.error()) {
             return b;
         }
+        if(b.empty()) {
+            return {};
+        }
         if(! b.to<bool>()) {
             continue;
         }

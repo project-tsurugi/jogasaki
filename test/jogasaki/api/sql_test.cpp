@@ -566,6 +566,32 @@ TEST_F(sql_test, case_expression_with_type_conversion) {
     }
 }
 
+TEST_F(sql_test, case_expression_using_variable_in_body) {
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (0),(1),(2),(null)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select case c0 when 0 then c0 + 1 when 1 then c0 * 2 else 200 end from t0", result);
+        ASSERT_EQ(4, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int8>({-1}, {true})), result[0]); // null becomes null
+        EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(2)), result[2]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(200)), result[3]);
+    }
+}
+
+TEST_F(sql_test, case_expression_null_for_condition) {
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (null)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select case c0 when 0 then 100 when 1 then 101 else 200 end from t0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>({-1}, {true})), result[0]);
+    }
+}
+
 TEST_F(sql_test, coalesce_expression) {
     execute_statement("create table t0 (c0 int, c1 int, c2 int)");
     execute_statement("INSERT INTO t0 VALUES (null, null, 10)");
@@ -590,14 +616,13 @@ TEST_F(sql_test, coalesce_expression_with_type_conversion) {
     }
 }
 
-//TODO: enable when implement
-TEST_F(sql_test, DISABLED_nullif_expression) {
+TEST_F(sql_test, nullif_expression) {
     execute_statement("create table t0 (c0 int)");
-    execute_statement("INSERT INTO t0 VALUES (1), (2))");
+    execute_statement("INSERT INTO t0 VALUES (1), (2)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("select nullif(c0, 2) from t0", result);
-        ASSERT_EQ(1, result.size());
+        ASSERT_EQ(2, result.size());
         std::sort(result.begin(), result.end());
         EXPECT_EQ((create_nullable_record<kind::int4>({-1}, {true})), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[1]);

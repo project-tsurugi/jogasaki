@@ -588,6 +588,25 @@ any engine::operator()(takatori::scalar::match const&) {
     return return_unsupported();
 }
 
+any convert_return_type_if_needed(
+    takatori::scalar::expression const& e,
+    yugawara::compiled_info const& info,
+    takatori::type::data const& dest_type,
+    any const& v,
+    engine::memory_resource* resource
+) {
+    auto& src_type = info.type_of(e);
+    if(conv::to_require_conversion(src_type, dest_type)) {
+        data::any converted{};
+        if(auto res = conv::conduct_unifying_conversion(src_type, dest_type, v, converted, resource);
+            res != status::ok) {
+            VLOG_LP(log_error) << "unexpected error occurred during conversion";
+        }
+        return converted;
+    }
+    return v;
+}
+
 any engine::operator()(takatori::scalar::conditional const& arg) {
     auto& dest_type = info_.type_of(arg);
     for(auto const& e : arg.alternatives()) {
@@ -599,29 +618,11 @@ any engine::operator()(takatori::scalar::conditional const& arg) {
             continue;
         }
         auto v = dispatch(*this, e.body());
-        auto& src_type = info_.type_of(e.body());
-        if(conv::to_require_conversion(src_type, dest_type)) {
-            data::any converted{};
-            if(auto res = conv::conduct_unifying_conversion(src_type, dest_type, v, converted, resource_);
-               res != status::ok) {
-                VLOG_LP(log_error) << "unexpected error occurred during conversion";
-            }
-            return converted;
-        }
-        return v;
+        return convert_return_type_if_needed(e.body(), info_, dest_type, v, resource_);
     }
     if(arg.default_expression().has_value()) {
         auto v = dispatch(*this, arg.default_expression().value());
-        auto& src_type = info_.type_of(arg.default_expression().value());
-        if(conv::to_require_conversion(src_type, dest_type)) {
-            data::any converted{};
-            if(auto res = conv::conduct_unifying_conversion(src_type, dest_type, v, converted, resource_);
-               res != status::ok) {
-                VLOG_LP(log_error) << "unexpected error occurred during conversion";
-            }
-            return converted;
-        }
-        return v;
+        return convert_return_type_if_needed(arg.default_expression().value(), info_, dest_type, v, resource_);
     }
     // no matching condition, no default clause - return null
     return {};

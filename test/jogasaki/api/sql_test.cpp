@@ -566,7 +566,6 @@ TEST_F(sql_test, case_expression_with_type_conversion) {
     }
 }
 
-
 //TODO: enable when implement
 TEST_F(sql_test, DISABLED_coalesce_expression) {
     execute_statement("create table t0 (c0 int, c1 int, c2 int)");

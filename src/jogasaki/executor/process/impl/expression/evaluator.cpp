@@ -628,8 +628,19 @@ any engine::operator()(takatori::scalar::conditional const& arg) {
     return {};
 }
 
-any engine::operator()(takatori::scalar::coalesce const&) {
-    return return_unsupported();
+any engine::operator()(takatori::scalar::coalesce const& arg) {
+    auto& dest_type = info_.type_of(arg);
+    for(auto const& e : arg.alternatives()) {
+        auto v = dispatch(*this, e);
+        if(v.error()) {
+            return v;
+        }
+        if(v.empty()) {
+            continue;
+        }
+        return convert_return_type_if_needed(e, info_, dest_type, v, resource_);
+    }
+    return {};
 }
 
 any engine::operator()(takatori::scalar::let const&) {

@@ -566,8 +566,7 @@ TEST_F(sql_test, case_expression_with_type_conversion) {
     }
 }
 
-//TODO: enable when implement
-TEST_F(sql_test, DISABLED_coalesce_expression) {
+TEST_F(sql_test, coalesce_expression) {
     execute_statement("create table t0 (c0 int, c1 int, c2 int)");
     execute_statement("INSERT INTO t0 VALUES (null, null, 10)");
     {
@@ -576,6 +575,18 @@ TEST_F(sql_test, DISABLED_coalesce_expression) {
         ASSERT_EQ(1, result.size());
         std::sort(result.begin(), result.end());
         EXPECT_EQ((create_nullable_record<kind::int4>(10)), result[0]);
+    }
+}
+
+TEST_F(sql_test, coalesce_expression_with_type_conversion) {
+    execute_statement("create table t0 (c0 double, c1 decimal(5), c2 int)");
+    execute_statement("INSERT INTO t0 VALUES (null, null, 10)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select coalesce(c0, c1, c2) from t0", result);
+        ASSERT_EQ(1, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::float8>(10)), result[0]);
     }
 }
 

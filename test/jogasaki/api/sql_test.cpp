@@ -552,6 +552,21 @@ TEST_F(sql_test, case_expression_search) {
     }
 }
 
+TEST_F(sql_test, case_expression_with_type_conversion) {
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (-1),(0),(1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select case when c0 > 0 then cast(1 as INT) when c0 < 0 then cast(-1 as DECIMAL(5)) else CAST(0 as BIGINT) end from t0", result);
+        ASSERT_EQ(3, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, std::forward_as_tuple(triple{-1, 0, 1, 0}))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, std::forward_as_tuple(triple{1, 0, 0, 0}))), result[1]);
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, std::forward_as_tuple(triple{1, 0, 1, 0}))), result[2]);
+    }
+}
+
+
 //TODO: enable when implement
 TEST_F(sql_test, DISABLED_coalesce_expression) {
     execute_statement("create table t0 (c0 int, c1 int, c2 int)");

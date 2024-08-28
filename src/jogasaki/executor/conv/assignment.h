@@ -51,7 +51,6 @@ status conduct_assignment_conversion(
  * @param target_type the target type of the conversion
  * @param in the input value to convert
  * @param out the output value of the conversion
- * @param ctx the request context
  * @param resource the memory resource used for the conversion and output data
  * @warning output data can possibly be allocated in `resource` and caller is responsible to rewind the resource
 */
@@ -60,7 +59,6 @@ status conduct_unifying_conversion(
     takatori::type::data const& target_type,
     data::any const& in,
     data::any& out,
-    request_context& ctx,
     memory::lifo_paged_memory_resource* resource
 );
 

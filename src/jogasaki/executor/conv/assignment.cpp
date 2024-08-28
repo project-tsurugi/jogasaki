@@ -103,10 +103,8 @@ status conduct_unifying_conversion(
     takatori::type::data const& target_type,
     data::any const& in,
     data::any& out,
-    request_context& ctx,
     memory::lifo_paged_memory_resource* resource
 ) {
-    (void) ctx;
     expression::evaluator_context ectx{resource, nullptr}; // evaluate no function
     // unifying conversion doesn't lose precision
     ectx.set_loss_precision_policy(expression::loss_precision_policy::ignore);
@@ -115,7 +113,7 @@ status conduct_unifying_conversion(
         out = converted;
         return status::ok;
     }
-    return status::ok;
+    return status::err_expression_evaluation_failure;
 }
 
 bool to_require_conversion(

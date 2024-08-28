@@ -22,6 +22,7 @@
 #include <string_view>
 #include <utility>
 #include <boost/assert.hpp>
+#include <glog/logging.h>
 
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
@@ -41,6 +42,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/equal_to.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/global.h>
@@ -49,6 +51,8 @@
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
@@ -585,6 +589,7 @@ any engine::operator()(takatori::scalar::match const&) {
 }
 
 any engine::operator()(takatori::scalar::conditional const& arg) {
+    auto& dest_type = info_.type_of(arg);
     for(auto const& e : arg.alternatives()) {
         auto b = dispatch(*this, e.condition());
         if(b.error()) {
@@ -594,10 +599,29 @@ any engine::operator()(takatori::scalar::conditional const& arg) {
             continue;
         }
         auto v = dispatch(*this, e.body());
+        auto& src_type = info_.type_of(e.body());
+        if(conv::to_require_conversion(src_type, dest_type)) {
+            data::any converted{};
+            if(auto res = conv::conduct_unifying_conversion(src_type, dest_type, v, converted, resource_);
+               res != status::ok) {
+                VLOG_LP(log_error) << "unexpected error occurred during conversion";
+            }
+            return converted;
+        }
         return v;
     }
     if(arg.default_expression().has_value()) {
-        return dispatch(*this, arg.default_expression().value());
+        auto v = dispatch(*this, arg.default_expression().value());
+        auto& src_type = info_.type_of(arg.default_expression().value());
+        if(conv::to_require_conversion(src_type, dest_type)) {
+            data::any converted{};
+            if(auto res = conv::conduct_unifying_conversion(src_type, dest_type, v, converted, resource_);
+               res != status::ok) {
+                VLOG_LP(log_error) << "unexpected error occurred during conversion";
+            }
+            return converted;
+        }
+        return v;
     }
     // no matching condition, no default clause - return null
     return {};

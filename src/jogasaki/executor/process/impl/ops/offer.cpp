@@ -112,7 +112,6 @@ operation_status offer::operator()(offer_context& ctx) {
                *f.target_type_,
                src,
                converted,
-               *ctx.req_context(),
                ctx.varlen_resource()
            );
            res != status::ok) {

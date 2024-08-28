@@ -51,7 +51,7 @@ namespace details {
 
 class engine {
 public:
-    using memory_resource = memory::paged_memory_resource;
+    using memory_resource = memory::lifo_paged_memory_resource;
 
     engine(
         evaluator_context& ctx,

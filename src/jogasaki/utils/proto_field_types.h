@@ -35,9 +35,9 @@ namespace sql = proto::sql;
         case sql::common::AtomType::OCTET: return jogasaki::api::field_type_kind::octet;
         case sql::common::AtomType::DATE: return jogasaki::api::field_type_kind::date;
         case sql::common::AtomType::TIME_OF_DAY: return jogasaki::api::field_type_kind::time_of_day;
-        case sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: return jogasaki::api::field_type_kind::time_of_day;
+        case sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: return jogasaki::api::field_type_kind::time_of_day_with_time_zone;
         case sql::common::AtomType::TIME_POINT: return jogasaki::api::field_type_kind::time_point;
-        case sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: return jogasaki::api::field_type_kind::time_point;
+        case sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: return jogasaki::api::field_type_kind::time_point_with_time_zone;
         default:
             std::abort();
     }

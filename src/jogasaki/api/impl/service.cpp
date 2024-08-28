@@ -1322,6 +1322,9 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                 }
                 column->set_atom_type(sql::common::AtomType::TIME_OF_DAY);
                 break;
+            case jogasaki::api::field_type_kind::time_of_day_with_time_zone:
+                column->set_atom_type(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE);
+                break;
             case jogasaki::api::field_type_kind::time_point:
                 BOOST_ASSERT(fld.time_point_option() != nullptr);  //NOLINT
                 if(fld.time_point_option()->with_offset()) {
@@ -1329,6 +1332,9 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                     break;
                 }
                 column->set_atom_type(sql::common::AtomType::TIME_POINT);
+                break;
+            case jogasaki::api::field_type_kind::time_point_with_time_zone:
+                column->set_atom_type(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE);
                 break;
             case jogasaki::api::field_type_kind::unknown:
                 column->set_atom_type(sql::common::AtomType::UNKNOWN);

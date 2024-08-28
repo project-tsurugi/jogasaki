@@ -255,9 +255,9 @@ TEST_F(host_variables_test, insert_temporal_types) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::date},
         {"p1", api::field_type_kind::time_of_day},
-        {"p2", api::field_type_kind::time_of_day}, //TODO with time zone
+        {"p2", api::field_type_kind::time_of_day_with_time_zone},
         {"p3", api::field_type_kind::time_point},
-        {"p4", api::field_type_kind::time_point}, //TODO with time zone
+        {"p4", api::field_type_kind::time_point_with_time_zone},
     };
     auto d2000_1_1 = date_v{2000, 1, 1};
     auto t12_0_0 = time_of_day_v{12, 0, 0};
@@ -303,15 +303,15 @@ TEST_F(host_variables_test, update_temporal_types) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::date},
         {"p1", api::field_type_kind::time_of_day},
-        {"p2", api::field_type_kind::time_of_day}, //TODO with time zone
+        {"p2", api::field_type_kind::time_of_day_with_time_zone},
         {"p3", api::field_type_kind::time_point},
-        {"p4", api::field_type_kind::time_point}, //TODO with time zone
+        {"p4", api::field_type_kind::time_point_with_time_zone},
 
         {"n0", api::field_type_kind::date},
         {"n1", api::field_type_kind::time_of_day},
-        {"n2", api::field_type_kind::time_of_day}, //TODO with time zone
+        {"n2", api::field_type_kind::time_of_day_with_time_zone},
         {"n3", api::field_type_kind::time_point},
-        {"n4", api::field_type_kind::time_point}, //TODO with time zone
+        {"n4", api::field_type_kind::time_point_with_time_zone},
     };
     auto d2000_1_1 = date_v{2000, 1, 1};
     auto t12_0_0 = time_of_day_v{12, 0, 0};

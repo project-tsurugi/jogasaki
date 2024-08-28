@@ -360,7 +360,9 @@ void add_variable(
         case field_type_kind::octet: provider.add({name, takatori::type::octet{takatori::type::varying}}, true); break;
         case field_type_kind::date: provider.add({name, takatori::type::date{}}, true); break;
         case field_type_kind::time_of_day: provider.add({name, takatori::type::time_of_day{}}, true); break;
+        case field_type_kind::time_of_day_with_time_zone: provider.add({name, takatori::type::time_of_day{takatori::type::with_time_zone}}, true); break;
         case field_type_kind::time_point: provider.add({name, takatori::type::time_point{}}, true); break;
+        case field_type_kind::time_point_with_time_zone: provider.add({name, takatori::type::time_point{takatori::type::with_time_zone}}, true); break;
         default:
             throw_exception(std::logic_error{""});
     }

@@ -107,9 +107,6 @@ message Explain {
     // request is successfully completed.
     Success success = 11;
 
-    // deprecated: The result output string of the explain.
-    string output = 1;
-
     Error error = 2;
   }
 }
@@ -133,20 +130,6 @@ message DescribeTable {
     // the table column information.
     repeated common.Column columns = 4;
   }
-
-  // the response body.
-  oneof result {
-    // request is successfully completed.
-    Success success = 11;
-
-    // engine error was occurred.
-    Error error = 12;
-  }
-}
-
-// execute a statement with 2-D parameter table.
-message Batch {
-  reserved 1 to 10;
 
   // the response body.
   oneof result {
@@ -295,7 +278,7 @@ message Response {
     ExecuteQuery execute_query = 4;
     Explain explain = 5;
     DescribeTable describe_table = 6;
-    Batch batch = 7;
+    // 7 is no longer used.
     ListTables list_tables = 8;
     GetSearchPath get_search_path = 9;
     GetErrorInfo get_error_info = 10;

@@ -75,7 +75,8 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
                 }
             } else {
                 if(a.empty()) {
-                    VLOG_LP(log_error) << "Null assigned for non-nullable field.";
+                    // log level was lowered temporarily to address issue #939
+                    VLOG_LP(log_debug) << "Null assigned for non-nullable field.";
                     return status::err_integrity_constraint_violation;
                 }
                 if(auto res = kvs::encode(a, k.type_, k.spec_, cctx, s);res != status::ok) {

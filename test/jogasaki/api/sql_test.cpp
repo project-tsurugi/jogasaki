@@ -574,21 +574,22 @@ TEST_F(sql_test, case_expression_using_variable_in_body) {
         execute_query("select case c0 when 0 then c0 + 1 when 1 then c0 * 2 else 200 end from t0", result);
         ASSERT_EQ(4, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((create_nullable_record<kind::int8>({-1}, {true})), result[0]); // null becomes null
-        EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[1]);
-        EXPECT_EQ((create_nullable_record<kind::int8>(2)), result[2]);
-        EXPECT_EQ((create_nullable_record<kind::int8>(200)), result[3]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(2)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(200)), result[2]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(200)), result[3]); // null becomes false with any condition
     }
 }
 
 TEST_F(sql_test, case_expression_null_for_condition) {
+    // each condition of case expression is checked IS TRUE, i.e. null condition is treated as false
     execute_statement("create table t0 (c0 int)");
     execute_statement("INSERT INTO t0 VALUES (null)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("select case c0 when 0 then 100 when 1 then 101 else 200 end from t0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int8>({-1}, {true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8>(200)), result[0]);
     }
 }
 
@@ -599,8 +600,18 @@ TEST_F(sql_test, coalesce_expression) {
         std::vector<mock::basic_record> result{};
         execute_query("select coalesce(c0, c1, c2) from t0", result);
         ASSERT_EQ(1, result.size());
-        std::sort(result.begin(), result.end());
         EXPECT_EQ((create_nullable_record<kind::int4>(10)), result[0]);
+    }
+}
+
+TEST_F(sql_test, coalesce_expression_all_null) {
+    execute_statement("create table t0 (c0 int, c1 int, c2 int)");
+    execute_statement("INSERT INTO t0 VALUES (null, null, null)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select coalesce(c0, c1, c2) from t0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>({-1}, {true})), result[0]);
     }
 }
 
@@ -626,6 +637,15 @@ TEST_F(sql_test, nullif_expression) {
         std::sort(result.begin(), result.end());
         EXPECT_EQ((create_nullable_record<kind::int4>({-1}, {true})), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[1]);
+    }
+    {
+        // comparing with null is always false
+        std::vector<mock::basic_record> result{};
+        execute_query("select nullif(c0, null) from t0", result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[1]);
     }
 }
 

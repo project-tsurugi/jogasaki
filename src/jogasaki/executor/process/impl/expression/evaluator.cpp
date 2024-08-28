@@ -614,10 +614,7 @@ any engine::operator()(takatori::scalar::conditional const& arg) {
         if(b.error()) {
             return b;
         }
-        if(b.empty()) {
-            return {};
-        }
-        if(! b.to<bool>()) {
+        if(b.empty() || ! b.to<bool>()) {
             continue;
         }
         auto v = dispatch(*this, e.body());

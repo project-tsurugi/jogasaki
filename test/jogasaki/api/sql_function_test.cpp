@@ -475,7 +475,7 @@ TEST_F(sql_function_test, min_max_time) {
 TEST_F(sql_function_test, min_max_time_with_tz) {
     execute_statement("CREATE TABLE t (c0 TIME WITH TIME ZONE NOT NULL PRIMARY KEY)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::time_of_day},
+        {"p0", api::field_type_kind::time_of_day_with_time_zone},
     };
     auto td0 = time_of_day{12, 0, 0};
     auto td1 = time_of_day{12, 0, 1};
@@ -551,7 +551,7 @@ TEST_F(sql_function_test, min_max_timestamp) {
 TEST_F(sql_function_test, min_max_timestamp_with_tz) {
     execute_statement("CREATE TABLE t (c0 TIMESTAMP WITH TIME ZONE NOT NULL PRIMARY KEY)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::time_point},
+        {"p0", api::field_type_kind::time_point_with_time_zone},
     };
     auto tp0 = time_point{date{2000, 1, 1}, time_of_day{12, 0, 0}};
     auto tp1 = time_point{date{2000, 1, 1}, time_of_day{12, 0, 1}};

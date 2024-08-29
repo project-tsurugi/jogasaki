@@ -88,7 +88,7 @@ TEST_F(sql_temporal_types_test, timestamp) {
     execute_statement("CREATE TABLE T (C0 TIMESTAMP, C1 TIMESTAMP WITH TIME ZONE)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::time_point},
-        {"p1", api::field_type_kind::time_point}, //TODO with time zone
+        {"p1", api::field_type_kind::time_point_with_time_zone},
     };
     auto tp = time_point{date{1, 1, 1}, time_of_day{0, 2, 48, 91383000ns}};
     auto ps = api::create_parameter_set();

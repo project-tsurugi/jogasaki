@@ -120,14 +120,6 @@ bool to_require_conversion(
     takatori::type::data const& source_type,
     takatori::type::data const& target_type
 ) {
-    // for time and timestamp, we don't require conversion even if they are different offset value
-    // since currently only UTC offset is supported, so offset=true/false doesn't make difference
-    if(source_type.kind() == takatori::type::type_kind::time_of_day) {
-        return target_type.kind() != takatori::type::type_kind::time_of_day;
-    }
-    if(source_type.kind() == takatori::type::type_kind::time_point) {
-        return target_type.kind() != takatori::type::type_kind::time_point;
-    }
     return source_type != target_type;
 }
 

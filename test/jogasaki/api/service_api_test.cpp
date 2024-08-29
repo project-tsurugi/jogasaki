@@ -2472,4 +2472,15 @@ TEST_F(service_api_test, cancel_durable_wait) {
     // test_get_error_info(tx_handle, false, error_code::none);
 }
 
+TEST_F(service_api_test, error_with_unsupported_query) {
+    // verify error occurring during task creation is correctly handled
+    // bad way of setting error_info on request_context failed to set status code correctly (use error::set_error_info)
+    execute_statement("CREATE TABLE t (c0 int)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_statement("SELECT count(c0), count(DISTINCT c0) from t", tx_handle, error_code::unsupported_runtime_feature_exception);
+    test_get_error_info(tx_handle, false, error_code::unsupported_runtime_feature_exception);
+    test_dispose_transaction(tx_handle);
+}
+
 }  // namespace jogasaki::api

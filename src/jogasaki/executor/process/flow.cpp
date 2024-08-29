@@ -23,6 +23,7 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/exchange/flow.h>
 #include <jogasaki/executor/exchange/shuffle/flow.h>
 #include <jogasaki/executor/exchange/shuffle/run_info.h>
@@ -97,7 +98,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             context_->request_resource()
         );
     } catch (plan::impl::compile_exception const& e) {
-        context_->error_info(e.info());
+        error::set_error_info(*context_, e.info());
         return {};
     }
     // create process executor

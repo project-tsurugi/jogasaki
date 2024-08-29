@@ -162,4 +162,9 @@ TEST_F(unsupported_sql_test, subquery) {
     execute_statement("select * from (select * from T t11, T t12) t1");
 }
 
+TEST_F(unsupported_sql_test, aggregate_with_and_without_distinct_keyword) {
+    execute_statement("create table t (c0 int)");
+    test_stmt_err("select count(c0), count(distinct c0) from t", error_code::unsupported_runtime_feature_exception);
+}
+
 }

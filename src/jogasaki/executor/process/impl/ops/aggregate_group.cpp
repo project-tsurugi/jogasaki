@@ -20,9 +20,11 @@
 #include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
+#include <takatori/util/exception.h>
 #include <takatori/util/infect_qualifier.h>
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
+#include <takatori/util/string_builder.h>
 #include <yugawara/aggregate/declaration.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/compiled_info.h>
@@ -30,6 +32,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/data/value_store.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/function/aggregate_function_info.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/field_locator.h>
@@ -41,6 +44,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 
@@ -49,6 +53,8 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+using takatori::util::string_builder;
+using takatori::util::throw_exception;
 using takatori::util::unsafe_downcast;
 
 aggregate_group::aggregate_group(
@@ -249,7 +255,15 @@ std::vector<details::aggregate_group_column> aggregate_group::create_columns(seq
         auto& decl = yugawara::binding::extract<yugawara::aggregate::declaration>(c.function());
         auto& repo = global::aggregate_function_repository();
         auto f = repo.find(decl.definition_id());
-        BOOST_ASSERT(f != nullptr);  //NOLINT
+        if(f == nullptr) {
+            auto msg = string_builder{}
+                << "failed to find function definition - it's likely aggregate functions with and without DISTINCT "
+                   "keyword are called in the same query, that is currently unsupported"
+                << string_builder::to_string;
+            throw_exception(plan::impl::compile_exception{
+                create_error_info(error_code::unsupported_runtime_feature_exception, msg, status::err_unsupported)
+            });
+        }
         auto& v = this->block_info().at(c.destination());
         ret.emplace_back(
             utils::type_for(compiled_info().type_of(c.destination())),

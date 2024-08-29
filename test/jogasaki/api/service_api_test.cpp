@@ -171,8 +171,8 @@ public:
     void test_dispose_prepare(std::uint64_t& handle);
 
     template <class ...Args>
-    void test_error_prepare(std::uint64_t& handle, std::string sql) {
-        auto s = encode_prepare(sql);
+    void test_error_prepare(std::uint64_t& handle, std::string sql, Args...args) {
+        auto s = encode_prepare(sql, args...);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -362,6 +362,20 @@ TEST_F(service_api_test, error_prepare) {
         test_error_prepare(handle, "bad sql statement");
     }
 }
+
+TEST_F(service_api_test, error_prepare_with_unsupported_parameter_type) {
+    execute_statement("create table t (c0 varchar(10))");
+    utils_raise_exception_on_error = false;
+    {
+        std::uint64_t handle{};
+        test_error_prepare(
+            handle,
+            "insert into t values (:p0)",
+            std::pair{"p0"s, sql::common::AtomType::CLOB}
+        );
+    }
+}
+
 TEST_F(service_api_test, error_on_dispose) {
     std::uint64_t handle{0};
     auto s = encode_dispose_prepare(handle);

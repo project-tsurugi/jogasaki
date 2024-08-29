@@ -232,7 +232,17 @@ void service::command_prepare(
     std::unordered_map<std::string, jogasaki::api::field_type_kind> variables{};
     for(std::size_t i=0, n=static_cast<std::size_t>(phs.size()); i < n ; ++i) {
         auto& ph = phs.Get(static_cast<int>(i));
-        variables.emplace(ph.name(), jogasaki::utils::type_for(ph.atom_type()));
+        auto t = jogasaki::utils::type_for(ph.atom_type());
+        if(t == jogasaki::api::field_type_kind::undefined) {
+            auto err_info = create_error_info(
+                error_code::sql_execution_exception,
+                string_builder{} << "invalid place holder type:" << AtomType_Name(ph.atom_type()) << string_builder::to_string,
+                status::err_invalid_argument
+            );
+            details::error<sql::response::Prepare>(*res, err_info.get(), req_info);
+            return;
+        }
+        variables.emplace(ph.name(), t);
     }
     jogasaki::api::statement_handle statement{};
     std::shared_ptr<error::error_info> err_info{};

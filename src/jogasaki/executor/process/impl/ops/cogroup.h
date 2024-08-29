@@ -88,6 +88,10 @@ public:
         return iterators_.first == iterators_.second;
     }
 
+    [[nodiscard]] std::size_t size() const noexcept {
+        return std::distance(iterators_.first, iterators_.second);
+    }
+
     [[nodiscard]] std::size_t record_size() const noexcept {
         return record_size_;
     }

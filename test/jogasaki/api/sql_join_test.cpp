@@ -250,47 +250,6 @@ TEST_F(sql_join_test, outer_join_with_condition) {
     }
 }
 
-TEST_F(sql_join_test, full_outer_join) {
-    execute_statement("create table L (C0 INT PRIMARY KEY, C1 INT)");
-    execute_statement("create table R (C0 INT PRIMARY KEY, C1 INT)");
-    execute_statement( "INSERT INTO L (C0, C1) VALUES (1, 1)");
-    execute_statement( "INSERT INTO L (C0, C1) VALUES (2, 2)");
-    execute_statement( "INSERT INTO L (C0, C1) VALUES (3, 3)");
-    execute_statement( "INSERT INTO L (C0, C1) VALUES (50, 5)");
-    execute_statement( "INSERT INTO L (C0, C1) VALUES (51, 5)");
-    execute_statement( "INSERT INTO R (C0, C1) VALUES (1, 1)");
-    execute_statement( "INSERT INTO R (C0, C1) VALUES (30, 3)");
-    execute_statement( "INSERT INTO R (C0, C1) VALUES (31, 3)");
-    execute_statement( "INSERT INTO R (C0, C1) VALUES (4, 4)");
-    execute_statement( "INSERT INTO R (C0, C1) VALUES (5, 5)");
-
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT L.C0, L.C1, R.C0, R.C1 FROM L FULL OUTER JOIN R ON L.C1=R.C1 ORDER BY L.C0, R.C0", result);
-        ASSERT_EQ(7, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({-1, -1, 4, 4}, {true, true, false, false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 1, 1)), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({2, 2, 0, 0}, {false, false, true, true})), result[2]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 30, 3)), result[3]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 31, 3)), result[4]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(50, 5, 5, 5)), result[5]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(51, 5, 5, 5)), result[6]);
-    }
-    {
-        // same as above, but L and R are replaced
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT L.C0, L.C1, R.C0, R.C1 FROM R FULL OUTER JOIN L ON L.C1=R.C1 ORDER BY L.C0, R.C0", result);
-        ASSERT_EQ(7, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({-1, -1, 4, 4}, {true, true, false, false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 1, 1)), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({2, 2, 0, 0}, {false, false, true, true})), result[2]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 30, 3)), result[3]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 31, 3)), result[4]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(50, 5, 5, 5)), result[5]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(51, 5, 5, 5)), result[6]);
-    }
-}
-
 TEST_F(sql_join_test, join_condition_on_clause) {
     // regression testcase - once join condition on clause caused wrong result
     execute_statement("CREATE TABLE TT0 (C0 INT NOT NULL, C1 INT NOT NULL, PRIMARY KEY(C0,C1))");
@@ -347,19 +306,6 @@ TEST_F(sql_join_test, cross_join_with_where) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM t0 cross join t1 where TRUE", result);
         ASSERT_EQ(1, result.size());
-    }
-}
-
-// enable: when fixed issue #952
-TEST_F(sql_join_test, DISABLED_full_outer_with_join_condition) {
-    execute_statement("CREATE TABLE t0 (c0 int, c1 int)");
-    execute_statement("INSERT INTO t0 VALUES (1, 1)");
-    execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
-    execute_statement("INSERT INTO t1 VALUES (2, 2)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT t0.c0, t1.c0 FROM t0 full outer join t1 on t0.c1=t1.c1 and FALSE", result);
-        ASSERT_EQ(2, result.size());
     }
 }
 

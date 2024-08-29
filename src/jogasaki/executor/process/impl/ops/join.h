@@ -135,15 +135,15 @@ public:
         join_context& ctx,
         cogroup<iterator>& cgrp,
         iterator_incrementer& incr,
-        bool force_nulls_except_primary
+        bool force_nulls_except_primary,
+        bool force_nulls_on_primary = false
     ) {
         auto target = ctx.output_variables().store().ref();
         auto& cur = incr.current();
         for(std::size_t i=0, n=cgrp.groups().size(); i < n; ++i) {
             auto&& g = cgrp.groups()[i];
             for(auto&& f : g.fields()) {
-
-                if(empty(cur[i]) || (force_nulls_except_primary && i != 0)) {
+                if(empty(cur[i]) || (force_nulls_except_primary && i != 0) || (force_nulls_on_primary && i == 0)) {
                     target.set_null(f.target_nullity_offset_, true);
                     continue;
                 }
@@ -215,7 +215,6 @@ public:
         assert_with_exception(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3), has_condition_, kind_, n); //NOLINT
         iterator_incrementer incr{std::move(iterators)};
         switch(kind_) {
-            case join_kind::full_outer: //fall-thru
             case join_kind::inner: {
                 if(kind_ == join_kind::inner && ! groups_available(cgrp, false)) {
                     break;
@@ -275,6 +274,64 @@ public:
                         }
                     }
                 } while (incr.increment(primary_group_index));
+                break;
+            }
+            case join_kind::full_outer: {
+                assert_with_exception(n == 2, n); //NOLINT
+                // for now, we assume full outer join has only two groups
+                bool secondary_group_available = groups_available(cgrp, true);
+                auto right_group_size = secondary_group_available ? cgrp.groups()[1].size() : 0;
+                boost::dynamic_bitset<std::uint64_t> unmatched_right{right_group_size};
+                unmatched_right.flip(); // initially all right records are unmatched
+                do {
+                    bool exists_match = false;
+                    if(secondary_group_available) {
+                        std::size_t secondary_group_pos = 0;
+                        do {
+                            expression::evaluator_context c{
+                                ctx.varlen_resource(),
+                                ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
+                                                  : nullptr
+                            };
+                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
+                            if (a.error()) {
+                                return handle_expression_error(ctx, a, c);
+                            }
+                            if (a.template to<bool>()) {
+                                exists_match = true;
+                                unmatched_right.reset(secondary_group_pos);
+                                if (!call_downstream(context)) {
+                                    ctx.abort();
+                                    return {operation_status_kind::aborted};
+                                }
+                            }
+                            ++secondary_group_pos;
+                        } while (incr.increment(secondary_group_index));
+                        incr.reset(secondary_group_index);
+                    }
+                    if(! exists_match && ! cgrp.groups()[0].empty()) {
+                        // left exists and it does not have a match
+                        // assign nulls for non-primary groups
+                        assign_values(ctx, cgrp, incr, true);
+                        if (! call_downstream(context)) {
+                            ctx.abort();
+                            return {operation_status_kind::aborted};
+                        }
+                    }
+                } while (incr.increment(primary_group_index));
+
+                incr.reset();
+                for(std::size_t i=0; i < right_group_size; ++i) {
+                    if(unmatched_right.test(i)) {
+                        // assign nulls for primary group
+                        assign_values(ctx, cgrp, incr, false, true);
+                        if (! call_downstream(context)) {
+                            ctx.abort();
+                            return {operation_status_kind::aborted};
+                        }
+                    }
+                    (void) incr.increment(secondary_group_index);
+                }
                 break;
             }
             case join_kind::anti: [[fallthrough]];

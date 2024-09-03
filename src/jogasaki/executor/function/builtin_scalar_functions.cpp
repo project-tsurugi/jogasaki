@@ -50,6 +50,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/function/builtin_scalar_functions_id.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/scalar_function_info.h>
 #include <jogasaki/executor/function/scalar_function_kind.h>
@@ -80,9 +81,6 @@ void add_builtin_scalar_functions(
 ) {
     namespace t = takatori::type;
     using namespace ::yugawara;
-    constexpr static std::size_t minimum_scalar_function_id = 1000;
-    std::size_t id = ::yugawara::function::declaration::minimum_builtin_function_id
-        + minimum_scalar_function_id;
 
     /////////
     // octet_length
@@ -94,18 +92,20 @@ void add_builtin_scalar_functions(
             1
         );
         auto name = "octet_length";
+        auto id = scalar_function_id::id_11000;
         repo.add(id, info);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
                 t::character(t::varying),
             },
         });
+        id = scalar_function_id::id_11001;
         repo.add(id, info);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -124,9 +124,10 @@ void add_builtin_scalar_functions(
             0
         );
         auto name = "current_date";
+        auto id = scalar_function_id::id_11002;
         repo.add(id, info);
         functions.add({
-            id++,
+            id,
             name,
             t::date(),
             {},
@@ -142,9 +143,10 @@ void add_builtin_scalar_functions(
             0
         );
         auto name = "localtime";
+        auto id = scalar_function_id::id_11003;
         repo.add(id, info);
         functions.add({
-            id++,
+            id,
             name,
             t::time_of_day(),
             {},
@@ -160,9 +162,10 @@ void add_builtin_scalar_functions(
             0
         );
         auto name = "current_timestamp";
+        auto id = scalar_function_id::id_11004;
         repo.add(id, info);
         functions.add({
-            id++,
+            id,
             name,
             t::time_point(t::with_time_zone),
             {},
@@ -178,9 +181,10 @@ void add_builtin_scalar_functions(
             0
         );
         auto name = "localtimestamp";
+        auto id = scalar_function_id::id_11005;
         repo.add(id, info);
         functions.add({
-            id++,
+            id,
             name,
             t::time_point(),
             {},

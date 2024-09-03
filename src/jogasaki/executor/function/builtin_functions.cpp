@@ -51,6 +51,7 @@
 #include <jogasaki/executor/function/aggregate_function_info.h>
 #include <jogasaki/executor/function/aggregate_function_kind.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
+#include <jogasaki/executor/function/builtin_functions_id.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/executor/global.h>
@@ -74,9 +75,6 @@ void add_builtin_aggregate_functions(
 ) {
     namespace t = takatori::type;
     using namespace ::yugawara;
-    constexpr static std::size_t minimum_aggregate_id = 1000;
-    std::size_t id = aggregate::declaration::minimum_builtin_function_id
-        + minimum_aggregate_id;
 
     /////////
     // count distinct
@@ -91,9 +89,10 @@ void add_builtin_aggregate_functions(
         ss << "count";
         ss << ::yugawara::aggregate::declaration::name_suffix_distinct;
         auto name = ss.str();
+        auto id = function_id::id_11000;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -101,9 +100,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11001;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -111,9 +111,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11002;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -121,18 +122,20 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11003;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
                 t::float4(),
             },
         });
+        id = function_id::id_11004;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -140,9 +143,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11005;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -150,9 +154,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11006;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -160,9 +165,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11007;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -170,9 +176,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11008;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -180,9 +187,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11009;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -190,9 +198,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11010;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -200,9 +209,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11011;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {
@@ -210,9 +220,10 @@ void add_builtin_aggregate_functions(
             },
             false,
         });
+        id = function_id::id_11012;
         repo.add(id, count_distinct);
         functions.add({
-            id++,
+            id,
             name,
             t::int8(),
             {

@@ -46,6 +46,7 @@
 #include <jogasaki/executor/function/incremental/aggregate_function_info.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_kind.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
+#include <jogasaki/executor/function/incremental/builtin_functions_id.h>
 #include <jogasaki/executor/less.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -65,16 +66,16 @@ void add_builtin_aggregate_functions(
 ) {
     namespace t = takatori::type;
     using namespace ::yugawara;
-    std::size_t id = aggregate::declaration::minimum_builtin_function_id;
 
     /////////
     // sum
     /////////
     {
         auto sum = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::sum>>();
+        auto id = function_id::id_10000;
         repo.add(id, sum);
         functions.add({
-            id++,
+            id,
             "sum",
             t::int4(),
             {
@@ -82,9 +83,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10001;
         repo.add(id, sum);
         functions.add({
-            id++,
+            id,
             "sum",
             t::int8(),
             {
@@ -92,9 +94,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10002;
         repo.add(id, sum);
         functions.add({
-            id++,
+            id,
             "sum",
             t::float4(),
             {
@@ -102,9 +105,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10003;
         repo.add(id, sum);
         functions.add({
-            id++,
+            id,
             "sum",
             t::float8(),
             {
@@ -112,9 +116,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10004;
         repo.add(id, sum);
         functions.add({
-            id++,
+            id,
             "sum",
             t::decimal(),
             {
@@ -129,9 +134,10 @@ void add_builtin_aggregate_functions(
     /////////
     {
         auto count = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::count>>();
+        auto id = function_id::id_10005;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -139,9 +145,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10006;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -149,9 +156,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10007;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -159,9 +167,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10008;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -169,9 +178,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10009;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -179,9 +189,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10010;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -189,9 +200,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10011;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -199,9 +211,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10012;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -209,9 +222,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10013;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -219,9 +233,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10014;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -229,9 +244,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10015;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -239,9 +255,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10016;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -249,9 +266,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10017;
         repo.add(id, count);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {
@@ -266,9 +284,10 @@ void add_builtin_aggregate_functions(
     /////////
     {
         auto count_rows = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::count_rows>>();
+        auto id = function_id::id_10018;
         repo.add(id, count_rows);
         functions.add({
-            id++,
+            id,
             "count",
             t::int8(),
             {},
@@ -281,9 +300,10 @@ void add_builtin_aggregate_functions(
     /////////
     {
         auto avg = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::avg>>();
+        auto id = function_id::id_10019;
         repo.add(id, avg);
         functions.add({
-            id++,
+            id,
             "avg",
             t::int4(),
             {
@@ -291,9 +311,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10020;
         repo.add(id, avg);
         functions.add({
-            id++,
+            id,
             "avg",
             t::int8(),
             {
@@ -301,9 +322,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10021;
         repo.add(id, avg);
         functions.add({
-            id++,
+            id,
             "avg",
             t::float4(),
             {
@@ -311,9 +333,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10022;
         repo.add(id, avg);
         functions.add({
-            id++,
+            id,
             "avg",
             t::float8(),
             {
@@ -321,9 +344,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10023;
         repo.add(id, avg);
         functions.add({
-            id++,
+            id,
             "avg",
             t::decimal(),
             {
@@ -337,9 +361,10 @@ void add_builtin_aggregate_functions(
     /////////
     {
         auto max = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::max>>();
+        auto id = function_id::id_10024;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::int4(),
             {
@@ -347,9 +372,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10025;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::int8(),
             {
@@ -357,9 +383,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10026;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::float4(),
             {
@@ -367,9 +394,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10027;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::float8(),
             {
@@ -377,9 +405,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10028;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::character(t::varying),
             {
@@ -387,9 +416,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10029;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::octet(t::varying),
             {
@@ -397,9 +427,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10030;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::decimal(),
             {
@@ -407,9 +438,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10031;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::date(),
             {
@@ -417,9 +449,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10032;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::time_of_day(),
             {
@@ -427,9 +460,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10033;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::time_of_day(t::with_time_zone),
             {
@@ -437,9 +471,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10034;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::time_point(),
             {
@@ -447,9 +482,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10035;
         repo.add(id, max);
         functions.add({
-            id++,
+            id,
             "max",
             t::time_point(t::with_time_zone),
             {
@@ -463,9 +499,10 @@ void add_builtin_aggregate_functions(
     /////////
     {
         auto min = std::make_shared<aggregate_function_info_impl<aggregate_function_kind::min>>();
+        auto id = function_id::id_10036;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::int4(),
             {
@@ -473,9 +510,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10037;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::int8(),
             {
@@ -483,9 +521,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10038;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::float4(),
             {
@@ -493,9 +532,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10039;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::float8(),
             {
@@ -503,9 +543,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10040;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::character(t::varying),
             {
@@ -513,9 +554,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10041;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::octet(t::varying),
             {
@@ -523,9 +565,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10042;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::decimal(),
             {
@@ -533,9 +576,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10043;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::date(),
             {
@@ -543,9 +587,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10044;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::time_of_day(),
             {
@@ -553,9 +598,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10045;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::time_of_day(t::with_time_zone),
             {
@@ -563,9 +609,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10046;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::time_point(),
             {
@@ -573,9 +620,10 @@ void add_builtin_aggregate_functions(
             },
             true,
         });
+        id = function_id::id_10047;
         repo.add(id, min);
         functions.add({
-            id++,
+            id,
             "min",
             t::time_point(t::with_time_zone),
             {

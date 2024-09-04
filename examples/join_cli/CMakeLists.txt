@@ -9,7 +9,8 @@ add_executable(join-cli
 
 set_target_properties(join-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "join-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "join-cli"
 )
 
 target_include_directories(join-cli

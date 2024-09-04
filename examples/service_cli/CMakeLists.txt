@@ -16,7 +16,8 @@ add_executable(service-cli
 
 set_target_properties(service-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "cli"
 )
 
 target_include_directories(service-cli

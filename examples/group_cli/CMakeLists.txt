@@ -9,7 +9,8 @@ add_executable(group-cli
 
 set_target_properties(group-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "group-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "group-cli"
 )
 
 target_include_directories(group-cli

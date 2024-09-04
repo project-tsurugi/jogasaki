@@ -8,7 +8,8 @@ add_executable(process-cli
 
 set_target_properties(process-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "process-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "process-cli"
 )
 
 target_include_directories(process-cli

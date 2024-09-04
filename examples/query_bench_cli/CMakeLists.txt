@@ -8,7 +8,8 @@ add_executable(query-bench-cli
 
 set_target_properties(query-bench-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "query-bench-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "query-bench-cli"
 )
 
 target_include_directories(query-bench-cli

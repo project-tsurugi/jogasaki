@@ -1,7 +1,6 @@
 {
     "cmake.configureArgs": [
         "-DCMAKE_PREFIX_PATH=${env:HOME}/git/.opt",
-        "-DFORCE_INSTALL_RPATH=ON",
         "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         "-DCMAKE_BUILD_TYPE=${env:CAPITAL_BUILD_TYPE}",
         "-DSHARKSFIN_IMPLEMENTATION=${env:SHARKSFIN_IMPLEMENTATION}",

@@ -9,7 +9,8 @@ add_executable(cogroup-cli
 
 set_target_properties(cogroup-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "cogroup-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "cogroup-cli"
 )
 
 target_include_directories(cogroup-cli

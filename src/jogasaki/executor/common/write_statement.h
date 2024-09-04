@@ -30,11 +30,11 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/insert/insert_new_record.h>
-#include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/wrt/insert_new_record.h>
+#include <jogasaki/executor/wrt/write_field.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_context.h>
@@ -97,9 +97,9 @@ private:
     executor::process::impl::variable_table const* host_variables_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
-    std::vector<insert::write_field> key_fields_{};
-    std::vector<insert::write_field> value_fields_{};
-    std::shared_ptr<insert::insert_new_record> entity_{};
+    std::vector<wrt::write_field> key_fields_{};
+    std::vector<wrt::write_field> value_fields_{};
+    std::shared_ptr<wrt::insert_new_record> entity_{};
 };
 
 }  // namespace jogasaki::executor::common

@@ -43,7 +43,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/request_context.h>
 
-namespace jogasaki::executor::insert {
+namespace jogasaki::executor::wrt {
 
 using jogasaki::executor::process::impl::ops::write_kind;
 using primary_target = jogasaki::index::primary_target;

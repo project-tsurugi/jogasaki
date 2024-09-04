@@ -27,10 +27,10 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/insert/insert_new_record.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/wrt/insert_new_record.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_context.h>
@@ -44,7 +44,7 @@
 #include <jogasaki/model/statement_kind.h>
 #include <jogasaki/request_context.h>
 
-namespace jogasaki::executor::insert {
+namespace jogasaki::executor::wrt {
 
 /**
  * @brief field info. for write
@@ -110,4 +110,4 @@ struct write_field : process::impl::ops::default_value_property {
     takatori::type::data const* target_type_{};  //NOLINT
 };
 
-}  // namespace jogasaki::executor::insert
+}  // namespace jogasaki::executor::wrt

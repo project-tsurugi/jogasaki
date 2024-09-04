@@ -44,13 +44,13 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/conv/assignment.h>
-#include <jogasaki/executor/insert/fill_record_fields.h>
 #include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/write_create_context.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/wrt/fill_record_fields.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_context.h>
@@ -85,7 +85,7 @@ std::vector<index::secondary_target> create_secondary_targets(
     auto& primary = *table.owner()->find_primary_index(table);
     auto key_meta = index::create_meta(primary, true);
     auto value_meta = index::create_meta(primary, false);
-    return insert::create_secondary_targets(idx, std::move(key_meta), std::move(value_meta));
+    return wrt::create_secondary_targets(idx, std::move(key_meta), std::move(value_meta));
 }
 
 void abort_transaction(transaction_context& tx) {
@@ -115,14 +115,14 @@ operator_kind write_create::kind() const noexcept {
 
 status fill_default_value_for_fields(
     write_create_context& ctx,
-    std::vector<insert::write_field> const& fields,
+    std::vector<wrt::write_field> const& fields,
     memory::lifo_paged_memory_resource& resource,
     data::small_record_store& out
 ) {
     for(auto&& f : fields) {
-        if (f.index_ == insert::npos) {
+        if (f.index_ == wrt::npos) {
             // value not specified for the field use default value or null
-            if(auto res = insert::fill_default_value(f, *ctx.req_context(), resource, out); res != status::ok) {
+            if(auto res = wrt::fill_default_value(f, *ctx.req_context(), resource, out); res != status::ok) {
                 return res;
             }
         }
@@ -135,7 +135,7 @@ operation_status write_create::operator()(write_create_context& ctx) {
         return {operation_status_kind::aborted};
     }
 
-    insert::write_context wctx(
+    wrt::write_context wctx(
         *ctx.req_context(),
         storage_name(),
         core_->primary().key_meta(),
@@ -227,12 +227,12 @@ write_create::write_create(
     kind_(kind),
     key_meta_(index::create_meta(idx, true)),
     value_meta_(index::create_meta(idx, false)),
-    key_fields_(insert::create_fields(idx, columns, key_meta_, value_meta_, true, resource)),
-    value_fields_(insert::create_fields(idx, columns, key_meta_, value_meta_, false, resource)),
-    core_(std::make_shared<insert::insert_new_record>(
+    key_fields_(wrt::create_fields(idx, columns, key_meta_, value_meta_, true, resource)),
+    value_fields_(wrt::create_fields(idx, columns, key_meta_, value_meta_, false, resource)),
+    core_(std::make_shared<wrt::insert_new_record>(
         kind_,
-        insert::create_primary_target(idx.simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
-        insert::create_secondary_targets(idx, key_meta_, value_meta_)
+        wrt::create_primary_target(idx.simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
+        wrt::create_secondary_targets(idx, key_meta_, value_meta_)
     )),
     update_fields_(
         create_update_fields(

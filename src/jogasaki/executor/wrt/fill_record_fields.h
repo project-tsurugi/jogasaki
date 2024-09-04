@@ -28,11 +28,11 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/insert/insert_new_record.h>
-#include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/executor/wrt/insert_new_record.h>
+#include <jogasaki/executor/wrt/write_field.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_context.h>
@@ -46,7 +46,7 @@
 #include <jogasaki/model/statement_kind.h>
 #include <jogasaki/request_context.h>
 
-namespace jogasaki::executor::insert {
+namespace jogasaki::executor::wrt {
 
 using takatori::util::sequence_view;
 
@@ -55,14 +55,14 @@ static constexpr std::size_t npos = static_cast<std::size_t>(-1);
 status next_sequence_value(request_context& ctx, sequence_definition_id def_id, sequence_value& out);
 
 status fill_default_value(
-    insert::write_field const& f,
+    wrt::write_field const& f,
     request_context& ctx,
     memory::lifo_paged_memory_resource& resource,
     data::small_record_store& out
 );
 
 void create_generated_field(
-    std::vector<insert::write_field>& ret,
+    std::vector<wrt::write_field>& ret,
     std::size_t index,
     yugawara::storage::column_value const& dv,
     takatori::type::data const& type,
@@ -73,7 +73,7 @@ void create_generated_field(
     memory::lifo_paged_memory_resource* resource
 );
 
-std::vector<insert::write_field> create_fields(
+std::vector<wrt::write_field> create_fields(
     yugawara::storage::index const& idx,
     sequence_view<takatori::relation::details::mapping_element const> columns,
     maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
@@ -82,7 +82,7 @@ std::vector<insert::write_field> create_fields(
     memory::lifo_paged_memory_resource* resource
 );
 
-std::vector<insert::write_field> create_fields(
+std::vector<wrt::write_field> create_fields(
     yugawara::storage::index const& idx,
     sequence_view<takatori::descriptor::variable const> columns,
     maybe_shared_ptr<meta::record_meta> key_meta,  //NOLINT(performance-unnecessary-value-param)
@@ -95,8 +95,8 @@ primary_target create_primary_target(
     std::string_view storage_name,
     maybe_shared_ptr<meta::record_meta> key_meta,
     maybe_shared_ptr<meta::record_meta> value_meta,
-    std::vector<insert::write_field> const& key_fields,
-    std::vector<insert::write_field> const& value_fields
+    std::vector<wrt::write_field> const& key_fields,
+    std::vector<wrt::write_field> const& value_fields
 );
 
 std::vector<secondary_target> create_secondary_targets(
@@ -105,4 +105,4 @@ std::vector<secondary_target> create_secondary_targets(
     maybe_shared_ptr<meta::record_meta> value_meta
 );
 
-}  // namespace jogasaki::executor::insert
+}  // namespace jogasaki::executor::wrt

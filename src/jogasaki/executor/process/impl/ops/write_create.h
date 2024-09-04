@@ -27,8 +27,6 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/conv/assignment.h>
-#include <jogasaki/executor/insert/insert_new_record.h>
-#include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
@@ -36,6 +34,8 @@
 #include <jogasaki/executor/process/impl/ops/write_existing.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/executor/wrt/insert_new_record.h>
+#include <jogasaki/executor/wrt/write_field.h>
 #include <jogasaki/index/primary_target.h>
 #include <jogasaki/index/secondary_target.h>
 #include <jogasaki/kvs/coder.h>
@@ -129,9 +129,9 @@ private:
     write_kind kind_{};
     maybe_shared_ptr<meta::record_meta> key_meta_{};
     maybe_shared_ptr<meta::record_meta> value_meta_{};
-    std::vector<insert::write_field> key_fields_{};
-    std::vector<insert::write_field> value_fields_{};
-    std::shared_ptr<insert::insert_new_record> core_{};
+    std::vector<wrt::write_field> key_fields_{};
+    std::vector<wrt::write_field> value_fields_{};
+    std::shared_ptr<wrt::insert_new_record> core_{};
     std::vector<details::update_field> update_fields_{};
 };
 

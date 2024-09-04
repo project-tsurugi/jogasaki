@@ -52,9 +52,6 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
-#include <jogasaki/executor/insert/fill_record_fields.h>
-#include <jogasaki/executor/insert/insert_new_record.h>
-#include <jogasaki/executor/insert/write_field.h>
 #include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/expression/evaluator.h>
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
@@ -64,6 +61,9 @@
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
+#include <jogasaki/executor/wrt/fill_record_fields.h>
+#include <jogasaki/executor/wrt/insert_new_record.h>
+#include <jogasaki/executor/wrt/write_field.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/secondary_target.h>
 #include <jogasaki/index/utils.h>
@@ -92,7 +92,7 @@ using takatori::util::string_builder;
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
 status fill_evaluated_value(
-    insert::write_field const& f,
+    wrt::write_field const& f,
     request_context& ctx,
     write_statement::tuple const& t,
     compiled_info const& info,
@@ -170,7 +170,7 @@ status fill_evaluated_value(
 status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
     write_statement::tuple const& t,
-    std::vector<insert::write_field> const& fields,
+    std::vector<wrt::write_field> const& fields,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
     executor::process::impl::variable_table const* host_variables,
@@ -207,12 +207,12 @@ write_statement::write_statement(
     host_variables_(host_variables),
     key_meta_(index::create_meta(*idx_, true)),
     value_meta_(index::create_meta(*idx_, false)),
-    key_fields_(insert::create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true, resource_)),
-    value_fields_(insert::create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false, resource_)),
-    entity_(std::make_shared<insert::insert_new_record>(
+    key_fields_(wrt::create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, true, resource_)),
+    value_fields_(wrt::create_fields(*idx_, wrt_->columns(), key_meta_, value_meta_, false, resource_)),
+    entity_(std::make_shared<wrt::insert_new_record>(
         kind_,
-        insert::create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
-        insert::create_secondary_targets(*idx_, key_meta_, value_meta_)
+        wrt::create_primary_target(idx_->simple_name(), key_meta_, value_meta_, key_fields_, value_fields_),
+        wrt::create_secondary_targets(*idx_, key_meta_, value_meta_)
     ))
 {}
 
@@ -235,7 +235,7 @@ bool write_statement::process(request_context& context) {
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();
 
-    insert::write_context wctx(context,
+    wrt::write_context wctx(context,
         idx_->simple_name(),
         key_meta_,
         value_meta_,

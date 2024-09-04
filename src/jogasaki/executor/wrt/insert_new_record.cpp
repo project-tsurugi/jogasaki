@@ -63,7 +63,7 @@
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 
-namespace jogasaki::executor::insert {
+namespace jogasaki::executor::wrt {
 
 using jogasaki::executor::process::impl::ops::write_kind;
 

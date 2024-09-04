@@ -25,6 +25,9 @@
 #include <tateyama/framework/boot_mode.h>
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/repository.h>
+#include <tateyama/framework/component.h>
+#include <tateyama/framework/component_ids.h>
+#include <tateyama/session/resource.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/service.h>
@@ -69,6 +72,17 @@ bool bridge::start(framework::environment& env) {
         quiescent_or_maintenance_ = true;
         return true;
     }
+    auto session_resource = env.resource_repository().find<tateyama::session::session_resource>();
+    if(! session_resource) {
+        LOG(ERROR) << "start error";
+        return false;
+    }
+    session_resource->sessions_core().variable_declarations().declare(
+        {"sql.plan_recording",
+         tateyama::session::session_variable_type::boolean,
+         tateyama::session::session_variable_set::value_type{false},
+         "whether to record the SQL execution plan"}
+    );
     auto db = core_->database();
     auto diagnostic_resource = env.resource_repository().find<tateyama::diagnostic::resource::diagnostic_resource>();
     diagnostic_resource->add_print_callback("jogasaki", [db](std::ostream& os) {

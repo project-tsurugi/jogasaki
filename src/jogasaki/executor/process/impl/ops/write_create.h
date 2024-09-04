@@ -52,7 +52,7 @@ namespace jogasaki::executor::process::impl::ops {
 
 /**
  * @brief write operator to create new record
- * @details write operator that create new record. Used for Insert/Upsert operations.
+ * @details write operator that create new record. Used for Insert from Select operation.
  */
 class write_create : public record_operator {
 public:

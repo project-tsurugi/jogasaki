@@ -39,7 +39,7 @@ namespace jogasaki::executor::process::impl::ops {
 using takatori::util::maybe_shared_ptr;
 
 /**
- * @brief partial write operator context
+ * @brief write_create operator context
  */
 class write_create_context : public context_base {
 public:

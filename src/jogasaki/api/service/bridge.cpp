@@ -77,12 +77,15 @@ bool bridge::start(framework::environment& env) {
         LOG(ERROR) << "start error";
         return false;
     }
-    session_resource->sessions_core().variable_declarations().declare(
-        {"sql.plan_recording",
-         tateyama::session::session_variable_type::boolean,
-         tateyama::session::session_variable_set::value_type{false},
-         "whether to record the SQL execution plan"}
-    );
+    if(! session_resource->sessions_core().variable_declarations().declare(
+           {std::string{session_variable_sql_plan_recording},
+            tateyama::session::session_variable_type::boolean,
+            tateyama::session::session_variable_set::value_type{std::in_place_type<bool>, false},
+            "whether to record the SQL execution plan"}
+       )) {
+        LOG(ERROR) << "registering session variable error";
+        return false;
+    }
     auto db = core_->database();
     auto diagnostic_resource = env.resource_repository().find<tateyama::diagnostic::resource::diagnostic_resource>();
     diagnostic_resource->add_print_callback("jogasaki", [db](std::ostream& os) {

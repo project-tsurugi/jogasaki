@@ -181,4 +181,10 @@ constexpr static std::string_view system_identifier_prefix = "__";
  */
 constexpr std::size_t initial_sequence_version = 1;
 
+/**
+ * @brief session variable name to enable execution plan output
+ * @details the name for the session variable to enable execution plan output for external logging
+ */
+constexpr static std::string_view session_variable_sql_plan_recording = "sql.plan_recording";
+
 }  // namespace jogasaki

@@ -155,6 +155,7 @@ public:
     [[nodiscard]] tateyama::api::server::database_info const& database_info() const noexcept override;
     [[nodiscard]] tateyama::api::server::session_info const& session_info() const noexcept override;
     [[nodiscard]] tateyama::api::server::session_store& session_store() noexcept override;
+    [[nodiscard]] tateyama::session::session_variable_set& session_variable_set() noexcept override;
 
     std::string payload_{};  //NOLINT
     std::size_t session_id_{};
@@ -162,6 +163,7 @@ public:
     database_info_impl database_info_{};
     session_info_impl session_info_{};
     tateyama::api::server::session_store session_store_{};
+    tateyama::session::session_variable_set session_variable_set_{};
 
 };
 

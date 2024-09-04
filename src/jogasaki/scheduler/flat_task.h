@@ -32,7 +32,7 @@
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/common.h>
 #include <jogasaki/error/error_info.h>
-#include <jogasaki/executor/common/write.h>
+#include <jogasaki/executor/common/write_statement.h>
 #include <jogasaki/executor/file/loader.h>
 #include <jogasaki/model/graph.h>
 #include <jogasaki/model/task.h>
@@ -210,7 +210,7 @@ public:
     flat_task(
         task_enum_tag_t<flat_task_kind::write>,
         request_context* rctx,
-        executor::common::write* write
+        executor::common::write_statement* write
     ) noexcept;
 
     /**
@@ -288,7 +288,7 @@ private:
     maybe_shared_ptr<request_context> req_context_{};
     std::shared_ptr<model::task> origin_{};
     model::graph* graph_{};
-    executor::common::write* write_{};
+    executor::common::write_statement* write_{};
     bool sticky_{};
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};

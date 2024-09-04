@@ -60,7 +60,7 @@ using secondary_context = jogasaki::index::secondary_context;
 /**
  * @brief write statement (to execute Insert)
  */
-class write : public model::statement {
+class write_statement : public model::statement {
 public:
     using column = takatori::statement::write::column;
     using tuple = takatori::statement::write::tuple;
@@ -68,12 +68,12 @@ public:
     /**
      * @brief create empty object
      */
-    write() = default;
+    write_statement() = default;
 
     /**
      * @brief create new object
      */
-    write(
+    write_statement(
         write_kind kind,
         yugawara::storage::index const& idx,
         takatori::statement::write const& wrt,

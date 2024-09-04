@@ -50,7 +50,7 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/graph.h>
-#include <jogasaki/executor/common/write.h>
+#include <jogasaki/executor/common/write_statement.h>
 #include <jogasaki/executor/file/loader.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/dump_channel.h>
@@ -590,7 +590,7 @@ bool execute_async_on_context(
     }
     if(!e->is_ddl() && !e->is_empty()) {
         // write on tasked mode
-        auto* stmt = unsafe_downcast<executor::common::write>(e->operators().get());
+        auto* stmt = unsafe_downcast<executor::common::write_statement>(e->operators().get());
         job->callback([statement, on_completion, rctx, req_info](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;

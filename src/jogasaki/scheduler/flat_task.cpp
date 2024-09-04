@@ -28,7 +28,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
-#include <jogasaki/executor/common/write.h>
+#include <jogasaki/executor/common/write_statement.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/file/loader.h>
 #include <jogasaki/logging.h>
@@ -342,7 +342,7 @@ flat_task::flat_task(
 flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::write>,
     request_context* rctx,
-    executor::common::write* write
+    executor::common::write_statement* write
 ) noexcept:
     kind_(flat_task_kind::write),
     req_context_(rctx),

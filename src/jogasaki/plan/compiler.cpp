@@ -103,7 +103,7 @@
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/common/step.h>
-#include <jogasaki/executor/common/write.h>
+#include <jogasaki/executor/common/write_statement.h>
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/exchange/aggregate/aggregate_info.h>
 #include <jogasaki/executor/exchange/aggregate/step.h>
@@ -890,7 +890,7 @@ void create_mirror_for_write(
     auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     auto& node = unsafe_downcast<statement::write>(*statement);
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
-    auto write = std::make_shared<executor::common::write>(
+    auto write = std::make_shared<executor::common::write_statement>(
         executor::process::impl::ops::write_kind_from(node.operator_kind()),
         index,
         node,

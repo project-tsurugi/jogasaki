@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write.h"
+#include "write_statement.h"
 
 #include <cstdint>
 #include <cstring>
@@ -94,7 +94,7 @@ constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 status fill_evaluated_value(
     insert::write_field const& f,
     request_context& ctx,
-    write::tuple const& t,
+    write_statement::tuple const& t,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
     executor::process::impl::variable_table const* host_variables,
@@ -169,7 +169,7 @@ status fill_evaluated_value(
 
 status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
-    write::tuple const& t,
+    write_statement::tuple const& t,
     std::vector<insert::write_field> const& fields,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
@@ -191,7 +191,7 @@ status create_record_from_tuple(  //NOLINT(readability-function-cognitive-comple
     return status::ok;
 }
 
-write::write(
+write_statement::write_statement(
     write_kind kind,
     yugawara::storage::index const& idx,
     takatori::statement::write const& wrt,
@@ -216,11 +216,11 @@ write::write(
     ))
 {}
 
-model::statement_kind write::kind() const noexcept {
+model::statement_kind write_statement::kind() const noexcept {
     return model::statement_kind::write;
 }
 
-bool write::operator()(request_context& context) {
+bool write_statement::operator()(request_context& context) {
     auto res = process(context);
     if(! res) {
         // Ensure tx aborts on any error. Though tx might be already aborted due to kvs errors,
@@ -230,7 +230,7 @@ bool write::operator()(request_context& context) {
     }
     return res;
 }
-bool write::process(request_context& context) {
+bool write_statement::process(request_context& context) {
     auto& tx = context.transaction();
     BOOST_ASSERT(tx);  //NOLINT
     auto* db = tx->database();

@@ -62,7 +62,7 @@
 #include "take_group.h"
 #include "write_create.h"
 #include "write_kind.h"
-#include "write_partial.h"
+#include "write_existing.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -200,7 +200,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
 
     if (node.operator_kind() == relation::write_kind::update || node.operator_kind() == relation::write_kind::delete_) {
-        return std::make_unique<write_partial>(
+        return std::make_unique<write_existing>(
             index_++,
             *info_,
             block_index,

@@ -36,7 +36,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
-#include <jogasaki/executor/process/impl/ops/write_partial.h>
+#include <jogasaki/executor/process/impl/ops/write_existing.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/field_factory.h>

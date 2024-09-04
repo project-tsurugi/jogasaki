@@ -41,18 +41,18 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief partial write operator context
  */
-class write_partial_context : public context_base {
+class write_existing_context : public context_base {
 public:
-    friend class write_partial;
+    friend class write_existing;
     /**
      * @brief create empty object
      */
-    write_partial_context() = default;
+    write_existing_context() = default;
 
     /**
      * @brief create new object
      */
-    write_partial_context(
+    write_existing_context(
         class abstract::task_context* ctx,
         variable_table& variables,
         std::unique_ptr<kvs::storage> stg,

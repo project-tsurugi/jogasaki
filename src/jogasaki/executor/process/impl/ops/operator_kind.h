@@ -23,7 +23,7 @@ enum class operator_kind : std::size_t {
     unknown = 0,
     emit,
     write_create,
-    write_partial,
+    write_existing,
     scan,
     find,
     join_find,
@@ -48,7 +48,7 @@ constexpr inline std::string_view to_string_view(operator_kind value) noexcept {
     switch (value) {
         case operator_kind::unknown: return "unknown"sv;
         case operator_kind::emit: return "emit"sv;
-        case operator_kind::write_partial: return "write_partial"sv;
+        case operator_kind::write_existing: return "write_existing"sv;
         case operator_kind::write_create: return "write_create"sv;
         case operator_kind::scan: return "scan"sv;
         case operator_kind::find: return "find"sv;

@@ -33,7 +33,7 @@
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/ops/write_partial.h>
+#include <jogasaki/executor/process/impl/ops/write_existing.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/index/primary_target.h>

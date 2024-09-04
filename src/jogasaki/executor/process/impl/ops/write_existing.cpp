@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_partial.h"
+#include "write_existing.h"
 
 #include <algorithm>
 #include <functional>
@@ -48,7 +48,7 @@
 #include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
-#include <jogasaki/executor/process/impl/ops/write_partial_context.h>
+#include <jogasaki/executor/process/impl/ops/write_existing_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/primary_target.h>
@@ -76,23 +76,23 @@ using variable = takatori::descriptor::variable;
 using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
-void write_partial::finish(abstract::task_context* context) {
+void write_existing::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if(auto* p = find_context<write_partial_context>(index(), ctx.contexts())) {
+    if(auto* p = find_context<write_existing_context>(index(), ctx.contexts())) {
         p->release();
     }
 }
 
-std::string_view write_partial::storage_name() const noexcept {
+std::string_view write_existing::storage_name() const noexcept {
     return primary_.storage_name();
 }
 
-operator_kind write_partial::kind() const noexcept {
-    return operator_kind::write_partial;
+operator_kind write_existing::kind() const noexcept {
+    return operator_kind::write_existing;
 }
 
-operation_status write_partial::operator()(write_partial_context& ctx) {
+operation_status write_existing::operator()(write_existing_context& ctx) {
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
@@ -112,7 +112,7 @@ void abort_transaction(transaction_context& tx) {
     }
 }
 
-bool update_skips_deletion(write_partial_context& ctx) {
+bool update_skips_deletion(write_existing_context& ctx) {
     if(! ctx.req_context()) return false;
     if(! ctx.req_context()->configuration()) return false;
     return ctx.req_context()->configuration()->update_skips_deletion();
@@ -184,7 +184,7 @@ bool updates_key(std::vector<details::update_field> const& updates) noexcept {
     });
 }
 
-operation_status write_partial::do_update(write_partial_context& ctx) {
+operation_status write_existing::do_update(write_existing_context& ctx) {
     auto& context = ctx.primary_context();
     // find update target and fill internal extracted key/values in primary target
     std::string_view encoded{};
@@ -283,7 +283,7 @@ operation_status write_partial::do_update(write_partial_context& ctx) {
     return {};
 }
 
-operation_status write_partial::do_delete(write_partial_context& ctx) {
+operation_status write_existing::do_delete(write_existing_context& ctx) {
     auto& context = ctx.primary_context();
     if(secondaries_.empty()) {
         if(auto res = primary_.encode_remove(
@@ -327,10 +327,10 @@ operation_status write_partial::do_delete(write_partial_context& ctx) {
     return {};
 }
 
-operation_status write_partial::process_record(abstract::task_context* context) {
+operation_status write_existing::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
-    auto* p = find_context<write_partial_context>(index(), ctx.contexts());
+    auto* p = find_context<write_existing_context>(index(), ctx.contexts());
     if (! p) {
         std::vector<index::secondary_context> contexts{};
         contexts.reserve(secondaries_.size());
@@ -340,7 +340,7 @@ operation_status write_partial::process_record(abstract::task_context* context) 
                 ctx.req_context()
             );
         }
-        p = ctx.make_context<write_partial_context>(
+        p = ctx.make_context<write_existing_context>(
             index(),
             ctx.variable_table(block_index()),
             ctx.database()->get_storage(storage_name()),
@@ -463,7 +463,7 @@ std::vector<details::update_field> create_update_fields(
 
 bool overwraps(
     std::vector<yugawara::storage::index::key> const& keys,
-    sequence_view<write_partial::column const> columns
+    sequence_view<write_existing::column const> columns
 ) {
     yugawara::binding::factory bindings{};
     for(auto&& k : keys) {
@@ -477,17 +477,17 @@ bool overwraps(
     return false;
 }
 
-std::pair<std::vector<index::secondary_target>, write_partial::bool_list_type>
+std::pair<std::vector<index::secondary_target>, write_existing::bool_list_type>
 create_secondary_targets_and_key_update_list(
     yugawara::storage::index const& idx,
-    sequence_view<write_partial::column const> columns
+    sequence_view<write_existing::column const> columns
 ) {
     auto& table = idx.table();
     auto& primary = *table.owner()->find_primary_index(table);
     auto key_meta = index::create_meta(primary, true);
     auto value_meta = index::create_meta(primary, false);
     std::vector<index::secondary_target> ret_l{};
-    write_partial::bool_list_type ret_r{};
+    write_existing::bool_list_type ret_r{};
     std::size_t count{};
     table.owner()->each_table_index(table,
         [&](std::string_view, std::shared_ptr<yugawara::storage::index const> const& entry) {
@@ -519,23 +519,23 @@ create_secondary_targets_and_key_update_list(
 
 std::vector<index::secondary_target> create_secondary_targets(
     yugawara::storage::index const& idx,
-    sequence_view<write_partial::column const> columns
+    sequence_view<write_existing::column const> columns
 ) {
     auto [tgts, updates] = create_secondary_targets_and_key_update_list(idx, columns);
     (void) updates;
     return tgts;
 }
 
-write_partial::bool_list_type create_secondary_key_updated(
+write_existing::bool_list_type create_secondary_key_updated(
     yugawara::storage::index const& idx,
-    sequence_view<write_partial::column const> columns
+    sequence_view<write_existing::column const> columns
 ) {
     auto [tgts, updates] = create_secondary_targets_and_key_update_list(idx, columns);
     (void) tgts;
     return updates;
 }
 
-write_partial::write_partial(
+write_existing::write_existing(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -545,7 +545,7 @@ write_partial::write_partial(
     sequence_view<column const> columns,
     variable_table_info const* input_variable_info
 ) :
-    write_partial(
+    write_existing(
         index,
         info,
         block_index,
@@ -569,7 +569,7 @@ write_partial::write_partial(
     )
 {}
 
-write_partial::write_partial(
+write_existing::write_existing(
     operator_base::operator_index_type index,
     processor_info const& info,
     operator_base::block_index_type block_index,
@@ -589,11 +589,11 @@ write_partial::write_partial(
     updates_(std::move(updates))
 {}
 
-index::primary_target const& write_partial::primary() const noexcept {
+index::primary_target const& write_existing::primary() const noexcept {
     return primary_;
 }
 
-write_kind write_partial::get_write_kind() const noexcept {
+write_kind write_existing::get_write_kind() const noexcept {
     return kind_;
 }
 }  // namespace jogasaki::executor::process::impl::ops

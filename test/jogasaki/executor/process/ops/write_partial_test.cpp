@@ -41,8 +41,8 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
-#include <jogasaki/executor/process/impl/ops/write_partial.h>
-#include <jogasaki/executor/process/impl/ops/write_partial_context.h>
+#include <jogasaki/executor/process/impl/ops/write_existing.h>
+#include <jogasaki/executor/process/impl/ops/write_existing_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/mock/task_context.h>
 #include <jogasaki/index/primary_target.h>
@@ -85,7 +85,7 @@ namespace scalar = ::takatori::scalar;
 
 namespace storage = yugawara::storage;
 
-class write_partial_test :
+class write_existing_test :
     public test_root,
     public kvs_test_base,
     public operator_test_utils {
@@ -236,7 +236,7 @@ public:
     }
 };
 
-TEST_F(write_partial_test , simple_update) {
+TEST_F(write_existing_test , simple_update) {
     auto&& [take, target] = create_update_take_target_i1();
     create_processor_info();
     auto input = create_nullable_record<kind::int4, kind::int8>(10, 1000);
@@ -246,7 +246,7 @@ TEST_F(write_partial_test , simple_update) {
     variable_table input_variables{input_variable_info};
     input_variables.store().set(input.ref());
 
-    write_partial wrt{
+    write_existing wrt{
         0,
         *processor_info_,
         0,
@@ -266,7 +266,7 @@ TEST_F(write_partial_test , simple_update) {
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
 
-    write_partial_context ctx{
+    write_existing_context ctx{
         &task_ctx,
         input_variables,
         std::move(stg),
@@ -290,7 +290,7 @@ TEST_F(write_partial_test , simple_update) {
     EXPECT_EQ((create_record<kind::float8, kind::int8>(2.0, 200)), result[1].second);
 }
 
-TEST_F(write_partial_test , nullable_columns) {
+TEST_F(write_existing_test , nullable_columns) {
     auto&& [take, target] = create_update_take_target_i1_nullable();
     create_processor_info();
     auto input = create_nullable_record<kind::int4, kind::int8>(10, 1000);
@@ -300,7 +300,7 @@ TEST_F(write_partial_test , nullable_columns) {
     variable_table input_variables{input_variable_info};
     input_variables.store().set(input.ref());
 
-    write_partial wrt{
+    write_existing wrt{
         0,
         *processor_info_,
         0,
@@ -320,7 +320,7 @@ TEST_F(write_partial_test , nullable_columns) {
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
 
-    write_partial_context ctx{
+    write_existing_context ctx{
         &task_ctx,
         input_variables,
         std::move(stg),
@@ -344,7 +344,7 @@ TEST_F(write_partial_test , nullable_columns) {
     EXPECT_EQ((create_record<kind::float8, kind::int8>(2.0, 200)), result[1].second);
 }
 
-TEST_F(write_partial_test , update_multi_columns) {
+TEST_F(write_existing_test , update_multi_columns) {
     auto&& [take, target] = create_update_multi_take_target_i1();
     create_processor_info();
     auto input = create_nullable_record<kind::int4, kind::int8, kind::float8>(10, 1000, 10000.0);
@@ -355,7 +355,7 @@ TEST_F(write_partial_test , update_multi_columns) {
     variable_table input_variables{input_variable_info};
     input_variables.store().set(input.ref());
 
-    write_partial wrt{
+    write_existing wrt{
         0,
         *processor_info_,
         0,
@@ -375,7 +375,7 @@ TEST_F(write_partial_test , update_multi_columns) {
     lifo_paged_memory_resource resource{&global::page_pool()};
     lifo_paged_memory_resource varlen_resource{&global::page_pool()};
 
-    write_partial_context ctx{
+    write_existing_context ctx{
         &task_ctx,
         input_variables,
         std::move(stg),
@@ -399,7 +399,7 @@ TEST_F(write_partial_test , update_multi_columns) {
     EXPECT_EQ((create_record<kind::float8, kind::int8>(2.0, 200)), result[1].second);
 }
 
-TEST_F(write_partial_test , update_secondary) {
+TEST_F(write_existing_test , update_secondary) {
     auto&& [take, target] = create_update_take_target_i100();
     create_processor_info();
     auto input = create_nullable_record<kind::int8, kind::int8>(10, 10000);
@@ -410,7 +410,7 @@ TEST_F(write_partial_test , update_secondary) {
     variable_table input_variables{input_variable_info};
     input_variables.store().set(input.ref());
 
-    write_partial wrt{
+    write_existing wrt{
         0,
         *processor_info_,
         0,
@@ -442,7 +442,7 @@ TEST_F(write_partial_test , update_secondary) {
         nullptr
     );
 
-    write_partial_context ctx{
+    write_existing_context ctx{
         &task_ctx,
         input_variables,
         std::move(stg),

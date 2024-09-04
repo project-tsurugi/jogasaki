@@ -41,7 +41,7 @@
 #include <jogasaki/utils/interference_size.h>
 
 #include "write_kind.h"
-#include "write_partial_context.h"
+#include "write_existing_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -119,12 +119,12 @@ std::vector<details::update_field> create_update_fields(
 );
 
 /**
- * @brief partial write operator
- * @details write operator that partially specifies the data to target columns. Used for Update/Delete operation.
+ * @brief write operator for existing records
+ * @details write operator to modify the existing records. Used for Update/Delete operations.
  */
-class write_partial : public record_operator {
+class write_existing : public record_operator {
 public:
-    friend class write_partial_context;
+    friend class write_existing_context;
 
     using key = takatori::relation::write::key;
     using column = takatori::relation::write::column;
@@ -134,7 +134,7 @@ public:
     /**
      * @brief create empty object
      */
-    write_partial() = default;
+    write_existing() = default;
 
     /**
      * @brief create new object
@@ -148,7 +148,7 @@ public:
      * @param secondary_key_updated list of flags indicating if one of index keys of secondary targets are updated
      * @param input_variable_info input variable information
      */
-    write_partial(
+    write_existing(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
@@ -171,7 +171,7 @@ public:
      * @param columns takatori write columns information
      * @param input_variable_info input variable information
      */
-    write_partial(
+    write_existing(
         operator_index_type index,
         processor_info const& info,
         block_index_type block_index,
@@ -195,7 +195,7 @@ public:
      * @param ctx operator context object for the execution
      * @return status of the operation
      */
-    operation_status operator()(write_partial_context& ctx);
+    operation_status operator()(write_existing_context& ctx);
 
     /**
      * @see operator_base::kind()
@@ -232,8 +232,8 @@ private:
     bool_list_type secondary_key_updated_{};
     std::vector<details::update_field> updates_{};
 
-    operation_status do_update(write_partial_context& ctx);
-    operation_status do_delete(write_partial_context& ctx);
+    operation_status do_update(write_existing_context& ctx);
+    operation_status do_delete(write_existing_context& ctx);
 };
 
     status update_record(

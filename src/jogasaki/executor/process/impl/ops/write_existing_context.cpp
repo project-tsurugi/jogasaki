@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "write_partial_context.h"
+#include "write_existing_context.h"
 
 #include <memory>
 #include <utility>
@@ -27,7 +27,7 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
-write_partial_context::write_partial_context(
+write_existing_context::write_existing_context(
     class abstract::task_context* ctx,
     variable_table& variables,
     std::unique_ptr<kvs::storage> stg,
@@ -49,19 +49,19 @@ write_partial_context::write_partial_context(
     secondary_contexts_(std::move(secondary_contexts))
 {}
 
-operator_kind write_partial_context::kind() const noexcept {
-    return operator_kind::write_partial;
+operator_kind write_existing_context::kind() const noexcept {
+    return operator_kind::write_existing;
 }
 
-void write_partial_context::release() {
+void write_existing_context::release() {
     //no-op
 }
 
-transaction_context* write_partial_context::transaction() const noexcept {
+transaction_context* write_existing_context::transaction() const noexcept {
     return tx_;
 }
 
-index::primary_context& write_partial_context::primary_context() noexcept {
+index::primary_context& write_existing_context::primary_context() noexcept {
     return primary_context_;
 }
 

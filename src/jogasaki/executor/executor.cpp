@@ -514,9 +514,17 @@ void external_log_stmt_explain(
     (void) statement;
     (void) string_builder{};
 #ifdef ENABLE_ALTIMETER
-    auto cfg = global::config_pool();
-    if(! cfg || ! cfg->external_log_explain()) {
-        return;
+    if(auto req = req_info.request_source()) {
+        auto& vars = req->session_variable_set();
+        auto v = vars.get(session_variable_sql_plan_recording);
+        bool* p = std::get_if<bool>(std::addressof(v));
+        if(p != nullptr && ! *p) {
+            return;
+        }
+        // p is nullptr if session variable is not set. Then use global config.
+        if(p == nullptr && ! global::config_pool()->external_log_explain()) {
+                return;
+        }
     }
     auto tx_id = rctx.transaction()->transaction_id();
     auto tx_type = utils::tx_type_from(*rctx.transaction());

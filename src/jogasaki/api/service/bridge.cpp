@@ -80,7 +80,7 @@ bool bridge::start(framework::environment& env) {
     if(! session_resource->sessions_core().variable_declarations().declare(
            {std::string{session_variable_sql_plan_recording},
             tateyama::session::session_variable_type::boolean,
-            tateyama::session::session_variable_set::value_type{std::in_place_type<bool>, false},
+            {},  // no default value, use global configuration
             "whether to record the SQL execution plan"}
        )) {
         LOG(ERROR) << "registering session variable error";

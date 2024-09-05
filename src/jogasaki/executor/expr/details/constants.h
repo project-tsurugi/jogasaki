@@ -22,7 +22,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 constexpr std::size_t max_triple_digits = decimal_max_precision;
 
@@ -160,4 +160,4 @@ inline constexpr std::string_view string_positive_inf = "Inf";
 
 inline constexpr std::string_view string_negative_inf = "-Inf";
 
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr::details

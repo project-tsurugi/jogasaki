@@ -17,14 +17,14 @@
 #include <gtest/gtest.h>
 
 #include <jogasaki/executor/diagnostic_record.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/test_root.h>
 
 namespace jogasaki::executor {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-using namespace jogasaki::executor::process::impl::expression;
+using namespace jogasaki::executor::expr;
 
 class diagnostic_record_test : public test_root {
 public:

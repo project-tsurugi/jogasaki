@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "single_function_evaluator.h"
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -34,41 +34,50 @@
 #include <takatori/scalar/match.h>
 #include <takatori/scalar/unary.h>
 #include <takatori/scalar/variable_reference.h>
-#include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
 #include <yugawara/function/configurable_provider.h>
 #include <yugawara/function/declaration.h>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/paged_memory_resource.h>
-#include <jogasaki/utils/find_function.h>
 
 #include "evaluator_context.h"
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using any = jogasaki::data::any;
 
-std::shared_ptr<takatori::scalar::expression const>
-create_function_expression(std::size_t function_def_id, yugawara::function::configurable_provider const& functions) {
-    auto f = utils::find_function(functions, function_def_id);
-    yugawara::binding::factory bindings{};
-    auto desc = bindings(f);
-    return std::make_shared<takatori::scalar::function_call>(desc);
-}
+/**
+ * @brief expression evaluator
+ */
+class single_function_evaluator {
+public:
+    using memory_resource = memory::lifo_paged_memory_resource;
+    /**
+     * @brief construct empty object
+     */
+    single_function_evaluator() = default;
+    /**
+     * @brief construct new object
+     */
+    single_function_evaluator(
+        std::size_t function_def_id,
+        yugawara::function::configurable_provider const& functions
+    ) noexcept;
 
-single_function_evaluator::single_function_evaluator(
-    std::size_t function_def_id,
-    yugawara::function::configurable_provider const& functions
-) noexcept :
-    expression_(create_function_expression(function_def_id, functions)),
-    evaluator_(*expression_, {}, {}) {}
+    /**
+     * @brief evaluate the expression
+     * @return the result of evaluation
+     */
+    [[nodiscard]] data::any operator()(evaluator_context& ctx) const;
 
-data::any single_function_evaluator::operator()(evaluator_context& ctx) const {
-    executor::process::impl::variable_table variables{};
-    return evaluator_(ctx, variables, nullptr);
-}
+private:
+    std::shared_ptr<takatori::scalar::expression const> expression_{};
+    executor::expr::evaluator evaluator_{};
+};
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

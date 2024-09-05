@@ -163,7 +163,7 @@ status fill_default_value(
             break;
         }
         case process::impl::ops::default_value_kind::function: {
-            process::impl::expression::evaluator_context c{
+            expr::evaluator_context c{
                 std::addressof(resource),
                 utils::make_function_context(*ctx.transaction())
             };

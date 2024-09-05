@@ -22,8 +22,8 @@
 #include <takatori/util/infect_qualifier.h>
 
 #include <jogasaki/data/any.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -71,7 +71,7 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     }
     auto& vars = ctx.input_variables();
     auto resource = ctx.varlen_resource();
-    expression::evaluator_context c{resource,
+    expr::evaluator_context c{resource,
         ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
     };
     auto res = evaluate_bool(c, evaluator_, vars, resource);

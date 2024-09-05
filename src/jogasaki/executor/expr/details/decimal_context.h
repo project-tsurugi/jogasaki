@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <decimal.hh>
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 /**
  * @brief provide standard decimal context for production
@@ -45,4 +45,4 @@ void ensure_decimal_context();
 */
 std::uint32_t reset_decimal_status();
 
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr::details

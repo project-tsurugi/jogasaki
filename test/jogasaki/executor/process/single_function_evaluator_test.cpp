@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/process/impl/expression/single_function_evaluator.h>
+#include <jogasaki/executor/expr/single_function_evaluator.h>
 
 #include <chrono>
 #include <cstddef>
@@ -78,9 +78,9 @@
 #include <jogasaki/executor/function/function_evaluation_context.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -97,7 +97,7 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/field_types.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -159,4 +159,4 @@ TEST_F(single_function_evaluator_test, current_timestamp) {
     ASSERT_EQ(tp, a.to<takatori::datetime::time_point>());
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

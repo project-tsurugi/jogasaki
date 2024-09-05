@@ -22,7 +22,7 @@
 #include <takatori/util/fail.h>
 
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/storage.h>

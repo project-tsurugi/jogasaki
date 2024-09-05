@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <decimal.hh>
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 /**
  * @brief decimal context guard
@@ -53,4 +53,4 @@ private:
     std::int32_t round_{};
 };
 
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr::details

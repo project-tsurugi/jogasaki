@@ -50,6 +50,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/builtin_scalar_functions_id.h>
 #include <jogasaki/executor/function/field_locator.h>
 #include <jogasaki/executor/function/scalar_function_info.h>
@@ -57,7 +58,6 @@
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type.h>
@@ -69,9 +69,9 @@
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using executor::process::impl::expression::evaluator_context;
-using jogasaki::executor::process::impl::expression::error_kind;
-using jogasaki::executor::process::impl::expression::error;
+using executor::expr::evaluator_context;
+using jogasaki::executor::expr::error_kind;
+using jogasaki::executor::expr::error;
 
 using kind = meta::field_type_kind;
 
@@ -92,7 +92,7 @@ void add_builtin_scalar_functions(
             1
         );
         auto name = "octet_length";
-        auto id = scalar_function_id::id_11000;
+        auto id = scalar_function_id::id_11001;
         repo.add(id, info);
         functions.add({
             id,

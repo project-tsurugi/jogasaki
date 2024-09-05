@@ -22,7 +22,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/interference_size.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/processor_info.h>
 
 namespace jogasaki::executor::process::impl::ops::details {
@@ -43,7 +43,7 @@ struct cache_align search_key_field_info {
         meta::field_type type,
         bool nullable,
         kvs::coding_spec spec,
-        expression::evaluator evaluator
+        expr::evaluator evaluator
     ) :
         type_(std::move(type)),
         nullable_(nullable),
@@ -54,7 +54,7 @@ struct cache_align search_key_field_info {
     meta::field_type type_{}; //NOLINT
     bool nullable_{}; //NOLINT
     kvs::coding_spec spec_{}; //NOLINT
-    expression::evaluator evaluator_{}; //NOLINT
+    expr::evaluator evaluator_{}; //NOLINT
 };
 
 template<class Key>
@@ -90,7 +90,7 @@ std::vector<details::search_key_field_info> create_search_key_fields(
             t,
             k.column().criteria().nullity().nullable(),
             spec,
-            expression::evaluator{*exp, info.compiled_info(), info.host_variables()}
+            expr::evaluator{*exp, info.compiled_info(), info.host_variables()}
         );
     }
     return ret;

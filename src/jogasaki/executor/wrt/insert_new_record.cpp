@@ -37,9 +37,9 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>

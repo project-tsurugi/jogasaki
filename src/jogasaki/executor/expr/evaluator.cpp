@@ -47,8 +47,8 @@
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/less.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/logging.h>
@@ -63,7 +63,7 @@
 #include "details/common.h"
 #include "details/decimal_context.h"
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using jogasaki::data::any;
 using takatori::decimal::triple;
@@ -74,7 +74,7 @@ namespace details {
 
 engine::engine(
     evaluator_context& ctx,
-    variable_table& variables,
+    executor::process::impl::variable_table& variables,
     yugawara::compiled_info const& info,
     executor::process::impl::variable_table const* host_variables,
     engine::memory_resource* resource
@@ -368,7 +368,7 @@ any engine::operator()(takatori::scalar::binary const& exp) {
 }
 
 template <typename T, typename E = T>
-any create_any(accessor::record_ref ref, value_info const& info) {
+any create_any(accessor::record_ref ref, executor::process::impl::value_info const& info) {
     return {std::in_place_type<T>, ref.get_value<E>(info.value_offset())};
 }
 
@@ -690,7 +690,7 @@ evaluator::evaluator(
 
 any evaluator::operator()(
     evaluator_context& ctx,
-    variable_table& variables,
+    executor::process::impl::variable_table& variables,
     evaluator::memory_resource* resource
 ) const {
     try {
@@ -712,7 +712,7 @@ any evaluator::operator()(
 any evaluate_bool(
     evaluator_context& ctx,
     evaluator& eval,
-    variable_table& variables,
+    executor::process::impl::variable_table& variables,
     memory::lifo_paged_memory_resource* resource
 ) {
     utils::checkpoint_holder h{resource};
@@ -723,4 +723,4 @@ any evaluate_bool(
     return any{std::in_place_type<bool>, a && a.to<bool>()};
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

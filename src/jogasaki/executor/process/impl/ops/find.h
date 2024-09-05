@@ -29,7 +29,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>

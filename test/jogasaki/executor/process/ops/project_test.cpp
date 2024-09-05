@@ -63,7 +63,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/process/impl/ops/project.h>
 #include <jogasaki/executor/process/impl/ops/project_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>

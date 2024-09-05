@@ -34,7 +34,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/port.h>
-#include <jogasaki/executor/process/impl/expression/details/constants.h>
+#include <jogasaki/executor/expr/details/constants.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -413,7 +413,7 @@ TEST_F(sql_cast_test, float_inf_to_decimal) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
            std::tuple{decimal_type(std::nullopt, std::nullopt)},
-           executor::process::impl::expression::details::triple_max)), result[0]);
+           executor::expr::details::triple_max)), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
@@ -421,7 +421,7 @@ TEST_F(sql_cast_test, float_inf_to_decimal) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
            std::tuple{decimal_type(std::nullopt, std::nullopt)},
-           executor::process::impl::expression::details::triple_min)), result[0]);
+           executor::expr::details::triple_min)), result[0]);
     }
 }
 

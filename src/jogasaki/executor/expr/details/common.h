@@ -16,15 +16,12 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 #include <functional>
 
-#include <takatori/decimal/triple.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/cast.h>
 #include <takatori/scalar/coalesce.h>
 #include <takatori/scalar/compare.h>
-#include <takatori/scalar/comparison_operator.h>
 #include <takatori/scalar/conditional.h>
 #include <takatori/scalar/expression.h>
 #include <takatori/scalar/extension.h>
@@ -35,49 +32,39 @@
 #include <takatori/scalar/unary.h>
 #include <takatori/scalar/variable_reference.h>
 #include <yugawara/compiled_info.h>
-#include <yugawara/function/configurable_provider.h>
-#include <yugawara/function/declaration.h>
 
 #include <jogasaki/data/any.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 
-#include "evaluator_context.h"
+namespace jogasaki::executor::expr::details {
 
-namespace jogasaki::executor::process::impl::expression {
+inline jogasaki::data::any return_unsupported() {
+    return {std::in_place_type<error>, error(error_kind::unsupported)};
+}
 
-using any = jogasaki::data::any;
+inline std::string_view trim_spaces(std::string_view src) {
+    auto b = std::find_if(src.begin(), src.end(), [](char c){
+        return c != ' ';
+    });
+    auto e = std::find_if(src.rbegin(), src.rend(), [](char c){
+        return c != ' ';
+    });
+    return {b, static_cast<std::size_t>(std::distance(b, e.base()))};
+}
 
-/**
- * @brief expression evaluator
- */
-class single_function_evaluator {
-public:
-    using memory_resource = memory::lifo_paged_memory_resource;
-    /**
-     * @brief construct empty object
-     */
-    single_function_evaluator() = default;
-    /**
-     * @brief construct new object
-     */
-    single_function_evaluator(
-        std::size_t function_def_id,
-        yugawara::function::configurable_provider const& functions
-    ) noexcept;
+inline bool is_prefix_of_case_insensitive(std::string_view a, std::string_view b) {
+    return ! a.empty() && a.size() <= b.size() &&
+        std::equal(a.begin(), a.end(), b.begin(), [](auto l, auto r) {
+            return std::tolower(l) == std::tolower(r);
+        });
+}
 
-    /**
-     * @brief evaluate the expression
-     * @return the result of evaluation
-     */
-    [[nodiscard]] data::any operator()(evaluator_context& ctx) const;
-
-private:
-    std::shared_ptr<takatori::scalar::expression const> expression_{};
-    executor::process::impl::expression::evaluator evaluator_{};
-};
-
-}  // namespace jogasaki::executor::process::impl::expression
+inline bool equals_case_insensitive(std::string_view a, std::string_view b) {
+    return a.size() == b.size() &&
+        std::equal(a.begin(), a.end(), b.begin(), [](auto l, auto r) {
+            return std::tolower(l) == std::tolower(r);
+        });
+}
+}  // namespace jogasaki::executor::expr::details

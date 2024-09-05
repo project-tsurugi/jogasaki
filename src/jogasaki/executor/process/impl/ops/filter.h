@@ -22,7 +22,7 @@
 #include <takatori/scalar/expression.h>
 
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -91,7 +91,7 @@ public:
     void finish(abstract::task_context* context) override;
 
 private:
-    expression::evaluator evaluator_{};
+    expr::evaluator evaluator_{};
     std::unique_ptr<operator_base> downstream_{};
 };
 

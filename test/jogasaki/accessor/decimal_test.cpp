@@ -20,15 +20,15 @@
 
 #include <takatori/decimal/triple.h>
 
-#include <jogasaki/executor/process/impl/expression/details/constants.h>
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
+#include <jogasaki/executor/expr/details/constants.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
 
 
 namespace jogasaki::testing {
 
 using namespace std::string_view_literals;
 using takatori::decimal::triple;
-using namespace executor::process::impl::expression::details;
+using namespace executor::expr::details;
 
 // checking decimal library behavior, not actual test of jogasaki
 class decimal_test : public ::testing::Test {};
@@ -41,7 +41,7 @@ TEST_F(decimal_test, build) {
 }
 
 TEST_F(decimal_test, individable) {
-    decimal::context = executor::process::impl::expression::details::standard_decimal_context();
+    decimal::context = executor::expr::details::standard_decimal_context();
     decimal::Decimal ten{triple{1,0,10,0}};
     decimal::Decimal three{triple{1,0,3,0}};
     auto result = ten/three;

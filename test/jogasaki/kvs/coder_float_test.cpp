@@ -27,7 +27,7 @@
 #include <takatori/util/exception.h>
 
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/writable_stream.h>
 #include <jogasaki/memory/paged_memory_resource.h>

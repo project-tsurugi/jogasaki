@@ -27,7 +27,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
@@ -95,7 +95,7 @@ public:
     void finish(abstract::task_context* context) override;
 
 private:
-    std::vector<expression::evaluator> evaluators_{};
+    std::vector<expr::evaluator> evaluators_{};
     std::vector<takatori::descriptor::variable> variables_{};
     std::unique_ptr<operator_base> downstream_{};
 

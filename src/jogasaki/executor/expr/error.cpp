@@ -15,7 +15,7 @@
  */
 #include "error.h"
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 error::error(error_kind kind) noexcept: kind_(kind) {}
 
@@ -23,4 +23,4 @@ error_kind error::kind() const noexcept {
     return kind_;
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

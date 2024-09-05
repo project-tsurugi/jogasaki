@@ -13,15 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "single_function_evaluator.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 
+#include <takatori/decimal/triple.h>
 #include <takatori/scalar/binary.h>
 #include <takatori/scalar/cast.h>
 #include <takatori/scalar/coalesce.h>
 #include <takatori/scalar/compare.h>
+#include <takatori/scalar/comparison_operator.h>
 #include <takatori/scalar/conditional.h>
 #include <takatori/scalar/expression.h>
 #include <takatori/scalar/extension.h>
@@ -31,40 +34,41 @@
 #include <takatori/scalar/match.h>
 #include <takatori/scalar/unary.h>
 #include <takatori/scalar/variable_reference.h>
+#include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
+#include <yugawara/function/configurable_provider.h>
+#include <yugawara/function/declaration.h>
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/utils/find_function.h>
 
-namespace jogasaki::executor::process::impl::expression::details {
+#include "evaluator_context.h"
 
-inline jogasaki::data::any return_unsupported() {
-    return {std::in_place_type<error>, error(error_kind::unsupported)};
+namespace jogasaki::executor::expr {
+
+using any = jogasaki::data::any;
+
+std::shared_ptr<takatori::scalar::expression const>
+create_function_expression(std::size_t function_def_id, yugawara::function::configurable_provider const& functions) {
+    auto f = utils::find_function(functions, function_def_id);
+    yugawara::binding::factory bindings{};
+    auto desc = bindings(f);
+    return std::make_shared<takatori::scalar::function_call>(desc);
 }
 
-inline std::string_view trim_spaces(std::string_view src) {
-    auto b = std::find_if(src.begin(), src.end(), [](char c){
-        return c != ' ';
-    });
-    auto e = std::find_if(src.rbegin(), src.rend(), [](char c){
-        return c != ' ';
-    });
-    return {b, static_cast<std::size_t>(std::distance(b, e.base()))};
+single_function_evaluator::single_function_evaluator(
+    std::size_t function_def_id,
+    yugawara::function::configurable_provider const& functions
+) noexcept :
+    expression_(create_function_expression(function_def_id, functions)),
+    evaluator_(*expression_, {}, {}) {}
+
+data::any single_function_evaluator::operator()(evaluator_context& ctx) const {
+    executor::process::impl::variable_table variables{};
+    return evaluator_(ctx, variables, nullptr);
 }
 
-inline bool is_prefix_of_case_insensitive(std::string_view a, std::string_view b) {
-    return ! a.empty() && a.size() <= b.size() &&
-        std::equal(a.begin(), a.end(), b.begin(), [](auto l, auto r) {
-            return std::tolower(l) == std::tolower(r);
-        });
-}
-
-inline bool equals_case_insensitive(std::string_view a, std::string_view b) {
-    return a.size() == b.size() &&
-        std::equal(a.begin(), a.end(), b.begin(), [](auto l, auto r) {
-            return std::tolower(l) == std::tolower(r);
-        });
-}
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr

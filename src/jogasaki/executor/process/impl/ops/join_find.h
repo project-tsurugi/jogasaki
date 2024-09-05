@@ -29,7 +29,7 @@
 
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -244,7 +244,7 @@ private:
     std::vector<details::search_key_field_info> search_key_fields_{};
     takatori::util::optional_ptr<takatori::scalar::expression const> condition_{};
     std::unique_ptr<operator_base> downstream_{};
-    expression::evaluator evaluator_{};
+    expr::evaluator evaluator_{};
 
     void nullify_output_variables(accessor::record_ref target);
 };

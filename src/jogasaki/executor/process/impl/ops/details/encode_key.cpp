@@ -20,9 +20,9 @@
 #include <glog/logging.h>
 
 #include <jogasaki/data/any.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/coder.h>
@@ -52,13 +52,13 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
         kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
         for(auto&& k : keys) {
-            expression::evaluator_context ctx{
+            expr::evaluator_context ctx{
                 std::addressof(resource),
                 context ? utils::make_function_context(*context->transaction()) : nullptr,
             };
             auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {
-                VLOG_LP(log_error) << "evaluation error: " << a.to<expression::error>();
+                VLOG_LP(log_error) << "evaluation error: " << a.to<expr::error>();
                 return status::err_expression_evaluation_failure;
             }
             if(! utils::convert_any(a, k.type_)) {

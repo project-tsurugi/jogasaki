@@ -32,7 +32,7 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/error.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/storage_dump.h>
@@ -52,7 +52,7 @@ using takatori::util::fail;
 using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
-using namespace jogasaki::executor::process::impl::expression;
+using namespace jogasaki::executor::expr;
 
 using any = data::any;
 

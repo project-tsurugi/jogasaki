@@ -15,7 +15,7 @@
  */
 #include "evaluator_context.h"
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 std::pair<std::string, std::string> create_conversion_error_message(evaluator_context const& ctx) {
     if(ctx.errors().empty()) {
@@ -42,4 +42,4 @@ std::pair<std::string, std::string> create_conversion_error_message(evaluator_co
     return {ms.str(), ss.str()};
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

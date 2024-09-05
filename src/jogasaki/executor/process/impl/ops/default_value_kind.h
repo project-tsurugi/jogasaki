@@ -21,7 +21,7 @@
 
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/common_types.h>
-#include <jogasaki/executor/process/impl/expression/single_function_evaluator.h>
+#include <jogasaki/executor/expr/single_function_evaluator.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -76,15 +76,15 @@ struct cache_align default_value_property {
         immediate_value_(immediate_value),
         def_id_(def_id),
         function_(
-            kind == default_value_kind::function ? expression::single_function_evaluator(def_id, *functions)
-                                                 : expression::single_function_evaluator{}
+            kind == default_value_kind::function ? expr::single_function_evaluator(def_id, *functions)
+                                                 : expr::single_function_evaluator{}
         ) {}
 
     // default value properties (valid if exists_ = false)
     default_value_kind kind_{};  //NOLINT
     data::any immediate_value_{};   //NOLINT
     std::size_t def_id_{}; // used for sequence and function  //NOLINT
-    expression::single_function_evaluator function_{};  //NOLINT
+    expr::single_function_evaluator function_{};  //NOLINT
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

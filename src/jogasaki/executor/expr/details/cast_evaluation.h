@@ -27,9 +27,9 @@
 #include <takatori/value/character.h>
 
 #include <jogasaki/data/any.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 using any = jogasaki::data::any;
 
@@ -265,4 +265,4 @@ any handle_ps(
     std::optional<std::size_t> scale
 );
 
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr::details

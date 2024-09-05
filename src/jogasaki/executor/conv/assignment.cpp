@@ -28,10 +28,10 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/expr/details/cast_evaluation.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
@@ -50,17 +50,17 @@ status conduct_assignment_conversion(
     request_context& ctx,
     memory::lifo_paged_memory_resource* resource
 ) {
-    expression::evaluator_context ectx{resource, nullptr}; // evaluate no function
-    ectx.set_loss_precision_policy(expression::loss_precision_policy::implicit);
-    auto converted = expression::details::conduct_cast(ectx, source_type, target_type, in);
+    expr::evaluator_context ectx{resource, nullptr}; // evaluate no function
+    ectx.set_loss_precision_policy(expr::loss_precision_policy::implicit);
+    auto converted = expr::details::conduct_cast(ectx, source_type, target_type, in);
     if(! converted.error()) {
         out = converted;
         return status::ok;
     }
-    auto err = converted.to<expression::error>();
-    if(err.kind() == expression::error_kind::unsupported) {
+    auto err = converted.to<expr::error>();
+    if(err.kind() == expr::error_kind::unsupported) {
         auto res = status::err_unsupported;
-        auto [msg, value_msg] = expression::create_conversion_error_message(ectx);
+        auto [msg, value_msg] = expr::create_conversion_error_message(ectx);
         set_error(
             ctx,
             error_code::unsupported_runtime_feature_exception,
@@ -69,9 +69,9 @@ status conduct_assignment_conversion(
         );
         return res;
     }
-    if(err.kind() == expression::error_kind::lost_precision_value_too_long) {
+    if(err.kind() == expr::error_kind::lost_precision_value_too_long) {
         auto res = status::err_expression_evaluation_failure;
-        auto [msg, value_msg] = expression::create_conversion_error_message(ectx);
+        auto [msg, value_msg] = expr::create_conversion_error_message(ectx);
         set_error(
             ctx,
             error_code::value_too_long_exception,
@@ -84,7 +84,7 @@ status conduct_assignment_conversion(
         return res;
     }
     auto res = status::err_expression_evaluation_failure;
-    auto [msg, value_msg] = expression::create_conversion_error_message(ectx);
+    auto [msg, value_msg] = expr::create_conversion_error_message(ectx);
     auto m = string_builder{} << "error in evaluating expression: " << msg << string_builder::to_string;
     set_error(
         ctx,
@@ -105,10 +105,10 @@ status conduct_unifying_conversion(
     data::any& out,
     memory::lifo_paged_memory_resource* resource
 ) {
-    expression::evaluator_context ectx{resource, nullptr}; // evaluate no function
+    expr::evaluator_context ectx{resource, nullptr}; // evaluate no function
     // unifying conversion doesn't lose precision
-    ectx.set_loss_precision_policy(expression::loss_precision_policy::ignore);
-    auto converted = expression::details::conduct_cast(ectx, source_type, target_type, in);
+    ectx.set_loss_precision_policy(expr::loss_precision_policy::ignore);
+    auto converted = expr::details::conduct_cast(ectx, source_type, target_type, in);
     if(! converted.error()) {
         out = converted;
         return status::ok;

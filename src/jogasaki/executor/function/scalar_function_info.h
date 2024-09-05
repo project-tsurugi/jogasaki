@@ -26,14 +26,14 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/value_store.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/scalar_function_kind.h>
 #include <jogasaki/executor/function/value_generator.h>
 
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
-using executor::process::impl::expression::evaluator_context;
+using executor::expr::evaluator_context;
 
 /**
  * @brief definition of scalar function type

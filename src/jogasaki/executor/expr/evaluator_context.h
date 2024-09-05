@@ -27,7 +27,7 @@
 
 #include "error.h"
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 /**
  * @brief cast loss policy
@@ -244,4 +244,4 @@ inline std::ostream& operator<<(std::ostream& out, evaluator_context const& valu
 
 std::pair<std::string, std::string> create_conversion_error_message(evaluator_context const& ctx);
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

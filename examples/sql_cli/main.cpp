@@ -38,7 +38,7 @@
 #include <jogasaki/api/result_set_iterator.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/test_channel.h>
@@ -73,7 +73,7 @@ using takatori::util::unsafe_downcast;
 using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
-using namespace jogasaki::executor::process::impl::expression;
+using namespace jogasaki::executor::expr;
 
 class cli {
     std::unique_ptr<api::database> db_{};

@@ -35,7 +35,7 @@ using takatori::util::fail;
 using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
-using namespace jogasaki::executor::process::impl::expression;
+using namespace jogasaki::executor::expr;
 
 constexpr kvs::order asc = kvs::order::ascending;
 constexpr kvs::order desc = kvs::order::descending;

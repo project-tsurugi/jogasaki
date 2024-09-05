@@ -28,8 +28,8 @@
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
@@ -93,7 +93,7 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         auto& v = variables_[i];
         auto info = vars.info().at(variables_[i]);
         auto& ev = evaluators_[i];
-        expression::evaluator_context c{
+        expr::evaluator_context c{
             ctx.varlen_resource(),
             ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
         };

@@ -47,7 +47,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/process/impl/ops/join_find.h>
 #include <jogasaki/executor/process/impl/ops/join_find_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>

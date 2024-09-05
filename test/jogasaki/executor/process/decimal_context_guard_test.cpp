@@ -20,11 +20,11 @@
 #include <string_view>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/process/impl/expression/details/decimal_context_guard.h>
+#include <jogasaki/executor/expr/details/decimal_context_guard.h>
 #include <jogasaki/test_root.h>
 
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -60,4 +60,4 @@ TEST_F(decimal_context_guard_test, exception) {
     EXPECT_TRUE(caught);
     EXPECT_EQ(MPD_ROUND_DOWN, decimal::context.round());
 }
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

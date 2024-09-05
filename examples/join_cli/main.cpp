@@ -69,8 +69,8 @@
 #include <jogasaki/executor/exchange/group/group_info.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/exchange/step.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>

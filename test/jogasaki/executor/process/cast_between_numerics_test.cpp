@@ -20,13 +20,13 @@
 #include <takatori/decimal/triple.h>
 #include <takatori/util/string_builder.h>
 
-#include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
-#include <jogasaki/executor/process/impl/expression/details/common.h>
-#include <jogasaki/executor/process/impl/expression/details/constants.h>
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/details/cast_evaluation.h>
+#include <jogasaki/executor/expr/details/common.h>
+#include <jogasaki/executor/expr/details/constants.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_utils/make_triple.h>
@@ -34,13 +34,13 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/field_types.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace meta;
 using namespace takatori::util;
-using namespace jogasaki::executor::process::impl::expression::details;
+using namespace jogasaki::executor::expr::details;
 
 using namespace testing;
 
@@ -53,7 +53,7 @@ class cast_between_numerics_test : public test_root {
 public:
     void SetUp() override {
         // decimal handling depends on thread local decimal context
-        executor::process::impl::expression::details::ensure_decimal_context();
+        executor::expr::details::ensure_decimal_context();
     }
 
     memory::page_pool pool_{};

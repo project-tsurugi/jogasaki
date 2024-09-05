@@ -20,7 +20,7 @@
 #include <ostream>
 #include <glog/logging.h>
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 decimal_context_guard& decimal_context_guard::round(std::int32_t round) {
     round_ = decimal::context.round();
@@ -39,4 +39,4 @@ decimal_context_guard::~decimal_context_guard() noexcept {
     }
 }
 
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr::details

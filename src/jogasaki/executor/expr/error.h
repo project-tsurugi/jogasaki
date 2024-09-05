@@ -22,7 +22,7 @@
 
 #include <takatori/util/enum_set.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 /**
  * @brief error kind
@@ -139,4 +139,4 @@ inline bool operator!=(error const& a, error const& b) noexcept {
     return !(a == b);
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

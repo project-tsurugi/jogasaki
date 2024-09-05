@@ -28,8 +28,8 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
@@ -228,7 +228,7 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
     if(matched || join_kind_ == join_kind::left_outer) {
         do {
             if (condition_) {
-                expression::evaluator_context c{
+                expr::evaluator_context c{
                     resource,
                     ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
                 };
@@ -311,8 +311,8 @@ join_find::join_find(
     condition_(std::move(condition)),
     downstream_(std::move(downstream)),
     evaluator_(condition_ ?
-        expression::evaluator{*condition_, info.compiled_info(), info.host_variables()} :
-        expression::evaluator{}
+        expr::evaluator{*condition_, info.compiled_info(), info.host_variables()} :
+        expr::evaluator{}
     )
 {}
 

@@ -43,9 +43,9 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/executor/process/impl/expression/details/decimal_context_guard.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/details/decimal_context_guard.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/binary_printer.h>
@@ -55,7 +55,7 @@
 #include "common.h"
 #include "constants.h"
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 using takatori::decimal::triple;
 using takatori::util::string_builder;
@@ -1529,4 +1529,4 @@ any conduct_cast(
     return return_unsupported();
 }
 
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr::details

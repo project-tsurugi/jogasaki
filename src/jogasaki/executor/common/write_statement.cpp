@@ -52,9 +52,9 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -85,7 +85,7 @@
 namespace jogasaki::executor::common {
 
 using jogasaki::executor::process::impl::ops::write_kind;
-using jogasaki::executor::process::impl::expression::evaluator;
+using jogasaki::executor::expr::evaluator;
 
 using takatori::util::string_builder;
 
@@ -103,14 +103,14 @@ status fill_evaluated_value(
     auto& source_type = info.type_of(t.elements()[f.index_]);
     evaluator eval{t.elements()[f.index_], info, host_variables};
     process::impl::variable_table empty{};
-    process::impl::expression::evaluator_context c{
+    expr::evaluator_context c{
         std::addressof(resource),
         utils::make_function_context(*ctx.transaction())
     };
     auto res = eval(c, empty, std::addressof(resource));
     if (res.error()) {
-        auto err = res.to<process::impl::expression::error>();
-        if(err.kind() == process::impl::expression::error_kind::lost_precision_value_too_long) {
+        auto err = res.to<expr::error>();
+        if(err.kind() == expr::error_kind::lost_precision_value_too_long) {
             auto rc = status::err_expression_evaluation_failure;
             set_error(
                 ctx,
@@ -125,7 +125,7 @@ status fill_evaluated_value(
             ctx,
             error_code::value_evaluation_exception,
             string_builder{} << "An error occurred in evaluating values. error:"
-                             << res.to<process::impl::expression::error>() << string_builder::to_string,
+                             << res.to<expr::error>() << string_builder::to_string,
             rc
         );
         return rc;

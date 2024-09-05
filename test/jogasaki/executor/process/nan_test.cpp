@@ -20,11 +20,11 @@
 #include <string>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
 #include <jogasaki/test_root.h>
 
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using details::reset_decimal_status;
 
@@ -32,7 +32,7 @@ class nan_test : public test_root {
 public:
     void SetUp() override {
         // decimal handling depends on thread local decimal context
-        executor::process::impl::expression::details::ensure_decimal_context();
+        executor::expr::details::ensure_decimal_context();
     }
 };
 
@@ -211,4 +211,4 @@ TEST_F(nan_test, decimal_nan) {
     check_status_and_reset(MPD_Invalid_operation);
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

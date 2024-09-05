@@ -18,19 +18,19 @@
 #include <memory>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
 
 namespace jogasaki::testing {
 
 class default_decimal_context_test : public ::testing::Test {};
 
 TEST_F(default_decimal_context_test, simple) {
-    EXPECT_NE(executor::process::impl::expression::details::standard_decimal_context(), decimal::context);
+    EXPECT_NE(executor::expr::details::standard_decimal_context(), decimal::context);
     EXPECT_EQ(16, decimal::context.prec());  // default precision is too small for our purpose
     std::cerr << "decimal default context:" << decimal::context << std::endl;
 
-    executor::process::impl::expression::details::ensure_decimal_context();
-    EXPECT_EQ(executor::process::impl::expression::details::standard_decimal_context(), decimal::context);
+    executor::expr::details::ensure_decimal_context();
+    EXPECT_EQ(executor::expr::details::standard_decimal_context(), decimal::context);
     EXPECT_EQ(38, decimal::context.prec());
     std::cerr << "standard default context:" << decimal::context << std::endl;
 
@@ -38,7 +38,7 @@ TEST_F(default_decimal_context_test, simple) {
         // verify ensure_decimal_context is no-op after the first call
         decimal::context = decimal::IEEEContext(32);
         auto prec = decimal::context.prec();
-        executor::process::impl::expression::details::ensure_decimal_context(); // no-op
+        executor::expr::details::ensure_decimal_context(); // no-op
         EXPECT_EQ(prec, decimal::context.prec());
 
     }

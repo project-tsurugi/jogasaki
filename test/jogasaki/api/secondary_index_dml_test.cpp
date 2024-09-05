@@ -37,7 +37,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/data/any.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/coder.h>

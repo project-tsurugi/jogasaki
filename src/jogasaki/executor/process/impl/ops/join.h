@@ -39,8 +39,8 @@
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/cogroup.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
@@ -167,7 +167,7 @@ public:
         join_context& ctx,
         cogroup<iterator>& cgrp,
         iterator_incrementer& incr,
-        expression::evaluator_context& context
+        expr::evaluator_context& context
     ) {
         assign_values(ctx, cgrp, incr, false);
         auto resource = ctx.varlen_resource();
@@ -220,7 +220,7 @@ public:
                     break;
                 }
                 do {
-                    expression::evaluator_context c {
+                    expr::evaluator_context c {
                         ctx.varlen_resource(),
                         ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
                     };
@@ -246,7 +246,7 @@ public:
                     bool exists_match = false;
                     if(secondary_group_available) {
                         do {
-                            expression::evaluator_context c{
+                            expr::evaluator_context c{
                                 ctx.varlen_resource(),
                                 ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
                                                   : nullptr
@@ -288,7 +288,7 @@ public:
                     if(secondary_group_available) {
                         std::size_t secondary_group_pos = 0;
                         do {
-                            expression::evaluator_context c{
+                            expr::evaluator_context c{
                                 ctx.varlen_resource(),
                                 ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
                                                   : nullptr
@@ -343,7 +343,7 @@ public:
                     bool exists_match = false;
                     if(groups_available(cgrp, true)) {
                         do {
-                            expression::evaluator_context c{
+                            expr::evaluator_context c{
                                 ctx.varlen_resource(),
                                 ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
                                                   : nullptr
@@ -396,17 +396,17 @@ public:
 
 private:
     join_kind kind_{};
-    expression::evaluator evaluator_{};
+    expr::evaluator evaluator_{};
     bool has_condition_{};
     std::unique_ptr<operator_base> downstream_{};
 
-    expression::evaluator create_evaluator(
+    expr::evaluator create_evaluator(
         takatori::util::optional_ptr<takatori::scalar::expression const> expression,  //NOLINT
         yugawara::compiled_info const& compiled_info,
         variable_table const* host_variables
     ) {
         if (expression) {
-            return expression::evaluator(*expression, compiled_info, host_variables);
+            return expr::evaluator(*expression, compiled_info, host_variables);
         }
         return {};
     }

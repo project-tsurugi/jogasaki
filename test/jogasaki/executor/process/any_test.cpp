@@ -38,12 +38,12 @@
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/data/any.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

@@ -31,14 +31,14 @@
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/variant.h>
 
 namespace jogasaki::data {
 
-using jogasaki::executor::process::impl::expression::error;
+using jogasaki::executor::expr::error;
 
 /**
  * @brief value store for any type

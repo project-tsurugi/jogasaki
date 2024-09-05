@@ -72,9 +72,9 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -91,7 +91,7 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/field_types.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -140,11 +140,11 @@ public:
 
     factory f_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
-    variable_table_info info_{};
-    variable_table vars_{};
+    executor::process::impl::variable_table_info info_{};
+    executor::process::impl::variable_table vars_{};
 
     compiled_info c_info_{};
-    expression::evaluator evaluator_{};
+    expr::evaluator evaluator_{};
     memory::page_pool pool_{};
     memory::lifo_paged_memory_resource resource_{&pool_};
 
@@ -183,11 +183,11 @@ public:
             {c1, 0},
             {c2, 1},
         };
-        info_ = variable_table_info{m, meta_};
-        vars_ = variable_table{info_};
+        info_ = executor::process::impl::variable_table_info{m, meta_};
+        vars_ = executor::process::impl::variable_table{info_};
 
         c_info_ = compiled_info{expressions_, variables_};
-        evaluator_ = expression::evaluator{*expr, c_info_};
+        evaluator_ = expr::evaluator{*expr, c_info_};
         return expr;
     }
 
@@ -353,7 +353,7 @@ TEST_F(expression_evaluator_test, binary_expression) {
         expressions_,
         variables_
     };
-    evaluator_ = expression::evaluator{expr, c_info};
+    evaluator_ = expr::evaluator{expr, c_info};
 
     meta_ = std::make_shared<meta::record_meta>(
         std::vector<meta::field_type>{
@@ -368,8 +368,8 @@ TEST_F(expression_evaluator_test, binary_expression) {
         {c2, 1},
     };
 
-    info_ = variable_table_info{m, meta_};
-    vars_ = variable_table{info_};
+    info_ = executor::process::impl::variable_table_info{m, meta_};
+    vars_ = executor::process::impl::variable_table{info_};
 
     set_values<t::int8, t::int8>(10, 20, false, false);
 
@@ -396,9 +396,9 @@ TEST_F(expression_evaluator_test, unary_expression) {
         expressions_,
         variables_
     };
-    expression::evaluator ev{expr, c_info};
+    expr::evaluator ev{expr, c_info};
 
-    variable_table vars{};
+    executor::process::impl::variable_table vars{};
     evaluator_context c{nullptr};
     auto result = ev(c, vars).to<std::int64_t>();
     ASSERT_EQ(-30, result);
@@ -413,9 +413,9 @@ TEST_F(expression_evaluator_test, conditional_not) {
     expressions().bind(expr.operand(), t::boolean {});
 
     compiled_info c_info{ expressions_, variables_ };
-    expression::evaluator ev{expr, c_info};
+    expr::evaluator ev{expr, c_info};
 
-    variable_table vars{};
+    executor::process::impl::variable_table vars{};
     evaluator_context c{nullptr};
     ASSERT_TRUE(ev(c, vars).to<bool>());
 }
@@ -442,8 +442,8 @@ TEST_F(expression_evaluator_test, text_length) {
         {c1, 0},
     };
 
-    variable_table_info info{m, meta};
-    variable_table vars{info};
+    executor::process::impl::variable_table_info info{m, meta};
+    executor::process::impl::variable_table vars{info};
 
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
@@ -452,7 +452,7 @@ TEST_F(expression_evaluator_test, text_length) {
     ref.set_value<accessor::text>(meta->value_offset(0), accessor::text{&resource, "A23456789012345678901234567890"});
     ref.set_null(meta->nullity_offset(0), false);
     compiled_info c_info{ expressions_, variables_ };
-    expression::evaluator ev{expr, c_info};
+    expr::evaluator ev{expr, c_info};
     evaluator_context c{&resource};
     ASSERT_EQ(30, ev(c, vars, &resource).to<std::int32_t>());
 }

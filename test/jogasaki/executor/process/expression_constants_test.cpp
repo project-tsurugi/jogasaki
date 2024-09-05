@@ -21,12 +21,12 @@
 #include <string_view>
 #include <gtest/gtest.h>
 
-#include <jogasaki/executor/process/impl/expression/details/constants.h>
+#include <jogasaki/executor/expr/details/constants.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/test_root.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

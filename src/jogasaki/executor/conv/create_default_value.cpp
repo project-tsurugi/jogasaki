@@ -31,9 +31,9 @@
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/conv/assignment.h>
-#include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/details/cast_evaluation.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/fail.h>
@@ -93,9 +93,9 @@ data::any create_immediate_default_value(
     );
     if(conv::to_require_conversion(*lt, type)) {
         // constant assignment conversion is required
-        expression::evaluator_context ectx{resource, nullptr};  // immediate value won't evaluate any function
-        ectx.set_loss_precision_policy(expression::loss_precision_policy::ignore);
-        return expression::details::conduct_cast(ectx, *lt, type, a);
+        expr::evaluator_context ectx{resource, nullptr};  // immediate value won't evaluate any function
+        ectx.set_loss_precision_policy(expr::loss_precision_policy::ignore);
+        return expr::details::conduct_cast(ectx, *lt, type, a);
     }
     return a;
 }

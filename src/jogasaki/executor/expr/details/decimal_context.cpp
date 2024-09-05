@@ -15,9 +15,9 @@
  */
 #include "decimal_context.h"
 
-#include <jogasaki/executor/process/impl/expression/details/constants.h>
+#include <jogasaki/executor/expr/details/constants.h>
 
-namespace jogasaki::executor::process::impl::expression::details {
+namespace jogasaki::executor::expr::details {
 
 decimal::Context standard_decimal_context() {
     // we support (via takatori::decimal::triple) up to 38 precision for sql decimal type, but decimal128 has precision
@@ -42,4 +42,4 @@ std::uint32_t reset_decimal_status() {
     return ret;
 }
 
-}  // namespace jogasaki::executor::process::impl::expression::details
+}  // namespace jogasaki::executor::expr::details

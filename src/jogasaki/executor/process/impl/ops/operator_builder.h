@@ -45,7 +45,7 @@
 #include <yugawara/compiler_result.h>
 #include <yugawara/storage/index.h>
 
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/scan_info.h>

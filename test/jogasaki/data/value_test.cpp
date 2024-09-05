@@ -41,7 +41,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;

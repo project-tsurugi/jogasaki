@@ -50,10 +50,10 @@
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
-#include <jogasaki/executor/process/impl/expression/details/decimal_context.h>
-#include <jogasaki/executor/process/impl/expression/evaluator.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/details/cast_evaluation.h>
+#include <jogasaki/executor/expr/details/decimal_context.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -64,7 +64,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 
-namespace jogasaki::executor::process::impl::expression {
+namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -102,7 +102,7 @@ class cast_to_string_test : public test_root {
 public:
     void SetUp() override {
         // decimal handling depends on thread local decimal context
-        executor::process::impl::expression::details::ensure_decimal_context();
+        executor::expr::details::ensure_decimal_context();
     }
 
     yugawara::analyzer::variable_mapping& variables() noexcept {
@@ -118,11 +118,11 @@ public:
 
     factory f_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
-    variable_table_info info_{};
-    variable_table vars_{};
+    executor::process::impl::variable_table_info info_{};
+    executor::process::impl::variable_table vars_{};
 
     compiled_info c_info_{};
-    expression::evaluator evaluator_{};
+    expr::evaluator evaluator_{};
     memory::page_pool pool_{};
     memory::lifo_paged_memory_resource resource_{&pool_};
 };
@@ -337,4 +337,4 @@ TEST_F(cast_to_string_test, from_binary) {
     EXPECT_EQ(any_text("0000000000000000000000000000000000000000"), details::from_octet::to_character("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"sv, ctx, std::nullopt, false, false)); lost_precision(false);
 }
 
-}  // namespace jogasaki::executor::process::impl::expression
+}  // namespace jogasaki::executor::expr

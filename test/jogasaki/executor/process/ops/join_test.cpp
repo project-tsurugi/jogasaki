@@ -51,7 +51,7 @@
 
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/io/reader_container.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
+#include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/process/impl/ops/join.h>
 #include <jogasaki/executor/process/impl/ops/join_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>

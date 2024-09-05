@@ -79,7 +79,7 @@ using takatori::util::fail;
 using yugawara::storage::configurable_provider;
 using namespace jogasaki::executor::process;
 using namespace jogasaki::executor::process::impl;
-using namespace jogasaki::executor::process::impl::expression;
+using namespace jogasaki::executor::expr;
 
 using value = data::value;
 

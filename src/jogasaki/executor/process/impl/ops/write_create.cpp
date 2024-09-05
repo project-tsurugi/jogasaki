@@ -44,8 +44,8 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/conv/assignment.h>
-#include <jogasaki/executor/process/impl/expression/details/cast_evaluation.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/details/cast_evaluation.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/write_create_context.h>
 #include <jogasaki/executor/process/impl/ops/write_kind.h>

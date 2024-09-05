@@ -20,8 +20,8 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
-#include <jogasaki/executor/process/impl/expression/error.h>
-#include <jogasaki/executor/process/impl/expression/evaluator_context.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/status.h>
 
 #include "../operation_status.h"
@@ -45,11 +45,11 @@ template<class Context>
 operation_status handle_expression_error_impl(
     Context& ctx,
     data::any res,
-    jogasaki::executor::process::impl::expression::evaluator_context const& ectx,
+    jogasaki::executor::expr::evaluator_context const& ectx,
     std::string_view filepath,
     std::string_view position) {
-    auto err = res.to<process::impl::expression::error>();
-    if (err.kind() == process::impl::expression::error_kind::unsupported) {
+    auto err = res.to<expr::error>();
+    if (err.kind() == expr::error_kind::unsupported) {
         auto rc = status::err_unsupported;
         error::set_error_impl(
             *ctx.req_context(),
@@ -62,7 +62,7 @@ operation_status handle_expression_error_impl(
         ctx.abort();
         return {operation_status_kind::aborted};
     }
-    if (err.kind() == process::impl::expression::error_kind::lost_precision_value_too_long) {
+    if (err.kind() == expr::error_kind::lost_precision_value_too_long) {
         auto rc = status::err_expression_evaluation_failure;
         error::set_error_impl(
             *ctx.req_context(),
@@ -78,7 +78,7 @@ operation_status handle_expression_error_impl(
     auto rc = status::err_expression_evaluation_failure;
 
     std::stringstream ss{};
-    ss << "an error (" << res.to<process::impl::expression::error>() << ") occurred:[";
+    ss << "an error (" << res.to<expr::error>() << ") occurred:[";
     bool first = true;
     for(auto&& e : ectx.errors()) {
         if (! first) {

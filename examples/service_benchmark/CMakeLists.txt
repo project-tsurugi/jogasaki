@@ -15,7 +15,8 @@ add_executable(service-benchmark
 
 set_target_properties(service-benchmark
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "cli"
 )
 
 target_include_directories(service-benchmark

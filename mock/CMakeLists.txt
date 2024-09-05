@@ -20,9 +20,11 @@ target_include_directories(common
         PUBLIC .
 )
 
-set_target_properties(common PROPERTIES
-        OUTPUT_NAME jogasaki-common-utils
-        )
+set_target_properties(common
+        PROPERTIES
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                OUTPUT_NAME jogasaki-common-utils
+)
 
 target_link_libraries(common
         PUBLIC jogasaki-impl

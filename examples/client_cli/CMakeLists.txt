@@ -8,7 +8,8 @@ add_executable(client-cli
 
 set_target_properties(client-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "client-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "client-cli"
 )
 
 target_include_directories(client-cli

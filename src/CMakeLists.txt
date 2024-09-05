@@ -134,9 +134,11 @@ add_dependencies(${ENGINE}
         build_protos
         )
 
-set_target_properties(${ENGINE} PROPERTIES
-        OUTPUT_NAME ${export_name}
-        )
+set_target_properties(${ENGINE}
+        PROPERTIES
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                OUTPUT_NAME ${export_name}
+)
 
 target_include_directories(${ENGINE}
         PRIVATE ${CMAKE_BINARY_DIR}/src

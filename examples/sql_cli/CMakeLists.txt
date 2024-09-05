@@ -8,7 +8,8 @@ add_executable(sql-cli
 
 set_target_properties(sql-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "sql-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "sql-cli"
 )
 
 target_include_directories(sql-cli

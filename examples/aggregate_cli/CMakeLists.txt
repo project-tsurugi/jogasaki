@@ -9,7 +9,8 @@ add_executable(aggregate-cli
 
 set_target_properties(aggregate-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "aggregate-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "aggregate-cli"
 )
 
 target_include_directories(aggregate-cli

@@ -8,7 +8,8 @@ add_executable(scan-cli
 
 set_target_properties(scan-cli
         PROPERTIES
-        RUNTIME_OUTPUT_NAME "scan-cli"
+                INSTALL_RPATH "\$ORIGIN/../lib"
+                RUNTIME_OUTPUT_NAME "scan-cli"
 )
 
 target_include_directories(scan-cli

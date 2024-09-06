@@ -10,25 +10,29 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
 
 ## 仕様
 
-## TINYINT/SMALLINT/INT/BIGINT
+## `TINYINT`/`SMALLINT`/`INT`/`BIGINT`
 
-- 実行時型: std::int32_t (TINYINT, SMALLINT, INT) / std::int64_t (BIGINT)
+- 実行時型: `std::int32_t` (`TINYINT`, `SMALLINT`, `INT`) / `std::int64_t` (`BIGINT`)
   - 全順序で比較可能
 
-## REAL/DOUBLE
+## `REAL`/`DOUBLE`
 
-- 実行時型: float (REAL) / double (DOUBLE)
-  - NaNは他のすべての値(+Infinity含む)より大きな値として扱い、自分自身と等しいものとして比較する (IEEE 754規則と異なる)
-  - 計算過程/結果に現れたNaNは最小のquiet NaNに正規化する。正規でないNaNが外部へ見えることはない。
-  - +0.0と-0.0は互いに等しいものとして比較する
+- 実行時型: float (`REAL`) / double (`DOUBLE`)
+  - `NaN` は他のすべての値(`+Infinity`含む)より大きな値として扱い、自分自身と等しいものとして比較する (IEEE 754規則と異なる)
+  - 計算過程/結果に現れた`NaN`は最小の`quiet NaN`に正規化する。正規でない`NaN`が外部へ見えることはない。
+  - `+0.0`と`-0.0`は互いに等しいものとして比較する
     - このルールのため全順序ではない(strict weak ordering)
-  - -0.0が計算過程/結果に現れることはある
-  - -0.0はストア時には+0.0へ正規化する
+  - `-0.0`が計算過程/結果に現れることはある
+  - `-0.0`はストア時には`+0.0`へ正規化する
 
-## VARCHAR
+## `VARCHAR`
 
-- 実行時型: jogasaki::accessor::text
+- 実行時型: `jogasaki::accessor::text`
   - 全順序で比較可能
+  - UTF8文字列を想定
+
+### `VARCHAR(n)`
+  - 長さ `n` バイト以下の文字列を格納できる
 
 ### `VARCHAR(*)`
 
@@ -38,13 +42,17 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
 
 ### `VARCHAR` (カッコなし)
 
-- カッコなしの`VARCHAR`を指定するとコンパイルエラー
+- カッコなしの `VARCHAR` は `VARCHAR(*)` と同じ意味
   - 列定義とキャストで共通
 
-## CHAR
+## `CHAR`
 
-- 実行時型: jogasaki::accessor::text
+- 実行時型: `jogasaki::accessor::text`
   - 全順序で比較可能
+  - UTF8文字列を想定
+
+### `CHAR(n)`
+  - 長さ `n` バイトに満たない場合は空白文字(U+0020)によってパディングされる
 
 ### `CHAR(*)`
 
@@ -56,6 +64,20 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
 
 - カッコなしの`CHAR`を指定すると `CHAR(1)`の意味となる
   - 列定義とキャストで共通
+
+## `BINARY`
+
+- 実行時型: `jogasaki::accessor::binary`
+  - 全順序で比較可能
+- `BINARY(n)`, `BINARY(*)`, `BINARY` (カッコなし) の長さに関する扱いは `CHAR` の各ケースと同様
+  - ただしパディング文字はヌル(U+0000)を使用する
+
+## `VARBINARY`
+
+- 実行時型: `jogasaki::accessor::binary`
+  - 全順序で比較可能
+  - ただしエンコーディング上の制限により主キーおよびインデックス列には使用できない
+- `VARBINARY(n)`, `VARBINARY(*)`, `VARBINARY` (カッコなし) の長さに関する扱いは `VARCHAR` の各ケースと同様
 
 ## DECIMAL
 

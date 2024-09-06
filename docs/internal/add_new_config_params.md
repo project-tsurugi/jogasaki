@@ -35,7 +35,11 @@ https://github.com/project-tsurugi/tateyama-bootstrap/blob/53716bab52190f17e953d
 デフォルト値(等号の右辺)は省略することも可能だが、その場合は適宜resource/bridge.cpp内で値が取得できなかった際の処理を各必要がある。下記は `thread_pool_size` に何も設定されなかった場合の例である。
 https://github.com/project-tsurugi/jogasaki/blob/e6de63be570fabd9a607a6f65ee7129c3d43148f/src/jogasaki/api/resource/bridge.cpp#L147
 上記のコード変更を行ったのち、tateyamaのドキュメントも更新する
-https://github.com/project-tsurugi/tateyama/blob/d4a0d6cff5863fc556cec0dbec6574e29e6086ee/docs/config_parameters.md
+https://github.com/project-tsurugi/tateyama/blob/a328d4d502a2e68bcb694a4ab6514d6c80956285/docs/config_parameters.md
+https://github.com/project-tsurugi/tateyama/blob/a328d4d502a2e68bcb694a4ab6514d6c80956285/docs/config-parameters-en.md
+
+GA以降は外部に公開されるドキュメントが下記になっている。このドキュメントの更新も必要。外部公開ドキュメントの更新プロセスに従って行うこと。
+https://github.com/project-tsurugi/tsurugidb/blob/74b203d417c0d6e7956af19c5417e581f0ddb4fc/docs/config-parameters.md
 
 ## パラメータの命名規則
 

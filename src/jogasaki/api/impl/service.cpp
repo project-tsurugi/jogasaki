@@ -883,6 +883,20 @@ bool check_message_version(
     return false;
 }
 
+void show_session_variables(tateyama::api::server::request& req) {
+    // for degub purpose, print session variables to server log
+    if(VLOG_IS_ON(log_trace)) {
+        std::stringstream ss{};
+        ss << "session variables ";
+        std::string_view plan_recording = "<not set>";
+        if(auto v = req.session_variable_set().get(session_variable_sql_plan_recording); std::holds_alternative<bool>(v)) {
+            plan_recording = std::get<bool>(v) ? "true" : "false";
+        }
+        ss << session_variable_sql_plan_recording << ":" << plan_recording;
+        VLOG(log_trace) << log_location_prefix << ss.str();
+    }
+}
+
 bool service::process(
     std::shared_ptr<tateyama::api::server::request> req,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<tateyama::api::server::response> res  //NOLINT(performance-unnecessary-value-param)
@@ -896,6 +910,7 @@ bool service::process(
         enable_performance_counter = true;
         LIKWID_MARKER_START("service");
     }
+    show_session_variables(*req);
     if(req->session_id() != 0) {
         // TODO temporary fix : not to send back header if request doesn't add session_id, which means legacy request
         res->session_id(req->session_id());

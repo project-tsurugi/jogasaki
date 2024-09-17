@@ -522,8 +522,8 @@ void external_log_stmt_explain(
             return;
         }
         // p is nullptr if session variable is not set. Then use global config.
-        if(p == nullptr && ! global::config_pool()->external_log_explain()) {
-                return;
+        if(p == nullptr && ! global::config_pool()->plan_recording()) {
+            return;
         }
     }
     auto tx_id = rctx.transaction()->transaction_id();

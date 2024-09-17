@@ -227,8 +227,8 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<bool>("dev_omit_task_when_idle")) {
         ret->omit_task_when_idle(v.value());
     }
-    if (auto v = jogasaki_config->get<bool>("external_log_explain")) {
-        ret->external_log_explain(v.value());
+    if (auto v = jogasaki_config->get<bool>("plan_recording")) {
+        ret->plan_recording(v.value());
     }
     if (auto v = jogasaki_config->get<bool>("dev_try_insert_on_upserting_secondary")) {
         ret->try_insert_on_upserting_secondary(v.value());

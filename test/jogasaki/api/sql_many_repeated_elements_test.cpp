@@ -78,7 +78,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->trace_external_log(false);
-        cfg->external_log_explain(false);
+        cfg->plan_recording(false);
         db_setup(cfg);
     }
 

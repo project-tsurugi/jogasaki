@@ -362,12 +362,12 @@ public:
         return trace_external_log_;
     }
 
-    void external_log_explain(bool arg) noexcept {
-        external_log_explain_ = arg;
+    void plan_recording(bool arg) noexcept {
+        plan_recording_ = arg;
     }
 
-    [[nodiscard]] bool external_log_explain() const noexcept {
-        return external_log_explain_;
+    [[nodiscard]] bool plan_recording() const noexcept {
+        return plan_recording_;
     }
 
     void try_insert_on_upserting_secondary(bool arg) noexcept {
@@ -499,7 +499,7 @@ public:
         print_non_default(return_os_pages);
         print_non_default(omit_task_when_idle);
         print_non_default(trace_external_log);
-        print_non_default(external_log_explain);
+        print_non_default(plan_recording);
         print_non_default(try_insert_on_upserting_secondary);
         print_non_default(support_boolean);
         print_non_default(support_smallint);
@@ -554,7 +554,7 @@ private:
     bool return_os_pages_ = false;
     bool omit_task_when_idle_ = true;
     bool trace_external_log_ = false;
-    bool external_log_explain_ = true;
+    bool plan_recording_ = true;
     bool try_insert_on_upserting_secondary_ = true;
     bool support_boolean_ = false;
     bool support_smallint_ = false;

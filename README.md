@@ -119,6 +119,20 @@ ctest -V
 cmake --build . --target doxygen
 ```
 
+### Code coverage
+
+Run cmake with `-DENABLE_COVERAGE=ON` and run tests.
+Dump the coverage information into html files with the following steps:
+
+```sh
+cd build
+mkdir gcovr-html
+GCOVR_COMMON_OPTION='-e ../third_party -e ../test -e ../examples -e ../mock -e (.+)?\.pb\.h$ -e (.+)?\.pb\.cc$'
+gcovr  -r .. --html --html-details  ${GCOVR_COMMON_OPTION} -o gcovr-html/jogasaki-gcovr.html
+```
+
+Open gcovr-html/jogasaki-gcovr.html to see the coverage report.
+
 ### Customize logging setting
 You can customize logging in the same way as sharksfin. See sharksfin [README.md](https://github.com/project-tsurugi/sharksfin/blob/master/README.md#customize-logging-setting) for more details.
 

@@ -69,8 +69,8 @@ public:
             begin.set_allocated_transaction_option(&option);
             proto_req.set_allocated_begin(&begin);
             EXPECT_TRUE(proto_req.SerializeToString(&s));
-            proto_req.release_begin();
-            begin.release_transaction_option();
+            (void) proto_req.release_begin();
+            (void) begin.release_transaction_option();
         }
         auto buf_res = client.request(session_id, service_id, s);
         auto body = buf_res.body();
@@ -98,10 +98,10 @@ public:
 
     void release_record(tateyama::proto::kvs::data::Record *record) {
         while (record->names_size() > 0) {
-            record->mutable_names()->ReleaseLast();
+            (void) record->mutable_names()->ReleaseLast();
         }
         while (record->values_size() > 0) {
-            record->mutable_values()->ReleaseLast();
+            (void) record->mutable_values()->ReleaseLast();
         }
     }
 
@@ -120,13 +120,13 @@ public:
             put.mutable_records()->AddAllocated(&record);
             proto_req.set_allocated_put(&put);
             EXPECT_TRUE(proto_req.SerializeToString(&s));
-            proto_req.release_put();
-            put.release_index();
-            put.release_transaction_handle();
+            (void) proto_req.release_put();
+            (void) put.release_index();
+            (void) put.release_transaction_handle();
             while (put.records_size() > 0) {
                 auto r = put.mutable_records(put.records_size()-1);
                 release_record(r);
-                put.mutable_records()->ReleaseLast();
+                (void) put.mutable_records()->ReleaseLast();
             }
         }
         auto buf_res = client.request(session_id, service_id, s);
@@ -155,13 +155,13 @@ public:
             get.mutable_keys()->AddAllocated(&record);
             proto_req.set_allocated_get(&get);
             EXPECT_TRUE(proto_req.SerializeToString(&s));
-            proto_req.release_get();
-            get.release_index();
-            get.release_transaction_handle();
+            (void) proto_req.release_get();
+            (void) get.release_index();
+            (void) get.release_transaction_handle();
             while (get.keys_size() > 0) {
                 auto r = get.mutable_keys(get.keys_size()-1);
                 release_record(r);
-                get.mutable_keys()->ReleaseLast();
+                (void) get.mutable_keys()->ReleaseLast();
             }
         }
         auto buf_res = client.request(session_id, service_id, s);
@@ -184,8 +184,8 @@ public:
             commit.set_allocated_transaction_handle(&handle);
             proto_req.set_allocated_commit(&commit);
             EXPECT_TRUE(proto_req.SerializeToString(&s));
-            proto_req.release_commit();
-            commit.release_transaction_handle();
+            (void) proto_req.release_commit();
+            (void) commit.release_transaction_handle();
         }
         auto buf_res = client.request(session_id, service_id, s);
         auto body = buf_res.body();

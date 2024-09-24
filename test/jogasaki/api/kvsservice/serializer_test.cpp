@@ -225,7 +225,7 @@ TEST_F(serializer_test, ser_decimal) {
         test(is_key, col, v1, v2);
         EXPECT_EQ(v2.decimal_value().unscaled_value(), answer.unscaled_value());
         EXPECT_EQ(v2.decimal_value().exponent(), answer.exponent());
-        v1.release_decimal_value();
+        (void) v1.release_decimal_value();
     }
 }
 
@@ -294,7 +294,7 @@ TEST_F(serializer_test, DISABLED_ser_time_of_day_timezone) {
                 test(is_key, col, v1, v2);
                 EXPECT_EQ(v2.time_of_day_with_time_zone_value().offset_nanoseconds(), nanosec);
                 EXPECT_EQ(v2.time_of_day_with_time_zone_value().time_zone_offset(), offset);
-                v1.release_time_of_day_with_time_zone_value();
+                (void) v1.release_time_of_day_with_time_zone_value();
             }
         }
     }
@@ -324,7 +324,7 @@ TEST_F(serializer_test, ser_timepoint) {
             test(is_key, col, v1, v2);
             EXPECT_EQ(v2.time_point_value().offset_seconds(), answer.offset_seconds());
             EXPECT_EQ(v2.time_point_value().nano_adjustment(), answer.nano_adjustment());
-            v1.release_time_point_value();
+            (void) v1.release_time_point_value();
         }
     }
 }
@@ -358,7 +358,7 @@ TEST_F(serializer_test, DISABLED_ser_timepoint_timezone) {
                     EXPECT_EQ(tpz2.offset_seconds(), answer.offset_seconds());
                     EXPECT_EQ(tpz2.nano_adjustment(), answer.nano_adjustment());
                     EXPECT_EQ(tpz2.time_zone_offset(), offset);
-                    v1.release_time_point_with_time_zone_value();
+                    (void) v1.release_time_point_with_time_zone_value();
                 }
             }
         }

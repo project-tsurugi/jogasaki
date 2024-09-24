@@ -1346,7 +1346,7 @@ TEST_F(service_api_test, protobuf1) {
     std::cerr << "out: " << out << std::endl;
     EXPECT_FALSE(out.empty());
 
-    req.release_session_handle();
+    (void) req.release_session_handle();
     EXPECT_FALSE(req.has_session_handle());
 }
 

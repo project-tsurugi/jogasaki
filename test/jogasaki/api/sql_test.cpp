@@ -649,4 +649,22 @@ TEST_F(sql_test, nullif_expression) {
     }
 }
 
+TEST_F(sql_test, type_of_cast_conversion) {
+    // verify the result type of cast - issue #982
+    // TODO currently comparison with basic_record does not distinguish triples of same value with different representation
+    execute_statement("create table t (c0 decimal(5,2))");
+    execute_statement("INSERT INTO t VALUES (1.00)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select c0 from t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5,2)}, std::forward_as_tuple(triple{1, 0, 100, -2}))), result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select cast(c0 as decimal(5,2)) from t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5,2)}, std::forward_as_tuple(triple{1, 0, 1, 0}))), result[0]);
+    }
+}
 }

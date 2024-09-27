@@ -458,6 +458,14 @@ public:
         zone_offset_ = arg;
     }
 
+    [[nodiscard]] bool rtx_parallel_scan() const noexcept {
+        return rtx_parallel_scan_;
+    }
+
+    void rtx_parallel_scan(bool arg) noexcept {
+        rtx_parallel_scan_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -510,6 +518,7 @@ public:
         print_non_default(lowercase_regular_identifiers);
         print_non_default(zone_offset);
         print_non_default(scan_block_size);
+        print_non_default(rtx_parallel_scan);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -566,6 +575,7 @@ private:
     bool lowercase_regular_identifiers_ = false;
     std::int32_t zone_offset_ = 0;
     std::size_t scan_block_size_ = 0;
+    bool rtx_parallel_scan_ = false;
 
 };
 

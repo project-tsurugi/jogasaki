@@ -105,6 +105,7 @@ file(GLOB SOURCES
         "jogasaki/scheduler/details/*.cpp"
         "jogasaki/serializer/*.cpp"
         "jogasaki/utils/*.cpp"
+        "jogasaki/dist/*.cpp"
 )
 
 if(ENABLE_ALTIMETER)

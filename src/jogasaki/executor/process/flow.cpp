@@ -129,6 +129,8 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         contexts.emplace_back(create_task_context(i, operators, sink_idx_base + i));
     }
 
+    bool is_rtx = context_->transaction()->option()->type()
+        ==  kvs::transaction_option::transaction_type::read_only;
     auto& d = info_->details();
     auto exec = factory(proc, contexts);
     for (std::size_t i=0; i < partitions; ++i) {
@@ -137,12 +139,13 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             step_,
             exec,
             proc,
-            (
-                d.has_write_operations() ||
-                d.has_find_operator() ||
-                d.has_scan_operator() ||
-                d.has_join_find_or_scan_operator()
-            )
+                !(is_rtx && global::config_pool()->rtx_parallel_scan() ) &&
+                (
+                    d.has_write_operations() ||
+                    d.has_find_operator() ||
+                    d.has_scan_operator() ||
+                    d.has_join_find_or_scan_operator()
+                )
         ));
     }
     return tasks_;

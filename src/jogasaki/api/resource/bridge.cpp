@@ -248,6 +248,9 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<std::size_t>("scan_block_size")) {
         ret->scan_block_size(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_rtx_parallel_scan")) {
+        ret->rtx_parallel_scan(v.value());
+    }
     return true;
 }
 

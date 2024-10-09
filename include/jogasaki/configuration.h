@@ -450,6 +450,14 @@ public:
         scan_block_size_ = arg;
     }
 
+    [[nodiscard]] std::size_t scan_yield_interval() const noexcept {
+        return scan_yield_interval_;
+    }
+
+    void scan_yield_interval(std::size_t arg) noexcept {
+        scan_yield_interval_ = arg;
+    }
+
     [[nodiscard]] std::int32_t zone_offset() const noexcept {
         return zone_offset_;
     }
@@ -518,6 +526,7 @@ public:
         print_non_default(lowercase_regular_identifiers);
         print_non_default(zone_offset);
         print_non_default(scan_block_size);
+        print_non_default(scan_yield_interval);
         print_non_default(rtx_parallel_scan);
 
         if(cfg.req_cancel_config()) {
@@ -574,7 +583,8 @@ private:
     std::shared_ptr<request_cancel_config> request_cancel_config_{};
     bool lowercase_regular_identifiers_ = false;
     std::int32_t zone_offset_ = 0;
-    std::size_t scan_block_size_ = 0;
+    std::size_t scan_block_size_ = 100;
+    std::size_t scan_yield_interval_ = 1;
     bool rtx_parallel_scan_ = false;
 
 };

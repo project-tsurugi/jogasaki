@@ -176,6 +176,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_lowercase_regular_identifiers) " << cfg.lowercase_regular_identifiers() << " : whether to lowercase regular identifiers";
     LOGCFG << "(zone_offset) " << cfg.zone_offset() << " : system time zone offset in minutes";
     LOGCFG << "(scan_block_size) " << cfg.scan_block_size() << " : max records processed by scan operator before yielding to other task";
+    LOGCFG << "(scan_yield_interval) " << cfg.scan_yield_interval() << " : max time (ms) processed by scan operator before yielding to other tasks";
     LOGCFG << "(dev_rtx_parallel_scan) " << cfg.rtx_parallel_scan() << " : whether to enable parallel scan for RTX";
 }
 

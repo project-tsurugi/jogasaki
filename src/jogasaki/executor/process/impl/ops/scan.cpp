@@ -15,6 +15,7 @@
  */
 #include "scan.h"
 
+#include <chrono>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -160,6 +161,8 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     status st{};
     std::size_t loop_count = 0;
     auto scan_block_size = global::config_pool()->scan_block_size();
+    auto scan_yield_interval = static_cast<std::int64_t>(global::config_pool()->scan_yield_interval());
+    auto previous_time = std::chrono::steady_clock::now();
     while(true) {
         if(utils::request_cancel_enabled(request_cancel_kind::scan) && ctx.req_context()) {
             auto res_src = ctx.req_context()->req_info().response_source();
@@ -205,7 +208,12 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             }
         }
 	if (scan_block_size != 0 && scan_block_size == loop_count ){
-            return {operation_status_kind::yield};
+            auto current_time = std::chrono::steady_clock::now();
+            auto elapsed_time =
+            std::chrono::duration_cast<std::chrono::milliseconds>(current_time - previous_time);
+            if (elapsed_time.count() >= scan_yield_interval ) {
+               return {operation_status_kind::yield};
+            }
 	}
 	loop_count++;
     }

@@ -574,7 +574,7 @@ private:
     std::shared_ptr<request_cancel_config> request_cancel_config_{};
     bool lowercase_regular_identifiers_ = false;
     std::int32_t zone_offset_ = 0;
-    std::size_t scan_block_size_ = 0;
+    std::size_t scan_block_size_ = 100;
     bool rtx_parallel_scan_ = false;
 
 };

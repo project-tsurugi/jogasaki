@@ -110,7 +110,7 @@ DEFINE_int64(worker_suspend_timeout, 1000000, "duration in us before worker wake
 DEFINE_bool(md, false, "output result to stdout as markdown table");  //NOLINT
 DEFINE_bool(ddl, false, "issue ddl instead of using built-in table. Required for --secondary.");  //NOLINT
 DEFINE_bool(secondary, false, "use secondary index");  //NOLINT
-DEFINE_int64(scan_block_size, 0, "max records processed by scan operator before yielding to other tasks");  //NOLINT
+DEFINE_int64(scan_block_size, 100, "max records processed by scan operator before yielding to other tasks");  //NOLINT
 
 namespace tateyama::service_benchmark {
 

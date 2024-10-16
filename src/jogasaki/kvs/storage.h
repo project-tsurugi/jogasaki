@@ -41,6 +41,7 @@ enum class end_point_kind : std::uint32_t {
     prefixed_inclusive,
     prefixed_exclusive,
 };
+std::string_view to_string_end_point_kind(end_point_kind kind);
 
 enum class put_option : std::uint32_t {
     /**

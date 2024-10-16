@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
 #include <jogasaki/kvs/storage.h>
@@ -50,12 +51,28 @@ public:
     [[nodiscard]] std::vector<ops::details::search_key_field_info> const& end_columns() const noexcept;
     [[nodiscard]] kvs::end_point_kind begin_endpoint() const noexcept;
     [[nodiscard]] kvs::end_point_kind end_endpoint() const noexcept;
-
+    [[nodiscard]] data::aligned_buffer & key_begin() noexcept;
+    [[nodiscard]] data::aligned_buffer & key_end() noexcept;
+    void blen(std::size_t s) noexcept;
+    void elen(std::size_t s) noexcept;
+    [[nodiscard]] std::string_view begin_key() const noexcept;
+    [[nodiscard]] std::string_view end_key() const noexcept;
+    [[nodiscard]] kvs::end_point_kind begin_kind(bool use_secondary) const noexcept;
+    [[nodiscard]] kvs::end_point_kind end_kind(bool use_secondary) const noexcept;
+    [[nodiscard]] status status_result() const noexcept;
+    void status_result(status s) noexcept;
+    void dump(std::ostream& out, int indent = 0) const noexcept;
 private:
     std::vector<ops::details::search_key_field_info> begin_columns_{};
     kvs::end_point_kind begin_endpoint_{};
     std::vector<ops::details::search_key_field_info> end_columns_{};
     kvs::end_point_kind end_endpoint_{};
+    data::aligned_buffer key_begin_{};
+    data::aligned_buffer key_end_{};
+    std::size_t blen_{};
+    std::size_t elen_{};
+    status status_result_{};
+    [[nodiscard]] kvs::end_point_kind get_kind(bool use_secondary, kvs::end_point_kind endpoint) const noexcept;
 };
 
 }

@@ -51,6 +51,16 @@ struct cache_align search_key_field_info {
         evaluator_(evaluator)
     {}
 
+
+    void dump(std::ostream& out, int indent = 0) const noexcept {
+       std::string indent_space(indent, ' ');
+       out << indent_space << "search_key_field_info:\n";
+       out << indent_space << "  type_: " << type_ << "\n";
+       out << indent_space << "  nullable_: " << std::boolalpha << nullable_ << "\n";
+       spec_.dump(out,2+indent);
+       evaluator_.dump(out,2+indent);
+    };
+
     meta::field_type type_{}; //NOLINT
     bool nullable_{}; //NOLINT
     kvs::coding_spec spec_{}; //NOLINT

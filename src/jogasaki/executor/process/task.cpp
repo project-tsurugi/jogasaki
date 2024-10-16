@@ -72,7 +72,7 @@ model::task_result task::operator()() {
             // TODO support sleep/yield
 
             fail_with_exception();
-	    break;
+            break;
         case abstract::status::to_yield:
             VLOG_LP(log_warning) << *this << " process::task to_yield.";
             break;

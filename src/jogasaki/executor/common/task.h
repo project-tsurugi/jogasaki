@@ -22,6 +22,7 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/utils/interference_size.h>
+#include <jogasaki/request_context.h>
 
 #include "step.h"
 
@@ -46,6 +47,7 @@ public:
 
     [[nodiscard]] bool has_transactional_io() override;
 
+    void dump(std::ostream& out, int indent=0) const;
 protected:
     std::ostream& write_to(std::ostream& out) const override;;
 

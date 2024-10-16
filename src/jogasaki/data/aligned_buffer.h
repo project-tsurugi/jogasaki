@@ -162,6 +162,7 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, aligned_buffer const& value);
+    void dump(std::ostream& out, int indent = 0) const noexcept;
 
 private:
     std::size_t capacity_{};

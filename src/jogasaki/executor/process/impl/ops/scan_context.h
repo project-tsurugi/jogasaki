@@ -63,7 +63,6 @@ public:
     void release() override;
 
     [[nodiscard]] transaction_context* transaction() const noexcept;
-
     /**
      * @brief Support for debugging, callable in GDB: ctx->dump()
      */
@@ -75,8 +74,6 @@ private:
     transaction_context* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
     impl::scan_info const* scan_info_{};
-    data::aligned_buffer key_begin_{};
-    data::aligned_buffer key_end_{};
 };
 
 }

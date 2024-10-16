@@ -81,6 +81,8 @@ public:
      */
     [[nodiscard]] context_base* at(std::size_t idx) const noexcept;
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
 private:
     contexts_type contexts_{};
 };

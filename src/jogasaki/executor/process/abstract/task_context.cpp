@@ -16,7 +16,7 @@
 #include "task_context.h"
 
 #include <jogasaki/executor/process/abstract/work_context.h>
-
+#include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 namespace jogasaki::executor::process::abstract {
 
 void task_context::work_context(std::unique_ptr<class work_context> work_context) {
@@ -29,6 +29,12 @@ class work_context* task_context::work_context() const {
 
 std::unique_ptr<class work_context> task_context::release_work() {
     return std::move(work_context_);
+}
+
+void task_context::dump(std::ostream& out, int indent) const noexcept {
+    std::string indent_space(indent, ' ');
+    out << indent_space << "abstract::task_context" << "\n";
+    out << indent_space << "  work_context_: " << work_context_.get() << "\n";
 }
 
 }

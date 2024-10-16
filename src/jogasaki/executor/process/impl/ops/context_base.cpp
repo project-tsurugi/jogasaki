@@ -105,14 +105,14 @@ void context_base::dump() const noexcept {
        << (input_variables_ ? input_variables_ : nullptr) << std::endl;
 
     if (input_variables_) {
-        input_variables_->dump("    ");
+        input_variables_->dump(std::cerr,2);
     }
 
     std::cerr << "  " << std::setw(22) << "output_variables:"
        << (output_variables_ ? output_variables_ : nullptr) << std::endl;
 
     if (output_variables_) {
-       output_variables_->dump("    ");
+       output_variables_->dump(std::cerr,2);
     }
 
     std::cerr << "  " << std::setw(22) << "resource:"

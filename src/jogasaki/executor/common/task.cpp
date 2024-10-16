@@ -54,6 +54,17 @@ std::ostream& task::write_to(std::ostream& out) const {
 bool task::has_transactional_io() {
     return false;
 }
+
+void task::dump(std::ostream& out, int indent) const {
+    std::string indent_space(indent, ' ');
+
+    out << indent_space << "model::task dump:" << std::endl;
+    out << indent_space << "  common::task dump:" << std::endl;
+    out << indent_space << "    id: " << id_ << std::endl;
+    out << indent_space << "    context: " << context_ << std::endl;
+    context_->dump(out,6);
+    out << indent_space << "    step: " << src_ << std::endl;
+}
 }
 
 

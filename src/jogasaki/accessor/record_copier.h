@@ -72,6 +72,8 @@ public:
      */
     void operator()(accessor::record_ref dst, accessor::record_ref src);
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     memory::paged_memory_resource* resource_{};

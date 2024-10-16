@@ -98,6 +98,7 @@ public:
      */
     [[nodiscard]] sharksfin::IteratorHandle handle() const noexcept;
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
 private:
     sharksfin::IteratorHandle handle_{};
 };

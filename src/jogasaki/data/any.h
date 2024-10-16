@@ -111,6 +111,7 @@ public:
     static constexpr std::size_t index =
         alternative_index<std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>, any::base_type>();
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
 private:
     base_type body_{};
 };

@@ -80,4 +80,32 @@ void record_copier::operator()(accessor::record_ref dst, accessor::record_ref sr
     operator()(dst.data(), meta_->record_size(), src);
 }
 
+void record_copier::dump(std::ostream& out, int indent) const noexcept {
+    std::string indent_space(indent, ' ');
+    out << indent_space << "record_copier:" << "\n";
+    out << indent_space << "  meta_:\n" ;
+    meta_->dump(out,indent+2);
+    out << indent_space << "  resource_: " << &resource_ << "\n";
+    out << indent_space << "  varlen_field_offsets_:\n";
+    out << indent_space << "    size: " << varlen_field_offsets_.size() << "\n";
+    for (const auto& v : varlen_field_offsets_ ){
+       out << indent_space << "      " << v << "\n";
+    }
+    out << indent_space << "  varlen_field_nullity_offsets_:\n";
+    out << indent_space << "    size: " << varlen_field_nullity_offsets_.size() << "\n";
+    for (const auto& v : varlen_field_nullity_offsets_ ){
+       out << indent_space << "      " << v << "\n";
+    }
+    out << indent_space << "  varlen_field_nullability_:\n";
+    out << indent_space << "    size: " << varlen_field_nullability_.size() << "\n";
+    for (const auto& v : varlen_field_nullability_ ){
+       out << indent_space << "      " << v << "\n";
+    }
+    out << indent_space << "  varlen_field_kind_:\n";
+    out << indent_space << "    size: " << varlen_field_kind_.size() << "\n";
+    for (const auto& v : varlen_field_kind_ ){
+       out << indent_space << "      " << to_string_view(v) << "\n";
+    }
+}
+
 }  // namespace jogasaki::accessor

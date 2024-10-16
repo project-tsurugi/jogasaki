@@ -129,6 +129,8 @@ public:
      */
     [[nodiscard]] bool empty_input_from_shuffle() const noexcept;
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
 private:
     request_context* request_context_{};
     ops::context_container contexts_{};

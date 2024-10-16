@@ -32,6 +32,7 @@
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/request_context.h>
 
@@ -84,6 +85,13 @@ public:
 
     void deactivate_writer(writer_index idx) override;
 
+
+    impl::work_context& getImplWorkContext() const;
+
+    void encode_key();
+
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
 private:
     request_context* request_context_{};
     std::size_t partition_{};
@@ -92,6 +100,7 @@ private:
     io::record_channel* channel_{};
     std::shared_ptr<io::record_writer> external_writer_{};
     partition_index sink_index_{};
+    status status_result_{};
 };
 
 }

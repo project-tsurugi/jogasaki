@@ -62,5 +62,11 @@ sharksfin::IteratorHandle iterator::handle() const noexcept {
     return handle_;
 }
 
+void iterator::dump(std::ostream& out, int indent) const noexcept {
+    std::string indent_space(indent, ' ');
+    out << indent_space << "  iterator: " << "\n";
+    out << indent_space << "    handle_: " << std::hex << handle_ << std::dec << "\n";
+}
+
 }
 

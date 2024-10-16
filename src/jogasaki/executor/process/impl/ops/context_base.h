@@ -48,8 +48,8 @@ enum class context_state {
 [[nodiscard]] constexpr inline std::string_view to_string_view(context_state state) noexcept {
     using namespace std::string_view_literals;
     switch (state) {
-	case context_state::active: return "active"sv;
-	case context_state::abort: return "abort"sv;
+        case context_state::active: return "active"sv;
+        case context_state::abort: return "abort"sv;
     }
     std::abort();
 }

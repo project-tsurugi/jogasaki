@@ -225,6 +225,7 @@ public:
         return out;
     }
 
+    void dump(std::ostream& out, int indent=0) const noexcept;
 private:
     fields_type fields_{};
     nullability_type nullability_{};

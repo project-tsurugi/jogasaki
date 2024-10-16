@@ -132,6 +132,8 @@ public:
      */
     [[nodiscard]] std::unique_ptr<class work_context> release_work();
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
 private:
     std::unique_ptr<class work_context> work_context_{};
 };

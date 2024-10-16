@@ -71,7 +71,7 @@ public:
      * @param indent A string used for indentation in the output,
      * making it easier to read nested structures. Default is an empty string.
      */
-    void dump(std::string const& indent = "") const noexcept;
+    void dump(std::ostream& out, int indent = 0) const noexcept;
 
 private:
     variable_table_info const* info_{};

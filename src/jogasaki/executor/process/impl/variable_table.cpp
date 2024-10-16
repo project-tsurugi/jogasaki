@@ -88,16 +88,18 @@ std::ostream& operator<<(std::ostream& out, variable_table const& value) {
     return out;
 }
 
-void variable_table::dump(std::string const& indent) const noexcept {
-    std::cerr << indent << "variable_table:\n"
-        << indent << "  " << std::left << std::setw(18) << "info:"
+void variable_table::dump(std::ostream& out, int indent) const noexcept {
+    std::string indent_space(indent, ' ');
+    out << indent_space << "variable_table:\n";
+    out << indent_space << "  " << std::left << std::setw(18) << "info:"
         << std::hex << (info_ ? info_ : nullptr) << "\n"
-        << indent << "  " << std::setw(18) << "store:"
+        << indent_space << "  " << std::setw(18) << "store:"
         << (store_ ? store_.get() : nullptr) << std::endl;
     if (store_) {
-        std::cerr << indent << "  " << std::setw(18)
+        out << indent_space << "  " << std::setw(18)
             << "store value:" << *store_ << std::endl;
     }
+    store_->dump(std::cerr,indent + 2);
 }
 
 }

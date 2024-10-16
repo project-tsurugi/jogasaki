@@ -102,6 +102,8 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& out, small_record_store const& value);
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
 private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     memory::paged_memory_resource* varlen_resource_{};

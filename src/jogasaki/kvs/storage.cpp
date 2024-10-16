@@ -22,6 +22,7 @@
 #include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>
+#include <iomanip>
 
 #include "iterator.h"
 #include "transaction.h"
@@ -142,6 +143,16 @@ status storage::set_options(sharksfin::StorageOptions const& options) {
 
 status storage::get_options(sharksfin::StorageOptions& options) {
     return resolve(sharksfin::storage_get_options(handle_, options));
+}
+
+std::string_view to_string_end_point_kind (end_point_kind k) {
+    switch (k) {
+        case end_point_kind::unbound: return "unbound";
+        case end_point_kind::inclusive: return "inclusive";
+        case end_point_kind::exclusive: return "exclusive";
+        case end_point_kind::prefixed_inclusive: return "prefixed_inclusive";
+        case end_point_kind::prefixed_exclusive: return "prefixed_exclusive";                                         default: return "unknown";
+   }
 }
 }
 

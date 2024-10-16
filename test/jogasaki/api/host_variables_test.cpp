@@ -73,7 +73,7 @@ class host_variables_test :
 public:
     // change this flag to debug with explain
     bool to_explain() override {
-        return false;
+        return true;
     }
 
     void SetUp() override {
@@ -156,6 +156,22 @@ TEST_F(host_variables_test, query_basic) {
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
     EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
+}
+
+TEST_F(host_variables_test, range_scan_with_host_variables) {
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("INSERT INTO t VALUES (0),(1),(2)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int4},
+        {"p1", api::field_type_kind::int4},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 0);
+    ps->set_int4("p1", 2);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t WHERE :p0 < c0 AND c0 < :p1", variables, *ps, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4>(1)), result[0]);
 }
 
 TEST_F(host_variables_test, insert_varieties_of_types) {

@@ -109,6 +109,7 @@ public:
      */
     [[nodiscard]] virtual bool has_transactional_io() = 0;
 
+    virtual void dump(std::ostream& out, int indent = 0) const = 0;
 protected:
     virtual std::ostream& write_to(std::ostream& out) const = 0;
 

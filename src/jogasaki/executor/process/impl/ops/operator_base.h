@@ -229,10 +229,10 @@ public:
         return "record_operator"sv;
     }
     if (dynamic_cast<group_operator const*>(&op)) {
-	return "group_operator"sv;
+        return "group_operator"sv;
     }
     if (dynamic_cast<cogroup_operator<void> const*>(&op)) {
-	return "cogroup_operator"sv;
+        return "cogroup_operator"sv;
     }
     return "unknown"sv;
 }

@@ -57,7 +57,7 @@ public:
      * @return whether the task contains transactional I/O operations that requires special handling in scheduling
      */
     [[nodiscard]] bool has_transactional_io() override;
-
+    void dump(std::ostream& out, int indent=0) const override;
 protected:
     std::ostream& write_to(std::ostream& out) const override;
 

@@ -82,4 +82,29 @@ request_context* work_context::req_context() const noexcept {
 bool work_context::empty_input_from_shuffle() const noexcept {
     return empty_input_from_shuffle_;
 }
+void work_context::dump(std::ostream& out, int indent) const noexcept {
+    std::string indent_space(indent, ' ');
+    out << indent_space << "abstract::task_context" << "\n";
+    out << indent_space << "work_context_:\n";
+    out << indent_space << "  request_context_: "
+            << (request_context_ ? "non-null" : "null") << '\n';
+    out << indent_space << "  contexts_:\n";
+           contexts_.dump(out,indent + 2);
+    out << indent_space << "  variables_: ";
+    out << indent_space << "    size: " << variables_.size();
+    for (const auto& variable : variables_) {
+        variable.dump(out,indent + 2);
+    }
+    out << indent_space << "  resource_: "
+            << (resource_ ? "non-null" : "null") << '\n';
+    out << indent_space << "  varlen_resource_: "
+            << (varlen_resource_ ? "non-null" : "null") << '\n';
+    out << indent_space << "  database_: "
+            << (database_ ? "non-null" : "null") << '\n';
+    out << indent_space << "  transaction_: "
+            << (transaction_ ? "non-null" : "null") << '\n';
+    out << indent_space << "  empty_input_from_shuffle_: "
+            << (empty_input_from_shuffle_ ? "true" : "false") << '\n';
+
+}
 }

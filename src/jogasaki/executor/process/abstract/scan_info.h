@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <ostream>
 namespace jogasaki::executor::process::abstract {
 
 /**
@@ -37,6 +38,7 @@ public:
     scan_info& operator=(scan_info const& other) = default;
     scan_info(scan_info&& other) noexcept = default;
     scan_info& operator=(scan_info&& other) noexcept = default;
+    virtual void dump(std::ostream& out, int indent = 0) const noexcept = 0;
 };
 
 }

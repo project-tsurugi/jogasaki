@@ -723,4 +723,13 @@ any evaluate_bool(
     return any{std::in_place_type<bool>, a && a.to<bool>()};
 }
 
+void evaluator::dump(std::ostream& out, int indent) const noexcept {
+    std::string indent_space(indent, ' ');
+    out << indent_space << "evaluator:" << "\n";
+    out << indent_space << "  expression_: " << std::hex << expression_ << std::dec << "\n";
+    out << indent_space << "  info_: " << std::hex << info_ << std::dec << "\n";
+    out << indent_space << "  host_variables_: " << std::hex << host_variables_ << std::dec << "\n";
+    host_variables_->dump(out,indent + 2);
+}
+
 }  // namespace jogasaki::executor::expr

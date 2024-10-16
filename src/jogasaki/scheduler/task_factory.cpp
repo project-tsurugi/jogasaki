@@ -43,6 +43,15 @@ bool details::custom_task::has_transactional_io() {
     return transactional_io_;
 }
 
+void details::custom_task::dump(std::ostream& out,int indent) const{
+    std::string indent_space(indent, ' ');
+    out << indent_space << "custom_task::dump" << std::endl;
+    out << indent_space << "  id: " << id_ << std::endl;
+    out << indent_space << "  body: " <<  " std::function<model::task_result()>" << std::endl;
+    // body_ << std::endl;
+    out << indent_space << "  transactional_io: " << std::boolalpha << transactional_io_ << std::endl;
+}
+
 std::ostream& details::custom_task::write_to(std::ostream& out) const {
     using namespace std::string_view_literals;
     return out << "custom_task[id="sv << std::to_string(static_cast<identity_type>(id_)) << "]"sv;

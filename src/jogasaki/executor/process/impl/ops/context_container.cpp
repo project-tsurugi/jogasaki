@@ -50,5 +50,16 @@ ops::context_base* context_container::at(std::size_t idx) const noexcept {
     return contexts_.at(idx).get();
 }
 
+void context_container::dump(std::ostream& out, int indent) const noexcept{
+    std::string indent_space(indent, ' ');
+    out << indent_space << "context_container :\n";
+    out << indent_space << "  size :" <<  contexts_.size() << "\n";
+    for (std::size_t i = 0; i < contexts_.size(); ++i) {
+        out << indent_space << "  Context " << i << ": ";
+        if (contexts_[i]) {
+        contexts_[i]->dump();
+        }
+    }
+}
 }
 

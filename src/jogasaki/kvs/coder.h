@@ -87,6 +87,23 @@ public:
         return order_;
     }
 
+    void dump(std::ostream& out, int indent = 0) const noexcept {
+        std::string indent_space(indent, ' ');
+        out << indent_space << "coding_spec:\n";
+        out << indent_space << "  is_key: " << std::boolalpha << is_key_ << "\n";
+        std::string str;
+        switch (order_) {
+            case order::undefined: str = "undefined";
+            break;
+            case order::ascending: str = "ascending";
+            break;
+            case order::descending: str = "descending";
+            break;
+            default: str = "unknown";
+            break;
+        }
+        out << indent_space << "  order: " << str << "\n";
+    };
 private:
     bool is_key_{false};
     order order_{order::undefined};

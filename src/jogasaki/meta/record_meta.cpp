@@ -101,5 +101,24 @@ record_meta::field_iterator record_meta::end() const noexcept {
     return fields_.end();
 }
 
+void record_meta::dump(std::ostream& out, int indent) const noexcept {
+
+    std::string indent_space(indent, ' ');
+    out << indent_space << "record_meta:\n";
+    out << indent_space << "  field_count_: " << field_count_ << "\n";
+    out << indent_space << "  value_offset_table_:\n";
+    out << indent_space << "    size: " << value_offset_table_.size() << "\n";
+    for (const auto &v : value_offset_table_){
+        out << indent_space << "      " << v << "\n";
+    }
+    out << indent_space << "  nullity_offset_table_:\n";
+    out << indent_space << "    size: " << nullity_offset_table_.size() << "\n";
+    for (const auto &v : nullity_offset_table_){
+        out << indent_space << "      " << v << "\n";
+    }
+    out << indent_space << "  record_alignment_: " << record_alignment_ <<" \n";
+    out << indent_space << "  record_size_: " << record_size_ << "\n";
+}
+
 } // namespace
 

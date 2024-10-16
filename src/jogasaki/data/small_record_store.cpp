@@ -56,6 +56,28 @@ small_record_store::operator bool() const noexcept {
     return static_cast<bool>(meta_);
 }
 
+void small_record_store::dump(std::ostream& out, int indent) const noexcept {
+    std::string indent_space(indent, ' ');
+    out << indent_space << "small_record_store:" << "\n";
+    out << indent_space << "  meta_:\n" ;
+    if (meta_) {
+        meta_->dump(out,indent+4);
+    } else {
+        out << "<empty>";
+    }
+    out << indent_space << "  varlen_resource_: "  << &varlen_resource_ << "\n";
+    out << indent_space << "  copier_:\n";
+    copier_.dump(out,indent+4);
+    out << indent_space << "  record_size_: "  << record_size_ << "\n";
+    out << indent_space << "  buf_: " ;
+    if (meta_) {
+        out << utils::binary_printer{buf_.data(), record_size_};
+    } else {
+        out << "<empty>";
+    }
+    out << "\n";
+}
+
 accessor::record_ref small_record_store::ref() const noexcept {
     return {buf_.data(), record_size_};
 }

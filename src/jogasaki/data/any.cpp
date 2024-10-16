@@ -32,6 +32,10 @@ bool any::error() const noexcept {
 std::size_t any::type_index() const noexcept {
     return body_.index();
 }
+
+void any::dump(std::ostream& out, int indent) const noexcept{
+    std::string indent_space(indent, ' ');
+    out << indent_space << "any : " << type_name(*this) << " " << (*this) << std::endl;
 }
 
-
+}

@@ -67,13 +67,11 @@ void scan_context::dump() const noexcept {
        << "    " << std::setw(20) << "transaction_context:"
        << (tx_ ? tx_ : nullptr) << "\n"
        << "    " << std::setw(20) << "iterator:"
-       << (it_ ? it_.get() : nullptr) << "\n"
-       << "    " << std::setw(20) << "scan_info:"
-       << (scan_info_ ? scan_info_ : nullptr) << "\n"
-       << "    " << std::setw(20) << "key_begin_size:"
-       << key_begin_.size() << "\n"
-       << "    " << std::setw(20) << "key_end_size:"
-       << key_end_.size() << std::endl;
+       << (it_ ? it_.get() : nullptr) << "\n";
+       if (it_ != nullptr){
+         it_->dump(std::cerr,2);
+       }
+       scan_info_->dump(std::cerr,4);
 }
 
 }

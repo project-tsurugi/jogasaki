@@ -151,6 +151,8 @@ public:
         memory_resource* resource = nullptr
     ) const;
 
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
 private:
     takatori::scalar::expression const* expression_{};
     yugawara::compiled_info const* info_{};

@@ -22,6 +22,8 @@
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 #include <jogasaki/executor/exchange/aggregate/flow.h>
 #include <jogasaki/executor/exchange/forward/flow.h>
 #include <jogasaki/executor/exchange/group/flow.h>
@@ -130,6 +132,76 @@ std::size_t task_context::partition() const noexcept {
 
 io::record_channel* task_context::channel() const noexcept {
     return channel_;
+}
+
+impl::work_context& task_context::getImplWorkContext() const {
+    return *dynamic_cast<impl::work_context*>(work_context());
+}
+
+void task_context::encode_key(){
+    std::size_t blen{};
+    std::string msg{};
+    executor::process::impl::variable_table vars{};
+    if(auto res = impl::ops::details::encode_key(
+        request_context_,
+        scan_info_->begin_columns(),
+        vars,
+        *getImplWorkContext().varlen_resource(),
+        scan_info_->key_begin(),
+        blen,
+        msg
+      );
+       res != status::ok) {
+        if(res == status::err_type_mismatch) {
+            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
+            set_error(*request_context_, error_code::unsupported_runtime_feature_exception, msg, res);
+        }
+        scan_info_->status_result(res);
+        return;
+    }
+    scan_info_->blen(blen);
+    std::size_t elen{};
+    if(auto res = impl::ops::details::encode_key(
+        request_context_,
+        scan_info_->end_columns(),
+        vars,
+        *getImplWorkContext().varlen_resource(),
+        scan_info_->key_end(),
+        elen,
+        msg
+       );
+       res != status::ok) {
+        if(res == status::err_type_mismatch) {
+            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
+            set_error(*request_context_, error_code::unsupported_runtime_feature_exception, msg, res);
+        }
+        scan_info_->status_result(res);
+    }
+    scan_info_->elen(elen);
+    scan_info_->status_result(status::ok);
+    return;
+}
+
+void task_context::dump(std::ostream& out, int indent) const noexcept{
+    std::string indent_space(indent + 2, ' ');
+    abstract::task_context::dump(out,0);
+    out << indent_space << "abstract::task_context" << "\n";
+    out << indent_space << "request_context_: "
+        << (request_context_ ? "non-null" : "null") << '\n';
+    out << indent_space << "partition_: " << partition_ << '\n';
+    out << indent_space << "io_exchange_map_: "
+        << (io_exchange_map_ ? "non-null" : "null") << '\n';
+    out << indent_space << "scan_info_:\n";
+    if(scan_info_ != nullptr){
+       scan_info_->dump(out,4);
+    }else{
+      out << indent_space << "      null\n";
+    }
+    out << indent_space << "channel_: "
+        << (channel_ ? "non-null" : "null") << '\n';
+    out << indent_space << "external_writer_: "
+        << (external_writer_ ? "non-null" : "null") << '\n';
+    out << indent_space << "sink_index_: " << sink_index_ << std::endl;
 }
 
 }

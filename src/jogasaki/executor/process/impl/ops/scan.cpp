@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -207,15 +207,15 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return {operation_status_kind::aborted};
             }
         }
-	if (scan_block_size != 0 && scan_block_size == loop_count ){
+        if (scan_block_size != 0 && scan_block_size == loop_count ){
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time =
             std::chrono::duration_cast<std::chrono::milliseconds>(current_time - previous_time);
             if (elapsed_time.count() >= scan_yield_interval ) {
                return {operation_status_kind::yield};
             }
-	}
-	loop_count++;
+        }
+        loop_count++;
     }
     finish(context);
     if (st != status::not_found) {
@@ -250,67 +250,15 @@ void scan::finish(abstract::task_context* context) {
 
 status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)
     auto& stg = use_secondary_ ? *ctx.secondary_stg_ : *ctx.stg_;
-    auto be = ctx.scan_info_->begin_endpoint();
-    auto ee = ctx.scan_info_->end_endpoint();
-    if (use_secondary_) {
-        // at storage layer, secondary index key contains primary key index as postfix
-        // so boundary condition needs promotion to be compatible
-        // TODO verify the promotion
-        if (be == kvs::end_point_kind::inclusive) {
-            be = kvs::end_point_kind::prefixed_inclusive;
-        }
-        if (be == kvs::end_point_kind::exclusive) {
-            be = kvs::end_point_kind::prefixed_exclusive;
-        }
-        if (ee == kvs::end_point_kind::inclusive) {
-            ee = kvs::end_point_kind::prefixed_inclusive;
-        }
-        if (ee == kvs::end_point_kind::exclusive) {
-            ee = kvs::end_point_kind::prefixed_exclusive;
-        }
-    }
-    executor::process::impl::variable_table vars{};
-    std::size_t blen{};
-    std::string msg{};
-    if(auto res = details::encode_key(
-           ctx.req_context(),
-           ctx.scan_info_->begin_columns(),
-           vars,
-           *ctx.varlen_resource(),
-           ctx.key_begin_,
-           blen,
-           msg
-       );
-       res != status::ok) {
-        if(res == status::err_type_mismatch) {
-            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
-            set_error(*ctx.req_context(), error_code::unsupported_runtime_feature_exception, msg, res);
-        }
-        return res;
-    }
-    std::size_t elen{};
-    if(auto res = details::encode_key(
-           ctx.req_context(),
-           ctx.scan_info_->end_columns(),
-           vars,
-           *ctx.varlen_resource(),
-           ctx.key_end_,
-           elen,
-           msg
-       );
-       res != status::ok) {
-        if(res == status::err_type_mismatch) {
-            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
-            set_error(*ctx.req_context(), error_code::unsupported_runtime_feature_exception, msg, res);
-        }
-        return res;
+    if (auto status = ctx.scan_info_->status_result(); status != status::ok) {
+        return status;
     }
     if(auto res = stg.content_scan(
             *ctx.tx_,
-            {static_cast<char*>(ctx.key_begin_.data()), blen},
-            be,
-            {static_cast<char*>(ctx.key_end_.data()), elen},
-            ee,
+            ctx.scan_info_->begin_key(),
+            ctx.scan_info_->begin_kind(use_secondary_),
+            ctx.scan_info_->end_key(),
+            ctx.scan_info_->end_kind(use_secondary_),
             ctx.it_
         ); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
@@ -370,4 +318,4 @@ void scan::dump() const noexcept {
     std::cerr << head << std::setw(width) << "field_mapper_:"
        << "not implemented yet" << std::endl;
 }
-}
+} // namespace jogasaki::executor::process::impl::ops

@@ -229,4 +229,29 @@ void request_context::req_info(request_info req_info) noexcept {
     req_info_ = std::move(req_info);
 }
 
+void request_context::dump(std::ostream& out, int indent) const noexcept{
+    std::string indent_space(indent, ' ');
+    out << indent_space << "request_context\n";
+
+    out << indent_space << "  config_               : " << std::hex << std::showbase << &config_ << "\n";
+    out << indent_space << "  request_resource_      : " << std::hex << std::showbase << &request_resource_ << "\n";
+    out << indent_space << "  database_             : " << std::hex << std::showbase << &database_ << "\n";
+    out << indent_space << "  transaction_          : " << std::hex << std::showbase << &transaction_ << "\n";
+    out << indent_space << "  sequence_manager_     : " << std::hex << std::showbase << &sequence_manager_ << "\n";
+
+    out << indent_space << "  job_context_          : " << std::hex << std::showbase << &job_context_ << "\n";
+    out << indent_space << "  flows_                : " << std::hex << std::showbase << &flows_ << "\n";
+    out << indent_space << "  scheduler_            : " << std::hex << std::showbase << &scheduler_ << "\n";
+    out << indent_space << "  statement_scheduler_  : " << std::hex << std::showbase << &statement_scheduler_ << "\n";
+    out << indent_space << "  storage_provider_     : " << std::hex << std::showbase << &storage_provider_ << "\n";
+
+    out << indent_space << "  record_channel_       : " << std::hex << std::showbase << &record_channel_ << "\n";
+    out << indent_space << "  status_code_          : " << std::hex << std::showbase << &status_code_ << "\n";
+    out << indent_space << "  status_message_       : " << std::hex << std::showbase << &status_message_ << "\n";
+    out << indent_space << "  lightweight_          : " << std::hex << std::showbase << &lightweight_ << "\n";
+    out << indent_space << "  error_info_           : " << std::hex << std::showbase << &error_info_ << "\n";
+    out << indent_space << "  stats_                : " << std::hex << std::showbase << &stats_ << "\n";
+    out << indent_space << "  req_info_             : " << std::hex << std::showbase << &req_info_ << "\n";
+}
+
 }  // namespace jogasaki

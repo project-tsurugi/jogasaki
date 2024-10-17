@@ -25,7 +25,7 @@ public:
 
     /// @brief Size the size type represents the number of bytes to write.
     using size_type = Size;
-    
+
     /// @brief the result type of `T::write(char const*, size_type)`.
     using result_type = decltype(
             std::declval<writer_type>().write(

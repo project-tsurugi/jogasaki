@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -188,6 +188,9 @@ std::shared_ptr<impl::task_context> flow::create_task_context(
             empty_input_from_shuffle_
         )
     );
+    if (ctx->scan_info() != nullptr){
+        ctx->encode_key();
+    }
     return ctx;
 }
 

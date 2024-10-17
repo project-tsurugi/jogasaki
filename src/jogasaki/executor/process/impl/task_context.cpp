@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 #include <jogasaki/executor/exchange/aggregate/flow.h>
 #include <jogasaki/executor/exchange/forward/flow.h>
 #include <jogasaki/executor/exchange/group/flow.h>
@@ -132,4 +134,52 @@ io::record_channel* task_context::channel() const noexcept {
     return channel_;
 }
 
+[[nodiscard]] impl::work_context& task_context::getImplWorkContext() const {
+    return *dynamic_cast<impl::work_context*>(work_context());
 }
+
+void task_context::encode_key() noexcept {
+    std::size_t blen{};
+    std::string msg{};
+    executor::process::impl::variable_table vars{};
+    if(auto res = impl::ops::details::encode_key(
+        request_context_,
+        scan_info_->begin_columns(),
+        vars,
+        *getImplWorkContext().varlen_resource(),
+        scan_info_->key_begin(),
+        blen,
+        msg
+      );
+       res != status::ok) {
+        if(res == status::err_type_mismatch) {
+            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
+            set_error(*request_context_, error_code::unsupported_runtime_feature_exception, msg, res);
+        }
+        scan_info_->status_result(res);
+        return;
+    }
+    scan_info_->blen(blen);
+    std::size_t elen{};
+    if(auto res = impl::ops::details::encode_key(
+        request_context_,
+        scan_info_->end_columns(),
+        vars,
+        *getImplWorkContext().varlen_resource(),
+        scan_info_->key_end(),
+        elen,
+        msg
+       );
+       res != status::ok) {
+        if(res == status::err_type_mismatch) {
+            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
+            set_error(*request_context_, error_code::unsupported_runtime_feature_exception, msg, res);
+        }
+        scan_info_->status_result(res);
+	return;
+    }
+    scan_info_->elen(elen);
+    scan_info_->status_result(status::ok);
+}
+
+} // namespace jogasaki::executor::process::impl

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -207,15 +207,15 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return {operation_status_kind::aborted};
             }
         }
-	if (scan_block_size != 0 && scan_block_size == loop_count ){
+        if (scan_block_size != 0 && scan_block_size == loop_count ){
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time =
             std::chrono::duration_cast<std::chrono::milliseconds>(current_time - previous_time);
             if (elapsed_time.count() >= scan_yield_interval ) {
                return {operation_status_kind::yield};
             }
-	}
-	loop_count++;
+        }
+        loop_count++;
     }
     finish(context);
     if (st != status::not_found) {
@@ -370,4 +370,4 @@ void scan::dump() const noexcept {
     std::cerr << head << std::setw(width) << "field_mapper_:"
        << "not implemented yet" << std::endl;
 }
-}
+} // namespace jogasaki::executor::process::impl::ops

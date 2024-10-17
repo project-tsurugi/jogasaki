@@ -14,8 +14,8 @@ message Void {}
 
 /* For response of error containing a error message. */
 message Error {
-	sint32 code = 1;
-	string detail = 2;
+    sint32 code = 1;
+    string detail = 2;
 }
 
 // response message for RPC.
@@ -68,8 +68,8 @@ message Begin {
 
     // request is successfully completed.
     message Success {
-	    // the target transaction handle.
-	    transaction.Handle transaction_handle = 1;
+        // the target transaction handle.
+        transaction.Handle transaction_handle = 1;
     }
     
     // the response body.
@@ -116,8 +116,8 @@ message Get {
 
     // request is successfully completed.
     message Success {
-	    // the record.
-	    repeated data.Record records = 1;
+        // the record.
+        repeated data.Record records = 1;
     }
     
     // the response body.
@@ -175,27 +175,27 @@ message Batch {
     reserved 1 to 10;
 
     message Opresult {
-    	oneof opresult {
-	    	// result of begin 
-	    	Begin begin = 21;
-	
-	    	// result of commit 
-	    	Commit commit = 22;
-	    	
-	    	// result of put 
-			Put put = 23;
-	
-	    	// result of get 
-			Get get = 24;
-	
-	    	// result of remove 
-			Remove remove = 25;
-		}
+        oneof opresult {
+            // result of begin 
+            Begin begin = 21;
+
+            // result of commit 
+            Commit commit = 22;
+
+            // result of put 
+            Put put = 23;
+
+            // result of get 
+            Get get = 24;
+
+            // result of remove 
+            Remove remove = 25;
+        }
     }
 
     // request is successfully completed.
     message Success {
-    	repeated Opresult results = 1;
+        repeated Opresult results = 1;
     }
     
     // the response body.

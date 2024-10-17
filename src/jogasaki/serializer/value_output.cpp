@@ -44,7 +44,7 @@ static void write_fixed8(
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
     BOOST_ASSERT(position < end); // NOLINT
-	(void) end;
+    (void) end;
     *position = static_cast<byte_type>(value);
     ++position;
 }
@@ -65,7 +65,7 @@ static void write_bytes(
         buffer_view::iterator& position,
         buffer_view::const_iterator end) {
     BOOST_ASSERT(position + count <= end); // NOLINT
-	(void) end;
+    (void) end;
     std::memcpy(position, data, count);
     position += count;
 }

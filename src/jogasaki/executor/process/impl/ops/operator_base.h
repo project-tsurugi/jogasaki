@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -229,11 +229,11 @@ public:
         return "record_operator"sv;
     }
     if (dynamic_cast<group_operator const*>(&op)) {
-	return "group_operator"sv;
+        return "group_operator"sv;
     }
     if (dynamic_cast<cogroup_operator<void> const*>(&op)) {
-	return "cogroup_operator"sv;
+        return "cogroup_operator"sv;
     }
     return "unknown"sv;
 }
-}
+} // namespace jogasaki::executor::process::impl::ops

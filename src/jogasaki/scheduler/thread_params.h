@@ -38,7 +38,8 @@ public:
         bool busy_worker,
         std::size_t watcher_interval,
         std::size_t worker_try_count,
-        std::size_t worker_suspend_timeout
+        std::size_t worker_suspend_timeout,
+        std::size_t thousandths_ratio_check_local_first
     ) :
         threads_(threads),
         set_core_affinity_(set_core_affinity),
@@ -53,7 +54,8 @@ public:
         busy_worker_(busy_worker),
         watcher_interval_(watcher_interval),
         worker_try_count_(worker_try_count),
-        worker_suspend_timeout_(worker_suspend_timeout)
+        worker_suspend_timeout_(worker_suspend_timeout),
+        thousandths_ratio_check_local_first_(thousandths_ratio_check_local_first)
     {}
 
     explicit thread_params(std::shared_ptr<configuration> const& cfg) :
@@ -71,7 +73,8 @@ public:
             cfg->busy_worker(),
             cfg->watcher_interval(),
             cfg->worker_try_count(),
-            cfg->worker_suspend_timeout()
+            cfg->worker_suspend_timeout(),
+            cfg->thousandths_ratio_check_local_first()
         )
     {}
 
@@ -147,6 +150,13 @@ public:
         worker_suspend_timeout_ = arg;
     }
 
+    [[nodiscard]] std::size_t thousandths_ratio_check_local_first() const noexcept {
+        return thousandths_ratio_check_local_first_;
+    }
+
+    void thousandths_ratio_check_local_first(std::size_t arg) noexcept {
+        thousandths_ratio_check_local_first_ = arg;
+    }
 private:
     std::size_t threads_{};
     bool set_core_affinity_{};
@@ -162,6 +172,7 @@ private:
     std::size_t watcher_interval_{};
     std::size_t worker_try_count_{};
     std::size_t worker_suspend_timeout_{};
+    std::size_t thousandths_ratio_check_local_first_{};
 };
 
 } // namespace

@@ -159,6 +159,7 @@ tateyama::task_scheduler::task_scheduler_cfg stealing_task_scheduler::create_sch
     ret.watcher_interval(params.watcher_interval());
     ret.worker_try_count(params.worker_try_count());
     ret.worker_suspend_timeout(params.worker_suspend_timeout());
+    ret.ratio_check_local_first({params.thousandths_ratio_check_local_first(), 1000});
     return ret;
 }
 

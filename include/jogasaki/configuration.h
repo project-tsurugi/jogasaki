@@ -474,6 +474,14 @@ public:
         rtx_parallel_scan_ = arg;
     }
 
+    [[nodiscard]] std::size_t thousandths_ratio_check_local_first() const noexcept {
+        return thousandths_ratio_check_local_first_;
+    }
+
+    void thousandths_ratio_check_local_first(std::size_t arg) noexcept {
+        thousandths_ratio_check_local_first_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -528,6 +536,7 @@ public:
         print_non_default(scan_block_size);
         print_non_default(scan_yield_interval);
         print_non_default(rtx_parallel_scan);
+        print_non_default(thousandths_ratio_check_local_first);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -586,6 +595,7 @@ private:
     std::size_t scan_block_size_ = 100;
     std::size_t scan_yield_interval_ = 1;
     bool rtx_parallel_scan_ = false;
+    std::size_t thousandths_ratio_check_local_first_ = 100;
 
 };
 

@@ -20,9 +20,7 @@ message Error {
 
 // response message for RPC.
 message Response {
-    // the response message version.
-    uint64 message_version = 1;
-    reserved 2 to 10;
+    reserved 1 to 10;
     reserved 15 to 20;
     reserved 25 to 30;
     reserved 32 to 40;
@@ -53,10 +51,10 @@ message Response {
 
         // batch command.
         Batch batch = 31;
-       
-        // GetErrorInfo command. 
+
+        // GetErrorInfo command.
         GetErrorInfo get_error_info = 41;
-       
+
         // DisposeTransaction command.
         DisposeTransaction dispose_transaction = 42;
     }
@@ -71,7 +69,7 @@ message Begin {
         // the target transaction handle.
         transaction.Handle transaction_handle = 1;
     }
-    
+
     // the response body.
     oneof result {
         // request is successfully completed.
@@ -119,7 +117,7 @@ message Get {
         // the record.
         repeated data.Record records = 1;
     }
-    
+
     // the response body.
     oneof result {
         // request is successfully completed.
@@ -136,10 +134,10 @@ message Put {
 
     // request is successfully completed.
     message Success {
-        // the number of records which the operation actually written 
+        // the number of records which the operation actually written
         sint32 written = 1;
     }
-    
+
     // the response body.
     oneof result {
         // request is successfully completed.
@@ -156,10 +154,10 @@ message Remove {
 
     // request is successfully completed.
     message Success {
-        // the number of records which the operation actually removed 
+        // the number of records which the operation actually removed
         sint32 removed = 1;
     }
-    
+
     // the response body.
     oneof result {
         // request is successfully completed.
@@ -176,19 +174,19 @@ message Batch {
 
     message Opresult {
         oneof opresult {
-            // result of begin 
+            // result of begin
             Begin begin = 21;
 
-            // result of commit 
+            // result of commit
             Commit commit = 22;
 
-            // result of put 
+            // result of put
             Put put = 23;
 
-            // result of get 
+            // result of get
             Get get = 24;
 
-            // result of remove 
+            // result of remove
             Remove remove = 25;
         }
     }
@@ -197,7 +195,7 @@ message Batch {
     message Success {
         repeated Opresult results = 1;
     }
-    
+
     // the response body.
     oneof result {
         // request is successfully completed.
@@ -229,7 +227,7 @@ message GetErrorInfo {
 
       // engine error occurred while the retrieving existing error information.
       Error error = 13;
-  }
+    }
 }
 
 // DisposeTransaction operation

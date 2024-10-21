@@ -45,6 +45,7 @@
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/result_store.h>
+#include <jogasaki/durability_common.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
@@ -680,6 +681,14 @@ bool execute_load(
     return true;
 }
 
+bool is_last(commit_response_kind_set const& response_kinds, commit_response_kind kind) {
+    auto f = std::find(response_kinds.begin(), response_kinds.end(), kind);
+    if(f == response_kinds.end()) {
+        return false;
+    }
+    return ++f == response_kinds.end();
+}
+
 void process_commit_callback(
     ::sharksfin::StatusCode st,
     ::sharksfin::ErrorCode ec,
@@ -699,23 +708,12 @@ void process_commit_callback(
         << utils::hex(jobid);
     auto res = kvs::resolve(st);
     if(res != status::ok) {
-        auto& ts = *rctx->scheduler();
-        ts.schedule_task(
-            scheduler::create_custom_task(rctx.get(), [rctx, res]() {
-                auto msg = utils::create_abort_message(*rctx);
-                auto code = res == status::err_inactive_transaction ?
-                    error_code::inactive_transaction_exception :
-                    error_code::cc_exception;
-                set_error(
-                    *rctx,
-                    code,
-                    msg,
-                    res
-                );
-                scheduler::submit_teardown(*rctx);
-                return model::task_result::complete;
-            }, false)
-        );
+        auto msg = utils::create_abort_message(*rctx);
+        auto code = res == status::err_inactive_transaction ?
+            error_code::inactive_transaction_exception :
+            error_code::cc_exception;
+        set_error(*rctx, code, msg, res);
+        submit_commit_response(rctx, commit_response_kind::accepted, true, false);
         return;
     }
     rctx->transaction()->durability_marker(marker);
@@ -727,15 +725,28 @@ void process_commit_callback(
             VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
         }
     }
-    auto cr = rctx->transaction()->commit_response();
-    if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
-        scheduler::submit_teardown(*rctx);
+    auto response_kinds = rctx->commit_ctx()->response_kinds();
+    bool last_less_equals_accepted = is_last(response_kinds, commit_response_kind::accepted);
+    if(response_kinds.contains(commit_response_kind::accepted)) {
+        auto& ts = *rctx->scheduler();
+        ts.schedule_task(
+            scheduler::create_custom_task(rctx.get(), [rctx, last_less_equals_accepted]() {
+                rctx->commit_ctx()->on_response()(commit_response_kind::accepted);
+                if(last_less_equals_accepted) {
+                    // if the last response is accepted or requested, we can finish job and clean up resource here
+                    scheduler::submit_teardown(*rctx);
+                }
+                return model::task_result::complete;
+            }, false)
+        );
+    }
+    if(last_less_equals_accepted) {
         return;
     }
     // commit_response = stored, propagated, or undefined
     // current marker should have been set at least once on callback registration
     if(marker <= database.durable_manager()->current_marker()) {
-        scheduler::submit_teardown(*rctx);
+        submit_commit_response(rctx, commit_response_kind::stored, false, false);
         return;
     }
     database.durable_manager()->add_to_waitlist(rctx);
@@ -744,7 +755,9 @@ void process_commit_callback(
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx, //NOLINT(performance-unnecessary-value-param)
-    error_info_callback on_completion,
+    commit_response_callback on_response,
+    commit_response_kind_set response_kinds,
+    commit_error_callback on_error,
     api::commit_option option,
     request_info const& req_info
 ) {
@@ -761,6 +774,8 @@ scheduler::job_context::job_id_type commit_async(
         req_info,
         req
     );
+    rctx->commit_ctx(std::make_shared<commit_context>(std::move(on_response), response_kinds, std::move(on_error)));
+
     auto jobid = rctx->job()->id();
     std::string txid{tx->transaction_id()};
 
@@ -769,7 +784,8 @@ scheduler::job_context::job_id_type commit_async(
         database.config()->default_commit_response();
     tx->commit_response(cr);
 
-    auto t = scheduler::create_custom_task(rctx.get(), [&database, rctx, jobid, txid, option]() {
+    auto t = scheduler::create_custom_task(rctx.get(),
+        [&database, rctx, jobid, txid, option]() {
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committing "
             << txid
             << " job_id:"
@@ -786,7 +802,7 @@ scheduler::job_context::job_id_type commit_async(
             });
         return model::task_result::complete;
     }, true);
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, jobid, txid, req_info](){  // callback is copy-based
+    rctx->job()->callback([rctx, jobid, txid, req_info](){  // callback is copy-based
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:committed "
             << txid
             << " job_id:"
@@ -808,7 +824,6 @@ scheduler::job_context::job_id_type commit_async(
             rctx->transaction()->duration<std::chrono::nanoseconds>().count(),
             rctx->transaction()->label()
         );
-        on_completion(rctx->status_code(), rctx->error_info());
     });
     std::weak_ptr wrctx{rctx};
     rctx->job()->completion_readiness([wrctx=std::move(wrctx)]() {
@@ -824,6 +839,39 @@ scheduler::job_context::job_id_type commit_async(
     log_request(*req);
     ts.schedule_task(std::move(t));
     return jobid;
+}
+
+scheduler::job_context::job_id_type commit_async(
+    api::impl::database& database,
+    std::shared_ptr<transaction_context> tx, //NOLINT(performance-unnecessary-value-param)
+    error_info_callback on_completion, //NOLINT(performance-unnecessary-value-param)
+    api::commit_option option,
+    request_info const& req_info
+) {
+    auto cr = option.commit_response() != commit_response_kind::undefined ?
+        option.commit_response() :
+        database.config()->default_commit_response();
+    commit_response_kind_set responses{};
+    if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
+        // currently accepted and available are treated the same
+        responses.insert(commit_response_kind::accepted);
+    }
+    if(cr == commit_response_kind::stored || cr == commit_response_kind::propagated) {
+        responses.insert(commit_response_kind::stored);
+    }
+    return commit_async(
+        database,
+        std::move(tx),
+        [on_completion](commit_response_kind) {
+            on_completion(status::ok, std::make_shared<error::error_info>());
+        },
+        responses,
+        [on_completion](commit_response_kind, status st, std::shared_ptr<error::error_info> error) {
+            on_completion(st, std::move(error));
+        },
+        option,
+        req_info
+    );
 }
 
 status create_transaction(

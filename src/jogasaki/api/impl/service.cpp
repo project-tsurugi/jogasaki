@@ -539,22 +539,27 @@ void service::command_commit(
     commit_option opt{};
     opt.auto_dispose_on_success(cm.auto_dispose())
         .commit_response(from(cm.notification_type()));
-    tx.commit_async(
-        [res, req_info](
-            status st,
-            std::shared_ptr<api::error_info> info //NOLINT(performance-unnecessary-value-param)
-        ) {
-            if(st == jogasaki::status::ok) {
-                details::success<sql::response::ResultOnly>(*res, req_info);
-            } else {
-                VLOG(log_error) << log_location_prefix << info->message();
-                details::error<sql::response::ResultOnly>(*res, info.get(), req_info);
-            }
+
+    auto tctx = get_transaction_context(tx);
+    executor::commit_async(
+        get_impl(*db_),
+        tctx,
+        [res, req_info](commit_response_kind kind) {
+            (void) kind; // for now, callback does same regardless of kind
+            details::success<sql::response::ResultOnly>(*res, req_info);
+        },
+        commit_response_kind_set{opt.commit_response()},
+        [res, req_info](commit_response_kind kind, status st, std::shared_ptr<error::error_info> info) { //NOLINT(performance-unnecessary-value-param)
+            (void) kind; // for now, callback does same regardless of kind
+            (void) st;
+            VLOG(log_error) << log_location_prefix << info->message();
+            details::error<sql::response::ResultOnly>(*res, info.get(), req_info);
         },
         opt,
         req_info
     );
 }
+
 void service::command_rollback(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,

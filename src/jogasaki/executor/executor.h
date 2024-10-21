@@ -90,7 +90,7 @@ status commit(
  * @param tx the transaction used to execute the request
  * @param on_completion callback on completion of commit
  * @param option commit options
- * @param info exchange the original request/response info (mainly for logging purpose)
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return id of the job to execute commit
  * @note normal error such as SQL runtime processing failure will be reported by callback
  */
@@ -99,7 +99,30 @@ scheduler::job_context::job_id_type commit_async(
     std::shared_ptr<transaction_context> tx,
     error_info_callback on_completion,
     api::commit_option option,
-    request_info const& info
+    request_info const& req_info
+);
+
+/**
+ * @brief commit the transaction asynchronously
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
+ * @param on_response callback invoked when commit successfully makes progress to the point
+ * where `response_kinds` indicates
+ * @param response_kinds the commit response points to invoke the `on_response` callback
+ * @note currently, only `commit_response_kind::accepted` and `commit_response_kind::stored` are supported
+ * @param on_error callback invoked when commit fails
+ * @param option commit options
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
+ * @return id of the job to execute commit
+ */
+scheduler::job_context::job_id_type commit_async(
+    api::impl::database& database,
+    std::shared_ptr<transaction_context> tx,
+    commit_response_callback on_response,
+    commit_response_kind_set response_kinds,
+    commit_error_callback on_error,
+    api::commit_option option,
+    request_info const& req_info
 );
 
 /**

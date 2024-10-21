@@ -29,6 +29,7 @@
 #include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/commit_profile.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/durability_common.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/model/task.h>
@@ -83,7 +84,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                         VLOG(log_trace) << "/:jogasaki:durability_callback:operator() check_cancel "
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
                         set_cancel_status(*e);
-                        scheduler::submit_teardown(*e, false, true);
+                        submit_commit_response(e, commit_response_kind::stored, true, true);
                     }
                 );
                 if(mgr->update_current_marker(
@@ -93,7 +94,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
                         request_ctx->job()->request()->affected_txs().add(e->transaction()->transaction_id());
                         e->transaction()->profile()->set_durability_cb_invoked(durability_callback_invoked);
-                        scheduler::submit_teardown(*e, false, true);
+                        submit_commit_response(e, commit_response_kind::stored, false, true);
                     })) {
                     scheduler::submit_teardown(*request_ctx);
                     return model::task_result::complete;

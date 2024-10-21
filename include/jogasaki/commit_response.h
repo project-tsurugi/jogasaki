@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <takatori/util/enum_set.h>
+
 namespace jogasaki {
 
 enum class commit_response_kind : std::int32_t {
@@ -57,6 +59,12 @@ enum class commit_response_kind : std::int32_t {
 inline std::ostream& operator<<(std::ostream& out, commit_response_kind value) {
     return out << to_string_view(value);
 }
+
+/// @brief a set of commit_response_kind.
+using commit_response_kind_set = takatori::util::enum_set<
+        commit_response_kind,
+        commit_response_kind::undefined,
+        commit_response_kind::propagated>;
 
 }
 

@@ -25,6 +25,7 @@
 #include <tateyama/api/server/request.h>
 
 #include <jogasaki/configuration.h>
+#include <jogasaki/commit_context.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/error/error_info.h>
@@ -257,6 +258,17 @@ public:
      */
     void req_info(request_info req_info) noexcept;
 
+    /**
+     * @brief accessor for the commit context
+     * @return request_info object
+     */
+    [[nodiscard]] std::shared_ptr<commit_context> const& commit_ctx() const noexcept;
+
+    /**
+     * @brief setter for commit context
+     */
+    void commit_ctx(std::shared_ptr<commit_context> arg) noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -279,6 +291,7 @@ private:
     std::shared_ptr<request_statistics> stats_{};
 
     request_info req_info_{};
+    std::shared_ptr<commit_context> commit_ctx_{};
 };
 
 /**

@@ -229,4 +229,12 @@ void request_context::req_info(request_info req_info) noexcept {
     req_info_ = std::move(req_info);
 }
 
+std::shared_ptr<commit_context> const& request_context::commit_ctx() const noexcept {
+    return commit_ctx_;
+}
+
+void request_context::commit_ctx(std::shared_ptr<commit_context> arg) noexcept {
+    commit_ctx_ = std::move(arg);
+}
+
 }  // namespace jogasaki

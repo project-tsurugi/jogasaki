@@ -176,6 +176,7 @@ public:
     takatori::plan::process& process_;  //NOLINT
 
     memory::page_pool pool_{};  //NOLINT
+    request_context request_context_{}; //NOLINT
     memory::lifo_paged_memory_resource resource_;  //NOLINT
     memory::lifo_paged_memory_resource varlen_resource_;  //NOLINT
     memory::lifo_paged_memory_resource verifier_varlen_resource_;  //NOLINT

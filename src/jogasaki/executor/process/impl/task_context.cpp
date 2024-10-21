@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -123,6 +123,9 @@ io::record_writer* task_context::external_writer() {
 class abstract::scan_info const* task_context::scan_info() {
     return scan_info_.get();
 }
+std::shared_ptr<impl::scan_info> task_context::non_const_impl_scan_info() {
+    return scan_info_;
+}
 
 std::size_t task_context::partition() const noexcept {
     return partition_;
@@ -132,4 +135,4 @@ io::record_channel* task_context::channel() const noexcept {
     return channel_;
 }
 
-}
+} // namespace jogasaki::executor::process::impl

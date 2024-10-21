@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,16 +76,14 @@ operator_builder::operator_builder(
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
-    memory::lifo_paged_memory_resource* resource
+    request_context* request_context
 ) :
     info_(std::move(info)),
     io_info_(std::move(io_info)),
     io_exchange_map_(std::addressof(io_exchange_map)),
     relation_io_map_(std::move(relation_io_map)),
-    resource_(resource)
-{
-    (void)resource_;  //TODO remove if not necessary
-}
+    request_context_(request_context)
+{}
 
 operator_container operator_builder::operator()()&& {
     auto root = dispatch(*this, head());
@@ -132,7 +130,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
     // scan info is not passed to scan operator here, but passed back through task_context
     // in order to support parallel scan in the future
     scan_info_ = create_scan_info(node, secondary_or_primary_index);
-
+    scan_info_->encode_key(request_context_);
     return std::make_unique<scan>(
         index_++,
         *info_,
@@ -220,7 +218,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
         write_kind_from(node.operator_kind()),
         index,
         columns,
-        resource_
+        request_context_->request_resource()
     );
 }
 
@@ -404,16 +402,15 @@ operator_container create_operators(
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
-    memory::lifo_paged_memory_resource* resource
+    request_context* request_context
 ) {
     return operator_builder{
         std::move(info),
         std::move(io_info),
         std::move(relation_io_map),
         io_exchange_map,
-        resource
+        request_context
     }();
 }
 
-}
-
+} // namespace jogasaki::executor::process::impl::ops

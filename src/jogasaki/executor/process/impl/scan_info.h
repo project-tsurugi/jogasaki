@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@
 
 #include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
+#include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/executor/process/impl/ops/context_base.h>
 #include <jogasaki/kvs/storage.h>
 
 namespace jogasaki::executor::process::impl {
@@ -29,6 +31,7 @@ namespace jogasaki::executor::process::impl {
  */
 class scan_info : public abstract::scan_info {
 public:
+    using memory_resource = ops::context_base::memory_resource;
     /**
      * @brief create new object
      */
@@ -41,8 +44,8 @@ public:
 
     ~scan_info() override = default;
 
-    scan_info(scan_info const& other) = default;
-    scan_info& operator=(scan_info const& other) = default;
+    scan_info(scan_info const& other) = delete;
+    scan_info& operator=(scan_info const& other) = delete;
     scan_info(scan_info&& other) noexcept = default;
     scan_info& operator=(scan_info&& other) noexcept = default;
 
@@ -50,14 +53,29 @@ public:
     [[nodiscard]] std::vector<ops::details::search_key_field_info> const& end_columns() const noexcept;
     [[nodiscard]] kvs::end_point_kind begin_endpoint() const noexcept;
     [[nodiscard]] kvs::end_point_kind end_endpoint() const noexcept;
+    [[nodiscard]] std::unique_ptr<memory_resource> varlen_resource() noexcept;
+    [[nodiscard]] std::string_view begin_key() const noexcept;
+    [[nodiscard]] std::string_view end_key() const noexcept;
+    [[nodiscard]] kvs::end_point_kind begin_kind(bool use_secondary) const noexcept;
+    [[nodiscard]] kvs::end_point_kind end_kind(bool use_secondary) const noexcept;
+    [[nodiscard]] status status_result() const noexcept;
+    void encode_key(request_context* rc) noexcept;
+    void dump(std::ostream& out, int indent = 0) const noexcept;
 
 private:
     std::vector<ops::details::search_key_field_info> begin_columns_{};
     kvs::end_point_kind begin_endpoint_{};
     std::vector<ops::details::search_key_field_info> end_columns_{};
     kvs::end_point_kind end_endpoint_{};
+    data::aligned_buffer key_begin_{};
+    data::aligned_buffer key_end_{};
+    std::size_t blen_{};
+    std::size_t elen_{};
+    status status_result_{};
+    std::unique_ptr<memory_resource> varlen_resource_{};
+    [[nodiscard]] kvs::end_point_kind get_kind(bool use_secondary, kvs::end_point_kind endpoint) const noexcept;
 };
 
-}
+} // namespace jogasaki::executor::process::impl
 
 

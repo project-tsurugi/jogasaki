@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -126,4 +126,21 @@ aligned_buffer& aligned_buffer::assign(std::string_view sv) {
     return assign(aligned_buffer{sv});
 }
 
-} // namespace
+void aligned_buffer::dump(std::ostream& out, int indent) const noexcept{
+    std::string indent_space(indent, ' ');
+    out << indent_space << "aligned_buffer:" << "\n";
+    out << indent_space << "  capacity_: " << capacity_ << "\n";
+    out << indent_space << "  alignment_: " << alignment_ << "\n";
+    out << indent_space << "  size_: " << size_ << "\n";
+    out << indent_space << "  data_: " ;
+    for (std::size_t i = 0; i < size_; ++i) {
+        out << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data_[i]) << " ";
+        if ((i + 1) % 16 == 0) {
+            out << std::endl;
+        }
+    }
+    out << std::setfill(' ') << std::dec << std::endl;
+
+}
+
+} // namespace jogasaki::data

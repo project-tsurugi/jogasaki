@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ public:
         std::shared_ptr<io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
         io_exchange_map& io_exchange_map,
-        memory::lifo_paged_memory_resource* resource = nullptr
+        request_context* request_context = nullptr
     );
 
     [[nodiscard]] operator_container operator()() &&;
@@ -140,8 +140,7 @@ private:
     std::shared_ptr<relation_io_map> relation_io_map_{};
     operator_base::operator_index_type index_{};
     std::shared_ptr<impl::scan_info> scan_info_{};
-    memory::lifo_paged_memory_resource* resource_{};
-
+    request_context* request_context_{};
     kvs::end_point_kind from(relation::scan::endpoint::kind_type type);
 
 };
@@ -160,8 +159,7 @@ private:
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
-    memory::lifo_paged_memory_resource* resource = nullptr
+    request_context* request_context = nullptr
 );
 
-}
-
+}  // namespace jogasaki::executor::process::impl::ops

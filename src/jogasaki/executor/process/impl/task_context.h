@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +78,8 @@ public:
 
     class abstract::scan_info const* scan_info() override;
 
+    std::shared_ptr<impl::scan_info> non_const_impl_scan_info();
+
     [[nodiscard]] std::size_t partition() const noexcept;
 
     [[nodiscard]] io::record_channel* channel() const noexcept;
@@ -94,6 +96,4 @@ private:
     partition_index sink_index_{};
 };
 
-}
-
-
+} // namespace jogasaki::executor::process::impl

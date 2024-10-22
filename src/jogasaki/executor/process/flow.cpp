@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             step_->io_info(),
             step_->relation_io_map(),
             *step_->io_exchange_map(),
-            context_->request_resource()
+            context_
         );
     } catch (plan::impl::compile_exception const& e) {
         error::set_error_info(*context_, e.info());
@@ -175,14 +175,14 @@ std::shared_ptr<impl::task_context> flow::create_task_context(
         (context_->record_channel() && external_output != nullptr) ? context_->record_channel().get() : nullptr,
         sink_index
     );
-
+    auto scan = ctx->shared_scan_info();
     ctx->work_context(
         std::make_unique<impl::work_context>(
             context_,
             operators.size(),
             info_->vars_info_list().size(),
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
-            std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
+            (scan == nullptr)?std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()):scan->varlen_resource(),
             context_->database(),
             context_->transaction(),
             empty_input_from_shuffle_

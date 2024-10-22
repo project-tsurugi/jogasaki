@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,6 +75,8 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/error/error_info_factory.h>
 
 #include "verifier.h"
 
@@ -170,7 +172,7 @@ TEST_F(scan_test, simple) {
     auto tx = wrap(db_->create_transaction());
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), request_context_.request_resource(), &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -235,8 +237,7 @@ TEST_F(scan_test, nullable_fields) {
     auto tx = wrap(db_->create_transaction());
     auto sinfo = std::make_shared<impl::scan_info>();
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
-
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), request_context_.request_resource(), &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
@@ -326,10 +327,14 @@ TEST_F(scan_test, scan_info) {
         &output_variable_info
     };
 
+    auto transaction_ctx = std::make_shared<transaction_context>();
+    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
+    request_context_.transaction(transaction_ctx);
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &resource_};
-    auto sinfo = builder.create_scan_info(target, *primary_idx);
+    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
+    std::unique_ptr<memory::lifo_paged_memory_resource> vr = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
+    auto sinfo = builder.create_scan_info(target, *primary_idx,std::move(vr),&request_context_);
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
     put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/B"}), create_record<kind::float8>(1.0));
@@ -337,8 +342,7 @@ TEST_F(scan_test, scan_info) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"}), create_record<kind::float8>(3.0));
 
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
-
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), request_context_.request_resource(), &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
@@ -416,10 +420,13 @@ TEST_F(scan_test, secondary_index) {
         &input_variable_info,
         &output_variable_info
     };
-
+    auto transaction_ctx = std::make_shared<transaction_context>();
+    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
+    request_context_.transaction(transaction_ctx);
     io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &resource_};
-    auto sinfo = builder.create_scan_info(target, *secondary_idx);
+    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
+    std::unique_ptr<memory::lifo_paged_memory_resource> vr = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
+    auto sinfo = builder.create_scan_info(target, *secondary_idx,std::move(vr),&request_context_);
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
@@ -432,8 +439,7 @@ TEST_F(scan_test, secondary_index) {
     put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(300, 30), {});
 
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), sinfo.get(), &resource_, &varlen_resource_);
-
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), sinfo.get(), request_context_.request_resource(), &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
@@ -545,11 +551,14 @@ TEST_F(scan_test, host_variables) {
         &input_variable_info,
         &output_variable_info
     };
-
+    auto transaction_ctx = std::make_shared<transaction_context>();
+    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
+    request_context_.transaction(transaction_ctx);
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
-    operator_builder builder{processor_info_, {}, {}, exchange_map, &resource_};
-    auto sinfo = builder.create_scan_info(target, *primary_idx);
+    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
+    std::unique_ptr<memory::lifo_paged_memory_resource> vr = std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool());
+    auto sinfo = builder.create_scan_info(target, *primary_idx, std::move(vr),&request_context_);
     mock::task_context task_ctx{ {}, {}, {}, {sinfo}};
 
     put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 10), create_record<kind::int8>(1));
@@ -557,7 +566,7 @@ TEST_F(scan_test, host_variables) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
 
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), &resource_, &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), sinfo.get(), request_context_.request_resource(), &varlen_resource_);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -566,5 +575,4 @@ TEST_F(scan_test, host_variables) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
-}
-
+} // namespace jogasaki::executor::process::impl::ops

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,13 +69,7 @@ void scan_context::dump() const noexcept {
        << "    " << std::setw(20) << "iterator:"
        << (it_ ? it_.get() : nullptr) << "\n"
        << "    " << std::setw(20) << "scan_info:"
-       << (scan_info_ ? scan_info_ : nullptr) << "\n"
-       << "    " << std::setw(20) << "key_begin_size:"
-       << key_begin_.size() << "\n"
-       << "    " << std::setw(20) << "key_end_size:"
-       << key_end_.size() << std::endl;
+       << (scan_info_ ? scan_info_ : nullptr) << "\n";
 }
 
-}
-
-
+} // namespace jogasaki::executor::process::impl::ops

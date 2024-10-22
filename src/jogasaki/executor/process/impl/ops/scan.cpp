@@ -207,7 +207,8 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return {operation_status_kind::aborted};
             }
         }
-        if (scan_block_size != 0 && scan_block_size == loop_count ){
+        if (scan_block_size != 0 && scan_block_size <= loop_count ){
+            loop_count = 0;
             auto current_time = std::chrono::steady_clock::now();
             auto elapsed_time =
             std::chrono::duration_cast<std::chrono::milliseconds>(current_time - previous_time);

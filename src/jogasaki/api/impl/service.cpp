@@ -536,22 +536,33 @@ void service::command_commit(
     if(! tx) {
         return;
     }
+    auto nt = from(cm.notification_type());
+    auto cr = nt != commit_response_kind::undefined ? nt : db_->config()->default_commit_response();
+    commit_response_kind_set responses{};
+    if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
+        // currently accepted and available are treated the same
+        responses.insert(commit_response_kind::accepted);
+        cr = commit_response_kind::accepted;
+    }
+    if(cr == commit_response_kind::stored || cr == commit_response_kind::propagated) {
+        responses.insert(commit_response_kind::stored);
+        cr = commit_response_kind::stored;
+    }
+
     commit_option opt{};
-    opt.auto_dispose_on_success(cm.auto_dispose())
-        .commit_response(from(cm.notification_type()));
+    opt.auto_dispose_on_success(cm.auto_dispose()).commit_response(cr);
 
     auto tctx = get_transaction_context(tx);
     executor::commit_async(
         get_impl(*db_),
         tctx,
-        [res, req_info](commit_response_kind kind) {
-            (void) kind; // for now, callback does same regardless of kind
+        [res, req_info](commit_response_kind) {
+            // for now, callback does same regardless of kind
             details::success<sql::response::ResultOnly>(*res, req_info);
         },
         commit_response_kind_set{opt.commit_response()},
-        [res, req_info](commit_response_kind kind, status st, std::shared_ptr<error::error_info> info) { //NOLINT(performance-unnecessary-value-param)
-            (void) kind; // for now, callback does same regardless of kind
-            (void) st;
+        [res, req_info](commit_response_kind, status, std::shared_ptr<error::error_info> info) { //NOLINT(performance-unnecessary-value-param)
+            // for now, callback does same regardless of kind
             VLOG(log_error) << log_location_prefix << info->message();
             details::error<sql::response::ResultOnly>(*res, info.get(), req_info);
         },

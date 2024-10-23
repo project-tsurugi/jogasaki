@@ -93,6 +93,7 @@ status commit(
  * @param req_info exchange the original request/response info (mainly for logging purpose)
  * @return id of the job to execute commit
  * @note normal error such as SQL runtime processing failure will be reported by callback
+ * @deprecated Use `commit_async` with commit_response_callback arg. This function is left for testing.
  */
 scheduler::job_context::job_id_type commit_async(
     api::impl::database& database,

@@ -66,5 +66,4 @@ using commit_response_kind_set = takatori::util::enum_set<
         commit_response_kind::undefined,
         commit_response_kind::propagated>;
 
-}
-
+}  // namespace jogasaki

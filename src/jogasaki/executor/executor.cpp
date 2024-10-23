@@ -83,6 +83,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_error.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
 
@@ -761,6 +762,13 @@ scheduler::job_context::job_id_type commit_async(
     api::commit_option option,
     request_info const& req_info
 ) {
+    // currently response_kinds contains at most one element
+    assert_with_exception(response_kinds.size() <= 1, response_kinds);
+    assert_with_exception(
+        response_kinds.empty() || response_kinds.contains(commit_response_kind::accepted) ||
+        response_kinds.contains(commit_response_kind::stored), response_kinds
+    );
+
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::commit);
     req->status(scheduler::request_detail_status::accepted);
     req->transaction_id(tx->transaction_id());
@@ -782,6 +790,7 @@ scheduler::job_context::job_id_type commit_async(
     auto cr = option.commit_response() != commit_response_kind::undefined ?
         option.commit_response() :
         database.config()->default_commit_response();
+    assert_with_exception((cr == commit_response_kind::accepted || cr == commit_response_kind::stored), cr);
     tx->commit_response(cr);
 
     auto t = scheduler::create_custom_task(rctx.get(),
@@ -855,10 +864,13 @@ scheduler::job_context::job_id_type commit_async(
     if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
         // currently accepted and available are treated the same
         responses.insert(commit_response_kind::accepted);
+        cr = commit_response_kind::accepted;
     }
     if(cr == commit_response_kind::stored || cr == commit_response_kind::propagated) {
         responses.insert(commit_response_kind::stored);
+        cr = commit_response_kind::stored;
     }
+    option.commit_response(cr);
     return commit_async(
         database,
         std::move(tx),

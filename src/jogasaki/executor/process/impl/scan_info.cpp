@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,4 +50,48 @@ kvs::end_point_kind scan_info::end_endpoint() const noexcept {
     return end_endpoint_;
 }
 
+[[nodiscard]] data::aligned_buffer & scan_info::key_begin() noexcept {
+    return key_begin_;
 }
+
+[[nodiscard]] data::aligned_buffer & scan_info::key_end() noexcept {
+    return key_end_;
+}
+void scan_info::blen(std::size_t s) noexcept {
+    blen_ = s;
+}
+void scan_info::elen(std::size_t s) noexcept {
+    elen_ = s;
+}
+[[nodiscard]] std::string_view scan_info::begin_key() const noexcept{
+    return {static_cast<char*>(key_begin_.data()), blen_};
+}
+[[nodiscard]] std::string_view scan_info::end_key() const noexcept{
+    return {static_cast<char*>(key_end_.data()), elen_};
+}
+[[nodiscard]] kvs::end_point_kind scan_info::get_kind(bool use_secondary, kvs::end_point_kind endpoint) const noexcept {
+    if (use_secondary) {
+        if (endpoint == kvs::end_point_kind::inclusive) {
+            return kvs::end_point_kind::prefixed_inclusive;
+        }
+        if (endpoint == kvs::end_point_kind::exclusive) {
+            return kvs::end_point_kind::prefixed_exclusive;
+        }
+    }
+    return endpoint;
+}
+[[nodiscard]] kvs::end_point_kind scan_info::begin_kind(bool use_secondary) const noexcept{
+    return get_kind(use_secondary, begin_endpoint_);
+}
+[[nodiscard]] kvs::end_point_kind scan_info::end_kind(bool use_secondary) const noexcept{
+    return get_kind(use_secondary, end_endpoint_);
+}
+
+[[nodiscard]] status scan_info::status_result() const noexcept{
+    return status_result_;
+}
+void scan_info::status_result(status s) noexcept{
+    status_result_ = s;
+}
+
+} // namespace jogasaki::executor::process::impl

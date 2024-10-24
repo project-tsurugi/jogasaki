@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
 #include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/request_context.h>
 
@@ -84,6 +85,10 @@ public:
 
     void deactivate_writer(writer_index idx) override;
 
+    [[nodiscard]] impl::work_context& getImplWorkContext() const;
+
+    void encode_key() noexcept;
+
 private:
     request_context* request_context_{};
     std::size_t partition_{};
@@ -94,6 +99,4 @@ private:
     partition_index sink_index_{};
 };
 
-}
-
-
+} // namespace jogasaki::executor::process::impl

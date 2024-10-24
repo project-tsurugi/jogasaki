@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ processor::processor(
     std::shared_ptr<ops::io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
-    memory::lifo_paged_memory_resource* resource
+    request_context* request_context
 ) :
     info_(std::move(info)),
     operators_(
@@ -52,7 +52,7 @@ processor::processor(
             std::move(io_info),
             std::move(relation_io_map),
             io_exchange_map,
-            resource
+            request_context
         )
     ),
     relation_io_map_(std::move(relation_io_map))
@@ -96,4 +96,4 @@ ops::operator_container const& processor::operators() const noexcept {
     return operators_;
 }
 
-}
+} // namespace jogasaki::executor::process::impl

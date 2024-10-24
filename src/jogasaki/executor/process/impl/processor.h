@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ public:
      * @param io_info input/output information
      * @param relation_io_map mapping from relation to input/output indices
      * @param io_exchange_map map from input/output to exchange operator
-     * @param resource the memory resource to build the structures needed by this processor
+     * @param request_context memory resource for initializing and managing processor structures
      * @throws plan::impl::compile_exception if the processor construction fails
      */
     processor(
@@ -56,7 +56,7 @@ public:
         std::shared_ptr<ops::io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
         io_exchange_map& io_exchange_map,
-        memory::lifo_paged_memory_resource* resource
+        request_context* request_context
     );
 
     /**
@@ -78,6 +78,4 @@ private:
     std::shared_ptr<relation_io_map> relation_io_map_{};
 };
 
-}
-
-
+} // namespace jogasaki::executor::process::impl

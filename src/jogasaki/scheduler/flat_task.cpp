@@ -146,7 +146,8 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
         begin = clock::now();
     }
     VLOG_LP(log_trace) << "task begin " << *this << " job_id:" << utils::hex(req_context_->job()->id())
-                       << " kind:" << kind_ << " sticky:" << sticky_;
+                       << " kind:" << kind_ << " sticky:" << sticky_ << " worker:" << ctx.index()
+                       << " stolen:" << ctx.task_is_stolen();
     bool ret = false;
     switch(kind_) {
         using kind = flat_task_kind;
@@ -175,7 +176,9 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
         }
     }
     VLOG_LP(log_trace) << "task end " << *this << " took(ns):" << took_ns
-                       << " job_id:" << utils::hex(req_context_->job()->id()) << " kind:" << kind_;
+                       << " job_id:" << utils::hex(req_context_->job()->id()) << " kind:" << kind_
+                       << " sticky:" << sticky_ << " worker:" << ctx.index() << " stolen:" << ctx.task_is_stolen();
+
     return ret;
 }
 

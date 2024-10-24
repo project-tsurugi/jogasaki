@@ -730,17 +730,27 @@ void process_commit_callback(
     auto response_kinds = rctx->commit_ctx()->response_kinds();
     bool last_less_equals_accepted = is_last(response_kinds, commit_response_kind::accepted);
     if(response_kinds.contains(commit_response_kind::accepted)) {
+        static constexpr auto body = [](
+            std::shared_ptr<request_context> const& rctx,
+            bool last_less_equals_accepted
+        ) {
+            if(last_less_equals_accepted) {
+                log_commit_end(*rctx);
+            }
+            rctx->commit_ctx()->on_response()(commit_response_kind::accepted);
+            if(last_less_equals_accepted) {
+                // if the last response is accepted or requested, we can finish job and clean up resource here
+                scheduler::submit_teardown(*rctx);
+            }
+        };
+        if(global::config_pool()->direct_commit_callback()) {
+            body(rctx, last_less_equals_accepted);
+            return;
+        }
         auto& ts = *rctx->scheduler();
         ts.schedule_task(
             scheduler::create_custom_task(rctx.get(), [rctx, last_less_equals_accepted]() {
-                if(last_less_equals_accepted) {
-                    log_commit_end(*rctx);
-                }
-                rctx->commit_ctx()->on_response()(commit_response_kind::accepted);
-                if(last_less_equals_accepted) {
-                    // if the last response is accepted or requested, we can finish job and clean up resource here
-                    scheduler::submit_teardown(*rctx);
-                }
+                body(rctx, last_less_equals_accepted);
                 return model::task_result::complete;
             }, false)
         );

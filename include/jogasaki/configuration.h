@@ -482,6 +482,14 @@ public:
         thousandths_ratio_check_local_first_ = arg;
     }
 
+    [[nodiscard]] bool direct_commit_callback() const noexcept {
+        return direct_commit_callback_;
+    }
+
+    void direct_commit_callback(bool arg) noexcept {
+        direct_commit_callback_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -537,6 +545,7 @@ public:
         print_non_default(scan_yield_interval);
         print_non_default(rtx_parallel_scan);
         print_non_default(thousandths_ratio_check_local_first);
+        print_non_default(direct_commit_callback);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -596,6 +605,7 @@ private:
     std::size_t scan_yield_interval_ = 1;
     bool rtx_parallel_scan_ = false;
     std::size_t thousandths_ratio_check_local_first_ = 100;
+    bool direct_commit_callback_ = false;
 
 };
 

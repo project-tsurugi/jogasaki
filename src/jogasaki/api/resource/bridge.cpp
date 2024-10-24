@@ -257,6 +257,9 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<std::size_t>("dev_thousandths_ratio_check_local_first")) {
         ret->thousandths_ratio_check_local_first(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_direct_commit_callback")) {
+        ret->direct_commit_callback(v.value());
+    }
     return true;
 }
 

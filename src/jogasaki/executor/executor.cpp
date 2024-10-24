@@ -41,6 +41,7 @@
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/commit_common.h>
 #include <jogasaki/commit_profile.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
@@ -732,6 +733,9 @@ void process_commit_callback(
         auto& ts = *rctx->scheduler();
         ts.schedule_task(
             scheduler::create_custom_task(rctx.get(), [rctx, last_less_equals_accepted]() {
+                if(last_less_equals_accepted) {
+                    log_commit_end(*rctx);
+                }
                 rctx->commit_ctx()->on_response()(commit_response_kind::accepted);
                 if(last_less_equals_accepted) {
                     // if the last response is accepted or requested, we can finish job and clean up resource here
@@ -811,28 +815,9 @@ scheduler::job_context::job_id_type commit_async(
             });
         return model::task_result::complete;
     }, true);
-    rctx->job()->callback([rctx, jobid, txid, req_info](){  // callback is copy-based
-        VLOG(log_debug_timing_event) << "/:jogasaki:timing:committed "
-            << txid
-            << " job_id:"
-            << utils::hex(jobid);
-        VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
-            << txid
-            << " status:"
-            << (rctx->status_code() == status::ok ? "committed" : "aborted");
-        rctx->transaction()->profile()->set_commit_job_completed();
-        auto tx_type = utils::tx_type_from(*rctx->transaction());
-        auto result = utils::result_from(rctx->status_code());
-        rctx->transaction()->end_time(transaction_context::clock::now());
-        external_log::tx_end(
-            req_info,
-            "",
-            txid,
-            tx_type,
-            result,
-            rctx->transaction()->duration<std::chrono::nanoseconds>().count(),
-            rctx->transaction()->label()
-        );
+    rctx->job()->callback([rctx, txid, jobid](){
+        // no-op just log and keep rctx
+        VLOG_LP(log_trace) << "commit job end job_id:" << utils::hex(jobid) << " " << txid;
     });
     std::weak_ptr wrctx{rctx};
     rctx->job()->completion_readiness([wrctx=std::move(wrctx)]() {

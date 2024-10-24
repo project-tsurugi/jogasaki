@@ -27,6 +27,7 @@
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/request_context_factory.h>
+#include <jogasaki/commit_common.h>
 #include <jogasaki/commit_profile.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/durability_manager.h>
@@ -53,6 +54,7 @@ void submit_commit_response(
     auto& ts = *rctx->scheduler();
     ts.schedule_task(
         scheduler::create_custom_task(rctx.get(), [rctx, kind, teardown_try_on_suspended_worker, is_error]() {
+            log_commit_end(*rctx);
             if(is_error) {
                 rctx->commit_ctx()->on_error()(kind, rctx->status_code(), rctx->error_info());
             } else {

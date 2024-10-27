@@ -55,10 +55,10 @@ public:
     using field_index_type = meta::record_meta::field_index_type;
 
     ~flow() override;
-    flow(flow const& other) = default;
-    flow& operator=(flow const& other) = default;
-    flow(flow&& other) noexcept = default;
-    flow& operator=(flow&& other) noexcept = default;
+    flow(flow const& other) = delete;
+    flow& operator=(flow const& other) = delete;
+    flow(flow&& other) noexcept = delete;
+    flow& operator=(flow&& other) noexcept = delete;
 
     /**
      * @brief create new instance with empty schema (for testing)
@@ -118,6 +118,7 @@ private:
     class request_context* context_{};
     step* owner_{};
     std::size_t downstream_partitions_{default_partitions};
+    std::mutex mutex_{};
 };
 
 }  // namespace jogasaki::executor::exchange::group

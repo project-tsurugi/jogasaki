@@ -100,6 +100,7 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
 }
 
 flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
+    std::unique_lock lk{mutex_};
     sinks_.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(std::make_unique<group::sink>(downstream_partitions_, info_, context()));

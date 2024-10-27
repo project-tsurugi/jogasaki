@@ -38,6 +38,11 @@ namespace jogasaki::data {
  * @details this object can be used to store emit result record. This can be lazily initialized after construction with
  * the number of partitions. The same number of internal stores are kept. Iterator is provided
  * to iterate on merged result.
+ * @warning this object is for testing purpose only and thread safety is fairly limited.
+ * In testing it's assumed multiple writers write to the store concurrently, but only single reader reads from it to
+ * verify after writers completely finished.
+ * Adding new partition is thread-safe, but read operations are not protected and should not be executed concurrently
+ * with other operations.
  */
 class cache_align result_store {
 public:
@@ -53,8 +58,8 @@ public:
     ~result_store() = default;
     result_store(result_store const& other) = delete;
     result_store& operator=(result_store const& other) = delete;
-    result_store(result_store&& other) noexcept = default;
-    result_store& operator=(result_store&& other) noexcept = default;
+    result_store(result_store&& other) noexcept = delete;
+    result_store& operator=(result_store&& other) noexcept = delete;
 
     /**
      * @brief initialize the result store
@@ -234,8 +239,10 @@ private:
     resources_type result_varlen_resources_{};
     maybe_shared_ptr<meta::record_meta> meta_{};
 
+    // protect concurrent member add to `partitions_`, `result_record_resources_`, and `result_varlen_resources_`
+    mutable std::mutex mutex_{};
+
     void add_partition_internal(maybe_shared_ptr<meta::record_meta> const& meta);
 };
 
-}
-
+}  // namespace jogasaki::data

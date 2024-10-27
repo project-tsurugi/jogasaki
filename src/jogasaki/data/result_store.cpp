@@ -25,11 +25,13 @@
 
 namespace jogasaki::data {
 
-result_store::partition_type & result_store::partition(std::size_t index) noexcept {
+result_store::partition_type& result_store::partition(std::size_t index) noexcept {
+    std::unique_lock lk{mutex_};
     return *partitions_[index];
 }
 
 result_store::partition_type const& result_store::partition(std::size_t index) const noexcept {
+    std::unique_lock lk{mutex_};
     return *partitions_[index];
 }
 
@@ -55,6 +57,7 @@ void result_store::initialize(std::size_t partitions, maybe_shared_ptr<meta::rec
 }
 
 std::size_t result_store::add_partition() {
+    std::unique_lock lk{mutex_};
     add_partition_internal(meta_);
     return partitions_.size()-1;
 }
@@ -64,14 +67,17 @@ maybe_shared_ptr<meta::record_meta> const& result_store::meta() const noexcept {
 }
 
 std::size_t result_store::partitions() const noexcept {
+    std::unique_lock lk{mutex_};
     return partitions_.size();
 }
 
 bool result_store::exists(std::size_t index) const noexcept {
+    std::unique_lock lk{mutex_};
     return index < partitions_.size() && partitions_[index] != nullptr;
 }
 
 bool result_store::empty() const noexcept {
+    std::unique_lock lk{mutex_};
     for(auto&& p : partitions_) {
         if(p && p->begin() != p->end()) {
             return false;
@@ -191,5 +197,4 @@ bool result_store::iterator::valid() const noexcept {
     return container_ != nullptr;
 }
 
-}
-
+}  // namespace jogasaki::data

@@ -214,8 +214,11 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 std::chrono::duration_cast<std::chrono::milliseconds>(current_time - previous_time);
             if (elapsed_time.count() >= scan_yield_interval) {
                 ++ctx.yield_count_;
-                VLOG_LP(log_trace_fine) << "scan operator yields count:" << ctx.yield_count_
-                                        << " loop_count:" << loop_count;
+                VLOG_LP(log_trace_fine
+                ) << "scan operator yields count:"
+                  << ctx.yield_count_ << " loop_count:" << loop_count << " elapsed(us):"
+                  << std::chrono::duration_cast<std::chrono::microseconds>(current_time - previous_time).count();
+
                 return {operation_status_kind::yield};
             }
         }

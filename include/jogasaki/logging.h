@@ -54,5 +54,10 @@ static constexpr std::int32_t log_debug = 40;
  */
 static constexpr std::int32_t log_trace = 50;
 
+/**
+ * @brief logging level constant to trace fine functionalities such as task scheduling
+ */
+static constexpr std::int32_t log_trace_fine = 70;
+
 } // namespace
 

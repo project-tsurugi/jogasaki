@@ -284,6 +284,7 @@ public:
     [[nodiscard]] request_context* req_context() const noexcept;
 
 private:
+    std::size_t id_{undefined_id};
     flat_task_kind kind_{};
     maybe_shared_ptr<request_context> req_context_{};
     std::shared_ptr<model::task> origin_{};
@@ -292,6 +293,8 @@ private:
     bool sticky_{};
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
+
+    static inline std::atomic_size_t id_src_{};  //NOLINT
 
     /**
      * @return true if job completes together with the task

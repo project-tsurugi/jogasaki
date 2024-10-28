@@ -145,6 +145,9 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
     if (VLOG_IS_ON(log_debug_timing_event_fine)) {
         begin = clock::now();
     }
+    VLOG_LP(log_trace_fine) << "task begin " << *this << " job_id:" << utils::hex(req_context_->job()->id())
+                            << " kind:" << kind_ << " sticky:" << sticky_ << " worker:" << ctx.index()
+                            << " stolen:" << ctx.task_is_stolen() << " last_steal_from:" << ctx.last_steal_from();
     bool ret = false;
     switch(kind_) {
         using kind = flat_task_kind;
@@ -157,11 +160,13 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
         case kind::load: load(); break;
     }
     std::chrono::time_point<clock> end{};
+    std::size_t took_ns{};
     if (VLOG_IS_ON(log_debug_timing_event_fine)) {
         end = clock::now();
+        took_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
     }
     if(auto req_detail = job()->request()) {
-        req_detail->task_duration_ns() += std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+        req_detail->task_duration_ns() += took_ns;
         ++req_detail->task_count();
         if(sticky_) {
             ++req_detail->sticky_task_count();
@@ -170,6 +175,10 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
             ++req_detail->task_steling_count();
         }
     }
+    VLOG_LP(log_trace_fine) << "task end " << *this << " took(ns):" << took_ns
+                            << " job_id:" << utils::hex(req_context_->job()->id()) << " kind:" << kind_
+                            << " sticky:" << sticky_ << " worker:" << ctx.index() << " stolen:" << ctx.task_is_stolen();
+
     return ret;
 }
 
@@ -260,7 +269,7 @@ flat_task::identity_type flat_task::id() const {
     if (origin_) {
         return origin_->id();
     }
-    return undefined_id;
+    return id_;
 }
 
 flat_task::flat_task(
@@ -278,6 +287,7 @@ flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::dag_events>,
     request_context* rctx
 ) noexcept:
+    id_(id_src_++),
     kind_(flat_task_kind::dag_events),
     req_context_(rctx)
 {}
@@ -287,6 +297,7 @@ flat_task::flat_task(
     request_context* rctx,
     model::graph& g
 ) noexcept:
+    id_(id_src_++),
     kind_(flat_task_kind::bootstrap),
     req_context_(rctx),
     graph_(std::addressof(g))
@@ -335,6 +346,7 @@ flat_task::flat_task(
     task_enum_tag_t<flat_task_kind::teardown>,
     request_context* rctx
 ) noexcept:
+    id_(id_src_++),
     kind_(flat_task_kind::teardown),
     req_context_(rctx)
 {}
@@ -344,6 +356,7 @@ flat_task::flat_task(
     request_context* rctx,
     executor::common::write_statement* write
 ) noexcept:
+    id_(id_src_++),
     kind_(flat_task_kind::write),
     req_context_(rctx),
     write_(write),
@@ -363,6 +376,7 @@ flat_task::flat_task(
     std::shared_ptr<request_context> rctx,
     std::shared_ptr<statement_context> sctx
 ) noexcept:
+    id_(id_src_++),
     kind_(flat_task_kind::resolve),
     req_context_(std::move(rctx)),
     sctx_(std::move(sctx))
@@ -396,6 +410,7 @@ void flat_task::load() {
 
 flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rctx,
     std::shared_ptr<executor::file::loader> ldr) noexcept:
+    id_(id_src_++),
     kind_(flat_task_kind::load),
     req_context_(rctx),
     loader_(std::move(ldr))
@@ -412,7 +427,4 @@ void flat_task::execute_wrapped() {
     }
 }
 
-}
-
-
-
+}  // namespace jogasaki::scheduler

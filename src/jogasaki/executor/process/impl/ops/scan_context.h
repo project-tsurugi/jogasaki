@@ -77,6 +77,7 @@ private:
     impl::scan_info const* scan_info_{};
     data::aligned_buffer key_begin_{};
     data::aligned_buffer key_end_{};
+    std::size_t yield_count_{};
 };
 
 }

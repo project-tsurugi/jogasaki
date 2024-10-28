@@ -70,7 +70,7 @@ std::size_t flow::check_empty_input_and_calculate_partitions() {
         if(flow.kind() == model::step_kind::forward) {
             // if forward, downstream partition must be same as upstream partitions
             // for now, at most one input forward exchange exists
-            return unsafe_downcast<executor::exchange::forward::flow>(flow).sinks().size();
+            return unsafe_downcast<executor::exchange::forward::flow>(flow).sink_count();
         }
         if(flow.kind() != model::step_kind::group && flow.kind() != model::step_kind::aggregate) {
             shuffle_input = false;
@@ -118,10 +118,9 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     // currently at most one output exchange exists
     assert_with_exception(exchange_map->output_count() <= 1, exchange_map->output_count());
     for(std::size_t i=0, n=exchange_map->output_count(); i < n; ++i) {
-        auto [sinks, sources] =
-            dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object(*context_))
-                .setup_partitions(partitions);
-        sink_idx_base = sinks.size() - partitions;
+        auto& f = dynamic_cast<executor::exchange::flow&>(exchange_map->output_at(i)->data_flow_object(*context_));
+        f.setup_partitions(partitions);
+        sink_idx_base = f.sink_count() - partitions;
     }
 
     contexts.reserve(partitions);

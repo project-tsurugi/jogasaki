@@ -54,15 +54,15 @@ public:
     {}
 
     sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-        auto l_srcs = dynamic_cast<executor::exchange::group::flow&>(left_upstream_->data_flow_object(*context_)).sources();
-        auto r_srcs = dynamic_cast<executor::exchange::group::flow&>(right_upstream_->data_flow_object(*context_)).sources();
-        tasks_.reserve(l_srcs.size());
-        assert(l_srcs.size() == r_srcs.size());
-        for(std::size_t i = 0, n = l_srcs.size(); i < n; ++i) {
+        auto& l_flow = dynamic_cast<executor::exchange::group::flow&>(left_upstream_->data_flow_object(*context_));
+        auto& r_flow = dynamic_cast<executor::exchange::group::flow&>(right_upstream_->data_flow_object(*context_));
+        tasks_.reserve(l_flow.source_count());
+        assert(l_flow.source_count() == r_flow.source_count());
+        for(std::size_t i = 0, n = l_flow.source_count(); i < n; ++i) {
             if (params_->use_priority_queue) {
-                tasks_.emplace_back(std::make_unique<priority_queue_consumer_task>(context_, step_, l_srcs[i].acquire_reader(), r_srcs[i].acquire_reader(), meta_, meta_));
+                tasks_.emplace_back(std::make_unique<priority_queue_consumer_task>(context_, step_, l_flow.source_at(i).acquire_reader(), r_flow.source_at(i).acquire_reader(), meta_, meta_));
             } else {
-                tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, l_srcs[i].acquire_reader(), r_srcs[i].acquire_reader(), meta_, meta_));
+                tasks_.emplace_back(std::make_unique<consumer_task>(context_, step_, l_flow.source_at(i).acquire_reader(), r_flow.source_at(i).acquire_reader(), meta_, meta_));
             }
         }
         return takatori::util::sequence_view{&*(tasks_.begin()), &*(tasks_.end())};

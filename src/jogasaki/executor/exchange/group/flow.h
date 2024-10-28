@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <memory>
 #include <vector>
+#include <deque>
 
 #include <takatori/util/maybe_shared_ptr.h>
 #include <takatori/util/sequence_view.h>
@@ -39,13 +40,6 @@
 #include "source.h"
 
 namespace jogasaki::executor::exchange::group {
-
-namespace impl {
-
-flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<group::source>>& vp);
-flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<group::sink>>& vp);
-
-} // namespace impl
 
 /**
  * @brief group step data flow
@@ -92,11 +86,15 @@ public:
 
     [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    [[nodiscard]] sinks_sources setup_partitions(std::size_t partitions) override;
+    void setup_partitions(std::size_t partitions) override;
 
-    [[nodiscard]] sink_list_view sinks() override;
+    [[nodiscard]] std::size_t sink_count() const noexcept override;
 
-    [[nodiscard]] source_list_view sources() override;
+    [[nodiscard]] std::size_t source_count() const noexcept override;
+
+    [[nodiscard]] exchange::sink& sink_at(std::size_t index) override;
+
+    [[nodiscard]] exchange::source& source_at(std::size_t index) override;
 
     /**
      * @brief transfer the input partitions from sinks to sources
@@ -113,7 +111,7 @@ public:
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<group_info> info_{};
-    std::vector<std::unique_ptr<group::sink>> sinks_;
+    std::deque<std::unique_ptr<group::sink>> sinks_;  // using deque to avoid relocation
     std::vector<std::unique_ptr<group::source>> sources_{};
     class request_context* context_{};
     step* owner_{};

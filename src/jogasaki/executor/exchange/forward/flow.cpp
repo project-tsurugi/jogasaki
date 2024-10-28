@@ -20,9 +20,6 @@
 #include <vector>
 #include <glog/logging.h>
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/universal_extractor.h>
-
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/constants.h>
@@ -37,36 +34,6 @@
 #include <jogasaki/meta/record_meta.h>
 
 namespace jogasaki::executor::exchange::forward {
-
-using takatori::util::unsafe_downcast;
-
-namespace impl {
-
-flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<forward::source>>& vp) {
-    takatori::util::universal_extractor<exchange::source> ext {
-            [](void* cursor) -> exchange::source& {
-                return unsafe_downcast<exchange::source>(**static_cast<std::unique_ptr<forward::source>*>(cursor));
-            },
-            [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<forward::source>*>(cursor) + offset); //NOLINT
-            },
-    };
-    return flow::source_list_view{ vp, ext };
-}
-
-flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::sink>>& vp) {
-    takatori::util::universal_extractor<exchange::sink> ext {
-            [](void* cursor) -> exchange::sink& {
-                return unsafe_downcast<exchange::sink>(**static_cast<std::unique_ptr<forward::sink>*>(cursor));
-            },
-            [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<forward::sink>*>(cursor) + offset); //NOLINT
-            },
-    };
-    return flow::sink_list_view{ vp, ext };
-}
-
-} // namespace impl
 
 flow::~flow() = default;
 
@@ -85,9 +52,8 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
     return tasks_;
 }
 
-flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
+void flow::setup_partitions(std::size_t partitions) {
     // additional sinks/sources for requested partitions
-    sinks_.reserve(sinks_.size() + partitions);
     std::vector<std::shared_ptr<input_partition>> shared_partitions{};
     std::shared_ptr<std::atomic_size_t> write_count{
         info_->limit().has_value() ? std::make_shared<std::atomic_size_t>(0) : nullptr
@@ -101,7 +67,6 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
             std::make_unique<forward::sink>(info_, context_, write_count, shared_partitions[i])
         );
     }
-    sources_.reserve(sources_.size() + partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         sources_.emplace_back(std::make_unique<forward::source>(
             info_,
@@ -111,17 +76,22 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
     }
     VLOG_LP(log_trace) << "added new srcs/sinks flow:" << this << ") partitions:" << partitions
                        << " #sinks:" << sinks_.size() << " #sources:" << sources_.size();
-
-    return {impl::cast_to_exchange_sink(sinks_),
-            impl::cast_to_exchange_source(sources_)};
 }
 
-flow::sink_list_view flow::sinks() {
-    return impl::cast_to_exchange_sink(sinks_);
+std::size_t flow::sink_count() const noexcept {
+    return sinks_.size();
 }
 
-flow::source_list_view flow::sources() {
-    return impl::cast_to_exchange_source(sources_);
+std::size_t flow::source_count() const noexcept {
+    return sources_.size();
+}
+
+exchange::sink& flow::sink_at(std::size_t index) {
+    return *sinks_[index];
+}
+
+exchange::source& flow::source_at(std::size_t index) {
+    return *sources_[index];
 }
 
 class request_context* flow::context() const noexcept {

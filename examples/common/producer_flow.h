@@ -48,11 +48,12 @@ public:
             params_(&p) {}
 
     sequence_view<std::shared_ptr<model::task>> create_tasks() override {
-        auto [sinks, srcs] = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object(*context_)).setup_partitions(params_->upstream_partitions_);
-        (void)srcs;
-        resources_.reserve(sinks.size());
-        tasks_.reserve(sinks.size());
-        for(auto& s : sinks) {
+        auto& flow = dynamic_cast<executor::exchange::flow&>(downstream_->data_flow_object(*context_));
+        flow.setup_partitions(params_->upstream_partitions_);
+        resources_.reserve(flow.sink_count());
+        tasks_.reserve(flow.sink_count());
+        for(std::size_t i=0,n=flow.sink_count(); i<n; ++i) {
+            auto& s = flow.sink_at(i);
             auto& resource = resources_.emplace_back(std::make_unique<memory::monotonic_paged_memory_resource>(&global::page_pool()));
             tasks_.emplace_back(std::make_unique<producer_task<Params>>(context_, step_, &s, meta_, *params_, *resource));
         }

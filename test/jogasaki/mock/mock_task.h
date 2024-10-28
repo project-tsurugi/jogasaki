@@ -19,9 +19,6 @@
 #include <memory>
 #include <glog/logging.h>
 
-#include <takatori/util/reference_list_view.h>
-#include <takatori/util/universal_extractor.h>
-
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/exchange/group/step.h>
 #include <jogasaki/executor/io/group_reader.h>
@@ -35,8 +32,6 @@ namespace jogasaki::executor {
 
 class mock_task : public common::task {
 public:
-    using writers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<io::record_writer>>;
-    using readers_type = takatori::util::reference_list_view<takatori::util::universal_extractor<io::group_reader>>;
 
     mock_task() = default;
     ~mock_task() override = default;

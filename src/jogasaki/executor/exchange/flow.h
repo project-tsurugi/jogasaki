@@ -17,9 +17,6 @@
 
 #include <vector>
 
-#include <takatori/util/reference_list_view.h>
-#include <takatori/util/universal_extractor.h>
-
 #include <jogasaki/model/port.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/flow.h>
@@ -35,30 +32,38 @@ namespace jogasaki::executor::exchange {
  */
 class flow : public model::flow {
 public:
-    using sink_list_view = takatori::util::reference_list_view<takatori::util::universal_extractor<exchange::sink>>;
-
-    using source_list_view = takatori::util::reference_list_view<takatori::util::universal_extractor<exchange::source>>;
-
-    using sinks_sources = std::pair<sink_list_view, source_list_view>;
-
     /**
      * @brief a function to tell the exchange data flow object about the number of partitions required
      * @param partitions the number of partitions requested
      * @return list view of sinks and sources newly created by this call
      */
-    [[nodiscard]] virtual sinks_sources setup_partitions(std::size_t partitions) = 0;
+    virtual void setup_partitions(std::size_t partitions) = 0;
 
     /**
-     * @brief accessor for sinks
-     * @return list view of sinks held by this exchange
+     * @brief accessor for sink count
+     * @return number of sinks held by this exchange
      */
-    [[nodiscard]] virtual sink_list_view sinks() = 0;
+    [[nodiscard]] virtual std::size_t sink_count() const = 0;
 
     /**
-     * @brief accessor for sources
-     * @return list view of sources held by this exchange
+     * @brief accessor for source count
+     * @return number of sources held by this exchange
      */
-    [[nodiscard]] virtual source_list_view sources() = 0;
+    [[nodiscard]] virtual std::size_t source_count() const = 0;
+
+    /**
+     * @brief accessor for sink
+     * @param index index of sink
+     * @return sink object at index
+     */
+    [[nodiscard]] virtual exchange::sink& sink_at(std::size_t index) = 0;
+
+    /**
+     * @brief accessor for source
+     * @param index index of source
+     * @return source object at index
+     */
+    [[nodiscard]] virtual exchange::source& source_at(std::size_t index) = 0;
 
     [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_pretask(port_index_type) override {
         // exchanges don't have sub input ports
@@ -66,5 +71,4 @@ public:
     }
 };
 
-} // namespace
-
+}  // namespace jogasaki::executor::exchange

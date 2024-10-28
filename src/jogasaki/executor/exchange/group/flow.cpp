@@ -19,9 +19,6 @@
 #include <vector>
 #include <boost/assert.hpp>
 
-#include <takatori/util/downcast.h>
-#include <takatori/util/universal_extractor.h>
-
 #include <jogasaki/executor/exchange/group/input_partition.h>
 #include <jogasaki/executor/exchange/group/sink.h>
 #include <jogasaki/executor/exchange/group/source.h>
@@ -34,36 +31,6 @@
 #include <jogasaki/model/step_kind.h>
 
 namespace jogasaki::executor::exchange::group {
-
-using takatori::util::unsafe_downcast;
-
-namespace impl {
-
-flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<group::source>>& vp) {
-    takatori::util::universal_extractor<exchange::source> ext {
-            [](void* cursor) -> exchange::source& {
-                return unsafe_downcast<exchange::source>(**static_cast<std::unique_ptr<group::source>*>(cursor));
-            },
-            [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<group::source>*>(cursor) + offset); //NOLINT
-            },
-    };
-    return flow::source_list_view{ vp, ext };
-}
-
-flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<group::sink>>& vp) {
-    takatori::util::universal_extractor<exchange::sink> ext {
-            [](void* cursor) -> exchange::sink& {
-                return unsafe_downcast<exchange::sink>(**static_cast<std::unique_ptr<group::sink>*>(cursor));
-            },
-            [](void* cursor, std::ptrdiff_t offset) {
-                return static_cast<void*>(static_cast<std::unique_ptr<group::sink>*>(cursor) + offset); //NOLINT
-            },
-    };
-    return flow::sink_list_view{ vp, ext };
-}
-
-} // namespace impl
 
 flow::~flow() = default;
 flow::flow() : info_(std::make_shared<group_info>()) {}
@@ -99,10 +66,9 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
     return tasks_;
 }
 
-flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
+void flow::setup_partitions(std::size_t partitions) {
     // note this function can be called multiple times (e.g. multiple input process)
     // add sinks for the requested partitions, while keep the number of sources same as `downstream_partitions_`
-    sinks_.reserve(sinks_.size() + partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(std::make_unique<group::sink>(downstream_partitions_, info_, context()));
     }
@@ -112,16 +78,22 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
             sources_.emplace_back(std::make_unique<source>(info_, context()));
         }
     }
-    return {impl::cast_to_exchange_sink(sinks_),
-            impl::cast_to_exchange_source(sources_)};
 }
 
-flow::sink_list_view flow::sinks() {
-    return impl::cast_to_exchange_sink(sinks_);
+std::size_t flow::sink_count() const noexcept {
+    return sinks_.size();
 }
 
-flow::source_list_view flow::sources() {
-    return impl::cast_to_exchange_source(sources_);
+std::size_t flow::source_count() const noexcept {
+    return sources_.size();
+}
+
+exchange::sink& flow::sink_at(std::size_t index) {
+    return *sinks_[index];
+}
+
+exchange::source& flow::source_at(std::size_t index) {
+    return *sources_[index];
 }
 
 void flow::transfer() {

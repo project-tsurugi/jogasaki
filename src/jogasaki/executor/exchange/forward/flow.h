@@ -39,13 +39,6 @@
 
 namespace jogasaki::executor::exchange::forward {
 
-namespace impl {
-
-flow::source_list_view cast_to_exchange_source(std::vector<std::unique_ptr<forward::source>>& vp);
-flow::sink_list_view cast_to_exchange_sink(std::vector<std::unique_ptr<forward::sink>>& vp);
-
-} // namespace impl
-
 /**
  * @brief forward step data flow
  */
@@ -79,11 +72,15 @@ public:
 
     [[nodiscard]] takatori::util::sequence_view<std::shared_ptr<model::task>> create_tasks() override;
 
-    [[nodiscard]] sinks_sources setup_partitions(std::size_t partitions) override;
+    void setup_partitions(std::size_t partitions) override;
 
-    [[nodiscard]] sink_list_view sinks() override;
+    [[nodiscard]] std::size_t sink_count() const noexcept override;
 
-    [[nodiscard]] source_list_view sources() override;
+    [[nodiscard]] std::size_t source_count() const noexcept override;
+
+    [[nodiscard]] exchange::sink& sink_at(std::size_t index) override;
+
+    [[nodiscard]] exchange::source& source_at(std::size_t index) override;
 
     [[nodiscard]] model::step_kind kind() const noexcept override;
 
@@ -92,8 +89,8 @@ public:
 private:
     std::vector<std::shared_ptr<model::task>> tasks_{};
     std::shared_ptr<forward_info> info_{};
-    std::vector<std::unique_ptr<forward::sink>> sinks_;
-    std::vector<std::unique_ptr<forward::source>> sources_{};
+    std::deque<std::unique_ptr<forward::sink>> sinks_{};  // use deque to avoid relocation
+    std::deque<std::unique_ptr<forward::source>> sources_{}; // use deque to avoid relocation
     request_context* context_{};
     step* owner_{};
 };

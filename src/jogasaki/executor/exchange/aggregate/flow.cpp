@@ -88,6 +88,7 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
 }
 
 flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
+    // assuming aggregate exchange has only one output, so this is called only once
     sinks_.reserve(partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(std::make_unique<aggregate::sink>(downstream_partitions_, info_, context()));
@@ -96,7 +97,6 @@ flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
     for(std::size_t i=0; i < downstream_partitions_; ++i) {
         sources_.emplace_back(std::make_unique<source>(info_, context()));
     }
-
     return {impl::cast_to_exchange_sink(sinks_),
             impl::cast_to_exchange_source(sources_)};
 }

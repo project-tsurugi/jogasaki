@@ -100,16 +100,18 @@ takatori::util::sequence_view<std::shared_ptr<model::task>> flow::create_tasks()
 }
 
 flow::sinks_sources flow::setup_partitions(std::size_t partitions) {
-    std::unique_lock lk{mutex_};
-    sinks_.reserve(partitions);
+    // note this function can be called multiple times (e.g. multiple input process)
+    // add sinks for the requested partitions, while keep the number of sources same as `downstream_partitions_`
+    sinks_.reserve(sinks_.size() + partitions);
     for(std::size_t i=0; i < partitions; ++i) {
         sinks_.emplace_back(std::make_unique<group::sink>(downstream_partitions_, info_, context()));
     }
-    sources_.reserve(downstream_partitions_);
-    for(std::size_t i=0; i < downstream_partitions_; ++i) {
-        sources_.emplace_back(std::make_unique<source>(info_, context()));
+    if(sources_.size() < downstream_partitions_) {
+        sources_.reserve(downstream_partitions_);
+        for(std::size_t i=0; i < downstream_partitions_; ++i) {
+            sources_.emplace_back(std::make_unique<source>(info_, context()));
+        }
     }
-
     return {impl::cast_to_exchange_sink(sinks_),
             impl::cast_to_exchange_source(sources_)};
 }

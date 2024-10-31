@@ -625,7 +625,7 @@ private:
     std::size_t thousandths_ratio_check_local_first_ = 100;
     bool direct_commit_callback_ = false;
     std::size_t scan_default_parallel_ = 1;
-    bool inplace_teardown_ = true;
+    bool inplace_teardown_ = false;
 
 };
 

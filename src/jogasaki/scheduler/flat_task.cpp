@@ -64,12 +64,16 @@ void flat_task::bootstrap(tateyama::task_scheduler::context& ctx) {
     log_exit << *this;
 }
 
+void dag_schedule(request_context& req_context) {
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context.stmt_scheduler());
+    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
+    dc.process_internal_events();
+}
+
 void flat_task::dag_schedule() {
     log_entry << *this;
     trace_scope_name("dag_schedule");  //NOLINT
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
-    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-    dc.process_internal_events();
+    scheduler::dag_schedule(*req_context_);
     log_exit << *this;
 }
 

@@ -266,6 +266,9 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<bool>("dev_inplace_teardown")) {
         ret->inplace_teardown(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_inplace_dag_schedule")) {
+        ret->inplace_dag_schedule(v.value());
+    }
     return true;
 }
 

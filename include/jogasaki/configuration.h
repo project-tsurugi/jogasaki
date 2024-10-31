@@ -506,6 +506,14 @@ public:
         inplace_teardown_ = arg;
     }
 
+    [[nodiscard]] bool inplace_dag_schedule() const noexcept {
+        return inplace_dag_schedule_;
+    }
+
+    void inplace_dag_schedule(bool arg) noexcept {
+        inplace_dag_schedule_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -564,6 +572,7 @@ public:
         print_non_default(direct_commit_callback);
         print_non_default(scan_default_parallel);
         print_non_default(inplace_teardown);
+        print_non_default(inplace_dag_schedule);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -626,6 +635,7 @@ private:
     bool direct_commit_callback_ = false;
     std::size_t scan_default_parallel_ = 1;
     bool inplace_teardown_ = false;
+    bool inplace_dag_schedule_ = false;
 
 };
 

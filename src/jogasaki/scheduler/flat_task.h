@@ -339,6 +339,11 @@ bool ready_to_finish(job_context& job, bool calling_from_task);
  */
 void finish_job(request_context& req_context);
 
+/**
+ * @brief process dag scheduler internal events to proceed dag state
+ */
+void dag_schedule(request_context& req_context);
+
 void print_task_diagnostic(flat_task const& t, std::ostream& os);
 
 }

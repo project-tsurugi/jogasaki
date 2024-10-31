@@ -81,12 +81,16 @@ model::task_result task::operator()() {
             break;
     }
 
-    context()->scheduler()->schedule_task(
-        scheduler::flat_task{
-            scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
-                context()
-        }
-    );
+    if(global::config_pool()->inplace_dag_schedule()) {
+        scheduler::dag_schedule(*context());
+    } else {
+        context()->scheduler()->schedule_task(
+            scheduler::flat_task{
+                scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
+                    context()
+            }
+        );
+    }
 
     if(auto&& cb = step()->will_end_task(); cb) {
         callback_arg arg{ id() };

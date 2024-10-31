@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/range.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -83,14 +83,14 @@ public:
      * @param compiler_ctx compiler context
      * @param io_info I/O information
      * @param relation_io_map mapping from relation to I/O index
-     * @param resource the memory resource used to building operators
+     * @param request_context the memory resource used to building operators
      */
     operator_builder(
         std::shared_ptr<processor_info> info,
         std::shared_ptr<io_info> io_info,
         std::shared_ptr<relation_io_map> relation_io_map,
         io_exchange_map& io_exchange_map,
-        memory::lifo_paged_memory_resource* resource = nullptr
+        request_context* request_context = nullptr
     );
 
     [[nodiscard]] operator_container operator()() &&;
@@ -121,27 +121,17 @@ public:
     // keeping in public for testing
     using key = yugawara::storage::index::key;
     using endpoint = takatori::relation::scan::endpoint;
-    std::shared_ptr<impl::scan_info> create_scan_info(
-        endpoint const& lower,
-        endpoint const& upper,
-        yugawara::storage::index const& index
-    );
 
-    std::shared_ptr<impl::scan_info> create_scan_info(
-        relation::scan const& node,
-        yugawara::storage::index const& index
-    );
+    std::shared_ptr<impl::range> create_range(relation::scan const& node);
 
-
-private:
+  private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<io_info> io_info_{};
     io_exchange_map* io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
     operator_base::operator_index_type index_{};
-    std::shared_ptr<impl::scan_info> scan_info_{};
-    memory::lifo_paged_memory_resource* resource_{};
-
+    std::shared_ptr<range> range_{};
+    request_context* request_context_{};
     kvs::end_point_kind from(relation::scan::endpoint::kind_type type);
 
 };
@@ -160,8 +150,7 @@ private:
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
-    memory::lifo_paged_memory_resource* resource = nullptr
+    request_context* request_context = nullptr
 );
 
-}
-
+}  // namespace jogasaki::executor::process::impl::ops

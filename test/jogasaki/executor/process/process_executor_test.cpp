@@ -29,7 +29,7 @@
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/process_executor.h>
 #include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/process_executor.h>
 #include <jogasaki/executor/process/mock/processor.h>
@@ -68,7 +68,7 @@ public:
             std::vector<io::reader_container>{r},
             std::vector<std::shared_ptr<io::record_writer>>{downstream_writer_},
             external_writer_,
-            std::shared_ptr<abstract::scan_info>{}
+            std::shared_ptr<abstract::range>{}
         ));
     }
     mock::basic_record_reader::records_type records_{
@@ -124,7 +124,7 @@ TEST_F(process_executor_test, custom_factory) {
         std::vector<io::reader_container>{r},
         std::vector<std::shared_ptr<io::record_writer>>{downstream_writer_},
         external_writer_,
-        std::shared_ptr<abstract::scan_info>{}
+        std::shared_ptr<abstract::range>{}
     ));
     abstract::process_executor_factory f = [&](
         std::shared_ptr<abstract::processor> processor,
@@ -147,5 +147,4 @@ TEST_F(process_executor_test, custom_factory) {
     EXPECT_TRUE(ewriter->is_released());
 }
 
-}
-
+} // namespace jogasaki::executor::process::impl

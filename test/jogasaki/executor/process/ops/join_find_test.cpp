@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,14 +113,14 @@ std::pair<std::shared_ptr<mock::task_context>, std::shared_ptr<request_context>>
     std::vector<io::reader_container> readers = {},
     std::vector<std::shared_ptr<io::record_writer>> downstream_writers = {},
     std::shared_ptr<io::record_writer> external_writer = {},
-    std::shared_ptr<abstract::scan_info> info = {},
+    std::shared_ptr<abstract::range> range = {},
     std::shared_ptr<transaction_context> tx = {}
 ) {
     auto ret = std::make_shared<mock::task_context>(
         std::move(readers),
         std::move(downstream_writers),
         std::move(external_writer),
-        std::move(info)
+        std::move(range)
     );
 
     auto rctx = std::make_shared<request_context>();
@@ -434,5 +434,4 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     ctx.release();
 }
 
-}
-
+} // namespace jogasaki::executor::process::impl::ops

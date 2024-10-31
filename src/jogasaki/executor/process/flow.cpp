@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             step_->io_info(),
             step_->relation_io_map(),
             *step_->io_exchange_map(),
-            context_->request_resource()
+            context_
         );
     } catch (plan::impl::compile_exception const& e) {
         error::set_error_info(*context_, e.info());
@@ -170,7 +170,7 @@ std::shared_ptr<impl::task_context> flow::create_task_context(
         *context_,
         partition,
         operators.io_exchange_map(),
-        operators.scan_info(), // simply pass back the scan info. In the future, scan can be parallel and different scan info are created and filled into the task context.
+        operators.range(),
         (context_->record_channel() && external_output != nullptr) ? context_->record_channel().get() : nullptr,
         sink_index
     );

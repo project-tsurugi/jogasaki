@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 #include <jogasaki/executor/common/task.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
@@ -43,12 +43,12 @@ public:
         std::vector<io::reader_container> readers = {},
         std::vector<std::shared_ptr<io::record_writer>> downstream_writers = {},
         std::shared_ptr<io::record_writer> external_writer = {},
-        std::shared_ptr<abstract::scan_info> info = {}
+        std::shared_ptr<abstract::range> range = {}
     ) :
         readers_(std::move(readers)),
         downstream_writers_(std::move(downstream_writers)),
         external_writer_(std::move(external_writer)),
-        scan_info_(std::move(info))
+        range_(std::move(range))
     {}
 
     io::reader_container reader(reader_index idx) override {
@@ -76,10 +76,9 @@ public:
             external_writer_->release();
             external_writer_.reset();
         }
-        scan_info_.reset();
     }
 
-    class abstract::scan_info const* scan_info() override {
+    class abstract::range const* range() override {
         return nullptr;
     }
 
@@ -95,7 +94,6 @@ private:
     std::vector<io::reader_container> readers_{};
     std::vector<std::shared_ptr<io::record_writer>> downstream_writers_{};
     std::shared_ptr<io::record_writer> external_writer_{};
-    std::shared_ptr<abstract::scan_info> scan_info_{};
+    std::shared_ptr<abstract::range> range_{};
 };
-
-}
+} // namespace jogasaki::executor::process::mock

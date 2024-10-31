@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/range.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/step.h>
@@ -53,7 +53,7 @@ public:
         std::unique_ptr<kvs::storage> stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         transaction_context* tx,
-        impl::scan_info const* scan_info,
+        impl::range const* range_,
         memory_resource* resource,
         memory_resource* varlen_resource
     );
@@ -74,12 +74,8 @@ private:
     std::unique_ptr<kvs::storage> secondary_stg_{};
     transaction_context* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
-    impl::scan_info const* scan_info_{};
-    data::aligned_buffer key_begin_{};
-    data::aligned_buffer key_end_{};
     std::size_t yield_count_{};
+    impl::range const* range_{};
 };
 
-}
-
-
+} // namespace jogasaki::executor::process::impl::ops

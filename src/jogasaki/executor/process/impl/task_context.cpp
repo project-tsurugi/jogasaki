@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,9 @@
 #include <jogasaki/executor/exchange/source.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/range.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/model/flow.h>
 #include <jogasaki/model/step_kind.h>
@@ -48,14 +48,14 @@ process::impl::task_context::task_context(
     request_context& rctx,
     std::size_t partition,
     io_exchange_map const& io_exchange_map,
-    std::shared_ptr<impl::scan_info> scan_info,
+    std::shared_ptr<impl::range> range,
     io::record_channel* channel,
     partition_index sink_index
 ) :
     request_context_(std::addressof(rctx)),
     partition_(partition),
     io_exchange_map_(std::addressof(io_exchange_map)),
-    scan_info_(std::move(scan_info)),
+    range_(std::move(range)),
     channel_(channel),
     sink_index_(sink_index)
 {}
@@ -120,8 +120,8 @@ io::record_writer* task_context::external_writer() {
     return external_writer_.get();
 }
 
-class abstract::scan_info const* task_context::scan_info() {
-    return scan_info_.get();
+class abstract::range const* task_context::range() {
+    return range_.get();
 }
 
 std::size_t task_context::partition() const noexcept {
@@ -132,4 +132,4 @@ io::record_channel* task_context::channel() const noexcept {
     return channel_;
 }
 
-}
+} // namespace jogasaki::executor::process::impl

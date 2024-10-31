@@ -53,5 +53,33 @@ status encode_key(
     std::size_t& length,
     std::string& message
 );
+/**
+ * @brief evaluate the search two keys and encode
+ * @details evaluate the search start and end keys and encode them so that they can be used for search
+ * @param context the request context
+ * @param begin_keys the begin_key fields to be evaluated
+ * @param end_keys the end_key fields to be evaluated
+ * @param input_variables the variables to be used for evaluation
+ * @param resource the memory resource
+ * @param key_begin the buffer to store the begin encoded key
+ * @param blen the length of the begin encoded key
+ * @param key_end the buffer to store the end encoded key
+ * @param elen the length of the elen encoded key
+ * @return status::ok when successful
+ * @return status::err_integrity_constraint_violation when evaluation results in null where it is not allowed
+ * @return status::err_type_mismatch if the type of the evaluated value does not match the expected type
+ * @return status::err_expression_evaluation_failure any other evaluation failure
+ */
+status two_encode_keys(
+    request_context* context,
+    std::vector<details::search_key_field_info> const& begin_keys,
+    std::vector<details::search_key_field_info> const& end_keys,
+    variable_table& input_variables,
+    memory::lifo_paged_memory_resource& resource,
+    data::aligned_buffer& key_begin,
+    std::size_t& blen,
+    data::aligned_buffer& key_end,
+    std::size_t& elen
+);
 
 }  // namespace jogasaki::executor::process::impl::ops::details

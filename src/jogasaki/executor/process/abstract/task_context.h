@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
 
-#include "scan_info.h"
+#include "range.h"
 #include "work_context.h"
 
 namespace jogasaki::executor::process::abstract {
@@ -33,7 +33,7 @@ namespace jogasaki::executor::process::abstract {
  * input data reader, and transient work area
  *
  * Depending on whether the processor logic is driven by main/sub input or scan, readers() or
- * scan_info() functions are called to locate/retrieve the input data for the task.
+ * range() functions are called to locate/retrieve the input data for the task.
  *
  * The knowledge about the number of I/O objects and its index (i.e. what port or exchange the i-th reader/writer
  * corresponds to) are shared with processor.
@@ -104,13 +104,13 @@ public:
      */
     [[nodiscard]] virtual io::record_writer* external_writer() = 0;
 
-    /**
-     * @brief accessor to scan information that defines scan specification for the task
-     * @details processor impl. knows the details scan_info and drives scan operation using it.
-     * The details of scan_info is transparent to processor context.
+        /**
+     * @brief accessor to range information
+     * @details processor impl. knows the details range and drives scan operation using it.
+     * The details of range is transparent to processor context.
      * @return scan info
      */
-    [[nodiscard]] virtual class scan_info const* scan_info() = 0;
+    [[nodiscard]] virtual class range const* range() = 0;
 
     /**
      * @brief setter of work context
@@ -150,6 +150,4 @@ inline bool operator!=(task_context const& a, task_context const& b) noexcept {
     return !(a == b);
 }
 
-}
-
-
+} // namespace jogasaki::executor::process::abstract

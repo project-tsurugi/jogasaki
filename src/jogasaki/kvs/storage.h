@@ -124,7 +124,6 @@ public:
         std::string_view end_key, end_point_kind end_kind,
         std::unique_ptr<iterator>& it
     );
-
     /**
      * @brief get the value for the given key
      * @param tx transaction used for the point query
@@ -238,6 +237,7 @@ inline std::ostream& operator<<(std::ostream& out, storage const& value) {
     out << "storage(handle:" << std::hex << value.handle() << ")";
     return out;
 }
-
+end_point_kind adjust_endpoint_kind(bool use_secondary, kvs::end_point_kind endpoint);
+std::ostream& operator<<(std::ostream& os, end_point_kind kind);
 }
 

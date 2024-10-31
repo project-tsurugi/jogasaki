@@ -498,6 +498,14 @@ public:
         scan_default_parallel_ = arg;
     }
 
+    [[nodiscard]] bool inplace_teardown() const noexcept {
+        return inplace_teardown_;
+    }
+
+    void inplace_teardown(bool arg) noexcept {
+        inplace_teardown_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -555,6 +563,7 @@ public:
         print_non_default(thousandths_ratio_check_local_first);
         print_non_default(direct_commit_callback);
         print_non_default(scan_default_parallel);
+        print_non_default(inplace_teardown);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -616,6 +625,7 @@ private:
     std::size_t thousandths_ratio_check_local_first_ = 100;
     bool direct_commit_callback_ = false;
     std::size_t scan_default_parallel_ = 1;
+    bool inplace_teardown_ = true;
 
 };
 

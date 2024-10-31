@@ -135,6 +135,13 @@ struct statement_context {
 
 void submit_teardown(request_context& req_context, bool force = false, bool try_on_suspended_worker = false);
 
+bool check_or_submit_teardown(
+    request_context& req_context,
+    bool calling_from_task = false,
+    bool force = false,
+    bool try_on_suspended_worker = false
+);
+
 /**
  * @brief common task object
  * @details The task object used commonly for the jogasaki::scheduler::task_scheduler.
@@ -305,18 +312,12 @@ private:
     void bootstrap(tateyama::task_scheduler::context& ctx);
     void dag_schedule();
 
-    /**
-     * @return true if the teardown task completes
-     * @return false if the teardown task is rescheduled
-     */
-    bool teardown();
     void resolve(tateyama::task_scheduler::context& ctx);
 
-    void write();
-    void load();
-    void execute_wrapped();
+    bool write();
+    bool load();
+    bool execute_wrapped();
     void resubmit(request_context& req_context);
-    void finish_job();
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;
@@ -324,6 +325,19 @@ private:
     }
 
 };
+
+/**
+ * @brief function to check job is ready to finish
+ * @return true if there is no other tasks for the job and completion is ready
+ * @return false otherwise
+ */
+bool ready_to_finish(job_context& job, bool calling_from_task);
+
+/**
+ * @brief finish the job
+ * @details this function doesn't check any condition for teardown, so use only when you are sure the job is ready to finish
+ */
+void finish_job(request_context& req_context);
 
 void print_task_diagnostic(flat_task const& t, std::ostream& os);
 

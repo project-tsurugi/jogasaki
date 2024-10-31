@@ -40,6 +40,11 @@ enum class task_result : std::size_t {
     complete,
 
     /**
+     * @brief complete the task, remove it from the schedule and teardown the job
+     */
+    complete_and_teardown,
+
+    /**
      * @brief sleep and detach thread from this task, the task needs wake-up to resume
      * @attention this is future functionality and not yet supported
      */

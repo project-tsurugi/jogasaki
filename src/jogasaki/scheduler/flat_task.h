@@ -133,15 +133,6 @@ struct statement_context {
     error_info_stats_callback callback_{};  //NOLINT
 };
 
-void submit_teardown(request_context& req_context, bool force = false, bool try_on_suspended_worker = false);
-
-bool check_or_submit_teardown(
-    request_context& req_context,
-    bool calling_from_task = false,
-    bool force = false,
-    bool try_on_suspended_worker = false
-);
-
 /**
  * @brief common task object
  * @details The task object used commonly for the jogasaki::scheduler::task_scheduler.
@@ -343,6 +334,30 @@ void finish_job(request_context& req_context);
  * @brief process dag scheduler internal events to proceed dag state
  */
 void dag_schedule(request_context& req_context);
+
+/**
+ * @brief submit teardown task
+ */
+void submit_teardown(request_context& req_context, bool force = false, bool try_on_suspended_worker = false);
+
+/**
+ * @brief check if job is ready to finish, otherwise submit teardown task
+ */
+bool check_or_submit_teardown(
+    request_context& req_context,
+    bool calling_from_task = false,
+    bool force = false,
+    bool try_on_suspended_worker = false
+);
+
+/**
+ * @brief set going_teardown flag if the current thread is in scheduler worker, otherwise submit teardown task
+ */
+bool set_going_teardown_or_submit(
+    request_context& req_context,
+    bool force = false,
+    bool try_on_suspended_worker = false
+);
 
 void print_task_diagnostic(flat_task const& t, std::ostream& os);
 

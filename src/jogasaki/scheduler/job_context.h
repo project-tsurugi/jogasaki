@@ -158,6 +158,13 @@ public:
     }
 
     /**
+     * @brief accessor for the going_teardown flag used to mark whether the final flat_task is going to complete the job
+     * without submitting teardown task
+     * @return going_teardown flag
+     */
+    [[nodiscard]] std::atomic_bool& going_teardown() noexcept;
+
+    /**
      * @brief dump the text representation of the value to output stream
      * @param out the target output stream
      * @param value the value to be output
@@ -177,6 +184,7 @@ private:
     readiness_provider readiness_provider_{};
     std::shared_ptr<request_detail> request_detail_{};
     cache_align std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
+    cache_align std::atomic_bool going_teardown_{false};
 
     static inline std::atomic_size_t id_src_{1UL << 32UL};  //NOLINT
 

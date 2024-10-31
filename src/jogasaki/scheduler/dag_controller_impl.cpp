@@ -299,7 +299,7 @@ void dag_controller::impl::check_and_generate_internal_events(step const& s) {
         case step_state_kind::deactivated:
             if(all_steps_deactivated(*graph_)) {
                 graph_deactivated_ = true;
-                submit_teardown(*request_context_);
+                set_going_teardown_or_submit(*request_context_);
             }
             break;
     }

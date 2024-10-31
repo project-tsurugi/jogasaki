@@ -43,6 +43,7 @@
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/thread_local_info.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/latch.h>
@@ -77,6 +78,32 @@ void flat_task::dag_schedule() {
     log_exit << *this;
 }
 
+bool set_going_teardown_or_submit(
+    request_context& req_context,
+    bool force,
+    bool try_on_suspended_worker
+) {
+    // note that this function can be called multiple times
+    // once going_teardown is set to true, it should never go back to false.
+
+    auto& job = *req_context.job();
+    if(job.completing().load()) {
+        // possibly programming error
+        VLOG_LP(log_trace_fine) << "warning - " << job
+                                << " set_going_teardown_or_submit() for job with completing=true";
+        return false;
+    };
+    if(global::config_pool()->inplace_teardown() && thread_local_info_.is_worker_thread()) {
+        if(ready_to_finish(*req_context.job(), true)) {
+            req_context.job()->going_teardown().store(true);
+            return true;
+        }
+    }
+    submit_teardown(req_context, force, try_on_suspended_worker);
+    return false;
+}
+
+
 bool check_or_submit_teardown(
     request_context& req_context,
     bool calling_from_task,
@@ -96,6 +123,11 @@ void submit_teardown(request_context& req_context, bool force, bool try_on_suspe
     // make sure teardown task is submitted only once
     auto& ts = *req_context.scheduler();
     auto& job = *req_context.job();
+    if(job.going_teardown()) {
+        // possibly programming error
+        VLOG_LP(log_trace_fine) << "warning - " << job << " submit_teardown() for job with going_teardown=true";
+        return;
+    }
     auto completing = job.completing().load();
     if (force || (!completing && job.completing().compare_exchange_strong(completing, true))) {
         ts.schedule_task(
@@ -266,7 +298,7 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
         auto lk = (tctx && sticky_) ?
             std::unique_lock{tctx->mutex()} :
             std::unique_lock<transaction_context::mutex_type>{};
-        job_completes = execute(ctx);
+        job_completes = execute(ctx) || job()->going_teardown();
         if (tctx && sticky_) {
             tctx->decrement_worker_count();
         }

@@ -34,12 +34,13 @@
 #include <jogasaki/scheduler/flat_task.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/thread_info.h>
+#include <jogasaki/scheduler/thread_local_info.h>
+#include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/latch.h>
-
-#include "task_scheduler.h"
-#include "thread_params.h"
 
 namespace jogasaki::scheduler {
 
@@ -47,7 +48,9 @@ using takatori::util::throw_exception;
 
 stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     scheduler_cfg_(create_scheduler_cfg(params)),
-    scheduler_(scheduler_cfg_)
+    scheduler_(scheduler_cfg_, [](std::size_t id) {
+        thread_local_info_ = thread_info{true, id};
+    })
 {}
 
 std::size_t determine_worker(transaction_context const& tx, std::size_t worker_count) {

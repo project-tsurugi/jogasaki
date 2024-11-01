@@ -292,7 +292,7 @@ private:
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
 
-    static inline std::atomic_size_t id_src_{};  //NOLINT
+    cache_align static inline std::atomic_size_t id_src_{};  //NOLINT
 
     /**
      * @return true if job completes together with the task

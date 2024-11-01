@@ -186,7 +186,7 @@ private:
     cache_align std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
     cache_align std::atomic_bool going_teardown_{false};
 
-    static inline std::atomic_size_t id_src_{1UL << 32UL};  //NOLINT
+    cache_align static inline std::atomic_size_t id_src_{1UL << 32UL};  //NOLINT
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;

@@ -1205,7 +1205,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                         if(*canceled) {
                             set_cancel_status(*rctx);
                         }
-                        scheduler::submit_teardown(*rctx, false, true);
+                        scheduler::submit_teardown(*rctx, true);
                     },
                 }
             );

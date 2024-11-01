@@ -80,34 +80,33 @@ void flat_task::dag_schedule() {
 
 bool set_going_teardown_or_submit(
     request_context& req_context,
-    bool force,
     bool try_on_suspended_worker
 ) {
     // note that this function can be called multiple times
     // once going_teardown is set to true, it should never go back to false.
-
-    auto& job = *req_context.job();
-    if(job.completing().load()) {
-        // possibly programming error
-        VLOG_LP(log_trace_fine) << "warning - " << job
-                                << " set_going_teardown_or_submit() for job with completing=true";
+    if(! global::config_pool()->inplace_teardown() || ! thread_local_info_.is_worker_thread()) {
+        submit_teardown(req_context, try_on_suspended_worker);
         return false;
-    };
-    if(global::config_pool()->inplace_teardown() && thread_local_info_.is_worker_thread()) {
-        if(ready_to_finish(*req_context.job(), true)) {
-            req_context.job()->going_teardown().store(true);
+    }
+    auto& job = *req_context.job();
+    auto completing = job.completing().load();
+    if(completing) {
+        // teardown task is scheduled or going_teardown is set
+        return false;
+    }
+    if(ready_to_finish(job, true)) {
+        if (job.completing().compare_exchange_strong(completing, true)) {
+            job.going_teardown().store(true);
             return true;
         }
     }
-    submit_teardown(req_context, force, try_on_suspended_worker);
+    submit_teardown(req_context, try_on_suspended_worker);
     return false;
 }
-
 
 bool check_or_submit_teardown(
     request_context& req_context,
     bool calling_from_task,
-    bool force,
     bool try_on_suspended_worker
 ) {
     if(global::config_pool()->inplace_teardown()) {
@@ -115,21 +114,16 @@ bool check_or_submit_teardown(
             return true;
         }
     }
-    submit_teardown(req_context, force, try_on_suspended_worker);
+    submit_teardown(req_context, try_on_suspended_worker);
     return false;
 }
 
-void submit_teardown(request_context& req_context, bool force, bool try_on_suspended_worker) {
+void submit_teardown(request_context& req_context, bool try_on_suspended_worker) {
     // make sure teardown task is submitted only once
     auto& ts = *req_context.scheduler();
     auto& job = *req_context.job();
-    if(job.going_teardown()) {
-        // possibly programming error
-        VLOG_LP(log_trace_fine) << "warning - " << job << " submit_teardown() for job with going_teardown=true";
-        return;
-    }
     auto completing = job.completing().load();
-    if (force || (!completing && job.completing().compare_exchange_strong(completing, true))) {
+    if (! completing && job.completing().compare_exchange_strong(completing, true)) {
         ts.schedule_task(
             flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(req_context)},
             schedule_option{
@@ -322,7 +316,7 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
 
         // Submitting teardown should be done at the end of the task since otherwise new teardown finish fast
         // and start destroying job context, which can be touched by this task.
-        submit_teardown(*req_context_, true);
+        resubmit(*req_context_);
         return;
     }
     finish_job(*req_context_);

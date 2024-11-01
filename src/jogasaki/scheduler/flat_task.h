@@ -319,6 +319,8 @@ private:
 
 /**
  * @brief function to check job is ready to finish
+ * @param job the job context to check
+ * @param calling_from_task whether the function is called from task (i.e. one of worker threads on task scheduler)
  * @return true if there is no other tasks for the job and completion is ready
  * @return false otherwise
  */
@@ -326,7 +328,8 @@ bool ready_to_finish(job_context& job, bool calling_from_task);
 
 /**
  * @brief finish the job
- * @details this function doesn't check any condition for teardown, so use only when you are sure the job is ready to finish
+ * @details this function doesn't check any condition for teardown, so use only when you are sure the job is ready
+ * to finish (e.g. by checking with `ready_to_finish()`)
  */
 void finish_job(request_context& req_context);
 
@@ -337,28 +340,37 @@ void dag_schedule(request_context& req_context);
 
 /**
  * @brief submit teardown task
+ * @details check job_context::completing() flag. If the flag is not set, set it and submit teardown task.
+ * Otherwise do nothing.
+ * @param req_context the request context where the task belongs
+ * @param try_on_suspended_worker whether to try to submit the task on suspended worker
  */
-void submit_teardown(request_context& req_context, bool force = false, bool try_on_suspended_worker = false);
+void submit_teardown(request_context& req_context, bool try_on_suspended_worker = false);
 
 /**
  * @brief check if job is ready to finish, otherwise submit teardown task
+ * @details if the job is ready to finish, return true. Otherwise submit teardown task and return false.
+ * @param req_context the request context where the task belongs
+ * @param calling_from_task whether the function is called from task (i.e. one of worker threads on task scheduler)
+ * @param try_on_suspended_worker whether to try to submit the task on suspended worker
  */
 bool check_or_submit_teardown(
     request_context& req_context,
     bool calling_from_task = false,
-    bool force = false,
     bool try_on_suspended_worker = false
 );
 
 /**
  * @brief set going_teardown flag if the current thread is in scheduler worker, otherwise submit teardown task
+ * @details by setting going_teardown flag, the task run by current thread completes the job at the end of the task
+ * @param req_context the request context where the task belongs
+ * @param try_on_suspended_worker whether to try to submit the task on suspended worker
  */
 bool set_going_teardown_or_submit(
     request_context& req_context,
-    bool force = false,
     bool try_on_suspended_worker = false
 );
 
 void print_task_diagnostic(flat_task const& t, std::ostream& os);
 
-}
+}  // namespace jogasaki::scheduler

@@ -320,30 +320,56 @@ any engine::remainder_any(any const& left, any const& right) {
     }
 }
 
-template <class T, class U = T>
-any conditional_and(T const& l, U const& r) {
-    return any{std::in_place_type<T>, l && r};
-}
-
 any engine::conditional_and_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    switch(left.type_index()) {
-        case any::index<bool>: return conditional_and(left.to<bool>(), right.to<bool>());
-        default: return return_unsupported();
+    // first, check if either of operands is false because then
+    // the result is false regardless of the other operand being true or null
+    if(left) {
+        if(left.type_index() != any::index<bool>) {
+            return return_unsupported();
+        }
+        if(! left.to<bool>()) {
+            return left;
+        }
     }
-}
-
-template <class T, class U = T>
-any conditional_or(T const& l, U const& r) {
-    return any{std::in_place_type<T>, l || r};
+    if(right) {
+        if(right.type_index() != any::index<bool>) {
+            return return_unsupported();
+        }
+        if(! right.to<bool>()) {
+            return right;
+        }
+    }
+    // left/right are either true or null
+    if(! left || ! right) {
+        return {};
+    }
+    return any{std::in_place_type<bool>, true};
 }
 
 any engine::conditional_or_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    switch(left.type_index()) {
-        case any::index<bool>: return conditional_or(left.to<bool>(), right.to<bool>());
-        default: return return_unsupported();
+    // first, check if either of operands is true because then
+    // the result is true regardless of the other operand being false or null
+    if(left) {
+        if(left.type_index() != any::index<bool>) {
+            return return_unsupported();
+        }
+        if(left.to<bool>()) {
+            return left;
+        }
     }
+    if(right) {
+        if(right.type_index() != any::index<bool>) {
+            return return_unsupported();
+        }
+        if(right.to<bool>()) {
+            return right;
+        }
+    }
+    // left/right are either false or null
+    if(! left || ! right) {
+        return {};
+    }
+    return any{std::in_place_type<bool>, false};
 }
 
 any engine::operator()(takatori::scalar::binary const& exp) {
@@ -352,8 +378,11 @@ any engine::operator()(takatori::scalar::binary const& exp) {
     auto r = dispatch(*this, exp.right());
     if (l.error()) return l;
     if (r.error()) return r;
-    if (! l) return l;
-    if (! r) return r;
+    if (exp.operator_kind() != optype::conditional_and && exp.operator_kind() != optype::conditional_or) {
+        // except AND/OR, if either of operands is null, the result is null
+        if (! l) return l;
+        if (! r) return r;
+    }
     switch(exp.operator_kind()) {
         case optype::add: return add_any(l, r);
         case optype::concat: return concat_any(l, r);

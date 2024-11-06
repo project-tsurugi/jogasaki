@@ -206,11 +206,14 @@ public:
     }
 
     template <class In1, class In2, class Out, class Optype, class ... Args>
-    void test_two_arity_exp(
+    void test_two_arity_exp_with_null(
         Optype op,
         typename meta::field_type_traits<utils::to_field_type_kind<In1>()>::runtime_type c1,
+        bool c1_is_null,
         typename meta::field_type_traits<utils::to_field_type_kind<In2>()>::runtime_type c2,
+        bool c2_is_null,
         typename meta::field_type_traits<utils::to_field_type_kind<Out>()>::runtime_type exp,
+        bool exp_is_null,
         Args...args
     ) {
         using T = from_operator_enum<Optype>;
@@ -223,30 +226,35 @@ public:
         >;
         auto expr = create_two_arity_exp<In1, In2, Out, Optype, Args...>(op, args...);
         {
-            set_values<In1, In2>(c1, c2, false, false);
+            set_values<In1, In2>(c1, c2, c1_is_null, c2_is_null);
             utils::checkpoint_holder cph{&resource_};
             evaluator_context c{&resource_};
-            auto result = evaluator_(c, vars_, &resource_).to<out_type>();
-            ASSERT_EQ(exp, result);
-        }
-        {
-            set_values<In1, In2>(c1, c2, true, false);
-            utils::checkpoint_holder cph{&resource_};
-            evaluator_context c{&resource_};
-            auto result = evaluator_(c, vars_, &resource_);
-            ASSERT_TRUE(result.empty());
-            ASSERT_FALSE(result.error());
-        }
-        {
-            set_values<In1, In2>(c1, c2, false, true);
-            utils::checkpoint_holder cph{&resource_};
-            evaluator_context c{&resource_};
-            auto result = evaluator_(c, vars_, &resource_);
-            ASSERT_TRUE(result.empty());
-            ASSERT_FALSE(result.error());
+            auto a = evaluator_(c, vars_, &resource_);
+            ASSERT_TRUE(! a.error());
+            if(exp_is_null) {
+                ASSERT_TRUE(a.empty());
+            } else {
+                ASSERT_TRUE(! a.empty());
+                auto result = a.to<out_type>();
+                ASSERT_EQ(exp, result);
+            }
         }
         expressions().clear();
     }
+
+    template <class In1, class In2, class Out, class Optype, class ... Args>
+    void test_two_arity_exp(
+        Optype op,
+        typename meta::field_type_traits<utils::to_field_type_kind<In1>()>::runtime_type c1,
+        typename meta::field_type_traits<utils::to_field_type_kind<In2>()>::runtime_type c2,
+        typename meta::field_type_traits<utils::to_field_type_kind<Out>()>::runtime_type exp,
+        Args...args
+    ) {
+        test_two_arity_exp_with_null<In1, In2, Out, Optype, Args...>(op, c1, false, c2, false, exp, false, args...);
+        test_two_arity_exp_with_null<In1, In2, Out, Optype, Args...>(op, c1, true, c2, false, exp, true, args...);
+        test_two_arity_exp_with_null<In1, In2, Out, Optype, Args...>(op, c1, false, c2, true, exp, true, args...);
+    }
+
     template<class T>
     void test_compare();
 
@@ -559,15 +567,66 @@ TEST_F(expression_evaluator_test, compare_time_point) {
     compare_time_points(comparison_operator::greater_equal, one, two, false);
 }
 
-TEST_F(expression_evaluator_test, conditional_and_or) {
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, 1, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, 0, false);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 0, 1, false);
+TEST_F(expression_evaluator_test, conditional_and) {
+    // condiation_and and conditional_or are exceptional operation in that the result is not always null even if one of the operad is null
 
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, 1, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, 0, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, 1, true);
-    test_two_arity_exp<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, 0, false);
+    // T and T = T
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, false, 1, false, true, false);
+
+    // T and F = F
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, false, 0, false, false, false);
+
+    // F and T = F
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 0, false, 1, false, false, false);
+
+    // F and F = F
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 0, false, 0, false, false, false);
+
+    // null and T = null
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, -1, true, 1, false, false, true);
+
+    // T and null = null
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 1, false, -1, true, false, true);
+
+    // null and F = F
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, -1, true, 0, false, false, false);
+
+    // F and null = F
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, 0, false, -1, true, false, false);
+
+    // null and null = null
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_and, -1, true, -1, true, false, true);
+}
+
+TEST_F(expression_evaluator_test, conditional_or) {
+    // condiation_and and conditional_or are exceptional operation in that the result is not always null even if one of the operad is null
+
+    // T or T = T
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, false, 1, false, true, false);
+
+    // T or F = T
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, false, 0, false, true, false);
+
+    // F or T = F
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, false, 1, false, true, false);
+
+    // F or F = F
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, false, 0, false, false, false);
+
+    // null or T = T
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, -1, true, 1, false, true, false);
+
+    // T or null = T
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 1, false, -1, true, true, false);
+
+    // null or F = null
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, -1, true, 0, false, false, true);
+
+    // F or null = null
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, 0, false, -1, true, false, true);
+
+    // null or null = null
+    test_two_arity_exp_with_null<t::boolean, t::boolean, t::boolean>(binary_operator::conditional_or, -1, true, -1, true, false, true);
 }
 
 TEST_F(expression_evaluator_test, arithmetic_error) {

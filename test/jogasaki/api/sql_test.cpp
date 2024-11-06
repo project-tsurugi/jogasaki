@@ -667,4 +667,24 @@ TEST_F(sql_test, type_of_cast_conversion) {
         EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5,2)}, std::forward_as_tuple(triple{1, 0, 1, 0}))), result[0]);
     }
 }
+
+TEST_F(sql_test, conditional_and_or) {
+    // regression test for issue #1012
+    execute_statement("create table t (c0 int, c1 int)");
+    execute_statement("INSERT INTO t (c0) VALUES (1)");
+    {
+        // unknown or true
+        std::vector<mock::basic_record> result{};
+        execute_query("select c0 from t where c0 < c1 or c1 is null", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+    {
+        // unknown and false
+        std::vector<mock::basic_record> result{};
+        execute_query("select c0 from t where c0 < c1 and c1 is not null", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
 }

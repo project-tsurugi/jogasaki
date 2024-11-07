@@ -78,7 +78,7 @@ void flat_task::dag_schedule() {
     log_exit << *this;
 }
 
-bool set_going_teardown_or_submit(
+void set_going_teardown_or_submit(
     request_context& req_context,
     bool try_on_suspended_worker
 ) {
@@ -86,22 +86,21 @@ bool set_going_teardown_or_submit(
     // once going_teardown is set to true, it should never go back to false.
     if(! global::config_pool()->inplace_teardown() || ! thread_local_info_.is_worker_thread()) {
         submit_teardown(req_context, try_on_suspended_worker);
-        return false;
+        return;
     }
     auto& job = *req_context.job();
     auto completing = job.completing().load();
     if(completing) {
         // teardown task is scheduled or going_teardown is set
-        return false;
+        return;
     }
     if(ready_to_finish(job, true)) {
         if (job.completing().compare_exchange_strong(completing, true)) {
             job.going_teardown().store(true);
-            return true;
+            return;
         }
     }
     submit_teardown(req_context, try_on_suspended_worker);
-    return false;
 }
 
 bool check_or_submit_teardown(
@@ -110,8 +109,12 @@ bool check_or_submit_teardown(
     bool try_on_suspended_worker
 ) {
     if(global::config_pool()->inplace_teardown()) {
-        if(ready_to_finish(*req_context.job(), calling_from_task)) {
-            return true;
+        auto& job = *req_context.job();
+        if(ready_to_finish(job, calling_from_task)) {
+            auto completing = job.completing().load();
+            if (! completing && job.completing().compare_exchange_strong(completing, true)) {
+                return true;
+            }
         }
     }
     submit_teardown(req_context, try_on_suspended_worker);

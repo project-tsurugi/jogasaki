@@ -348,8 +348,10 @@ void dag_schedule(request_context& req_context);
 void submit_teardown(request_context& req_context, bool try_on_suspended_worker = false);
 
 /**
- * @brief check if job is ready to finish, otherwise submit teardown task
- * @details if the job is ready to finish, return true. Otherwise submit teardown task and return false.
+ * @brief check if job is ready to finish, or submit teardown task
+ * @details if the job is ready to finish, return true. Otherwise, submit teardown task and return false.
+ * In both cases, check job_context::completing() flag and if it is already true, do nothing to prevent finishing
+ * job twice.
  * @param req_context the request context where the task belongs
  * @param calling_from_task whether the function is called from task (i.e. one of worker threads on task scheduler)
  * @param try_on_suspended_worker whether to try to submit the task on suspended worker
@@ -361,12 +363,15 @@ bool check_or_submit_teardown(
 );
 
 /**
- * @brief set going_teardown flag if the current thread is in scheduler worker, otherwise submit teardown task
- * @details by setting going_teardown flag, the task run by current thread completes the job at the end of the task
+ * @brief set going_teardown flag or submit teardown task
+ * @details set going_teardown flag if the current thread is in scheduler worker and job is ready to finish,
+ * otherwise submit teardown task. In both cases, check job_context::completing() flag and if it is already true,
+ * do nothing to prevent finishing job twice.
+ * By setting going_teardown flag, the task run by current thread completes the job at the end of the task.
  * @param req_context the request context where the task belongs
  * @param try_on_suspended_worker whether to try to submit the task on suspended worker
  */
-bool set_going_teardown_or_submit(
+void set_going_teardown_or_submit(
     request_context& req_context,
     bool try_on_suspended_worker = false
 );

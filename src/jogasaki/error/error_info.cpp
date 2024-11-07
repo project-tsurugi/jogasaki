@@ -33,7 +33,8 @@ error_info::error_info(
     std::string_view message,
     std::string_view filepath,
     std::string_view position,
-    std::string_view stacks
+    std::string_view stacks,
+    bool include_supplemental_text_in_message
 ) noexcept :
     error_code_(code),
     message_(message),
@@ -41,7 +42,12 @@ error_info::error_info(
     source_file_position_(position),
     stacks_(stacks),
     supplemental_text_(create_supplemental_text())
-{}
+{
+    if(include_supplemental_text_in_message) {
+        message_ = message_ + " " + supplemental_text_;
+        supplemental_text_ = {};
+    }
+}
 
 std::string error_info::create_supplemental_text() noexcept {
     using json = nlohmann::json;

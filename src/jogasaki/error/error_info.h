@@ -53,8 +53,7 @@ public:
         std::string_view message,
         std::string_view filepath,
         std::string_view position,
-        std::string_view stacks,
-        bool include_supplemental_text_in_message = false
+        std::string_view stacks
     ) noexcept;
 
     /**

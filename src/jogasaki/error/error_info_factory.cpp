@@ -37,14 +37,7 @@ std::shared_ptr<error_info> create_error_info_with_stack_impl(
     status st,
     std::string_view stacktrace
 ) {
-    auto info = std::make_shared<error_info>(
-        code,
-        message,
-        filepath,
-        position,
-        stacktrace,
-        ! stacktrace.empty() // if stacktrace is provided, it's severe error and message should contain it
-    );
+    auto info = std::make_shared<error_info>(code, message, filepath, position, stacktrace);
     info->status(st);
     VLOG_LP(log_trace) << "error_info:" << *info;
     return info;

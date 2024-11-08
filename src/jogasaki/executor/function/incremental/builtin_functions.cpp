@@ -654,7 +654,8 @@ void sum(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* // `sum` does not create new varlen data
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& arg_type = args[0].type();
@@ -693,7 +694,8 @@ void count_pre(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* // `count` does not create new varlen data
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
@@ -713,7 +715,8 @@ void count_mid(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* // `count` does not create new varlen data
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     BOOST_ASSERT(args[0].type().kind() == kind::int8);  //NOLINT
@@ -736,7 +739,8 @@ void count_rows_pre(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* // `count` does not create new varlen data
 ) {
     BOOST_ASSERT(args.size() == 0);  //NOLINT
     BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
@@ -769,7 +773,8 @@ void avg_post(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* // `avg` does not create new varlen data
 ) {
     BOOST_ASSERT(args.size() == 2);  //NOLINT
     (void)initial;
@@ -806,13 +811,13 @@ T max_or_min(bool max, T a, T b) {
     return max ? a : b;
 }
 
-
 void max(
     accessor::record_ref target,
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* varlen_resource // `max` needs to remember the maximum value
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& arg_type = args[0].type();
@@ -829,7 +834,8 @@ void max(
             target_nullity_offset,
             source,
             arg_offset,
-            src_nullity_offset
+            src_nullity_offset,
+            varlen_resource // copy upstream process varlen data to exchange's varlen_resource
         );
         return;
     }
@@ -841,8 +847,11 @@ void max(
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
-        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
-        case kind::octet: target.set_value<runtime_t<kind::octet>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::octet>>(target_offset), source.get_value<runtime_t<kind::octet>>(arg_offset))); break;
+
+        // character and octet uses varlen_resource to copy varlen data owned by upstream process
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, accessor::text{varlen_resource, max_or_min(true, target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))}); break;
+        case kind::octet: target.set_value<runtime_t<kind::octet>>(target_offset, accessor::binary{varlen_resource, max_or_min(true, target.get_value<runtime_t<kind::octet>>(target_offset), source.get_value<runtime_t<kind::octet>>(arg_offset))}); break;
+
         case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
         case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
         case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
@@ -856,7 +865,8 @@ void min(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* varlen_resource // `min` needs to remember the minimum value
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     auto& arg_type = args[0].type();
@@ -873,7 +883,8 @@ void min(
             target_nullity_offset,
             source,
             arg_offset,
-            src_nullity_offset
+            src_nullity_offset,
+            varlen_resource  // copy upstream process varlen data to exchange's varlen_resource
         );
         return;
     }
@@ -885,8 +896,11 @@ void min(
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
         case kind::float4: target.set_value<runtime_t<kind::float4>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::float4>>(target_offset), source.get_value<runtime_t<kind::float4>>(arg_offset))); break;
         case kind::float8: target.set_value<runtime_t<kind::float8>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::float8>>(target_offset), source.get_value<runtime_t<kind::float8>>(arg_offset))); break;
-        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))); break;
-        case kind::octet: target.set_value<runtime_t<kind::octet>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::octet>>(target_offset), source.get_value<runtime_t<kind::octet>>(arg_offset))); break;
+
+        // character and octet uses varlen_resource to copy varlen data owned by upstream process
+        case kind::character: target.set_value<runtime_t<kind::character>>(target_offset, accessor::text{varlen_resource, max_or_min(false, target.get_value<runtime_t<kind::character>>(target_offset), source.get_value<runtime_t<kind::character>>(arg_offset))}); break;
+        case kind::octet: target.set_value<runtime_t<kind::octet>>(target_offset, accessor::binary{varlen_resource, max_or_min(false, target.get_value<runtime_t<kind::octet>>(target_offset), source.get_value<runtime_t<kind::octet>>(arg_offset))}); break;
+
         case kind::decimal: target.set_value<runtime_t<kind::decimal>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::decimal>>(target_offset), source.get_value<runtime_t<kind::decimal>>(arg_offset))); break;
         case kind::date: target.set_value<runtime_t<kind::date>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::date>>(target_offset), source.get_value<runtime_t<kind::date>>(arg_offset))); break;
         case kind::time_of_day: target.set_value<runtime_t<kind::time_of_day>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::time_of_day>>(target_offset), source.get_value<runtime_t<kind::time_of_day>>(arg_offset))); break;
@@ -900,7 +914,8 @@ void identity_post(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* // assuming record is already copied to the exchange's varlen_resource in pre/mid
 ) {
     BOOST_ASSERT(args.size() == 1);  //NOLINT
     (void)initial;

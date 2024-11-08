@@ -43,7 +43,8 @@ void sum(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource*
 );
 
 void count_pre(
@@ -51,7 +52,8 @@ void count_pre(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource*
 );
 
 void count_mid(
@@ -59,7 +61,8 @@ void count_mid(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource*
 );
 
 void count_rows_pre(
@@ -67,7 +70,8 @@ void count_rows_pre(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource*
 );
 
 void avg_post(
@@ -75,7 +79,8 @@ void avg_post(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource*
 );
 
 void max(
@@ -83,7 +88,8 @@ void max(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* varlen_resource
 );
 
 void min(
@@ -91,7 +97,8 @@ void min(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* varlen_resource
 );
 
 void identity_post(
@@ -99,7 +106,8 @@ void identity_post(
     field_locator const& target_loc,
     bool initial,
     accessor::record_ref source,
-    sequence_view<field_locator const> args
+    sequence_view<field_locator const> args,
+    memory::paged_memory_resource* varlen_resource
 );
 } // namespace builtin
 

@@ -39,7 +39,8 @@ using aggregator_type = std::function<void (
     field_locator const&,
     bool,
     accessor::record_ref,
-    sequence_view<field_locator const>
+    sequence_view<field_locator const>,
+    memory::paged_memory_resource* varlen_resource // used if aggregator creates new varlen data
 )>;
 
 /**

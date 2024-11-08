@@ -79,12 +79,20 @@ TEST_F(sql_function_type_matrix_test, max_char) {
     test_function_with_type<kind::character>("max(", "CHAR(3)", "('AAA'),('BBB'),('CCC')", accessor::text{"CCC"});
 }
 
+TEST_F(sql_function_type_matrix_test, max_char_20) {
+    test_function_with_type<kind::character>("max(", "CHAR(20)", "('AAA'),('BBB'),('CCC')", accessor::text{"CCC                 "});
+}
+
 TEST_F(sql_function_type_matrix_test, max_varbinary) {
     test_function_with_type<kind::octet>("max(", "VARBINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x03\x03\x03"});
 }
 
 TEST_F(sql_function_type_matrix_test, max_binary) {
     test_function_with_type<kind::octet>("max(", "BINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x03\x03\x03"});
+}
+
+TEST_F(sql_function_type_matrix_test, max_binary_20) {
+    test_function_with_type<kind::octet>("max(", "BINARY(20)", "('010101'),('020202'),('030303')", accessor::binary{"\x03\x03\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"});
 }
 
 TEST_F(sql_function_type_matrix_test, max_date) {

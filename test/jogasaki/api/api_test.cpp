@@ -466,6 +466,24 @@ TEST_F(api_test, scan_with_host_variable) {
     }
 }
 
+TEST_F(api_test, scan_with_host_variable_with_nulls) {
+    // verify comparison with null 
+    std::unordered_map<std::string, api::field_type_kind> variables{};
+    variables.emplace("p1", api::field_type_kind::int4);
+
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("create index i on t(c1)");
+    execute_statement("INSERT INTO t VALUES (0, null),(1, 1)");
+    {
+        auto ps = api::create_parameter_set();
+        ps->set_null("p1");
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t WHERE c1 <= :p1", variables, *ps, result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
+
 TEST_F(api_test, join_find_with_key_null) {
     // test join_find op, key contains null TODO move to join_find op UT rather than using SQL
     execute_statement("DELETE FROM T0");

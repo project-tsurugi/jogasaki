@@ -238,4 +238,20 @@ TEST_F(sql_join_find_test, left_outer_with_secondary_index) {
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>({2, -1, -1}, {false, true, true})), result[2]);
 }
 
+TEST_F(sql_join_find_test, use_secondary_index_with_null) {
+    execute_statement("CREATE TABLE t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (null),(1)");
+    execute_statement("CREATE TABLE t1 (c0 int primary key, c1 int)");
+    execute_statement("CREATE INDEX i1 on t1(c1)");
+    execute_statement("INSERT INTO t1 VALUES (10, null),(11,1)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c1";
+    EXPECT_TRUE(has_join_find(query));
+    EXPECT_TRUE(uses_secondary(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 11, 1)), result[0]);
+}
 }

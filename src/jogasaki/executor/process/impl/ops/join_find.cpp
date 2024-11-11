@@ -98,6 +98,10 @@ bool matcher::operator()(
        res != status::ok) {
         status_ = res;
         // TODO handle msg
+        if (res == status::err_integrity_constraint_violation) {
+            // null is assigned for find condition. Nothing should match.
+            status_ = status::not_found;
+        }
         return false;
     }
     std::string_view key{static_cast<char*>(buf_.data()), len};

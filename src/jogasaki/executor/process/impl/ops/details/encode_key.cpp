@@ -68,17 +68,16 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
                 message = ss.str();
                 return status::err_type_mismatch;
             }
+            if(a.empty()) {
+                // creating search key with null value makes no sense because it does not match any entry
+                return status::err_integrity_constraint_violation;
+            }
             kvs::coding_context cctx{};
             if (k.nullable_) {
                 if(auto res = kvs::encode_nullable(a, k.type_, k.spec_, cctx, s);res != status::ok) {
                     return res;
                 }
             } else {
-                if(a.empty()) {
-                    // log level was lowered temporarily to address issue #939
-                    VLOG_LP(log_debug) << "Null assigned for non-nullable field.";
-                    return status::err_integrity_constraint_violation;
-                }
                 if(auto res = kvs::encode(a, k.type_, k.spec_, cctx, s);res != status::ok) {
                     return res;
                 }

@@ -214,14 +214,15 @@ void preprocess(
                 container->work_level().set_minimum(statement_work_level_kind::simple_multirecord_operation);
                 break;
             case takatori::relation::expression_kind::join_scan:
-                throw_exception(impl::compile_exception(
-                    create_error_info(
+                if(! global::config_pool()->enable_join_scan()) {
+                    throw_exception(impl::compile_exception(create_error_info(
                         error_code::unsupported_runtime_feature_exception,
                         "Compiling statement resulted in unsupported relational operator. "
                         "Specify configuration parameter enable_index_join=false to avoid this.",
                         status::err_unsupported
-                    )
-                ));
+                    )));
+                }
+                break;
             case takatori::relation::expression_kind::join_find: //fall-thru
             case takatori::relation::expression_kind::join_group: //fall-thru
             case takatori::relation::expression_kind::take_group: //fall-thru
@@ -589,6 +590,9 @@ status prepare(
 
     if(cfg && cfg->enable_index_join()) {
         runtime_features.insert(yugawara::runtime_feature::index_join);
+    }
+    if(cfg && cfg->enable_join_scan()) {
+        runtime_features.insert(yugawara::runtime_feature::index_join_scan);
     }
     std::shared_ptr<yugawara::analyzer::index_estimator> indices{};
     auto sp = std::make_shared<storage_processor>();

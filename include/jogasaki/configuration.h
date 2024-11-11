@@ -514,6 +514,14 @@ public:
         inplace_dag_schedule_ = arg;
     }
 
+    [[nodiscard]] bool enable_join_scan() const noexcept {
+        return enable_join_scan_;
+    }
+
+    void enable_join_scan(bool arg) noexcept {
+        enable_join_scan_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -573,6 +581,7 @@ public:
         print_non_default(scan_default_parallel);
         print_non_default(inplace_teardown);
         print_non_default(inplace_dag_schedule);
+        print_non_default(enable_join_scan);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -636,7 +645,7 @@ private:
     std::size_t scan_default_parallel_ = 1;
     bool inplace_teardown_ = true;
     bool inplace_dag_schedule_ = true;
-
+    bool enable_join_scan_ = false;
 };
 
 }  // namespace jogasaki

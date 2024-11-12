@@ -133,8 +133,6 @@ struct statement_context {
     error_info_stats_callback callback_{};  //NOLINT
 };
 
-void submit_teardown(request_context& req_context, bool force = false, bool try_on_suspended_worker = false);
-
 /**
  * @brief common task object
  * @details The task object used commonly for the jogasaki::scheduler::task_scheduler.
@@ -294,7 +292,7 @@ private:
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
 
-    static inline std::atomic_size_t id_src_{};  //NOLINT
+    cache_align static inline std::atomic_size_t id_src_{};  //NOLINT
 
     /**
      * @return true if job completes together with the task
@@ -305,18 +303,12 @@ private:
     void bootstrap(tateyama::task_scheduler::context& ctx);
     void dag_schedule();
 
-    /**
-     * @return true if the teardown task completes
-     * @return false if the teardown task is rescheduled
-     */
-    bool teardown();
     void resolve(tateyama::task_scheduler::context& ctx);
 
-    void write();
-    void load();
-    void execute_wrapped();
+    bool write();
+    bool load();
+    bool execute_wrapped();
     void resubmit(request_context& req_context);
-    void finish_job();
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;
@@ -325,6 +317,65 @@ private:
 
 };
 
+/**
+ * @brief function to check job is ready to finish
+ * @param job the job context to check
+ * @param calling_from_task whether the function is called from task (i.e. one of worker threads on task scheduler)
+ * @return true if there is no other tasks for the job and completion is ready
+ * @return false otherwise
+ */
+bool ready_to_finish(job_context& job, bool calling_from_task);
+
+/**
+ * @brief finish the job
+ * @details this function doesn't check any condition for teardown, so use only when you are sure the job is ready
+ * to finish (e.g. by checking with `ready_to_finish()`)
+ */
+void finish_job(request_context& req_context);
+
+/**
+ * @brief process dag scheduler internal events to proceed dag state
+ */
+void dag_schedule(request_context& req_context);
+
+/**
+ * @brief submit teardown task
+ * @details check job_context::completing() flag. If the flag is not set, set it and submit teardown task.
+ * Otherwise do nothing.
+ * @param req_context the request context where the task belongs
+ * @param try_on_suspended_worker whether to try to submit the task on suspended worker
+ */
+void submit_teardown(request_context& req_context, bool try_on_suspended_worker = false);
+
+/**
+ * @brief check if job is ready to finish, or submit teardown task
+ * @details if the job is ready to finish, return true. Otherwise, submit teardown task and return false.
+ * In both cases, check job_context::completing() flag and if it is already true, do nothing to prevent finishing
+ * job twice.
+ * @param req_context the request context where the task belongs
+ * @param calling_from_task whether the function is called from task (i.e. one of worker threads on task scheduler)
+ * @param try_on_suspended_worker whether to try to submit the task on suspended worker
+ */
+bool check_or_submit_teardown(
+    request_context& req_context,
+    bool calling_from_task = false,
+    bool try_on_suspended_worker = false
+);
+
+/**
+ * @brief set going_teardown flag or submit teardown task
+ * @details set going_teardown flag if the current thread is in scheduler worker and job is ready to finish,
+ * otherwise submit teardown task. In both cases, check job_context::completing() flag and if it is already true,
+ * do nothing to prevent finishing job twice.
+ * By setting going_teardown flag, the task run by current thread completes the job at the end of the task.
+ * @param req_context the request context where the task belongs
+ * @param try_on_suspended_worker whether to try to submit the task on suspended worker
+ */
+void set_going_teardown_or_submit(
+    request_context& req_context,
+    bool try_on_suspended_worker = false
+);
+
 void print_task_diagnostic(flat_task const& t, std::ostream& os);
 
-}
+}  // namespace jogasaki::scheduler

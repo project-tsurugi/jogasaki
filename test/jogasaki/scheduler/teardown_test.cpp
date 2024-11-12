@@ -103,7 +103,10 @@ TEST_F(teardown_test, basic) {
                     }
                     auto s = teardown_task_submitted.load();
                     if(!s && teardown_task_submitted.compare_exchange_strong(s, true)) {
-                        submit_teardown(*rctx);
+                        if(check_or_submit_teardown(*rctx, true)) {
+                            ++completed_task_count;
+                            return model::task_result::complete_and_teardown;
+                        }
                     }
                     ++completed_task_count;
                     return model::task_result::complete;

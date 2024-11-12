@@ -31,7 +31,7 @@ namespace jogasaki::executor::process::impl::ops::details {
 
 /**
  * @brief evaluate the search key and encode
- * @details evaluate the search key and encode it so that it can be used for search
+ * @details evaluate the search key and encode it (for primary index or secondary index) for search
  * @param context the request context
  * @param keys the key fields to be evaluated
  * @param input_variables the variables to be used for evaluation
@@ -40,7 +40,9 @@ namespace jogasaki::executor::process::impl::ops::details {
  * @param length the length of the encoded key
  * @param message the error message filled only when the return value is not status::ok and message is available
  * @return status::ok when successful
- * @return status::err_integrity_constraint_violation when evaluation results in null where it is not allowed
+ * @return status::err_integrity_constraint_violation when evaluation results contain null, with that search
+ * should not find any entry (this is not necessarily integrity constraint violation, but the status code is left
+ * unchanged for backward compatibility)
  * @return status::err_type_mismatch if the type of the evaluated value does not match the expected type
  * @return status::err_expression_evaluation_failure any other evaluation failure
  */

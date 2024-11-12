@@ -47,6 +47,11 @@ model::task_result task::operator()() {
     }
     common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
 
+    if(global::config_pool()->inplace_dag_schedule()) {
+        scheduler::dag_schedule(*context());
+        return model::task_result::complete;
+    }
+
     context()->scheduler()->schedule_task(
         scheduler::flat_task{
             scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
@@ -55,7 +60,5 @@ model::task_result task::operator()() {
     );
     return model::task_result::complete;
 }
-}
 
-
-
+}  // namespace jogasaki::executor::exchange

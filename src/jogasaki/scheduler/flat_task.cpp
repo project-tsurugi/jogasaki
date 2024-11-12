@@ -43,6 +43,7 @@
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/statement_scheduler_impl.h>
 #include <jogasaki/scheduler/task_scheduler.h>
+#include <jogasaki/scheduler/thread_local_info.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/latch.h>
@@ -64,21 +65,68 @@ void flat_task::bootstrap(tateyama::task_scheduler::context& ctx) {
     log_exit << *this;
 }
 
+void dag_schedule(request_context& req_context) {
+    auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context.stmt_scheduler());
+    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
+    dc.process_internal_events();
+}
+
 void flat_task::dag_schedule() {
     log_entry << *this;
     trace_scope_name("dag_schedule");  //NOLINT
-    auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
-    auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
-    dc.process_internal_events();
+    scheduler::dag_schedule(*req_context_);
     log_exit << *this;
 }
 
-void submit_teardown(request_context& req_context, bool force, bool try_on_suspended_worker) {
+void set_going_teardown_or_submit(
+    request_context& req_context,
+    bool try_on_suspended_worker
+) {
+    // note that this function can be called multiple times
+    // once going_teardown is set to true, it should never go back to false.
+    if(! global::config_pool()->inplace_teardown() || ! thread_local_info_.is_worker_thread()) {
+        submit_teardown(req_context, try_on_suspended_worker);
+        return;
+    }
+    auto& job = *req_context.job();
+    auto completing = job.completing().load();
+    if(completing) {
+        // teardown task is scheduled or going_teardown is set
+        return;
+    }
+    if(ready_to_finish(job, true)) {
+        if (job.completing().compare_exchange_strong(completing, true)) {
+            job.going_teardown().store(true);
+            return;
+        }
+    }
+    submit_teardown(req_context, try_on_suspended_worker);
+}
+
+bool check_or_submit_teardown(
+    request_context& req_context,
+    bool calling_from_task,
+    bool try_on_suspended_worker
+) {
+    if(global::config_pool()->inplace_teardown()) {
+        auto& job = *req_context.job();
+        if(ready_to_finish(job, calling_from_task)) {
+            auto completing = job.completing().load();
+            if (! completing && job.completing().compare_exchange_strong(completing, true)) {
+                return true;
+            }
+        }
+    }
+    submit_teardown(req_context, try_on_suspended_worker);
+    return false;
+}
+
+void submit_teardown(request_context& req_context, bool try_on_suspended_worker) {
     // make sure teardown task is submitted only once
     auto& ts = *req_context.scheduler();
     auto& job = *req_context.job();
     auto completing = job.completing().load();
-    if (force || (!completing && job.completing().compare_exchange_strong(completing, true))) {
+    if (! completing && job.completing().compare_exchange_strong(completing, true)) {
         ts.schedule_task(
             flat_task{task_enum_tag<flat_task_kind::teardown>, std::addressof(req_context)},
             schedule_option{
@@ -103,39 +151,46 @@ void flat_task::resubmit(request_context& req_context) {
     ts.schedule_task(flat_task{*this});
 }
 
-bool flat_task::teardown() {  //NOLINT(readability-make-member-function-const)
+bool ready_to_finish(job_context& job, bool calling_from_task) {  //NOLINT(readability-make-member-function-const)
     // stop log_entry/log_exit since this function is called frequently as part of durability callback processing
     // log_entry << *this;
     trace_scope_name("teardown");  //NOLINT
     bool ret = true;
-    if (auto cnt = job()->task_count().load(); cnt > 0) {
-        DVLOG_LP(log_debug) << *this << " other " << cnt << " tasks remain and teardown is rescheduled.";
+    std::size_t expected_task_count = calling_from_task ? 1 : 0;
+    if (auto cnt = job.task_count().load(); cnt > expected_task_count) {
+        VLOG_LP(log_debug) << job << " other " << cnt << " tasks remain and teardown is (re)scheduled";
         // Another teardown task will be scheduled at the end of this task.
         // It's not done here because newly scheduled task quickly completes and destroy job context.
         ret = false;
-    } else if (job()->completion_readiness() && !job()->completion_readiness()()) {
-        DVLOG_LP(log_debug) << *this << " job completion is not ready and teardown is rescheduled.";
+    } else if (job.completion_readiness() && !job.completion_readiness()()) {
+        VLOG_LP(log_debug) << job << " job completion is not ready and teardown is (re)scheduled";
         ret = false;
     }
     // log_exit << *this << " ret:" << ret;
     return ret;
 }
 
-void flat_task::write() {
+bool flat_task::write() {
     log_entry << *this;
+    bool ret = false;
     if(utils::request_cancel_enabled(request_cancel_kind::write)) {
         auto res_src = req_context_->req_info().response_source();
         if(res_src && res_src->check_cancel()) {
             set_cancel_status(*req_context_);
-            submit_teardown(*req_context_);
+            if(check_or_submit_teardown(*req_context_, true)) {
+                ret = true;
+            };
             log_exit << *this;
-            return;
+            return ret;
         }
     }
     trace_scope_name("write");  //NOLINT
     (*write_)(*req_context_);
-    submit_teardown(*req_context_);
+    if(check_or_submit_teardown(*req_context_, true)) {
+        ret = true;
+    };
     log_exit << *this;
+    return ret;
 }
 
 bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
@@ -148,16 +203,16 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
     VLOG_LP(log_trace_fine) << "task begin " << *this << " job_id:" << utils::hex(req_context_->job()->id())
                             << " kind:" << kind_ << " sticky:" << sticky_ << " worker:" << ctx.index()
                             << " stolen:" << ctx.task_is_stolen() << " last_steal_from:" << ctx.last_steal_from();
-    bool ret = false;
+    bool to_finish_job = false;
     switch(kind_) {
         using kind = flat_task_kind;
         case kind::dag_events: dag_schedule(); break;
         case kind::bootstrap: bootstrap(ctx); break;
         case kind::resolve: resolve(ctx); break;
-        case kind::teardown: ret = teardown(); break;
-        case kind::wrapped: execute_wrapped(); break;
-        case kind::write: write(); break;
-        case kind::load: load(); break;
+        case kind::teardown: to_finish_job = ready_to_finish(*job(), false); break;
+        case kind::wrapped: to_finish_job = execute_wrapped(); break;
+        case kind::write: to_finish_job = write(); break;
+        case kind::load: to_finish_job = load(); break;
     }
     std::chrono::time_point<clock> end{};
     std::size_t took_ns{};
@@ -179,21 +234,22 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
                             << " job_id:" << utils::hex(req_context_->job()->id()) << " kind:" << kind_
                             << " sticky:" << sticky_ << " worker:" << ctx.index() << " stolen:" << ctx.task_is_stolen();
 
-    return ret;
+    return to_finish_job;
 }
 
-void flat_task::finish_job() {
+void finish_job(request_context& req_context) {
     // job completed, and the latch needs to be released
-    auto& ts = *req_context_->scheduler();
-    auto& j = *job();
+    auto& ts = *req_context.scheduler();
+    auto& j = *req_context.job();
     auto& cb = j.callback();
     auto req_detail = j.request();
     if(cb) {
         cb();
     }
+    VLOG_LP(log_trace_fine) << "job teardown job_id:" << utils::hex(req_context.job()->id());
     if(req_detail) {
         req_detail->status(scheduler::request_detail_status::finishing);
-        log_request(*req_detail, req_context_->status_code() == status::ok);
+        log_request(*req_detail, req_context.status_code() == status::ok);
 
         VLOG(log_debug_timing_event_fine) << "/:jogasaki:metrics:task_time"
             << " job_id:" << utils::hex(req_detail->id())
@@ -239,7 +295,7 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
         auto lk = (tctx && sticky_) ?
             std::unique_lock{tctx->mutex()} :
             std::unique_lock<transaction_context::mutex_type>{};
-        job_completes = execute(ctx);
+        job_completes = execute(ctx) || job()->going_teardown();
         if (tctx && sticky_) {
             tctx->decrement_worker_count();
         }
@@ -252,17 +308,21 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
         (void)cnt;
         (void)jobid;
         //VLOG_LP(log_debug) << "decremented job " << jobid << " task count to " << cnt;
-        return;
+        if(! job_completes) {
+            return;
+        }
     }
 
-    // teardown task
+    // teardown task or job_completes=true
     if(! job_completes) {
+        // teardown task is not ready to finish_job
+
         // Submitting teardown should be done at the end of the task since otherwise new teardown finish fast
         // and start destroying job context, which can be touched by this task.
-        submit_teardown(*req_context_, true);
+        resubmit(*req_context_);
         return;
     }
-    finish_job();
+    finish_job(*req_context_);
 }
 
 flat_task::identity_type flat_task::id() const {
@@ -382,10 +442,11 @@ flat_task::flat_task(
     sctx_(std::move(sctx))
 {}
 
-void flat_task::load() {
+bool flat_task::load() {
     log_entry << *this;
     trace_scope_name("load");  //NOLINT
     auto res = (*loader_)();
+    bool ret = false;
     if(res == executor::file::loader_result::running) {
         auto& ts = *req_context_->scheduler();
         ts.schedule_task(flat_task{
@@ -406,6 +467,7 @@ void flat_task::load() {
         submit_teardown(*req_context_);
     }
     log_exit << *this;
+    return ret;
 }
 
 flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rctx,
@@ -416,15 +478,16 @@ flat_task::flat_task(task_enum_tag_t<flat_task_kind::load>, request_context* rct
     loader_(std::move(ldr))
 {}
 
-void flat_task::execute_wrapped() {
+bool flat_task::execute_wrapped() {
     //DVLOG(log_trace) << *this << " wrapped task executed.";
     trace_scope_name("executor_task");  //NOLINT
     model::task_result res{};
     while((res = (*origin_)()) == model::task_result::proceed) {}
     if(res == model::task_result::yield) {
         resubmit(*req_context_);
-        return;
+        return false;
     }
+    return res == model::task_result::complete_and_teardown;
 }
 
 }  // namespace jogasaki::scheduler

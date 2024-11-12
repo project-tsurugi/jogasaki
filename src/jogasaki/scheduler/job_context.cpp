@@ -61,6 +61,10 @@ std::atomic_bool &job_context::started() noexcept {
     return started_;
 }
 
+std::atomic_bool& job_context::going_teardown() noexcept {
+    return going_teardown_;
+}
+
 void job_context::request(std::shared_ptr<request_detail> arg) noexcept {
     if(arg) {
         id_ = arg->id();

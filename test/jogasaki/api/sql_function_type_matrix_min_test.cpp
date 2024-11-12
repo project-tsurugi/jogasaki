@@ -75,12 +75,20 @@ TEST_F(sql_function_type_matrix_test, min_char) {
     test_function_with_type<kind::character>("min(", "CHAR(3)", "('AAA'),('BBB'),('CCC')", accessor::text{"AAA"});
 }
 
+TEST_F(sql_function_type_matrix_test, min_char_20) {
+    test_function_with_type<kind::character>("min(", "CHAR(20)", "('AAA'),('BBB'),('CCC')", accessor::text{"AAA                 "});
+}
+
 TEST_F(sql_function_type_matrix_test, min_varbinary) {
     test_function_with_type<kind::octet>("min(", "VARBINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x01\x01\x01"});
 }
 
 TEST_F(sql_function_type_matrix_test, min_binary) {
     test_function_with_type<kind::octet>("min(", "BINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x01\x01\x01"});
+}
+
+TEST_F(sql_function_type_matrix_test, min_binary_20) {
+    test_function_with_type<kind::octet>("min(", "BINARY(20)", "('010101'),('020202'),('030303')", accessor::binary{"\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"});
 }
 
 TEST_F(sql_function_type_matrix_test, min_date) {

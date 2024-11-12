@@ -39,7 +39,12 @@ std::shared_ptr<error_info> create_error_info_with_stack_impl(
 ) {
     auto info = std::make_shared<error_info>(code, message, filepath, position, stacktrace);
     info->status(st);
-    VLOG_LP(log_trace) << "error_info:" << *info;
+    if(! stacktrace.empty()) {
+        // currently assuming the error is severe if stacktrace is provided
+        LOG_LP(ERROR) << "unexpected internal error " << *info;
+    } else {
+        VLOG_LP(log_trace) << "error_info:" << *info;
+    }
     return info;
 }
 

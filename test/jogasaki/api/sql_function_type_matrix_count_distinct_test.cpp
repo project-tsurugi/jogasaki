@@ -84,12 +84,20 @@ TEST_F(sql_function_type_matrix_test, count_distinct_char) {
     test_function_with_type<kind::int8>("count(distinct ", "CHAR(3)", "('AAA'),('BBB'),('AAA')", 2);
 }
 
+TEST_F(sql_function_type_matrix_test, count_distinct_char_20) {
+    test_function_with_type<kind::int8>("count(distinct ", "CHAR(20)", "('AAA'),('BBB'),('AAA')", 2);
+}
+
 TEST_F(sql_function_type_matrix_test, count_distinct_varbinary) {
     test_function_with_type<kind::int8>("count(distinct ", "VARBINARY(3)", "('010101'),('020202'),('010101')", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_binary) {
     test_function_with_type<kind::int8>("count(distinct ", "BINARY(3)", "('010101'),('020202'),('010101')", 2);
+}
+
+TEST_F(sql_function_type_matrix_test, count_distinct_binary_20) {
+    test_function_with_type<kind::int8>("count(distinct ", "BINARY(20)", "('010101'),('020202'),('010101')", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_date) {

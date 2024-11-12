@@ -24,6 +24,7 @@
 
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/latch.h>
 
@@ -155,6 +156,22 @@ public:
     [[nodiscard]] std::atomic<hybrid_execution_mode_kind>& hybrid_execution_mode() noexcept {
         return hybrid_execution_mode_;
     }
+
+    /**
+     * @brief accessor for the going_teardown flag used to mark whether the final flat_task is going to complete the job
+     * without submitting teardown task
+     * @return going_teardown flag
+     */
+    [[nodiscard]] std::atomic_bool& going_teardown() noexcept;
+
+    /**
+     * @brief dump the text representation of the value to output stream
+     * @param out the target output stream
+     * @param value the value to be output
+     */
+    friend std::ostream& operator<<(std::ostream& out, job_context const& value) {
+        return value.write_to(out);
+    }
 private:
 
     job_id_type id_{id_src_++};
@@ -167,11 +184,16 @@ private:
     readiness_provider readiness_provider_{};
     std::shared_ptr<request_detail> request_detail_{};
     cache_align std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
+    cache_align std::atomic_bool going_teardown_{false};
 
-    static inline std::atomic_size_t id_src_{1UL << 32UL};  //NOLINT
+    cache_align static inline std::atomic_size_t id_src_{1UL << 32UL};  //NOLINT
+
+    std::ostream& write_to(std::ostream& out) const {
+        using namespace std::string_view_literals;
+        return out << "job_id:"sv << utils::hex(id());
+    }
 };
 
-}
+}  // namespace scheduler
 
-}
-
+}  // namespace jogasaki

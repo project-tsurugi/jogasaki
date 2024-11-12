@@ -97,7 +97,14 @@ bool input_partition::write(accessor::record_ref record) {
     for(std::size_t i=0, n = info.aggregator_specs().size(); i < n; ++i) {
         auto& as = info.aggregator_specs()[i];
         auto& aggregator = as.aggregator_info().aggregator();
-        aggregator(value, info.target_field_locator(i), initial, record, info.source_field_locators(i));
+        aggregator(
+            value,
+            info.target_field_locator(i),
+            initial,
+            record,
+            info.source_field_locators(i),
+            values_->varlen_resource()
+        );
     }
     if (hash_table_->load_factor() > load_factor_bound) {
         flush();

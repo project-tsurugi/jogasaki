@@ -160,7 +160,9 @@ private:
 /**
  * @brief utility function to evaluate the expression as bool
  * @details This is same as evaluator::operator() except that this function also handles rewinding lifo memory
- * resource used for evaluation.
+ * resource used for evaluation and returns true/false (null is never returned.)
+ * Unlike evaluator::operator(), this function doesn't require caller to release the
+ * memory resource since the returned value contains true/false value only and no memory resource is used to store it.
  * @param eval the evaluator to conduct the evaluation
  * @param variables variables table used to evaluate the expression
  * @param resource memory resource used to store generated value. Specify nullptr if the evaluation

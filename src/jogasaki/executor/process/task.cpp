@@ -50,7 +50,6 @@ task::task(
 {}
 
 model::task_result task::operator()() {
-    VLOG_LP(log_debug) << *this << " process::task executed.";
     if(auto&& cb = step()->did_start_task(); cb) {
         callback_arg arg{ id() };
         (*cb)(&arg);
@@ -59,12 +58,10 @@ model::task_result task::operator()() {
     auto status = executor_->run();
     switch (status) {
         case abstract::status::completed:
-            VLOG_LP(log_debug) << *this << " process::task completed.";
             // raise appropriate event if needed
             common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
             break;
         case abstract::status::completed_with_errors:
-            VLOG_LP(log_warning) << *this << " task completed with errors";
             // raise appropriate event if needed
             common::send_event(*context(), event_enum_tag<event_kind::task_completed>, step()->id(), id());
             break;
@@ -74,19 +71,22 @@ model::task_result task::operator()() {
             fail_with_exception();
             break;
         case abstract::status::to_yield:
-            VLOG_LP(log_warning) << *this << " process::task to_yield.";
             break;
         default:
             fail_with_exception();
             break;
     }
 
-    context()->scheduler()->schedule_task(
-        scheduler::flat_task{
-            scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
-                context()
-        }
-    );
+    if(global::config_pool()->inplace_dag_schedule()) {
+        scheduler::dag_schedule(*context());
+    } else {
+        context()->scheduler()->schedule_task(
+            scheduler::flat_task{
+                scheduler::task_enum_tag<scheduler::flat_task_kind::dag_events>,
+                    context()
+            }
+        );
+    }
 
     if(auto&& cb = step()->will_end_task(); cb) {
         callback_arg arg{ id() };

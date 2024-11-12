@@ -426,7 +426,7 @@ private:
     std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
     affected_transactions affected_transactions_{};
 
-    static inline std::atomic_size_t id_src_{0}; //NOLINT
+    cache_align static inline std::atomic_size_t id_src_{0}; //NOLINT
 };
 
 } // namespace jogasaki::scheduler

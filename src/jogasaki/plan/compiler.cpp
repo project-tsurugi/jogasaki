@@ -865,7 +865,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     auto target = vars->store().ref();
     for(auto& [name, e] : *parameters) {
         if(! info->exists(name)) {
-            VLOG_LP(log_warning) << "Parameter '" << name << "' is passed but not used by the statement";
+            VLOG_LP(log_debug) << "Parameter '" << name << "' is passed but not used by the statement";
             continue;
         }
         auto os = info->at(name);

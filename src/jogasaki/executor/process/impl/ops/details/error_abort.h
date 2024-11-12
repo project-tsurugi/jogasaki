@@ -93,7 +93,7 @@ operation_status error_abort_impl(
                 filepath,
                 position,
                 res,
-                true
+                false
             );
             break;
         case status::err_insufficient_field_storage:

@@ -124,6 +124,7 @@ private:
     std::size_t pointer_field_offset_{};
     std::vector<std::vector<field_locator>> args_{};
     bool internal_on_member_{};
+    std::unique_ptr<memory::paged_memory_resource> varlen_resource_{};
 
     bool internal_next_member();
     [[nodiscard]] accessor::record_ref internal_get_member() const;

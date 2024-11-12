@@ -181,6 +181,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_thousandths_ratio_check_local_first) " << cfg.thousandths_ratio_check_local_first() << " : how frequently (represented as count out of 1000 executions) task scheduler checks local task queue first";
     LOGCFG << "(dev_direct_commit_callback) " << cfg.direct_commit_callback() << " : whether to make callback directly from shirakami to client on pre-commit response (only for `available` and `accepted`)";
     LOGCFG << "(scan_default_parallel) " << cfg.scan_default_parallel() << " : max parallel execution count of scan tasks";
+    LOGCFG << "(dev_inplace_teardown) " << cfg.inplace_teardown() << " : whether to process teardown (job completion) directly on the current thread instead of scheduling a task for it";
 }
 
 status database::start() {
@@ -1204,7 +1205,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                         if(*canceled) {
                             set_cancel_status(*rctx);
                         }
-                        scheduler::submit_teardown(*rctx, false, true);
+                        scheduler::submit_teardown(*rctx, true);
                     },
                 }
             );

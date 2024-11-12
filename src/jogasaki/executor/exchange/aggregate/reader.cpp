@@ -49,7 +49,8 @@ reader::reader(
     key_comparator_(info_->mid().key_compare_info()),
     pointer_field_offset_(
         info_->mid().group_meta()->key().value_offset(info_->mid().group_meta()->key().field_count()-1)
-    )
+    ),
+    varlen_resource_(std::make_unique<memory::monotonic_paged_memory_resource>(std::addressof(global::page_pool())))
 {
     for(auto& p : partitions_) {
         if (!p) continue;
@@ -93,7 +94,8 @@ bool reader::next_group() {
                     info.target_field_locator(i),
                     initial,
                     src,
-                    sequence_view{&info.target_field_locator(i)}
+                    sequence_view{&info.target_field_locator(i)},
+                    varlen_resource_.get()
                 );
             }
             initial = false;
@@ -142,7 +144,14 @@ accessor::record_ref reader::get_member() const {
         for(std::size_t i=0, n=info.aggregator_specs().size(); i < n; ++i) {
             auto& as = info.aggregator_specs()[i];
             auto& aggregator = as.aggregator_info().aggregator();
-            aggregator(target, info.target_field_locator(i), false, ref, info.source_field_locators(i));
+            aggregator(
+                target,
+                info.target_field_locator(i),
+                false,
+                ref,
+                info.source_field_locators(i),
+                varlen_resource_.get()
+            );
         }
         return target;
     }

@@ -60,7 +60,7 @@ void submit_commit_response(
             } else {
                 rctx->commit_ctx()->on_response()(kind);
             }
-            scheduler::submit_teardown(*rctx, false, teardown_try_on_suspended_worker);
+            scheduler::submit_teardown(*rctx, teardown_try_on_suspended_worker);
             return model::task_result::complete;
         }, false)
     );

@@ -180,4 +180,4 @@ std::ostream& operator<<(std::ostream& os, end_point_kind kind) {
     return os;
 }
 
-}
+} // namespace jogasaki::kvs

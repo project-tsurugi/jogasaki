@@ -17,7 +17,7 @@
 
 #include <utility>
 
-#include <jogasaki/executor/process/impl/range.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/transaction_context.h>
 

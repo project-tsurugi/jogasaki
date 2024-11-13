@@ -21,7 +21,7 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
-#include <jogasaki/executor/process/impl/range.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/step.h>
@@ -53,7 +53,7 @@ public:
         std::unique_ptr<kvs::storage> stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         transaction_context* tx,
-        impl::scan_range const* range_,
+        impl::scan_range const* range,
         memory_resource* resource,
         memory_resource* varlen_resource
     );

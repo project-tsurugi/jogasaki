@@ -263,5 +263,5 @@ end_point_kind adjust_endpoint_kind(bool use_secondary, kvs::end_point_kind endp
  * @return The output stream with the string representation appended.
  */
 std::ostream& operator<<(std::ostream& os, end_point_kind kind);
-}
 
+} // namespace jogasaki::kvs

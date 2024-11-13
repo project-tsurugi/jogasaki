@@ -18,7 +18,7 @@
 #include <utility>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/range.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 
 namespace jogasaki::executor::process::impl::ops {
 

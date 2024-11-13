@@ -23,8 +23,8 @@ namespace jogasaki::executor::process::impl {
 class scan_range : public abstract::range {
   public:
     explicit scan_range(bound begin, bound end, bool is_empty = true) noexcept;
-
-    ~scan_range() override                        = default;
+    scan_range() noexcept;
+    ~scan_range() override                             = default;
     scan_range(scan_range const& other)                = delete;
     scan_range& operator=(scan_range const& other)     = delete;
     scan_range(scan_range&& other) noexcept            = default;

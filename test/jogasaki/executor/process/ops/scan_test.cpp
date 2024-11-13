@@ -59,7 +59,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_builder.h>
 #include <jogasaki/executor/process/impl/ops/scan.h>
 #include <jogasaki/executor/process/impl/ops/scan_context.h>
-#include <jogasaki/executor/process/impl/range.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/mock/task_context.h>

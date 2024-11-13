@@ -31,7 +31,7 @@
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/process/impl/range.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/model/flow.h>
 #include <jogasaki/model/step_kind.h>

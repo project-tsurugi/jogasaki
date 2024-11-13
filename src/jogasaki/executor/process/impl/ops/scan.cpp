@@ -36,7 +36,7 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/bound.h>
-#include <jogasaki/executor/process/impl/range.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/executor/process/impl/ops/write_existing.h>

@@ -20,7 +20,7 @@
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
-#include <jogasaki/executor/process/impl/range.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -39,7 +39,7 @@ public:
      * @param root the root of the operator tree
      * @param operator_count the number of operators
      * @param io_exchange_map the mapping from input/output index to exchange
-     * @param scan_range the range gathered from the scan operator in the operator tree (if any).
+     * @param range the range gathered from the scan operator in the operator tree (if any).
      * Can be nullptr if the operators don't contain scan operation.
      */
     operator_container(
@@ -69,7 +69,7 @@ public:
 
     /**
      * @brief accessor to scan_range
-     * @return the scan_range, or nullptr if there is no scan operation in the process
+     * @return the range, or nullptr if there is no scan operation in the process
      */
     [[nodiscard]] std::shared_ptr<impl::scan_range> const& range() const noexcept;
 private:

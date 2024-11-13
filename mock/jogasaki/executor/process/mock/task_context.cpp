@@ -16,4 +16,4 @@
 #include "task_context.h"
 
 namespace jogasaki::executor::process::mock {
-} // jogasaki::executor::process::mock
+} // namespace jogasaki::executor::process::mock

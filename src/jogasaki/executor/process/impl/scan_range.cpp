@@ -16,17 +16,13 @@
 
 #include <boost/assert.hpp>
 
-#include "range.h"
+#include "scan_range.h"
 
 namespace jogasaki::executor::process::impl {
 
 scan_range::scan_range(bound begin, bound end, bool is_empty) noexcept
-    : begin_(std::move(begin)), end_(std::move(end)), is_empty_(is_empty) {
-
-    BOOST_ASSERT(&begin_);
-    BOOST_ASSERT(&end_);
-}
-
+    : begin_(std::move(begin)), end_(std::move(end)), is_empty_(is_empty) {}
+scan_range::scan_range() noexcept: is_empty_(true) {}
 [[nodiscard]] bound const& scan_range::begin() const noexcept { return begin_; }
 [[nodiscard]] bound const& scan_range::end() const noexcept { return end_; }
 [[nodiscard]] bool scan_range::is_empty() const noexcept { return is_empty_; }

@@ -48,7 +48,7 @@ public:
      * @param io_info input/output information
      * @param relation_io_map mapping from relation to input/output indices
      * @param io_exchange_map map from input/output to exchange operator
-     * @param request_context memory resource for initializing and managing processor structures
+     * @param request_context request_context to pass memory resource to build the structures needed by this processor
      * @throws plan::impl::compile_exception if the processor construction fails
      */
     processor(

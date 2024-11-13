@@ -20,18 +20,17 @@
 
 namespace jogasaki::executor::process::impl {
 
-class range : public abstract::range {
+class scan_range : public abstract::range {
   public:
-    explicit range(std::unique_ptr<bound> begin = nullptr, std::unique_ptr<bound> end = nullptr,
-        bool is_empty = true) noexcept;
+    explicit scan_range(bound begin, bound end, bool is_empty = true) noexcept;
 
-    ~range() override                        = default;
-    range(range const& other)                = delete;
-    range& operator=(range const& other)     = delete;
-    range(range&& other) noexcept            = default;
-    range& operator=(range&& other) noexcept = default;
-    [[nodiscard]] bound const* begin() const noexcept;
-    [[nodiscard]] bound const* end() const noexcept;
+    ~scan_range() override                        = default;
+    scan_range(scan_range const& other)                = delete;
+    scan_range& operator=(scan_range const& other)     = delete;
+    scan_range(scan_range&& other) noexcept            = default;
+    scan_range& operator=(scan_range&& other) noexcept = default;
+    [[nodiscard]] bound const& begin() const noexcept;
+    [[nodiscard]] bound const& end() const noexcept;
     [[nodiscard]] bool is_empty() const noexcept;
     /**
      * @brief Support for debugging, callable in GDB
@@ -42,8 +41,8 @@ class range : public abstract::range {
     void dump(std::ostream& out, int indent = 0) const noexcept;
 
   private:
-    std::unique_ptr<bound> begin_;
-    std::unique_ptr<bound> end_;
+    bound begin_;
+    bound end_;
     bool is_empty_;
 };
 

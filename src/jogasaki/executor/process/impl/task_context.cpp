@@ -48,7 +48,7 @@ process::impl::task_context::task_context(
     request_context& rctx,
     std::size_t partition,
     io_exchange_map const& io_exchange_map,
-    std::shared_ptr<impl::range> range,
+    std::shared_ptr<impl::scan_range> range,
     io::record_channel* channel,
     partition_index sink_index
 ) :

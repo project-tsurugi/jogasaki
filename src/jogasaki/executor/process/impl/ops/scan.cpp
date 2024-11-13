@@ -130,7 +130,7 @@ operation_status scan::process_record(abstract::task_context* context) {
             std::move(stg),
             use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
             ctx.transaction(),
-            unsafe_downcast<impl::range const>(ctx.task_context()->range()),  //NOLINT
+            unsafe_downcast<impl::scan_range const>(ctx.task_context()->range()),  //NOLINT
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -256,15 +256,15 @@ void scan::finish(abstract::task_context* context) {
 }
 status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)
     auto& stg = use_secondary_ ? *ctx.secondary_stg_ : *ctx.stg_;
-    auto range = ctx.range_;
-    auto begin = range->begin();
-    auto end = range->end();
+    const auto range = ctx.range_;
+    const auto& begin = range->begin();
+    const auto& end = range->end();
     if(auto res = stg.content_scan(
             *ctx.tx_,
-            begin->key(),
-            begin->endpointkind(),
-            end->key(),
-            end->endpointkind(),
+            begin.key(),
+            begin.endpointkind(),
+            end.key(),
+            end.endpointkind(),
             ctx.it_
         ); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);

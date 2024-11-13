@@ -97,34 +97,28 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     return status::ok;
 }
 
-status two_encode_keys(
-    request_context* context,
+status two_encode_keys(request_context* context,
     std::vector<details::search_key_field_info> const& begin_keys,
-    std::vector<details::search_key_field_info> const& end_keys,
-    variable_table& input_variables,
-    memory::lifo_paged_memory_resource& resource,
-    data::aligned_buffer& key_begin,
-    std::size_t& blen,
-    data::aligned_buffer& key_end,
-    std::size_t& elen
-) {
+    std::vector<details::search_key_field_info> const& end_keys, variable_table& input_variables,
+    memory::lifo_paged_memory_resource& resource, data::aligned_buffer& key_begin,
+    std::size_t& blen, data::aligned_buffer& key_end, std::size_t& elen) {
     status status_result = status::ok;
     std::string message;
-    if ((status_result = impl::ops::details::encode_key(
-            context, begin_keys, input_variables, resource, key_begin, blen, message)) 
-        != status::ok) {
-        
+    if ((status_result = impl::ops::details::encode_key(context, begin_keys, input_variables,
+             resource, key_begin, blen, message)) != status::ok) {
+
         if (status_result == status::err_type_mismatch) {
-            set_error(*context, error_code::unsupported_runtime_feature_exception, message, status_result);
+            set_error(*context, error_code::unsupported_runtime_feature_exception, message,
+                status_result);
         }
         return status_result;
     }
     if ((status_result = impl::ops::details::encode_key(
-            context, end_keys, input_variables, resource, key_end, elen, message)) 
-        != status::ok) {
-        
+             context, end_keys, input_variables, resource, key_end, elen, message)) != status::ok) {
+
         if (status_result == status::err_type_mismatch) {
-            set_error(*context, error_code::unsupported_runtime_feature_exception, message, status_result);
+            set_error(*context, error_code::unsupported_runtime_feature_exception, message,
+                status_result);
         }
         return status_result;
     }

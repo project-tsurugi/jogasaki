@@ -14,23 +14,29 @@
  * limitations under the License.
  */
 
+#include <boost/assert.hpp>
+
 #include "range.h"
 
 namespace jogasaki::executor::process::impl {
 
-range::range(std::unique_ptr<bound> begin, std::unique_ptr<bound> end, bool is_empty) noexcept
-    : begin_(std::move(begin)), end_(std::move(end)), is_empty_(is_empty) {}
+scan_range::scan_range(bound begin, bound end, bool is_empty) noexcept
+    : begin_(std::move(begin)), end_(std::move(end)), is_empty_(is_empty) {
 
-[[nodiscard]] bound const* range::begin() const noexcept { return begin_.get(); }
-[[nodiscard]] bound const* range::end() const noexcept { return end_.get(); }
-[[nodiscard]] bool range::is_empty() const noexcept { return is_empty_; }
+    BOOST_ASSERT(&begin_);
+    BOOST_ASSERT(&end_);
+}
 
-void range::dump(std::ostream& out, int indent) const noexcept {
+[[nodiscard]] bound const& scan_range::begin() const noexcept { return begin_; }
+[[nodiscard]] bound const& scan_range::end() const noexcept { return end_; }
+[[nodiscard]] bool scan_range::is_empty() const noexcept { return is_empty_; }
+
+void scan_range::dump(std::ostream& out, int indent) const noexcept {
     std::string indent_space(indent, ' ');
     out << indent_space << "  begin_:\n";
-    begin_->dump(out, indent + 2);
+    begin_.dump(out, indent + 2);
     out << indent_space << "  end_:\n";
-    end_->dump(out, indent + 2);
-    out << indent_space << "  is_empty_: " <<  is_empty_ << "\n";
+    end_.dump(out, indent + 2);
+    out << indent_space << "  is_empty_: " << is_empty_ << "\n";
 }
 } // namespace jogasaki::executor::process::impl

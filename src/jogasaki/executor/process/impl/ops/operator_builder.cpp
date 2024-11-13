@@ -15,12 +15,12 @@
  */
 #include "operator_builder.h"
 
-#include <boost/assert.hpp>
 #include <cstddef>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <boost/assert.hpp>
 
 #include <takatori/descriptor/element.h>
 #include <takatori/relation/graph.h>
@@ -36,11 +36,13 @@
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/executor/process/impl/bound.h>
 #include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
+#include <jogasaki/executor/process/impl/range.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
@@ -63,8 +65,8 @@
 #include "take_flat.h"
 #include "take_group.h"
 #include "write_create.h"
-#include "write_existing.h"
 #include "write_kind.h"
+#include "write_existing.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -74,75 +76,97 @@ using takatori::relation::step::dispatch;
 using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
-operator_builder::operator_builder(std::shared_ptr<processor_info> info,
-    std::shared_ptr<io_info> io_info, std::shared_ptr<relation_io_map> relation_io_map,
-    io_exchange_map& io_exchange_map, request_context* request_context)
-    : info_(std::move(info)), io_info_(std::move(io_info)),
-      io_exchange_map_(std::addressof(io_exchange_map)),
-      relation_io_map_(std::move(relation_io_map)), request_context_(request_context) {}
+operator_builder::operator_builder(
+    std::shared_ptr<processor_info> info,
+    std::shared_ptr<io_info> io_info,
+    std::shared_ptr<relation_io_map> relation_io_map,
+    io_exchange_map& io_exchange_map,
+    request_context* request_context
+) :
+    info_(std::move(info)),
+    io_info_(std::move(io_info)),
+    io_exchange_map_(std::addressof(io_exchange_map)),
+    relation_io_map_(std::move(relation_io_map)),
+    request_context_(request_context)
+{}
 
-operator_container operator_builder::operator()() && {
+operator_container operator_builder::operator()()&& {
     auto root = dispatch(*this, head());
     return operator_container{std::move(root), index_, *io_exchange_map_, std::move(range_)};
 }
 
 relation::expression const& operator_builder::head() {
     relation::expression const* result = nullptr;
-    takatori::relation::enumerate_top(
-        info_->relations(), [&](relation::expression const& v) { result = &v; });
-    if (result != nullptr) { return *result; }
+    takatori::relation::enumerate_top(info_->relations(), [&](relation::expression const& v) {
+        result = &v;
+    });
+    if (result != nullptr) {
+        return *result;
+    }
     throw_exception(std::logic_error{""});
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::find& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
-    auto& secondary_or_primary_index =
-        yugawara::binding::extract<yugawara::storage::index>(node.source());
-    auto& table  = secondary_or_primary_index.table();
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-    BOOST_ASSERT(primary); // NOLINT
-    return std::make_unique<find>(index_++, *info_, block_index, node.keys(), *primary,
+    BOOST_ASSERT(primary); //NOLINT
+    return std::make_unique<find>(
+        index_++,
+        *info_,
+        block_index,
+        node.keys(),
+        *primary,
         node.columns(),
-        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index)
-                                               : nullptr,
-        std::move(downstream));
+        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
-    auto& secondary_or_primary_index =
-        yugawara::binding::extract<yugawara::storage::index>(node.source());
-    auto& table  = secondary_or_primary_index.table();
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-
     range_ = create_range(node);
-    return std::make_unique<scan>(index_++, *info_, block_index, *primary, node.columns(),
-        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index)
-                                               : nullptr,
-        std::move(downstream));
+    return std::make_unique<scan>(
+        index_++,
+        *info_,
+        block_index,
+        *primary,
+        node.columns(),
+        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_find& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
-    auto& secondary_or_primary_index =
-        yugawara::binding::extract<yugawara::storage::index>(node.source());
-    auto& table  = secondary_or_primary_index.table();
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-    return std::make_unique<join_find>(node.operator_kind(), index_++, *info_, block_index,
-        *primary, node.columns(), node.keys(), node.condition(),
-        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index)
-                                               : nullptr,
-        std::move(downstream));
+    return std::make_unique<join_find>(
+        node.operator_kind(),
+        index_++,
+        *info_,
+        block_index,
+        *primary,
+        node.columns(),
+        node.keys(),
+        node.condition(),
+        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::project& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
-    return std::make_unique<project>(
-        index_++, *info_, block_index, node.columns(), std::move(downstream));
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    return std::make_unique<project>(index_++, *info_, block_index, node.columns(), std::move(downstream));
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_scan& node) {
@@ -153,9 +177,8 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::filter& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
-    return std::make_unique<filter>(
-        index_++, *info_, block_index, node.condition(), std::move(downstream));
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    return std::make_unique<filter>(index_++, *info_, block_index, node.condition(), std::move(downstream));
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::buffer& node) {
@@ -166,26 +189,38 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::buff
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::emit& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto e           = std::make_unique<emit>(index_++, *info_, block_index, node.columns());
+    auto e = std::make_unique<emit>(index_++, *info_, block_index, node.columns());
     io_exchange_map_->set_external_output(e.get());
     return e;
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::write& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto& index      = yugawara::binding::extract<yugawara::storage::index>(node.destination());
+    auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
 
-    if (node.operator_kind() == relation::write_kind::update ||
-        node.operator_kind() == relation::write_kind::delete_) {
-        return std::make_unique<write_existing>(index_++, *info_, block_index,
-            write_kind_from(node.operator_kind()), index, node.keys(), node.columns());
+    if (node.operator_kind() == relation::write_kind::update || node.operator_kind() == relation::write_kind::delete_) {
+        return std::make_unique<write_existing>(
+            index_++,
+            *info_,
+            block_index,
+            write_kind_from(node.operator_kind()),
+            index,
+            node.keys(),
+            node.columns()
+        );
     }
     // INSERT from SELECT
     std::vector columns{node.keys()};
     columns.insert(columns.end(), node.columns().begin(), node.columns().end());
-    return std::make_unique<write_create>(index_++, *info_, block_index,
-        write_kind_from(node.operator_kind()), index, columns,
-        request_context_->request_resource());
+    return std::make_unique<write_create>(
+        index_++,
+        *info_,
+        block_index,
+        write_kind_from(node.operator_kind()),
+        index,
+        columns,
+        request_context_->request_resource()
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::values& node) {
@@ -202,27 +237,36 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::iden
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::join& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
-    return std::make_unique<join<data::iterable_record_store::iterator>>(index_++, *info_,
-        block_index, node.operator_kind(), node.condition(), std::move(downstream));
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    return std::make_unique<join<data::iterable_record_store::iterator>>(
+        index_++,
+        *info_,
+        block_index,
+        node.operator_kind(),
+        node.condition(),
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::aggregate& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<aggregate_group>(
-        index_++, *info_, block_index, node.columns(), std::move(downstream));
+        index_++,
+        *info_,
+        block_index,
+        node.columns(),
+        std::move(downstream)
+    );
 }
 
-std::unique_ptr<operator_base> operator_builder::operator()(
-    const relation::step::intersection& node) {
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::intersection& node) {
     (void)node;
     throw_exception(std::logic_error{""});
     return {};
 }
 
-std::unique_ptr<operator_base> operator_builder::operator()(
-    const relation::step::difference& node) {
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::difference& node) {
     (void)node;
     throw_exception(std::logic_error{""});
     return {};
@@ -230,70 +274,89 @@ std::unique_ptr<operator_base> operator_builder::operator()(
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::flatten& node) {
     auto block_index = info_->block_indices().at(&node);
-    auto downstream  = dispatch(*this, node.output().opposite()->owner());
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<flatten>(index_++, *info_, block_index, std::move(downstream));
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::take_flat& node) {
-    auto block_index  = info_->block_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto reader_index = relation_io_map_->input_index(node.source());
-    auto downstream   = dispatch(*this, node.output().opposite()->owner());
-    auto& input       = io_info_->input_at(reader_index);
-    BOOST_ASSERT(!input.is_group_input()); // NOLINT
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& input = io_info_->input_at(reader_index);
+    BOOST_ASSERT(! input.is_group_input());  //NOLINT
 
-    return std::make_unique<take_flat>(index_++, *info_, block_index, input.column_order(),
-        input.record_meta(), node.columns(), reader_index, std::move(downstream));
+    return std::make_unique<take_flat>(
+        index_++,
+        *info_,
+        block_index,
+        input.column_order(),
+        input.record_meta(),
+        node.columns(),
+        reader_index,
+        std::move(downstream)
+    );
 }
 
-std::unique_ptr<operator_base> operator_builder::operator()(
-    const relation::step::take_group& node) {
-    auto block_index  = info_->block_indices().at(&node);
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::take_group& node) {
+    auto block_index = info_->block_indices().at(&node);
     auto reader_index = relation_io_map_->input_index(node.source());
-    auto downstream   = dispatch(*this, node.output().opposite()->owner());
-    auto& input       = io_info_->input_at(reader_index);
-    return std::make_unique<take_group>(index_++, *info_, block_index, input.column_order(),
-        input.group_meta(), node.columns(), reader_index, std::move(downstream));
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& input = io_info_->input_at(reader_index);
+    return std::make_unique<take_group>(
+        index_++,
+        *info_,
+        block_index,
+        input.column_order(),
+        input.group_meta(),
+        node.columns(),
+        reader_index,
+        std::move(downstream)
+    );
 }
 
-std::unique_ptr<operator_base> operator_builder::operator()(
-    const relation::step::take_cogroup& node) {
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::take_cogroup& node) {
     auto block_index = info_->block_indices().at(&node);
     auto& block_info = info_->vars_info_list()[block_index];
     std::vector<size_t> reader_indices{};
     std::vector<group_element> groups{};
-    for (auto&& g : node.groups()) {
+    for(auto&& g : node.groups()) {
         auto reader_index = relation_io_map_->input_index(g.source());
-        auto& input       = io_info_->input_at(reader_index);
+        auto& input = io_info_->input_at(reader_index);
         groups.emplace_back(
-            input.column_order(), input.group_meta(), g.columns(), reader_index, block_info);
+            input.column_order(),
+            input.group_meta(),
+            g.columns(),
+            reader_index,
+            block_info
+        );
     }
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<take_cogroup>(
-        index_++, *info_, block_index, std::move(groups), std::move(downstream));
+        index_++,
+        *info_,
+        block_index,
+        std::move(groups),
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::step::offer& node) {
-    auto block_index  = info_->block_indices().at(&node);
+    auto block_index = info_->block_indices().at(&node);
     auto writer_index = relation_io_map_->output_index(node.destination());
-    auto& output      = io_info_->output_at(writer_index);
-    return std::make_unique<offer>(index_++, *info_, block_index, output.column_order(),
-        output.meta(), node.columns(), writer_index);
+    auto& output = io_info_->output_at(writer_index);
+    return std::make_unique<offer>(
+        index_++,
+        *info_,
+        block_index,
+        output.column_order(),
+        output.meta(),
+        node.columns(),
+        writer_index
+    );
 }
 
-kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type type) {
-    using t = relation::scan::endpoint::kind_type;
-    using k = kvs::end_point_kind;
-    switch (type) {
-        case t::unbound: return k::unbound;
-        case t::inclusive: return k::inclusive;
-        case t::exclusive: return k::exclusive;
-        case t::prefixed_inclusive: return k::prefixed_inclusive;
-        case t::prefixed_exclusive: return k::prefixed_exclusive;
-    }
-    throw_exception(std::logic_error{""});
-}
 
-std::shared_ptr<impl::range> operator_builder::create_range(relation::scan const& node) {
+std::shared_ptr<impl::scan_range> operator_builder::create_range(relation::scan const& node) {
     auto& secondary_or_primary_index =
         yugawara::binding::extract<yugawara::storage::index>(node.source());
     executor::process::impl::variable_table vars{};
@@ -317,19 +380,40 @@ std::shared_ptr<impl::range> operator_builder::create_range(relation::scan const
     }
     auto begin_end_point_kind = kvs::adjust_endpoint_kind(use_secondary, from(node.lower().kind()));
     auto end_end_point_kind   = kvs::adjust_endpoint_kind(use_secondary, from(node.upper().kind()));
-    std::unique_ptr<bound> begin =
-        std::make_unique<bound>(begin_end_point_kind, blen, std::move(key_begin));
-    std::unique_ptr<bound> end =
-        std::make_unique<bound>(end_end_point_kind, elen, std::move(key_end));
+    bound begin(begin_end_point_kind, blen, std::move(key_begin));
+    bound end(end_end_point_kind, elen, std::move(key_end));
     bool is_empty = (status_result == status::err_integrity_constraint_violation);
-    return std::make_shared<impl::range>(std::move(begin), std::move(end), is_empty);
+    return std::make_shared<impl::scan_range>(std::move(begin), std::move(end), is_empty);
 }
 
-operator_container create_operators(std::shared_ptr<processor_info> info,
-    std::shared_ptr<io_info> io_info, std::shared_ptr<relation_io_map> relation_io_map,
-    io_exchange_map& io_exchange_map, request_context* request_context) {
-    return operator_builder{std::move(info), std::move(io_info), std::move(relation_io_map),
-        io_exchange_map, request_context}();
+kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type type) {
+    using t = relation::scan::endpoint::kind_type;
+    using k = kvs::end_point_kind;
+    switch(type) {
+        case t::unbound: return k::unbound;
+        case t::inclusive: return k::inclusive;
+        case t::exclusive: return k::exclusive;
+        case t::prefixed_inclusive: return k::prefixed_inclusive;
+        case t::prefixed_exclusive: return k::prefixed_exclusive;
+    }
+    throw_exception(std::logic_error{""});
+}
+
+
+operator_container create_operators(
+    std::shared_ptr<processor_info> info,
+    std::shared_ptr<io_info> io_info,
+    std::shared_ptr<relation_io_map> relation_io_map,
+    io_exchange_map& io_exchange_map,
+    request_context* request_context
+) {
+    return operator_builder{
+        std::move(info),
+        std::move(io_info),
+        std::move(relation_io_map),
+        io_exchange_map,
+        request_context
+    }();
 }
 
 } // namespace jogasaki::executor::process::impl::ops

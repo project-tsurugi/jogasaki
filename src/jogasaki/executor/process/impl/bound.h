@@ -26,8 +26,8 @@ class bound {
     bound()                                  = default;
     bound(bound const& other)                = delete;
     bound& operator=(bound const& other)     = delete;
-    bound(bound&& other) noexcept            = delete;
-    bound& operator=(bound&& other) noexcept = delete;
+    bound(bound&& other) noexcept            = default;
+    bound& operator=(bound&& other) noexcept = default;
     ~bound()                                 = default;
     bound(kvs::end_point_kind endpointkind, std::size_t len,
         std::unique_ptr<data::aligned_buffer> key)

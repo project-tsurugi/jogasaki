@@ -53,7 +53,7 @@ public:
         std::unique_ptr<kvs::storage> stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         transaction_context* tx,
-        impl::range const* range_,
+        impl::scan_range const* range_,
         memory_resource* resource,
         memory_resource* varlen_resource
     );
@@ -75,7 +75,7 @@ private:
     transaction_context* tx_{};
     std::unique_ptr<kvs::iterator> it_{};
     std::size_t yield_count_{};
-    impl::range const* range_{};
+    impl::scan_range const* range_{};
 };
 
 } // namespace jogasaki::executor::process::impl::ops

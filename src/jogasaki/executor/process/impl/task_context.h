@@ -57,7 +57,7 @@ public:
      * @brief create new object
      * @param partition the index of partition assigned to this object (used as index of source on the input exchange)
      * @param io_exchange_map mapping from input/output indices to exchanges
-     * @param range the range information, nullptr if the task doesn't contain range
+     * @param range the range information, nullptr if the task doesn't contain scan
      * @param channel the record channel to write the result data
      * @param sink_index the index of sink on the output exchange
      */
@@ -65,7 +65,7 @@ public:
         request_context& rctx,
         partition_index partition,
         io_exchange_map const& io_exchange_map,
-        std::shared_ptr<impl::range> range,
+        std::shared_ptr<impl::scan_range> range,
         io::record_channel* channel,
         partition_index sink_index
     );
@@ -88,7 +88,7 @@ private:
     request_context* request_context_{};
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
-    std::shared_ptr<impl::range> range_{};
+    std::shared_ptr<impl::scan_range> range_{};
     io::record_channel* channel_{};
     std::shared_ptr<io::record_writer> external_writer_{};
     partition_index sink_index_{};

@@ -83,7 +83,7 @@ public:
      * @param compiler_ctx compiler context
      * @param io_info I/O information
      * @param relation_io_map mapping from relation to I/O index
-     * @param request_context the memory resource used to building operators
+     * @param request_context request_context to pass memory resource to build the structures needed by this processor
      */
     operator_builder(
         std::shared_ptr<processor_info> info,
@@ -122,7 +122,7 @@ public:
     using key = yugawara::storage::index::key;
     using endpoint = takatori::relation::scan::endpoint;
 
-    std::shared_ptr<impl::range> create_range(relation::scan const& node);
+    std::shared_ptr<impl::scan_range> create_range(relation::scan const& node);
 
   private:
     std::shared_ptr<processor_info> info_{};
@@ -130,7 +130,7 @@ public:
     io_exchange_map* io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
     operator_base::operator_index_type index_{};
-    std::shared_ptr<range> range_{};
+    std::shared_ptr<impl::scan_range> range_{};
     request_context* request_context_{};
     kvs::end_point_kind from(relation::scan::endpoint::kind_type type);
 

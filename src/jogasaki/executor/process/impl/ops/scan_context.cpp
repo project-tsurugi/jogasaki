@@ -31,7 +31,7 @@ scan_context::scan_context(
     std::unique_ptr<kvs::storage> stg,
     std::unique_ptr<kvs::storage> secondary_stg,
     transaction_context* tx,
-    impl::range const* range,
+    impl::scan_range const* range,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :

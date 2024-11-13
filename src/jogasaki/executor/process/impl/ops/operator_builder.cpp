@@ -163,16 +163,33 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
     );
 }
 
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_scan& node) {
+    auto block_index = info_->block_indices().at(&node);
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
+    auto& table = secondary_or_primary_index.table();
+    auto primary = table.owner()->find_primary_index(table);
+    return std::make_unique<join_find>(
+        node.operator_kind(),
+        index_++,
+        *info_,
+        block_index,
+        *primary,
+        node.columns(),
+        node.lower().keys(),
+        from(node.lower().kind()),
+        node.upper().keys(),
+        from(node.upper().kind()),
+        node.condition(),
+        *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
+        std::move(downstream)
+    );
+}
+
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::project& node) {
     auto block_index = info_->block_indices().at(&node);
     auto downstream = dispatch(*this, node.output().opposite()->owner());
     return std::make_unique<project>(index_++, *info_, block_index, node.columns(), std::move(downstream));
-}
-
-std::unique_ptr<operator_base> operator_builder::operator()(const relation::join_scan& node) {
-    (void)node;
-    throw_exception(std::logic_error{""});
-    return {};
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::filter& node) {

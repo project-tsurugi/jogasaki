@@ -208,7 +208,8 @@ TEST_F(join_find_test, simple) {
             false,
             op.search_key_fields(),
             op.key_columns(),
-            op.value_columns()
+            op.value_columns(),
+            details::create_secondary_key_fields(nullptr)
         ),
         &resource_,
         &varlen_resource_
@@ -302,7 +303,8 @@ TEST_F(join_find_test, secondary_index) {
             true,
             op.search_key_fields(),
             op.key_columns(),
-            op.value_columns()
+            op.value_columns(),
+            details::create_secondary_key_fields(secondary_idx_t1.get())
         ),
         &resource_,
         &varlen_resource_
@@ -421,7 +423,8 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
             false,
             op.search_key_fields(),
             op.key_columns(),
-            op.value_columns()
+            op.value_columns(),
+            details::create_secondary_key_fields(nullptr)
         ),
         &resource_,
         &varlen_resource_

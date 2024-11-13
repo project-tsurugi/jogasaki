@@ -96,6 +96,4 @@ std::vector<details::search_key_field_info> create_search_key_fields(
     return ret;
 }
 
-} // namespace jogasaki::executor::process::impl::ops::details
-
-
+}  // namespace jogasaki::executor::process::impl::ops::details

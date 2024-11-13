@@ -268,7 +268,7 @@ TEST_F(sql_join_find_test, join_scan_simple) {
     execute_statement("CREATE TABLE t0 (c0 int)");
     execute_statement("INSERT INTO t0 VALUES (1),(2)");
     execute_statement("CREATE TABLE t1 (c0 int, c1 int, primary key(c0, c1))");
-    execute_statement("INSERT INTO t1 VALUES (1,1)");
+    execute_statement("INSERT INTO t1 VALUES (1,10)");
 
     auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
     EXPECT_TRUE(has_join_scan(query));
@@ -283,15 +283,51 @@ TEST_F(sql_join_find_test, join_scan_secondary) {
     execute_statement("CREATE TABLE t0 (c0 int)");
     execute_statement("INSERT INTO t0 VALUES (1),(2)");
     execute_statement("CREATE TABLE t1 (c0 int, c1 int)");
-    execute_statement("CREATE INDEX i on t1 (c0, c1)");
-    execute_statement("INSERT INTO t1 VALUES (1,1)");
+    execute_statement("CREATE INDEX i1 on t1 (c0, c1)");
+    execute_statement("INSERT INTO t1 VALUES (1,10)");
 
     auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
     EXPECT_TRUE(has_join_scan(query));
+    EXPECT_TRUE(uses_secondary(query));
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 10)), result[0]);
 }
+
+TEST_F(sql_join_find_test, join_scan_disabled) {
+    // verify fallback to shuffle join when join scan is disabled
+    global::config_pool()->enable_join_scan(false);
+    execute_statement("CREATE TABLE t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (1),(2)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (1,10)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(! has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 10)), result[0]);
+}
+
+TEST_F(sql_join_find_test, join_scan_multiple_records) {
+    global::config_pool()->enable_join_scan(true);
+    execute_statement("CREATE TABLE t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (1),(2)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (1,10),(1,11),(2,20)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(3, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 10)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 1, 11)), result[1]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(2, 2, 20)), result[2]);
+}
+
 
 }

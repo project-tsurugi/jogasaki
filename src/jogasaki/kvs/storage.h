@@ -124,7 +124,6 @@ public:
         std::string_view end_key, end_point_kind end_kind,
         std::unique_ptr<iterator>& it
     );
-
     /**
      * @brief get the value for the given key
      * @param tx transaction used for the point query
@@ -238,6 +237,31 @@ inline std::ostream& operator<<(std::ostream& out, storage const& value) {
     out << "storage(handle:" << std::hex << value.handle() << ")";
     return out;
 }
+/**
+ * @brief Adjusts the endpoint kind based on whether a secondary index is used.
+ *
+ * @details This function modifies the given endpoint kind depending on whether a secondary index
+ * is being used. If `use_secondary` is true and the endpoint is either inclusive or exclusive,
+ * it adjusts the endpoint kind to a prefixed version (i.e., `prefixed_inclusive` or `prefixed_exclusive`).
+ * Otherwise, the original endpoint kind is returned.
+ *
+ * @param use_secondary Indicates if a secondary index is being used.
+ * @param endpoint The original endpoint kind to be adjusted.
+ * @return The adjusted endpoint kind based on the `use_secondary` flag.
+ */
+end_point_kind adjust_endpoint_kind(bool use_secondary, kvs::end_point_kind endpoint);
+/**
+ * @brief Outputs a string representation of the `end_point_kind` to the provided output stream.
+ *
+ * @details This overloaded `operator<<` allows for `end_point_kind` values to be output to standard streams
+ * (such as `std::cout`) in a human-readable form. It handles each possible enum value and outputs
+ * the corresponding string (e.g., "inclusive", "exclusive", etc.). If an unknown value is passed, 
+ * "unknown" is output.
+ *
+ * @param os The output stream where the string representation will be written.
+ * @param kind The `end_point_kind` value to be converted to a string.
+ * @return The output stream with the string representation appended.
+ */
+std::ostream& operator<<(std::ostream& os, end_point_kind kind);
 
-}
-
+} // namespace jogasaki::kvs

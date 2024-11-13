@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,27 +18,25 @@
 namespace jogasaki::executor::process::abstract {
 
 /**
- * @brief scan info
- * @details this instance provides specification of scan (e.g. definition of the range of scanned records)
+ * @brief range
+ * @details definition of the range of scanned records
  */
-class scan_info {
-public:
+class range {
+  public:
     /**
      * @brief create empty object
      */
-    scan_info() = default;
+    range() = default;
 
     /**
      * @brief destroy the object
      */
-    virtual ~scan_info() = default;
+    virtual ~range() = default;
 
-    scan_info(scan_info const& other) = default;
-    scan_info& operator=(scan_info const& other) = default;
-    scan_info(scan_info&& other) noexcept = default;
-    scan_info& operator=(scan_info&& other) noexcept = default;
+    range(range const& other)                = default;
+    range& operator=(range const& other)     = default;
+    range(range&& other) noexcept            = default;
+    range& operator=(range&& other) noexcept = default;
 };
 
-}
-
-
+} // namespace jogasaki::executor::process::abstract

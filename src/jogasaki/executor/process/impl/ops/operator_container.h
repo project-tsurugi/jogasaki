@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 #include <memory>
 
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -39,14 +39,14 @@ public:
      * @param root the root of the operator tree
      * @param operator_count the number of operators
      * @param io_exchange_map the mapping from input/output index to exchange
-     * @param scan_info the scan information gathered from the scan operator in the operator tree (if any).
+     * @param range the range gathered from the scan operator in the operator tree (if any).
      * Can be nullptr if the operators don't contain scan operation.
      */
     operator_container(
         std::unique_ptr<ops::operator_base> root,
         std::size_t operator_count,
         class io_exchange_map& io_exchange_map,
-        std::shared_ptr<impl::scan_info> scan_info
+        std::shared_ptr<impl::scan_range> range
     );
 
     /**
@@ -68,17 +68,15 @@ public:
     [[nodiscard]] ops::operator_base& root() const noexcept;
 
     /**
-     * @brief accessor to scan info
-     * @return the scan info, or nullptr if there is no scan operation in the process
+     * @brief accessor to scan_range
+     * @return the range, or nullptr if there is no scan operation in the process
      */
-    [[nodiscard]] std::shared_ptr<impl::scan_info> const& scan_info() const noexcept;
-
+    [[nodiscard]] std::shared_ptr<impl::scan_range> const& range() const noexcept;
 private:
     std::unique_ptr<ops::operator_base> root_{};
     std::size_t operator_count_{};
     class io_exchange_map* io_exchange_map_{};
-    std::shared_ptr<impl::scan_info> scan_info_{};
+    std::shared_ptr<impl::scan_range> range_{};
 };
 
-}
-
+} // namespace jogasaki::executor::process::impl::ops

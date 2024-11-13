@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/impl/processor.h>
 #include <jogasaki/executor/process/mock/record_reader.h>
 #include <jogasaki/executor/process/mock/record_writer.h>
@@ -61,11 +61,10 @@ TEST_F(processor_test, basic) {
         std::vector<io::reader_container>{r},
         std::vector<std::shared_ptr<executor::io::record_writer>>{downstream_writer},
         external_writer,
-        std::shared_ptr<abstract::scan_info>{}
+        std::shared_ptr<abstract::range>{}
     );
     auto proc = std::make_shared<processor>();
 //    proc->run(context.get());
 }
 
-}
-
+} // namespace jogasaki::executor::process::impl

@@ -34,8 +34,8 @@
 #include <jogasaki/status.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/convert_any.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/make_function_context.h>
-
 namespace jogasaki::executor::process::impl::ops::details {
 
 status encode_key(  //NOLINT(readability-function-cognitive-complexity)
@@ -93,6 +93,34 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
             }
             out.resize(0); // set data size 0 and start from beginning
         }
+    }
+    return status::ok;
+}
+
+status two_encode_keys(request_context* context,
+    std::vector<details::search_key_field_info> const& begin_keys,
+    std::vector<details::search_key_field_info> const& end_keys, variable_table& input_variables,
+    memory::lifo_paged_memory_resource& resource, data::aligned_buffer& key_begin,
+    std::size_t& blen, data::aligned_buffer& key_end, std::size_t& elen) {
+    status status_result = status::ok;
+    std::string message;
+    if ((status_result = impl::ops::details::encode_key(context, begin_keys, input_variables,
+             resource, key_begin, blen, message)) != status::ok) {
+
+        if (status_result == status::err_type_mismatch) {
+            set_error(*context, error_code::unsupported_runtime_feature_exception, message,
+                status_result);
+        }
+        return status_result;
+    }
+    if ((status_result = impl::ops::details::encode_key(
+             context, end_keys, input_variables, resource, key_end, elen, message)) != status::ok) {
+
+        if (status_result == status::err_type_mismatch) {
+            set_error(*context, error_code::unsupported_runtime_feature_exception, message,
+                status_result);
+        }
+        return status_result;
     }
     return status::ok;
 }

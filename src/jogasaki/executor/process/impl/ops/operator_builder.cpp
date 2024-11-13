@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,21 +31,25 @@
 #include <takatori/util/optional_ptr.h>
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/sequence_view.h>
+#include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/executor/process/impl/bound.h>
+#include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/plan/compiler.h>
 
 #include "aggregate_group.h"
 #include "emit.h"
@@ -69,6 +73,7 @@ namespace jogasaki::executor::process::impl::ops {
 namespace relation = takatori::relation;
 
 using takatori::relation::step::dispatch;
+using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
 operator_builder::operator_builder(
@@ -76,20 +81,18 @@ operator_builder::operator_builder(
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
-    memory::lifo_paged_memory_resource* resource
+    request_context* request_context
 ) :
     info_(std::move(info)),
     io_info_(std::move(io_info)),
     io_exchange_map_(std::addressof(io_exchange_map)),
     relation_io_map_(std::move(relation_io_map)),
-    resource_(resource)
-{
-    (void)resource_;  //TODO remove if not necessary
-}
+    request_context_(request_context)
+{}
 
 operator_container operator_builder::operator()()&& {
     auto root = dispatch(*this, head());
-    return operator_container{std::move(root), index_, *io_exchange_map_, std::move(scan_info_)};
+    return operator_container{std::move(root), index_, *io_exchange_map_, std::move(range_)};
 }
 
 relation::expression const& operator_builder::head() {
@@ -128,11 +131,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-
-    // scan info is not passed to scan operator here, but passed back through task_context
-    // in order to support parallel scan in the future
-    scan_info_ = create_scan_info(node, secondary_or_primary_index);
-
+    range_ = create_range(node);
     return std::make_unique<scan>(
         index_++,
         *info_,
@@ -220,7 +219,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::writ
         write_kind_from(node.operator_kind()),
         index,
         columns,
-        resource_
+        request_context_->request_resource()
     );
 }
 
@@ -356,33 +355,35 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
     );
 }
 
-std::shared_ptr<impl::scan_info>
-operator_builder::create_scan_info(
-    operator_builder::endpoint const& lower,
-    operator_builder::endpoint const& upper,
-    yugawara::storage::index const& index
-) {
-    return std::make_shared<impl::scan_info>(
-        details::create_search_key_fields(
-            index,
-            lower.keys(),
-            *info_
-        ),
-        from(lower.kind()),
-        details::create_search_key_fields(
-            index,
-            upper.keys(),
-            *info_
-        ),
-        from(upper.kind())
-    );
-}
 
-std::shared_ptr<impl::scan_info> operator_builder::create_scan_info(
-    relation::scan const& node,
-    yugawara::storage::index const& index
-) {
-    return create_scan_info(node.lower(), node.upper(), index);
+std::shared_ptr<impl::scan_range> operator_builder::create_range(relation::scan const& node) {
+    auto& secondary_or_primary_index =
+        yugawara::binding::extract<yugawara::storage::index>(node.source());
+    executor::process::impl::variable_table vars{};
+    auto& table        = secondary_or_primary_index.table();
+    auto primary       = table.owner()->find_primary_index(table);
+    bool use_secondary = (*primary != secondary_or_primary_index);
+    std::size_t blen{};
+    std::size_t elen{};
+    std::unique_ptr<data::aligned_buffer> key_begin = std::make_unique<data::aligned_buffer>();
+    std::unique_ptr<data::aligned_buffer> key_end   = std::make_unique<data::aligned_buffer>();
+    auto resource_ptr  = std::make_unique<ops::context_base::memory_resource>(&global::page_pool());
+    auto status_result = details::two_encode_keys(request_context_,
+        details::create_search_key_fields(secondary_or_primary_index, node.lower().keys(), *info_),
+        details::create_search_key_fields(secondary_or_primary_index, node.upper().keys(), *info_),
+        vars, *resource_ptr, *key_begin, blen, *key_end, elen);
+    if (status_result != status::ok &&
+        status_result != status::err_integrity_constraint_violation) {
+        auto msg = string_builder{} << to_string_view(status_result) << string_builder::to_string;
+        throw_exception(jogasaki::plan::impl::compile_exception{create_error_info(
+            error_code::sql_execution_exception, msg, status::err_compiler_error)});
+    }
+    auto begin_end_point_kind = kvs::adjust_endpoint_kind(use_secondary, from(node.lower().kind()));
+    auto end_end_point_kind   = kvs::adjust_endpoint_kind(use_secondary, from(node.upper().kind()));
+    bound begin(begin_end_point_kind, blen, std::move(key_begin));
+    bound end(end_end_point_kind, elen, std::move(key_end));
+    bool is_empty = (status_result == status::err_integrity_constraint_violation);
+    return std::make_shared<impl::scan_range>(std::move(begin), std::move(end), is_empty);
 }
 
 kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type type) {
@@ -404,16 +405,15 @@ operator_container create_operators(
     std::shared_ptr<io_info> io_info,
     std::shared_ptr<relation_io_map> relation_io_map,
     io_exchange_map& io_exchange_map,
-    memory::lifo_paged_memory_resource* resource
+    request_context* request_context
 ) {
     return operator_builder{
         std::move(info),
         std::move(io_info),
         std::move(relation_io_map),
         io_exchange_map,
-        resource
+        request_context
     }();
 }
 
-}
-
+} // namespace jogasaki::executor::process::impl::ops

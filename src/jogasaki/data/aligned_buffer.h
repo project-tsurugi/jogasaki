@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -146,6 +146,13 @@ public:
     [[nodiscard]] std::size_t alignment() const noexcept;
 
     /**
+     * @brief Support for debugging, callable in GDB
+     * @param out The output stream to which the buffer's internal state will be written.
+     * @param indent The indentation level for formatting the output, default is 0.
+     */
+    void dump(std::ostream& out, int indent = 0) const noexcept;
+
+    /**
      * @brief compare two objects
      * @param a first arg to compare
      * @param b second arg to compare
@@ -172,4 +179,4 @@ private:
     void resize_internal(std::size_t sz, bool copydata);
 };
 
-} // namespace
+} // namespace jogasaki::data

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 #include <utility>
 
-#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/transaction_context.h>
 
@@ -31,7 +31,7 @@ scan_context::scan_context(
     std::unique_ptr<kvs::storage> stg,
     std::unique_ptr<kvs::storage> secondary_stg,
     transaction_context* tx,
-    impl::scan_info const* scan_info,
+    impl::scan_range const* range,
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
@@ -39,7 +39,7 @@ scan_context::scan_context(
     stg_(std::move(stg)),
     secondary_stg_(std::move(secondary_stg)),
     tx_(tx),
-    scan_info_(scan_info)
+    range_(range)
 {}
 
 operator_kind scan_context::kind() const noexcept {
@@ -67,15 +67,7 @@ void scan_context::dump() const noexcept {
        << "    " << std::setw(20) << "transaction_context:"
        << (tx_ ? tx_ : nullptr) << "\n"
        << "    " << std::setw(20) << "iterator:"
-       << (it_ ? it_.get() : nullptr) << "\n"
-       << "    " << std::setw(20) << "scan_info:"
-       << (scan_info_ ? scan_info_ : nullptr) << "\n"
-       << "    " << std::setw(20) << "key_begin_size:"
-       << key_begin_.size() << "\n"
-       << "    " << std::setw(20) << "key_end_size:"
-       << key_end_.size() << std::endl;
+       << (it_ ? it_.get() : nullptr) << "\n";
 }
 
-}
-
-
+} // namespace jogasaki::executor::process::impl::ops

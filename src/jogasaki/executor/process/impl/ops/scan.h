@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@
 #include <takatori/util/sequence_view.h>
 #include <yugawara/storage/index.h>
 
-#include <jogasaki/executor/process/abstract/scan_info.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
@@ -159,7 +158,6 @@ private:
     index_field_mapper field_mapper_{};
 
     [[nodiscard]] status open(scan_context& ctx);
-
     void close(scan_context& ctx);
 
     std::vector<details::secondary_index_field_info> create_secondary_key_fields(
@@ -167,7 +165,4 @@ private:
     );
 };
 
-
-}
-
-
+} // namespace jogasaki::executor::process::impl::ops

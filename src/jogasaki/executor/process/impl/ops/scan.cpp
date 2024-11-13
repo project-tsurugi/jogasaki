@@ -35,10 +35,11 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/executor/process/impl/bound.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/executor/process/impl/ops/write_existing.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/kvs/coder.h>
@@ -129,7 +130,7 @@ operation_status scan::process_record(abstract::task_context* context) {
             std::move(stg),
             use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
             ctx.transaction(),
-            unsafe_downcast<impl::scan_info const>(ctx.task_context()->scan_info()),  //NOLINT
+            unsafe_downcast<impl::scan_range const>(ctx.task_context()->range()),  //NOLINT
             ctx.resource(),
             ctx.varlen_resource()
         );
@@ -145,12 +146,12 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
         return {operation_status_kind::aborted};
     }
     if(ctx.it_ == nullptr){
+        if (ctx.range_->is_empty()){
+            // range keys contain null. Nothing should match.
+            finish(context);
+            return {};
+        }
         if(auto res = open(ctx); res != status::ok) {
-            if(res == status::err_integrity_constraint_violation) {
-               // range keys contain null. Nothing should match.
-               finish(context);
-               return {};
-            }
            // res can be status::err_type_mismatch, then ctx already filled with error info
            finish(context);
            return error_abort(ctx, res);
@@ -218,7 +219,6 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 ) << "scan operator yields count:"
                   << ctx.yield_count_ << " loop_count:" << loop_count << " elapsed(us):"
                   << std::chrono::duration_cast<std::chrono::microseconds>(current_time - previous_time).count();
-
                 return {operation_status_kind::yield};
             }
         }
@@ -254,70 +254,17 @@ void scan::finish(abstract::task_context* context) {
         unsafe_downcast<record_operator>(downstream_.get())->finish(context);
     }
 }
-
 status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-function-const)
     auto& stg = use_secondary_ ? *ctx.secondary_stg_ : *ctx.stg_;
-    auto be = ctx.scan_info_->begin_endpoint();
-    auto ee = ctx.scan_info_->end_endpoint();
-    if (use_secondary_) {
-        // at storage layer, secondary index key contains primary key index as postfix
-        // so boundary condition needs promotion to be compatible
-        // TODO verify the promotion
-        if (be == kvs::end_point_kind::inclusive) {
-            be = kvs::end_point_kind::prefixed_inclusive;
-        }
-        if (be == kvs::end_point_kind::exclusive) {
-            be = kvs::end_point_kind::prefixed_exclusive;
-        }
-        if (ee == kvs::end_point_kind::inclusive) {
-            ee = kvs::end_point_kind::prefixed_inclusive;
-        }
-        if (ee == kvs::end_point_kind::exclusive) {
-            ee = kvs::end_point_kind::prefixed_exclusive;
-        }
-    }
-    executor::process::impl::variable_table vars{};
-    std::size_t blen{};
-    std::string msg{};
-    if(auto res = details::encode_key(
-           ctx.req_context(),
-           ctx.scan_info_->begin_columns(),
-           vars,
-           *ctx.varlen_resource(),
-           ctx.key_begin_,
-           blen,
-           msg
-       );
-       res != status::ok) {
-        if(res == status::err_type_mismatch) {
-            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
-            set_error(*ctx.req_context(), error_code::unsupported_runtime_feature_exception, msg, res);
-        }
-        return res;
-    }
-    std::size_t elen{};
-    if(auto res = details::encode_key(
-           ctx.req_context(),
-           ctx.scan_info_->end_columns(),
-           vars,
-           *ctx.varlen_resource(),
-           ctx.key_end_,
-           elen,
-           msg
-       );
-       res != status::ok) {
-        if(res == status::err_type_mismatch) {
-            // only on err_type_mismatch, msg is filled with error message. use it to create the error info in request context
-            set_error(*ctx.req_context(), error_code::unsupported_runtime_feature_exception, msg, res);
-        }
-        return res;
-    }
+    const auto range = ctx.range_;
+    const auto& begin = range->begin();
+    const auto& end = range->end();
     if(auto res = stg.content_scan(
             *ctx.tx_,
-            {static_cast<char*>(ctx.key_begin_.data()), blen},
-            be,
-            {static_cast<char*>(ctx.key_end_.data()), elen},
-            ee,
+            begin.key(),
+            begin.endpointkind(),
+            end.key(),
+            end.endpointkind(),
             ctx.it_
         ); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
@@ -326,6 +273,7 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     }
     return status::ok;
 }
+
 
 void scan::close(scan_context& ctx) {
     ctx.it_.reset();

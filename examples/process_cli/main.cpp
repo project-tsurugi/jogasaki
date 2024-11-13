@@ -68,7 +68,7 @@
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/abstract/process_executor.h>
 #include <jogasaki/executor/process/abstract/processor.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/default_value_kind.h>
@@ -383,7 +383,7 @@ private:
                     std::vector<io::reader_container>{r},
                     std::vector<std::shared_ptr<executor::io::record_writer>>{writer},
                     std::shared_ptr<executor::io::record_writer>{},
-                    std::shared_ptr<abstract::scan_info>{}
+                    std::shared_ptr<abstract::range>{}
                 );
 
             ctx->work_context(std::make_unique<process::impl::work_context>(

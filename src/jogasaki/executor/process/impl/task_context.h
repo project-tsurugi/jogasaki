@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2024 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
-#include <jogasaki/executor/process/abstract/scan_info.h>
+#include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
 #include <jogasaki/executor/process/impl/ops/emit.h>
-#include <jogasaki/executor/process/impl/scan_info.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/request_context.h>
 
@@ -57,7 +57,7 @@ public:
      * @brief create new object
      * @param partition the index of partition assigned to this object (used as index of source on the input exchange)
      * @param io_exchange_map mapping from input/output indices to exchanges
-     * @param scan_info the scan information, nullptr if the task doesn't contain scan
+     * @param range the range information, nullptr if the task doesn't contain scan
      * @param channel the record channel to write the result data
      * @param sink_index the index of sink on the output exchange
      */
@@ -65,7 +65,7 @@ public:
         request_context& rctx,
         partition_index partition,
         io_exchange_map const& io_exchange_map,
-        std::shared_ptr<impl::scan_info> scan_info,
+        std::shared_ptr<impl::scan_range> range,
         io::record_channel* channel,
         partition_index sink_index
     );
@@ -76,7 +76,7 @@ public:
 
     io::record_writer* external_writer() override;
 
-    class abstract::scan_info const* scan_info() override;
+    class abstract::range const* range() override;
 
     [[nodiscard]] std::size_t partition() const noexcept;
 
@@ -88,12 +88,10 @@ private:
     request_context* request_context_{};
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
-    std::shared_ptr<impl::scan_info> scan_info_{};
+    std::shared_ptr<impl::scan_range> range_{};
     io::record_channel* channel_{};
     std::shared_ptr<io::record_writer> external_writer_{};
     partition_index sink_index_{};
 };
 
-}
-
-
+} // namespace jogasaki::executor::process::impl

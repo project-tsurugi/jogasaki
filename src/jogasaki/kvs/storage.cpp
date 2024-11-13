@@ -143,5 +143,41 @@ status storage::set_options(sharksfin::StorageOptions const& options) {
 status storage::get_options(sharksfin::StorageOptions& options) {
     return resolve(sharksfin::storage_get_options(handle_, options));
 }
+
+end_point_kind adjust_endpoint_kind(bool use_secondary, kvs::end_point_kind endpoint){
+    if (use_secondary) {
+        if (endpoint == kvs::end_point_kind::inclusive) {
+            return kvs::end_point_kind::prefixed_inclusive;
+        }
+        if (endpoint == kvs::end_point_kind::exclusive) {
+            return kvs::end_point_kind::prefixed_exclusive;
+        }
+    }
+    return endpoint;
 }
 
+std::ostream& operator<<(std::ostream& os, end_point_kind kind) {
+    switch(kind) {
+        case end_point_kind::unbound:
+            os << "unbound";
+            break;
+        case end_point_kind::inclusive:
+            os << "inclusive";
+            break;
+        case end_point_kind::exclusive:
+            os << "exclusive";
+            break;
+        case end_point_kind::prefixed_inclusive:
+            os << "prefixed_inclusive";
+            break;
+        case end_point_kind::prefixed_exclusive:
+            os << "prefixed_exclusive";
+            break;
+        default:
+            os << "unknown";
+            break;
+    }
+    return os;
+}
+
+} // namespace jogasaki::kvs

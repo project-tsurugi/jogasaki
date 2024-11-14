@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "join_find_context.h"
+#include "index_join_context.h"
 
 #include <utility>
 
 #include "context_base.h"
-#include "join_find.h"
+#include "index_join.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
-join_find_context::join_find_context(
+index_join_context::index_join_context(
     class abstract::task_context* ctx,
     variable_table& input_variables,
     variable_table& output_variables,
@@ -40,15 +40,15 @@ join_find_context::join_find_context(
     matcher_(std::move(matcher))
 {}
 
-operator_kind join_find_context::kind() const noexcept {
+operator_kind index_join_context::kind() const noexcept {
     return operator_kind::join_find;
 }
 
-void join_find_context::release() {
+void index_join_context::release() {
     //TODO
 }
 
-transaction_context* join_find_context::transaction() const noexcept {
+transaction_context* index_join_context::transaction() const noexcept {
     return tx_;
 }
 

@@ -56,8 +56,8 @@
 #include "filter.h"
 #include "find.h"
 #include "flatten.h"
+#include "index_join.h"
 #include "join.h"
-#include "join_find.h"
 #include "offer.h"
 #include "project.h"
 #include "scan.h"
@@ -65,8 +65,8 @@
 #include "take_flat.h"
 #include "take_group.h"
 #include "write_create.h"
-#include "write_kind.h"
 #include "write_existing.h"
+#include "write_kind.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -149,7 +149,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-    return std::make_unique<join_find>(
+    return std::make_unique<index_join>(
         node.operator_kind(),
         index_++,
         *info_,
@@ -169,7 +169,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-    return std::make_unique<join_find>(
+    return std::make_unique<index_join>(
         node.operator_kind(),
         index_++,
         *info_,

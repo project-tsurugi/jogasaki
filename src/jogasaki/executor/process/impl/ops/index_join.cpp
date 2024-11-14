@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "join_find.h"
+#include "index_join.h"
 
 #include <cstddef>
 #include <utility>
@@ -44,7 +44,7 @@
 #include "context_helper.h"
 #include "details/encode_key.h"
 #include "details/error_abort.h"
-#include "join_find_context.h"
+#include "index_join_context.h"
 #include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -179,7 +179,6 @@ bool matcher::process_find(
         return field_mapper_(key, value, output_variables.store().ref(), primary_stg, *ctx.transaction(), resource) ==
             status::ok;
     }
-    // join_find for secondary, or join_scan (for primary or secondary)
     auto& stg = use_secondary_ ? *secondary_stg : primary_stg;
     if(auto res = stg.content_scan(*ctx.transaction(),
             key, kvs::end_point_kind::prefixed_inclusive,
@@ -294,12 +293,12 @@ status matcher::result() const noexcept {
 
 }  // namespace details
 
-operation_status join_find::process_record(abstract::task_context* context) {
+operation_status index_join::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
-    auto* p = find_context<join_find_context>(index(), ctx.contexts());
+    auto* p = find_context<index_join_context>(index(), ctx.contexts());
     if (! p) {
-        p = ctx.make_context<join_find_context>(
+        p = ctx.make_context<index_join_context>(
             index(),
             ctx.variable_table(block_index()),
             ctx.variable_table(block_index()),
@@ -330,7 +329,7 @@ operation_status join_find::process_record(abstract::task_context* context) {
     return (*this)(*p, context);
 }
 
-void join_find::nullify_output_variables(accessor::record_ref target) {
+void index_join::nullify_output_variables(accessor::record_ref target) {
     for(auto&& f : key_columns_) {
         if(f.exists_) {
             target.set_null(f.nullity_offset_, true);
@@ -342,7 +341,7 @@ void join_find::nullify_output_variables(accessor::record_ref target) {
         }
     }
 }
-operation_status join_find::operator()(join_find_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
+operation_status index_join::operator()(index_join_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.inactive()) {
         return {operation_status_kind::aborted};
     }
@@ -405,18 +404,18 @@ operation_status join_find::operator()(join_find_context& ctx, abstract::task_co
     return {};
 }
 
-operator_kind join_find::kind() const noexcept {
+operator_kind index_join::kind() const noexcept {
     return operator_kind::join_find;
 }
 
-std::string_view join_find::storage_name() const noexcept {
+std::string_view index_join::storage_name() const noexcept {
     return primary_storage_name_;
 }
 
-void join_find::finish(abstract::task_context* context) {
+void index_join::finish(abstract::task_context* context) {
     if (! context) return;
     context_helper ctx{*context};
-    if (auto* p = find_context<join_find_context>(index(), ctx.contexts())) {
+    if (auto* p = find_context<index_join_context>(index(), ctx.contexts())) {
         p->release();
     }
     if (downstream_) {
@@ -424,7 +423,7 @@ void join_find::finish(abstract::task_context* context) {
     }
 }
 
-join_find::join_find(
+index_join::index_join(
     join_kind kind,
     bool for_join_scan,
     operator_base::operator_index_type index,
@@ -467,7 +466,7 @@ join_find::join_find(
     secondary_key_fields_(std::move(secondary_key_fields))
 {}
 
-join_find::join_find(
+index_join::index_join(
     join_kind kind,
     operator_base::operator_index_type index,
     processor_info const& info,
@@ -481,7 +480,7 @@ join_find::join_find(
     variable_table_info const* input_variable_info,
     variable_table_info const* output_variable_info
 ) :
-    join_find(
+    index_join(
         kind,
         false,  // for_join_scan
         index,
@@ -520,7 +519,7 @@ join_find::join_find(
     )
 {}
 
-join_find::join_find(
+index_join::index_join(
     join_kind kind,
     operator_base::operator_index_type index,
     processor_info const& info,
@@ -537,7 +536,7 @@ join_find::join_find(
     variable_table_info const* input_variable_info,
     variable_table_info const* output_variable_info
 ) :
-    join_find(
+    index_join(
         kind,
         true,  // for_join_scan
         index,
@@ -580,15 +579,15 @@ join_find::join_find(
     )
 {}
 
-std::vector<index::field_info> const& join_find::key_columns() const noexcept {
+std::vector<index::field_info> const& index_join::key_columns() const noexcept {
     return key_columns_;
 }
 
-std::vector<index::field_info> const& join_find::value_columns() const noexcept {
+std::vector<index::field_info> const& index_join::value_columns() const noexcept {
     return value_columns_;
 }
 
-std::vector<details::search_key_field_info> const& join_find::search_key_fields() const noexcept {
+std::vector<details::search_key_field_info> const& index_join::search_key_fields() const noexcept {
     return search_key_fields_;
 }
 

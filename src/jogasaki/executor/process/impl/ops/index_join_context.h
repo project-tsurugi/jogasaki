@@ -37,20 +37,20 @@ class matcher;
 }
 
 /**
- * @brief join_find context
+ * @brief index_join_context context
  */
-class join_find_context : public context_base {
+class index_join_context : public context_base {
 public:
-    friend class join_find;
+    friend class index_join;
     /**
      * @brief create empty object
      */
-    join_find_context() = default;
+    index_join_context() = default;
 
     /**
      * @brief create new object
      */
-    join_find_context(
+    index_join_context(
         class abstract::task_context* ctx,
         variable_table& input_variables,
         variable_table& output_variables,

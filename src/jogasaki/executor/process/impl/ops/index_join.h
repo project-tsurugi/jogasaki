@@ -47,7 +47,7 @@
 
 #include "details/search_key_field_info.h"
 #include "index_field_mapper.h"
-#include "join_find_context.h"
+#include "index_join_context.h"
 #include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -170,11 +170,11 @@ private:
 }  // namespace details
 
 /**
- * @brief join_find operator
+ * @brief index_join class common for join_find/join_scan operators
  */
-class join_find : public record_operator {
+class index_join : public record_operator {
 public:
-    friend class join_find_context;
+    friend class index_join_context;
 
     using join_kind = takatori::relation::join_kind;
 
@@ -182,7 +182,7 @@ public:
     /**
      * @brief create empty object
      */
-    join_find() = default;
+    index_join() = default;
 
     /**
      * @brief common constructor for join_scan and join_find
@@ -198,7 +198,7 @@ public:
      * @param condition additional join condition
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
-    join_find(
+    index_join(
         join_kind kind,
         bool for_join_scan,
         operator_index_type index,
@@ -232,7 +232,7 @@ public:
      * @param condition additional join condition
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
-    join_find(
+    index_join(
         join_kind kind,
         operator_index_type index,
         processor_info const& info,
@@ -259,7 +259,7 @@ public:
      * @param condition additional join condition
      * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
      */
-    join_find(
+    index_join(
         join_kind kind,
         operator_index_type index,
         processor_info const& info,
@@ -291,7 +291,7 @@ public:
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      * @return status of the operation
      */
-    operation_status operator()(join_find_context& ctx, abstract::task_context* context = nullptr);
+    operation_status operator()(index_join_context& ctx, abstract::task_context* context = nullptr);
 
     /**
      * @see operator_base::kind()

@@ -48,8 +48,8 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/expr/error.h>
-#include <jogasaki/executor/process/impl/ops/join_find.h>
-#include <jogasaki/executor/process/impl/ops/join_find_context.h>
+#include <jogasaki/executor/process/impl/ops/index_join.h>
+#include <jogasaki/executor/process/impl/ops/index_join_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/executor/process/mock/group_reader.h>
@@ -175,7 +175,7 @@ TEST_F(join_find_test, simple) {
     variable_table output_variables{output_variable_info};
 
     std::vector<jogasaki::mock::basic_record> result{};
-    join_find op{
+    index_join op{
         relation::join_kind::inner,
         0,
         *processor_info_,
@@ -197,7 +197,7 @@ TEST_F(join_find_test, simple) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
     auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    join_find_context ctx(
+    index_join_context ctx(
         task_ctx.get(),
         input_variables,
         output_variables,
@@ -267,7 +267,7 @@ TEST_F(join_find_test, secondary_index) {
     variable_table output_variables{output_variable_info};
 
     std::vector<jogasaki::mock::basic_record> result{};
-    join_find op{
+    index_join op{
         relation::join_kind::inner,
         0,
         *processor_info_,
@@ -292,7 +292,7 @@ TEST_F(join_find_test, secondary_index) {
     put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 201), {});
     auto tx = wrap(db_->create_transaction());
     auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    join_find_context ctx(
+    index_join_context ctx(
         task_ctx.get(),
         input_variables,
         output_variables,
@@ -390,7 +390,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     variable_table output_variables{output_variable_info};
 
     std::vector<jogasaki::mock::basic_record> result{};
-    join_find op{
+    index_join op{
         relation::join_kind::inner,
         0,
         *processor_info_,
@@ -412,7 +412,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
     auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    join_find_context ctx(
+    index_join_context ctx(
         task_ctx.get(),
         input_variables,
         output_variables,

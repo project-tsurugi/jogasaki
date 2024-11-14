@@ -175,7 +175,7 @@ TEST_F(join_find_test, simple) {
     variable_table output_variables{output_variable_info};
 
     std::vector<jogasaki::mock::basic_record> result{};
-    index_join op{
+    join_find op{
         relation::join_kind::inner,
         0,
         *processor_info_,
@@ -197,19 +197,21 @@ TEST_F(join_find_test, simple) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
     auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    index_join_context ctx(
+
+    auto match_info =
+        details::match_info_find{op.match_info().key_fields_, details::create_secondary_key_fields(nullptr)};
+    join_find_context ctx(
         task_ctx.get(),
         input_variables,
         output_variables,
         get_storage(*db_, primary_idx_t1->simple_name()),
         nullptr,
         tx.get(),
-        std::make_unique<details::matcher>(
+        std::make_unique<join_find_matcher>(
             false,
-            op.search_key_fields(),
+            match_info,
             op.key_columns(),
-            op.value_columns(),
-            details::create_secondary_key_fields(nullptr)
+            op.value_columns()
         ),
         &resource_,
         &varlen_resource_
@@ -267,7 +269,7 @@ TEST_F(join_find_test, secondary_index) {
     variable_table output_variables{output_variable_info};
 
     std::vector<jogasaki::mock::basic_record> result{};
-    index_join op{
+    join_find op{
         relation::join_kind::inner,
         0,
         *processor_info_,
@@ -292,19 +294,20 @@ TEST_F(join_find_test, secondary_index) {
     put( *db_, secondary_idx_t1->simple_name(), create_record<kind::int8, kind::int8>(20, 201), {});
     auto tx = wrap(db_->create_transaction());
     auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    index_join_context ctx(
+    auto match_info =
+        details::match_info_find{op.match_info().key_fields_, details::create_secondary_key_fields(secondary_idx_t1.get())};
+    join_find_context ctx(
         task_ctx.get(),
         input_variables,
         output_variables,
         get_storage(*db_, primary_idx_t1->simple_name()),
         get_storage(*db_, secondary_idx_t1->simple_name()),
         tx.get(),
-        std::make_unique<details::matcher>(
+        std::make_unique<join_find_matcher>(
             true,
-            op.search_key_fields(),
+            match_info,
             op.key_columns(),
-            op.value_columns(),
-            details::create_secondary_key_fields(secondary_idx_t1.get())
+            op.value_columns()
         ),
         &resource_,
         &varlen_resource_
@@ -390,7 +393,7 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     variable_table output_variables{output_variable_info};
 
     std::vector<jogasaki::mock::basic_record> result{};
-    index_join op{
+    join_find op{
         relation::join_kind::inner,
         0,
         *processor_info_,
@@ -412,19 +415,20 @@ TEST_F(join_find_test, host_variable_with_condition_expr) {
     put( *db_, primary_idx_t1->simple_name(), create_record<kind::int8>(3), create_record<kind::int8>(300));
     auto tx = wrap(db_->create_transaction());
     auto&& [task_ctx, rctx] = create_task_context({}, {}, {}, {}, tx);
-    index_join_context ctx(
+    auto match_info =
+        details::match_info_find{op.match_info().key_fields_, details::create_secondary_key_fields(nullptr)};
+    join_find_context ctx(
         task_ctx.get(),
         input_variables,
         output_variables,
         get_storage(*db_, primary_idx_t1->simple_name()),
         nullptr,
         tx.get(),
-        std::make_unique<details::matcher>(
+        std::make_unique<join_find_matcher>(
             false,
-            op.search_key_fields(),
+            match_info,
             op.key_columns(),
-            op.value_columns(),
-            details::create_secondary_key_fields(nullptr)
+            op.value_columns()
         ),
         &resource_,
         &varlen_resource_

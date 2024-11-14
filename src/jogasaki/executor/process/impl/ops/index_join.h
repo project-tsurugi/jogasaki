@@ -31,6 +31,9 @@
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/context_helper.h>
+#include <jogasaki/executor/process/impl/ops/details/error_abort.h>
+#include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -44,10 +47,15 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/make_function_context.h>
+#include <jogasaki/utils/modify_status.h>
 
+#include "details/encode_key.h"
 #include "details/search_key_field_info.h"
 #include "index_field_mapper.h"
 #include "index_join_context.h"
+#include "index_matcher.h"
 #include "operator_base.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -57,186 +65,129 @@ namespace details {
 /**
  * @brief create secondary index key field info. Kept public for testing
  */
-std::vector<details::secondary_index_field_info> create_secondary_key_fields(
+inline std::vector<details::secondary_index_field_info> create_secondary_key_fields(
     yugawara::storage::index const* secondary_idx
-);
-
-/**
- * @brief matcher object to encapsulate difference between single result find and multiple result
- */
-class matcher {
-public:
-    using memory_resource = memory::lifo_paged_memory_resource;
-
-    matcher(
-        bool use_secondary,
-        bool for_join_scan,
-        std::vector<details::search_key_field_info> const& key_fields,
-        std::vector<details::search_key_field_info> const& begin_fields,
-        kvs::end_point_kind begin_endpoint,
-        std::vector<details::search_key_field_info> const& end_fields,
-        kvs::end_point_kind end_endpoint,
-        std::vector<index::field_info> key_columns,
-        std::vector<index::field_info> value_columns,
-        std::vector<details::secondary_index_field_info> secondary_key_fields
-    );
-
-    matcher(
-        bool use_secondary,
-        std::vector<details::search_key_field_info> const& key_fields,
-        std::vector<index::field_info> key_columns,
-        std::vector<index::field_info> value_columns,
-        std::vector<details::secondary_index_field_info> secondary_key_fields
-    );
-
-    matcher(
-        bool use_secondary,
-        std::vector<details::search_key_field_info> const& begin_fields,
-        kvs::end_point_kind begin_endpoint,
-        std::vector<details::search_key_field_info> const& end_fields,
-        kvs::end_point_kind end_endpoint,
-        std::vector<index::field_info> key_columns,
-        std::vector<index::field_info> value_columns,
-        std::vector<details::secondary_index_field_info> secondary_key_fields
-    );
-
-    /**
-     * @brief execute the matching for join_find
-     * @return true if match is successful
-     * @return false if match is not successful, check status with result() function to see if the result is
-     * simply not-found or other error happened.
-     */
-    [[nodiscard]] bool process_find(
-        request_context& ctx,
-        variable_table& input_variables,
-        variable_table& output_variables,
-        kvs::storage& primary_stg,
-        kvs::storage* secondary_stg,
-        memory_resource* resource = nullptr
-    );
-
-    /**
-     * @brief execute the matching for join_scan
-     * @return true if match is successful
-     * @return false if match is not successful, check status with result() function to see if the result is
-     * simply not-found or other error happened.
-     */
-    [[nodiscard]] bool process_scan(
-        request_context& ctx,
-        variable_table& input_variables,
-        variable_table& output_variables,
-        kvs::storage& primary_stg,
-        kvs::storage* secondary_stg,
-        memory_resource* resource = nullptr
-    );
-
-    /**
-     * @brief retrieve next match
-     * @return true if match is successful
-     * @return false if match is not successful, check status with result() function to see if the result is
-     * simply not-found or other error happened.
-     */
-    bool next();
-
-    /**
-     * @brief retrieve the status code of the last match execution
-     * @details This function provides the status code to check if the match
-     * @return status::ok if match was successful
-     * @return status::not_found if match was not successful due to missing target record
-     * @return other error (e.g. status::err_aborted_retryable) occurred when accessing kvs
-     */
-    [[nodiscard]] status result() const noexcept;
-
-private:
-    bool use_secondary_{};
-    bool for_join_scan_{};
-    std::vector<details::search_key_field_info> const& key_fields_;
-    std::vector<details::search_key_field_info> const& begin_fields_;
-    kvs::end_point_kind begin_endpoint_{};
-    std::vector<details::search_key_field_info> const& end_fields_;
-    kvs::end_point_kind end_endpoint_{};
-    data::aligned_buffer buf_{};
-    data::aligned_buffer buf2_{};
-    status status_{status::ok};
-    index_field_mapper field_mapper_{};
-
-    variable_table* output_variables_{};
-    kvs::storage* primary_storage_{};
-    transaction_context* tx_{};
-    matcher::memory_resource* resource_{};
-    std::unique_ptr<kvs::iterator> it_{};
-};
+) {
+    if(secondary_idx == nullptr) {
+        return {};
+    }
+    std::vector<details::secondary_index_field_info> ret{};
+    ret.reserve(secondary_idx->keys().size());
+    for(auto&& f : secondary_idx->keys()) {
+        ret.emplace_back(
+            utils::type_for(f.column().type()),
+            f.column().criteria().nullity().nullable(),
+            f.direction() == takatori::relation::sort_direction::ascendant ? kvs::spec_key_ascending : kvs::spec_key_descending
+        );
+    }
+    return ret;
+}
 
 }  // namespace details
 
 /**
  * @brief index_join class common for join_find/join_scan operators
  */
+template <class MatchInfo>
 class index_join : public record_operator {
 public:
-    friend class index_join_context;
+    friend class index_join_context<MatchInfo>;
 
     using join_kind = takatori::relation::join_kind;
 
     using memory_resource = memory::lifo_paged_memory_resource;
+
     /**
      * @brief create empty object
      */
     index_join() = default;
 
-    /**
-     * @brief common constructor for join_scan and join_find
-     * @param kind the kind of the join
-     * @param for_join_scan whether this object is used for join_scan (otherwise for join_find)
-     * @param index the index to identify the operator in the process
-     * @param info processor's information where this operation is contained
-     * @param block_index the index of the block that this operation belongs to
-     * @param primary_storage_name the storage name to find
-     * @param key_columns column information for key fields
-     * @param value_columns column information for value fields
-     * @param search_key_fields key_field information
-     * @param condition additional join condition
-     * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
-     */
+    template <class T = MatchInfo, typename = std::enable_if_t<std::is_same_v<T, details::match_info_find>, void>>
     index_join(
         join_kind kind,
-        bool for_join_scan,
-        operator_index_type index,
+        operator_base::operator_index_type index,
         processor_info const& info,
-        block_index_type block_index,
+        operator_base::block_index_type block_index,
         std::string_view primary_storage_name,
         std::string_view secondary_storage_name,
         std::vector<index::field_info> key_columns,
         std::vector<index::field_info> value_columns,
         std::vector<details::search_key_field_info> search_key_fields,
+        takatori::util::optional_ptr<takatori::scalar::expression const> condition,
+        std::vector<details::secondary_index_field_info> secondary_key_fields,
+        std::unique_ptr<operator_base> downstream,
+        variable_table_info const* input_variable_info = nullptr,
+        variable_table_info const* output_variable_info = nullptr
+    ) noexcept:
+        record_operator(index, info, block_index, input_variable_info, output_variable_info),
+        join_kind_(kind),
+        for_join_scan_(false),
+        use_secondary_(! secondary_storage_name.empty()),
+        primary_storage_name_(primary_storage_name),
+        secondary_storage_name_(secondary_storage_name),
+        key_columns_(std::move(key_columns)),
+        value_columns_(std::move(value_columns)),
+        match_info_(
+            std::move(search_key_fields),
+            std::move(secondary_key_fields)
+        ),
+        condition_(std::move(condition)),
+        downstream_(std::move(downstream)),
+        evaluator_(condition_ ?
+            expr::evaluator{*condition_, info.compiled_info(), info.host_variables()} :
+            expr::evaluator{}
+        )
+    {}
+
+    template <class T = MatchInfo, typename = std::enable_if_t<std::is_same_v<T, details::match_info_scan>, void>>
+    index_join(
+        join_kind kind,
+        operator_base::operator_index_type index,
+        processor_info const& info,
+        operator_base::block_index_type block_index,
+        std::string_view primary_storage_name,
+        std::string_view secondary_storage_name,
+        std::vector<index::field_info> key_columns,
+        std::vector<index::field_info> value_columns,
         std::vector<details::search_key_field_info> begin_for_scan,
         kvs::end_point_kind begin_endpoint,
         std::vector<details::search_key_field_info> end_for_scan,
         kvs::end_point_kind end_endpoint,
         takatori::util::optional_ptr<takatori::scalar::expression const> condition,
         std::vector<details::secondary_index_field_info> secondary_key_fields,
-        std::unique_ptr<operator_base> downstream = nullptr,
+        std::unique_ptr<operator_base> downstream,
         variable_table_info const* input_variable_info = nullptr,
         variable_table_info const* output_variable_info = nullptr
-    ) noexcept;
+    ) noexcept:
+        record_operator(index, info, block_index, input_variable_info, output_variable_info),
+        join_kind_(kind),
+        for_join_scan_(true),
+        use_secondary_(! secondary_storage_name.empty()),
+        primary_storage_name_(primary_storage_name),
+        secondary_storage_name_(secondary_storage_name),
+        key_columns_(std::move(key_columns)),
+        value_columns_(std::move(value_columns)),
+        match_info_(
+            std::move(begin_for_scan),
+            begin_endpoint,
+            std::move(end_for_scan),
+            end_endpoint,
+            std::move(secondary_key_fields)
+        ),
+        condition_(std::move(condition)),
+        downstream_(std::move(downstream)),
+        evaluator_(condition_ ?
+            expr::evaluator{*condition_, info.compiled_info(), info.host_variables()} :
+            expr::evaluator{}
+        )
+    {}
 
-    /**
-     * @brief create new object for join_find from takatori objects
-     * @param kind the kind of the join
-     * @param index the index to identify the operator in the process
-     * @param info processor's information where this operation is contained
-     * @param block_index the index of the block that this operation belongs to
-     * @param storage_name the storage name to find
-     * @param columns takatori join_find column information
-     * @param keys takatori join_find key information
-     * @param condition additional join condition
-     * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
-     */
+    template <class T = MatchInfo, typename = std::enable_if_t<std::is_same_v<T, details::match_info_find>, void>>
     index_join(
         join_kind kind,
-        operator_index_type index,
+        operator_base::operator_index_type index,
         processor_info const& info,
-        block_index_type block_index,
+        operator_base::block_index_type block_index,
         yugawara::storage::index const& primary_idx,
         sequence_view<takatori::relation::join_find::column const> columns,
         takatori::tree::tree_fragment_vector<takatori::relation::join_find::key> const& keys,
@@ -245,27 +196,49 @@ public:
         std::unique_ptr<operator_base> downstream,
         variable_table_info const* input_variable_info = nullptr,
         variable_table_info const* output_variable_info = nullptr
-    );
+    ) :
+        index_join(
+            kind,
+            index,
+            info,
+            block_index,
+            primary_idx.simple_name(),
+            secondary_idx != nullptr ? secondary_idx->simple_name() : "",
+            index::create_fields(
+                primary_idx,
+                columns,
+                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                true,
+                true
+            ),
+            index::create_fields(
+                primary_idx,
+                columns,
+                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                false,
+                true
+            ),
+            details::create_search_key_fields(
+                secondary_idx != nullptr ? *secondary_idx : primary_idx,
+                keys,
+                info
+            ),
+            condition,
+            details::create_secondary_key_fields(secondary_idx),
+            std::move(downstream),
+            input_variable_info,
+            output_variable_info
+        )
+    {}
 
-    /**
-     * @brief create new object for join_scan from takatori objects
-     * @param kind the kind of the join
-     * @param index the index to identify the operator in the process
-     * @param info processor's information where this operation is contained
-     * @param block_index the index of the block that this operation belongs to
-     * @param storage_name the storage name to find
-     * @param columns takatori join_find column information
-     * @param keys takatori join_find key information
-     * @param condition additional join condition
-     * @param downstream downstream operator invoked after this operation. Pass nullptr if such dispatch is not needed.
-     */
+    template <class T = MatchInfo, typename = std::enable_if_t<std::is_same_v<T, details::match_info_scan>, void>>
     index_join(
         join_kind kind,
-        operator_index_type index,
+        operator_base::operator_index_type index,
         processor_info const& info,
-        block_index_type block_index,
+        operator_base::block_index_type block_index,
         yugawara::storage::index const& primary_idx,
-        sequence_view<takatori::relation::join_scan::column const> columns,
+        sequence_view<takatori::relation::join_find::column const> columns,
         takatori::tree::tree_fragment_vector<takatori::relation::join_scan::key> const& begin_for_scan,
         kvs::end_point_kind begin_endpoint,
         takatori::tree::tree_fragment_vector<takatori::relation::join_scan::key> const& end_for_scan,
@@ -275,14 +248,72 @@ public:
         std::unique_ptr<operator_base> downstream,
         variable_table_info const* input_variable_info = nullptr,
         variable_table_info const* output_variable_info = nullptr
-    );
+    ) :
+        index_join(
+            kind,
+            index,
+            info,
+            block_index,
+            primary_idx.simple_name(),
+            secondary_idx != nullptr ? secondary_idx->simple_name() : "",
+            index::create_fields(
+                primary_idx,
+                columns,
+                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                true,
+                true
+            ),
+            index::create_fields(
+                primary_idx,
+                columns,
+                (output_variable_info != nullptr ? *output_variable_info : info.vars_info_list()[block_index]),
+                false,
+                true
+            ),
+            details::create_search_key_fields(
+                secondary_idx != nullptr ? *secondary_idx : primary_idx,
+                begin_for_scan,
+                info
+            ),
+            begin_endpoint,
+            details::create_search_key_fields(
+                secondary_idx != nullptr ? *secondary_idx : primary_idx,
+                end_for_scan,
+                info
+            ),
+            end_endpoint,
+            condition,
+            details::create_secondary_key_fields(secondary_idx),
+            std::move(downstream),
+            input_variable_info,
+            output_variable_info
+        )
+    {}
 
     /**
      * @brief create context (if needed) and process record
      * @param context task-wide context used to create operator context
      * @return status of the operation
      */
-    operation_status process_record(abstract::task_context* context) override;
+    operation_status process_record(abstract::task_context* context) override {
+        BOOST_ASSERT(context != nullptr);  //NOLINT
+        context_helper ctx{*context};
+        auto* p = find_context<index_join_context<MatchInfo>>(index(), ctx.contexts());
+        if (! p) {
+            p = ctx.make_context<index_join_context<MatchInfo>>(
+                index(),
+                ctx.variable_table(block_index()),
+                ctx.variable_table(block_index()),
+                ctx.database()->get_storage(primary_storage_name_),
+                use_secondary_ ? ctx.database()->get_storage(secondary_storage_name_) : nullptr,
+                ctx.transaction(),
+                std::make_unique<details::matcher<MatchInfo>>(use_secondary_, match_info_, key_columns_, value_columns_),
+                ctx.resource(),
+                ctx.varlen_resource()
+            );
+        }
+        return (*this)(*p, context);
+    }
 
     /**
      * @brief process record with context object
@@ -291,38 +322,112 @@ public:
      * @param context task context for the downstream, can be nullptr if downstream doesn't require.
      * @return status of the operation
      */
-    operation_status operator()(index_join_context& ctx, abstract::task_context* context = nullptr);
+    operation_status operator()(index_join_context<MatchInfo>& ctx, abstract::task_context* context = nullptr) { //NOLINT(readability-function-cognitive-complexity)
+        if (ctx.inactive()) {
+            return {operation_status_kind::aborted};
+        }
+        auto resource = ctx.varlen_resource();
+        nullify_output_variables(ctx.output_variables().store().ref());
+        bool matched = ctx.matcher_->template process<MatchInfo>(
+            *ctx.req_context(),
+            ctx.input_variables(),
+            ctx.output_variables(),
+            *ctx.primary_stg_,
+            ctx.secondary_stg_.get(),
+            resource
+        );
+        if(matched || join_kind_ == join_kind::left_outer) {
+            do {
+                if (condition_) {
+                    expr::evaluator_context c{
+                        resource,
+                        ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
+                    };
+                    auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
+                    if (r.error()) {
+                        return handle_expression_error(ctx, r, c);
+                    }
+                    if(! r.template to<bool>()) {
+                        if(join_kind_ != join_kind::left_outer) {
+                            // inner join: skip record
+                            continue;
+                        }
+                        // left outer join: nullify output variables and send record downstream
+                        nullify_output_variables(ctx.output_variables().store().ref());
+                    }
+                }
+                if (downstream_) {
+                    if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                        ctx.abort();
+                        return {operation_status_kind::aborted};
+                    }
+                }
+                // clean output variables for next record just in case
+                nullify_output_variables(ctx.output_variables().store().ref());
+            } while(matched && ctx.matcher_->next());
+        }
+        if(auto res = ctx.matcher_->result(); res != status::not_found) {
+            if(res == status::err_integrity_constraint_violation) {
+                // match condition saw null. No record should match.
+                return {};
+            }
+            handle_kvs_errors(*ctx.req_context(), res);
+            return error_abort(ctx, res);
+        }
+        return {};
+    }
 
     /**
      * @see operator_base::kind()
      */
-    [[nodiscard]] operator_kind kind() const noexcept override;
+    [[nodiscard]] operator_kind kind() const noexcept override {
+        return std::is_same_v<MatchInfo, details::match_info_find> ? operator_kind::join_find
+                                                                   : operator_kind::join_scan;
+    }
 
     /**
      * @brief return storage name
      * @return the storage name of the find target
      */
-    [[nodiscard]] std::string_view storage_name() const noexcept;
+    [[nodiscard]] std::string_view storage_name() const noexcept {
+        return primary_storage_name_;
+    }
+
+    /**
+     * @brief return match info.
+     * @return the match info object
+     */
+    [[nodiscard]] MatchInfo const& match_info() const noexcept {
+        return match_info_;
+    }
 
     /**
      * @see operator_base::finish()
      */
-    void finish(abstract::task_context*) override;
+    void finish(abstract::task_context* context) override {
+        if (! context) return;
+        context_helper ctx{*context};
+        if (auto* p = find_context<index_join_context<MatchInfo>>(index(), ctx.contexts())) {
+            p->release();
+        }
+        if (downstream_) {
+            unsafe_downcast<record_operator>(downstream_.get())->finish(context);
+        }
+    }
 
     /**
      * @brief accessor to key columns
      */
-    [[nodiscard]] std::vector<index::field_info> const& key_columns() const noexcept;
+    [[nodiscard]] std::vector<index::field_info> const& key_columns() const noexcept {
+        return key_columns_;
+    }
 
     /**
      * @brief accessor to value columns
      */
-    [[nodiscard]] std::vector<index::field_info> const& value_columns() const noexcept;
-
-    /**
-     * @brief accessor to key fields
-     */
-    [[nodiscard]] std::vector<details::search_key_field_info> const& search_key_fields() const noexcept;
+    [[nodiscard]] std::vector<index::field_info> const& value_columns() const noexcept {
+        return value_columns_;
+    }
 
 private:
     join_kind join_kind_{};
@@ -332,17 +437,35 @@ private:
     std::string secondary_storage_name_{};
     std::vector<index::field_info> key_columns_{};
     std::vector<index::field_info> value_columns_{};
-    std::vector<details::search_key_field_info> search_key_fields_{};
-    std::vector<details::search_key_field_info> begin_for_scan_{};
-    kvs::end_point_kind begin_endpoint_ = kvs::end_point_kind::unbound;
-    std::vector<details::search_key_field_info> end_for_scan_{};
-    kvs::end_point_kind end_endpoint_ = kvs::end_point_kind::unbound;
+    MatchInfo match_info_{};
     takatori::util::optional_ptr<takatori::scalar::expression const> condition_{};
     std::unique_ptr<operator_base> downstream_{};
     expr::evaluator evaluator_{};
-    std::vector<details::secondary_index_field_info> secondary_key_fields_{};
 
-    void nullify_output_variables(accessor::record_ref target);
+    void nullify_output_variables(accessor::record_ref target) {
+        for(auto&& f : key_columns_) {
+            if(f.exists_) {
+                target.set_null(f.nullity_offset_, true);
+            }
+        }
+        for(auto&& f : value_columns_) {
+            if(f.exists_) {
+                target.set_null(f.nullity_offset_, true);
+            }
+        }
+    }
 };
+
+using join_find = index_join<details::match_info_find>;
+
+using join_scan = index_join<details::match_info_scan>;
+
+using join_find_context = index_join_context<details::match_info_find>;
+
+using join_scan_context = index_join_context<details::match_info_scan>;
+
+using join_find_matcher = details::matcher<details::match_info_find>;
+
+using join_scan_matcher = details::matcher<details::match_info_scan>;
 
 }  // namespace jogasaki::executor::process::impl::ops

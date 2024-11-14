@@ -29,19 +29,29 @@
 #include <jogasaki/transaction_context.h>
 
 #include "context_base.h"
+#include "index_matcher.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
 namespace details {
+
+template<class MatchInfo>
 class matcher;
-}
+
+}  // namespace details
+
+template<class MatchInfo>
+class index_join;
 
 /**
- * @brief index_join_context context
+ * @brief context object for index_join
  */
+template <class MatchInfo>
 class index_join_context : public context_base {
 public:
-    friend class index_join;
+
+    friend class index_join<MatchInfo>;
+
     /**
      * @brief create empty object
      */
@@ -57,24 +67,35 @@ public:
         std::unique_ptr<kvs::storage> primary_stg,
         std::unique_ptr<kvs::storage> secondary_stg,
         transaction_context* tx,
-        std::unique_ptr<details::matcher> matcher,
+        std::unique_ptr<details::matcher<MatchInfo>> matcher,
         memory_resource* resource,
         memory_resource* varlen_resource
-    );
+    ) :
+        context_base(ctx, input_variables, output_variables, resource, varlen_resource),
+        primary_stg_(std::move(primary_stg)),
+        secondary_stg_(std::move(secondary_stg)),
+        tx_(tx),
+        matcher_(std::move(matcher))
+    {}
 
-    [[nodiscard]] operator_kind kind() const noexcept override;
+    [[nodiscard]] operator_kind kind() const noexcept override {
+        return std::is_same_v<MatchInfo, details::match_info_find> ? operator_kind::join_find
+                                                                   : operator_kind::join_scan;
+    }
 
-    void release() override;
+    void release() override {
+        //TODO
+    }
 
-    [[nodiscard]] transaction_context* transaction() const noexcept;
+    [[nodiscard]] transaction_context* transaction() const noexcept {
+        return tx_;
+    }
 
 private:
     std::unique_ptr<kvs::storage> primary_stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};
     transaction_context* tx_{};
-    std::unique_ptr<details::matcher> matcher_{};
+    std::unique_ptr<details::matcher<MatchInfo>> matcher_{};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

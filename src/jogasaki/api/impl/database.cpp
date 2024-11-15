@@ -182,6 +182,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_direct_commit_callback) " << cfg.direct_commit_callback() << " : whether to make callback directly from shirakami to client on pre-commit response (only for `available` and `accepted`)";
     LOGCFG << "(scan_default_parallel) " << cfg.scan_default_parallel() << " : max parallel execution count of scan tasks";
     LOGCFG << "(dev_inplace_teardown) " << cfg.inplace_teardown() << " : whether to process teardown (job completion) directly on the current thread instead of scheduling a task for it";
+    LOGCFG << "(enable_join_scan) " << cfg.enable_join_scan() << " : whether to enable index join using join_scan operator";
 }
 
 status database::start() {

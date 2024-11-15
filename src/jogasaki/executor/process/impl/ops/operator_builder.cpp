@@ -50,6 +50,7 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/utils/from_endpoint.h>
 
 #include "aggregate_group.h"
 #include "emit.h"
@@ -177,9 +178,9 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
         *primary,
         node.columns(),
         node.lower().keys(),
-        from(node.lower().kind()),
+        utils::from(node.lower().kind()),
         node.upper().keys(),
-        from(node.upper().kind()),
+        utils::from(node.upper().kind()),
         node.condition(),
         *primary != secondary_or_primary_index ? std::addressof(secondary_or_primary_index) : nullptr,
         std::move(downstream)
@@ -395,27 +396,13 @@ std::shared_ptr<impl::scan_range> operator_builder::create_range(relation::scan 
         throw_exception(jogasaki::plan::impl::compile_exception{create_error_info(
             error_code::sql_execution_exception, msg, status::err_compiler_error)});
     }
-    auto begin_end_point_kind = kvs::adjust_endpoint_kind(use_secondary, from(node.lower().kind()));
-    auto end_end_point_kind   = kvs::adjust_endpoint_kind(use_secondary, from(node.upper().kind()));
+    auto begin_end_point_kind = kvs::adjust_endpoint_kind(use_secondary, utils::from(node.lower().kind()));
+    auto end_end_point_kind   = kvs::adjust_endpoint_kind(use_secondary, utils::from(node.upper().kind()));
     bound begin(begin_end_point_kind, blen, std::move(key_begin));
     bound end(end_end_point_kind, elen, std::move(key_end));
     bool is_empty = (status_result == status::err_integrity_constraint_violation);
     return std::make_shared<impl::scan_range>(std::move(begin), std::move(end), is_empty);
 }
-
-kvs::end_point_kind operator_builder::from(relation::scan::endpoint::kind_type type) {
-    using t = relation::scan::endpoint::kind_type;
-    using k = kvs::end_point_kind;
-    switch(type) {
-        case t::unbound: return k::unbound;
-        case t::inclusive: return k::inclusive;
-        case t::exclusive: return k::exclusive;
-        case t::prefixed_inclusive: return k::prefixed_inclusive;
-        case t::prefixed_exclusive: return k::prefixed_exclusive;
-    }
-    throw_exception(std::logic_error{""});
-}
-
 
 operator_container create_operators(
     std::shared_ptr<processor_info> info,

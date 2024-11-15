@@ -132,7 +132,6 @@ public:
     operator_base::operator_index_type index_{};
     std::shared_ptr<impl::scan_range> range_{};
     request_context* request_context_{};
-    kvs::end_point_kind from(relation::scan::endpoint::kind_type type);
 
 };
 

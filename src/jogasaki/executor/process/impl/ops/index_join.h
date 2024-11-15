@@ -121,7 +121,7 @@ public:
     ) noexcept:
         record_operator(index, info, block_index, input_variable_info, output_variable_info),
         join_kind_(kind),
-        for_join_scan_(false),
+        for_join_scan_(false),  //NOLINT(modernize-use-default-member-init)
         use_secondary_(! secondary_storage_name.empty()),
         primary_storage_name_(primary_storage_name),
         secondary_storage_name_(secondary_storage_name),
@@ -456,16 +456,34 @@ private:
     }
 };
 
+/**
+ * @brief join find operator
+ */
 using join_find = index_join<details::match_info_find>;
 
+/**
+ * @brief join scan operator
+ */
 using join_scan = index_join<details::match_info_scan>;
 
+/**
+ * @brief context object for join_find
+ */
 using join_find_context = index_join_context<details::match_info_find>;
 
+/**
+ * @brief context object for join_scan
+ */
 using join_scan_context = index_join_context<details::match_info_scan>;
 
+/**
+ * @brief matcher object for join_find
+ */
 using join_find_matcher = details::matcher<details::match_info_find>;
 
+/**
+ * @brief matcher object for join_scan
+ */
 using join_scan_matcher = details::matcher<details::match_info_scan>;
 
 }  // namespace jogasaki::executor::process::impl::ops

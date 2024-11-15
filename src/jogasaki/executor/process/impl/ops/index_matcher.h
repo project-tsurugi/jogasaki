@@ -57,10 +57,11 @@
 #include "index_join_context.h"
 #include "operator_base.h"
 
-namespace jogasaki::executor::process::impl::ops {
+namespace jogasaki::executor::process::impl::ops::details {
 
-namespace details {
-
+/**
+ * @brief static info. for matcher to do join_scan operation
+ */
 class match_info_scan {
 public:
     match_info_scan() = default;
@@ -86,6 +87,9 @@ public:
     std::vector<details::secondary_index_field_info> secondary_key_fields_{};  //NOLINT
 };
 
+/**
+ * @brief static info. for matcher to do join_find operation
+ */
 class match_info_find {
 public:
 
@@ -102,7 +106,8 @@ public:
 };
 
 /**
- * @brief matcher object to encapsulate difference between single result find and multiple result
+ * @brief matcher object to conduct matching of input record and index keys
+ * @details this object encapsulates difference between single result and multiple result
  */
 template <class MatchInfo>
 class matcher {
@@ -316,6 +321,4 @@ private:
     std::unique_ptr<kvs::iterator> it_{};
 };
 
-}  // namespace details
-
-}  // namespace jogasaki::executor::process::impl::ops
+}  // namespace jogasaki::executor::process::impl::ops::details

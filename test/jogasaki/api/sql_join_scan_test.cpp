@@ -341,4 +341,104 @@ TEST_F(sql_join_scan_test, join_scan_secondary_multiple_columns) {
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8, kind::int4>(1,11,1,11,101)), result[1]);
 }
 
+// TODO add more tests for different types when issue #731 is resolved
+
+TEST_F(sql_join_scan_test, different_type_double_vs_int) {
+    execute_statement("CREATE TABLE t0 (c0 double)");
+    execute_statement("INSERT INTO t0 VALUES (2147483647e0),(-2147483648e0)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (-2147483648,0),(2147483647,1)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::int4, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::int4, kind::int4>(2147483647, 2147483647, 1)), result[1]);
+}
+
+TEST_F(sql_join_scan_test, different_type_int_vs_double) {
+    execute_statement("CREATE TABLE t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (2147483647),(-2147483648)");
+    execute_statement("CREATE TABLE t1 (c0 double, c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (-2147483648e0,0),(2147483647e0,1)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::float8, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::float8, kind::int4>(2147483647, 2147483647, 1)), result[1]);
+}
+
+TEST_F(sql_join_scan_test, different_type_int_vs_bigint) {
+    execute_statement("CREATE TABLE t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (2147483647),(-2147483648)");
+    execute_statement("CREATE TABLE t1 (c0 bigint, c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (-2147483649,-1), (-2147483648,0),(2147483647,1), (2147483648,2)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(2147483647, 2147483647, 1)), result[1]);
+}
+
+// TODO enable this test when issue #731 is resolved
+TEST_F(sql_join_scan_test, DISABLED_different_type_bigint_vs_int) {
+    execute_statement("CREATE TABLE t0 (c0 bigint)");
+    execute_statement("INSERT INTO t0 VALUES (2147483648), (2147483647),(-2147483648), (-2147483649)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (-2147483648,0),(2147483647,1)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(2147483647, 2147483647, 1)), result[1]);
+}
+
+// TODO enable this test when issue #731 is resolved
+TEST_F(sql_join_scan_test, DISABLED_different_type_decimal_vs_int) {
+    execute_statement("CREATE TABLE t0 (c0 decimal(10))");
+    execute_statement("INSERT INTO t0 VALUES (2147483648), (2147483647),(-2147483648), (-2147483649)");
+    execute_statement("CREATE TABLE t1 (c0 int, c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (-2147483648,0),(2147483647,1)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(2147483647, 2147483647, 1)), result[1]);
+}
+
+// TODO enable this test when issue #731 is resolved
+TEST_F(sql_join_scan_test, DISABLED_different_type_int_vs_decimal) {
+    execute_statement("CREATE TABLE t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (2147483648), (2147483647),(-2147483648), (-2147483649)");
+    execute_statement("CREATE TABLE t1 (c0 decimal(10), c1 int, primary key(c0, c1))");
+    execute_statement("INSERT INTO t1 VALUES (-2147483649,-1), (-2147483648,0),(2147483647,1), (2147483648,2)");
+
+    auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
+    EXPECT_TRUE(has_join_scan(query));
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::int4>(2147483647, 2147483647, 1)), result[1]);
+}
 }

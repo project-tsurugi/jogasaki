@@ -645,7 +645,7 @@ private:
     std::size_t scan_default_parallel_ = 1;
     bool inplace_teardown_ = true;
     bool inplace_dag_schedule_ = true;
-    bool enable_join_scan_ = false;
+    bool enable_join_scan_ = true;
 };
 
 }  // namespace jogasaki

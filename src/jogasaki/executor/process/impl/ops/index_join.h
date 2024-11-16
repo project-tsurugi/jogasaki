@@ -364,13 +364,10 @@ public:
                 }
                 // clean output variables for next record just in case
                 nullify_output_variables(ctx.output_variables().store().ref());
-            } while(matched && ctx.matcher_->next());
+            } while (matched && ctx.matcher_->next(*ctx.req_context()));
         }
-        if(auto res = ctx.matcher_->result(); res != status::not_found) {
-            if(res == status::err_integrity_constraint_violation) {
-                // match condition saw null. No record should match.
-                return {};
-            }
+        if(auto res = ctx.matcher_->result(); res != status::ok && res != status::not_found) {
+            // FIXME remove below after ensuring error info. is already set
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }

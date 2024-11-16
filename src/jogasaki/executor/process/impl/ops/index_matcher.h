@@ -47,6 +47,8 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/handle_encode_errors.h>
+#include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/make_function_context.h>
 #include <jogasaki/utils/modify_status.h>
@@ -136,6 +138,7 @@ public:
      * @return true if match is successful
      * @return false if match is not successful, check status with result() function to see if the result is
      * simply not-found or other error happened.
+     * When other error happens, `ctx` is populated with error info.
      */
     template <class T = MatchInfo>
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_find>, bool> process(
@@ -148,14 +151,17 @@ public:
     ) {
         std::size_t len{};
         std::string msg{};
-        if(auto res = details::encode_key(std::addressof(ctx), info_.key_fields_, input_variables, *resource, buf_, len, msg);
-        res != status::ok) {
+        if(auto res =
+               details::encode_key(std::addressof(ctx), info_.key_fields_, input_variables, *resource, buf_, len, msg);
+           res != status::ok) {
             status_ = res;
-            // TODO handle msg
             if(res == status::err_integrity_constraint_violation) {
                 // null is assigned for find condition. Nothing should match.
                 status_ = status::not_found;
+                return false;
             }
+            handle_encode_errors(ctx, res);
+            handle_generic_error(ctx, res, error_code::sql_execution_exception);
             return false;
         }
         std::string_view key{static_cast<char*>(buf_.data()), len};
@@ -167,27 +173,39 @@ public:
             if (res != status::ok) {
                 utils::modify_concurrent_operation_status(*ctx.transaction(), res, false);
                 status_ = res;
+                if(res == status::not_found) {
+                    return false;
+                }
+                handle_kvs_errors(ctx, res);
+                handle_generic_error(ctx, res, error_code::sql_execution_exception);
                 return false;
             }
             return field_mapper_(key, value, output_variables.store().ref(), primary_stg, *ctx.transaction(), resource) ==
                 status::ok;
         }
-        auto& stg = use_secondary_ ? *secondary_stg : primary_stg;
-        if(auto res = stg.content_scan(*ctx.transaction(),
-                key, kvs::end_point_kind::prefixed_inclusive,
-                key, kvs::end_point_kind::prefixed_inclusive,
-                it_
-            ); res != status::ok) {
-                status_ = res;
-                return false;
-            }
+        // handle secondary index
+        if(auto res = secondary_stg->content_scan(
+               *ctx.transaction(),
+               key,
+               kvs::end_point_kind::prefixed_inclusive,
+               key,
+               kvs::end_point_kind::prefixed_inclusive,
+               it_
+           );
+           res != status::ok) {
+            // content_scan does not return not_found or concurrent_operation
+            status_ = res;
+            handle_kvs_errors(ctx, res);
+            handle_generic_error(ctx, res, error_code::sql_execution_exception);
+            return false;
+        }
 
         // remember parameters for current scan
         output_variables_ = std::addressof(output_variables);
         primary_storage_ = std::addressof(primary_stg);
         tx_ = std::addressof(*ctx.transaction());
         resource_ = resource;
-        return next();
+        return next(ctx);
     }
 
     /**
@@ -195,6 +213,7 @@ public:
      * @return true if match is successful
      * @return false if match is not successful, check status with result() function to see if the result is
      * simply not-found or other error happened.
+     * When other error happens, `ctx` is populated with error info.
      */
     template <class T = MatchInfo>
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_scan>, bool> process(
@@ -215,7 +234,10 @@ public:
             if (res == status::err_integrity_constraint_violation) {
                 // null is assigned for find condition. Nothing should match.
                 status_ = status::not_found;
+                return false;
             }
+            handle_encode_errors(ctx, res);
+            handle_generic_error(ctx, res, error_code::sql_execution_exception);
             return false;
         }
         if(auto res = details::encode_key(std::addressof(ctx), info_.end_fields_, input_variables, *resource, buf2_, end_len, msg);
@@ -225,7 +247,10 @@ public:
             if (res == status::err_integrity_constraint_violation) {
                 // null is assigned for find condition. Nothing should match.
                 status_ = status::not_found;
+                return false;
             }
+            handle_encode_errors(ctx, res);
+            handle_generic_error(ctx, res, error_code::sql_execution_exception);
             return false;
         }
         std::string_view b{static_cast<char*>(buf_.data()), begin_len};
@@ -237,7 +262,10 @@ public:
                 e, info_.end_endpoint_,
                 it_
             ); res != status::ok) {
+                // content_scan does not return not_found or concurrent_operation
                 status_ = res;
+                handle_kvs_errors(ctx, res);
+                handle_generic_error(ctx, res, error_code::sql_execution_exception);
                 return false;
         }
 
@@ -246,17 +274,19 @@ public:
         primary_storage_ = std::addressof(primary_stg);
         tx_ = std::addressof(*ctx.transaction());
         resource_ = resource;
-        return next();
+        return next(ctx);
     }
 
 
     /**
      * @brief retrieve next match
+     * @param ctx request context
      * @return true if match is successful
      * @return false if match is not successful, check status with result() function to see if the result is
      * simply not-found or other error happened.
+     * When other error happens, `ctx` is populated with error info.
      */
-    bool next() {
+    bool next(request_context& ctx) {
         if (it_ == nullptr) {
             status_ = status::not_found;
             return false;
@@ -264,7 +294,12 @@ public:
         while(true) {  // loop to skip not_found with key()/value()
             auto res = it_->next();
             if(res != status::ok) {
+                // next() does not return concurrent_operation, so no need to call modify_concurrent_operation_status
                 status_ = res;
+                if(res != status::not_found) {
+                    handle_kvs_errors(ctx, res);
+                    handle_generic_error(ctx, res, error_code::sql_execution_exception);
+                }
                 it_.reset();
                 return false;
             }
@@ -276,6 +311,8 @@ public:
                     continue;
                 }
                 status_ = r;
+                handle_kvs_errors(ctx, r);
+                handle_generic_error(ctx, r, error_code::sql_execution_exception);
                 it_.reset();
                 return false;
             }
@@ -285,6 +322,8 @@ public:
                     continue;
                 }
                 status_ = r;
+                handle_kvs_errors(ctx, r);
+                handle_generic_error(ctx, r, error_code::sql_execution_exception);
                 it_.reset();
                 return false;
             }

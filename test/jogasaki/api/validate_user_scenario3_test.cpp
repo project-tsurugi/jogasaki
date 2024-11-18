@@ -61,7 +61,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->enable_index_join(false); // to workaround problem caused by join_scan not implemented yet //TODO
         db_setup(cfg);
     }
 

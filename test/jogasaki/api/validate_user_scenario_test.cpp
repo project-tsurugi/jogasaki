@@ -73,18 +73,29 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->enable_index_join(false); // to workaround problem caused by join_scan not implemented yet //TODO
         db_setup(cfg);
     }
 
     void TearDown() override {
         db_teardown();
     }
+    bool has_join_scan(std::string_view query);
 };
 
 using namespace std::string_view_literals;
 
+bool contains(std::string_view whole, std::string_view part) {
+    return whole.find(part) != std::string_view::npos;
+}
+
+bool validate_user_scenario_test::has_join_scan(std::string_view query) {
+    std::string plan{};
+    explain_statement(query, plan);
+    return contains(plan, "join_scan");
+}
+
 TEST_F(validate_user_scenario_test, join_scan) {
+    // related with issue #147
     execute_statement("create table history ("
                       "caller_phone_number varchar(15) not null,"
                       "recipient_phone_number varchar(15) not null,"
@@ -97,8 +108,6 @@ TEST_F(validate_user_scenario_test, join_scan) {
                       ")"
     );
     execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('001', '002', 'A', 20220505, 0, 0, 0)");
-//    execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('001', '002', 'A', 20230101, 0, 0, 0)");
-//    execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('010', '002', 'A', 20220505, 0, 0, 0)");
 
     execute_statement("create table contracts ("
                       "phone_number varchar(15) not null,"
@@ -109,19 +118,17 @@ TEST_F(validate_user_scenario_test, join_scan) {
                       ")"
     );
     execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('001', 20220101, 20221231, 'XXX')");
-//    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('010', 20220101, 20221231, 'XXX')");
     std::vector<mock::basic_record> result{};
-    execute_query("select "
+    std::string query = "select "
                   "h.caller_phone_number, h.recipient_phone_number,  h.payment_categorty, h.start_time, h.time_secs, "
                   "h.charge, h.df "
                   "from history h inner join contracts c on c.phone_number = h.caller_phone_number "
-//                  "from history h, contracts c where c.phone_number = h.caller_phone_number and "
                   "where c.start_date < h.start_time "
                   "and h.start_time < c.end_date + 1 "
                   "and c.phone_number = '001' "
-                  "order by h.start_time"
-                  ,
-        result);
+                  "order by h.start_time";
+    EXPECT_TRUE(has_join_scan(query));
+    execute_query(query, result);
     ASSERT_EQ(1, result.size());
 }
 
@@ -138,8 +145,6 @@ TEST_F(validate_user_scenario_test, join_scan_primary_key_specified) {
                       ")"
     );
     execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('001', '002', 'A', 20220505, 0, 0, 0)");
-//    execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('001', '002', 'A', 20230101, 0, 0, 0)");
-//    execute_statement("INSERT INTO history (caller_phone_number,recipient_phone_number,payment_categorty,start_time,time_secs,charge,df)VALUES ('010', '002', 'A', 20220505, 0, 0, 0)");
 
     execute_statement("create table contracts ("
                       "phone_number varchar(15) not null,"
@@ -150,17 +155,17 @@ TEST_F(validate_user_scenario_test, join_scan_primary_key_specified) {
                       ")"
     );
     execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('001', 20220101, 20221231, 'XXX')");
-//    execute_statement("INSERT INTO contracts (phone_number,start_date,end_date,charge_rule)VALUES ('010', 20220101, 20221231, 'XXX')");
     std::vector<mock::basic_record> result{};
-    execute_query(
+    std::string query =
         "select"
         " h.caller_phone_number, h.recipient_phone_number, h.payment_categorty, h.start_time, h.time_secs,"
         " h.charge, h.df from history h"
         " inner join contracts c on c.phone_number = h.caller_phone_number"
         " where c.start_date < h.start_time and (h.start_time < c.end_date + 1"
         " or c.end_date = 99999999)"
-        " and c.phone_number = '001' and c.start_date = 20220101 and h.caller_phone_number = '001' order by h.start_time",
-        result);
+        " and c.phone_number = '001' and c.start_date = 20220101 and h.caller_phone_number = '001' order by h.start_time";
+    EXPECT_TRUE(has_join_scan(query));
+    execute_query(query, result);
     ASSERT_EQ(1, result.size());
 }
 

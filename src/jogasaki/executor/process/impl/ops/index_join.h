@@ -53,7 +53,6 @@
 
 #include "details/encode_key.h"
 #include "details/search_key_field_info.h"
-#include "index_field_mapper.h"
 #include "index_join_context.h"
 #include "index_matcher.h"
 #include "operator_base.h"

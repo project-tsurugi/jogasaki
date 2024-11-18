@@ -145,8 +145,10 @@ operation_status find::call_downstream(
 ) {
     if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_, resource, *ctx.req_context());
        res != status::ok) {
-        return error_abort(ctx, res);
+        ctx.abort();
+        return {operation_status_kind::aborted};
     }
+
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
             ctx.abort();

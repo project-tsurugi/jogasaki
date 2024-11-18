@@ -118,7 +118,7 @@ public:
      * @param stg the primary index storage
      * @param tx the transaction context
      * @param resource the memory resource to allocate temporary buffers
-     * @param req_context the request context to report errors (nullptr if reporting is not necessary)
+     * @param req_context the request context to report errors
      * @return status::ok if the operation is successful
      * @return error status code otherwise
      */

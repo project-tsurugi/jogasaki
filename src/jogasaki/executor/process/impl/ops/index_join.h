@@ -366,10 +366,11 @@ public:
                 nullify_output_variables(ctx.output_variables().store().ref());
             } while (matched && ctx.matcher_->next(*ctx.req_context()));
         }
+        // normally `res` is not_found here indicating there are no more records to process
         if(auto res = ctx.matcher_->result(); res != status::ok && res != status::not_found) {
-            // FIXME remove below after ensuring error info. is already set
-            handle_kvs_errors(*ctx.req_context(), res);
-            return error_abort(ctx, res);
+            // on error, error info is already filled in the request context so just finish the operator
+            ctx.abort();
+            return {operation_status_kind::aborted};
         }
         return {};
     }

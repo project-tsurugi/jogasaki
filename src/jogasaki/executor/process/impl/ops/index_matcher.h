@@ -180,8 +180,15 @@ public:
                 handle_generic_error(ctx, res, error_code::sql_execution_exception);
                 return false;
             }
-            return field_mapper_(key, value, output_variables.store().ref(), primary_stg, *ctx.transaction(), resource) ==
-                status::ok;
+            return field_mapper_.process(
+                       key,
+                       value,
+                       output_variables.store().ref(),
+                       primary_stg,
+                       *ctx.transaction(),
+                       resource,
+                       ctx
+                   ) == status::ok;
         }
         // handle secondary index
         if(auto res = secondary_stg->content_scan(
@@ -327,8 +334,15 @@ public:
                 it_.reset();
                 return false;
             }
-            return field_mapper_(key, value, output_variables_->store().ref(), *primary_storage_, *tx_, resource_) ==
-                status::ok;
+            return field_mapper_.process(
+                       key,
+                       value,
+                       output_variables_->store().ref(),
+                       *primary_storage_,
+                       *tx_,
+                       resource_,
+                       ctx
+                   ) == status::ok;
         }
     }
 

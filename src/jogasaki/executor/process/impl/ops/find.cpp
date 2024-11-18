@@ -143,7 +143,8 @@ operation_status find::call_downstream(
     context_base::memory_resource* resource,
     abstract::task_context* context
 ) {
-    if (auto res = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); res != status::ok) {
+    if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_, resource, *ctx.req_context());
+       res != status::ok) {
         return error_abort(ctx, res);
     }
     if (downstream_) {

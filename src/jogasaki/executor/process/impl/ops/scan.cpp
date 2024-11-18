@@ -197,7 +197,8 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
-        if (st = field_mapper_(k, v, target, *ctx.stg_, *ctx.tx_, resource); st != status::ok) {
+        if(st = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_, resource, *ctx.req_context());
+           st != status::ok) {
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }

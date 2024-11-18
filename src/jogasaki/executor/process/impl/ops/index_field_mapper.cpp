@@ -19,6 +19,7 @@
 #include <utility>
 #include <glog/logging.h>
 
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/index_accessor.h>
 #include <jogasaki/kvs/coder.h>
@@ -29,6 +30,8 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_transaction.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
 
 namespace jogasaki::executor::process::impl::ops {
@@ -80,19 +83,20 @@ index_field_mapper::index_field_mapper(
     )
 {}
 
-status index_field_mapper::operator()(
+status index_field_mapper::process(
     std::string_view key,
     std::string_view value,
     accessor::record_ref target,
     kvs::storage& stg,
     transaction_context& tx,
-    index_field_mapper::memory_resource* resource
+    index_field_mapper::memory_resource* resource,
+    request_context& req_context
 ) {
     std::string_view k{key};
     std::string_view v{value};
     if (use_secondary_) {
         k = extract_primary_key(key);
-        if (auto res = find_primary_index(k, stg, tx, v); res != status::ok) {
+        if (auto res = find_primary_index(k, stg, tx, v, req_context); res != status::ok) {
             return res;
         }
     }
@@ -129,8 +133,10 @@ status index_field_mapper::find_primary_index(
     std::string_view key,
     kvs::storage& stg,
     transaction_context& tx,
-    std::string_view& value_out
+    std::string_view& value_out,
+    request_context& req_context
 ) {
+    (void) req_context;
     std::string_view v{};
     if(auto res = stg.content_get(tx, key, v); res != status::ok) {
         status orig = res;

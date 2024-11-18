@@ -24,6 +24,7 @@
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/interference_size.h>
@@ -72,7 +73,11 @@ public:
     index_field_mapper() = default;
 
     /**
-     * @brief create new object
+     * @brief common constructor for both cases on whether secondary index is used or not
+     * @param use_secondary whether secondary index is used
+     * @param primary_key_fields info. on primary index key fields
+     * @param primary_value_fields info. on primary index value fields
+     * @param secondary_key_fields info. on secondary index key fields
      */
     index_field_mapper(
         bool use_secondary,
@@ -83,6 +88,9 @@ public:
 
     /**
      * @brief create new object using secondary
+     * @param primary_key_fields info. on primary index key fields
+     * @param primary_value_fields info. on primary index value fields
+     * @param secondary_key_fields info. on secondary index key fields
      */
     index_field_mapper(
         std::vector<index::field_info> primary_key_fields,
@@ -92,6 +100,8 @@ public:
 
     /**
      * @brief create new object without secondary
+     * @param primary_key_fields info. on primary index key fields
+     * @param primary_value_fields info. on primary index value fields
      */
     index_field_mapper(
         std::vector<index::field_info> primary_key_fields,
@@ -99,15 +109,27 @@ public:
     );
 
     /**
-     * @brief map key/value and fill the variables accessing the secondary index if necessary
+     * @brief process input record, map key/value and fill the variables accessing the secondary index if necessary
+     * @details this function identifies the primary index record and fills the variables. If error occurs,
+     * `req_context` is filled with error_info and error status code is returned
+     * @param key the key of the input record (either primary or secondary)
+     * @param value the value of the input record (empty if secondary)
+     * @param target the record reference to fill the variables
+     * @param stg the primary index storage
+     * @param tx the transaction context
+     * @param resource the memory resource to allocate temporary buffers
+     * @param req_context the request context to report errors (nullptr if reporting is not necessary)
+     * @return status::ok if the operation is successful
+     * @return error status code otherwise
      */
-    [[nodiscard]] status operator()(
+    [[nodiscard]] status process(
         std::string_view key,
         std::string_view value,
         accessor::record_ref target,
         kvs::storage& stg,
         transaction_context& tx,
-        memory_resource* resource
+        memory_resource* resource,
+        request_context& req_context
     );
 
 private:
@@ -129,7 +151,8 @@ private:
         std::string_view key,
         kvs::storage& stg,
         transaction_context& tx,
-        std::string_view& value_out
+        std::string_view& value_out,
+        request_context& req_context
     );
 
     status populate_field_variables(

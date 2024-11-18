@@ -413,7 +413,8 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
                 if(status::ok != it->read_value(value)) {
                     fail();
                 }
-                if(status::ok != mapper(key, value, result.ref(), *table, *tx, &resource)) {
+                request_context req_context{};  // to receive error info
+                if(status::ok != mapper.process(key, value, result.ref(), *table, *tx, &resource, req_context)) {
                     fail();
                 }
                 ret.emplace(

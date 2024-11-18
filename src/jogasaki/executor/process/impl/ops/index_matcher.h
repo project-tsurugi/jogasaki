@@ -135,10 +135,13 @@ public:
 
     /**
      * @brief execute the matching for join_find
-     * @return true if match is successful
-     * @return false if match is not successful, check status with result() function to see if the result is
-     * simply not-found or other error happened.
-     * When other error happens, `ctx` is populated with error info.
+     * @return true if match is successful (i.e. matching record is found and variables are filled)
+     * @return false if match is not successful. Check status with result() function to see if the result is
+     * simply not-found or other error happened. When other error happens than status::not_found, `ctx` is populated with error info.
+     * Typical return values are as follows.
+     * - status::not_found: a matching successfully completed and there are no more records to process
+     * - status::err_serialization_failure: an error occurred while reading key or value (cc serialization error or
+     * concurrent operation)
      */
     template <class T = MatchInfo>
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_find>, bool> process(
@@ -217,10 +220,13 @@ public:
 
     /**
      * @brief execute the matching for join_scan
-     * @return true if match is successful
-     * @return false if match is not successful, check status with result() function to see if the result is
-     * simply not-found or other error happened.
-     * When other error happens, `ctx` is populated with error info.
+     * @return true if match is successful (i.e. matching record is found and variables are filled)
+     * @return false if match is not successful. Check status with result() function to see if the result is
+     * simply not-found or other error happened. When other error happens than status::not_found, `ctx` is populated with error info.
+     * Typical return values are as follows.
+     * - status::not_found: a matching successfully completed and there are no more records to process
+     * - status::err_serialization_failure: an error occurred while reading key or value (cc serialization error or
+     * concurrent operation)
      */
     template <class T = MatchInfo>
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_scan>, bool> process(

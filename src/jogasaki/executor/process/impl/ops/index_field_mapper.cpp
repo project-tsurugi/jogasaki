@@ -136,7 +136,6 @@ status index_field_mapper::find_primary_index(
     std::string_view& value_out,
     request_context& req_context
 ) {
-    (void) req_context;
     std::string_view v{};
     if(auto res = stg.content_get(tx, key, v); res != status::ok) {
         std::stringstream ss{};

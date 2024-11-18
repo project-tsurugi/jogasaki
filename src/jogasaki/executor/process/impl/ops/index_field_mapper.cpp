@@ -139,18 +139,26 @@ status index_field_mapper::find_primary_index(
     (void) req_context;
     std::string_view v{};
     if(auto res = stg.content_get(tx, key, v); res != status::ok) {
-        status orig = res;
-        utils::modify_concurrent_operation_status(tx, res, false);
-        if (res == status::not_found) {
-            // primary key not found. Inconsistency between primary/secondary indices.
-            res = status::err_inconsistent_index;
+        std::stringstream ss{};
+        // we cannot use utils::modify_concurrent_operation_status here because missing entry is an inconsistency
+        // between primary/secondary and should be treated as an error.
+        if(res == status::concurrent_operation) {
+            // concurrent operation blocks finding primary entry - retry might change the situation
+            ss << "finding primary entry from secondary index entry failed due to concurrent operation";
+            set_error(req_context, error_code::blocked_by_concurrent_operation_exception , ss.str(), res);
             utils::abort_transaction(tx);
-            if(orig == status::not_found) {
-                VLOG_LP(log_error) << orig << " missing primary index entry corresponding to the secondary index entry";
-            } else {
-                // orig == status::concurrent_operation
-                VLOG_LP(log_error) << orig << " finding primary entry failed due to concurrent operation";
-            }
+        } else if (res == status::not_found) {
+            // primary/secondary indices are not consistent
+            ss << "missing primary index entry corresponding to the secondary index entry";
+            res = status::err_inconsistent_index;
+            set_error(req_context, error_code::secondary_index_corruption_exception, ss.str(), res);
+            utils::abort_transaction(tx);
+        } else {
+            handle_kvs_errors(req_context, res);
+            handle_generic_error(req_context, res, error_code::sql_execution_exception);
+        }
+        if(! ss.str().empty()) {
+            VLOG_LP(log_error) << ss.str();
         }
         return res;
     }

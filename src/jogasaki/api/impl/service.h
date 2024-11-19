@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include <boost/assert.hpp>
+#include <boost/stacktrace/stacktrace.hpp>
 #include <tbb/concurrent_hash_map.h>
 
 #include <takatori/type/data.h>
@@ -60,6 +61,7 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/io/dump_config.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
 #include <jogasaki/proto/sql/response.pb.h>
@@ -159,6 +161,11 @@ void error(
     sql::response::Response r{};
     auto* p = mutable_object<T>(r);
     auto* e = p->mutable_error();
+    if(! err_info) {
+        // missing error info. this is programming error.
+        // empty error code results in SQL_SERVICE_EXCEPTION in the client with no error message
+        LOG_LP(ERROR) << "unexpected error occurred and missing error info. " << ::boost::stacktrace::stacktrace{};
+    }
     e->set_code(map_error(err_info ? err_info->code() : error_code::none));
     std::string detail{utils::sanitize_utf8(err_info ? err_info->message() : "")};
     e->set_detail(detail);

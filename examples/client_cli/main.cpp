@@ -22,6 +22,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 
 #include <jogasaki/api/database.h>
@@ -37,8 +38,10 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/tables.h>
 
 #include "../common/temporary_folder.h"
 
@@ -50,6 +53,7 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 using takatori::util::fail;
+using takatori::util::unsafe_downcast;
 
 static bool prepare_data(api::database& db) {
     std::string insert_warehouse{"INSERT INTO WAREHOUSE (w_id, w_name, w_street_1, w_street_2, w_city, w_state, w_zip, w_tax, w_ytd) VALUES (1, 'fogereb', 'byqosjahzgrvmmmpglb', 'kezsiaxnywrh', 'jisagjxblbmp', 'ps', '694764299', 0.12, 3000000.00)"};
@@ -157,7 +161,6 @@ static bool run() {
     auto env = jogasaki::api::create_environment();
     env->initialize();
     auto cfg = std::make_shared<configuration>();
-    cfg->prepare_benchmark_tables(true);
     jogasaki::common_cli::temporary_folder dir{};
     if (FLAGS_location == "TMP") {
         dir.prepare();
@@ -167,6 +170,9 @@ static bool run() {
     }
     auto db = jogasaki::api::create_database(cfg);
     db->start();
+    auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(*db);
+    jogasaki::utils::add_benchmark_tables(*db_impl.tables());
+    jogasaki::executor::register_kvs_storage(*db_impl.kvs_db(), *db_impl.tables());
     if(auto res = prepare_data(*db); !res) {
         db->stop();
         return false;

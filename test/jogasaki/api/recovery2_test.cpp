@@ -60,7 +60,7 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_benchmark_tables(true);
+        cfg->prepare_analytics_benchmark_tables(true);
         db_setup(cfg);
     }
 
@@ -69,7 +69,7 @@ public:
     }
 };
 
-// regression test - create new table after recovery on prepare_benchmark_tables = true failed
+// regression test - create new table after recovery on prepare_analytics_benchmark_tables = true failed
 TEST_F(recovery2_test, create_sequence_after_recovery) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";

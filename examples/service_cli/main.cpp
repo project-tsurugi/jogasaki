@@ -67,6 +67,7 @@
 #include <jogasaki/utils/command_utils.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/tables.h>
 
 #include "../common/temporary_folder.h"
 #include "../common/utils.h"
@@ -139,7 +140,6 @@ public:
 
     void prepare_data(jogasaki::api::database& db, std::size_t rows) {
         auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(db);
-        jogasaki::executor::add_benchmark_tables(*db_impl.tables());
         static constexpr std::size_t mod = 100;
         jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T0", rows, true, mod);
         jogasaki::utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T1", rows, true, mod);
@@ -203,6 +203,9 @@ public:
         auto c = std::make_shared<tateyama::api::configuration::whole>("");
         service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
         db_->start();
+        auto& impl = jogasaki::api::impl::get_impl(*db_);
+        jogasaki::utils::add_benchmark_tables(*impl.tables());
+        jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
 
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify_record;
@@ -210,7 +213,6 @@ public:
         exit_on_idle_ = FLAGS_exit_on_idle;
         load_from_ = FLAGS_load_from;
 
-        auto& impl = jogasaki::api::impl::get_impl(*db_);
         jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
         if (! load_from_.empty()) {
             jogasaki::common_cli::load(*db_, load_from_);
@@ -947,7 +949,7 @@ private:
 
 };
 
-}  // namespace
+}  // namespace tateyama::service_cli
 
 extern "C" int main(int argc, char* argv[]) {
     // ignore log level
@@ -960,7 +962,6 @@ extern "C" int main(int argc, char* argv[]) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     tateyama::service_cli::cli e{};
     auto cfg = std::make_shared<jogasaki::configuration>();
-    cfg->prepare_benchmark_tables(true);
     e.fill_from_flags(*cfg);
     try {
         e.run(cfg);  // NOLINT

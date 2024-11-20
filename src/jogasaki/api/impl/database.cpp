@@ -330,9 +330,6 @@ void database::init() {
         *aggregate_functions_,
         global::aggregate_function_repository()
     );
-    if(cfg_->prepare_benchmark_tables()) {
-        executor::add_benchmark_tables(*tables_);
-    }
     if(cfg_->prepare_analytics_benchmark_tables()) {
         executor::add_analytics_benchmark_tables(*tables_);
     }

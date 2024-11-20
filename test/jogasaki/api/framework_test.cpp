@@ -130,7 +130,6 @@ TEST_F(framework_test, server_to_start_sql_engine) {
     sv.add_service(sqlsvc);
     sv.setup();
     auto* db = sqlsvc->database();
-    db->config()->prepare_benchmark_tables(true);
     sv.start();
     sv.shutdown();
 }
@@ -178,7 +177,6 @@ TEST_F(framework_test, send_request_with_header) {
     sv.add_service(sqlsvc);
     sv.setup();
     auto* db = sqlsvc->database();
-    db->config()->prepare_benchmark_tables(true);
     db->config()->skip_smv_check(true);
     sv.start();
     std::uint64_t handle{};

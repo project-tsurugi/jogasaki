@@ -46,6 +46,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/tables.h>
 
 #include "../common/temporary_folder.h"
 
@@ -149,7 +150,6 @@ public:
 
     void prepare_data(api::database& db) {
         auto& db_impl = unsafe_downcast<api::impl::database&>(db);
-        executor::add_benchmark_tables(*db_impl.tables());
         utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T0", 10, true, 5);
         utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T1", 10, true, 5);
         utils::populate_storage_data(db_impl.kvs_db().get(), db_impl.tables(), "T2", 10, true, 5);
@@ -195,6 +195,10 @@ public:
         auto stmts = split(sql);
         db_ = api::create_database(cfg);
         db_->start();
+        auto& db_impl = unsafe_downcast<api::impl::database&>(*db_);
+        jogasaki::utils::add_benchmark_tables(*db_impl.tables());
+        jogasaki::executor::register_kvs_storage(*db_impl.kvs_db(), *db_impl.tables());
+
         auto rc = execute_statements(stmts, FLAGS_auto_commit);
         db_->stop();
         if (rc) {
@@ -244,7 +248,7 @@ public:
     }
 };
 
-}  // namespace
+}  // namespace jogasaki::sql_cli
 
 extern "C" int main(int argc, char* argv[]) {
     // ignore log level

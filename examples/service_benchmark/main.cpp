@@ -65,6 +65,7 @@
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/runner.h>
 #include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/tables.h>
 
 #include "../common/temporary_folder.h"
 #include "../common/utils.h"
@@ -401,7 +402,6 @@ public:
         } else {
             cfg.db_location(std::string(FLAGS_location));
         }
-        cfg.prepare_benchmark_tables(!FLAGS_ddl);
 
         debug_ = FLAGS_debug;
         verify_query_records_ = FLAGS_verify;
@@ -793,6 +793,7 @@ public:
             setup_tables();
         } else {
             auto& impl = jogasaki::api::impl::get_impl(*db_);
+            jogasaki::utils::add_benchmark_tables(*impl.tables());
             jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
         }
         if (! FLAGS_load_from.empty()) {

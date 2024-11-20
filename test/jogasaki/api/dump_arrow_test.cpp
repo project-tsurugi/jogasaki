@@ -37,6 +37,7 @@
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/tables.h>
 
 #include "../test_utils/temporary_folder.h"
 #include "api_test_base.h"
@@ -86,7 +87,7 @@ public:
         db_setup(cfg);
 
         auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
+        utils::add_benchmark_tables(*impl->tables());
         register_kvs_storage(*impl->kvs_db(), *impl->tables());
 
         temporary_.prepare();

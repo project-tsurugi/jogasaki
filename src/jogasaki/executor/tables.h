@@ -27,12 +27,6 @@ namespace jogasaki::executor {
 void add_builtin_tables(yugawara::storage::configurable_provider& provider);
 
 /**
- * @brief add benchmark table definitions to the provider
- * @param provider object to register the benchmark tables
- */
-void add_benchmark_tables(yugawara::storage::configurable_provider& provider);
-
-/**
  * @brief add analytics benchmark table definitions to the provider
  * @param provider object to register the benchmark tables
  */

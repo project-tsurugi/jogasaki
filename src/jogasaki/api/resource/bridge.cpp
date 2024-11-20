@@ -159,9 +159,6 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<bool>("prepare_test_tables")) {
         ret->prepare_test_tables(v.value());
     }
-    if (auto v = jogasaki_config->get<bool>("prepare_benchmark_tables")) {
-        ret->prepare_benchmark_tables(v.value());
-    }
     if (auto v = jogasaki_config->get<bool>("prepare_analytics_benchmark_tables")) {
         ret->prepare_analytics_benchmark_tables(v.value());
     }

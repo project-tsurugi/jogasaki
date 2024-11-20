@@ -33,6 +33,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <takatori/util/downcast.h>
 #include <takatori/util/fail.h>
 #include <tateyama/common.h>
 #include <tateyama/utils/thread_affinity.h>
@@ -48,10 +49,12 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/random.h>
+#include <jogasaki/utils/tables.h>
 
 #include "../common/temporary_folder.h"
 #include "utils.h"
@@ -85,6 +88,7 @@ using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 using takatori::util::fail;
+using takatori::util::unsafe_downcast;
 
 using clock = std::chrono::high_resolution_clock;
 
@@ -287,7 +291,6 @@ static int run(
     bool consolidated_api
 ) {
     auto env = jogasaki::api::create_environment();
-    cfg->prepare_benchmark_tables(true);
     env->initialize(); //init before logging
     LOG(INFO) << "configuration " << *cfg
         << "debug:" << debug << " "
@@ -306,6 +309,9 @@ static int run(
     }
     auto db = jogasaki::api::create_database(cfg);
     db->start();
+    auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(*db);
+    jogasaki::utils::add_benchmark_tables(*db_impl.tables());
+    jogasaki::executor::register_kvs_storage(*db_impl.kvs_db(), *db_impl.tables());
 
     if(auto res = prepare_data(*db, records); !res) {
         LOG(ERROR) << "prepare dat error";

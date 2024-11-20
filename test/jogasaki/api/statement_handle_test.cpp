@@ -29,6 +29,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
@@ -57,7 +58,7 @@ public:
         db_setup(cfg);
 
         auto* impl = db_impl();
-        testing::add_benchmark_tables(*impl->tables());
+        utils::add_benchmark_tables(*impl->tables());
         testing::register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
@@ -143,4 +144,4 @@ TEST_F(statement_handle_test, empty_meta_with_parameters) {
     }
 }
 
-}
+}  // namespace jogasaki::api

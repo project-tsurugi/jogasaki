@@ -39,6 +39,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
@@ -66,7 +67,7 @@ public:
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
         auto* impl = db_impl();
-        add_benchmark_tables(*impl->tables());
+        utils::add_benchmark_tables(*impl->tables());
         register_kvs_storage(*impl->kvs_db(), *impl->tables());
 
         utils::load_storage_data(*db_, impl->tables(), "WAREHOUSE", 3, true, 5);

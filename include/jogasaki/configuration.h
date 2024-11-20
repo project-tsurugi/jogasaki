@@ -121,14 +121,6 @@ public:
         prepare_test_tables_ = arg;
     }
 
-    [[nodiscard]] bool prepare_benchmark_tables() const noexcept {
-        return prepare_benchmark_tables_;
-    }
-
-    void prepare_benchmark_tables(bool arg) noexcept {
-        prepare_benchmark_tables_ = arg;
-    }
-
     [[nodiscard]] bool prepare_analytics_benchmark_tables() const noexcept {
         return prepare_analytics_benchmark_tables_;
     }
@@ -541,7 +533,6 @@ public:
         print_non_default(assign_numa_nodes_uniformly);
         print_non_default(force_numa_node);
         print_non_default(prepare_test_tables);
-        print_non_default(prepare_benchmark_tables);
         print_non_default(prepare_analytics_benchmark_tables);
         print_non_default(stealing_enabled);
         print_non_default(db_location);
@@ -603,7 +594,6 @@ private:
     std::size_t randomize_memory_usage_ = 0;
     std::size_t force_numa_node_ = numa_node_unspecified;
     bool prepare_test_tables_ = false;
-    bool prepare_benchmark_tables_ = false;
     bool prepare_analytics_benchmark_tables_ = false;
     bool stealing_enabled_ = true;
     std::string db_location_{};

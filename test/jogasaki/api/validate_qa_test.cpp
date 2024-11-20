@@ -26,12 +26,14 @@
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
@@ -57,8 +59,12 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
+
+        auto* impl = db_impl();
+        utils::add_test_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+
         execute_statement("create table qa_t1 (c_pk int primary key, c_i4 int not null, c_i8 bigint not null, c_f4 real not null, c_f8 double not null, c_ch varchar(*) not null)");
         execute_statement("create index qa_t1_i4_idx on qa_t1(c_i4)");
         execute_statement("create table qa_t2 ( c_pk1 int not null, c_pk2 varchar(*) not null, c_id1 int not null, c_id2 varchar(*) null, c_jk1 int not null, c_jk2 varchar(*) null, primary key (c_pk1, c_pk2))");

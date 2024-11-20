@@ -156,9 +156,6 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
         }
         ret->thread_pool_size(workers);
     }
-    if (auto v = jogasaki_config->get<bool>("prepare_test_tables")) {
-        ret->prepare_test_tables(v.value());
-    }
     if (auto v = jogasaki_config->get<bool>("prepare_analytics_benchmark_tables")) {
         ret->prepare_analytics_benchmark_tables(v.value());
     }

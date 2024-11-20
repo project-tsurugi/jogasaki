@@ -47,6 +47,7 @@
 #include <jogasaki/utils/latch.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/tables.h>
 #include "jogasaki/proto/sql/common.pb.h"
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
@@ -98,7 +99,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         cfg->skip_smv_check(true); // for testing, we don't check message versions
         set_dbpath(*cfg);
 
@@ -106,6 +106,10 @@ public:
         auto c = std::make_shared<tateyama::api::configuration::whole>("");
         service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
         db_->start();
+
+        auto* impl = db_impl();
+        utils::add_test_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
 
         utils::utils_raise_exception_on_error = true;
         temporary_.prepare();

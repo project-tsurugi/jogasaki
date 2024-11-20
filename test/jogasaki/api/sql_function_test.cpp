@@ -37,6 +37,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/port.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
@@ -47,6 +48,7 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
@@ -80,8 +82,10 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
+        auto* impl = db_impl();
+        utils::add_test_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {

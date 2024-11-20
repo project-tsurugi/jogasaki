@@ -25,4 +25,10 @@ namespace jogasaki::utils {
  */
 void add_benchmark_tables(yugawara::storage::configurable_provider& provider);
 
+/**
+ * @brief add test table definitions to the provider
+ * @param provider object to register the built-in tables
+ */
+void add_test_tables(yugawara::storage::configurable_provider& provider);
+
 }  // namespace jogasaki::utils

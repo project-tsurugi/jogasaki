@@ -28,12 +28,14 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
@@ -59,8 +61,11 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
+        auto* impl = db_impl();
+        utils::add_test_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        impl->initialize_from_providers(); // needed to initialize the sequence manager based on table definition
     }
 
     void TearDown() override {
@@ -91,21 +96,22 @@ TEST_F(sequence_test, recovery) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");
+    execute_statement("CREATE TABLE T (C0 BIGINT GENERATED ALWAYS AS IDENTITY, C1 BIGINT)");
+    execute_statement("INSERT INTO T (C1) VALUES (10)");
+    execute_statement("INSERT INTO T (C1) VALUES (20)");
     {
         SCOPED_TRACE("initial");
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TSEQ0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(2, result.size());
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (30)");
+    execute_statement( "INSERT INTO T (C1) VALUES (30)");
     {
         SCOPED_TRACE("before recovery 1");
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TSEQ0 ORDER BY C1", result);
+        execute_query("SELECT * FROM T ORDER BY C1", result);
         ASSERT_EQ(3, result.size());
         auto meta = result[0].record_meta();
         auto s0 = result[0].ref().get_value<std::int64_t>(meta->value_offset(0));
@@ -116,10 +122,10 @@ TEST_F(sequence_test, recovery) {
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (40)");
+    execute_statement( "INSERT INTO T (C1) VALUES (40)");
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TSEQ0 ORDER BY C1", result);
+        execute_query("SELECT * FROM T ORDER BY C1", result);
         ASSERT_EQ(4, result.size());
         auto meta = result[0].record_meta();
         auto s0 = result[0].ref().get_value<std::int64_t>(meta->value_offset(0));

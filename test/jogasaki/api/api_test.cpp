@@ -45,6 +45,7 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
@@ -52,6 +53,7 @@
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
@@ -77,8 +79,10 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
+        auto& impl = jogasaki::api::impl::get_impl(*db_);
+        jogasaki::utils::add_test_tables(*impl.tables());
+        jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
     }
 
     void TearDown() override {
@@ -467,7 +471,7 @@ TEST_F(api_test, scan_with_host_variable) {
 }
 
 TEST_F(api_test, scan_with_host_variable_with_nulls) {
-    // verify comparison with null 
+    // verify comparison with null
     std::unordered_map<std::string, api::field_type_kind> variables{};
     variables.emplace("p1", api::field_type_kind::int4);
 

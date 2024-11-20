@@ -14,25 +14,26 @@
  * limitations under the License.
  */
 
+#include <future>
 #include <regex>
 #include <gtest/gtest.h>
-#include <future>
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/tables.h>
-#include "../api/api_test_base.h"
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/scheduler/dag_controller.h>
 #include <jogasaki/utils/runner.h>
+#include <jogasaki/utils/storage_data.h>
+#include <jogasaki/utils/tables.h>
+
+#include "../api/api_test_base.h"
 
 namespace jogasaki::testing {
 
@@ -56,8 +57,10 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
+        auto* impl = db_impl();
+        utils::add_test_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
         execute_statement("create table qa_t1 (c_pk int primary key, c_i4 int not null, c_i8 bigint not null, c_f4 real not null, c_f8 double not null, c_ch varchar(*) not null)");
         execute_statement("create index qa_t1_i4_idx on qa_t1(c_i4)");
     }

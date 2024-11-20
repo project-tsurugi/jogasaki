@@ -34,6 +34,7 @@
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/tables.h>
 
 namespace jogasaki::testing {
 
@@ -53,8 +54,10 @@ public:
     void SetUp() {
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
-        cfg->prepare_test_tables(true);
         db_->start();
+        auto& impl = api::impl::get_impl(*db_);
+        utils::add_test_tables(*impl.tables());
+        register_kvs_storage(*impl.kvs_db(), *impl.tables());
     }
 
     void TearDown() {

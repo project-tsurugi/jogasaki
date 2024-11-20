@@ -541,4 +541,350 @@ void add_benchmark_tables(storage::configurable_provider& provider) {
     }
 }
 
+void add_test_tables(storage::configurable_provider& provider) {
+    namespace type = ::takatori::type;
+    using ::yugawara::variable::nullity;
+    yugawara::storage::index_feature_set index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+        ::yugawara::storage::index_feature::unique,
+        ::yugawara::storage::index_feature::primary,
+    };
+    yugawara::storage::index_feature_set secondary_index_features{
+        ::yugawara::storage::index_feature::find,
+        ::yugawara::storage::index_feature::scan,
+    };
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "T0",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "C1", type::float8 (), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "T1",
+            {
+                { "C0", type::int4(), nullity{false} },
+                { "C1", type::int8(), nullity{true}  },
+                { "C2", type::float8() , nullity{true} },
+                { "C3", type::float4() , nullity{true} },
+                { "C4", type::character(type::varying, 100) , nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+                t->columns()[1],
+            },
+            {
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "NON_NULLABLES",
+            {
+                { "K0", type::int8(), nullity{false}  },
+                { "C0", type::int4(), nullity{false} },
+                { "C1", type::int8(), nullity{false}  },
+                { "C2", type::float8(), nullity{false} },
+                { "C3", type::float4(), nullity{false} },
+                { "C4", type::character(type::varying, 100), nullity{false} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+                t->columns()[5],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "T2",
+            {
+                { "C0", type::int4(), nullity{false} },
+                { "C1", type::int8(), nullity{true}  },
+                { "C2", type::float8() , nullity{true} },
+                { "C3", type::float4() , nullity{true} },
+                { "C4", type::character(type::varying, 100) , nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+                t->columns()[1],
+            },
+            {
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "T10",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "C1", type::float8 (), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "T20",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "C1", type::int4(), nullity{true}  },
+                { "C2", type::float8() , nullity{true} },
+                { "C3", type::float4() , nullity{true} },
+                { "C4", type::character(type::varying, 100) , nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+                t->columns()[1],
+            },
+            {
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "INT4_TAB",
+            {
+                { "C0", type::int4(), nullity{false} },
+                { "C1", type::int4(), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "CHAR_TAB",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "VC", type::character(type::varying, 5) , nullity{true} },
+                { "CH", type::character(~type::varying, 5) , nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "TTEMPORALS",
+            {
+                { "K0", type::date(), nullity{false} },
+                { "K1", type::time_of_day(), nullity{false} },
+                { "K2", type::time_of_day(type::with_time_zone_t{true}), nullity{false} },
+                { "K3", type::time_point(), nullity{false} },
+                { "K4", type::time_point(type::with_time_zone_t{true}), nullity{false} },
+                { "C0", type::date(), nullity{true} },
+                { "C1", type::time_of_day(), nullity{true} },
+                { "C2", type::time_of_day(type::with_time_zone_t{true}), nullity{true} },
+                { "C3", type::time_point(), nullity{true} },
+                { "C4", type::time_point(type::with_time_zone_t{true}), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+                t->columns()[1],
+                t->columns()[2],
+                t->columns()[3],
+                t->columns()[4],
+            },
+            {
+                t->columns()[5],
+                t->columns()[6],
+                t->columns()[7],
+                t->columns()[8],
+                t->columns()[9],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "TDECIMALS",
+            {
+                { "K0", type::decimal(3, 0), nullity{false} },
+                { "K1", type::decimal(5, 3), nullity{false} },
+                { "K2", type::decimal(10,1), nullity{false} },
+                { "C0", type::decimal(3, 0), nullity{true} },
+                { "C1", type::decimal(5, 3), nullity{true} },
+                { "C2", type::decimal(10,1), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+                t->columns()[1],
+                t->columns()[2],
+            },
+            {
+                t->columns()[3],
+                t->columns()[4],
+                t->columns()[5],
+            },
+            index_features
+        });
+    }
+    {
+        auto s1 = std::make_shared<storage::sequence>(
+            tseq0_c0_sequence,
+            "tseq0_c0_sequence"
+        );
+        provider.add_sequence(s1);
+        auto t = provider.add_table({
+            "TSEQ0",
+            {
+                { "C0", type::int8(), nullity{false}, {s1} },
+                { "C1", type::int8(), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+    }
+    {
+        auto s1 = std::make_shared<storage::sequence>(
+            tseq1_c0_sequence,
+            "tseq1_c0_sequence"
+        );
+        provider.add_sequence(s1);
+        auto t = provider.add_table({
+            "TSEQ1",
+            {
+                { "C0", type::int8(), nullity{false}, {s1} },
+                { "C1", type::int8(), nullity{true} },
+            },
+        });
+        auto i = provider.add_index({
+            t,
+            "TSEQ1",
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "TSECONDARY",
+            {
+                { "C0", type::int8(), nullity{false} },
+                { "C1", type::int8(), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+            },
+            index_features
+        });
+        provider.add_index({
+            t,
+            "TSECONDARY_I1",
+            {
+                t->columns()[1],
+            },
+            {},
+            secondary_index_features
+        });
+    }
+}
+
 }  // namespace jogasaki::utils

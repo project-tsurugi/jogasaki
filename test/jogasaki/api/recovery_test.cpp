@@ -41,6 +41,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/executor/sequence/manager.h>
+#include <jogasaki/executor/tables.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -48,6 +49,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/storage_dump_formatter.h>
+#include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
@@ -80,8 +82,10 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->prepare_test_tables(true);
         db_setup(cfg);
+        auto* impl = db_impl();
+        utils::add_test_tables(*impl->tables());
+        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
@@ -91,7 +95,7 @@ public:
     void dump_content() {
         utils::storage_dump_formatter f{};
         auto out = std::cerr << f;
-        db_->dump(out, "T0", 100);
+        db_->dump(out, "T", 100);
     }
 };
 
@@ -108,20 +112,21 @@ TEST_F(recovery_test, simple) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
     wait_epochs(10);
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
     dump_content();
@@ -131,13 +136,14 @@ TEST_F(recovery_test, recover_twice) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
     wait_epochs(10);
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
     dump_content();
@@ -147,7 +153,7 @@ TEST_F(recovery_test, recover_twice) {
     dump_content();
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
     wait_epochs(10);
@@ -158,7 +164,7 @@ TEST_F(recovery_test, recover_twice) {
     dump_content();
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
 }
@@ -183,7 +189,7 @@ TEST_F(recovery_test, recovery_metadata) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 INT)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
@@ -208,7 +214,7 @@ TEST_F(recovery_test, recovery_sequence_metadata) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement("CREATE TABLE T (C0 INT, C1 INT)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
     execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
     {
@@ -239,28 +245,29 @@ TEST_F(recovery_test, delete) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (3, 30)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(3, result.size());
     }
-    execute_statement( "DELETE FROM T0 WHERE C0=2");
+    execute_statement( "DELETE FROM T WHERE C0=2");
     wait_epochs(2);
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(2, result.size());
     }
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM T", result);
         ASSERT_EQ(2, result.size());
     }
 }
@@ -269,9 +276,10 @@ TEST_F(recovery_test, recover_create_index) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement( "INSERT INTO T (C0, C1) VALUES (3, 30)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
@@ -373,9 +381,10 @@ TEST_F(recovery_test, recover_drop_primary_index) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10)");
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 20)");
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     auto t = std::make_shared<table>(
@@ -450,9 +459,10 @@ TEST_F(recovery_test, recover_drop_secondary_index) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10)");
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (2, 20)");
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     auto t = std::make_shared<table>(
@@ -770,7 +780,8 @@ TEST_F(recovery_test, recover_user_defined_sequence) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement("INSERT INTO T0 (C0, C1) VALUES (1, 10)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
@@ -830,9 +841,10 @@ TEST_F(recovery_test, DISABLED_recovery_index_for_missing_table) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (2, 20)");
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (3, 30)");
+    execute_statement("CREATE TABLE T (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (1, 10)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (2, 20)");
+    execute_statement("INSERT INTO T (C0, C1) VALUES (3, 30)");
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {

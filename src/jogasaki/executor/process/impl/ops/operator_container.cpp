@@ -24,13 +24,12 @@ namespace jogasaki::executor::process::impl::ops {
 
 
 operator_container::operator_container(std::unique_ptr<ops::operator_base> root, std::size_t operator_count,
-    class io_exchange_map& io_exchange_map, std::shared_ptr<impl::scan_range> range) :
+    class io_exchange_map& io_exchange_map, std::vector<std::shared_ptr<impl::scan_range>> scan_ranges) :
     root_(std::move(root)),
     operator_count_(operator_count),
     io_exchange_map_(std::addressof(io_exchange_map)),
-    range_(std::move(range))
+    scan_ranges_(std::move(scan_ranges))
 {}
-
 std::size_t operator_container::size() const noexcept {
     return operator_count_;
 }
@@ -43,7 +42,7 @@ operator_base& operator_container::root() const noexcept {
     return *root_;
 }
 
-std::shared_ptr<impl::scan_range> const& operator_container::range() const noexcept {
-    return range_;
+std::vector<std::shared_ptr<impl::scan_range>> operator_container::scan_ranges() const noexcept {
+    return scan_ranges_;
 }
 } // namespace jogasaki::executor::process::impl::ops

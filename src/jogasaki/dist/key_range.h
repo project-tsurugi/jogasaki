@@ -17,32 +17,29 @@
 
 #include <string_view>
 
+#include <jogasaki/kvs/storage.h>
 namespace jogasaki::dist {
 
 class key_range {
   public:
     /// @brief the key type.
     using key_type = std::string_view;
-
-    /// @brief the endpoint type.
-    using endpoint_type = enum { unspecified, inclusive, exclusive, prefix_inclusive };
-
     /**
      * @brief creates a whole range on index.
      */
-    key_range() noexcept : begin_endpoint_(unspecified), end_endpoint_(unspecified){};
+    key_range() noexcept : begin_endpoint_(kvs::end_point_kind::unbound), end_endpoint_(kvs::end_point_kind::unbound){};
 
     /**
      * @brief creates a new range on index.
      * @param begin_key begin key of the range
      * @param begin_endpoint endpoint type of the begin key,
-     * or unspecified if the range starts from head of the index
+     * or unbound if the range starts from head of the index
      * @param end_key end key of the range
      * @param end_endpoint endpoint type of the end key,
-     * or unspecified if the range goes to tail of the index
+     * or unbound if the range goes to tail of the index
      */
-    key_range(key_type begin_key, endpoint_type begin_endpoint, key_type end_key,
-        endpoint_type end_endpoint) noexcept
+    key_range(key_type begin_key, kvs::end_point_kind begin_endpoint, key_type end_key,
+        kvs::end_point_kind end_endpoint) noexcept
         : begin_key_(begin_key), begin_endpoint_(begin_endpoint), end_key_(end_key),
           end_endpoint_(end_endpoint){};
 
@@ -58,7 +55,7 @@ class key_range {
      * @return the endpoint type
      * @return unspecified if the range starts from head of the index
      */
-    [[nodiscard]] endpoint_type begin_endpoint() const noexcept;
+    [[nodiscard]] kvs::end_point_kind begin_endpoint() const noexcept;
 
     /**
      * @brief returns the end key of the range.
@@ -72,13 +69,19 @@ class key_range {
      * @return the endpoint type
      * @return unspecified if the range goes to tail of the index
      */
-    [[nodiscard]] endpoint_type end_endpoint() const noexcept;
+    [[nodiscard]] kvs::end_point_kind end_endpoint() const noexcept;
+    /**
+     * @brief Support for debugging, callable in GDB
+     * @param out The output stream to which the buffer's internal state will be written.
+     * @param indent The indentation level for formatting the output, default is 0.
+     */
+    void dump(std::ostream& out, int indent = 0) const noexcept;
 
   private:
     key_type begin_key_;
-    endpoint_type begin_endpoint_;
+    kvs::end_point_kind begin_endpoint_;
     key_type end_key_;
-    endpoint_type end_endpoint_;
+    kvs::end_point_kind end_endpoint_;
 };
 
 } // namespace jogasaki::dist

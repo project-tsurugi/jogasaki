@@ -16,15 +16,24 @@
 
 #include "key_range.h"
 
+#include <iostream>
 #include <optional>
+#include <string>
 
 namespace jogasaki::dist {
 
 key_range::key_type key_range::begin_key() const noexcept { return begin_key_; }
 
-key_range::endpoint_type key_range::begin_endpoint() const noexcept { return begin_endpoint_; }
+kvs::end_point_kind key_range::begin_endpoint() const noexcept { return begin_endpoint_; }
 
 key_range::key_type key_range::end_key() const noexcept { return end_key_; }
 
-key_range::endpoint_type key_range::end_endpoint() const noexcept { return end_endpoint_; }
+kvs::end_point_kind key_range::end_endpoint() const noexcept { return end_endpoint_; }
+
+void key_range::dump(std::ostream& out, int indent) const noexcept{
+    std::string indent_space(indent, ' ');
+    out << indent_space << "  begin_endpoint_: " << begin_key_ << "\n";
+    out << indent_space << "  end_endpoint_: " << begin_key_ << "\n";
+}
+
 } // namespace jogasaki::dist

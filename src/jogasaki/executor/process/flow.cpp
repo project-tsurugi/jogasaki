@@ -125,7 +125,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
 
     contexts.reserve(partitions);
     for (std::size_t i=0; i < partitions; ++i) {
-        contexts.emplace_back(create_task_context(i, operators, sink_idx_base + i));
+        contexts.emplace_back(create_task_context(i, operators, sink_idx_base + i, operators.range()));
     }
 
     bool is_rtx = context_->transaction()->option()->type()
@@ -163,14 +163,15 @@ model::step_kind flow::kind() const noexcept {
 std::shared_ptr<impl::task_context> flow::create_task_context(
     std::size_t partition,
     impl::ops::operator_container const& operators,
-    std::size_t sink_index
+    std::size_t sink_index,
+    std::shared_ptr<impl::scan_range> const& range
 ) {
     auto external_output = operators.io_exchange_map().external_output();
     auto ctx = std::make_shared<impl::task_context>(
         *context_,
         partition,
         operators.io_exchange_map(),
-        operators.range(),
+        range,
         (context_->record_channel() && external_output != nullptr) ? context_->record_channel().get() : nullptr,
         sink_index
     );

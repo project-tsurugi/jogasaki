@@ -39,14 +39,14 @@ public:
      * @param root the root of the operator tree
      * @param operator_count the number of operators
      * @param io_exchange_map the mapping from input/output index to exchange
-     * @param range the range gathered from the scan operator in the operator tree (if any).
+     * @param scan_ranges the ranges gathered from the scan operator in the operator tree (if any).
      * Can be nullptr if the operators don't contain scan operation.
      */
     operator_container(
         std::unique_ptr<ops::operator_base> root,
         std::size_t operator_count,
         class io_exchange_map& io_exchange_map,
-        std::shared_ptr<impl::scan_range> range
+        std::vector<std::shared_ptr<impl::scan_range>> scan_ranges
     );
 
     /**
@@ -69,14 +69,14 @@ public:
 
     /**
      * @brief accessor to scan_range
-     * @return the range, or nullptr if there is no scan operation in the process
+     * @return the scan_range vector , or empty if there are no scan operations in the process
      */
-    [[nodiscard]] std::shared_ptr<impl::scan_range> const& range() const noexcept;
+    [[nodiscard]] std::vector<std::shared_ptr<impl::scan_range>> scan_ranges() const noexcept;
 private:
     std::unique_ptr<ops::operator_base> root_{};
     std::size_t operator_count_{};
     class io_exchange_map* io_exchange_map_{};
-    std::shared_ptr<impl::scan_range> range_{};
+    std::vector<std::shared_ptr<impl::scan_range>> scan_ranges_{};
 };
 
 } // namespace jogasaki::executor::process::impl::ops

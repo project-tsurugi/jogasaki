@@ -93,7 +93,7 @@ operator_builder::operator_builder(
 
 operator_container operator_builder::operator()()&& {
     auto root = dispatch(*this, head());
-    return operator_container{std::move(root), index_, *io_exchange_map_, std::move(range_)};
+    return operator_container{std::move(root), index_, *io_exchange_map_, std::move(scan_ranges_)};
 }
 
 relation::expression const& operator_builder::head() {
@@ -132,7 +132,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::scan
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(node.source());
     auto& table = secondary_or_primary_index.table();
     auto primary = table.owner()->find_primary_index(table);
-    range_ = create_range(node);
+    scan_ranges_ = create_scan_ranges(node);
     return std::make_unique<scan>(
         index_++,
         *info_,
@@ -374,7 +374,9 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
 }
 
 
-std::shared_ptr<impl::scan_range> operator_builder::create_range(relation::scan const& node) {
+std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ranges(
+    relation::scan const& node) {
+    std::vector<std::shared_ptr<impl::scan_range>> scan_ranges{};
     auto& secondary_or_primary_index =
         yugawara::binding::extract<yugawara::storage::index>(node.source());
     executor::process::impl::variable_table vars{};
@@ -401,7 +403,15 @@ std::shared_ptr<impl::scan_range> operator_builder::create_range(relation::scan 
     bound begin(begin_end_point_kind, blen, std::move(key_begin));
     bound end(end_end_point_kind, elen, std::move(key_end));
     bool is_empty = (status_result == status::err_integrity_constraint_violation);
-    return std::make_shared<impl::scan_range>(std::move(begin), std::move(end), is_empty);
+
+    std::vector<bound> bounds;
+    bounds.emplace_back(std::move(begin));
+    bounds.emplace_back(std::move(end));
+    for (size_t i = 0; i + 1 < bounds.size(); i += 2) {
+        scan_ranges.emplace_back(std::make_shared<impl::scan_range>(
+            std::move(bounds[i]), std::move(bounds[i + 1]), is_empty));
+    }
+    return scan_ranges;
 }
 
 operator_container create_operators(

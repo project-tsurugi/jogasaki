@@ -176,7 +176,7 @@ TEST_F(scan_test, simple) {
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
     operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = builder.create_range(target);
+    auto range = (builder.create_scan_ranges(target))[0];
     mock::task_context task_ctx{ {}, {}, {},{range}};
     scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
@@ -246,7 +246,7 @@ TEST_F(scan_test, nullable_fields) {
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
     operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = builder.create_range(target);
+    auto range = (builder.create_scan_ranges(target))[0];
     mock::task_context task_ctx{ {}, {}, {},{range}};
     scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
@@ -344,7 +344,7 @@ TEST_F(scan_test, scan_info) {
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
     operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = builder.create_range(target);
+    auto range = (builder.create_scan_ranges(target))[0];
     mock::task_context task_ctx{ {}, {}, {},{range}};
 
     put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/B"}), create_record<kind::float8>(1.0));
@@ -435,7 +435,7 @@ TEST_F(scan_test, secondary_index) {
     request_context_.transaction(transaction_ctx);
     io_exchange_map exchange_map{};
     operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = builder.create_range(target);
+    auto range = (builder.create_scan_ranges(target))[0];
     mock::task_context task_ctx{ {}, {}, {} ,{range}};
 
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_record<kind::float8, kind::int8>(1.0, 100));
@@ -566,7 +566,7 @@ TEST_F(scan_test, host_variables) {
     jogasaki::plan::compiler_context compiler_ctx{};
     io_exchange_map exchange_map{};
     operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
-    auto range = builder.create_range(target);
+    auto range = (builder.create_scan_ranges(target))[0];
     mock::task_context task_ctx{ {}, {}, {},{range}};
 
     put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 10), create_record<kind::int8>(1));

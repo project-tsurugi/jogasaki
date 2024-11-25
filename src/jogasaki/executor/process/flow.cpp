@@ -106,6 +106,10 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     std::vector<std::shared_ptr<abstract::task_context>> contexts{};
     auto partitions = check_empty_input_and_calculate_partitions();
     auto& operators = proc->operators();
+    const auto& scan_ranges = operators.scan_ranges();
+    if (!scan_ranges.empty()){
+        partitions = scan_ranges.size();
+    }
     auto external_output = operators.io_exchange_map().external_output();
     auto ch = context_->record_channel();
     if (ch && external_output != nullptr) {
@@ -124,8 +128,10 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
     }
 
     contexts.reserve(partitions);
-    for (std::size_t i=0; i < partitions; ++i) {
-        contexts.emplace_back(create_task_context(i, operators, sink_idx_base + i, operators.range()));
+
+    for (std::size_t i = 0; i < partitions; ++i) {
+        contexts.emplace_back(create_task_context(
+            i, operators, sink_idx_base + i, scan_ranges.empty() ? nullptr : scan_ranges[i]));
     }
 
     bool is_rtx = context_->transaction()->option()->type()

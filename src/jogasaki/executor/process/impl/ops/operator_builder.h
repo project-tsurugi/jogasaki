@@ -122,15 +122,14 @@ public:
     using key = yugawara::storage::index::key;
     using endpoint = takatori::relation::scan::endpoint;
 
-    std::shared_ptr<impl::scan_range> create_range(relation::scan const& node);
-
+    std::vector<std::shared_ptr<impl::scan_range>> create_scan_ranges(relation::scan const& node);
   private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<io_info> io_info_{};
     io_exchange_map* io_exchange_map_{};
     std::shared_ptr<relation_io_map> relation_io_map_{};
     operator_base::operator_index_type index_{};
-    std::shared_ptr<impl::scan_range> range_{};
+    std::vector<std::shared_ptr<impl::scan_range>> scan_ranges_{};
     request_context* request_context_{};
 
 };

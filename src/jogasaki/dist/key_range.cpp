@@ -16,24 +16,32 @@
 
 #include "key_range.h"
 
+#include <iomanip>
 #include <iostream>
 #include <optional>
 #include <string>
 
 namespace jogasaki::dist {
 
-key_range::key_type key_range::begin_key() const noexcept { return begin_key_; }
+std::string_view key_range::begin_key() const noexcept { return begin_key_; }
 
 kvs::end_point_kind key_range::begin_endpoint() const noexcept { return begin_endpoint_; }
 
-key_range::key_type key_range::end_key() const noexcept { return end_key_; }
+std::string_view key_range::end_key() const noexcept { return end_key_; }
 
 kvs::end_point_kind key_range::end_endpoint() const noexcept { return end_endpoint_; }
 
-void key_range::dump(std::ostream& out, int indent) const noexcept{
+void key_range::dump(std::ostream& out, int indent) const noexcept {
     std::string indent_space(indent, ' ');
-    out << indent_space << "  begin_endpoint_: " << begin_key_ << "\n";
-    out << indent_space << "  end_endpoint_: " << begin_key_ << "\n";
+    auto hex_dump = [&](const std::string_view& key) {
+        std::ostringstream oss;
+        for (unsigned char c : key) {
+            oss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(c) << " ";
+        }
+        return oss.str();
+    };
+    out << indent_space << "  begin_endpoint_: " << hex_dump(begin_key_) << "\n";
+    out << indent_space << "  end_endpoint_: " << hex_dump(end_key_) << "\n";
 }
 
 } // namespace jogasaki::dist

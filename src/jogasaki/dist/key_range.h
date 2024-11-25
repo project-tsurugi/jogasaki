@@ -23,7 +23,7 @@ namespace jogasaki::dist {
 class key_range {
   public:
     /// @brief the key type.
-    using key_type = std::string_view;
+    using key_type = std::string;
     /**
      * @brief creates a whole range on index.
      */
@@ -38,7 +38,7 @@ class key_range {
      * @param end_endpoint endpoint type of the end key,
      * or unbound if the range goes to tail of the index
      */
-    key_range(key_type begin_key, kvs::end_point_kind begin_endpoint, key_type end_key,
+    key_range(std::string_view begin_key, kvs::end_point_kind begin_endpoint, std::string_view end_key,
         kvs::end_point_kind end_endpoint) noexcept
         : begin_key_(begin_key), begin_endpoint_(begin_endpoint), end_key_(end_key),
           end_endpoint_(end_endpoint){};
@@ -48,7 +48,7 @@ class key_range {
      * @return the begin key
      * @return don't care if begin_endpoint() returns unspecified
      */
-    [[nodiscard]] key_type begin_key() const noexcept;
+    [[nodiscard]] std::string_view begin_key() const noexcept;
 
     /**
      * @brief returns the endpoint type of the begin key.
@@ -62,7 +62,7 @@ class key_range {
      * @return the end key.
      * @return don't care if end_endpoint() returns unspecified
      */
-    [[nodiscard]] key_type end_key() const noexcept;
+    [[nodiscard]] std::string_view end_key() const noexcept;
 
     /**
      * @brief returns the endpoint type of the end key.
@@ -78,9 +78,9 @@ class key_range {
     void dump(std::ostream& out, int indent = 0) const noexcept;
 
   private:
-    key_type begin_key_;
+    std::string_view begin_key_;
     kvs::end_point_kind begin_endpoint_;
-    key_type end_key_;
+    std::string_view end_key_;
     kvs::end_point_kind end_endpoint_;
 };
 

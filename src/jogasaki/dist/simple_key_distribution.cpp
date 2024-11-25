@@ -54,6 +54,7 @@ std::vector<simple_key_distribution::pivot_type> simple_key_distribution::comput
         pivots.resize(max_count);
     }
 
+    std::sort(pivots.begin(), pivots.end());
     return pivots;
 }
 

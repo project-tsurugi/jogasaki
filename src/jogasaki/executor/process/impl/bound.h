@@ -32,8 +32,6 @@ class bound {
     bound(kvs::end_point_kind endpointkind, std::size_t len,
         std::unique_ptr<data::aligned_buffer> key)
         : endpointkind_(endpointkind), len_(len), key_(std::move(key)) {}
-    kvs::end_point_kind endpointkind() { return endpointkind_; };
-    std::unique_ptr<data::aligned_buffer> key() { return std::move(key_); };
     [[nodiscard]] std::string_view key() const noexcept;
     [[nodiscard]] kvs::end_point_kind endpointkind() const noexcept;
     /**

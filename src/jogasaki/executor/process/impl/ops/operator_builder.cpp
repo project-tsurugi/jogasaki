@@ -36,6 +36,8 @@
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/data/iterable_record_store.h>
+#include <jogasaki/dist/simple_key_distribution.h>
+#include <jogasaki/dist/key_range.h>
 #include <jogasaki/executor/process/impl/bound.h>
 #include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
@@ -404,12 +406,46 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     bound end(end_end_point_kind, elen, std::move(key_end));
     bool is_empty = (status_result == status::err_integrity_constraint_violation);
 
-    std::vector<bound> bounds;
-    bounds.emplace_back(std::move(begin));
-    bounds.emplace_back(std::move(end));
-    for (size_t i = 0; i + 1 < bounds.size(); i += 2) {
-        scan_ranges.emplace_back(std::make_shared<impl::scan_range>(
-            std::move(bounds[i]), std::move(bounds[i + 1]), is_empty));
+    const size_t scan_parallel_count = global::config_pool()->scan_default_parallel();
+    const auto option                = request_context_->transaction()->option();
+    const bool is_rtx =
+        option && option->type() == kvs::transaction_option::transaction_type::read_only;
+    if (global::config_pool()->rtx_parallel_scan() && scan_parallel_count > 1 && is_rtx &&
+        !is_empty) {
+        jogasaki::dist::simple_key_distribution distribution;
+        const jogasaki::dist::key_range range(
+            begin.key(), begin.endpointkind(), end.key(), end.endpointkind());
+        const auto pivot_count = scan_parallel_count - 1;
+        auto pivots            = distribution.compute_pivots(pivot_count, range);
+        scan_ranges.reserve(pivots.size() + 1);
+        if (pivots.empty()) {
+            scan_ranges.emplace_back(
+                std::make_shared<impl::scan_range>(std::move(begin), std::move(end), is_empty));
+        } else {
+            // Add the initial scan ranges
+            scan_ranges.emplace_back(std::make_shared<impl::scan_range>(std::move(begin),
+                bound(kvs::end_point_kind::inclusive, pivots.front().size(),
+                    std::make_unique<data::aligned_buffer>(pivots.front())),
+                is_empty));
+            // Add the intermediate scan ranges
+            for (size_t i = 1; i < pivots.size(); ++i) {
+                scan_ranges.emplace_back(std::make_shared<impl::scan_range>(
+                    bound(kvs::end_point_kind::inclusive, pivots[i - 1].size(),
+                        std::make_unique<data::aligned_buffer>(pivots[i - 1])),
+                    bound(kvs::end_point_kind::exclusive, pivots[i].size(),
+                        std::make_unique<data::aligned_buffer>(pivots[i])),
+                    is_empty));
+            }
+            // Add the final scan ranges
+            scan_ranges.emplace_back(std::make_shared<impl::scan_range>(
+                bound(kvs::end_point_kind::inclusive, pivots.back().size(),
+                    std::make_unique<data::aligned_buffer>(pivots.back())),
+                std::move(end), is_empty));
+        }
+    } else {
+        scan_ranges.reserve(1);
+        scan_ranges.emplace_back(
+            std::make_shared<impl::scan_range>(std::move(begin), std::move(end), is_empty));
     }
     return scan_ranges;
 }

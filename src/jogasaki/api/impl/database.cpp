@@ -1174,7 +1174,6 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting_end"
                 << " job_id:"
                 << utils::hex(jobid);
-            rctx->status_code(res);
             if(! option.is_long() && ! option.readonly()) {
                 scheduler::submit_teardown(*rctx);
                 return model::task_result::complete;

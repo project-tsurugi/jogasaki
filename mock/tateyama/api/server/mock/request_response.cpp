@@ -45,6 +45,10 @@ std::size_t test_request::service_id() const {
     return service_id_;
 }
 
+std::size_t test_request::local_id() const {
+    return 0;
+}
+
 tateyama::api::server::database_info const& test_request::database_info() const noexcept {
     return database_info_;
 }

@@ -96,10 +96,14 @@ sequence* manager::register_sequence(
     sequence_value minimum_value,
     sequence_value maximum_value,
     bool enable_cycle,
-    bool save_id_map_entry
+    bool save_id_map_entry,
+    bool assign_new_seq_id_if_not_found
 ) {
     sequence_id seq_id{};
     if(sequences_.count(def_id) == 0) {
+        if(! assign_new_seq_id_if_not_found) {
+            return {};
+        }
         if(auto rc = db_->create_sequence(seq_id); rc != status::ok) {
             (void) tx->abort();
             throw_exception(exception{rc});
@@ -142,15 +146,16 @@ sequence* manager::register_sequence(
 
 void manager::register_sequences(
     kvs::transaction* tx,
-    maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider
+    maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider,
+    bool assign_new_seq_id_if_not_found
 ) {
     provider->each_sequence(
-        [this, &tx](
+        [this, &tx, assign_new_seq_id_if_not_found](
             std::string_view,
             std::shared_ptr<yugawara::storage::sequence const> const& entry
         ) {
             auto def_id = *entry->definition_id();
-            register_sequence(
+            if(auto p = register_sequence(
                 tx,
                 def_id,
                 entry->simple_name(),
@@ -159,8 +164,11 @@ void manager::register_sequences(
                 entry->min_value(),
                 entry->max_value(),
                 entry->cycle(),
-                false
-            );
+                false,
+                assign_new_seq_id_if_not_found
+            ); p == nullptr) {
+                throw_exception(exception{status::err_not_found, entry->simple_name()});
+            }
         }
     );
     save_id_map(tx);
@@ -200,7 +208,7 @@ bool manager::remove_sequence(
     if (sequences_.count(def_id) == 0) {
         return false;
     }
-    if (auto rc = db_->delete_sequence(sequences_[def_id].id()); rc != status::ok) {
+    if (auto rc = db_->delete_sequence(sequences_[def_id].id()); rc != status::ok && rc != status::err_not_found) {
         // status::err_not_found never comes here because the sequence is already in sequences_
         (void) tx->abort();
         throw_exception(exception{rc});

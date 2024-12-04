@@ -76,13 +76,18 @@ bool remove_generated_sequences(
             auto def_id = s->definition_id().value();
             try {
                 if(! context.sequence_manager()->remove_sequence(def_id, context.transaction()->object().get())) {
-                    VLOG_LP(log_error) << "sequence '" << sequence_name << "' not found";
-                    context.status_code(status::err_not_found);
-                    return false;
+                    // even on error, continue clean-up as much as possible
+                    VLOG_LP(log_info) << "sequence '" << sequence_name << "' not found";
                 }
             } catch(executor::sequence::exception const& e) {
-                VLOG_LP(log_error) << "removing sequence '" << sequence_name << "' not found";
-                context.status_code(e.get_status(), e.what());
+                // unrecoverable error - transaction aborted and we cannot continue
+                VLOG_LP(log_error) << "removing sequence '" << sequence_name << "' failed";
+                set_error(
+                    context,
+                    error_code::sql_execution_exception,
+                    e.what(),
+                    e.get_status()
+                );
                 return false;
             }
         }
@@ -130,6 +135,10 @@ bool drop_table::operator()(request_context& context) const {
         );
         return false;
     }
+
+    // note on error handling: now regular check for existence of table has passed. Going forward, if part of the table
+    // dependencies (e.g. secondary indices or sequence entry on system table) are missing, drop table should clean-up
+    // those dependencies as much as possible in order to avoid left garbage becoming a road block for other operations.
 
     std::vector<std::string> generated_sequences{};
     // drop auto-generated sequences first because accessing system table causes cc error

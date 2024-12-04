@@ -69,7 +69,15 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
     auto& mgr = *ctx.sequence_manager();
     auto* seq = mgr.find_sequence(def_id);
     if(seq == nullptr) {
-        throw_exception(std::logic_error{""});
+        auto rc = status::err_unknown;
+        auto msg = string_builder{} << "sequence not found def_id:" << def_id
+                                    << " possibly due to DDL failure. Recreating "
+                                       "the table may fix the situation"
+                                    << string_builder::to_string;
+        set_error(ctx, error_code::sql_execution_exception, msg, rc);
+        // system level errornous situation - table can be read, but write is not reliable until recration
+        LOG_LP(ERROR) << msg;
+        return rc;
     }
     auto ret = seq->next(*ctx.transaction()->object());
     // even if there is an error with next(), it mark the sequence as used by the tx, so call notify_updates first

@@ -96,7 +96,8 @@ bool create_generated_sequence(
             p.min_value(),
             p.max_value(),
             p.cycle(),
-            true
+            true,
+            true // create new seq_id
         );
 //        provider.add_sequence(p);  // sequence definition is added in serializer, no need to add it here
     } catch (sequence::exception& e) {

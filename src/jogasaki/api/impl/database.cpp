@@ -980,10 +980,21 @@ status database::initialize_from_providers() {
         }
         try {
             sequence_manager_->load_id_map(tx.get());
-            sequence_manager_->register_sequences(tx.get(), tables_);
+            sequence_manager_->register_sequences(tx.get(), tables_, false);
         } catch(executor::sequence::exception& e) {
-            LOG_LP(ERROR) << "registering sequences failed:" << e.get_status() << " " << e.what();
-            return e.get_status();
+            if(e.get_status() != status::err_not_found) {
+                LOG_LP(ERROR) << "registering sequences failed:" << e.get_status() << " " << e.what();
+                return e.get_status();
+            }
+            // missing sequence entry in __sequences table
+            // The situation possibly occurs by aborting transaction used for CREATE TABLE.
+            // Dropping the table and recreating it will fix the issue.
+            // We do not raise error in the start-up here. Allow users to read/dump the data for backup or
+            // to drop the table to fix the situation.
+            LOG_LP(WARNING) << "sequence '" << e.what()
+                            << "' not found on the system table. Possibly the table definition did not "
+                               "complete successfully. Inserting new records using the sequence is likely to hit an "
+                               "error. Re-creating the table that owns the sequence may fix the issue";
         }
         if(auto res = tx->commit(); res != status::ok) {
             LOG_LP(ERROR) << "committing table schema entries failed";

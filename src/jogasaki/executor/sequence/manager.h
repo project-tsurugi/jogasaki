@@ -120,7 +120,8 @@ public:
     /**
      * @brief register the sequence properties for the definition id
      * @details using the id_map currently held, create the in-memory sequence object with the given spec.
-     * If the id_map doesn't has the given def_id, ask kvs to assign new sequence id. Optionally save the id map.
+     * If the id_map doesn't has the given def_id, ask kvs to assign new sequence id
+     * (or exit if `assign_new_seq_id_if_not_found=false`). Optionally save the id map.
      * This function is not thread-safe. Only a thread can call this member function at a time.
      * @param def_id the key to uniquely identify the sequence
      * @param name the name of the sequence
@@ -132,6 +133,8 @@ public:
      * min or max value (corresponding to the boundary that is went over.)
      * @param save_id_map_entry indicates whether the id_map entry for registered sequence should be saved now.
      * Set false if you are registering multiples sequences and they should be saved later.
+     * @param assign_new_seq_id_if_not_found if false, the function returns nullptr when the def_id is not found
+     * in the id_map. If true, the function creates new sequence id for such def_id.
      * @return the in-memory sequence object just registered
      * @throws sequence::exception if any error occurs, then passed transaction is aborted.
      */
@@ -144,7 +147,8 @@ public:
         sequence_value minimum_value = 0,
         sequence_value maximum_value = std::numeric_limits<sequence_value>::max(),
         bool enable_cycle = true,
-        bool save_id_map_entry = true
+        bool save_id_map_entry = true,
+        bool assign_new_seq_id_if_not_found = true
     );
 
     /**
@@ -152,11 +156,17 @@ public:
      * @details this function retrieves sequence definitions from provider and register one by one.
      * This function is not thread-safe. Only a thread can call this member function at a time.
      * @param provider the config. provider that gives sequences definitions.
-     * @throws sequence::exception if any error occurs, then passed transaction is aborted.
+     * @param assign_new_seq_id_if_not_found if true, the function creates new sequence id for the def_id that
+     * is not on the id_map. If false, exception below is thrown for such def_id.
+     * @throws sequence::exception with status::err_not_found and what() containing sequence name if
+     * `assign_new_seq_id_if_not_found` is false and def_id is
+     * not found on id_map. The passed transaction is not touched.
+     * @throws sequence::exception if any other error occurs, then passed transaction is aborted.
      */
     void register_sequences(
         kvs::transaction* tx,
-        maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider
+        maybe_shared_ptr<yugawara::storage::configurable_provider> const& provider,
+        bool assign_new_seq_id_if_not_found
     );
 
     /**

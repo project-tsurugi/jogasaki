@@ -67,7 +67,7 @@ TEST_F(sequence_manager_test, simple) {
     provider.add_sequence(storage::sequence{0, "SEQ"});
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
     auto* seq = mgr.find_sequence(0);
     ASSERT_TRUE(seq);
     auto cur = seq->get();
@@ -87,7 +87,7 @@ TEST_F(sequence_manager_test, initialize) {
     provider.add_sequence(storage::sequence{1, "SEQ1"});
     manager mgr{ *db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
 
     ASSERT_EQ(1, mgr.sequences().size());
     auto& info0 = *mgr.sequences().at(1).info();
@@ -116,7 +116,7 @@ TEST_F(sequence_manager_test, sequence_spec) {
     manager mgr{*db_};
     // load mapping from kvs if exists
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
 
     ASSERT_EQ(1, mgr.sequences().size());
     auto& info0 = *mgr.sequences().at(111).info();
@@ -134,12 +134,12 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     provider.add_sequence(storage::sequence{1, "SEQ1"});
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
-    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider});
+    mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
     wait_epochs(10);
     provider.add_sequence(storage::sequence{2, "SEQ2"});
     manager mgr2{*db_};
     EXPECT_EQ(1, mgr2.load_id_map());
-    mgr2.register_sequences(nullptr, maybe_shared_ptr{&provider});
+    mgr2.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr2.sequences().size());
@@ -150,7 +150,7 @@ TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
 
     manager mgr3{*db_};
     EXPECT_EQ(2, mgr3.load_id_map());
-    mgr3.register_sequences(nullptr, maybe_shared_ptr{&provider});
+    mgr3.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
     wait_epochs(10);
 
     ASSERT_EQ(2, mgr3.sequences().size());

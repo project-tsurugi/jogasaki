@@ -45,8 +45,6 @@ namespace storage = yugawara::storage;
 
 // built-in sequences definition ids
 constexpr static sequence_definition_id h_id_sequence = 0;
-constexpr static sequence_definition_id tseq0_c0_sequence = 1;
-constexpr static sequence_definition_id tseq1_c0_sequence = 2;
 
 void add_benchmark_tables(storage::configurable_provider& provider) {
     namespace type = ::takatori::type;
@@ -802,56 +800,6 @@ void add_test_tables(storage::configurable_provider& provider) {
                 t->columns()[3],
                 t->columns()[4],
                 t->columns()[5],
-            },
-            index_features
-        });
-    }
-    {
-        auto s1 = std::make_shared<storage::sequence>(
-            tseq0_c0_sequence,
-            "tseq0_c0_sequence"
-        );
-        provider.add_sequence(s1);
-        auto t = provider.add_table({
-            "TSEQ0",
-            {
-                { "C0", type::int8(), nullity{false}, {s1} },
-                { "C1", type::int8(), nullity{true} },
-            },
-        });
-        provider.add_index({
-            t,
-            t->simple_name(),
-            {
-                t->columns()[0],
-            },
-            {
-                t->columns()[1],
-            },
-            index_features
-        });
-    }
-    {
-        auto s1 = std::make_shared<storage::sequence>(
-            tseq1_c0_sequence,
-            "tseq1_c0_sequence"
-        );
-        provider.add_sequence(s1);
-        auto t = provider.add_table({
-            "TSEQ1",
-            {
-                { "C0", type::int8(), nullity{false}, {s1} },
-                { "C1", type::int8(), nullity{true} },
-            },
-        });
-        auto i = provider.add_index({
-            t,
-            "TSEQ1",
-            {
-                t->columns()[0],
-            },
-            {
-                t->columns()[1],
             },
             index_features
         });

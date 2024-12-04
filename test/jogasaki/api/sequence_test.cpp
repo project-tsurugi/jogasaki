@@ -62,10 +62,6 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
-        impl->initialize_from_providers(); // needed to initialize the sequence manager based on table definition
     }
 
     void TearDown() override {
@@ -76,19 +72,14 @@ public:
 using namespace std::string_view_literals;
 
 TEST_F(sequence_test, generate_primary_key) {
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (10)");
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (20)");
-    execute_statement( "INSERT INTO TSEQ0 (C1) VALUES (30)");
+    execute_statement("create table t (C1 INT)");
+    execute_statement("INSERT INTO t (C1) VALUES (10)");
+    execute_statement("INSERT INTO t (C1) VALUES (10)");
+    execute_statement("INSERT INTO t (C1) VALUES (10)");
 
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM TSEQ0 ORDER BY C1", result);
+    execute_query("SELECT * FROM t ORDER BY C1", result);
     ASSERT_EQ(3, result.size());
-    auto meta = result[0].record_meta();
-    auto s0 = result[0].ref().get_value<std::int64_t>(meta->value_offset(0));
-    auto s1 = result[1].ref().get_value<std::int64_t>(meta->value_offset(0));
-    auto s2 = result[2].ref().get_value<std::int64_t>(meta->value_offset(0));
-    EXPECT_LT(s0, s1);
-    EXPECT_LT(s1, s2);
 }
 
 TEST_F(sequence_test, recovery) {

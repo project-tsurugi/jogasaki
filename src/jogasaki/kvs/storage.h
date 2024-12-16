@@ -113,6 +113,8 @@ public:
      * @param end_key the end key
      * @param end_kind endpoint of the end key
      * @param it[out] iterator for the scan result
+     * @param limit the maximum number of entries to scan
+     * @param reverse if true, the scan is done in reverse order (from end to begin)
      * @return status::ok if the operation is successful
      * @return status::err_invalid_key_length if the given key has invalid length to be handled by kvs
      * @return otherwise, other status code
@@ -122,7 +124,9 @@ public:
         transaction& tx,
         std::string_view begin_key, end_point_kind begin_kind,
         std::string_view end_key, end_point_kind end_kind,
-        std::unique_ptr<iterator>& it
+        std::unique_ptr<iterator>& it,
+        std::size_t limit = 0,
+        bool reverse = false
     );
     /**
      * @brief get the value for the given key
@@ -255,7 +259,7 @@ end_point_kind adjust_endpoint_kind(bool use_secondary, kvs::end_point_kind endp
  *
  * @details This overloaded `operator<<` allows for `end_point_kind` values to be output to standard streams
  * (such as `std::cout`) in a human-readable form. It handles each possible enum value and outputs
- * the corresponding string (e.g., "inclusive", "exclusive", etc.). If an unknown value is passed, 
+ * the corresponding string (e.g., "inclusive", "exclusive", etc.). If an unknown value is passed,
  * "unknown" is output.
  *
  * @param os The output stream where the string representation will be written.

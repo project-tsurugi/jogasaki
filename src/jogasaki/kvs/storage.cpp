@@ -106,14 +106,18 @@ status storage::content_delete(
 status storage::content_scan(transaction &tx,
     std::string_view begin_key, end_point_kind begin_kind,
     std::string_view end_key, end_point_kind end_kind,
-    std::unique_ptr<iterator>& it
+    std::unique_ptr<iterator>& it,
+    std::size_t limit,
+    bool reverse
 ) {
     sharksfin::IteratorHandle handle{};
     auto res = sharksfin::content_scan(
         tx.handle(),
         handle_,
         sharksfin::Slice(begin_key), kind(begin_kind),
-        sharksfin::Slice(end_key), kind(end_kind), &handle
+        sharksfin::Slice(end_key), kind(end_kind), &handle,
+        limit,
+        reverse
     );
     if(res == sharksfin::StatusCode::OK) {
         it = std::make_unique<iterator>(handle);

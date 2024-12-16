@@ -59,6 +59,7 @@ file(GLOB SRCS
         "jogasaki/api/*.cpp"
         "jogasaki/api/kvsservice/*.cpp"
         "jogasaki/data/*.cpp"
+        "jogasaki/dist/*.cpp"
         "jogasaki/error/*.cpp"
         "jogasaki/executor/*.cpp"
         "jogasaki/executor/batch/*.cpp"

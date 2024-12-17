@@ -39,10 +39,10 @@ public:
 
     ~uniform_key_distribution() override = default;
 
-    uniform_key_distribution(uniform_key_distribution const&) = default;
-    uniform_key_distribution& operator=(uniform_key_distribution const&) = default;
-    uniform_key_distribution(uniform_key_distribution&&) = default;
-    uniform_key_distribution& operator=(uniform_key_distribution&&) = default;
+    uniform_key_distribution(uniform_key_distribution const&) = delete;
+    uniform_key_distribution& operator=(uniform_key_distribution const&) = delete;
+    uniform_key_distribution(uniform_key_distribution&&) = delete;
+    uniform_key_distribution& operator=(uniform_key_distribution&&) = delete;
 
     uniform_key_distribution(
         kvs::storage& stg,

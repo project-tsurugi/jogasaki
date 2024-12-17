@@ -36,8 +36,9 @@
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/data/iterable_record_store.h>
-#include <jogasaki/dist/simple_key_distribution.h>
 #include <jogasaki/dist/key_range.h>
+#include <jogasaki/dist/simple_key_distribution.h>
+#include <jogasaki/dist/uniform_key_distribution.h>
 #include <jogasaki/executor/process/impl/bound.h>
 #include <jogasaki/executor/process/impl/ops/details/encode_key.h>
 #include <jogasaki/executor/process/impl/ops/details/search_key_field_info.h>
@@ -412,11 +413,19 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
         option && option->type() == kvs::transaction_option::transaction_type::read_only;
     if (global::config_pool()->rtx_parallel_scan() && scan_parallel_count > 1 && is_rtx &&
         !is_empty) {
-        jogasaki::dist::simple_key_distribution distribution;
+            std::unique_ptr<kvs::storage> stg{};
+            std::unique_ptr<dist::key_distribution> distribution{};
+            if(global::config_pool()->key_distribution() == key_distribution_kind::uniform) {
+                stg = request_context_->database()->get_storage(secondary_or_primary_index.simple_name());
+                distribution =
+                    std::make_unique<dist::uniform_key_distribution>(*stg, *request_context_->transaction()->object());
+            } else {
+                distribution = std::make_unique<dist::simple_key_distribution>();
+            }
         const jogasaki::dist::key_range range(
             begin.key(), begin.endpointkind(), end.key(), end.endpointkind());
         const auto pivot_count = scan_parallel_count - 1;
-        auto pivots            = distribution.compute_pivots(pivot_count, range);
+        auto pivots            = distribution->compute_pivots(pivot_count, range);
         scan_ranges.reserve(pivots.size() + 1);
         if (pivots.empty()) {
             scan_ranges.emplace_back(

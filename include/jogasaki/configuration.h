@@ -23,6 +23,7 @@
 #include <jogasaki/request_cancel_config.h>
 
 #include "commit_response.h"
+#include "key_distribution_kind.h"
 
 namespace jogasaki {
 
@@ -506,6 +507,14 @@ public:
         enable_join_scan_ = arg;
     }
 
+    [[nodiscard]] key_distribution_kind key_distribution() const noexcept {
+        return key_distribution_;
+    }
+
+    void key_distribution(key_distribution_kind arg) noexcept {
+        key_distribution_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -564,6 +573,7 @@ public:
         print_non_default(inplace_teardown);
         print_non_default(inplace_dag_schedule);
         print_non_default(enable_join_scan);
+        print_non_default(key_distribution);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -626,6 +636,7 @@ private:
     bool inplace_teardown_ = true;
     bool inplace_dag_schedule_ = true;
     bool enable_join_scan_ = true;
+    key_distribution_kind key_distribution_{key_distribution_kind::simple};
 };
 
 }  // namespace jogasaki

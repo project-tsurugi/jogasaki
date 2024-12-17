@@ -266,6 +266,15 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<bool>("enable_join_scan")) {
         ret->enable_join_scan(v.value());
     }
+    constexpr std::string_view KEY_RTX_KEY_DISTRIBUTION{"dev_rtx_key_distribution"};
+    if (auto v = jogasaki_config->get<std::string>(KEY_RTX_KEY_DISTRIBUTION)) {
+        std::int32_t idx{};
+        if(! validate_enum_strings(KEY_RTX_KEY_DISTRIBUTION, v.value(), idx, "simple", "uniform", "sampling")) {
+            ret = {};
+            return false;
+        }
+        ret->key_distribution(static_cast<key_distribution_kind>(idx));
+    }
     return true;
 }
 

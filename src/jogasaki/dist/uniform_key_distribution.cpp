@@ -117,8 +117,8 @@ std::size_t common_prefix_len(std::string_view lo, std::string_view hi) {
 std::vector<std::string> generate_strings(std::string_view lo, std::string_view hi, std::size_t chars) {
     auto cpl = common_prefix_len(lo, hi);
 
-    char h = cpl < hi.size() ? hi[cpl] : static_cast<char>(0);
-    char l = cpl < lo.size() ? lo[cpl] : static_cast<char>(0);
+    auto h = static_cast<std::uint8_t>(cpl < hi.size() ? hi[cpl] : 0);
+    auto l = static_cast<std::uint8_t>(cpl < lo.size() ? lo[cpl] : 0);
     std::size_t cnt = h - l;
 
     std::vector<std::string> pivots{};

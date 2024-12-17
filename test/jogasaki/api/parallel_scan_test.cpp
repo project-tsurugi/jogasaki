@@ -109,4 +109,24 @@ TEST_F(parallel_scan_test, empty_table) {
     ASSERT_EQ(0, result.size());
 }
 
+TEST_F(parallel_scan_test, negative_values) {
+    // test with negative values
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    execute_statement("INSERT INTO t VALUES (-100),(-200)");
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", *tx, result);
+    ASSERT_EQ(2, result.size());
+}
+
+TEST_F(parallel_scan_test, various_types) {
+    // test with negative values
+    execute_statement("CREATE TABLE t (c0 int, c1 bigint, c2 char(20), c3 varchar(20), c4 real, c5 double, c6 decimal(5,3), primary key(c0, c1, c2, c3, c4, c5, c6))");
+    execute_statement("INSERT INTO t VALUES (-1, -1, '', '', -1.0, -1.0, -1)");
+    execute_statement("INSERT INTO t VALUES (10, 10, '11111111111111111111', '11111111111111111111', 10.0, 10.0, 10)");
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", *tx, result);
+    ASSERT_EQ(2, result.size());
+}
 }

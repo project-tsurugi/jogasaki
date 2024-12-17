@@ -54,6 +54,9 @@ public:
 };
 
 TEST_F(uniform_distribution_test, basic) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support uniform key distribution yet";
+    }
     execute_statement("create table t (c0 int primary key)");
     execute_statement("insert into t values (1),(2),(3)");
 
@@ -69,12 +72,17 @@ TEST_F(uniform_distribution_test, basic) {
     std::string hi{};
     std::string lo{};
     EXPECT_EQ(status::ok, dist.highkey(hi));
+    EXPECT_EQ("\x80\x00\x00\x03"sv, hi);
     std::cerr << "highkey: " << utils::binary_printer{hi.data(), hi.size()} << std::endl;
     EXPECT_EQ(status::ok, dist.lowkey(lo));
+    EXPECT_EQ("\x80\x00\x00\x01"sv, lo);
     std::cerr << "lowkey: " << utils::binary_printer{lo.data(), lo.size()} << std::endl;
 }
 
 TEST_F(uniform_distribution_test, complex_primary_key) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support uniform key distribution yet";
+    }
     execute_statement("create table t (c0 int, c1 int, primary key(c0, c1))");
     execute_statement("insert into t values (1,10),(2,20),(3,30)");
 
@@ -91,8 +99,10 @@ TEST_F(uniform_distribution_test, complex_primary_key) {
     std::string lo{};
     EXPECT_EQ(status::ok, dist.highkey(hi));
     std::cerr << "highkey: " << utils::binary_printer{hi.data(), hi.size()} << std::endl;
+    EXPECT_EQ("\x80\x00\x00\x03\x80\x00\x00\x1e"sv, hi);
     EXPECT_EQ(status::ok, dist.lowkey(lo));
     std::cerr << "lowkey: " << utils::binary_printer{lo.data(), lo.size()} << std::endl;
+    EXPECT_EQ("\x80\x00\x00\x01\x80\x00\x00\x0a"sv, lo);
 }
 
 TEST_F(uniform_distribution_test, common_prefix_len) {
@@ -110,15 +120,61 @@ TEST_F(uniform_distribution_test, common_prefix_len) {
     EXPECT_EQ(3, common_prefix_len("abcd", "abc"));
 }
 
-TEST_F(uniform_distribution_test, gen_strings) {
+TEST_F(uniform_distribution_test, gen_strings_basic) {
     auto res = generate_strings("a1", "a3", 3);
-    EXPECT_EQ(6, res.size());
+    ASSERT_EQ(6, res.size());
     EXPECT_EQ("a1\x00"sv, res[0]);
     EXPECT_EQ("a1\x01"sv, res[1]);
     EXPECT_EQ("a1\x02"sv, res[2]);
     EXPECT_EQ("a2\x00"sv, res[3]);
     EXPECT_EQ("a2\x01"sv, res[4]);
     EXPECT_EQ("a2\x02"sv, res[5]);
+}
+
+TEST_F(uniform_distribution_test, gen_strings_removing_ones_outside_range) {
+    // same as gen_strings_basic but removing strings outside the range
+    auto res = generate_strings("a1\x01"sv, "a3"sv, 3);
+    ASSERT_EQ(4, res.size());
+    EXPECT_EQ("a1\x02"sv, res[0]);
+    EXPECT_EQ("a2\x00"sv, res[1]);
+    EXPECT_EQ("a2\x01"sv, res[2]);
+    EXPECT_EQ("a2\x02"sv, res[3]);
+}
+
+TEST_F(uniform_distribution_test, gen_strings_with_different_length) {
+    auto res = generate_strings("a"sv, "a\x02"sv, 3);
+    ASSERT_EQ(6, res.size());
+    EXPECT_EQ("a\x00\x00"sv, res[0]);
+    EXPECT_EQ("a\x00\x01"sv, res[1]);
+    EXPECT_EQ("a\x00\x02"sv, res[2]);
+    EXPECT_EQ("a\x01\x00"sv, res[3]);
+    EXPECT_EQ("a\x01\x01"sv, res[4]);
+    EXPECT_EQ("a\x01\x02"sv, res[5]);
+}
+
+TEST_F(uniform_distribution_test, gen_strings_with_different_length_longer_lo) {
+    auto res = generate_strings("a\x01"sv, "b"sv, 3);
+    ASSERT_EQ(1, res.size());
+    EXPECT_EQ("a\x02"sv, res[0]);
+}
+
+TEST_F(uniform_distribution_test, gen_strings_same_hi_lo) {
+    auto res = generate_strings("abc"sv, "abc"sv, 3);
+    ASSERT_EQ(0, res.size());
+}
+
+TEST_F(uniform_distribution_test, gen_strings_narrow_range) {
+    {
+        // verify that the range is too narrow to generate any strings
+        auto res = generate_strings("a\x01\xFF"sv, "a\x02"sv, 256);
+        ASSERT_EQ(0, res.size());
+    }
+    {
+        // verify that the range is narrow and only one string can be generated
+        auto res = generate_strings("a\x01\xFE"sv, "a\x02"sv, 256);
+        ASSERT_EQ(1, res.size());
+        EXPECT_EQ("a\x01\xFF"sv, res[0]);
+    }
 }
 
 TEST_F(uniform_distribution_test, compute_pivots) {

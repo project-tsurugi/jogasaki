@@ -88,20 +88,6 @@ status uniform_key_distribution::highkey(pivot_type& out) {
     return scan_one(true, out);
 }
 
-double string_distance(std::string_view lo, std::string_view hi) {
-    std::size_t len = std::max(lo.size(), hi.size());
-    double dist{};
-
-    double div = 1.0;
-    for(std::size_t i=0; i < len; ++i) {
-        int l = i < lo.size() ? lo[i] : 0;
-        int h = i < hi.size() ? hi[i] : 0;
-        dist += (h - l) * div;
-        div /= 256.0;
-    }
-    return dist;
-}
-
 std::size_t common_prefix_len(std::string_view lo, std::string_view hi) {
     std::size_t len = std::min(lo.size(), hi.size());
     std::size_t i = 0;
@@ -115,21 +101,35 @@ std::size_t common_prefix_len(std::string_view lo, std::string_view hi) {
 }
 
 std::vector<std::string> generate_strings(std::string_view lo, std::string_view hi, std::size_t chars) {
+    // simple implementation to generate a set of strings contained in the range from lo to hi (exclusive)
+    // steps are as follows:
+    // 1. let l and h be the character after the common prefix in lo and hi
+    // 2. generate strings with prefix + l, prefix + (l + 1), ..., prefix + (h - 1)
+    // 3. append one of `chars` characters to each string generated in 2
+    // 4. Within the `chars` * (h - l) strings generated above, adopt only ones in the range from lo to hi
+    if(hi < lo) {
+        // invalid arguments
+        return {};
+    }
     auto cpl = common_prefix_len(lo, hi);
 
+    // characters after the common prefix in lo and hi
     auto h = static_cast<std::uint8_t>(cpl < hi.size() ? hi[cpl] : 0);
     auto l = static_cast<std::uint8_t>(cpl < lo.size() ? lo[cpl] : 0);
     std::size_t cnt = h - l;
 
     std::vector<std::string> pivots{};
-    pivots.reserve(cnt * chars);
+    pivots.reserve(cnt * chars);  // at maximum
 
-    for (std::size_t j = 0; j < cnt; ++j) {
+    for (std::size_t i = 0; i < cnt; ++i) {
         std::string prefix{lo.data(), cpl};
-        prefix += static_cast<char>(l + j);
-
-        for (std::size_t i = 0; i < chars; ++i) {
-            pivots.emplace_back(prefix + static_cast<char>(i));
+        prefix += static_cast<char>(l + i);
+        for (std::size_t j = 0; j < chars; ++j) {
+            std::string p = prefix + static_cast<char>(j);
+            if(p <= lo || hi <= p) {
+                continue;
+            }
+            pivots.emplace_back(std::move(p));
         }
     }
     return pivots;

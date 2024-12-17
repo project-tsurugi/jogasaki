@@ -26,7 +26,8 @@ namespace jogasaki::dist {
 
 /**
  * @brief key_distribution subclass assuming keys are distributed uniformly
- * @details This class assumes that keys are distributed uniformly and calculate the pivots based on this assumption.
+ * @details This class assumes that keys are distributed uniformly and calculate the pivots
+ * between the smallest and largest keys.
  */
 class uniform_key_distribution : public key_distribution {
 public:
@@ -87,10 +88,22 @@ private:
     status scan_one(bool reverse, uniform_key_distribution::pivot_type& out);
 };
 
-double string_distance(std::string_view lo, std::string_view hi);
-
+/**
+ * @brief calculate the common prefix length of two strings
+ * @note the function is public for testing
+ */
 std::size_t common_prefix_len(std::string_view lo, std::string_view hi);
 
+/**
+ * @brief generate strings between two strings
+ * @param lo the smaller string
+ * @param hi the larger string
+ * @param chars the number of characters consisting a octet (normally 256, but customizable for testing)
+ * @details the function generates strings between lo and hi (exclusively)
+ * If the given range is too narrow or invalid (i.e. hi < lo), the function returns an empty vector.
+ * @return the generated strings
+ * @note the function is public for testing
+ */
 std::vector<std::string>
 generate_strings(std::string_view lo, std::string_view hi, std::size_t chars = 256);
 

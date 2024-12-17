@@ -22,6 +22,7 @@
 #include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/dist/key_range.h>
 #include <jogasaki/dist/uniform_key_distribution.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/kvs_test_utils.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/create_tx.h>
@@ -121,6 +122,9 @@ TEST_F(uniform_distribution_test, gen_strings) {
 }
 
 TEST_F(uniform_distribution_test, compute_pivots) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support uniform key distribution yet";
+    }
     execute_statement("create table t (c0 int primary key)");
     execute_statement("insert into t values (1),(2),(3)");
 

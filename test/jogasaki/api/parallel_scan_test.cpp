@@ -98,6 +98,9 @@ TEST_F(parallel_scan_test, simple) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM t", *tx, result);
     ASSERT_EQ(3, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(100)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(200)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(300)), result[2]);
 }
 
 TEST_F(parallel_scan_test, empty_table) {
@@ -129,4 +132,26 @@ TEST_F(parallel_scan_test, various_types) {
     execute_query("SELECT * FROM t", *tx, result);
     ASSERT_EQ(2, result.size());
 }
+
+TEST_F(parallel_scan_test, multiple_pivots) {
+    // manually check 10 records are picked by different scan strand
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    execute_statement("INSERT INTO t VALUES (10),(20),(30),(40),(50),(60),(70),(80),(90),(100)");
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", *tx, result);
+    ASSERT_EQ(10, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((create_nullable_record<kind::int4>(10)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(20)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(30)), result[2]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(40)), result[3]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(50)), result[4]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(60)), result[5]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(70)), result[6]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(80)), result[7]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(90)), result[8]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(100)), result[9]);
+}
+
 }

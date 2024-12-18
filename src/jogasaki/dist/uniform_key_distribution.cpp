@@ -160,7 +160,7 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
     std::string high{};
     std::string low{};
     if(auto res = lowkey(low); res != status::ok) {
-        if(res != status::not_found) {
+        if(res == status::not_found) {
             // empty index or failing to get low key somehow
             return {};
         }
@@ -171,7 +171,7 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
         low = range.begin_key();
     }
     if(auto res = highkey(high); res != status::ok) {
-        if(res != status::not_found) {
+        if(res == status::not_found) {
             // empty index or failing to get high key somehow
             return {};
         }

@@ -19,6 +19,7 @@
 #include <random>
 #include <vector>
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/dist/key_distribution.h>
 #include <jogasaki/kvs/storage.h>
 
@@ -47,10 +48,12 @@ public:
 
     uniform_key_distribution(
         kvs::storage& stg,
-        kvs::transaction& tx
+        kvs::transaction& tx,
+        request_context* req_ctx = nullptr
     ) :
       stg_(std::addressof(stg)),
-      tx_(std::addressof(tx))
+      tx_(std::addressof(tx)),
+      req_ctx_(req_ctx)
     {}
 
     [[nodiscard]] std::optional<double> estimate_count(range_type const& range) override;
@@ -84,6 +87,7 @@ public:
 private:
     kvs::storage* stg_{};
     kvs::transaction* tx_{};
+    request_context* req_ctx_{}; // for error report
 
     status scan_one(bool reverse, uniform_key_distribution::pivot_type& out);
 };

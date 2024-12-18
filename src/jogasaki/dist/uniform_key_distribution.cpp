@@ -18,13 +18,20 @@
 
 #include <glog/logging.h>
 
+#include <takatori/util/exception.h>
+
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/plan/compiler.h>
 #include <jogasaki/utils/binary_printer.h>
+#include <jogasaki/utils/handle_generic_error.h>
+#include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
 
 namespace jogasaki::dist {
+
+using takatori::util::throw_exception;
 
 std::optional<double> uniform_key_distribution::estimate_count(range_type const&) {
     return std::nullopt;
@@ -67,14 +74,25 @@ status uniform_key_distribution::scan_one(bool reverse, uniform_key_distribution
             it,
             1, // fetch only one entry
             reverse
-        );
-        res != status::ok || !it) {
-            return res;
+        ); res != status::ok) {
+        if(req_ctx_) {
+            handle_kvs_errors(*req_ctx_, res);
+            handle_generic_error(*req_ctx_, res, error_code::sql_execution_exception);
+        }
+        return res;
     }
     if(auto res = it->next(); res != status::ok) {
+        if(res != status::not_found && req_ctx_) {
+            handle_kvs_errors(*req_ctx_, res);
+            handle_generic_error(*req_ctx_, res, error_code::sql_execution_exception);
+        }
         return res;
     }
     if(auto res = read_key_entry(it, *tx_, out); res != status::ok) {
+        if(res != status::not_found && req_ctx_) {
+            handle_kvs_errors(*req_ctx_, res);
+            handle_generic_error(*req_ctx_, res, error_code::sql_execution_exception);
+        }
         return res;
     }
     return status::ok;
@@ -142,15 +160,23 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
     std::string high{};
     std::string low{};
     if(auto res = lowkey(low); res != status::ok) {
-        // empty index or failing to get low key somehow
-        return {};
+        if(res != status::not_found) {
+            // empty index or failing to get low key somehow
+            return {};
+        }
+        // other unrecoverable errors - tx possibly aborted and scan cannot continue
+        throw_exception(jogasaki::plan::impl::compile_exception{req_ctx_->error_info()});
     }
     if(range.begin_endpoint() != kvs::end_point_kind::unbound && range.begin_key() > low) {
         low = range.begin_key();
     }
     if(auto res = highkey(high); res != status::ok) {
-        // empty index or failing to get high key somehow
-        return {};
+        if(res != status::not_found) {
+            // empty index or failing to get high key somehow
+            return {};
+        }
+        // other unrecoverable errors - tx possibly aborted and scan cannot continue
+        throw_exception(jogasaki::plan::impl::compile_exception{req_ctx_->error_info()});
     }
     if(range.end_endpoint() != kvs::end_point_kind::unbound && range.end_key() < high) {
         high = range.end_key();

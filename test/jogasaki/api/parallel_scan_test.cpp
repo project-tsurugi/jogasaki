@@ -120,7 +120,7 @@ TEST_F(parallel_scan_test, negative_values) {
 }
 
 TEST_F(parallel_scan_test, various_types) {
-    // test with negative values
+    // test with various types and check no crash
     execute_statement("CREATE TABLE t (c0 int, c1 bigint, c2 char(20), c3 varchar(20), c4 real, c5 double, c6 decimal(5,3), primary key(c0, c1, c2, c3, c4, c5, c6))");
     execute_statement("INSERT INTO t VALUES (-1, -1, '', '', -1.0, -1.0, -1)");
     execute_statement("INSERT INTO t VALUES (10, 10, '11111111111111111111', '11111111111111111111', 10.0, 10.0, 10)");

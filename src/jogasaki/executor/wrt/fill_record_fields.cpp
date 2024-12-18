@@ -51,7 +51,7 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/model/statement.h>
 #include <jogasaki/model/statement_kind.h>
-#include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_encode_errors.h>
@@ -321,7 +321,7 @@ std::vector<wrt::write_field> create_fields(
                 auto msg = string_builder{}
                     << "write operation on read-only column name:" << k.column().simple_name()
                     << string_builder::to_string;
-                throw_exception(plan::impl::compile_exception{
+                throw_exception(plan::plan_exception{
                     create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
                 });
             }
@@ -364,7 +364,7 @@ std::vector<wrt::write_field> create_fields(
             if(c.features().contains(::yugawara::storage::column_feature::read_only)) {
                 auto msg = string_builder{} << "write operation on read-only column name:" << c.simple_name()
                                             << string_builder::to_string;
-                throw_exception(plan::impl::compile_exception{
+                throw_exception(plan::plan_exception{
                     create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
                 });
             }

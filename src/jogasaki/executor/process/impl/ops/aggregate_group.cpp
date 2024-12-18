@@ -45,6 +45,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
 
@@ -260,7 +261,7 @@ std::vector<details::aggregate_group_column> aggregate_group::create_columns(seq
                 << "failed to find function definition - it's likely aggregate functions with and without DISTINCT "
                    "keyword are called in the same query, that is currently unsupported"
                 << string_builder::to_string;
-            throw_exception(plan::impl::compile_exception{
+            throw_exception(plan::plan_exception{
                 create_error_info(error_code::unsupported_runtime_feature_exception, msg, status::err_unsupported)
             });
         }

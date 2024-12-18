@@ -82,41 +82,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
 );
 
-class compile_exception : public std::exception {
-public:
-    /**
-     * @brief create empty object
-     */
-    compile_exception() = default;
-
-    /**
-     * @brief destruct the object
-     */
-    ~compile_exception() override = default;
-
-    compile_exception(compile_exception const& other) = default;
-    compile_exception& operator=(compile_exception const& other) = default;
-    compile_exception(compile_exception&& other) noexcept = default;
-    compile_exception& operator=(compile_exception&& other) noexcept = default;
-
-    explicit compile_exception(std::shared_ptr<error::error_info> info) noexcept :
-        info_(std::move(info))
-    {}
-
-    [[nodiscard]] char const* what() const noexcept override {
-        if(! info_) return "";
-        return info_->message().data();
-    }
-
-    [[nodiscard]] std::shared_ptr<error::error_info> const& info() const noexcept {
-        return info_;
-    }
-
-private:
-    std::shared_ptr<error::error_info> info_{};
-};
-
-}
+}  // namespace impl
 
 /**
  * @brief compile sql and store executable statement in the context
@@ -148,4 +114,4 @@ private:
  */
 [[nodiscard]] status prepare(std::string_view sql, compiler_context& ctx);
 
-}
+}  // namespace jogasaki::plan

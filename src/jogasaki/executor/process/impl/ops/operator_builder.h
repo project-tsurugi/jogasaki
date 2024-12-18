@@ -141,7 +141,7 @@ public:
  * @param relation_io_map mapping from relation to I/O index
  * @param resource the memory resource used to building operators
  * @return the container holding created operators and related information
- * @throws plan::impl::compile_exception if the processor construction fails
+ * @throws plan::plan_exception if the processor construction fails
  */
 [[nodiscard]] operator_container create_operators(
     std::shared_ptr<processor_info> info,

@@ -30,6 +30,7 @@
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/compiler_context.h>
+#include <jogasaki/plan/plan_exception.h>
 
 namespace jogasaki::executor::process::impl {
 
@@ -49,7 +50,7 @@ public:
      * @param relation_io_map mapping from relation to input/output indices
      * @param io_exchange_map map from input/output to exchange operator
      * @param request_context request_context to pass memory resource to build the structures needed by this processor
-     * @throws plan::impl::compile_exception if the processor construction fails
+     * @throws plan::plan_exception if the processor construction fails
      */
     processor(
         std::shared_ptr<processor_info> info,

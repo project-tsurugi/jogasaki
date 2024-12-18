@@ -42,6 +42,7 @@
 #include <jogasaki/executor/process/task.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/assert.h>
 
@@ -97,7 +98,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             *step_->io_exchange_map(),
             context_
         );
-    } catch (plan::impl::compile_exception const& e) {
+    } catch (plan::plan_exception const& e) {
         error::set_error_info(*context_, e.info());
         return {};
     }

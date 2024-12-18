@@ -52,7 +52,7 @@
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/utils/from_endpoint.h>
 
 #include "aggregate_group.h"
@@ -398,7 +398,7 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     if (status_result != status::ok &&
         status_result != status::err_integrity_constraint_violation) {
         auto msg = string_builder{} << to_string_view(status_result) << string_builder::to_string;
-        throw_exception(jogasaki::plan::impl::compile_exception{create_error_info(
+        throw_exception(jogasaki::plan::plan_exception{create_error_info(
             error_code::sql_execution_exception, msg, status::err_compiler_error)});
     }
     auto begin_end_point_kind = kvs::adjust_endpoint_kind(use_secondary, utils::from(node.lower().kind()));

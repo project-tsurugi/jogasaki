@@ -23,7 +23,7 @@
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
-#include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
@@ -165,7 +165,7 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
             return {};
         }
         // other unrecoverable errors - tx possibly aborted and scan cannot continue
-        throw_exception(jogasaki::plan::impl::compile_exception{req_ctx_->error_info()});
+        throw_exception(jogasaki::plan::plan_exception{req_ctx_->error_info()});
     }
     if(range.begin_endpoint() != kvs::end_point_kind::unbound && range.begin_key() > low) {
         low = range.begin_key();
@@ -176,7 +176,7 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
             return {};
         }
         // other unrecoverable errors - tx possibly aborted and scan cannot continue
-        throw_exception(jogasaki::plan::impl::compile_exception{req_ctx_->error_info()});
+        throw_exception(jogasaki::plan::plan_exception{req_ctx_->error_info()});
     }
     if(range.end_endpoint() != kvs::end_point_kind::unbound && range.end_key() < high) {
         high = range.end_key();

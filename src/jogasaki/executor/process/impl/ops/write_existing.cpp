@@ -47,8 +47,8 @@
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
-#include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/ops/write_existing_context.h>
+#include <jogasaki/executor/process/impl/ops/write_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/index/primary_target.h>
@@ -58,6 +58,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/plan/compiler.h>
+#include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
@@ -405,10 +406,10 @@ std::vector<details::update_field> create_update_fields(
             }
             if (column_dest_to_src.count(kc) != 0) {
                 if(k.column().features().contains(::yugawara::storage::column_feature::read_only)) {
-                    auto msg = string_builder{}
-                        << "write operation on read-only column name:" << k.column().simple_name()
+                    auto msg =
+                        string_builder{}<< "write operation on read-only column name:" << k.column().simple_name()
                         << string_builder::to_string;
-                    throw_exception(plan::impl::compile_exception{
+                    throw_exception(plan::plan_exception{
                         create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
                     });
                 }
@@ -438,7 +439,7 @@ std::vector<details::update_field> create_update_fields(
             if(c.features().contains(::yugawara::storage::column_feature::read_only)) {
                 auto msg = string_builder{} << "write operation on read-only column name:" << c.simple_name()
                                             << string_builder::to_string;
-                throw_exception(plan::impl::compile_exception{
+                throw_exception(plan::plan_exception{
                     create_error_info(error_code::restricted_operation_exception, msg, status::err_illegal_operation)
                 });
             }

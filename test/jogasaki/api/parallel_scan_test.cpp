@@ -97,6 +97,7 @@ TEST_F(parallel_scan_test, simple) {
     auto tx = utils::create_transaction(*db_, true, false);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM t", *tx, result);
+    std::sort(result.begin(), result.end());
     ASSERT_EQ(3, result.size());
     EXPECT_EQ((create_nullable_record<kind::int4>(100)), result[0]);
     EXPECT_EQ((create_nullable_record<kind::int4>(200)), result[1]);
@@ -119,7 +120,10 @@ TEST_F(parallel_scan_test, negative_values) {
     auto tx = utils::create_transaction(*db_, true, false);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM t", *tx, result);
+    std::sort(result.begin(), result.end());
     ASSERT_EQ(2, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int4>(-200)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4>(-100)), result[1]);
 }
 
 TEST_F(parallel_scan_test, various_types) {

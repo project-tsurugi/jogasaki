@@ -70,6 +70,7 @@ class key_distribution {
      * @param range the range on index
      * @return a sequence of pivots, must be <= max_count
      * @return empty list if the range is not splittable
+     * @throw plan::plan_exception if the computation fails with unrecoverable errors
      * @note the returned pivots may not be the actual keys on the index,
      * and ill-formed from the actual keys
      * @post individual pivots are within the range

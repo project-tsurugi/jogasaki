@@ -428,7 +428,7 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
         const jogasaki::dist::key_range range(
             begin.key(), begin.endpointkind(), end.key(), end.endpointkind());
         const auto pivot_count = scan_parallel_count - 1;
-        auto pivots            = distribution->compute_pivots(pivot_count, range);
+        auto pivots = distribution->compute_pivots(pivot_count, range); // possibly throws plan_exception
         scan_ranges.reserve(pivots.size() + 1);
         if (pivots.empty()) {
             scan_ranges.emplace_back(

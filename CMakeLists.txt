@@ -1,4 +1,4 @@
-# Copyright 2018-2023 Project Tsurugi.
+# Copyright 2018-2024 Project Tsurugi.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 find_package(Threads REQUIRED)
 find_package(Boost
-        COMPONENTS filesystem thread system container stacktrace_backtrace
+        COMPONENTS filesystem thread system container
         REQUIRED
         )
 find_package(TBB REQUIRED)

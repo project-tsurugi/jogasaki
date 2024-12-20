@@ -636,7 +636,7 @@ private:
     bool inplace_teardown_ = true;
     bool inplace_dag_schedule_ = true;
     bool enable_join_scan_ = true;
-    key_distribution_kind key_distribution_{key_distribution_kind::simple};
+    key_distribution_kind key_distribution_{key_distribution_kind::uniform};
 };
 
 }  // namespace jogasaki

@@ -632,7 +632,7 @@ private:
     bool rtx_parallel_scan_ = false;
     std::size_t thousandths_ratio_check_local_first_ = 100;
     bool direct_commit_callback_ = false;
-    std::size_t scan_default_parallel_ = 1;
+    std::size_t scan_default_parallel_ = 4;
     bool inplace_teardown_ = true;
     bool inplace_dag_schedule_ = true;
     bool enable_join_scan_ = true;

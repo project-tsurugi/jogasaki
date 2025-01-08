@@ -37,7 +37,7 @@ message Error {
  * Each response message
  */
 
-/* For response to ExecuteQuery, ExecutePreparedQuery, Commit, Rollback, 
+/* For response to ExecuteQuery, ExecutePreparedQuery, Commit, Rollback,
 DisposePreparedStatement, DisposeTransaction and ExecuteDump. */
 message ResultOnly {
   oneof result {
@@ -284,6 +284,7 @@ message Response {
     GetErrorInfo get_error_info = 10;
     DisposeTransaction dispose_transaction = 11;
     ExecuteResult execute_result = 12;
+    ExtractStatementInfo extract_statement_info = 13;
   }
 }
 
@@ -292,4 +293,36 @@ message ResultSetMetadata {
 
   // the column information.
   repeated common.Column columns = 1;
+}
+
+// Response of ExtractStatementInfo.
+message ExtractStatementInfo {
+
+    // request is successfully completed.
+    message Success {
+
+        // the transaction ID for the statement.
+        oneof transaction_id_opt {
+            // the corresponding transaction ID.
+            common.TransactionId transaction_id = 1;
+        }
+
+        // the executing SQL text of the statement.
+        oneof sql_opt {
+            // SQL statement string.
+            string sql = 2;
+        }
+    }
+
+    reserved 1 to 10;
+
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Success success = 11;
+
+        // error was occurred.
+        Error error = 12;
+    }
+
 }

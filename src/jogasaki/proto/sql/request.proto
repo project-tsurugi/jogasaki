@@ -435,6 +435,16 @@ message DisposeTransaction {
   common.Transaction transaction_handle = 1;
 }
 
+// Requests to extract executing statement info in payload data.
+message ExtractStatementInfo {
+
+    // session ID
+    uint64 session_id = 1;
+
+    // payload data as plain byte array.
+    bytes payload = 2;
+}
+
 /* For request message to the SQL service. */
 message Request {
   common.Session session_handle = 1;
@@ -459,9 +469,10 @@ message Request {
     GetErrorInfo get_error_info = 19;
     DisposeTransaction dispose_transaction = 20;
     ExplainByText explain_by_text = 21;
+    ExtractStatementInfo extract_statement_info = 22;
   }
 
-  reserved 22 to 99;
+  reserved 23 to 99;
 
   // service message version (major)
   uint64 service_message_version_major = 100;

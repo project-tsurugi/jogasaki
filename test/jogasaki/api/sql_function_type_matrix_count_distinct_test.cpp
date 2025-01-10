@@ -41,79 +41,79 @@ using namespace std::string_view_literals;
 
 TEST_F(sql_function_type_matrix_test, count_distinct_boolean) {
     db_impl()->configuration()->support_boolean(true);
-    test_function_with_type<kind::int8>("count(distinct ", "BOOLEAN", "(true),(false),(true)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "BOOLEAN", "(true),(false),(true),(null)", 2);
 }
 
 // smallint, tinyint are not supported. Kept just for reference.
 
 TEST_F(sql_function_type_matrix_test, DISABLED_count_distinct_tinyint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int8>("count(distinct ", "TINYINT", "(1),(2),(1)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "TINYINT", "(1),(2),(1),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, DISABLED_count_distinct_smallint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int8>("count(distinct ", "SMALLINT", "(1),(2),(1)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "SMALLINT", "(1),(2),(1),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_int) {
-    test_function_with_type<kind::int8>("count(distinct ", "INT", "(1),(2),(1)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "INT", "(1),(2),(1),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_bigint) {
-    test_function_with_type<kind::int8>("count(distinct ", "BIGINT", "(1),(2),(1)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "BIGINT", "(1),(2),(1),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_real) {
-    test_function_with_type<kind::int8>("count(distinct ", "real", "(1.0e0),(2.0e0),(1.0e0)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "real", "(1.0e0),(2.0e0),(1.0e0),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_double) {
-    test_function_with_type<kind::int8>("count(distinct ", "double", "(1.0e0),(2.0e0),(1.0e0)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "double", "(1.0e0),(2.0e0),(1.0e0),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_decimal) {
-    test_function_with_type<kind::int8>("count(distinct ", "decimal", "(1.0),(2.0),(1.0)", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "decimal", "(1.0),(2.0),(1.0),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_varchar) {
-    test_function_with_type<kind::int8>("count(distinct ", "VARCHAR", "('AAA'),('BBB'),('AAA')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "VARCHAR", "('AAA'),('BBB'),('AAA'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_char) {
-    test_function_with_type<kind::int8>("count(distinct ", "CHAR(3)", "('AAA'),('BBB'),('AAA')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "CHAR(3)", "('AAA'),('BBB'),('AAA'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_char_20) {
-    test_function_with_type<kind::int8>("count(distinct ", "CHAR(20)", "('AAA'),('BBB'),('AAA')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "CHAR(20)", "('AAA'),('BBB'),('AAA'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_varbinary) {
-    test_function_with_type<kind::int8>("count(distinct ", "VARBINARY(3)", "('010101'),('020202'),('010101')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "VARBINARY(3)", "('010101'),('020202'),('010101'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_binary) {
-    test_function_with_type<kind::int8>("count(distinct ", "BINARY(3)", "('010101'),('020202'),('010101')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "BINARY(3)", "('010101'),('020202'),('010101'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_binary_20) {
-    test_function_with_type<kind::int8>("count(distinct ", "BINARY(20)", "('010101'),('020202'),('010101')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "BINARY(20)", "('010101'),('020202'),('010101'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_date) {
-    test_function_with_type<kind::int8>("count(distinct ", "DATE", "(DATE'2000-01-01'),(DATE'2000-01-02'),(DATE'2000-01-01')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "DATE", "(DATE'2000-01-01'),(DATE'2000-01-02'),(DATE'2000-01-01'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_time) {
-    test_function_with_type<kind::int8>("count(distinct ", "TIME", "(TIME'00:00:01'),(TIME'00:00:02'),(TIME'00:00:01')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "TIME", "(TIME'00:00:01'),(TIME'00:00:02'),(TIME'00:00:01'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_timestamp) {
-    test_function_with_type<kind::int8>("count(distinct ", "TIMESTAMP", "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:01')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "TIMESTAMP", "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:01'),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, count_distinct_timestamptz) {
-    test_function_with_type<kind::int8>("count(distinct ", "TIMESTAMP WITH TIME ZONE", "(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00')", 2);
+    test_function_with_type<kind::int8>("count(distinct ", "TIMESTAMP WITH TIME ZONE", "(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00'),(null)", 2);
 }
 
 }  // namespace jogasaki::testing

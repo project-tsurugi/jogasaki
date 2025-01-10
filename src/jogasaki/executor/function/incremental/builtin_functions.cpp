@@ -664,7 +664,12 @@ void sum(
     auto src_nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
-    if (initial) {
+    auto src_is_null = source.is_null(src_nullity_offset);
+    auto tgt_is_null = target.is_null(target_nullity_offset);
+    if (initial || tgt_is_null) {
+        // target value is empty, do not use
+        target.set_null(target_nullity_offset, src_is_null);
+        if (src_is_null) return;
         utils::copy_nullable_field(
             arg_type,
             target,
@@ -676,9 +681,7 @@ void sum(
         );
         return;
     }
-    auto is_null = source.is_null(src_nullity_offset);
-    target.set_null(target_nullity_offset, is_null);
-    if (is_null) return;
+    if (src_is_null) return;
     switch(arg_type.kind()) {
         case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, plus(target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, plus(target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
@@ -701,7 +704,7 @@ void count_pre(
     BOOST_ASSERT(target_loc.type().kind() == kind::int8);  //NOLINT
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
-    target.set_null(target_nullity_offset, false);
+    target.set_null(target_nullity_offset, false); // `count` never returns null
     std::int64_t cnt = source.is_null(args[0].nullity_offset()) ? 0 : 1;
     if (initial) {
         target.set_value<runtime_t<kind::int8>>(target_offset, cnt);
@@ -728,6 +731,7 @@ void count_mid(
     auto target_nullity_offset = target_loc.nullity_offset();
     target.set_null(target_nullity_offset, false);
     if (initial) {
+        // non-null value must have been assigned by count_pre
         target.set_value<runtime_t<kind::int8>>(target_offset, source.get_value<runtime_t<kind::int8>>(arg_offset));
         return;
     }
@@ -748,7 +752,7 @@ void count_rows_pre(
     (void)source;
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
-    target.set_null(target_nullity_offset, false);
+    target.set_null(target_nullity_offset, false); // `count(*)` never returns null
     if (initial) {
         target.set_value<runtime_t<kind::int8>>(target_offset, 1);
         return;
@@ -826,7 +830,12 @@ void max(
     auto src_nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
-    if (initial) {
+    auto src_is_null = source.is_null(src_nullity_offset);
+    auto tgt_is_null = target.is_null(target_nullity_offset);
+    if (initial || tgt_is_null) {
+        // target value is empty, do not use
+        target.set_null(target_nullity_offset, src_is_null);
+        if (src_is_null) return;
         utils::copy_nullable_field(
             arg_type,
             target,
@@ -839,9 +848,7 @@ void max(
         );
         return;
     }
-    auto is_null = source.is_null(src_nullity_offset);
-    target.set_null(target_nullity_offset, is_null);
-    if (is_null) return;
+    if (src_is_null) return;
     switch(arg_type.kind()) {
         case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max_or_min(true, target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;
@@ -875,7 +882,12 @@ void min(
     auto src_nullity_offset = args[0].nullity_offset();
     auto target_offset = target_loc.value_offset();
     auto target_nullity_offset = target_loc.nullity_offset();
-    if (initial) {
+    auto src_is_null = source.is_null(src_nullity_offset);
+    auto tgt_is_null = target.is_null(target_nullity_offset);
+    if (initial || tgt_is_null) {
+        // target value is empty, do not use
+        target.set_null(target_nullity_offset, src_is_null);
+        if (src_is_null) return;
         utils::copy_nullable_field(
             arg_type,
             target,
@@ -888,9 +900,7 @@ void min(
         );
         return;
     }
-    auto is_null = source.is_null(src_nullity_offset);
-    target.set_null(target_nullity_offset, is_null);
-    if (is_null) return;
+    if (src_is_null) return;
     switch(arg_type.kind()) {
         case kind::int4: target.set_value<runtime_t<kind::int4>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::int4>>(target_offset), source.get_value<runtime_t<kind::int4>>(arg_offset))); break;
         case kind::int8: target.set_value<runtime_t<kind::int8>>(target_offset, max_or_min(false, target.get_value<runtime_t<kind::int8>>(target_offset), source.get_value<runtime_t<kind::int8>>(arg_offset))); break;

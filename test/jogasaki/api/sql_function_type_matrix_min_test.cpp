@@ -39,71 +39,71 @@ using namespace std::string_view_literals;
 
 TEST_F(sql_function_type_matrix_test, DISABLED_min_tinyint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int4>("min(", "TINYINT", "(1),(2),(3)", 1);
+    test_function_with_type<kind::int4>("min(", "TINYINT", "(1),(2),(3),(null)", 1);
 }
 
 TEST_F(sql_function_type_matrix_test, DISABLED_min_smallint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int4>("min(", "SMALLINT", "(1),(2),(3)", 1);
+    test_function_with_type<kind::int4>("min(", "SMALLINT", "(1),(2),(3),(null)", 1);
 }
 
 TEST_F(sql_function_type_matrix_test, min_int) {
-    test_function_with_type<kind::int4>("min(", "INT", "(1),(2),(3)", 1);
+    test_function_with_type<kind::int4>("min(", "INT", "(1),(2),(3),(null)", 1);
 }
 
 TEST_F(sql_function_type_matrix_test, min_bigint) {
-    test_function_with_type<kind::int8>("min(", "BIGINT", "(1),(2),(3)", 1);
+    test_function_with_type<kind::int8>("min(", "BIGINT", "(1),(2),(3),(null)", 1);
 }
 
 TEST_F(sql_function_type_matrix_test, min_real) {
-    test_function_with_type<kind::float4>("min(", "real", "(1.0e0),(2.0e0),(3.0e0)", 1.0);
+    test_function_with_type<kind::float4>("min(", "real", "(1.0e0),(2.0e0),(3.0e0),(null)", 1.0);
 }
 
 TEST_F(sql_function_type_matrix_test, min_double) {
-    test_function_with_type<kind::float8>("min(", "double", "(1.0e0),(2.0e0),(3.0e0)", 1);
+    test_function_with_type<kind::float8>("min(", "double", "(1.0e0),(2.0e0),(3.0e0),(null)", 1);
 }
 
 TEST_F(sql_function_type_matrix_test, min_decimal) {
-    test_function_with_type<kind::decimal>("min(", "decimal", "(1.0),(2.0),(3.0)", 1, meta::decimal_type());
+    test_function_with_type<kind::decimal>("min(", "decimal", "(1.0),(2.0),(3.0),(null)", 1, meta::decimal_type());
 }
 
 TEST_F(sql_function_type_matrix_test, min_varchar) {
-    test_function_with_type<kind::character>("min(", "VARCHAR", "('AAA'),('BBB'),('CCC')", accessor::text{"AAA"});
+    test_function_with_type<kind::character>("min(", "VARCHAR", "('AAA'),('BBB'),('CCC'),(null)", accessor::text{"AAA"});
 }
 
 TEST_F(sql_function_type_matrix_test, min_char) {
-    test_function_with_type<kind::character>("min(", "CHAR(3)", "('AAA'),('BBB'),('CCC')", accessor::text{"AAA"});
+    test_function_with_type<kind::character>("min(", "CHAR(3)", "('AAA'),('BBB'),('CCC'),(null)", accessor::text{"AAA"});
 }
 
 TEST_F(sql_function_type_matrix_test, min_char_20) {
-    test_function_with_type<kind::character>("min(", "CHAR(20)", "('AAA'),('BBB'),('CCC')", accessor::text{"AAA                 "});
+    test_function_with_type<kind::character>("min(", "CHAR(20)", "('AAA'),('BBB'),('CCC'),(null)", accessor::text{"AAA                 "});
 }
 
 TEST_F(sql_function_type_matrix_test, min_varbinary) {
-    test_function_with_type<kind::octet>("min(", "VARBINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x01\x01\x01"});
+    test_function_with_type<kind::octet>("min(", "VARBINARY(3)", "('010101'),('020202'),('030303'),(null)", accessor::binary{"\x01\x01\x01"});
 }
 
 TEST_F(sql_function_type_matrix_test, min_binary) {
-    test_function_with_type<kind::octet>("min(", "BINARY(3)", "('010101'),('020202'),('030303')", accessor::binary{"\x01\x01\x01"});
+    test_function_with_type<kind::octet>("min(", "BINARY(3)", "('010101'),('020202'),('030303'),(null)", accessor::binary{"\x01\x01\x01"});
 }
 
 TEST_F(sql_function_type_matrix_test, min_binary_20) {
-    test_function_with_type<kind::octet>("min(", "BINARY(20)", "('010101'),('020202'),('030303')", accessor::binary{"\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"});
+    test_function_with_type<kind::octet>("min(", "BINARY(20)", "('010101'),('020202'),('030303'),(null)", accessor::binary{"\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"});
 }
 
 TEST_F(sql_function_type_matrix_test, min_date) {
-    test_function_with_type<kind::date>("min(", "DATE", "(DATE'2000-01-01'),(DATE'2000-01-02'),(DATE'2000-01-03')", date{2000, 1, 1});
+    test_function_with_type<kind::date>("min(", "DATE", "(DATE'2000-01-01'),(DATE'2000-01-02'),(DATE'2000-01-03'),(null)", date{2000, 1, 1});
 }
 
 TEST_F(sql_function_type_matrix_test, min_time) {
-    test_function_with_type<kind::time_of_day>("min(", "TIME", "(TIME'00:00:01'),(TIME'00:00:02'),(TIME'00:00:03')", time_of_day{0, 0, 1});
+    test_function_with_type<kind::time_of_day>("min(", "TIME", "(TIME'00:00:01'),(TIME'00:00:02'),(TIME'00:00:03'),(null)", time_of_day{0, 0, 1});
 }
 
 TEST_F(sql_function_type_matrix_test, min_timestamp) {
     test_function_with_type<kind::time_point>(
         "min(",
         "TIMESTAMP",
-        "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:03')",
+        "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:03'),(null)",
         time_point{date{2000, 1, 1}, time_of_day{0, 0, 1}}
     );
 }
@@ -113,7 +113,7 @@ TEST_F(sql_function_type_matrix_test, min_timestamptz) {
         "min(",
         "TIMESTAMP WITH TIME ZONE",
         "(TIMESTAMP WITH TIME ZONE'2000-01-01 09:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 "
-        "09:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 09:00:03+09:00')",
+        "09:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 09:00:03+09:00'),(null)",
         time_point{date{2000, 1, 1}, time_of_day{0, 0, 1}},
         meta::time_point_type(true)
     );

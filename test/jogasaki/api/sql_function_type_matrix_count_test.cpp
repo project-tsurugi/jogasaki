@@ -37,79 +37,79 @@ using namespace std::string_view_literals;
 
 TEST_F(sql_function_type_matrix_test, count_boolean) {
     db_impl()->configuration()->support_boolean(true);
-    test_function_with_type<kind::int8>("count(", "BOOLEAN", "(true),(false),(true)", 3);
+    test_function_with_type<kind::int8>("count(", "BOOLEAN", "(true),(false),(true),(null)", 3);
 }
 
 // smallint, tinyint are not supported. Kept just for reference.
 
 TEST_F(sql_function_type_matrix_test, DISABLED_count_tinyint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int8>("count(", "TINYINT", "(1),(2),(3)", 3);
+    test_function_with_type<kind::int8>("count(", "TINYINT", "(1),(2),(3),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, DISABLED_count_smallint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int8>("count(", "SMALLINT", "(1),(2),(3)", 3);
+    test_function_with_type<kind::int8>("count(", "SMALLINT", "(1),(2),(3),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_int) {
-    test_function_with_type<kind::int8>("count(", "INT", "(1),(2),(3)", 3);
+    test_function_with_type<kind::int8>("count(", "INT", "(1),(2),(3),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_bigint) {
-    test_function_with_type<kind::int8>("count(", "BIGINT", "(1),(2),(3)", 3);
+    test_function_with_type<kind::int8>("count(", "BIGINT", "(1),(2),(3),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_real) {
-    test_function_with_type<kind::int8>("count(", "real", "(1.0e0),(2.0e0),(3.0e0)", 3);
+    test_function_with_type<kind::int8>("count(", "real", "(1.0e0),(2.0e0),(3.0e0),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_double) {
-    test_function_with_type<kind::int8>("count(", "double", "(1.0e0),(2.0e0),(3.0e0)", 3);
+    test_function_with_type<kind::int8>("count(", "double", "(1.0e0),(2.0e0),(3.0e0),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_decimal) {
-    test_function_with_type<kind::int8>("count(", "decimal", "(1.0),(2.0),(3.0)", 3);
+    test_function_with_type<kind::int8>("count(", "decimal", "(1.0),(2.0),(3.0),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_varchar) {
-    test_function_with_type<kind::int8>("count(", "VARCHAR", "('AAA'),('BBB'),('CCC')", 3);
+    test_function_with_type<kind::int8>("count(", "VARCHAR", "('AAA'),('BBB'),('CCC'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_char) {
-    test_function_with_type<kind::int8>("count(", "CHAR(3)", "('AAA'),('BBB'),('CCC')", 3);
+    test_function_with_type<kind::int8>("count(", "CHAR(3)", "('AAA'),('BBB'),('CCC'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_char_20) {
-    test_function_with_type<kind::int8>("count(", "CHAR(20)", "('AAA'),('BBB'),('CCC')", 3);
+    test_function_with_type<kind::int8>("count(", "CHAR(20)", "('AAA'),('BBB'),('CCC'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_varbinary) {
-    test_function_with_type<kind::int8>("count(", "VARBINARY(3)", "('010101'),('020202'),('030303')", 3);
+    test_function_with_type<kind::int8>("count(", "VARBINARY(3)", "('010101'),('020202'),('030303'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_binary) {
-    test_function_with_type<kind::int8>("count(", "BINARY(3)", "('010101'),('020202'),('030303')", 3);
+    test_function_with_type<kind::int8>("count(", "BINARY(3)", "('010101'),('020202'),('030303'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_binary_20) {
-    test_function_with_type<kind::int8>("count(", "BINARY(20)", "('010101'),('020202'),('030303')", 3);
+    test_function_with_type<kind::int8>("count(", "BINARY(20)", "('010101'),('020202'),('030303'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_date) {
-    test_function_with_type<kind::int8>("count(", "DATE", "(DATE'2000-01-01'),(DATE'2000-01-02'),(DATE'2000-01-03')", 3);
+    test_function_with_type<kind::int8>("count(", "DATE", "(DATE'2000-01-01'),(DATE'2000-01-02'),(DATE'2000-01-03'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_time) {
-    test_function_with_type<kind::int8>("count(", "TIME", "(TIME'00:00:01'),(TIME'00:00:02'),(TIME'00:00:03')", 3);
+    test_function_with_type<kind::int8>("count(", "TIME", "(TIME'00:00:01'),(TIME'00:00:02'),(TIME'00:00:03'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_timestamp) {
-    test_function_with_type<kind::int8>("count(", "TIMESTAMP", "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:03')", 3);
+    test_function_with_type<kind::int8>("count(", "TIMESTAMP", "(TIMESTAMP'2000-01-01 00:00:01'),(TIMESTAMP'2000-01-01 00:00:02'),(TIMESTAMP'2000-01-01 00:00:03'),(null)", 3);
 }
 
 TEST_F(sql_function_type_matrix_test, count_timestamptz) {
-    test_function_with_type<kind::int8>("count(", "TIMESTAMP WITH TIME ZONE", "(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:03+09:00')", 3);
+    test_function_with_type<kind::int8>("count(", "TIMESTAMP WITH TIME ZONE", "(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:03+09:00'),(null)", 3);
 }
 
 }  // namespace jogasaki::testing

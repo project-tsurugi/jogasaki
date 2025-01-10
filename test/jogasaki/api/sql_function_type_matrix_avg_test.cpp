@@ -39,32 +39,32 @@ using namespace std::string_view_literals;
 
 TEST_F(sql_function_type_matrix_test, DISABLED_avg_tinyint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int4>("avg(", "TINYINT", "(1),(2),(3)", 2);
+    test_function_with_type<kind::int4>("avg(", "TINYINT", "(1),(2),(3),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, DISABLED_avg_smallint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int4>("avg(", "SMALLINT", "(1),(2),(3)", 2);
+    test_function_with_type<kind::int4>("avg(", "SMALLINT", "(1),(2),(3),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, avg_int) {
-    test_function_with_type<kind::int4>("avg(", "INT", "(1),(2),(3)", 2);
+    test_function_with_type<kind::int4>("avg(", "INT", "(1),(2),(3),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, avg_bigint) {
-    test_function_with_type<kind::int8>("avg(", "BIGINT", "(1),(2),(3)", 2);
+    test_function_with_type<kind::int8>("avg(", "BIGINT", "(1),(2),(3),(null)", 2);
 }
 
 TEST_F(sql_function_type_matrix_test, avg_real) {
-    test_function_with_type<kind::float4>("avg(", "real", "(1.0e0),(2.0e0),(3.0e0)", 2.0);
+    test_function_with_type<kind::float4>("avg(", "real", "(1.0e0),(2.0e0),(3.0e0),(null)", 2.0);
 }
 
 TEST_F(sql_function_type_matrix_test, avg_double) {
-    test_function_with_type<kind::float8>("avg(", "double", "(1.0e0),(2.0e0),(3.0e0)", 2.0);
+    test_function_with_type<kind::float8>("avg(", "double", "(1.0e0),(2.0e0),(3.0e0),(null)", 2.0);
 }
 
 TEST_F(sql_function_type_matrix_test, avg_decimal) {
-    test_function_with_type<kind::decimal>("avg(", "decimal", "(1.0),(2.0),(3.0)", 2, meta::decimal_type());
+    test_function_with_type<kind::decimal>("avg(", "decimal", "(1.0),(2.0),(3.0),(null)", 2, meta::decimal_type());
 }
 
 }  // namespace jogasaki::testing

@@ -39,32 +39,32 @@ using namespace std::string_view_literals;
 
 TEST_F(sql_function_type_matrix_test, DISABLED_sum_tinyint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int4>("sum(", "TINYINT", "(1),(2),(3)", 6);
+    test_function_with_type<kind::int4>("sum(", "TINYINT", "(1),(2),(3),(null)", 6);
 }
 
 TEST_F(sql_function_type_matrix_test, DISABLED_sum_smallint) {
     db_impl()->configuration()->support_smallint(true);
-    test_function_with_type<kind::int4>("sum(", "SMALLINT", "(1),(2),(3)", 6);
+    test_function_with_type<kind::int4>("sum(", "SMALLINT", "(1),(2),(3),(null)", 6);
 }
 
 TEST_F(sql_function_type_matrix_test, sum_int) {
-    test_function_with_type<kind::int4>("sum(", "INT", "(1),(2),(3)", 6);
+    test_function_with_type<kind::int4>("sum(", "INT", "(1),(2),(3),(null)", 6);
 }
 
 TEST_F(sql_function_type_matrix_test, sum_bigint) {
-    test_function_with_type<kind::int8>("sum(", "BIGINT", "(1),(2),(3)", 6);
+    test_function_with_type<kind::int8>("sum(", "BIGINT", "(1),(2),(3),(null)", 6);
 }
 
 TEST_F(sql_function_type_matrix_test, sum_real) {
-    test_function_with_type<kind::float4>("sum(", "real", "(1.0e0),(2.0e0),(3.0e0)", 6.0);
+    test_function_with_type<kind::float4>("sum(", "real", "(1.0e0),(2.0e0),(3.0e0),(null)", 6.0);
 }
 
 TEST_F(sql_function_type_matrix_test, sum_double) {
-    test_function_with_type<kind::float8>("sum(", "double", "(1.0e0),(2.0e0),(3.0e0)", 6);
+    test_function_with_type<kind::float8>("sum(", "double", "(1.0e0),(2.0e0),(3.0e0),(null)", 6);
 }
 
 TEST_F(sql_function_type_matrix_test, sum_decimal) {
-    test_function_with_type<kind::decimal>("sum(", "decimal", "(1.0),(2.0),(3.0)", 6, meta::decimal_type());
+    test_function_with_type<kind::decimal>("sum(", "decimal", "(1.0),(2.0),(3.0),(null)", 6, meta::decimal_type());
 }
 
 }  // namespace jogasaki::testing

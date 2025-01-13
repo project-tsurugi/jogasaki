@@ -52,20 +52,31 @@ public:
     /**
      * @brief create new object from pointer
      * @param arg pointer to the target prepared statement
+     * @param db pointer to the statement object container
      */
-    explicit statement_handle(void* arg) noexcept;
+    explicit statement_handle(void* arg, void* db) noexcept;
 
     /**
      * @brief create new object from integer
      * @param arg integer representing target pointer
+     * @param db integer representing database object pointer
      */
-    explicit statement_handle(std::uintptr_t arg) noexcept;
+    explicit statement_handle(
+        std::uintptr_t arg,
+        std::uintptr_t db
+    ) noexcept;
 
     /**
      * @brief accessor to the referenced prepared statement
      * @return the target prepared statement pointer
      */
     [[nodiscard]] std::uintptr_t get() const noexcept;
+
+    /**
+     * @brief accessor to the db handle
+     * @return the db handle value
+     */
+    [[nodiscard]] std::uintptr_t db() const noexcept;
 
     /**
      * @brief conversion operator to std::size_t
@@ -94,6 +105,7 @@ public:
 
 private:
     std::uintptr_t body_{};
+    std::uintptr_t db_{};
 
 };
 
@@ -123,7 +135,8 @@ inline std::ostream& operator<<(std::ostream& out, statement_handle value) {
     return out << "statement_handle[" << value.get() << "]";
 }
 
-}
+}  // namespace jogasaki::api
+
 /**
  * @brief std::hash specialization
  */

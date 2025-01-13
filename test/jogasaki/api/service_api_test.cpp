@@ -2501,4 +2501,44 @@ TEST_F(service_api_test, error_with_unsupported_query) {
     test_dispose_transaction(tx_handle);
 }
 
+TEST_F(service_api_test, extract_sql_info) {
+    std::uint64_t tx_handle{};
+    auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
+    auto query = encode_execute_query(tx_handle, text);
+
+    auto s = encode_extract_statement_info(query);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, error] = decode_extract_statement_info(res->body_);
+    ASSERT_FALSE(result.empty());
+    EXPECT_EQ(text, result);
+}
+
+TEST_F(service_api_test, extract_sql_info_missing_statement) {
+    std::uint64_t tx_handle{};
+    auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
+
+    std::uint64_t stmt_handle{};
+    auto query = encode_execute_prepared_statement(tx_handle, stmt_handle, {});
+
+    auto s = encode_extract_statement_info(query);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, error] = decode_extract_statement_info(res->body_);
+    ASSERT_TRUE(result.empty());
+    EXPECT_EQ(error_code::statement_not_found_exception, error.code_);
+}
+
 }  // namespace jogasaki::api

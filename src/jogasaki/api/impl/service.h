@@ -125,6 +125,8 @@ T* mutable_object(sql::response::Response& r) {
         return r.mutable_get_error_info();
     } else if constexpr (std::is_same_v<T, sql::response::ExecuteResult>) {  //NOLINT
         return r.mutable_execute_result();
+    } else if constexpr (std::is_same_v<T, sql::response::ExtractStatementInfo>) {  //NOLINT
+        return r.mutable_extract_statement_info();
     } else {
         static_fail();
     }
@@ -394,6 +396,19 @@ inline void success<sql::response::ExecuteResult>(
     reply(res, r, req_info);
 }
 
+template<>
+inline void success<sql::response::ExtractStatementInfo>(
+    tateyama::api::server::response& res,
+    std::shared_ptr<std::string> sql_text,  //NOLINT(performance-unnecessary-value-param)
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
+    sql::response::Response r{};
+    auto* dt = r.mutable_extract_statement_info();
+    auto* success = dt->mutable_success();
+    success->set_sql(*sql_text);
+    reply(res, r, req_info);
+}
+
 inline void send_body_head(
     tateyama::api::server::response& res,
     channel_info const& info,
@@ -545,6 +560,11 @@ private:
         std::shared_ptr<tateyama::api::server::response> const& res,
         request_info const& req_info
     );
+    void command_extract_statement_info(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        request_info const& req_info
+    );
 
     void execute_statement(
         std::shared_ptr<tateyama::api::server::response> const& res,
@@ -580,5 +600,13 @@ private:
     );
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };
+
+// public for testing purpose
+bool extract_sql(
+    sql::request::Request const& req,
+    api::database* db,
+    std::shared_ptr<std::string>& sql_text,
+    std::shared_ptr<error::error_info>& err_info
+);
 
 }  // namespace jogasaki::api::impl

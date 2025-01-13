@@ -53,6 +53,7 @@
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/impl/record_meta.h>
 #include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/statement_handle_internal.h>
 #include <jogasaki/api/time_of_day_field_option.h>
 #include <jogasaki/api/time_point_field_option.h>
 #include <jogasaki/api/transaction_handle.h>
@@ -436,6 +437,7 @@ void service::command_execute_query(
 template<class Response, class Request>
 jogasaki::api::statement_handle validate_statement_handle(
     Request msg,
+    api::database* db,
     tateyama::api::server::response& res,
     request_info const& req_info
 ) {
@@ -449,7 +451,7 @@ jogasaki::api::statement_handle validate_statement_handle(
         details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
-    jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle()};
+    jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     if (! handle) {
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -473,7 +475,7 @@ void service::command_execute_prepared_statement(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<sql::response::ExecuteResult>(pq, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ExecuteResult>(pq, db_, *res, req_info);
     if(! handle) {
         abort_tx(tx, req_info);
         return;
@@ -503,7 +505,7 @@ void service::command_execute_prepared_query(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, db_, *res, req_info);
     if(! handle) {
         abort_tx(tx, req_info);
         return;
@@ -619,7 +621,7 @@ void service::command_dispose_prepared_statement(
 ) {
     auto& ds = proto_req.dispose_prepared_statement();
 
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(ds, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(ds, db_, *res, req_info);
     if(! handle) {
         return;
     }
@@ -641,7 +643,7 @@ void service::command_explain(
     request_info const& req_info
 ) {
     auto& ex = proto_req.explain();
-    auto handle = validate_statement_handle<sql::response::Explain>(ex, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::Explain>(ex, db_, *res, req_info);
     if(! handle) {
         return;
     }
@@ -728,6 +730,119 @@ void service::command_explain_by_text(
     log_request(*req);
 }
 
+template<class Request>
+std::shared_ptr<impl::prepared_statement> extract_statement(
+    Request msg,
+    api::database* db,
+    std::shared_ptr<error::error_info>& out
+) {
+    if(! msg.has_prepared_statement_handle()) {
+        out = create_error_info(
+            error_code::statement_not_found_exception,
+            "Invalid request format - missing prepared_statement_handle",
+            status::err_invalid_argument
+        );
+        return {};
+    }
+    jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto stmt = get_statement(handle);
+    if (stmt == nullptr) {
+        auto m = string_builder{} << "prepared statement not found for handle:" << handle.get() << string_builder::to_string;
+        out = create_error_info(
+            error_code::statement_not_found_exception,
+            m,
+            status::err_invalid_argument
+        );
+        return {};
+    }
+    return stmt;
+}
+
+bool extract_sql(
+    sql::request::Request const& req,
+    api::database* db,
+    std::shared_ptr<std::string>& sql_text,
+    std::shared_ptr<error::error_info>& err_info
+) {
+    switch (req.request_case()) {
+        case sql::request::Request::RequestCase::kExecuteStatement: {
+            auto& msg = req.execute_statement();
+            sql_text = std::make_shared<std::string>(msg.sql());
+            break;
+        }
+        case sql::request::Request::RequestCase::kExecuteQuery: {
+            auto& msg = req.execute_query();
+            sql_text = std::make_shared<std::string>(msg.sql());
+            break;
+        }
+        case sql::request::Request::RequestCase::kExecutePreparedStatement: {
+            auto& msg = req.execute_prepared_statement();
+            auto stmt = extract_statement(msg, db, err_info);
+            if(! stmt) {
+                return false;
+            }
+            sql_text = stmt->body()->sql_text_shared();
+            break;
+        }
+        case sql::request::Request::RequestCase::kExecutePreparedQuery: {
+            auto& msg = req.execute_prepared_query();
+            auto stmt = extract_statement(msg, db, err_info);
+            if(! stmt) {
+                return false;
+            }
+            sql_text = stmt->body()->sql_text_shared();
+            break;
+        }
+        default: {
+            auto msg = string_builder{} << "extracting sql from request payload " << req.request_case()
+                                        << " is unsupported" << string_builder::to_string;
+            err_info = create_error_info(
+                error_code::request_failure_exception,
+                msg,
+                status::err_unsupported
+            );
+            return false;
+        }
+    }
+    return true;
+}
+
+void service::command_extract_statement_info(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    request_info const& req_info
+) {
+    auto& ex = proto_req.extract_statement_info();
+    auto const& payload = ex.payload();
+    if(payload.empty()) {
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "invalid request format - missing payload",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::ExtractStatementInfo>(*res, err_info.get(), req_info);
+        return;
+    }
+    sql::request::Request decoded_req{};
+    if (! decoded_req.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
+        auto msg = string_builder{} << "failed to parse payload:" << utils::binary_printer{payload} << string_builder::to_string;
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            msg,
+            status::err_invalid_argument
+        );
+        details::error<sql::response::ExtractStatementInfo>(*res, err_info.get(), req_info);
+        return;
+    }
+    std::shared_ptr<std::string> sql_text{};
+    std::shared_ptr<error::error_info> err{};
+    if(! extract_sql(decoded_req, db_, sql_text, err)) {
+        details::error<sql::response::ExtractStatementInfo>(*res, err.get(), req_info);
+        return;
+    }
+    details::success<sql::response::ExtractStatementInfo>(*res, sql_text, req_info);
+}
+
 //TODO put global constant file
 constexpr static std::size_t max_records_per_file = 10000;
 
@@ -755,7 +870,7 @@ void service::command_execute_dump(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, db_, *res, req_info);
     if(! handle) {
         return;
     }
@@ -813,7 +928,7 @@ void service::command_execute_load(
     } else {
         // non-transactional load
     }
-    auto handle = validate_statement_handle<sql::response::ExecuteResult>(ed, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ExecuteResult>(ed, db_, *res, req_info);
     if(! handle) {
         return;
     }
@@ -1046,6 +1161,11 @@ bool service::process(
             command_explain_by_text(proto_req, res, req_info);
             break;
         }
+        case sql::request::Request::RequestCase::kExtractStatementInfo: {
+            trace_scope_name("cmd-extract_statement_info");  //NOLINT
+            command_extract_statement_info(proto_req, res, req_info);
+            break;
+        }
         default:
             auto msg = string_builder{} << "request code is invalid (rid=" << reqid
                                         << ") code:" << proto_req.request_case()
@@ -1213,7 +1333,7 @@ void service::execute_query(
         }
         has_result_records = e->meta() != nullptr;
     } else {
-        jogasaki::api::statement_handle statement{q.sid()};
+        jogasaki::api::statement_handle statement{q.sid(), reinterpret_cast<std::uintptr_t>(db_)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
         if(auto rc = get_impl(*db_).resolve(statement, q.params(), e, err_info); rc != jogasaki::status::ok) {
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
@@ -1406,7 +1526,7 @@ void service::execute_dump(
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     BOOST_ASSERT(! q.has_sql());  //NOLINT
-    jogasaki::api::statement_handle statement{q.sid()};
+    jogasaki::api::statement_handle statement{q.sid(), reinterpret_cast<std::uintptr_t>(db_)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     std::shared_ptr<error::error_info> err_info{};
     if(auto rc = get_impl(*db_).resolve(statement, q.params(), e, err_info); rc != jogasaki::status::ok) {
         details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
@@ -1485,7 +1605,7 @@ void service::execute_load( //NOLINT
         VLOG(log_info) << log_location_prefix << "load processing file: " << f;
     }
     BOOST_ASSERT(! q.has_sql());  //NOLINT
-    jogasaki::api::statement_handle statement{q.sid()};
+    jogasaki::api::statement_handle statement{q.sid(), reinterpret_cast<std::uintptr_t>(db_)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 
     auto c = std::make_shared<callback_control>(res);
     auto* cbp = c.get();

@@ -412,7 +412,7 @@ status database::prepare_common(
     auto st = prepare_common(sql, std::move(provider), ptr, out, option);
     if (st == status::ok) {
         decltype(prepared_statements_)::accessor acc{};
-        api::statement_handle handle{ptr.get()};
+        api::statement_handle handle{ptr.get(), this};
         if (prepared_statements_.insert(acc, handle)) {
             acc->second = std::move(ptr);
             statement = handle;
@@ -1335,6 +1335,14 @@ bool database::execute_load(
 std::shared_ptr<transaction_context> database::find_transaction(api::transaction_handle handle) {
     decltype(transactions_)::accessor acc{};
     if (transactions_.find(acc, handle)) {
+        return acc->second;
+    }
+    return {};
+}
+
+std::shared_ptr<impl::prepared_statement> database::find_statement(api::statement_handle handle) {
+    decltype(prepared_statements_)::accessor acc{};
+    if (prepared_statements_.find(acc, handle)) {
         return acc->second;
     }
     return {};

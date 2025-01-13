@@ -244,6 +244,8 @@ public:
 
     [[nodiscard]] std::shared_ptr<transaction_context> find_transaction(api::transaction_handle handle);
 
+    [[nodiscard]] std::shared_ptr<impl::prepared_statement> find_statement(api::statement_handle handle);
+
     [[nodiscard]] bool stop_requested() const noexcept;
 
     [[nodiscard]] utils::use_counter const& requests_inprocess() const noexcept;
@@ -309,7 +311,7 @@ private:
     std::shared_ptr<kvs::database> kvs_db_{};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;
     std::unique_ptr<executor::sequence::manager> sequence_manager_{};
-    tbb::concurrent_hash_map<api::statement_handle, std::unique_ptr<impl::prepared_statement>> prepared_statements_{};
+    tbb::concurrent_hash_map<api::statement_handle, std::shared_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::shared_ptr<transaction_context>> transactions_{};
     bool initialized_{false};
     std::shared_ptr<durability_manager> durability_manager_{std::make_shared<durability_manager>()};

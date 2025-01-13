@@ -136,6 +136,14 @@ inline void deserialize(std::string_view s, sql::response::Response& res) {
 //    std::cout << " DebugString : " << res.DebugString() << std::endl;
 }
 
+inline void deserialize(std::string_view s, sql::request::Request& req) {
+    if (! req.ParseFromString(std::string(s))) {
+        std::abort();
+    }
+//    std::cout << " Binary data : " << utils::binary_printer{s.data(), s.size()} << std::endl;
+//    std::cout << " DebugString : " << res.DebugString() << std::endl;
+}
+
 inline std::string encode_prepare_vars(
     std::string sql,
     std::unordered_map<std::string, sql::common::AtomType> const& place_holders
@@ -566,8 +574,6 @@ inline std::string encode_explain_by_text(std::string_view sql) {
     return s;
 }
 
-
-
 inline std::tuple<std::string, std::string, std::size_t, std::vector<colinfo>, error> decode_explain(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
@@ -752,4 +758,32 @@ inline std::pair<bool, error> decode_get_error_info(std::string_view res) {
     auto& err = gei.success();
     return {true, { api::impl::map_error(err.code()), err.detail(), err.supplemental_text() }};
 }
+
+inline std::string encode_extract_statement_info(std::string_view payload) {
+    sql::request::Request r{};
+    auto* extract = r.mutable_extract_statement_info();
+    extract->mutable_payload()->assign(payload);
+
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_extract_statement_info();
+    return s;
 }
+
+inline std::pair<std::string, error> decode_extract_statement_info(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_extract_statement_info())  {
+        LOG(ERROR) << "**** missing extract_statement_info **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {{}, {}};
+    }
+    auto& extract = resp.extract_statement_info();
+    if (extract.has_error()) {
+        auto& er = extract.error();
+        return {{}, {api::impl::map_error(er.code()), er.detail()}};
+    }
+    return {extract.success().sql(), {}};
+}
+
+}  // namespace jogasaki::utils

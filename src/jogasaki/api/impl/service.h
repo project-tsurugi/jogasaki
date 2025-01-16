@@ -400,12 +400,14 @@ template<>
 inline void success<sql::response::ExtractStatementInfo>(
     tateyama::api::server::response& res,
     std::shared_ptr<std::string> sql_text,  //NOLINT(performance-unnecessary-value-param)
+    std::string_view tx_id, //NOLINT(performance-unnecessary-value-param)
     request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
     sql::response::Response r{};
     auto* dt = r.mutable_extract_statement_info();
     auto* success = dt->mutable_success();
     success->set_sql(*sql_text);
+    success->mutable_transaction_id()->set_id(std::string{tx_id});
     reply(res, r, req_info);
 }
 
@@ -602,10 +604,11 @@ private:
 };
 
 // public for testing purpose
-bool extract_sql(
+bool extract_sql_and_tx_id(
     sql::request::Request const& req,
     api::database* db,
     std::shared_ptr<std::string>& sql_text,
+    std::string& tx_id,
     std::shared_ptr<error::error_info>& err_info
 );
 

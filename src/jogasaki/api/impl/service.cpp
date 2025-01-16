@@ -358,6 +358,31 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     return tx;
 }
 
+template<class Request>
+std::string extract_transaction(
+    Request msg,
+    api::database* db,
+    std::shared_ptr<error::error_info>& err_info
+) {
+    if(! msg.has_transaction_handle()) {
+        err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "Invalid request format - missing transaction_handle",
+            status::err_invalid_argument
+        );
+        return {};
+    }
+    jogasaki::api::transaction_handle tx{msg.transaction_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT
+    auto t = get_transaction_context(tx);
+    if(! t) {
+        // failed to get transaction_context
+        // this is not an error because depending on the timing transaction may be disposed
+        // return empty string as transaction id
+        return {};
+    }
+    return std::string{t->transaction_id()};
+}
+
 void abort_tx(
     jogasaki::api::transaction_handle tx,
     request_info const& req_info,
@@ -758,21 +783,30 @@ std::shared_ptr<impl::prepared_statement> extract_statement(
     return stmt;
 }
 
-bool extract_sql(
+bool extract_sql_and_tx_id(
     sql::request::Request const& req,
     api::database* db,
     std::shared_ptr<std::string>& sql_text,
+    std::string& tx_id,
     std::shared_ptr<error::error_info>& err_info
 ) {
     switch (req.request_case()) {
         case sql::request::Request::RequestCase::kExecuteStatement: {
             auto& msg = req.execute_statement();
             sql_text = std::make_shared<std::string>(msg.sql());
+            tx_id = extract_transaction(msg, db, err_info);
+            if(err_info) {
+                return false;
+            }
             break;
         }
         case sql::request::Request::RequestCase::kExecuteQuery: {
             auto& msg = req.execute_query();
             sql_text = std::make_shared<std::string>(msg.sql());
+            tx_id = extract_transaction(msg, db, err_info);
+            if(err_info) {
+                return false;
+            }
             break;
         }
         case sql::request::Request::RequestCase::kExecutePreparedStatement: {
@@ -782,6 +816,10 @@ bool extract_sql(
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
+            tx_id = extract_transaction(msg, db, err_info);
+            if(err_info) {
+                return false;
+            }
             break;
         }
         case sql::request::Request::RequestCase::kExecutePreparedQuery: {
@@ -791,6 +829,10 @@ bool extract_sql(
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
+            tx_id = extract_transaction(msg, db, err_info);
+            if(err_info) {
+                return false;
+            }
             break;
         }
         default: {
@@ -836,11 +878,12 @@ void service::command_extract_statement_info(
     }
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err{};
-    if(! extract_sql(decoded_req, db_, sql_text, err)) {
+    std::string tx_id{};
+    if(! extract_sql_and_tx_id(decoded_req, db_, sql_text, tx_id, err)) {
         details::error<sql::response::ExtractStatementInfo>(*res, err.get(), req_info);
         return;
     }
-    details::success<sql::response::ExtractStatementInfo>(*res, sql_text, req_info);
+    details::success<sql::response::ExtractStatementInfo>(*res, sql_text, static_cast<std::string_view>(tx_id), req_info);
 }
 
 //TODO put global constant file

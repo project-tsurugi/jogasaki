@@ -631,6 +631,7 @@ TEST_F(service_api_utils_test, extract_sql) {
         auto text = "insert into T0 values (1,1)"s;
 
         std::uint64_t tx_handle{};
+        test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_statement(tx_handle, text);
 
@@ -639,15 +640,19 @@ TEST_F(service_api_utils_test, extract_sql) {
 
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
-        ASSERT_TRUE(impl::extract_sql(req, db_.get(), sql_text, err_info));
+        std::string tx_id{};
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
+        EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
+        test_commit(tx_handle);
     }
     {
         // non-prepared query
         auto text = "select * from T1"s;
 
         std::uint64_t tx_handle{};
+        test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_query(tx_handle, text);
 
@@ -656,9 +661,12 @@ TEST_F(service_api_utils_test, extract_sql) {
 
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
-        ASSERT_TRUE(impl::extract_sql(req, db_.get(), sql_text, err_info));
+        std::string tx_id{};
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
+        EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
+        test_commit(tx_handle);
     }
 }
 
@@ -670,6 +678,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         test_prepare(stmt_handle, text);
 
         std::uint64_t tx_handle{};
+        test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
@@ -678,10 +687,13 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
 
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
-        ASSERT_TRUE(impl::extract_sql(req, db_.get(), sql_text, err_info));
+        std::string tx_id{};
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
+        EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
 
+        test_commit(tx_handle);
         test_dispose_prepare(stmt_handle);
     }
     {
@@ -691,6 +703,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         test_prepare(stmt_handle, text);
 
         std::uint64_t tx_handle{};
+        test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
 
@@ -699,10 +712,13 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
 
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
-        ASSERT_TRUE(impl::extract_sql(req, db_.get(), sql_text, err_info));
+        std::string tx_id{};
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
+        EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
 
+        test_commit(tx_handle);
         test_dispose_prepare(stmt_handle);
     }
 }
@@ -717,10 +733,39 @@ TEST_F(service_api_utils_test, extract_sql_error) {
     utils::deserialize(s, req);
 
     std::shared_ptr<std::string> sql_text{};
+    std::string tx_id{};
     std::shared_ptr<error::error_info> err_info{};
-    ASSERT_TRUE(! impl::extract_sql(req, db_.get(), sql_text, err_info));
+    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
     ASSERT_TRUE(err_info);
     EXPECT_EQ(error_code::request_failure_exception, err_info->code());
+}
+
+TEST_F(service_api_utils_test, extract_sql_failing_to_fetch_tx_id) {
+    // depending on timing, transaction_context already disposed and empty tx_id is returned
+
+    std::uint64_t stmt_handle{};
+    auto text = "select * from T1"s;
+    test_prepare(stmt_handle, text);
+
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    test_commit(tx_handle, true);
+
+    std::vector<parameter> parameters{};
+    auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
+
+    sql::request::Request req{};
+    utils::deserialize(s, req);
+
+    std::shared_ptr<std::string> sql_text{};
+    std::shared_ptr<error::error_info> err_info{};
+    std::string tx_id{};
+    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
+    ASSERT_TRUE(sql_text);
+    EXPECT_EQ(text, *sql_text);
+    EXPECT_TRUE(tx_id.empty());
+
+    test_dispose_prepare(stmt_handle);
 }
 
 }  // namespace jogasaki::api

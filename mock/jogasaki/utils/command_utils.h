@@ -770,20 +770,20 @@ inline std::string encode_extract_statement_info(std::string_view payload) {
     return s;
 }
 
-inline std::pair<std::string, error> decode_extract_statement_info(std::string_view res) {
+inline std::tuple<std::string, std::string, error> decode_extract_statement_info(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
     if (! resp.has_extract_statement_info())  {
         LOG(ERROR) << "**** missing extract_statement_info **** ";
         if (utils_raise_exception_on_error) std::abort();
-        return {{}, {}};
+        return {{}, {}, {}};
     }
     auto& extract = resp.extract_statement_info();
     if (extract.has_error()) {
         auto& er = extract.error();
-        return {{}, {api::impl::map_error(er.code()), er.detail()}};
+        return {{}, {}, {api::impl::map_error(er.code()), er.detail()}};
     }
-    return {extract.success().sql(), {}};
+    return {extract.success().sql(), extract.success().transaction_id().id(), {}};
 }
 
 }  // namespace jogasaki::utils

@@ -2503,6 +2503,7 @@ TEST_F(service_api_test, error_with_unsupported_query) {
 
 TEST_F(service_api_test, extract_sql_info) {
     std::uint64_t tx_handle{};
+    test_begin(tx_handle);
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
     auto query = encode_execute_query(tx_handle, text);
 
@@ -2515,8 +2516,9 @@ TEST_F(service_api_test, extract_sql_info) {
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
 
-    auto [result, error] = decode_extract_statement_info(res->body_);
+    auto [result, tx_id, error] = decode_extract_statement_info(res->body_);
     ASSERT_FALSE(result.empty());
+    ASSERT_FALSE(tx_id.empty());
     EXPECT_EQ(text, result);
 }
 
@@ -2536,8 +2538,9 @@ TEST_F(service_api_test, extract_sql_info_missing_statement) {
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
 
-    auto [result, error] = decode_extract_statement_info(res->body_);
+    auto [result, tx_id, error] = decode_extract_statement_info(res->body_);
     ASSERT_TRUE(result.empty());
+    ASSERT_TRUE(tx_id.empty());
     EXPECT_EQ(error_code::statement_not_found_exception, error.code_);
 }
 

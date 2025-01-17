@@ -445,6 +445,7 @@ message ExtractStatementInfo {
     bytes payload = 2;
 }
 
+// request to retrieve large object data.
 message GetLargeObjectData {
 
     // the reference to large object data to retrieve.

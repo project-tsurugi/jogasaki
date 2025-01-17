@@ -269,6 +269,7 @@ message ExecuteResult {
   }
 }
 
+// response of GetLargeObjectData request.
 message GetLargeObjectData {
 
     // request is successfully completed.

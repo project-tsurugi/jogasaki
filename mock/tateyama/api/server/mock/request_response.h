@@ -158,6 +158,9 @@ public:
     [[nodiscard]] tateyama::api::server::session_store& session_store() noexcept override;
     [[nodiscard]] tateyama::session::session_variable_set& session_variable_set() noexcept override;
 
+    [[nodiscard]] bool has_blob(std::string_view channel_name) const noexcept override;
+    [[nodiscard]] blob_info const& get_blob(std::string_view name) const override;
+
     std::string payload_{};  //NOLINT
     std::size_t session_id_{};
     std::size_t service_id_{};
@@ -229,6 +232,8 @@ public:
     [[nodiscard]] bool check_cancel() const override;
 
     void cancel();
+
+    [[nodiscard]] status add_blob(std::unique_ptr<blob_info> blob) override;
 
     std::string body_{};  //NOLINT
     std::string body_head_{};  //NOLINT

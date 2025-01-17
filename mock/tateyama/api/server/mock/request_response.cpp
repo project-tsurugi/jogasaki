@@ -65,6 +65,14 @@ tateyama::session::session_variable_set& test_request::session_variable_set() no
     return session_variable_set_;
 }
 
+bool test_request::has_blob(std::string_view) const noexcept {
+    return false;
+}
+
+blob_info const& test_request::get_blob(std::string_view) const {
+    return *static_cast<blob_info const*>(nullptr); //NOLINT
+}
+
 status test_channel::acquire(std::shared_ptr<writer>& wrt) {
     auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
     if (on_write_) {
@@ -132,6 +140,10 @@ bool test_response::check_cancel() const {
 
 void test_response::cancel() {
     cancel_requested_ = true;
+}
+
+status test_response::add_blob(std::unique_ptr<blob_info>) {
+    return status::ok;
 }
 
 bool test_channel::all_released() const noexcept {

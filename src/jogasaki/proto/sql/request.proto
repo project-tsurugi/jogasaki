@@ -445,6 +445,14 @@ message ExtractStatementInfo {
     bytes payload = 2;
 }
 
+// request to retrieve large object data.
+message GetLargeObjectData {
+
+    // the reference to large object data to retrieve.
+    common.LargeObjectReference reference = 1;
+
+}
+
 /* For request message to the SQL service. */
 message Request {
   common.Session session_handle = 1;
@@ -470,9 +478,10 @@ message Request {
     DisposeTransaction dispose_transaction = 20;
     ExplainByText explain_by_text = 21;
     ExtractStatementInfo extract_statement_info = 22;
+    GetLargeObjectData get_large_object_data = 23;
   }
 
-  reserved 23 to 99;
+  reserved 24 to 99;
 
   // service message version (major)
   uint64 service_message_version_major = 100;

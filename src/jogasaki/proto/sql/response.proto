@@ -269,6 +269,29 @@ message ExecuteResult {
   }
 }
 
+// response of GetLargeObjectData request.
+message GetLargeObjectData {
+
+    // request is successfully completed.
+    message Success {
+
+      // the data channel name of retrieved large object data.
+      string channel_name = 1;
+
+    }
+
+    reserved 1 to 10;
+
+    // the response body.
+    oneof result {
+        // request is successfully completed.
+        Success success = 11;
+
+        // error was occurred.
+        Error error = 12;
+    }
+}
+
 /* For response message from the SQL service. */
 message Response {
   oneof response {
@@ -285,6 +308,7 @@ message Response {
     DisposeTransaction dispose_transaction = 11;
     ExecuteResult execute_result = 12;
     ExtractStatementInfo extract_statement_info = 13;
+    GetLargeObjectData get_large_object_data = 14;
   }
 }
 

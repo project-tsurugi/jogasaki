@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -199,7 +199,8 @@ public:
 
     void error(proto::diagnostics::Record const& record) override;
 
-    status acquire_channel(std::string_view name, std::shared_ptr<data_channel>& ch) override;
+    status acquire_channel(std::string_view name, std::shared_ptr<data_channel>& ch,
+        std::size_t writer_count) override;
 
     status release_channel(data_channel& ch) override;
 

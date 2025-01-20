@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -442,6 +442,9 @@ public:
     bool shutdown(bool force = false);
 
     [[nodiscard]] jogasaki::api::database* database() const noexcept;
+
+    static constexpr std::size_t default_writer_count =
+        32; // from tateyama::endpoint::ipc::ipc_response
 private:
 
     struct cache_align callback_control {

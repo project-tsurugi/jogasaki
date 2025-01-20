@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,8 +103,10 @@ void test_response::error(proto::diagnostics::Record const& record) {
     completed_ = true;
 }
 
-status test_response::acquire_channel(std::string_view name, std::shared_ptr<data_channel>& ch) {
-    (void) name;
+status test_response::acquire_channel(
+    std::string_view name, std::shared_ptr<data_channel>& ch, std::size_t writer_count) {
+    (void)name;
+    (void)writer_count;
     channel_ = std::make_shared<test_channel>();
     if (on_write_) {
         channel_->set_on_write(on_write_);
@@ -244,4 +246,4 @@ bool buffer_manager::release(std::stringstream* bufp) {
     }
     return true;
 }
-}
+} // namespace tateyama::api::server::mock

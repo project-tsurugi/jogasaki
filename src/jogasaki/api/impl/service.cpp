@@ -1395,10 +1395,10 @@ void service::execute_query(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        auto write_count = (default_writer_count < global::config_pool()->default_partitions())
+        auto max_write_count = (default_writer_count < global::config_pool()->default_partitions())
                                ? global::config_pool()->default_partitions()
                                : default_writer_count;
-        if (auto rc = res->acquire_channel(info->name_, ch, write_count);
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
@@ -1583,10 +1583,10 @@ void service::execute_dump(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        auto write_count = (default_writer_count < global::config_pool()->default_partitions())
+        auto max_write_count = (default_writer_count < global::config_pool()->default_partitions())
                                ? global::config_pool()->default_partitions()
                                : default_writer_count;
-        if (auto rc = res->acquire_channel(info->name_, ch, write_count);
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =

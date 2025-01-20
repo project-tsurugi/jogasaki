@@ -200,7 +200,7 @@ public:
     void error(proto::diagnostics::Record const& record) override;
 
     status acquire_channel(std::string_view name, std::shared_ptr<data_channel>& ch,
-        std::size_t writer_count) override;
+        std::size_t max_writer_count) override;
 
     status release_channel(data_channel& ch) override;
 

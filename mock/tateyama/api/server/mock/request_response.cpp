@@ -104,9 +104,9 @@ void test_response::error(proto::diagnostics::Record const& record) {
 }
 
 status test_response::acquire_channel(
-    std::string_view name, std::shared_ptr<data_channel>& ch, std::size_t writer_count) {
+    std::string_view name, std::shared_ptr<data_channel>& ch, std::size_t max_writer_count) {
     (void)name;
-    (void)writer_count;
+    (void)max_writer_count;
     channel_ = std::make_shared<test_channel>();
     if (on_write_) {
         channel_->set_on_write(on_write_);

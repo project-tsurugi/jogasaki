@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1395,7 +1395,11 @@ void service::execute_query(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
+        auto max_write_count = (default_writer_count < global::config_pool()->default_partitions())
+                               ? global::config_pool()->default_partitions()
+                               : default_writer_count;
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
+            rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
                 create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);
@@ -1579,7 +1583,11 @@ void service::execute_dump(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        if(auto rc = res->acquire_channel(info->name_, ch); rc != tateyama::status::ok) {
+        auto max_write_count = (default_writer_count < global::config_pool()->default_partitions())
+                               ? global::config_pool()->default_partitions()
+                               : default_writer_count;
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
+            rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
                 create_error_info(error_code::sql_limit_reached_exception, msg, status::err_resource_limit_reached);

@@ -29,6 +29,8 @@
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 
+#include <jogasaki/blob_reference.h>
+#include <jogasaki/clob_reference.h>
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/executor/expr/error.h>
@@ -60,6 +62,8 @@ public:
         takatori::datetime::date,
         takatori::datetime::time_of_day,
         takatori::datetime::time_point,
+        blob_reference,
+        clob_reference,
         std::size_t  // for reference column position
     >;
 
@@ -158,6 +162,8 @@ inline bool operator==(any const& a, any const& b) noexcept {
         case any::index<takatori::datetime::date>: return eq<takatori::datetime::date>()(a, b);
         case any::index<takatori::datetime::time_of_day>: return eq<takatori::datetime::time_of_day>()(a, b);
         case any::index<takatori::datetime::time_point>: return eq<takatori::datetime::time_point>()(a, b);
+        case any::index<blob_reference>: return eq<blob_reference>()(a, b);
+        case any::index<clob_reference>: return eq<clob_reference>()(a, b);
         case any::index<std::size_t>: return eq<std::size_t>()(a, b);
         default:
             return false;
@@ -194,6 +200,8 @@ inline std::ostream& operator<<(std::ostream& out, any const& value) {
         case any::index<takatori::datetime::date>: out << value.to<takatori::datetime::date>(); break;
         case any::index<takatori::datetime::time_of_day>: out << value.to<takatori::datetime::time_of_day>(); break;
         case any::index<takatori::datetime::time_point>: out << value.to<takatori::datetime::time_point>(); break;
+        case any::index<blob_reference>: out << value.to<blob_reference>(); break;
+        case any::index<clob_reference>: out << value.to<clob_reference>(); break;
         case any::index<std::size_t>:  out << value.to<std::size_t>(); break;
     }
     out << ")";
@@ -220,6 +228,8 @@ inline std::string_view type_name(any const& value) {
         case any::index<takatori::datetime::date>: return "date";
         case any::index<takatori::datetime::time_of_day>: return "time_of_day";
         case any::index<takatori::datetime::time_point>: return "time_point";
+        case any::index<blob_reference>: return "blob";
+        case any::index<clob_reference>: return "clob";
         case any::index<std::size_t>: return "columm_position";
     }
     std::abort();

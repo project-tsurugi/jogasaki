@@ -78,6 +78,8 @@ public:
         std::monostate, // date
         std::shared_ptr<time_of_day_field_option>, // time_of_day
         std::shared_ptr<time_point_field_option>,
+        std::monostate, // blob
+        std::monostate, // clob
         std::monostate, // time_interval
         std::shared_ptr<array_field_option>,
         std::shared_ptr<record_field_option>,
@@ -187,6 +189,8 @@ public:
             case k::date: return field_type_traits<k::date>::size;
             case k::time_of_day: return field_type_traits<k::time_of_day>::size;
             case k::time_point: return field_type_traits<k::time_point>::size;
+            case k::blob: return field_type_traits<k::blob>::size;
+            case k::clob: return field_type_traits<k::clob>::size;
             case k::reference_column_position: std::abort(); // should not be used as runtime type
             case k::reference_column_name: std::abort(); // should not be used as runtime type
             case k::pointer: return field_type_traits<k::pointer>::size;

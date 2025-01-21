@@ -39,6 +39,8 @@ enum class field_type_kind : std::size_t {
     date,
     time_of_day,
     time_point,
+    blob,
+    clob,
     time_interval,
     array,
     record,
@@ -76,6 +78,8 @@ enum class field_type_kind : std::size_t {
         case kind::date: return "date"sv;
         case kind::time_of_day: return "time_of_day"sv;
         case kind::time_point: return "time_point"sv;
+        case kind::blob: return "blob"sv;
+        case kind::clob: return "clob"sv;
         case kind::time_interval: return "time_interval"sv;
         case kind::array: return "array"sv;
         case kind::record: return "record"sv;

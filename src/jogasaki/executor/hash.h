@@ -99,6 +99,8 @@ private:
             case meta::field_type_kind::date: return hash_calculator<kind::date>{}(record, offset);
             case meta::field_type_kind::time_of_day: return hash_calculator<kind::time_of_day>{}(record, offset);
             case meta::field_type_kind::time_point: return hash_calculator<kind::time_point>{}(record, offset);
+            case meta::field_type_kind::blob: return static_cast<hash_value>(-1);
+            case meta::field_type_kind::clob: return static_cast<hash_value>(-1);
             case meta::field_type_kind::unknown: return static_cast<hash_value>(-1);
             case meta::field_type_kind::undefined: return static_cast<hash_value>(-1);
 

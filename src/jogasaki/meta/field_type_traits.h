@@ -25,6 +25,8 @@
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/blob_reference.h>
+#include <jogasaki/clob_reference.h>
 #include <jogasaki/meta/character_field_option.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -89,6 +91,12 @@ struct field_type_traits<field_type_kind::time_of_day> : simple_field_type_trait
 
 template <>
 struct field_type_traits<field_type_kind::time_point> : simple_field_type_traits<takatori::datetime::time_point, time_point_field_option> {};
+
+template <>
+struct field_type_traits<field_type_kind::blob> : simple_field_type_traits<blob_reference> {};
+
+template <>
+struct field_type_traits<field_type_kind::clob> : simple_field_type_traits<clob_reference> {};
 
 template <>
 struct field_type_traits<field_type_kind::pointer> : simple_field_type_traits<void*> {};

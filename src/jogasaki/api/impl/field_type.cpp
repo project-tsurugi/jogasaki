@@ -46,6 +46,8 @@ api::field_type_kind from(meta::field_type_kind k) noexcept {
         case meta::field_type_kind::date: return kind::date;
         case meta::field_type_kind::time_of_day: return kind::time_of_day;
         case meta::field_type_kind::time_point: return kind::time_point;
+        case meta::field_type_kind::blob: return kind::blob;
+        case meta::field_type_kind::clob: return kind::clob;
         case meta::field_type_kind::time_interval: return kind::time_interval;
         case meta::field_type_kind::array: return kind::array;
         case meta::field_type_kind::record: return kind::record;

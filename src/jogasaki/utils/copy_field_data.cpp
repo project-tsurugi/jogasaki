@@ -68,6 +68,8 @@ void copy_field(
         case k::date: target.set_value(target_offset, source.get_value<runtime_t<k::date>>(source_offset)); return;
         case k::time_of_day: target.set_value(target_offset, source.get_value<runtime_t<k::time_of_day>>(source_offset)); return;
         case k::time_point: target.set_value(target_offset, source.get_value<runtime_t<k::time_point>>(source_offset)); return;
+        case k::blob: target.set_value(target_offset, source.get_value<runtime_t<k::blob>>(source_offset)); return;
+        case k::clob: target.set_value(target_offset, source.get_value<runtime_t<k::clob>>(source_offset)); return;
         case k::time_interval:
             break;
         case k::array:
@@ -147,6 +149,8 @@ void copy_field(
         case k::date: target.set_value(target_offset, source.to<runtime_t<k::date>>()); return;
         case k::time_of_day: target.set_value(target_offset, source.to<runtime_t<k::time_of_day>>()); return;
         case k::time_point: target.set_value(target_offset, source.to<runtime_t<k::time_point>>()); return;
+        case k::blob: target.set_value(target_offset, source.to<runtime_t<k::blob>>()); return;
+        case k::clob: target.set_value(target_offset, source.to<runtime_t<k::clob>>()); return;
         case k::time_interval:
             break;
         case k::array:
@@ -224,6 +228,8 @@ void copy_field_as_any(
         case k::date: result = any{std::in_place_type<runtime_t<k::date>>, source.get_value<runtime_t<k::date>>(source_offset)}; return;
         case k::time_of_day: result = any{std::in_place_type<runtime_t<k::time_of_day>>, source.get_value<runtime_t<k::time_of_day>>(source_offset)}; return;
         case k::time_point: result = any{std::in_place_type<runtime_t<k::time_point>>, source.get_value<runtime_t<k::time_point>>(source_offset)}; return;
+        case k::blob: result = any{std::in_place_type<runtime_t<k::blob>>, source.get_value<runtime_t<k::blob>>(source_offset)}; return;
+        case k::clob: result = any{std::in_place_type<runtime_t<k::clob>>, source.get_value<runtime_t<k::clob>>(source_offset)}; return;
         case k::time_interval: break;
         case k::array: break;
         case k::record: break;

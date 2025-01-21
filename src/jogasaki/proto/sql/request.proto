@@ -92,6 +92,12 @@ message Parameter {
         // time point with time zone.
         common.TimePointWithTimeZone time_point_with_time_zone_value = 30;
 
+        // the character large object.
+        common.Clob clob = 31;
+
+        // the binary large object.
+        common.Blob blob = 32;
+
         // reference column position (for load action).
         uint64 reference_column_position = 51;
 
@@ -99,7 +105,7 @@ message Parameter {
         string reference_column_name = 52;
     }
 
-    reserved 12, 13, 20, 22, 24, 31 to 40, 41 to 50, 53 to 99;
+    reserved 12, 13, 20, 22, 24, 33 to 40, 41 to 50, 53 to 99;
 }
 
 // the parameter set for the statement.

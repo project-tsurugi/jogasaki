@@ -799,6 +799,8 @@ any cast_from_character(evaluator_context& ctx,
         case k::date: break;
         case k::time_of_day: break;
         case k::time_point: break;
+        case k::blob: break;
+        case k::clob: break; // TODO implement conv. from char/varchar
         case k::datetime_interval: break;
         case k::array: break;
         case k::record: break;
@@ -838,6 +840,8 @@ any cast_from_decimal(evaluator_context& ctx,
         case k::date: break; // not supported
         case k::time_of_day: break; // not supported
         case k::time_point: break; // not supported
+        case k::blob: break; // not supported
+        case k::clob: break; // not supported
         case k::datetime_interval: break; // not supported
         case k::array: break; // not supported
         case k::record: break; // not supported
@@ -1030,6 +1034,8 @@ any cast_from_int4(evaluator_context& ctx,
         case k::date: break;  // not supported
         case k::time_of_day: break;  // not supported
         case k::time_point: break;  // not supported
+        case k::blob: break;  // not supported
+        case k::clob: break;  // not supported
         case k::datetime_interval: break;  // not supported
         case k::array: break;  // not supported
         case k::record: break;  // not supported
@@ -1111,6 +1117,8 @@ any cast_from_int8(evaluator_context& ctx,
         case k::date: break; // not supported
         case k::time_of_day: break; // not supported
         case k::time_point: break; // not supported
+        case k::blob: break; // not supported
+        case k::clob: break; // not supported
         case k::datetime_interval: break; // not supported
         case k::array: break; // not supported
         case k::record: break; // not supported
@@ -1163,6 +1171,8 @@ any cast_from_boolean(evaluator_context& ctx,
         case k::date: break;  // not supported
         case k::time_of_day: break;  // not supported
         case k::time_point: break;  // not supported
+        case k::blob: break;  // not supported
+        case k::clob: break;  // not supported
         case k::datetime_interval: break;  // not supported
         case k::array: break;  // not supported
         case k::record: break;  // not supported
@@ -1263,6 +1273,8 @@ any cast_from_float4(evaluator_context& ctx,
         case k::date: break; // not supported
         case k::time_of_day: break; // not supported
         case k::time_point: break; // not supported
+        case k::blob: break; // not supported
+        case k::clob: break; // not supported
         case k::datetime_interval: break; // not supported
         case k::array: break; // not supported
         case k::record: break; // not supported
@@ -1385,6 +1397,8 @@ any cast_from_float8(evaluator_context& ctx,
         case k::date: break; // not supported
         case k::time_of_day: break; // not supported
         case k::time_point: break; // not supported
+        case k::blob: break; // not supported
+        case k::clob: break; // not supported
         case k::datetime_interval: break; // not supported
         case k::array: break; // not supported
         case k::record: break; // not supported
@@ -1452,6 +1466,8 @@ any cast_from_octet(evaluator_context& ctx,
         case k::date: break;
         case k::time_of_day: break;
         case k::time_point: break;
+        case k::blob: break;  //TODO implement conv. from binary/varbinary
+        case k::clob: break;
         case k::datetime_interval: break;
         case k::array: break;
         case k::record: break;
@@ -1517,6 +1533,8 @@ any conduct_cast(
         case k::date: break;
         case k::time_of_day: break;
         case k::time_point: break;
+        case k::blob: break;  //TODO implement conv. to binaries
+        case k::clob: break;  //TODO implement conv. to characters
         case k::datetime_interval: break;
         case k::array: break;
         case k::record: break;

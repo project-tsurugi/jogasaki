@@ -72,6 +72,8 @@ meta::field_type type_for(takatori::type::data const& type) {
             bool with_offset = typ.with_time_zone();
             return meta::field_type(std::make_shared<meta::time_point_field_option>(with_offset));
         }
+        case t::blob: return meta::field_type(meta::field_enum_tag<k::blob>);
+        case t::clob: return meta::field_type(meta::field_enum_tag<k::clob>);
         case t::datetime_interval: return meta::field_type(meta::field_enum_tag<k::time_interval>);
         case t::unknown: return meta::field_type(meta::field_enum_tag<k::unknown>);
 

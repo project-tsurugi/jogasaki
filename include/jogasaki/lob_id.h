@@ -25,13 +25,8 @@
 namespace jogasaki {
 
 /**
- * @brief blob id type
+ * @brief blob id ype
  */
-using blob_id_type = std::uint64_t;
-
-/**
- * @brief clob id type
- */
-using clob_id_type = std::uint64_t;
+using lob_id_type = std::uint64_t;
 
 }  // namespace jogasaki

@@ -37,11 +37,10 @@ public:
 
     /**
      * @brief construct new object allocating from the given memory resource when long format is needed
-     * @param resource memory resource used to allocate storage for long format
-     * @param data pointer to the data area that is copied into tne new object
-     * @param size size of the data area
+     * @param id blob reference id
+     * @param provider the provider that gives the blob data
      */
-    clob_reference(clob_id_type id, lob_data_provider provider) :
+    clob_reference(lob_id_type id, lob_data_provider provider) :
         id_(id),
         provider_(provider)
     {}
@@ -79,7 +78,7 @@ public:
     }
 
 private:
-    clob_id_type id_{};
+    lob_id_type id_{};
     lob_data_provider provider_{};
 };
 

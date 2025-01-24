@@ -18,6 +18,7 @@
 #include <memory>
 #include <string_view>
 
+#include <takatori/type/blob.h>
 #include <takatori/type/character.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
@@ -831,6 +832,28 @@ void add_test_tables(storage::configurable_provider& provider) {
             },
             {},
             secondary_index_features
+        });
+    }
+    {
+        std::shared_ptr<::yugawara::storage::table> t = provider.add_table({
+            "TLOB",
+            {
+                { "C0", type::int4(), nullity{false} },
+                { "C1", type::blob(), nullity{true} },
+                { "C2", type::clob(), nullity{true} },
+            },
+        });
+        provider.add_index({
+            t,
+            t->simple_name(),
+            {
+                t->columns()[0],
+            },
+            {
+                t->columns()[1],
+                t->columns()[2],
+            },
+            index_features
         });
     }
 }

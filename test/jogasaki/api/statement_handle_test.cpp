@@ -144,4 +144,29 @@ TEST_F(statement_handle_test, empty_meta_with_parameters) {
     }
 }
 
+TEST_F(statement_handle_test, blob_meta) {
+    std::string sql = "select C0, C1, C2 from TLOB";
+    statement_handle handle{};
+    ASSERT_EQ(status::ok, db_->prepare(sql, handle));
+    ASSERT_TRUE(handle);
+    ASSERT_TRUE(handle.meta());
+    auto& meta = *handle.meta();
+    ASSERT_EQ(3, meta.field_count());
+    EXPECT_EQ(api::field_type_kind::int4, meta.at(0).kind());
+    EXPECT_EQ(api::field_type_kind::blob, meta.at(1).kind());
+    EXPECT_EQ(api::field_type_kind::clob, meta.at(2).kind());
+    ASSERT_EQ(status::ok, db_->destroy_statement(handle));
+}
+
+TEST_F(statement_handle_test, lob_parameters) {
+    std::string sql = "insert into TLOB values (:p0, :p1, :p2)";
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int4},
+        {"p1", api::field_type_kind::blob},
+        {"p2", api::field_type_kind::clob},
+    };
+    statement_handle handle{};
+    ASSERT_EQ(status::ok, db_->prepare(sql, variables, handle));
+}
+
 }  // namespace jogasaki::api

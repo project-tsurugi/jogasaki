@@ -222,6 +222,8 @@ public:
             case k::date: return field_type_traits<k::date>::alignment;
             case k::time_of_day: return field_type_traits<k::time_of_day>::alignment;
             case k::time_point: return field_type_traits<k::time_point>::alignment;
+            case k::blob: return field_type_traits<k::blob>::alignment;
+            case k::clob: return field_type_traits<k::clob>::alignment;
             case k::reference_column_position: std::abort(); // should not be used as runtime type
             case k::reference_column_name: std::abort(); // should not be used as runtime type
             case k::pointer: return field_type_traits<k::pointer>::alignment;

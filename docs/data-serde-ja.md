@@ -102,8 +102,8 @@
 | `0xf7` | _reserved_ |`#f7`
 | `0xf8` | `row` |`#f8, n=uint, s=e(n)` | `s` からなる行
 | `0xf9` | `array` | `#f9, n=uint, s=e(n)` | `s` からなる配列
-| `0xfa` | `clob` | `#fa, s=b(16)` | 識別子 `s` の CLOB
-| `0xfb` | `blob` | `#fb, s=b(16)` | 識別子 `s` の BLOB
+| `0xfa` | `clob` | `#fa, p=b(8), s=b(8)` | `p` と `s` を big-endian の 64 ビット符号なし整数とみなし、プロバイダを `p` ( `1` の場合は データストア, `2` の場合は SQL 実行エンジン), BLOB 参照を `s` とする CLOB |
+| `0xfb` | `blob` | `#fb, p=b(8), s=b(8)` | `p` と `s` を big-endian の 64 ビット符号なし整数とみなし、プロバイダを `p` ( `1` の場合は データストア, `2` の場合は SQL 実行エンジン), BLOB 参照を `s` とする BLOB |
 | `0xfc` | _reserved_ | `#fc`
 | `0xfd` | _reserved_ | `#fd`
 | `0xfe` | `end_of_contents` | `#fe` | 値の列の明示的な終端

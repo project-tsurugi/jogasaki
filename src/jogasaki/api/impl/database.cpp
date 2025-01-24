@@ -33,7 +33,9 @@
 
 #include <takatori/serializer/json_printer.h>
 #include <takatori/serializer/object_scanner.h>
+#include <takatori/type/blob.h>
 #include <takatori/type/character.h>
+#include <takatori/type/clob.h>
 #include <takatori/type/data.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
@@ -365,6 +367,8 @@ void add_variable(
         case field_type_kind::time_of_day_with_time_zone: provider.add({name, takatori::type::time_of_day{takatori::type::with_time_zone}}, true); break;
         case field_type_kind::time_point: provider.add({name, takatori::type::time_point{}}, true); break;
         case field_type_kind::time_point_with_time_zone: provider.add({name, takatori::type::time_point{takatori::type::with_time_zone}}, true); break;
+        case field_type_kind::blob: provider.add({name, takatori::type::blob{}}, true); break;
+        case field_type_kind::clob: provider.add({name, takatori::type::clob{}}, true); break;
         default:
             throw_exception(std::logic_error{""});
     }

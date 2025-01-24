@@ -146,6 +146,8 @@ bool validate_table_definition(
             case type_kind::date:
             case type_kind::time_of_day:
             case type_kind::time_point:
+            case type_kind::blob:
+            case type_kind::clob:
                 continue;
             case type_kind::octet:
                 if(! validate_type(context, c.simple_name(), unsafe_downcast<takatori::type::octet const>(c.type()))) {

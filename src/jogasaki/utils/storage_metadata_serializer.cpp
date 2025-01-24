@@ -38,6 +38,7 @@
 #include <takatori/type/data.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
+#include <takatori/type/lob.h>
 #include <takatori/type/octet.h>
 #include <takatori/type/primitive.h>
 #include <takatori/type/time_of_day.h>
@@ -109,6 +110,8 @@ proto::metadata::common::AtomType from(takatori::type::data const& t) {
         case k::date: return AtomType::DATE;
         case k::time_of_day: return AtomType::TIME_OF_DAY;  // possibly updated 'with time zone'
         case k::time_point: return AtomType::TIME_POINT;  // possibly updated 'with time zone'
+        case k::blob: return AtomType::BLOB;
+        case k::clob: return AtomType::CLOB;
         case k::datetime_interval: return AtomType::DATETIME_INTERVAL;
         case k::unknown: return AtomType::UNKNOWN;
         default: return AtomType::TYPE_UNSPECIFIED;
@@ -445,6 +448,8 @@ std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::st
             type = std::make_shared<takatori::type::time_point>(takatori::type::with_time_zone);
             break;
         }
+        case proto::metadata::common::BLOB: type = std::make_shared<takatori::type::blob>(); break;
+        case proto::metadata::common::CLOB: type = std::make_shared<takatori::type::clob>(); break;
         case proto::metadata::common::UNKNOWN: type = std::make_shared<takatori::type::unknown>(); break;
         default: break;
     }

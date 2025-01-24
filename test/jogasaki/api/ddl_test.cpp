@@ -779,4 +779,17 @@ TEST_F(ddl_test, update_exceeding_max_key_len_on_secondary) {
     execute_statement("INSERT INTO T (C0, C1) VALUES('"+c0+"', 'x')");
     test_stmt_err("UPDATE T SET C1='xxxxxxx' WHERE C1='x'", error_code::value_too_long_exception);
 }
+
+TEST_F(ddl_test, blob_types) {
+    // currently simply check DDL success and NULLs are inserted
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY, C1 BLOB, C2 CLOB)");
+    execute_statement("INSERT INTO T (C0) VALUES(1)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0 FROM T", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+}
+
 }

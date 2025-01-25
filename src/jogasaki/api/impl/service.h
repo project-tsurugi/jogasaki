@@ -261,6 +261,8 @@ inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::dat
             }
             return AtomType::TIME_POINT;
         }
+        case k::blob: return AtomType::BLOB;
+        case k::clob: return AtomType::CLOB;
         case k::datetime_interval: return AtomType::DATETIME_INTERVAL;
         default:
             return AtomType::UNKNOWN;

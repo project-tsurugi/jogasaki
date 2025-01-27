@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <string_view>
 
@@ -35,10 +36,11 @@ namespace jogasaki::api {
 template <field_type_kind Kind>
 struct field_type_traits;
 
-template <class T1, class T2 = void>
+template <class T1, class T2 = void, class T3 = T1>
 struct simple_field_type_traits {
     using runtime_type = T1;
     using option_type = T2;
+    using parameter_type = T3;
     static constexpr std::size_t size = sizeof(runtime_type);
     static constexpr std::size_t alignment = alignof(runtime_type);
 };

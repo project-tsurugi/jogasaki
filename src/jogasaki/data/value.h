@@ -108,7 +108,11 @@ public:
      */
     template<typename T>
     [[nodiscard]] T to() const noexcept {
-        return view().to<T>();
+        using A = std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>;
+        if(auto* p = std::get_if<A>(&body_); p != nullptr) {
+            return *p;
+        }
+        fail_with_exception();
     }
 
     // variant index in value - treat bool as std::int8_t

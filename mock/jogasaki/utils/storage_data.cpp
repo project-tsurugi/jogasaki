@@ -280,8 +280,8 @@ std::string any_to_string(value const& value, meta::field_type type) {
         case kind::float4: return std::to_string(value.to<float>());
         case kind::float8: return std::to_string(value.to<double>());
         case kind::decimal: return to_string(value.to<runtime_t<meta::field_type_kind::decimal>>());
-        case kind::character: return std::string(1, '\'') + static_cast<std::string>(value.to<accessor::text>()) + std::string(1, '\'');
-        case kind::octet: return std::string(1, '\'') + static_cast<std::string>(value.to<accessor::binary>()) + std::string(1, '\'');
+        case kind::character: return std::string(1, '\'') + value.to<std::string>() + std::string(1, '\'');
+        case kind::octet: return std::string(1, '\'') + value.to<data::binary_string_value>().str() + std::string(1, '\'');
         case kind::date: return to_string(value.to<runtime_t<meta::field_type_kind::date>>());
         case kind::time_of_day: return to_string(value.to<runtime_t<meta::field_type_kind::time_of_day>>());
         case kind::time_point: return to_string(value.to<runtime_t<meta::field_type_kind::time_point>>());

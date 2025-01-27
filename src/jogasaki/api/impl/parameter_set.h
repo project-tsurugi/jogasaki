@@ -47,6 +47,8 @@ public:
     void set_date(std::string_view name, field_type_traits<field_type_kind::date>::parameter_type value) override;
     void set_time_of_day(std::string_view name, field_type_traits<field_type_kind::time_of_day>::parameter_type value) override;
     void set_time_point(std::string_view name, field_type_traits<field_type_kind::time_point>::parameter_type value) override;
+    void set_blob(std::string_view name, field_type_traits<field_type_kind::blob>::parameter_type value) override;
+    void set_clob(std::string_view name, field_type_traits<field_type_kind::clob>::parameter_type value) override;
 
     void set_reference_column(std::string_view name, std::size_t position) override;
     void set_reference_column(std::string_view name, std::string_view column_name) override;

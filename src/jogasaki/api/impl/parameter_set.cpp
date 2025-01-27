@@ -69,6 +69,14 @@ void parameter_set::set_time_point(std::string_view name, field_type_traits<kind
     body_->set_time_point(name, value);
 }
 
+void parameter_set::set_blob(std::string_view name, field_type_traits<kind::blob>::parameter_type value) {
+    body_->set_blob(name, value);
+}
+
+void parameter_set::set_clob(std::string_view name, field_type_traits<kind::clob>::parameter_type value) {
+    body_->set_clob(name, value);
+}
+
 void parameter_set::set_reference_column(std::string_view name, std::size_t position) {
     body_->set_reference_column(name, position);
 }

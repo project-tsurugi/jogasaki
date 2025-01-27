@@ -22,6 +22,8 @@
 #include <utility>
 #include <variant>
 
+#include <jogasaki/blob_locator.h>
+#include <jogasaki/clob_locator.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/binary_string_value.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -54,6 +56,8 @@ public:
         runtime_t<meta::field_type_kind::date>,
         runtime_t<meta::field_type_kind::time_of_day>,
         runtime_t<meta::field_type_kind::time_point>,
+        blob_locator,
+        clob_locator,
         std::size_t  // for reference column position
     >;
 

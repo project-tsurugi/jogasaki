@@ -77,6 +77,8 @@ public:
     void set_date(std::string_view name, parameter_t<kind::date> value);
     void set_time_of_day(std::string_view name, parameter_t<kind::time_of_day> value);
     void set_time_point(std::string_view name, parameter_t<kind::time_point> value);
+    void set_blob(std::string_view name, parameter_t<kind::blob> value);
+    void set_clob(std::string_view name, parameter_t<kind::clob> value);
 
     void set_reference_column(std::string_view name, std::size_t position);
     void set_reference_column(std::string_view name, std::string_view column_name);

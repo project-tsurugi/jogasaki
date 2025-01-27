@@ -137,6 +137,24 @@ void parameter_set::set_time_point(std::string_view name, parameter_t<kind::time
     );
 }
 
+void parameter_set::set_blob(std::string_view name, parameter_t<kind::blob> value) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::blob>},
+            data::value{std::in_place_type<parameter_t<kind::blob>>, value}
+        }
+    );
+}
+
+void parameter_set::set_clob(std::string_view name, parameter_t<kind::clob> value) {
+    add(std::string(name),
+        {
+            meta::field_type{meta::field_enum_tag<kind::clob>},
+            data::value{std::in_place_type<parameter_t<kind::clob>>, value}
+        }
+    );
+}
+
 void parameter_set::set_reference_column(std::string_view name, std::size_t position) {
     add(std::string(name),
         {

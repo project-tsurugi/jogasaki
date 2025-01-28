@@ -120,6 +120,9 @@ public:
     static constexpr std::size_t index =
         alternative_index<std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>, value::base_type>();
 
+    [[nodiscard]] base_type const& body() const noexcept {
+        return body_;
+    }
 private:
     base_type body_{};
 };

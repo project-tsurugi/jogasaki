@@ -69,6 +69,7 @@
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/random.h>
+#include <jogasaki/utils/value_to_any.h>
 
 namespace jogasaki::utils {
 
@@ -179,18 +180,20 @@ std::string to_string(T arg) {
 }
 
 inline void encode_field(
-    data::value const& a,
+    data::value const& v,
     meta::field_type f,
     kvs::coding_spec spec,
     bool nullable,
     kvs::writable_stream& target
 ) {
     kvs::coding_context ctx{};
+    data::any a{};
+    utils::value_to_any(v, a);
     if (nullable) {
-        kvs::encode_nullable(a.view(), f, spec, ctx, target);
+        kvs::encode_nullable(a, f, spec, ctx, target);
         return;
     }
-    kvs::encode(a.view(), f, spec, ctx, target);
+    kvs::encode(a, f, spec, ctx, target);
 }
 
 static void fill_fields(

@@ -103,18 +103,6 @@ public:
      */
     [[nodiscard]] any view() const;
 
-    /**
-     * @brief accessor of the content value in given type
-     */
-    template<typename T>
-    [[nodiscard]] T to() const noexcept {
-        using A = std::conditional_t<std::is_same_v<T, bool>, std::int8_t, T>;
-        if(auto* p = std::get_if<A>(&body_); p != nullptr) {
-            return *p;
-        }
-        fail_with_exception();
-    }
-
     // variant index in value - treat bool as std::int8_t
     template <class T>
     static constexpr std::size_t index =

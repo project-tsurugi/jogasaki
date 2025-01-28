@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,11 +97,23 @@ public:
      */
     [[nodiscard]] statement_work_level& work_level() noexcept;
 
+    /**
+     * @brief increment the step kind forward count
+     */
+     void increment_step_kind_forward_count() noexcept;
+
+    /**
+     * @brief accessor to the step kind forward count
+     * @returns step kind forward count
+     */
+    [[nodiscard]] std::size_t get_step_kind_forward_count() const noexcept;
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
     std::shared_ptr<meta::external_record_meta> external_writer_meta_{};
     statement_work_level work_level_{};
+    std::size_t step_kind_forward_count_{};
 };
 
-}
+} // namespace jogasaki::plan

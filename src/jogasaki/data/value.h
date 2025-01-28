@@ -98,11 +98,6 @@ public:
      */
     [[nodiscard]] std::size_t type_index() const noexcept;
 
-    /**
-     * @brief return the any class as the view of this object
-     */
-    [[nodiscard]] any view() const;
-
     // variant index in value - treat bool as std::int8_t
     template <class T>
     static constexpr std::size_t index =

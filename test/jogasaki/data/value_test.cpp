@@ -40,6 +40,7 @@
 #include <jogasaki/data/value.h>
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
+#include <jogasaki/utils/value_to_any.h>
 
 namespace jogasaki::executor::expr {
 
@@ -136,7 +137,8 @@ TEST_F(value_test, string) {
     ASSERT_FALSE(v.empty());
     ASSERT_EQ("ABC", v.ref<std::string>());
 
-    auto a = v.view();
+    data::any a{};
+    ASSERT_TRUE(utils::value_to_any(v, a));
     auto t = a.to<accessor::text>();
     // static_cast to sv requires accessor::text lvalue as sv can reference SSO'ed data in accessor::text.
     auto sv = static_cast<std::string_view>(t);

@@ -48,6 +48,7 @@ public:
         auto *iter = buf.begin();
         auto ret = ::jogasaki::serializer::write_end_of_contents(iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
+        (void) ret;
 
         auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
         return writer_->write(buf.data(), write_size);

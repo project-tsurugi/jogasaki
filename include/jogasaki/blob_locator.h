@@ -39,7 +39,7 @@ public:
      * @param path the lob data file path
      */
     explicit blob_locator(std::string path) :
-        path_(path)
+        path_(std::move(path))
     {}
 
     /**

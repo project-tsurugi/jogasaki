@@ -141,7 +141,7 @@ void parameter_set::set_blob(std::string_view name, parameter_t<kind::blob> valu
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::blob>},
-            data::value{std::in_place_type<parameter_t<kind::blob>>, value}
+            data::value{std::in_place_type<parameter_t<kind::blob>>, std::move(value)}
         }
     );
 }
@@ -150,7 +150,7 @@ void parameter_set::set_clob(std::string_view name, parameter_t<kind::clob> valu
     add(std::string(name),
         {
             meta::field_type{meta::field_enum_tag<kind::clob>},
-            data::value{std::in_place_type<parameter_t<kind::clob>>, value}
+            data::value{std::in_place_type<parameter_t<kind::clob>>, std::move(value)}
         }
     );
 }

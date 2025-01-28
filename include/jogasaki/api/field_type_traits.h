@@ -18,7 +18,6 @@
 #include <cstdint>
 #include <string_view>
 #include <type_traits>
-#include <string_view>
 
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>

@@ -17,7 +17,6 @@
 
 #include <utility>
 
-#include <jogasaki/data/any.h>
 #include <jogasaki/data/value.h>
 #include <jogasaki/meta/field_type.h>
 
@@ -34,10 +33,6 @@ meta::field_type const& parameter_entry::type() const noexcept {
 
 data::value const& parameter_entry::value() const noexcept {
     return value_;
-}
-
-any parameter_entry::as_any() const noexcept {
-    return value_.view();
 }
 
 }

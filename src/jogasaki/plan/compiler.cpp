@@ -134,6 +134,7 @@
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/value_to_any.h>
 
 #define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, "") //NOLINT
 #define set_compile_error_with_stack(ctx, code, msg, st, stack) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, stack) //NOLINT
@@ -875,12 +876,15 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
             continue;
         }
         auto os = info->at(name);
+
+        data::any a{};
+        utils::value_to_any(e.value(), a); // TODO value_to_any does not support blobs
         utils::copy_nullable_field(
             e.type(),
             target,
             os.value_offset(),
             os.nullity_offset(),
-            e.as_any()
+            a
         );
     }
     return vars;

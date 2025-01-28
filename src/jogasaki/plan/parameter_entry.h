@@ -15,14 +15,11 @@
  */
 #pragma once
 
-#include <jogasaki/data/any.h>
 #include <jogasaki/data/value.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 
 namespace jogasaki::plan {
-
-using jogasaki::data::any;
 
 /**
  * @brief parameters for place holders
@@ -53,7 +50,6 @@ public:
 
     [[nodiscard]] meta::field_type const& type() const noexcept;
     [[nodiscard]] data::value const& value() const noexcept;
-    [[nodiscard]] any as_any() const noexcept;
 
 private:
     meta::field_type type_{};

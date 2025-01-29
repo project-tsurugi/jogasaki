@@ -104,6 +104,16 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                     check_writer_rc(value_writer_->write_time_point(rec.get_value<runtime_t<k::time_point>>(os)));
                     break;
                 }
+                case k::blob: {
+                    auto lob = rec.get_value<runtime_t<k::blob>>(os);
+                    check_writer_rc(value_writer_->write_blob(static_cast<std::uint64_t>(lob.provider()), lob.object_id()));
+                    break;
+                }
+                case k::clob: {
+                    auto lob = rec.get_value<runtime_t<k::clob>>(os);
+                    check_writer_rc(value_writer_->write_blob(static_cast<std::uint64_t>(lob.provider()), lob.object_id()));
+                    break;
+                }
                 default:
                     fail_with_exception();
             }

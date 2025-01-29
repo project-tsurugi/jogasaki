@@ -46,6 +46,20 @@ public:
     {}
 
     /**
+     * @brief return object id of the lob data
+     */
+    [[nodiscard]] lob_id_type object_id() const noexcept {
+        return id_;
+    }
+
+    /**
+     * @brief return provider of the lob data
+     */
+    [[nodiscard]] lob_data_provider provider() const noexcept {
+        return provider_;
+    }
+
+    /**
      * @brief compare two clob object references
      * @param a first arg to compare
      * @param b second arg to compare

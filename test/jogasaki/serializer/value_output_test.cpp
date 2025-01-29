@@ -428,12 +428,22 @@ TEST_F(value_output_test, write_row_begin_full) {
             perform([](auto& iter, auto end) { return write_row_begin(4096, iter, end); }));
 }
 
-TEST_F(value_output_test, DISABLED_write_clob) {
-    FAIL() << "yet not implemented";
+TEST_F(value_output_test, write_blob) {
+    EXPECT_EQ(
+            sequence(header_blob, { fixed<std::uint64_t>(0UL), fixed<std::uint64_t>(0UL) }),
+            perform([](auto& iter, auto end) { return write_blob(0, 0, iter, end); }));
+    EXPECT_EQ(
+            sequence(header_blob, { fixed<std::uint64_t>(1UL), fixed<std::uint64_t>(10UL) }),
+            perform([](auto& iter, auto end) { return write_blob(1, 10, iter, end); }));
 }
 
-TEST_F(value_output_test, DISABLED_write_blob) {
-    FAIL() << "yet not implemented";
+TEST_F(value_output_test, write_clob) {
+    EXPECT_EQ(
+            sequence(header_clob, { fixed<std::uint64_t>(0UL), fixed<std::uint64_t>(0UL) }),
+            perform([](auto& iter, auto end) { return write_clob(0, 0, iter, end); }));
+    EXPECT_EQ(
+            sequence(header_clob, { fixed<std::uint64_t>(1UL), fixed<std::uint64_t>(10UL) }),
+            perform([](auto& iter, auto end) { return write_clob(1, 10, iter, end); }));
 }
 
 } // namespace jogasaki::serializer

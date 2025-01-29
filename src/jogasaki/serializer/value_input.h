@@ -246,6 +246,28 @@ std::size_t read_array_begin(buffer_view::const_iterator& position, buffer_view:
  */
 std::size_t read_row_begin(buffer_view::const_iterator& position, buffer_view::const_iterator end);
 
-// FIXME: impl blob, clob
+/**
+ * @brief retrieves `blob` on the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return the pair of BLOB provider and BLOB object id
+ * @throws std::runtime_error if the entry is not expected type
+ * @throws value_input_exception if the encoded value is not valid
+ * @see peek_type()
+ */
+std::pair<std::uint64_t, std::uint64_t> read_blob(buffer_view::const_iterator& position, buffer_view::const_iterator end);
+
+/**
+ * @brief retrieves `clob` on the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return the pair of BLOB provider and BLOB object id
+ * @throws std::runtime_error if the entry is not expected type
+ * @throws value_input_exception if the encoded value is not valid
+ * @see peek_type()
+ */
+std::pair<std::uint64_t, std::uint64_t> read_clob(buffer_view::const_iterator& position, buffer_view::const_iterator end);
 
 } // namespace jogasaki::serializer

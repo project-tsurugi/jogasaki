@@ -519,4 +519,36 @@ bool write_row_begin(
     return true;
 }
 
+bool write_blob(
+        std::uint64_t provider,
+        std::uint64_t object_id,
+        buffer_view::iterator& position,
+        buffer_view::const_iterator end) {
+    if (buffer_remaining(position, end) < 1
+            + sizeof(std::uint64_t)
+            + sizeof(std::uint64_t)) {
+        return false;
+    }
+    write_fixed8(header_blob, position, end);
+    write_fixed(provider, position, end);
+    write_fixed(object_id, position, end);
+    return true;
+}
+
+bool write_clob(
+        std::uint64_t provider,
+        std::uint64_t object_id,
+        buffer_view::iterator& position,
+        buffer_view::const_iterator end) {
+    if (buffer_remaining(position, end) < 1
+            + sizeof(std::uint64_t)
+            + sizeof(std::uint64_t)) {
+        return false;
+    }
+    write_fixed8(header_clob, position, end);
+    write_fixed(provider, position, end);
+    write_fixed(object_id, position, end);
+    return true;
+}
+
 } // namespace jogasaki::serializer

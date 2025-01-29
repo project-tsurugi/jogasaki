@@ -50,7 +50,6 @@ bool write_null(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -65,7 +64,6 @@ bool write_int(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -80,7 +78,6 @@ bool write_float4(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -96,7 +93,6 @@ bool write_float8(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -113,7 +109,6 @@ bool write_decimal(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -130,7 +125,6 @@ bool write_character(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -147,7 +141,6 @@ bool write_octet(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -165,7 +158,6 @@ bool write_bit(
  * @param number_of_bits the number of bits to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  * @throws std::out_of_range if `number_of_bits` is too large for `blocks`
@@ -182,7 +174,6 @@ bool write_bit(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -197,7 +188,6 @@ bool write_date(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -213,7 +203,6 @@ bool write_time_of_day(
  * @param timezone_offset the timezone offset (in minute) to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -229,7 +218,6 @@ bool write_time_of_day_with_offset(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -245,7 +233,6 @@ bool write_time_point(
  * @param timezone_offset the timezone offset (in minute) to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -261,7 +248,6 @@ bool write_time_point_with_offset(
  * @param value the value to write
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the retrieved value
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  */
@@ -278,7 +264,6 @@ bool write_datetime_interval(
  * @param size the number of elements in the array, must be less than `2^31` for interoperability
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the consequent number of elements in the array
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  * @throws std::out_of_range if size is out of range
@@ -296,7 +281,6 @@ bool write_array_begin(
  * @param size the number of elements in the row, must be less than `2^31` for interoperability
  * @param position the buffer content iterator
  * @param end the buffer ending position
- * @return the consequent number of elements in the row
  * @return true the operation successfully completed
  * @return false the remaining buffer is too short to write contents
  * @throws std::out_of_range if size is out of range
@@ -306,6 +290,36 @@ bool write_row_begin(
         buffer_view::iterator& position,
         buffer_view::const_iterator end);
 
-// FIXME: impl blob, clob
+/**
+ * @brief puts `blob` entry onto the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param provider the provider of the blob, see jogasaki::proto::sql::common::LargeObjectProvider
+ * @param object_id the id of the blob object
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return true the operation successfully completed
+ * @return false the remaining buffer is too short to write contents
+ */
+bool write_blob(
+        std::uint64_t provider,
+        std::uint64_t object_id,
+        buffer_view::iterator& position,
+        buffer_view::const_iterator end);
+
+/**
+ * @brief puts `clob` entry onto the current position.
+ * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
+ * @param provider the provider of the clob, see jogasaki::proto::sql::common::LargeObjectProvider
+ * @param object_id the id of the clob object
+ * @param position the buffer content iterator
+ * @param end the buffer ending position
+ * @return true the operation successfully completed
+ * @return false the remaining buffer is too short to write contents
+ */
+bool write_clob(
+        std::uint64_t provider,
+        std::uint64_t object_id,
+        buffer_view::iterator& position,
+        buffer_view::const_iterator end);
 
 } // namespace jogasaki::serializer

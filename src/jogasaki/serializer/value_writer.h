@@ -307,7 +307,37 @@ public:
         return writer_->write(buf.data(), write_size);
     }
 
-    // FIXME: impl blob, clob
+    /**
+     * @brief puts `blob` entry onto the current position.
+     * @param provider the provider of the blob, see jogasaki::proto::sql::common::LargeObjectProvider
+     * @param object_id the id of the blob object
+     */
+    result_type write_blob(std::uint64_t provider, std::uint64_t object_id) {
+        auto buf = buffer();
+        auto *iter = buf.begin();
+        auto ret = ::jogasaki::serializer::write_blob(provider, object_id, iter, buf.end());
+        BOOST_ASSERT(ret); // NOLINT
+        (void) ret;
+
+        auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
+        return writer_->write(buf.data(), write_size);
+    }
+
+    /**
+     * @brief puts `clob` entry onto the current position.
+     * @param provider the provider of the clob, see jogasaki::proto::sql::common::LargeObjectProvider
+     * @param object_id the id of the clob object
+     */
+    result_type write_clob(std::uint64_t provider, std::uint64_t object_id) {
+        auto buf = buffer();
+        auto *iter = buf.begin();
+        auto ret = ::jogasaki::serializer::write_clob(provider, object_id, iter, buf.end());
+        BOOST_ASSERT(ret); // NOLINT
+        (void) ret;
+
+        auto write_size = static_cast<size_type>(std::distance(buf.begin(), iter));
+        return writer_->write(buf.data(), write_size);
+    }
 
 private:
     std::vector<buffer_view::value_type> buffer_;

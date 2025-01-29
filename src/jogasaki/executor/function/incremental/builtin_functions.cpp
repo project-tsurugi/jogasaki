@@ -25,7 +25,9 @@
 
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
+#include <takatori/type/blob.h>
 #include <takatori/type/character.h>
+#include <takatori/type/clob.h>
 #include <takatori/type/date.h>
 #include <takatori/type/decimal.h>
 #include <takatori/type/octet.h>
@@ -274,6 +276,28 @@ void add_builtin_aggregate_functions(
             t::int8(),
             {
                 t::time_point(t::with_time_zone),
+            },
+            true,
+        });
+        id = function_id::id_10048;
+        repo.add(id, count);
+        functions.add({
+            id,
+            "count",
+            t::int8(),
+            {
+                t::blob(),
+            },
+            true,
+        });
+        id = function_id::id_10049;
+        repo.add(id, count);
+        functions.add({
+            id,
+            "count",
+            t::int8(),
+            {
+                t::clob(),
             },
             true,
         });

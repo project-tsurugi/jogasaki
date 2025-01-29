@@ -81,9 +81,11 @@ enum function_id : std::size_t {
     id_10045,
     id_10046,
     id_10047,
+    id_10048,
+    id_10049,
 };
 
 static_assert(function_id::id_10000 == 10'000);
-static_assert(function_id::id_10047 == 10'047);
+static_assert(function_id::id_10049 == 10'049);
 
 }  // namespace jogasaki::executor::function::incremental

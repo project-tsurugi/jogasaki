@@ -112,4 +112,16 @@ TEST_F(sql_function_type_matrix_test, count_timestamptz) {
     test_function_with_type<kind::int8>("count(", "TIMESTAMP WITH TIME ZONE", "(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:01+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:02+09:00'),(TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:03+09:00'),(null)", 3);
 }
 
+// blob is allowed only for COUNT (non-distinct)
+TEST_F(sql_function_type_matrix_test, count_blob) {
+    // currently testing only with null values TODO
+    test_function_with_type<kind::int8>("count(", "BLOB", "(null),(null),(null),(null)", 0);
+}
+
+// clob is allowed only for COUNT (non-distinct)
+TEST_F(sql_function_type_matrix_test, count_clob) {
+    // currently testing only with null values TODO
+    test_function_with_type<kind::int8>("count(", "CLOB", "(null),(null),(null),(null)", 0);
+}
+
 }  // namespace jogasaki::testing

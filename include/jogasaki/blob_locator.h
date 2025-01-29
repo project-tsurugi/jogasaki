@@ -43,6 +43,13 @@ public:
     {}
 
     /**
+     * @brief return path of the blob data file
+     */
+    [[nodiscard]] std::string_view path() const noexcept {
+        return path_;
+    }
+
+    /**
      * @brief compare two blob object references
      * @param a first arg to compare
      * @param b second arg to compare

@@ -1296,19 +1296,19 @@ void service::set_params(
                 params->set_decimal(p.name(), to_triple(p.decimal_value()));
                 break;
             case sql::request::Parameter::ValueCase::kDateValue:
-                params->set_date(p.name(), field_type_traits<kind::date>::runtime_type{p.date_value()});
+                params->set_date(p.name(), field_type_traits<kind::date>::parameter_type{p.date_value()});
                 break;
             case sql::request::Parameter::ValueCase::kTimeOfDayValue:
                 params->set_time_of_day(
                     p.name(),
-                    field_type_traits<kind::time_of_day>::runtime_type{
+                    field_type_traits<kind::time_of_day>::parameter_type{
                         std::chrono::duration<std::uint64_t, std::nano>{p.time_of_day_value()}
                     }
                 );
                 break;
             case sql::request::Parameter::ValueCase::kTimePointValue: {
                 auto& v = p.time_point_value();
-                params->set_time_point(p.name(), field_type_traits<kind::time_point>::runtime_type{
+                params->set_time_point(p.name(), field_type_traits<kind::time_point>::parameter_type{
                     std::chrono::duration<std::int64_t>{v.offset_seconds()},
                     std::chrono::nanoseconds{v.nano_adjustment()}
                 });
@@ -1321,7 +1321,7 @@ void service::set_params(
                     }
                 };
                 auto offset_min = p.time_of_day_with_time_zone_value().time_zone_offset();
-                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::runtime_type{
+                params->set_time_of_day(p.name(), field_type_traits<kind::time_of_day>::parameter_type{
                     utils::remove_offset({tod, offset_min})
                 });
                 break;
@@ -1333,9 +1333,19 @@ void service::set_params(
                     std::chrono::nanoseconds{v.nano_adjustment()}
                 };
                 auto offset_min = v.time_zone_offset();
-                params->set_time_point(p.name(), field_type_traits<kind::time_point>::runtime_type{
+                params->set_time_point(p.name(), field_type_traits<kind::time_point>::parameter_type{
                     utils::remove_offset({tp, offset_min})
                 });
+                break;
+            }
+            case sql::request::Parameter::ValueCase::kBlob: {
+                auto& v = p.blob();
+                params->set_blob(p.name(), field_type_traits<kind::blob>::parameter_type{v.local_path()});
+                break;
+            }
+            case sql::request::Parameter::ValueCase::kClob: {
+                auto& v = p.clob();
+                params->set_clob(p.name(), field_type_traits<kind::clob>::parameter_type{v.local_path()});
                 break;
             }
             case sql::request::Parameter::ValueCase::kReferenceColumnPosition:
@@ -1543,6 +1553,12 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                 break;
             case jogasaki::api::field_type_kind::time_point_with_time_zone:
                 column->set_atom_type(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE);
+                break;
+            case jogasaki::api::field_type_kind::blob:
+                column->set_atom_type(sql::common::AtomType::BLOB);
+                break;
+            case jogasaki::api::field_type_kind::clob:
+                column->set_atom_type(sql::common::AtomType::CLOB);
                 break;
             case jogasaki::api::field_type_kind::unknown:
                 column->set_atom_type(sql::common::AtomType::UNKNOWN);

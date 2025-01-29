@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <any>
 #include <sstream>
@@ -22,16 +23,18 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include "jogasaki/proto/sql/common.pb.h"
+#include "jogasaki/proto/sql/request.pb.h"
+#include "jogasaki/proto/sql/response.pb.h"
 #include <jogasaki/api.h>
 #include <jogasaki/api/impl/map_error_code.h>
+#include <jogasaki/blob_locator.h>
+#include <jogasaki/clob_locator.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/utils/convert_offset.h>
 #include <jogasaki/utils/decimal.h>
-#include "jogasaki/proto/sql/common.pb.h"
-#include "jogasaki/proto/sql/request.pb.h"
-#include "jogasaki/proto/sql/response.pb.h"
 
 namespace jogasaki::utils {
 
@@ -83,32 +86,8 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
             case sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>(true)); break;
             case sql::common::AtomType::TIME_POINT: fields.emplace_back(std::make_shared<meta::time_point_field_option>(false)); break;
             case sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: fields.emplace_back(std::make_shared<meta::time_point_field_option>(true)); break;
-            default: std::abort();
-        }
-    }
-    jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
-    return meta;
-}
-
-inline jogasaki::meta::record_meta create_record_meta(sql::response::ResultSetMetadata const& proto) {
-    std::vector<meta::field_type> fields{};
-    boost::dynamic_bitset<std::uint64_t> nullities;
-    for(std::size_t i=0, n=proto.columns_size(); i<n; ++i) {
-        auto& c = proto.columns(i);
-        meta::field_type field{};
-        nullities.push_back(true); // TODO assume all nullable
-        switch(c.atom_type()) {
-            using kind = meta::field_type_kind;
-            case sql::common::AtomType::INT4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
-            case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
-            case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
-            case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case sql::common::AtomType::CHARACTER: fields.emplace_back(std::make_shared<meta::character_field_option>()); break;
-            case sql::common::AtomType::OCTET: fields.emplace_back(std::make_shared<meta::octet_field_option>()); break;
-            case sql::common::AtomType::DECIMAL: fields.emplace_back(std::make_shared<meta::decimal_field_option>()); break;
-            case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
-            case sql::common::AtomType::TIME_OF_DAY: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>()); break;
-            case sql::common::AtomType::TIME_POINT: fields.emplace_back(std::make_shared<meta::time_point_field_option>()); break;
+            case sql::common::AtomType::BLOB: fields.emplace_back(meta::field_enum_tag<kind::blob>); break;
+            case sql::common::AtomType::CLOB: fields.emplace_back(meta::field_enum_tag<kind::clob>); break;
             default: std::abort();
         }
     }
@@ -464,6 +443,16 @@ inline void fill_parameters(
                 v->set_offset_seconds(tp.seconds_since_epoch().count());
                 v->set_nano_adjustment(tp.subsecond().count());
                 v->set_time_zone_offset(offset);
+                break;
+            }
+            case ValueCase::kBlob: {
+                auto loc = std::any_cast<blob_locator>(p.value_);
+                c0->mutable_blob()->mutable_local_path()->assign(loc.path());
+                break;
+            }
+            case ValueCase::kClob: {
+                auto loc = std::any_cast<clob_locator>(p.value_);
+                c0->mutable_clob()->mutable_local_path()->assign(loc.path());
                 break;
             }
             case ValueCase::kReferenceColumnPosition: c0->set_reference_column_position(std::any_cast<std::uint64_t>(p.value_)); break;

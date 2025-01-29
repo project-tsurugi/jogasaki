@@ -1325,6 +1325,90 @@ TEST_F(service_api_test, boolean_type) {
     test_dispose_prepare(query_handle);
 }
 
+TEST_F(service_api_test, blob_types) {
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into t values (0, :p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::BLOB},
+        std::pair{"p1"s, sql::common::AtomType::CLOB}
+    );
+
+    {
+        std::vector<parameter> parameters{
+            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<blob_locator>, blob_locator{""}}}, //TODO fill path
+            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<clob_locator>, clob_locator{""}}}, //TODO fill path
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto [success, error, stats] = decode_execute_result(res->body_);
+        ASSERT_TRUE(success);
+    }
+    test_commit(tx_handle);
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select c1, c2 from t"
+    );
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(2, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::BLOB, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_EQ(sql::common::AtomType::CLOB, cols[1].type_);
+            EXPECT_TRUE(cols[1].nullable_);
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                EXPECT_EQ((mock::typed_nullable_record<ft::blob, ft::clob>(
+                    std::tuple{meta::blob_type(), meta::clob_type()},
+                    {
+                        blob_reference{0, lob_data_provider::datastore},
+                        clob_reference{0, lob_data_provider::datastore},
+                    },
+                    {true, true}
+                )), v[0]);
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(query_handle);
+}
+
 TEST_F(service_api_test, protobuf1) {
     // verify protobuf behavior
     using namespace std::string_view_literals;
@@ -2012,6 +2096,27 @@ TEST_F(service_api_test, describe_table_temporal_types) {
     EXPECT_EQ(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE, result.columns_[3].atom_type_);
     EXPECT_EQ("C4", result.columns_[4].name_);
     EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, result.columns_[4].atom_type_);
+}
+
+TEST_F(service_api_test, describe_table_blob_types) {
+    // verify with_offset is correctly reflected on the output schema
+    execute_statement("create table T (C0 BLOB, C1 CLOB)");
+    auto s = encode_describe_table("T");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ("T", result.table_name_);
+    ASSERT_EQ(2, result.columns_.size());
+    EXPECT_EQ("C0", result.columns_[0].name_);
+    EXPECT_EQ(sql::common::AtomType::BLOB, result.columns_[0].atom_type_);
+    EXPECT_EQ("C1", result.columns_[1].name_);
+    EXPECT_EQ(sql::common::AtomType::CLOB, result.columns_[1].atom_type_);
 }
 
 TEST_F(service_api_test, describe_pkless_table) {

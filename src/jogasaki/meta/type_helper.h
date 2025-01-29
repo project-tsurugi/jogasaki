@@ -123,4 +123,12 @@ inline field_type time_point_type(bool with_offset = false) {
     return create_field_type<field_type_kind::time_point>(with_offset);
 }
 
+inline field_type blob_type() {
+    return create_field_type<field_type_kind::blob>();
+}
+
+inline field_type clob_type() {
+    return create_field_type<field_type_kind::clob>();
+}
+
 }  // namespace jogasaki::meta

@@ -578,4 +578,27 @@ TEST_F(host_variables_test, missing_colon) {
     test_stmt_err( "INSERT INTO T0 (C0, C1) VALUES (p0, p1)", variables, *ps, error_code::symbol_analyze_exception);
 }
 
+TEST_F(host_variables_test, blob_types) {
+    // currently test with NULLs for lob columns TODO
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int4},
+        {"p1", api::field_type_kind::blob},
+        {"p2", api::field_type_kind::clob},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", blob_locator{});
+    ps->set_clob("p2", clob_locator{});
+    execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                  {1, blob_reference{0, lob_data_provider::datastore},
+                   clob_reference{0, lob_data_provider::datastore}},
+                  {false, true, true})),
+              result[0]);
+}
+
 }

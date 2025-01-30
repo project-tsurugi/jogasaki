@@ -271,6 +271,33 @@ public:
     write(T data, order odr, meta::decimal_field_option const& option) {
         return do_write(data, odr, option);
     }
+
+    /**
+     * @brief write the blob field data respecting order to the stream
+     * @tparam T the runtime type of the field
+     * @param data the data of the field type
+     * @param odr the order of the field
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::blob>>, status> write(T data, order odr) {
+        // only object id part is needed for kvs data
+        write<std::uint64_t>(data.object_id(), odr);
+        return status::ok;
+    }
+
+    /**
+     * @brief write the clob field data respecting order to the stream
+     * @tparam T the runtime type of the field
+     * @param data the data of the field type
+     * @param odr the order of the field
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::clob>>, status> write(T data, order odr) {
+        // only object id part is needed for kvs data
+        write<std::uint64_t>(data.object_id(), odr);
+        return status::ok;
+    }
+
     /**
      * @brief write raw data to the stream buffer
      * @details the raw data is written to the stream. Given binary sequence is used

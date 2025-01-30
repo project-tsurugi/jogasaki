@@ -92,6 +92,8 @@ status encode(
             case kind::date: return dest.write<runtime_t<kind::date>>(src.get_value<runtime_t<kind::date>>(offset), odr);
             case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.get_value<runtime_t<kind::time_of_day>>(offset), odr);
             case kind::time_point: return dest.write<runtime_t<kind::time_point>>(src.get_value<runtime_t<kind::time_point>>(offset), odr);
+            case kind::blob: return dest.write<runtime_t<kind::blob>>(src.get_value<runtime_t<kind::blob>>(offset), odr);
+            case kind::clob: return dest.write<runtime_t<kind::clob>>(src.get_value<runtime_t<kind::clob>>(offset), odr);
             default: break;
         }
         throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
@@ -148,6 +150,8 @@ status encode(
             case kind::date: return dest.write<runtime_t<kind::date>>(src.to<runtime_t<kind::date>>(), odr);
             case kind::time_of_day: return dest.write<runtime_t<kind::time_of_day>>(src.to<runtime_t<kind::time_of_day>>(), odr);
             case kind::time_point: return dest.write<runtime_t<kind::time_point>>(src.to<runtime_t<kind::time_point>>(), odr);
+            case kind::blob: return dest.write<runtime_t<kind::blob>>(src.to<runtime_t<kind::blob>>(), odr);
+            case kind::clob: return dest.write<runtime_t<kind::clob>>(src.to<runtime_t<kind::clob>>(), odr);
             default: break;
         }
         throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
@@ -203,6 +207,8 @@ status decode(
             case kind::date: dest = any{std::in_place_type<runtime_t<kind::date>>, src.read<runtime_t<kind::date>>(odr, false)}; break;
             case kind::time_of_day: dest = any{std::in_place_type<runtime_t<kind::time_of_day>>, src.read<runtime_t<kind::time_of_day>>(odr, false)}; break;
             case kind::time_point: dest = any{std::in_place_type<runtime_t<kind::time_point>>, src.read<runtime_t<kind::time_point>>(odr, false)}; break;
+            case kind::blob: dest = any{std::in_place_type<runtime_t<kind::blob>>, src.read<runtime_t<kind::blob>>(odr, false)}; break;
+            case kind::clob: dest = any{std::in_place_type<runtime_t<kind::clob>>, src.read<runtime_t<kind::clob>>(odr, false)}; break;
             default:
                 throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
         }
@@ -237,6 +243,8 @@ status decode(
             case kind::date: dest.set_value<runtime_t<kind::date>>(offset, src.read<runtime_t<kind::date>>(odr, false)); break;
             case kind::time_of_day: dest.set_value<runtime_t<kind::time_of_day>>(offset, src.read<runtime_t<kind::time_of_day>>(odr, false)); break;
             case kind::time_point: dest.set_value<runtime_t<kind::time_point>>(offset, src.read<runtime_t<kind::time_point>>(odr, false)); break;
+            case kind::blob: dest.set_value<runtime_t<kind::blob>>(offset, src.read<runtime_t<kind::blob>>(odr, false)); break;
+            case kind::clob: dest.set_value<runtime_t<kind::clob>>(offset, src.read<runtime_t<kind::clob>>(odr, false)); break;
             default:
                 throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
         }
@@ -322,6 +330,8 @@ status consume_stream(
             case kind::date: src.read<runtime_t<kind::date>>(odr, true); break;
             case kind::time_of_day: src.read<runtime_t<kind::time_of_day>>(odr, true); break;
             case kind::time_point: src.read<runtime_t<kind::time_point>>(odr, true); break;
+            case kind::blob: src.read<runtime_t<kind::blob>>(odr, true); break;
+            case kind::clob: src.read<runtime_t<kind::clob>>(odr, true); break;
             default:
                 throw_exception(std::domain_error{"Unsupported types or metadata corruption"});
         }

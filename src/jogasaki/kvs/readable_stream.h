@@ -263,6 +263,29 @@ public:
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, T> read(order odr, bool discard, meta::decimal_field_option const& option) {
         return do_read(odr, discard, *option.precision_, *option.scale_); //FIXME if precision scale doesn't exist
     }
+
+    /**
+     * @brief read next blob data in the buffer
+     * @param odr the order of the field
+     * @param discard specify true if the read should not actually happen.
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::blob>>, T> read(order odr, bool discard) {
+        auto v = read<std::uint64_t>(odr, discard);
+        return blob_reference{v, lob_data_provider::datastore};
+    }
+
+    /**
+     * @brief read next clob data in the buffer
+     * @param odr the order of the field
+     * @param discard specify true if the read should not actually happen.
+     */
+    template<class T>
+    std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::clob>>, T> read(order odr, bool discard) {
+        auto v = read<std::uint64_t>(odr, discard);
+        return clob_reference{v, lob_data_provider::datastore};
+    }
+
     /**
      * @brief reset the current position
      */

@@ -318,6 +318,70 @@ TEST_F(coder_test, f32_desc) {
     EXPECT_EQ('\x00', buf[7]);
 }
 
+TEST_F(coder_test, blob_desc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto u64max = std::numeric_limits<std::uint64_t>::max();
+    EXPECT_EQ(status::ok, s.write(blob_reference{10, lob_data_provider::datastore}, desc));
+    EXPECT_EQ(status::ok, s.write(blob_reference{u64max, lob_data_provider::datastore}, desc));
+
+    auto rs = s.readable();
+    auto ref0 =  rs.read<blob_reference>(desc, false);
+    EXPECT_EQ(10, ref0.object_id());
+    auto ref1 =  rs.read<blob_reference>(desc, false);
+    EXPECT_EQ(u64max, ref1.object_id());
+
+    EXPECT_EQ('\xFF', buf[0]);
+    EXPECT_EQ('\xFF', buf[1]);
+    EXPECT_EQ('\xFF', buf[2]);
+    EXPECT_EQ('\xFF', buf[3]);
+    EXPECT_EQ('\xFF', buf[4]);
+    EXPECT_EQ('\xFF', buf[5]);
+    EXPECT_EQ('\xFF', buf[6]);
+    EXPECT_EQ('\xF5', buf[7]);
+
+    EXPECT_EQ('\x00', buf[8]);
+    EXPECT_EQ('\x00', buf[9]);
+    EXPECT_EQ('\x00', buf[10]);
+    EXPECT_EQ('\x00', buf[11]);
+    EXPECT_EQ('\x00', buf[12]);
+    EXPECT_EQ('\x00', buf[13]);
+    EXPECT_EQ('\x00', buf[14]);
+    EXPECT_EQ('\x00', buf[15]);
+}
+
+TEST_F(coder_test, clob_desc) {
+    std::string buf(100, 0);
+    kvs::writable_stream s{buf};
+    auto u64max = std::numeric_limits<std::uint64_t>::max();
+    EXPECT_EQ(status::ok, s.write(clob_reference{10, lob_data_provider::datastore}, desc));
+    EXPECT_EQ(status::ok, s.write(blob_reference{u64max, lob_data_provider::datastore}, desc));
+
+    auto rs = s.readable();
+    auto ref0 =  rs.read<clob_reference>(desc, false);
+    EXPECT_EQ(10, ref0.object_id());
+    auto ref1 =  rs.read<clob_reference>(desc, false);
+    EXPECT_EQ(u64max, ref1.object_id());
+
+    EXPECT_EQ('\xFF', buf[0]);
+    EXPECT_EQ('\xFF', buf[1]);
+    EXPECT_EQ('\xFF', buf[2]);
+    EXPECT_EQ('\xFF', buf[3]);
+    EXPECT_EQ('\xFF', buf[4]);
+    EXPECT_EQ('\xFF', buf[5]);
+    EXPECT_EQ('\xFF', buf[6]);
+    EXPECT_EQ('\xF5', buf[7]);
+
+    EXPECT_EQ('\x00', buf[8]);
+    EXPECT_EQ('\x00', buf[9]);
+    EXPECT_EQ('\x00', buf[10]);
+    EXPECT_EQ('\x00', buf[11]);
+    EXPECT_EQ('\x00', buf[12]);
+    EXPECT_EQ('\x00', buf[13]);
+    EXPECT_EQ('\x00', buf[14]);
+    EXPECT_EQ('\x00', buf[15]);
+}
+
 std::string to_hex(float f) {
     std::uint32_t tmp{};
     std::memcpy(&tmp, &f, sizeof(tmp));

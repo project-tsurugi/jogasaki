@@ -88,7 +88,7 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, blob_reference const& value) {
-        return out << "id:" << value.id_ << "provider:" << value.provider_;
+        return out << "id:" << value.id_ << ",provider:" << value.provider_;
     }
 
 private:

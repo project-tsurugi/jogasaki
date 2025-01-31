@@ -428,6 +428,8 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
         case t::date: return create_any<runtime_t<meta::field_type_kind::date>>(ref, info);
         case t::time_of_day: return create_any<runtime_t<meta::field_type_kind::time_of_day>>(ref, info);
         case t::time_point: return create_any<runtime_t<meta::field_type_kind::time_point>>(ref, info);
+        case t::blob: return create_any<runtime_t<meta::field_type_kind::blob>>(ref, info);
+        case t::clob: return create_any<runtime_t<meta::field_type_kind::clob>>(ref, info);
         default: return return_unsupported();
     }
 }

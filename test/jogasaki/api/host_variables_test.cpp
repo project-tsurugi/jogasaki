@@ -592,7 +592,7 @@ TEST_F(host_variables_test, blob_types) {
     ps->set_clob("p2", clob_locator{});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM t", result);
+    execute_query("SELECT c0, c1, c2 FROM t", result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
                   {1, blob_reference{0, lob_data_provider::datastore},

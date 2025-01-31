@@ -86,6 +86,8 @@ inline void print_field(
         case kind::date: os << record.get_value<runtime_t<kind::date>>(offset); break;
         case kind::time_of_day: os << record.get_value<runtime_t<kind::time_of_day>>(offset); break;
         case kind::time_point: os << record.get_value<runtime_t<kind::time_point>>(offset); break;
+        case kind::blob: os << record.get_value<runtime_t<kind::blob>>(offset); break;
+        case kind::clob: os << record.get_value<runtime_t<kind::clob>>(offset); break;
 //        case kind::time_interval: os << record.get_value<runtime_t<kind::time_interval>>(offset); break;
 //        case kind::array: os << record.get_value<runtime_t<kind::array>>(offset); break;
 //        case kind::record: os << record.get_value<runtime_t<kind::record>>(offset); break;

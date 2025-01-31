@@ -878,7 +878,16 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
         auto os = info->at(name);
 
         data::any a{};
-        utils::value_to_any(e.value(), a); // TODO value_to_any does not support blobs
+        if (e.value().type_index() == data::value::index<blob_locator>) {
+            // TODO implement resolution
+            a = data::any{std::in_place_type<blob_reference>, blob_reference{10, lob_data_provider::datastore}};
+        } else if (e.value().type_index() == data::value::index<clob_locator>) {
+            // TODO implement resolution
+            a = data::any{std::in_place_type<clob_reference>, clob_reference{20, lob_data_provider::datastore}};
+        } else {
+            // value_to_any does not support blob or clob
+            utils::value_to_any(e.value(), a);
+        }
         utils::copy_nullable_field(
             e.type(),
             target,

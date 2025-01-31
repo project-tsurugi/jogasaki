@@ -515,6 +515,14 @@ public:
         key_distribution_ = arg;
     }
 
+    [[nodiscard]] bool mock_datastore() const noexcept {
+        return mock_datastore_;
+    }
+
+    void mock_datastore(bool arg) noexcept {
+        mock_datastore_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -574,6 +582,7 @@ public:
         print_non_default(inplace_dag_schedule);
         print_non_default(enable_join_scan);
         print_non_default(key_distribution);
+        print_non_default(mock_datastore);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -637,6 +646,7 @@ private:
     bool inplace_dag_schedule_ = true;
     bool enable_join_scan_ = true;
     key_distribution_kind key_distribution_{key_distribution_kind::uniform};
+    bool mock_datastore_ = false;
 };
 
 }  // namespace jogasaki

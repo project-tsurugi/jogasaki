@@ -68,6 +68,7 @@ file(GLOB SOURCES
         "jogasaki/api/service/*.cpp"
         "jogasaki/api/resource/*.cpp"
         "jogasaki/data/*.cpp"
+        "jogasaki/datastore/*.cpp"
         "jogasaki/error/*.cpp"
         "jogasaki/external_log/*.cpp"
         "jogasaki/executor/*.cpp"
@@ -160,6 +161,7 @@ target_link_libraries(${ENGINE}
         PUBLIC yugawara
         PRIVATE mizugaki
         PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
+        PRIVATE limestone
         PRIVATE tbb
         PRIVATE numa
         PRIVATE tsl::hopscotch_map

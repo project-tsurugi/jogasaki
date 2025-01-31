@@ -200,7 +200,6 @@ public:
      */
     [[nodiscard]] status delete_sequence(sequence_id id);
 
-
     /**
      * @brief register durability callback
      * @param the callback to be invoked when durability event (i.e. updates on durability marker) occurrs
@@ -208,6 +207,15 @@ public:
      * @return any other error
      */
     status register_durability_callback(::sharksfin::durability_callback_type cb);
+
+    /**
+     * @brief get the datastore (limestone) object
+     * @param out [out] the output parameter filled with the datastore object pointer
+     * @return status::ok if successful
+     * @return any other error
+     */
+    status get_datastore(std::any& out);
+
 private:
     sharksfin::DatabaseHandle handle_{};
     bool handle_borrowed_{true};
@@ -238,5 +246,4 @@ inline std::ostream& operator<<(std::ostream& out, database const& value) {
     return out;
 }
 
-}
-
+}  // namespace jogasaki::kvs

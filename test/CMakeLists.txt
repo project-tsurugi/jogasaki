@@ -39,6 +39,7 @@ function (add_test_executable source_file)
             PRIVATE tbb
             PRIVATE takatori
             PRIVATE mizugaki
+            PRIVATE limestone
             PRIVATE atomic
             PRIVATE protobuf::libprotobuf
             PRIVATE mpdecpp
@@ -59,6 +60,7 @@ file(GLOB SRCS
         "jogasaki/api/*.cpp"
         "jogasaki/api/kvsservice/*.cpp"
         "jogasaki/data/*.cpp"
+        "jogasaki/datastore/*.cpp"
         "jogasaki/dist/*.cpp"
         "jogasaki/error/*.cpp"
         "jogasaki/executor/*.cpp"

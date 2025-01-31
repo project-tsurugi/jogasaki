@@ -187,7 +187,10 @@ status database::register_durability_callback(::sharksfin::durability_callback_t
     return status::ok;
 }
 
-database::database() = default;
-
+status database::get_datastore(std::any& out) {
+    return resolve(sharksfin::implementation_get_datastore(handle_, std::addressof(out)));
 }
 
+database::database() = default;
+
+}  // namespace jogasaki::kvs

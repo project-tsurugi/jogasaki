@@ -880,10 +880,10 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
         data::any a{};
         if (e.value().type_index() == data::value::index<blob_locator>) {
             // TODO implement resolution
-            a = data::any{std::in_place_type<blob_reference>, blob_reference{10, lob_data_provider::datastore}};
+            // a = data::any{std::in_place_type<blob_reference>, blob_reference{10, lob_data_provider::datastore}};
         } else if (e.value().type_index() == data::value::index<clob_locator>) {
             // TODO implement resolution
-            a = data::any{std::in_place_type<clob_reference>, clob_reference{20, lob_data_provider::datastore}};
+            // a = data::any{std::in_place_type<clob_reference>, clob_reference{20, lob_data_provider::datastore}};
         } else {
             // value_to_any does not support blob or clob
             utils::value_to_any(e.value(), a);

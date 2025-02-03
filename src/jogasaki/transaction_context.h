@@ -34,7 +34,14 @@
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
 
+namespace limestone::api {
+
+class blob_pool;
+
+}
+
 namespace jogasaki {
+
 
 namespace details {
 
@@ -294,6 +301,27 @@ public:
 
     [[nodiscard]] std::string_view label() const noexcept;
 
+    /**
+     * @brief accessor for the blob pool
+     * @return the blob pool set for this transaction
+     * @return nullptr if blob pool is not set
+     * @note this function is not thread-safe - multiple threads should not call
+     * setter/getter simultaneously.
+     */
+    [[nodiscard]] std::shared_ptr<limestone::api::blob_pool> const& blob_pool() const noexcept {
+        return blob_pool_;
+    }
+
+    /**
+     * @brief setter for the blob pool value
+     * @param arg the blob pool to be set
+     * @note this function is not thread-safe - multiple threads should not call
+     * setter/getter simultaneously.
+     */
+    void blob_pool(std::shared_ptr<limestone::api::blob_pool> arg) noexcept {
+        blob_pool_ = std::move(arg);
+    }
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
@@ -307,6 +335,7 @@ private:
     clock::time_point start_time_{};
     clock::time_point end_time_{};
     std::string label_{};
+    std::shared_ptr<limestone::api::blob_pool> blob_pool_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

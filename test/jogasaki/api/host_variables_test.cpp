@@ -36,6 +36,7 @@
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/datastore/get_datastore.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/meta/decimal_field_option.h>
@@ -48,9 +49,11 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
+#include <jogasaki/test_utils/create_file.h>
 #include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
+
 
 namespace jogasaki::testing {
 
@@ -579,25 +582,39 @@ TEST_F(host_variables_test, missing_colon) {
 }
 
 TEST_F(host_variables_test, blob_types) {
-    // currently test with NULLs for lob columns TODO
+    global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},
         {"p1", api::field_type_kind::blob},
         {"p2", api::field_type_kind::clob},
     };
+
+    auto path1 = path()+"/blob_types1.dat";
+    auto path2 = path()+"/blob_types2.dat";
+    create_file(path1, "ABC");
+    create_file(path2, "DEF");
+
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", blob_locator{});
-    ps->set_clob("p2", clob_locator{});
+    ps->set_blob("p1", blob_locator{path1});
+    ps->set_clob("p2", clob_locator{path2});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
     execute_query("SELECT c0, c1, c2 FROM t", result);
     ASSERT_EQ(1, result.size());
+
+    auto ref1 = result[0].get_value<blob_reference>(1);
+    auto ref2 = result[0].get_value<clob_reference>(2);
+
+    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+    auto ret1 = ds->get_blob_file(ref1.object_id());
+    EXPECT_EQ("ABC", read_file(ret1.path().string()));
+    auto ret2 = ds->get_blob_file(ref2.object_id());
+    EXPECT_EQ("DEF", read_file(ret2.path().string()));
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1, blob_reference{0, lob_data_provider::datastore},
-                   clob_reference{0, lob_data_provider::datastore}},
-                  {false, true, true})),
+                  {1,  blob_reference{ref1.object_id(), lob_data_provider::datastore},
+                   clob_reference{ref2.object_id(), lob_data_provider::datastore}})),
               result[0]);
 }
 

@@ -111,7 +111,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                 }
                 case k::clob: {
                     auto lob = rec.get_value<runtime_t<k::clob>>(os);
-                    check_writer_rc(value_writer_->write_blob(static_cast<std::uint64_t>(lob.provider()), lob.object_id()));
+                    check_writer_rc(value_writer_->write_clob(static_cast<std::uint64_t>(lob.provider()), lob.object_id()));
                     break;
                 }
                 default:

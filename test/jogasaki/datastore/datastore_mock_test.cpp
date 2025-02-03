@@ -23,6 +23,7 @@
 #include <takatori/util/fail.h>
 #include <sharksfin/StorageOptions.h>
 
+#include <jogasaki/configuration.h>
 #include <jogasaki/datastore/get_datastore.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
@@ -30,10 +31,10 @@
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/status.h>
+#include <jogasaki/test_utils/create_file.h>
 
 #include "../kvs/kvs_test_base.h"
 
-#include <jogasaki/configuration.h>
 
 namespace jogasaki::datastore {
 
@@ -85,24 +86,13 @@ TEST_F(datastore_mock_test, register_file) {
     ASSERT_TRUE(pool);
 
     std::string file = path() + "/register_file.dat";
-    {
-        std::ofstream fs{file, std::ios::binary};
-        fs << 123 << std::endl;
-        fs.close();
-    }
-
+    create_file(path() + "/register_file.dat", "123");
     auto id = pool->register_file(file, false);
     auto ds_file = ds->get_blob_file(id);
 
     ASSERT_TRUE(ds_file);
     EXPECT_TRUE(! ds_file.path().empty());
-    {
-        std::ifstream fs{ds_file.path().string(), std::ios::binary};
-        std::int32_t in{};
-        fs >> in;
-        fs.close();
-        EXPECT_EQ(123, in);
-    }
+    EXPECT_EQ("123", read_file(ds_file.path().string()));
 
     pool->release();
 }

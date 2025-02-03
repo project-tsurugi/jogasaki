@@ -102,6 +102,8 @@ int comparator::compare_field(
         case meta::field_type_kind::date: return negate_if(field_comparator<kind::date>{}(a, b, l_offset, r_offset), field_index);
         case meta::field_type_kind::time_of_day: return negate_if(field_comparator<kind::time_of_day>{}(a, b, l_offset, r_offset), field_index);
         case meta::field_type_kind::time_point: return negate_if(field_comparator<kind::time_point>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::blob: return negate_if(field_comparator<kind::blob>{}(a, b, l_offset, r_offset), field_index);
+        case meta::field_type_kind::clob: return negate_if(field_comparator<kind::clob>{}(a, b, l_offset, r_offset), field_index);
         default:
             // TODO implement other types
             std::abort();

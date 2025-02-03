@@ -93,6 +93,7 @@
 
 #include <jogasaki/constants.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/datastore/register_lob.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/common/create_index.h>
@@ -879,11 +880,21 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
 
         data::any a{};
         if (e.value().type_index() == data::value::index<blob_locator>) {
-            // TODO implement resolution
-            // a = data::any{std::in_place_type<blob_reference>, blob_reference{10, lob_data_provider::datastore}};
+            limestone::api::blob_id_type blob_id{};
+            //TODO pass kvs db and tx
+            if (auto res = datastore::register_lob(e.value().ref<blob_locator>().path(), nullptr, nullptr, blob_id); res != status::ok) {
+                // error handling
+                std::abort();
+            }
+            a = data::any{std::in_place_type<blob_reference>, blob_reference{blob_id, lob_data_provider::datastore}};
         } else if (e.value().type_index() == data::value::index<clob_locator>) {
-            // TODO implement resolution
-            // a = data::any{std::in_place_type<clob_reference>, clob_reference{20, lob_data_provider::datastore}};
+            limestone::api::blob_id_type blob_id{};
+            //TODO pass kvs db and tx
+            if (auto res = datastore::register_lob(e.value().ref<clob_locator>().path(), nullptr, nullptr, blob_id); res != status::ok) {
+                // error handling
+                std::abort();
+            }
+            a = data::any{std::in_place_type<clob_reference>, clob_reference{blob_id, lob_data_provider::datastore}};
         } else {
             // value_to_any does not support blob or clob
             utils::value_to_any(e.value(), a);

@@ -28,6 +28,9 @@
 #include <takatori/util/maybe_shared_ptr.h>
 #include <tateyama/api/server/mock/request_response.h>
 
+#include "jogasaki/proto/sql/common.pb.h"
+#include "jogasaki/proto/sql/request.pb.h"
+#include "jogasaki/proto/sql/response.pb.h"
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/record.h>
@@ -41,6 +44,7 @@
 #include <jogasaki/kvs/id.h>
 #include <jogasaki/meta/type_helper.h>
 #include <jogasaki/mock/basic_record.h>
+#include <jogasaki/test_utils/create_file.h>
 #include <jogasaki/test_utils/temporary_folder.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/command_utils.h>
@@ -48,11 +52,10 @@
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/utils/tables.h>
-#include "jogasaki/proto/sql/common.pb.h"
-#include "jogasaki/proto/sql/request.pb.h"
-#include "jogasaki/proto/sql/response.pb.h"
 
 #include "api_test_base.h"
+
+#include <jogasaki/datastore/get_datastore.h>
 
 namespace jogasaki::api {
 
@@ -1326,6 +1329,7 @@ TEST_F(service_api_test, boolean_type) {
 }
 
 TEST_F(service_api_test, blob_types) {
+    global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
@@ -1337,10 +1341,14 @@ TEST_F(service_api_test, blob_types) {
         std::pair{"p1"s, sql::common::AtomType::CLOB}
     );
 
+    auto path0 = path() + "/blob0.dat";
+    auto path1 = path() + "/clob1.dat";
+    create_file(path0, "ABC");
+    create_file(path1, "DEF");
     {
         std::vector<parameter> parameters{
-            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<blob_locator>, blob_locator{""}}}, //TODO fill path
-            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<clob_locator>, clob_locator{""}}}, //TODO fill path
+            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<blob_locator>, blob_locator{path0}}},
+            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<clob_locator>, clob_locator{path1}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
@@ -1389,14 +1397,23 @@ TEST_F(service_api_test, blob_types) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
+                auto v0 = v[0].get_value<blob_reference>(0);
+                auto v1 = v[0].get_value<clob_reference>(1);
+
                 EXPECT_EQ((mock::typed_nullable_record<ft::blob, ft::clob>(
                     std::tuple{meta::blob_type(), meta::clob_type()},
                     {
-                        blob_reference{0, lob_data_provider::datastore},
-                        clob_reference{0, lob_data_provider::datastore},
+                        blob_reference{v0.object_id(), lob_data_provider::datastore},
+                        clob_reference{v1.object_id(), lob_data_provider::datastore},
                     },
-                    {true, true}
+                    {false, false}
                 )), v[0]);
+
+                auto* ds = datastore::get_datastore(db_impl()->kvs_db().get());
+                auto f0 = ds->get_blob_file(v0.object_id());
+                auto f1 = ds->get_blob_file(v1.object_id());
+                EXPECT_EQ("ABC", read_file(f0.path().string()));
+                EXPECT_EQ("DEF", read_file(f1.path().string()));
             }
         }
         {

@@ -99,4 +99,29 @@ inline bool less<runtime_t<meta::field_type_kind::time_point>>(
     }
     return x.subsecond() < y.subsecond();
 }
+
+template <>
+inline bool less<runtime_t<meta::field_type_kind::blob>>(
+    runtime_t<meta::field_type_kind::blob> const& x,
+    runtime_t<meta::field_type_kind::blob> const& y
+) {
+    // blob is not comparable, but some testcases need equal comparison of blob references
+    if (x.provider() != y.provider()) {
+        return x.provider() < y.provider();
+    }
+    return x.object_id() < y.object_id();
+}
+
+template <>
+inline bool less<runtime_t<meta::field_type_kind::clob>>(
+    runtime_t<meta::field_type_kind::clob> const& x,
+    runtime_t<meta::field_type_kind::clob> const& y
+) {
+    // clob is not comparable, but some testcases need equal comparison of blob references
+    if (x.provider() != y.provider()) {
+        return x.provider() < y.provider();
+    }
+    return x.object_id() < y.object_id();
+}
+
 }

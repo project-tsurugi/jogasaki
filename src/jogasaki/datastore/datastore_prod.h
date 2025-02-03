@@ -42,7 +42,7 @@ public:
     /**
      * @brief create object
      */
-    datastore_prod(limestone::api::datastore* ds);
+    explicit datastore_prod(limestone::api::datastore* ds);
 
     /**
      * @brief return the kind of this object

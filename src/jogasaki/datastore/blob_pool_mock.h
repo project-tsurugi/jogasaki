@@ -36,15 +36,15 @@ public:
      */
     ~blob_pool_mock() noexcept override = default;
 
-    blob_pool_mock(blob_pool_mock const &other) = default;
-    blob_pool_mock &operator=(blob_pool_mock const &other) = default;
-    blob_pool_mock(blob_pool_mock &&other) noexcept = default;
-    blob_pool_mock &operator=(blob_pool_mock &&other) noexcept = default;
+    blob_pool_mock(blob_pool_mock const &other) = delete;
+    blob_pool_mock &operator=(blob_pool_mock const &other) = delete;
+    blob_pool_mock(blob_pool_mock &&other) noexcept = delete;
+    blob_pool_mock &operator=(blob_pool_mock &&other) noexcept = delete;
 
     /**
      * @brief create object
      */
-    blob_pool_mock(datastore_mock *parent);
+    explicit blob_pool_mock(datastore_mock *parent);
 
     void release() override;
 

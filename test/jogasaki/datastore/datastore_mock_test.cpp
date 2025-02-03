@@ -65,6 +65,9 @@ TEST_F(datastore_mock_test, get_datastore_mock) {
 }
 
 TEST_F(datastore_mock_test, get_datastore_prod) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support prod datastore";
+    }
     global::config_pool()->mock_datastore(false);
     auto* ds = get_datastore(db_.get(), true);
     ASSERT_TRUE(ds);

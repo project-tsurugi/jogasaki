@@ -32,7 +32,7 @@ limestone::api::blob_id_type blob_pool_mock::register_file(boost::filesystem::pa
     if (parent_->path_to_id_.count(file.string()) != 0) {
         LOG(ERROR) << "file already registered at path:" << file.string();
     }
-    auto id = static_cast<limestone::api::blob_id_type>(parent_->id_src_++);
+    auto id = static_cast<limestone::api::blob_id_type>(datastore_mock::id_src_++);
     parent_->path_to_id_[file.string()] = id;
     parent_->id_to_path_[id] = file.string();
     return id;

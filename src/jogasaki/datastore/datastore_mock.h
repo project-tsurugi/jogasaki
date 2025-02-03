@@ -73,7 +73,7 @@ public:
 private:
     std::unordered_map<std::string, limestone::api::blob_id_type> path_to_id_{};
     std::unordered_map<limestone::api::blob_id_type, std::string> id_to_path_{};
-    static inline std::atomic_size_t id_src_{};
+    static inline std::atomic_size_t id_src_{};  //NOLINT
 
 };
 

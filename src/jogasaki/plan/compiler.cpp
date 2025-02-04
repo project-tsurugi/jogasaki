@@ -863,8 +863,7 @@ status validate_host_variables(
 
 std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     parameter_set const* parameters,
-    std::shared_ptr<executor::process::impl::variable_table_info> const& info,
-    compiler_context& ctx
+    std::shared_ptr<executor::process::impl::variable_table_info> const& info
 ) {
     if (parameters == nullptr || info == nullptr) {
         return {};
@@ -881,19 +880,11 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
 
         data::any a{};
         if (e.value().type_index() == data::value::index<blob_locator>) {
-            limestone::api::blob_id_type blob_id{};
-            if (auto res = datastore::register_lob(e.value().ref<blob_locator>().path(), ctx.transaction().get(), blob_id); res != status::ok) {
-                // error handling
-                std::abort();
-            }
-            a = data::any{std::in_place_type<blob_reference>, blob_reference{blob_id, lob_data_provider::datastore}};
+            auto& loc = vars->add_lob_locator(e.value().ref<blob_locator>());
+            a = data::any{std::in_place_type<blob_reference>, blob_reference{loc}};
         } else if (e.value().type_index() == data::value::index<clob_locator>) {
-            limestone::api::blob_id_type blob_id{};
-            if (auto res = datastore::register_lob(e.value().ref<clob_locator>().path(), ctx.transaction().get(), blob_id); res != status::ok) {
-                // error handling
-                std::abort();
-            }
-            a = data::any{std::in_place_type<clob_reference>, clob_reference{blob_id, lob_data_provider::datastore}};
+            auto& loc = vars->add_lob_locator(e.value().ref<clob_locator>());
+            a = data::any{std::in_place_type<clob_reference>, clob_reference{loc}};
         } else {
             // value_to_any does not support blob or clob
             utils::value_to_any(e.value(), a);
@@ -916,7 +907,7 @@ void create_mirror_for_write(
     std::shared_ptr<mirror_container> const& mirrors,
     parameter_set const* parameters
 ) {
-    auto vars = create_host_variables(parameters, mirrors->host_variable_info(), ctx);
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     auto& node = unsafe_downcast<statement::write>(*statement);
     auto& index = yugawara::binding::extract<yugawara::storage::index>(node.destination());
     auto write = std::make_shared<executor::common::write_statement>(
@@ -952,7 +943,7 @@ void create_mirror_for_empty_statement(
     parameter_set const* parameters
 ) {
 auto ops = std::make_shared<executor::common::empty>();
-    auto vars = create_host_variables(parameters, mirrors->host_variable_info(), ctx);
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     ctx.executable_statement(
         std::make_shared<executable_statement>(
             std::move(statement),
@@ -998,7 +989,7 @@ void create_mirror_for_ddl(
         default:
             throw_exception(std::logic_error{""});
     }
-    auto vars = create_host_variables(parameters, mirrors->host_variable_info(), ctx);
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     ctx.executable_statement(
         std::make_shared<executable_statement>(
             std::move(statement),
@@ -1019,7 +1010,7 @@ void create_mirror_for_execute(
     std::shared_ptr<mirror_container> const& mirrors,
     parameter_set const* parameters
 ) {
-    auto vars = create_host_variables(parameters, mirrors->host_variable_info(), ctx);
+    auto vars = create_host_variables(parameters, mirrors->host_variable_info());
     std::unordered_map<takatori::plan::step const*, executor::common::step*> steps{};
     yugawara::binding::factory bindings{};
     auto mirror = std::make_shared<executor::common::graph>();

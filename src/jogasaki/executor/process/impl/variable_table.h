@@ -17,6 +17,7 @@
 
 #include <iosfwd>
 #include <memory>
+#include <deque>
 
 #include <takatori/util/maybe_shared_ptr.h>
 
@@ -33,6 +34,8 @@ using takatori::util::maybe_shared_ptr;
  */
 class variable_table {
 public:
+    using lob_locator = std::variant<blob_locator, clob_locator>;
+
     /**
      * @brief construct empty instance
      */
@@ -73,9 +76,19 @@ public:
      */
     void dump(std::string const& indent = "") const noexcept;
 
+    /**
+     * @brief add lob locator to maintain the locator lifecycle for blob reference
+     */
+    template <class T>
+    std::enable_if_t<std::is_same_v<blob_locator, T> || std::is_same_v<clob_locator, T>, T> const& add_lob_locator(T locator) {
+        lob_locators_.emplace_back(std::in_place_type<T>, std::forward<T>(locator));
+        return std::get<T>(lob_locators_.back());
+    }
+
 private:
     variable_table_info const* info_{};
     std::unique_ptr<data::small_record_store> store_{};
+    std::deque<lob_locator> lob_locators_{};
 };
 
 /**

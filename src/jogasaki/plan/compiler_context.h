@@ -128,14 +128,6 @@ public:
         return option_;
     }
 
-    void transaction(std::shared_ptr<transaction_context> arg) noexcept {
-        transaction_ = std::move(arg);
-    }
-
-    [[nodiscard]] std::shared_ptr<transaction_context> const& transaction() const noexcept {
-        return transaction_;
-    }
-
 private:
     std::shared_ptr<class prepared_statement> prepared_statement_{};
     std::shared_ptr<class executable_statement> executable_statement_{};
@@ -147,7 +139,6 @@ private:
     std::shared_ptr<std::string> sql_text_{};
     std::shared_ptr<error::error_info> error_info_{};
     compile_option option_{};
-    std::shared_ptr<transaction_context> transaction_{};
 
 };
 

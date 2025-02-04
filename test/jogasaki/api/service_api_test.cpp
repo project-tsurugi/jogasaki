@@ -1329,7 +1329,7 @@ TEST_F(service_api_test, boolean_type) {
 }
 
 TEST_F(service_api_test, blob_types) {
-    // global::config_pool()->mock_datastore(true);
+    global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);

@@ -21,6 +21,7 @@
 
 #include "lob_data_provider.h"
 #include "lob_id.h"
+#include "blob_locator.h"
 
 namespace jogasaki {
 
@@ -46,6 +47,14 @@ public:
     {}
 
     /**
+     * @brief construct unresolved object
+     * @param locator the locator of the blob data
+     */
+    explicit blob_reference(blob_locator const& locator) :
+        locator_(std::addressof(locator))
+    {}
+
+    /**
      * @brief return object id of the lob data
      */
     [[nodiscard]] lob_id_type object_id() const noexcept {
@@ -60,6 +69,15 @@ public:
     }
 
     /**
+     * @brief return whether the object is resolved
+     * @return true if the object is resolved
+     * @return false otherwise
+     */
+    [[nodiscard]] bool resolved() const noexcept {
+        return locator_ == nullptr;
+    }
+
+    /**
      * @brief compare two blob object references
      * @param a first arg to compare
      * @param b second arg to compare
@@ -67,7 +85,14 @@ public:
      * @return false otherwise
      */
     friend bool operator==(blob_reference const& a, blob_reference const& b) noexcept {
-        return a.id_ == b.id_ && a.provider_ == b.provider_;
+        if (! a.resolved() && ! b.resolved()) {
+            return a.locator_ == b.locator_;
+        }
+        if (a.resolved() && b.resolved()) {
+            return a.id_ == b.id_ && a.provider_ == b.provider_;
+        }
+        // one is resolved and the other is not
+        return false;
     }
 
     /**
@@ -88,17 +113,21 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, blob_reference const& value) {
-        return out << "id:" << value.id_ << ",provider:" << value.provider_;
+        if (value.resolved()) {
+            return out << "id:" << value.id_ << ",provider:" << value.provider_;
+        }
+        return out << *value.locator_;
     }
 
 private:
     lob_id_type id_{};
     lob_data_provider provider_{};
+    blob_locator const* locator_{};
 };
 
 static_assert(std::is_trivially_copyable_v<blob_reference>);
 static_assert(std::is_trivially_destructible_v<blob_reference>);
 static_assert(std::alignment_of_v<blob_reference> == 8);
-static_assert(sizeof(blob_reference) == 16);
+static_assert(sizeof(blob_reference) == 24);
 
 }  // namespace jogasaki

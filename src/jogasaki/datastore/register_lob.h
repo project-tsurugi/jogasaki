@@ -35,6 +35,6 @@ namespace jogasaki::datastore {
  * @return status::ok when successful
  * @return any other error otherwise
  */
-status register_lob(std::string_view path, kvs::database* db, transaction_context* tx, limestone::api::blob_id_type& out);
+status register_lob(std::string_view path, transaction_context* tx, limestone::api::blob_id_type& out);
 
 }  // namespace jogasaki::datastore

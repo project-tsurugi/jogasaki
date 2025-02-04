@@ -19,18 +19,18 @@
 
 namespace jogasaki::datastore {
 
-status register_lob(std::string_view path, kvs::database* db, transaction_context* tx, limestone::api::blob_id_type& out) {
-    auto* ds = get_datastore(db);
-    if (tx) {
-        if (! tx->blob_pool()) {
-            // TODO exception / error handling with limestone
-            tx->blob_pool(ds->acquire_blob_pool());
-        }
-    } else {
+status register_lob(std::string_view path, transaction_context* tx, limestone::api::blob_id_type& out) {
+    if (! tx) {
         // for testing
+        auto* ds = get_datastore(nullptr);
         auto pool = ds->acquire_blob_pool();
         out = pool->register_file(boost::filesystem::path{std::string{path}}, false);
         return status::ok;
+    }
+    auto* ds = get_datastore(tx->database());
+    if (! tx->blob_pool()) {
+        // TODO exception / error handling with limestone
+        tx->blob_pool(ds->acquire_blob_pool());
     }
     out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path}}, false);
     return status::ok;

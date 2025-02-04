@@ -582,7 +582,7 @@ TEST_F(host_variables_test, missing_colon) {
 }
 
 TEST_F(host_variables_test, blob_types) {
-    global::config_pool()->mock_datastore(true);
+    // global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},

@@ -38,6 +38,7 @@
 #include <jogasaki/api/impl/service.h>
 #include <jogasaki/api/result_set.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/datastore/datastore_mock.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/tables.h>
@@ -1424,6 +1425,45 @@ TEST_F(service_api_test, blob_types) {
     test_commit(tx_handle);
     test_dispose_prepare(stmt_handle);
     test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_test, blob_types_error_handling) {
+    global::config_pool()->mock_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into t values (0, :p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::BLOB},
+        std::pair{"p1"s, sql::common::AtomType::CLOB}
+    );
+
+    auto path0 = path() + "/" + std::string{datastore::datastore_mock::file_name_to_raise_io_exception} + ".dat";
+    auto path1 = path() + "/clob1.dat";
+    create_file(path0, "ABC");
+    create_file(path1, "DEF");
+    {
+        std::vector<parameter> parameters{
+            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<blob_locator>, blob_locator{path0}}},
+            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<clob_locator>, clob_locator{path1}}},
+        };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto [success, error, stats] = decode_execute_result(res->body_);
+        ASSERT_TRUE(! success);
+        std::cerr << "error:" << error.message_ << std::endl;
+    }
+    test_dispose_prepare(stmt_handle);
 }
 
 TEST_F(service_api_test, protobuf1) {

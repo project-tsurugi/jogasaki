@@ -24,6 +24,9 @@ class datastore_mock : public datastore {
 friend class blob_pool_mock;
 
 public:
+    // file name that contains this string will raise I/O exception
+    static constexpr std::string_view file_name_to_raise_io_exception = "raise_exception";
+
     /**
      * @brief create empty object
      */

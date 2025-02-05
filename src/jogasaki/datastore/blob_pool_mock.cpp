@@ -16,6 +16,7 @@
 #include "blob_pool_mock.h"
 
 #include <glog/logging.h>
+#include <limestone/api/limestone_exception.h>
 
 #include <jogasaki/datastore/datastore_mock.h>
 
@@ -27,8 +28,15 @@ void blob_pool_mock::release() {
     // no-op
 }
 
+bool contains(std::string_view src, std::string_view element) {
+    return src.find(element) != std::string_view::npos;
+}
+
 limestone::api::blob_id_type blob_pool_mock::register_file(boost::filesystem::path const &file, bool is_temporary_file) {
     (void) is_temporary_file;
+    if (contains(file.string(), datastore_mock::file_name_to_raise_io_exception)) {
+        throw limestone::api::limestone_blob_exception{limestone::api::exception_type::blob_error, "mock I/O error", -1};
+    }
     if (parent_->path_to_id_.count(file.string()) != 0) {
         LOG(ERROR) << "file already registered at path:" << file.string();
     }

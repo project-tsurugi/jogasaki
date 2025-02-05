@@ -506,7 +506,7 @@ void service::command_execute_prepared_statement(
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
-    set_params(pq.parameters(), params);
+    set_params(pq.parameters(), params, req_info);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     std::shared_ptr<error::error_info> err_info{};
@@ -536,7 +536,7 @@ void service::command_execute_prepared_query(
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
-    set_params(pq.parameters(), params);
+    set_params(pq.parameters(), params, req_info);
     execute_query(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, req_info);
 }
 
@@ -673,7 +673,7 @@ void service::command_explain(
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
-    set_params(ex.parameters(), params);
+    set_params(ex.parameters(), params, req_info);
 
     // log explain event here to include db_->resolve duration as well as db_->explain
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::explain);
@@ -919,7 +919,7 @@ void service::command_execute_dump(
     }
 
     auto params = jogasaki::api::create_parameter_set();
-    set_params(ed.parameters(), params);
+    set_params(ed.parameters(), params, req_info);
 
     executor::io::dump_config opts{};
     opts.max_records_per_file_ = (ed.has_option() && ed.option().max_record_count_per_file() > 0) ?
@@ -977,7 +977,7 @@ void service::command_execute_load(
     }
 
     auto params = jogasaki::api::create_parameter_set();
-    set_params(ed.parameters(), params);
+    set_params(ed.parameters(), params, req_info);
     auto list = ed.file();
     std::vector<std::string> files{};
     for(auto&& f : list) {
@@ -1266,7 +1266,8 @@ takatori::decimal::triple to_triple(::jogasaki::proto::sql::common::Decimal cons
 
 void service::set_params(
     ::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps,
-    std::unique_ptr<jogasaki::api::parameter_set>& params
+    std::unique_ptr<jogasaki::api::parameter_set>& params,
+    request_info const& req_info
 ) {
     for (std::size_t i=0, n=static_cast<std::size_t>(ps.size()); i < n; ++i) {
         auto& p = ps.Get(static_cast<int>(i));
@@ -1340,12 +1341,18 @@ void service::set_params(
             }
             case sql::request::Parameter::ValueCase::kBlob: {
                 auto& v = p.blob();
-                params->set_blob(p.name(), field_type_traits<kind::blob>::parameter_type{v.local_path()});
+                if (req_info.request_source()->has_blob(v.channel_name())) {
+                    auto& info = req_info.request_source()->get_blob(v.channel_name());
+                    params->set_blob(p.name(), field_type_traits<kind::blob>::parameter_type{info.path().string()});
+                }
                 break;
             }
             case sql::request::Parameter::ValueCase::kClob: {
                 auto& v = p.clob();
-                params->set_clob(p.name(), field_type_traits<kind::clob>::parameter_type{v.local_path()});
+                if (req_info.request_source()->has_blob(v.channel_name())) {
+                    auto& info = req_info.request_source()->get_blob(v.channel_name());
+                    params->set_clob(p.name(), field_type_traits<kind::clob>::parameter_type{info.path().string()});
+                }
                 break;
             }
             case sql::request::Parameter::ValueCase::kReferenceColumnPosition:

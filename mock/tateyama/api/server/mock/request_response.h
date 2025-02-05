@@ -133,6 +133,36 @@ public:
     }
 };
 
+class test_blob_info : public blob_info {
+public:
+
+    test_blob_info(std::string_view channel_name, std::string_view path, bool temporary) :
+        channel_name_{channel_name},
+        path_{path},
+        temporary_{temporary}
+    {}
+
+    [[nodiscard]] std::string_view channel_name() const noexcept override {
+        return channel_name_;
+    };
+
+    [[nodiscard]] std::filesystem::path path() const noexcept override {
+        return path_;
+    }
+
+    [[nodiscard]] bool is_temporary() const noexcept override {
+        return temporary_;
+    }
+
+    void dispose() override {
+        // no-op
+    };
+
+private:
+    std::string channel_name_{};
+    std::filesystem::path path_{};
+    bool temporary_{};
+};
 class test_request : public request {
 public:
     test_request() = default;
@@ -161,6 +191,10 @@ public:
     [[nodiscard]] bool has_blob(std::string_view channel_name) const noexcept override;
     [[nodiscard]] blob_info const& get_blob(std::string_view name) const override;
 
+    void add_blob(std::string_view channel_name, std::shared_ptr<blob_info> info) {
+        blobs_[std::string{channel_name}] = std::move(info);
+    }
+
     std::string payload_{};  //NOLINT
     std::size_t session_id_{};
     std::size_t service_id_{};
@@ -168,6 +202,7 @@ public:
     session_info_impl session_info_{};
     tateyama::api::server::session_store session_store_{};
     tateyama::session::session_variable_set session_variable_set_{};
+    std::unordered_map<std::string, std::shared_ptr<blob_info>> blobs_{};
 
 };
 

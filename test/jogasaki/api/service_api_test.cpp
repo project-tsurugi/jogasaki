@@ -1354,6 +1354,8 @@ TEST_F(service_api_test, blob_types) {
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        req->add_blob(path0, std::make_shared<tateyama::api::server::mock::test_blob_info>(path0, path0, false));
+        req->add_blob(path1, std::make_shared<tateyama::api::server::mock::test_blob_info>(path1, path1, false));
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1454,6 +1456,8 @@ TEST_F(service_api_test, blob_types_error_handling) {
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        req->add_blob(path0, std::make_shared<tateyama::api::server::mock::test_blob_info>(path0, path0, false));
+        req->add_blob(path1, std::make_shared<tateyama::api::server::mock::test_blob_info>(path1, path1, false));
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);

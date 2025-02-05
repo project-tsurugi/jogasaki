@@ -603,7 +603,8 @@ private:
     );
     void set_params(
         ::google::protobuf::RepeatedPtrField<sql::request::Parameter> const& ps,
-        std::unique_ptr<jogasaki::api::parameter_set>& params
+        std::unique_ptr<jogasaki::api::parameter_set>& params,
+        request_info const& req_info
     );
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
 };

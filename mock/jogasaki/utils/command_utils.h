@@ -447,12 +447,18 @@ inline void fill_parameters(
             }
             case ValueCase::kBlob: {
                 auto loc = std::any_cast<blob_locator>(p.value_);
-                c0->mutable_blob()->mutable_local_path()->assign(loc.path());
+                auto* b = c0->mutable_blob();
+                b->mutable_local_path()->assign(loc.path());
+                // for convenience, we use the path string as channel name as well
+                b->mutable_channel_name()->assign(loc.path());
                 break;
             }
             case ValueCase::kClob: {
                 auto loc = std::any_cast<clob_locator>(p.value_);
-                c0->mutable_clob()->mutable_local_path()->assign(loc.path());
+                auto* c = c0->mutable_blob();
+                c->mutable_local_path()->assign(loc.path());
+                // for convenience, we use the path string as channel name as well
+                c->mutable_channel_name()->assign(loc.path());
                 break;
             }
             case ValueCase::kReferenceColumnPosition: c0->set_reference_column_position(std::any_cast<std::uint64_t>(p.value_)); break;

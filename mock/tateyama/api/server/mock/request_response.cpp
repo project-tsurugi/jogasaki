@@ -65,12 +65,16 @@ tateyama::session::session_variable_set& test_request::session_variable_set() no
     return session_variable_set_;
 }
 
-bool test_request::has_blob(std::string_view) const noexcept {
-    return false;
+bool test_request::has_blob(std::string_view name) const noexcept {
+    return blobs_.count(std::string{name}) != 0;
 }
 
-blob_info const& test_request::get_blob(std::string_view) const {
-    return *static_cast<blob_info const*>(nullptr); //NOLINT
+blob_info const& test_request::get_blob(std::string_view name) const {
+    if (! has_blob(name)) {
+        // invalid access
+        return *static_cast<blob_info const*>(nullptr); //NOLINT
+    }
+    return *blobs_.at(std::string{name});
 }
 
 status test_channel::acquire(std::shared_ptr<writer>& wrt) {

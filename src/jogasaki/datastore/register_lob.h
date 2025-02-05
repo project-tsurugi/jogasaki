@@ -21,6 +21,7 @@
 #include "datastore.h"
 
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/lob_id.h>
 #include <jogasaki/transaction_context.h>
 
 namespace jogasaki::datastore {
@@ -28,13 +29,17 @@ namespace jogasaki::datastore {
 /**
  * @brief register lob file and publish new id
  * @param path the path for the lob file
- * @param db kvs database (nullptr is possible if no production datastore is
- * used)
  * @param tx transaction to keep the scope object (blob pool) for the lob data
- * @param out blob id assigned for the input lob data
+ * @param out [out] blob id assigned for the input lob data
+ * @param error [out] error information is set when status code other than status::ok is returned
  * @return status::ok when successful
  * @return any other error otherwise
  */
-status register_lob(std::string_view path, transaction_context* tx, limestone::api::blob_id_type& out);
+status register_lob(
+    std::string_view path,
+    transaction_context* tx,
+    lob_id_type& out,
+    std::shared_ptr<error::error_info>& error
+);
 
 }  // namespace jogasaki::datastore

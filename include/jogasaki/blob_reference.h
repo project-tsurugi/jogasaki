@@ -78,6 +78,13 @@ public:
     }
 
     /**
+     * @brief return locator of the blob data
+     */
+    [[nodiscard]] blob_locator const* locator() const noexcept {
+        return locator_;
+    }
+
+    /**
      * @brief compare two blob object references
      * @param a first arg to compare
      * @param b second arg to compare

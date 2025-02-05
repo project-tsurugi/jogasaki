@@ -15,24 +15,37 @@
  */
 #include "register_lob.h"
 
+#include <limestone/api/limestone_exception.h>
+
 #include <jogasaki/datastore/get_datastore.h>
+#include <jogasaki/error/error_info_factory.h>
 
 namespace jogasaki::datastore {
 
-status register_lob(std::string_view path, transaction_context* tx, limestone::api::blob_id_type& out) {
-    if (! tx) {
-        // for testing
-        auto* ds = get_datastore(nullptr);
-        auto pool = ds->acquire_blob_pool();
-        out = pool->register_file(boost::filesystem::path{std::string{path}}, false);
-        return status::ok;
-    }
+status register_lob(
+    std::string_view path,
+    transaction_context* tx,
+    lob_id_type& out,
+    std::shared_ptr<error::error_info>& error
+) {
     auto* ds = get_datastore(tx->database());
-    if (! tx->blob_pool()) {
-        // TODO exception / error handling with limestone
-        tx->blob_pool(ds->acquire_blob_pool());
+    if (ds == nullptr) {
+        // should not happen normally
+        status res = status::err_invalid_state;
+        error = create_error_info(error_code::sql_execution_exception, "failed to access datastore object", res);
+        return res;
     }
-    out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path}}, false);
+    try {
+        if (! tx->blob_pool()) {
+            tx->blob_pool(ds->acquire_blob_pool());
+        }
+        out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path}}, false);
+    } catch (limestone::api::limestone_blob_exception const& e) {
+        status res = status::err_io_error;
+        // TODO improve error code
+        error = create_error_info(error_code::sql_execution_exception, e.what(), res);
+        return res;
+    }
     return status::ok;
 }
 

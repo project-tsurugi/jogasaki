@@ -22,11 +22,13 @@
 #include <glog/logging.h>
 
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/datastore/register_lob.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/primary_context.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/lob_id.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/handle_encode_errors.h>
@@ -200,6 +202,50 @@ status do_encode(
     return status::ok;
 }
 
+template<class T>
+status resolve_lob_field(
+    request_context& context,
+    accessor::record_ref rec,
+    index::field_info const& field,
+    transaction_context* tx
+) {
+    if (rec.is_null(field.nullity_offset_)) {
+        return status::ok;
+    }
+    auto ref = rec.get_reference<T>(field.offset_);
+    if (ref.resolved()) {
+        return status::ok;
+    }
+    lob_id_type id{};
+    std::shared_ptr<error::error_info> error{};
+    if (auto res = datastore::register_lob(ref.locator()->path(), tx, id, error); res != status::ok) {
+        error::set_error_info(context, error);
+        return res;
+    }
+    rec.set_value(field.offset_, T{id, lob_data_provider::datastore});
+    return status::ok;
+}
+
+status resolve_fields(
+    request_context& context,
+    accessor::record_ref rec,
+    std::vector<index::field_info> const& fields
+) {
+    auto tx = context.transaction();
+    for (auto&& f : fields) {
+        if (f.type_.kind() == meta::field_type_kind::blob) {
+            if (auto res = resolve_lob_field<blob_reference>(context, rec, f, tx.get()); res != status::ok) {
+                return res;
+            }
+        } else if (f.type_.kind() == meta::field_type_kind::clob) {
+            if (auto res = resolve_lob_field<clob_reference>(context, rec, f, tx.get()); res != status::ok) {
+                return res;
+            }
+        }
+    }
+    return status::ok;
+}
+
 status primary_target::encode_put(
     primary_context& ctx,
     transaction_context& tx,
@@ -208,6 +254,12 @@ status primary_target::encode_put(
     accessor::record_ref value_record,
     std::string_view& encoded_key
 ) {
+    if (ctx.req_context()) {  // some testcase does not set req_context
+        if (auto res = resolve_fields(*ctx.req_context(), value_record, extracted_values_); res != status::ok) {
+            // error info set by resolve_fields
+            return res;
+        }
+    }
     std::string_view k{};
     std::string_view v{};
     if(auto res = do_encode(ctx.key_buf_, extracted_keys_, key_record, k); res != status::ok) {

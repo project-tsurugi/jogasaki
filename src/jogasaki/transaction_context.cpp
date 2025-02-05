@@ -19,6 +19,7 @@
 #include <utility>
 #include <glog/logging.h>
 
+#include <limestone/api/blob_pool.h>
 #include <sharksfin/TransactionState.h>
 
 #include <jogasaki/commit_profile.h>
@@ -39,6 +40,17 @@ transaction_context::transaction_context(
     id_(id_source_++),
     option_(std::move(option))
 {}
+
+transaction_context::~transaction_context(
+) noexcept {
+    try { // release() should not throw, but just in case
+        if (blob_pool_) {
+            blob_pool_->release();
+        }
+    } catch (...) {
+        LOG_LP(ERROR) << "unexpected exception";
+    }
+}
 
 transaction_context::operator kvs::transaction&() const noexcept {  //NOLINT
     return *transaction_;

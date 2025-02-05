@@ -37,6 +37,7 @@
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/datastore/get_datastore.h>
+#include <jogasaki/datastore/blob_pool_mock.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/meta/decimal_field_option.h>
@@ -50,10 +51,12 @@
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
 #include <jogasaki/test_utils/create_file.h>
+#include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
 
+#include <jogasaki/api/transaction_handle_internal.h>
 
 namespace jogasaki::testing {
 
@@ -616,6 +619,35 @@ TEST_F(host_variables_test, blob_types) {
                   {1,  blob_reference{ref1.object_id(), lob_data_provider::datastore},
                    clob_reference{ref2.object_id(), lob_data_provider::datastore}})),
               result[0]);
+}
+
+TEST_F(host_variables_test, blob_pool_release) {
+    // verify blob pool is correctly released when transaction completes
+    global::config_pool()->mock_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::int4},
+        {"p1", api::field_type_kind::blob},
+    };
+
+    auto path1 = path()+"/blob_types1.dat";
+    create_file(path1, "ABC");
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", blob_locator{path1});
+    std::shared_ptr<limestone::api::blob_pool> pool{};
+    {
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, *tx);
+        auto tctx = api::get_transaction_context(*tx);
+        pool = tctx->blob_pool();
+        EXPECT_TRUE(pool);
+        EXPECT_TRUE(! static_cast<datastore::blob_pool_mock&>(*pool).released());
+        EXPECT_EQ(status::ok, tx->commit());
+    }
+    wait_epochs(); // tx context might not be destroyed very soon
+    EXPECT_TRUE(static_cast<datastore::blob_pool_mock&>(*pool).released());
 }
 
 }

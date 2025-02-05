@@ -120,6 +120,16 @@ public:
     transaction_context() = default;
 
     /**
+     * @brief destruct object
+     */
+    ~transaction_context() noexcept;
+
+    transaction_context(transaction_context const& other) = delete;
+    transaction_context& operator=(transaction_context const& other) = delete;
+    transaction_context(transaction_context&& other) noexcept = delete;
+    transaction_context& operator=(transaction_context&& other) noexcept = delete;
+
+    /**
      * @brief create new context object
      * @param transaction the kvs transaction used in this context
      * @param transaction the kvs transaction option that was used to create `transaction`

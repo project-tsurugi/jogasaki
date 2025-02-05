@@ -25,11 +25,11 @@ namespace jogasaki::datastore {
 blob_pool_mock::blob_pool_mock(datastore_mock *parent) : parent_(parent) {}
 
 void blob_pool_mock::release() {
-    // no-op
+    released_ = true;
 }
 
 bool contains(std::string_view src, std::string_view element) {
-    return src.find(element) != std::string_view::npos;
+    return src.find(element) != std::string_view::npos;  //NOLINT(abseil-string-find-str-contains)
 }
 
 limestone::api::blob_id_type blob_pool_mock::register_file(boost::filesystem::path const &file, bool is_temporary_file) {

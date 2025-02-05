@@ -54,9 +54,13 @@ public:
 
     [[nodiscard]] limestone::api::blob_id_type duplicate_data(limestone::api::blob_id_type reference) override;
 
+    [[nodiscard]] bool released() const noexcept {
+        return released_;
+    }
 private:
 
     datastore_mock *parent_{};
+    bool released_{};
 
 };
 

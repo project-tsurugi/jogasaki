@@ -22,9 +22,11 @@
 #include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>
+#include <jogasaki/lob_id.h>
 
 #include "iterator.h"
 #include "transaction.h"
+
 
 namespace jogasaki::kvs {
 
@@ -62,13 +64,16 @@ status storage::content_put(
     transaction& tx,
     std::string_view key,
     std::string_view value,
-    put_option option
+    put_option option,
+    std::vector<lob_id_type> const& lobs
 ) {
-    auto res = sharksfin::content_put(
+    auto res = sharksfin::content_put_with_blobs(
         tx.handle(),
         handle_,
         key,
         value,
+        lobs.empty() ? nullptr : lobs.data(),
+        lobs.empty() ? 0 : lobs.size(),
         static_cast<sharksfin::PutOperation>(option)
     );
     if (res == StatusCode::NOT_FOUND) {

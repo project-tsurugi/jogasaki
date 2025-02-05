@@ -1413,6 +1413,8 @@ TEST_F(service_api_test, blob_types) {
                 auto* ds = datastore::get_datastore(db_impl()->kvs_db().get());
                 auto f0 = ds->get_blob_file(v0.object_id());
                 auto f1 = ds->get_blob_file(v1.object_id());
+                ASSERT_TRUE(f0);
+                ASSERT_TRUE(f1);
                 EXPECT_EQ("ABC", read_file(f0.path().string()));
                 EXPECT_EQ("DEF", read_file(f1.path().string()));
             }

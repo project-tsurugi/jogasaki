@@ -604,7 +604,8 @@ TEST_F(host_variables_test, blob_types) {
     ps->set_clob("p2", clob_locator{path2});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT c0, c1, c2 FROM t", result);
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
     ASSERT_EQ(1, result.size());
 
     auto ref1 = result[0].get_value<blob_reference>(1);
@@ -612,13 +613,16 @@ TEST_F(host_variables_test, blob_types) {
 
     auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
     auto ret1 = ds->get_blob_file(ref1.object_id());
-    EXPECT_EQ("ABC", read_file(ret1.path().string()));
+    ASSERT_TRUE(ret1);
+    EXPECT_EQ("ABC", read_file(ret1.path().string())) << ret1.path().string();
     auto ret2 = ds->get_blob_file(ref2.object_id());
-    EXPECT_EQ("DEF", read_file(ret2.path().string()));
+    ASSERT_TRUE(ret2);
+    EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
                   {1,  blob_reference{ref1.object_id(), lob_data_provider::datastore},
                    clob_reference{ref2.object_id(), lob_data_provider::datastore}})),
               result[0]);
+    EXPECT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(host_variables_test, blob_pool_release) {

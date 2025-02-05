@@ -207,7 +207,8 @@ status resolve_lob_field(
     request_context& context,
     accessor::record_ref rec,
     index::field_info const& field,
-    transaction_context* tx
+    transaction_context* tx,
+    std::vector<lob_id_type>& lobs
 ) {
     if (rec.is_null(field.nullity_offset_)) {
         return status::ok;
@@ -223,22 +224,24 @@ status resolve_lob_field(
         return res;
     }
     rec.set_value(field.offset_, T{id, lob_data_provider::datastore});
+    lobs.emplace_back(id);
     return status::ok;
 }
 
 status resolve_fields(
     request_context& context,
     accessor::record_ref rec,
-    std::vector<index::field_info> const& fields
+    std::vector<index::field_info> const& fields,
+    std::vector<lob_id_type>& lobs
 ) {
     auto tx = context.transaction();
     for (auto&& f : fields) {
         if (f.type_.kind() == meta::field_type_kind::blob) {
-            if (auto res = resolve_lob_field<blob_reference>(context, rec, f, tx.get()); res != status::ok) {
+            if (auto res = resolve_lob_field<blob_reference>(context, rec, f, tx.get(), lobs); res != status::ok) {
                 return res;
             }
         } else if (f.type_.kind() == meta::field_type_kind::clob) {
-            if (auto res = resolve_lob_field<clob_reference>(context, rec, f, tx.get()); res != status::ok) {
+            if (auto res = resolve_lob_field<clob_reference>(context, rec, f, tx.get(), lobs); res != status::ok) {
                 return res;
             }
         }
@@ -254,8 +257,9 @@ status primary_target::encode_put(
     accessor::record_ref value_record,
     std::string_view& encoded_key
 ) {
+    std::vector<lob_id_type> lobs{};
     if (ctx.req_context()) {  // some testcase does not set req_context
-        if (auto res = resolve_fields(*ctx.req_context(), value_record, extracted_values_); res != status::ok) {
+        if (auto res = resolve_fields(*ctx.req_context(), value_record, extracted_values_, lobs); res != status::ok) {
             // error info set by resolve_fields
             return res;
         }
@@ -271,7 +275,7 @@ status primary_target::encode_put(
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
-    if(auto res = ctx.stg_->content_put(tx, k, v, opt); res != status::ok) {
+    if(auto res = ctx.stg_->content_put(tx, k, v, opt, lobs); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }

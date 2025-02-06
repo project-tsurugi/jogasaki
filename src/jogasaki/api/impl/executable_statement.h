@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 
 #include <memory>
 
+#include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/executable_statement.h>
@@ -28,6 +29,7 @@
 
 namespace jogasaki::api::impl {
 
+using takatori::util::unsafe_downcast;
 /**
  * @brief executable statement implementation
  * @details this object holds plan::executable_statement together with memory resource, that is
@@ -58,6 +60,11 @@ public:
     [[nodiscard]] api::record_meta const* meta() const noexcept override {
         return meta_.get();
     }
+    /**
+     * @brief accessor to the plan::executable_statement
+     * @return plan::executable_statement
+     */
+    [[nodiscard]] std::shared_ptr<plan::executable_statement> get_body() const noexcept;
 private:
     std::shared_ptr<plan::executable_statement> body_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
@@ -65,4 +72,13 @@ private:
     maybe_shared_ptr<api::parameter_set const> parameters_{}; // to own parameter set by the end of statement execution
 };
 
+
+/**
+ * @brief accessor to the impl of api::executable_statement
+ * @return reference to the impl object
+ */
+inline api::impl::executable_statement& get_impl(api::executable_statement& es) {
+    return unsafe_downcast<api::impl::executable_statement>(es);
 }
+
+} // namespace jogasaki::api::impl

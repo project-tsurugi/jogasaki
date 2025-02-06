@@ -68,6 +68,7 @@
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
@@ -607,6 +608,16 @@ private:
         request_info const& req_info
     );
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
+
+    /**
+     * @brief caluculate the count of the write_count
+     * @param es the executable_statement
+     * @param tc the transaction_context
+     * @return count of the write_count
+     */
+    [[nodiscard]] std::size_t get_write_count(
+        std::unique_ptr<jogasaki::api::executable_statement> const& es,
+        std::shared_ptr<transaction_context> const& tc) const noexcept;
 };
 
 // public for testing purpose

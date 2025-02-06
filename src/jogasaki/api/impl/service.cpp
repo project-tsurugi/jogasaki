@@ -1412,9 +1412,7 @@ void service::execute_query(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        auto max_write_count = (default_writer_count < global::config_pool()->default_partitions())
-                               ? global::config_pool()->default_partitions()
-                               : default_writer_count;
+        const auto max_write_count = get_write_count(e,get_transaction_context(tx));
         if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
@@ -1606,9 +1604,7 @@ void service::execute_dump(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        auto max_write_count = (default_writer_count < global::config_pool()->default_partitions())
-                               ? global::config_pool()->default_partitions()
-                               : default_writer_count;
+        const auto max_write_count = get_write_count(e,get_transaction_context(tx));
         if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
@@ -1752,6 +1748,31 @@ bool service::start() {
 
 jogasaki::api::database* service::database() const noexcept {
     return db_;
+}
+
+std::size_t service::get_write_count(std::unique_ptr<jogasaki::api::executable_statement> const& es,
+    std::shared_ptr<transaction_context> const& tc) const noexcept {
+    const bool is_rtx =
+        tc->option()->type() == kvs::transaction_option::transaction_type::read_only;
+    const size_t max_write_count = (default_writer_count < global::config_pool()->default_partitions())
+                                 ? global::config_pool()->default_partitions()
+                                 : default_writer_count;
+    if (is_rtx && global::config_pool()->rtx_parallel_scan()) {
+        const auto& impl_stmt = get_impl(*es);
+        const auto partitions = impl_stmt.get_body()->get_mirrors()->get_partitions();
+        if (VLOG_IS_ON(log_debug)) {
+            std::stringstream ss{};
+            ss << "write_count:" << partitions << " Use calculate_partition";
+            VLOG_LP(log_debug) << ss.str();
+        }
+        return partitions;
+    }
+    if (VLOG_IS_ON(log_debug)) {
+        std::stringstream ss{};
+        ss << "write_count:" << max_write_count << " DO not use calculate_partition";
+        VLOG_LP(log_debug) << ss.str();
+    }
+    return max_write_count;
 }
 
 }  // namespace jogasaki::api::impl

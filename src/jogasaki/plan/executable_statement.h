@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +87,11 @@ public:
 
     [[nodiscard]] std::shared_ptr<std::string> const& sql_text_shared() const noexcept;
 
+    /**
+     * @brief accessor to the mirror_container
+     * @return the mirror container
+     */
+    [[nodiscard]] std::shared_ptr<mirror_container> get_mirrors() const noexcept ;
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};
@@ -97,4 +102,4 @@ private:
     std::shared_ptr<std::string> sql_text_{};
 };
 
-}
+} // namespace jogasaki::plan

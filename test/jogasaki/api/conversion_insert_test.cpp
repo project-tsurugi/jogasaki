@@ -331,21 +331,21 @@ TEST_F(conversion_insert_test, decimal_to_float8) {
 }
 
 TEST_F(conversion_insert_test, float4_to_int4) {
-    test_conversion_error<kind::int4>("CAST(1 AS REAL)", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_insert_error<kind::float4, kind::int4>(-11.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::int4>("CAST(NULL AS REAL)", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::int4>("CAST(1 AS REAL)", error_code::type_analyze_exception);
+    test_host_variable_insert_error<kind::float4, kind::int4>(-11.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::int4>("CAST(NULL AS REAL)", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_insert_test, float4_to_int8) {
-    test_conversion_error<kind::int8>("CAST(1 AS REAL)", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_insert_error<kind::float4, kind::int8>(-11.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::int8>("CAST(NULL AS REAL)", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::int8>("CAST(1 AS REAL)", error_code::type_analyze_exception);
+    test_host_variable_insert_error<kind::float4, kind::int8>(-11.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::int8>("CAST(NULL AS REAL)", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_insert_test, float4_to_decimal) {
-    test_conversion_error<kind::decimal>("CAST(1.0 AS REAL)", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_insert_error<kind::float4, kind::decimal>(-11.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::decimal>("CAST(NULL AS REAL)", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::decimal>("CAST(1.0 AS REAL)", error_code::type_analyze_exception);
+    test_host_variable_insert_error<kind::float4, kind::decimal>(-11.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::decimal>("CAST(NULL AS REAL)", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_insert_test, float4_to_float8) {
@@ -356,21 +356,21 @@ TEST_F(conversion_insert_test, float4_to_float8) {
 }
 
 TEST_F(conversion_insert_test, float8_to_int4) {
-    test_conversion_error<kind::int4>("CAST(1 AS DOUBLE)", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_insert_error<kind::float8, kind::int4>(-11.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::int4>("CAST(NULL AS DOUBLE)", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::int4>("CAST(1 AS DOUBLE)", error_code::type_analyze_exception);
+    test_host_variable_insert_error<kind::float8, kind::int4>(-11.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::int4>("CAST(NULL AS DOUBLE)", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_insert_test, float8_to_int8) {
-    test_conversion_error<kind::int8>("CAST(1 AS DOUBLE)", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_insert_error<kind::float8, kind::int8>(-11.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::int8>("CAST(NULL AS DOUBLE)", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::int8>("CAST(1 AS DOUBLE)", error_code::type_analyze_exception);
+    test_host_variable_insert_error<kind::float8, kind::int8>(-11.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::int8>("CAST(NULL AS DOUBLE)", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_insert_test, float8_to_decimal) {
-    test_conversion_error<kind::decimal>("CAST(1.0 AS DOUBLE)", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_insert_error<kind::float8, kind::decimal>(-11.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::decimal>("CAST(NULL AS DOUBLE)", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::decimal>("CAST(1.0 AS DOUBLE)", error_code::type_analyze_exception);
+    test_host_variable_insert_error<kind::float8, kind::decimal>(-11.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::decimal>("CAST(NULL AS DOUBLE)", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_insert_test, float8_to_float4) {

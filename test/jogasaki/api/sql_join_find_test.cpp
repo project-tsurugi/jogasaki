@@ -292,6 +292,7 @@ TEST_F(sql_join_find_test, secondary_multiple_columns) {
 // TODO add more tests for different types when issue #731 is resolved
 
 TEST_F(sql_join_find_test, different_type_double_vs_int) {
+    // finding int key using double requires explicit type conversion
     execute_statement("CREATE TABLE t0 (c0 double)");
     execute_statement("INSERT INTO t0 VALUES (2147483647e0),(-2147483648e0)");
     execute_statement("CREATE TABLE t1 (c0 int primary key, c1 int)");
@@ -299,13 +300,7 @@ TEST_F(sql_join_find_test, different_type_double_vs_int) {
     execute_statement("INSERT INTO t1 VALUES (-2147483648, 0)");
 
     auto query = "SELECT t0.c0, t1.c0, t1.c1 FROM t0 join t1 on t0.c0=t1.c0";
-    EXPECT_TRUE(has_join_find(query));
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(2, result.size());
-    std::sort(result.begin(), result.end());
-    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::int4, kind::int4>(-2147483648, -2147483648, 0)), result[0]);
-    EXPECT_EQ((mock::create_nullable_record<kind::float8, kind::int4, kind::int4>(2147483647, 2147483647, 1)), result[1]);
+    test_stmt_err(query, error_code::type_analyze_exception);
 }
 
 TEST_F(sql_join_find_test, different_type_int_vs_double) {

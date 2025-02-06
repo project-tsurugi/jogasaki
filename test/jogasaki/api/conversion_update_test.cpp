@@ -340,21 +340,21 @@ TEST_F(conversion_update_test, decimal_to_float8) {
 }
 
 TEST_F(conversion_update_test, float4_to_int4) {
-    test_conversion_error<kind::float4, kind::int4>("1.0", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_update_error<kind::float4, kind::int4>(-12, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::float4, kind::int4>("NULL", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::float4, kind::int4>("1.0", error_code::type_analyze_exception);
+    test_host_variable_update_error<kind::float4, kind::int4>(-12, error_code::type_analyze_exception);
+    test_conversion_error<kind::float4, kind::int4>("NULL", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_update_test, float4_to_int8) {
-    test_conversion_error<kind::float4, kind::int8>("1.0", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_update_error<kind::float4, kind::int8>(-12, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::float4, kind::int8>("NULL", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::float4, kind::int8>("1.0", error_code::type_analyze_exception);
+    test_host_variable_update_error<kind::float4, kind::int8>(-12, error_code::type_analyze_exception);
+    test_conversion_error<kind::float4, kind::int8>("NULL", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_update_test, float4_to_decimal) {
-    test_conversion_error<kind::float4, kind::decimal>("1.0", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_update_error<kind::float4, kind::decimal>(-12, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::float4, kind::decimal>("NULL", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::float4, kind::decimal>("1.0", error_code::type_analyze_exception);
+    test_host_variable_update_error<kind::float4, kind::decimal>(-12, error_code::type_analyze_exception);
+    test_conversion_error<kind::float4, kind::decimal>("NULL", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_update_test, float4_to_float8) {
@@ -365,21 +365,21 @@ TEST_F(conversion_update_test, float4_to_float8) {
 }
 
 TEST_F(conversion_update_test, float8_to_int4) {
-    test_conversion_error<kind::float8, kind::int4>("1.0", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_update_error<kind::float8, kind::int4>(-12.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::float8, kind::int4>("NULL", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::float8, kind::int4>("1.0", error_code::type_analyze_exception);
+    test_host_variable_update_error<kind::float8, kind::int4>(-12.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::float8, kind::int4>("NULL", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_update_test, float8_to_int8) {
-    test_conversion_error<kind::float8, kind::int8>("1.0", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_update_error<kind::float8, kind::int8>(-12.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::float8, kind::int8>("NULL", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::float8, kind::int8>("1.0", error_code::type_analyze_exception);
+    test_host_variable_update_error<kind::float8, kind::int8>(-12.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::float8, kind::int8>("NULL", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_update_test, float8_to_decimal) {
-    test_conversion_error<kind::float8, kind::decimal>("1.0", error_code::unsupported_runtime_feature_exception);
-    test_host_variable_update_error<kind::float8, kind::decimal>(-12.0, error_code::unsupported_runtime_feature_exception);
-    test_conversion_error<kind::float8, kind::decimal>("NULL", error_code::unsupported_runtime_feature_exception);
+    test_conversion_error<kind::float8, kind::decimal>("1.0", error_code::type_analyze_exception);
+    test_host_variable_update_error<kind::float8, kind::decimal>(-12.0, error_code::type_analyze_exception);
+    test_conversion_error<kind::float8, kind::decimal>("NULL", error_code::type_analyze_exception);
 }
 
 TEST_F(conversion_update_test, float8_to_float4) {

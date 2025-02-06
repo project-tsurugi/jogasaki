@@ -165,9 +165,9 @@ TEST_F(sql_decimal_types_test, store_double_literal_into_decimal) {
     }
 
     // if the source is not literal, cast_literals_in_context doesn't apply and assignment conversion from double
-    // to decimal is not allowed
-    test_stmt_err("insert into t values (1.0e0+0.1e0)", error_code::unsupported_runtime_feature_exception);
-    test_stmt_err("update t set c0 = 2.0e0+0.2e0", error_code::unsupported_runtime_feature_exception);
+    // to decimal is not allowed by compiler
+    test_stmt_err("insert into t values (1.0e0+0.1e0)", error_code::type_analyze_exception);
+    test_stmt_err("update t set c0 = 2.0e0+0.2e0", error_code::type_analyze_exception);
 }
 
 // TODO enable after fixing insufficient storage by encoder

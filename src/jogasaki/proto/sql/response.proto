@@ -285,7 +285,7 @@ message GetLargeObjectData {
         }
     }
 
-    reserved 3 to 10;
+    reserved 1 to 10;
 
     // the response body.
     oneof result {

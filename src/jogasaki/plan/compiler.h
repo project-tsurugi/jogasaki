@@ -122,11 +122,11 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
  */
 [[nodiscard]] size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept;
 /**
- * @brief calculate partition for intermidiate
+ * @brief calculate partition for intermediate
  * @param s the plan of step
  * @return size of the partition
  */
-[[nodiscard]] size_t intermidiate_calculate_partition(takatori::plan::step const& s) noexcept;
+[[nodiscard]] size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept;
 /**
  * @brief calculate partition
  * @param s the plan of step

@@ -1225,7 +1225,7 @@ size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept {
         });
     return partition;
 }
-size_t intermidiate_calculate_partition(takatori::plan::step const& s) noexcept {
+size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept {
     size_t sum = 0;
     switch (s.kind()) {
         case takatori::plan::step_kind::process: {
@@ -1233,7 +1233,7 @@ size_t intermidiate_calculate_partition(takatori::plan::step const& s) noexcept 
                 return terminal_calculate_partition(s);
             }
             for (auto&& t : unsafe_downcast<takatori::plan::process>(s).upstreams()) {
-                sum = intermidiate_calculate_partition(t);
+                sum = intermediate_calculate_partition(t);
             }
             break;
         }
@@ -1241,7 +1241,7 @@ size_t intermidiate_calculate_partition(takatori::plan::step const& s) noexcept 
         case takatori::plan::step_kind::aggregate: return 5; break;
         case takatori::plan::step_kind::forward: {
             for (auto&& t : unsafe_downcast<takatori::plan::exchange>(s).upstreams()) {
-                sum += intermidiate_calculate_partition(t);
+                sum += intermediate_calculate_partition(t);
             }
             break;
         }
@@ -1267,7 +1267,7 @@ size_t calculate_partition(takatori::plan::step const& s) noexcept {
     if (stop_calculate_partition(s)){
         return global::config_pool()->default_partitions();
     }
-    return intermidiate_calculate_partition(s);
+    return intermediate_calculate_partition(s);
 }
 
 }  // namespace jogasaki::plan

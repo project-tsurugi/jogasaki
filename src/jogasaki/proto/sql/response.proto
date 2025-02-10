@@ -275,9 +275,14 @@ message GetLargeObjectData {
     // request is successfully completed.
     message Success {
 
-      // the data channel name of retrieved large object data.
-      string channel_name = 1;
+        // the data of this large object.
+        oneof data {
+            // the data channel name of retrieved large object data.
+            string channel_name = 1;
 
+            // the immediate object value (for small objects).
+            bytes contents = 2;
+        }
     }
 
     reserved 1 to 10;

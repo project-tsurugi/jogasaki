@@ -47,6 +47,22 @@ public:
     explicit clob_reference(lob_locator const& locator) :
         lob_reference(locator)
     {}
+
+    /**
+     * @brief construct unresolved object with lob data generated
+     * @param locator the locator of the lob data
+     */
+    clob_reference(lob_reference_tag_t<lob_reference_kind::generated> tag, lob_locator const& locator) :
+        lob_reference(tag, locator)
+    {}
+
+    /**
+     * @brief construct unresolved object with lob data fetched
+     * @param id the lob reference id
+     */
+    explicit clob_reference(lob_id_type id) :
+        lob_reference(id)
+    {}
 };
 
 }  // namespace jogasaki::lob

@@ -765,6 +765,18 @@ any to_octet(
     return handle_length<accessor::binary>(out, ctx, len, add_padding, src_padded);
 }
 
+any to_clob(
+    std::string_view s,
+    evaluator_context& ctx
+) {
+    auto loc = std::make_shared<lob::lob_locator>(
+        std::make_shared<std::string>(s)
+    );
+    auto ret = any{std::in_place_type<lob::clob_reference>, lob::clob_reference{lob::lob_reference_tag<lob::lob_reference_kind::generated>, *loc}};
+    ctx.add_locator(std::move(loc));
+    return ret;
+}
+
 }  // namespace from_character
 
 any cast_from_character(evaluator_context& ctx,
@@ -800,7 +812,7 @@ any cast_from_character(evaluator_context& ctx,
         case k::time_of_day: break;
         case k::time_point: break;
         case k::blob: break;
-        case k::clob: break; // TODO implement conv. from char/varchar
+        case k::clob: return from_character::to_clob(sv, ctx);
         case k::datetime_interval: break;
         case k::array: break;
         case k::record: break;
@@ -1435,6 +1447,19 @@ any to_octet(
     return handle_length<accessor::binary>(s, ctx, len, add_padding, src_padded);
 }
 
+any to_blob(
+    std::string_view s,
+    evaluator_context& ctx
+) {
+    auto loc = std::make_shared<lob::lob_locator>(
+        std::make_shared<std::string>(s)
+    );
+    auto ret = any{std::in_place_type<lob::blob_reference>, lob::blob_reference{lob::lob_reference_tag<lob::lob_reference_kind::generated>, *loc}};
+    ctx.add_locator(std::move(loc));
+    return ret;
+}
+
+
 }  // namespace from_octet
 
 any cast_from_octet(evaluator_context& ctx,
@@ -1466,7 +1491,7 @@ any cast_from_octet(evaluator_context& ctx,
         case k::date: break;
         case k::time_of_day: break;
         case k::time_point: break;
-        case k::blob: break;  //TODO implement conv. from binary/varbinary
+        case k::blob: break; return from_octet::to_blob(sv, ctx);
         case k::clob: break;
         case k::datetime_interval: break;
         case k::array: break;

@@ -64,8 +64,8 @@ public:
     {}
 
     /**
-     * @brief construct unresolved object with lob data generated
-     * @param locator the locator of the lob data
+     * @brief construct unresolved object with lob data fetched
+     * @param id the lob reference id
      */
     explicit lob_reference(lob_id_type id) :
         kind_(lob_reference_kind::fetched),
@@ -115,6 +115,13 @@ public:
     }
 
     /**
+     * @brief return reference kind
+     */
+    [[nodiscard]] lob_reference_kind kind() const noexcept {
+        return kind_;
+    }
+
+    /**
      * @brief compare two lob object references
      * @param a first arg to compare
      * @param b second arg to compare
@@ -122,14 +129,17 @@ public:
      * @return false otherwise
      */
     friend bool operator==(lob_reference const& a, lob_reference const& b) noexcept {
-        if (! a.resolved() && ! b.resolved()) {
+        if (a.kind_ != b.kind_) {
+            return false;
+        }
+        if (a.kind_ == lob_reference_kind::undefined) {
+            return true;
+        }
+        if (a.kind_ == lob_reference_kind::provided || a.kind_ == lob_reference_kind::generated) {
             return a.locator_ == b.locator_;
         }
-        if (a.resolved() && b.resolved()) {
-            return a.id_ == b.id_ && a.provider_ == b.provider_;
-        }
-        // one is resolved and the other is not
-        return false;
+        // fetched or resolved
+        return a.id_ == b.id_ && a.provider_ == b.provider_;
     }
 
     /**
@@ -150,10 +160,18 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, lob_reference const& value) {
-        if (value.resolved()) {
-            return out << "id:" << value.id_ << ",provider:" << value.provider_;
+        if (value.kind_ == lob_reference_kind::undefined) {
+            return out << "undefined";
         }
-        return out << *value.locator_;
+        if (value.kind_ == lob_reference_kind::provided || value.kind_ == lob_reference_kind::generated) {
+            if(! value.locator_) {
+                // normally locator should be non-null
+                return out << "null";
+            }
+            return out << *value.locator_;
+        }
+        // fetched or resolved
+        return out << "id:" << value.id_ << ",provider:" << value.provider_;
     }
 
 private:

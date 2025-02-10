@@ -71,7 +71,13 @@ public:
      * @return false otherwise
      */
     friend bool operator==(lob_locator const& a, lob_locator const& b) noexcept {
-        return a.path_ == b.path_;
+        if (a.data_ && b.data_) {
+            return *a.data_ == *b.data_;
+        }
+        if (! a.data_ && ! b.data_) {
+            return a.path_ == b.path_;
+        }
+        return false;
     }
 
     /**
@@ -93,9 +99,9 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& out, lob_locator const& value) {
         if (value.data_) {
-            return out << "data:" << value.data_;
+            return out << "data:\"" << *value.data_ << "\"";
         }
-        return out << "path:" << value.path_;
+        return out << "path:\"" << value.path_ << "\"";
     }
 
 private:

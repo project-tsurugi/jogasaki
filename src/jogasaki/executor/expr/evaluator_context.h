@@ -15,15 +15,17 @@
  */
 #pragma once
 
+#include <deque>
 #include <ostream>
 #include <string_view>
 #include <type_traits>
 
 #include <takatori/util/enum_set.h>
 
-#include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/executor/function/function_evaluation_context.h>
+#include <jogasaki/lob/lob_locator.h>
+#include <jogasaki/memory/paged_memory_resource.h>
 
 #include "error.h"
 
@@ -215,6 +217,17 @@ public:
         return func_ctx_;
     }
 
+    /**
+     * @brief add lob locator used by this request
+     */
+    void add_locator(std::shared_ptr<lob::lob_locator> arg) noexcept {
+        lob_locators_.emplace_back(std::move(arg));
+    }
+
+    std::deque<std::shared_ptr<lob::lob_locator>> const& lob_locators() const noexcept {
+        return lob_locators_;
+    }
+
 private:
     memory_resource* resource_{};
     loss_precision_policy loss_precision_policy_{loss_precision_policy::ignore};
@@ -222,6 +235,7 @@ private:
     std::vector<error_type> errors_{};
     bool lost_precision_{};
     std::shared_ptr<function::function_evaluation_context> func_ctx_{};
+    std::deque<std::shared_ptr<lob::lob_locator>> lob_locators_{};
 
 };
 

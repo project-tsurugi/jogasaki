@@ -157,6 +157,11 @@ any to_decimal(
     std::optional<std::size_t> scale = {}
 );
 
+any to_clob(
+    std::string_view s,
+    evaluator_context& ctx
+);
+
 }  // namespace from_character
 
 namespace from_octet {
@@ -174,6 +179,11 @@ any to_octet(
     std::optional<std::size_t> len,
     bool add_padding,
     bool src_padded);
+
+any to_blob(
+    std::string_view s,
+    evaluator_context& ctx
+);
 
 }  // namespace from_octet
 

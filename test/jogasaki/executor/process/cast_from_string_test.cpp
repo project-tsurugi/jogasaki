@@ -51,6 +51,8 @@
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/lob/blob_reference.h>
+#include <jogasaki/lob/clob_reference.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -505,6 +507,18 @@ TEST_F(cast_from_string_test, to_octet) {
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_octet(" bad string", ctx, std::nullopt, false, false));
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_octet(" 0  1 ", ctx, std::nullopt, false, false));
     EXPECT_EQ((any{std::in_place_type<accessor::binary>, accessor::binary{"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F\x20"}}), to_octet("000102030405060708090a0b0c0d0e0f101112131415161718191A1B1C1D1E1F20"sv, ctx, std::nullopt, false, false)); lost_precision(false);
+}
+
+TEST_F(cast_from_string_test, to_clob) {
+    evaluator_context ctx{&resource_};
+    auto a = to_clob("ABC", ctx); lost_precision(false);
+    EXPECT_EQ(any::index<lob::clob_reference>, a.type_index());
+    auto ref = a.to<lob::clob_reference>();
+    auto loc = ref.locator();
+    EXPECT_EQ(lob::lob_reference_kind::generated, ref.kind());
+    ASSERT_TRUE(loc);
+    ASSERT_TRUE(loc->data());
+    EXPECT_EQ("ABC", *loc->data());
 }
 
 }

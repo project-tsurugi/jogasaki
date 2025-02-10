@@ -127,5 +127,16 @@ TEST_F(cast_octet_test, from_octet) {
     EXPECT_EQ(any_binary("\x01\x00"sv), details::from_octet::to_octet("\x01\x00\x02"sv, ctx, 2, true, true)); lost_precision(true);
 }
 
+TEST_F(cast_octet_test, to_blob) {
+    evaluator_context ctx{&resource_};
+    auto a = to_blob("\x00\x01\x02"sv, ctx); lost_precision(false);
+    EXPECT_EQ(any::index<lob::blob_reference>, a.type_index());
+    auto ref = a.to<lob::blob_reference>();
+    EXPECT_EQ(lob::lob_reference_kind::generated, ref.kind());
+    auto loc = ref.locator();
+    ASSERT_TRUE(loc);
+    ASSERT_TRUE(loc->data());
+    EXPECT_EQ("\x00\x01\x02"sv, *loc->data());
+}
 }
 

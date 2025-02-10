@@ -47,8 +47,5 @@ std::shared_ptr<memory::lifo_paged_memory_resource> const& executable_statement:
     return resource_;
 }
 
-std::shared_ptr<plan::executable_statement> executable_statement::get_body() const noexcept {
-    return body_;
-}
 
 } // namespace jogasaki::api::impl

@@ -1760,7 +1760,7 @@ std::size_t service::get_write_count(std::unique_ptr<jogasaki::api::executable_s
                                  : default_writer_count;
     if (is_rtx && global::config_pool()->rtx_parallel_scan()) {
         const auto& impl_stmt = get_impl(*es);
-        const auto partitions = impl_stmt.get_body()->get_mirrors()->get_partitions();
+        const auto partitions = impl_stmt.body()->mirrors()->get_partitions();
         if (VLOG_IS_ON(log_debug)) {
             std::stringstream ss{};
             ss << "write_count:" << partitions << " Use calculate_partition";

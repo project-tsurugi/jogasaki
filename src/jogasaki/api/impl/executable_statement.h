@@ -17,7 +17,6 @@
 
 #include <memory>
 
-#include <takatori/util/downcast.h>
 #include <takatori/util/maybe_shared_ptr.h>
 
 #include <jogasaki/api/executable_statement.h>
@@ -60,25 +59,11 @@ public:
     [[nodiscard]] api::record_meta const* meta() const noexcept override {
         return meta_.get();
     }
-    /**
-     * @brief accessor to the plan::executable_statement
-     * @return plan::executable_statement
-     */
-    [[nodiscard]] std::shared_ptr<plan::executable_statement> get_body() const noexcept;
 private:
     std::shared_ptr<plan::executable_statement> body_{};
     std::shared_ptr<memory::lifo_paged_memory_resource> resource_{};
     std::unique_ptr<impl::record_meta> meta_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{}; // to own parameter set by the end of statement execution
 };
-
-
-/**
- * @brief accessor to the impl of api::executable_statement
- * @return reference to the impl object
- */
-inline api::impl::executable_statement& get_impl(api::executable_statement& es) {
-    return unsafe_downcast<api::impl::executable_statement>(es);
-}
 
 } // namespace jogasaki::api::impl

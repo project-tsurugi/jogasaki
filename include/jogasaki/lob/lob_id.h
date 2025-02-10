@@ -25,4 +25,4 @@ namespace jogasaki::lob {
  */
 using lob_id_type = std::uint64_t;
 
-}  // namespace jogasaki
+}  // namespace jogasaki::lob

@@ -85,4 +85,4 @@ private:
     std::string path_{};
 };
 
-}  // namespace jogasaki
+}  // namespace jogasaki::lob

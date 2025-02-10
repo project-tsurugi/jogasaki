@@ -49,4 +49,4 @@ public:
     {}
 };
 
-}  // namespace jogasaki
+}  // namespace jogasaki::lob

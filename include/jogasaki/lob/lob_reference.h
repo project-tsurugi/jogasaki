@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <jogasaki/lob/lob_reference_kind.h>
 #include <jogasaki/lob/lob_data_provider.h>
 #include <jogasaki/lob/lob_id.h>
 #include <jogasaki/lob/lob_locator.h>
@@ -137,4 +138,4 @@ static_assert(std::is_trivially_destructible_v<lob_reference>);
 static_assert(std::alignment_of_v<lob_reference> == 8);
 static_assert(sizeof(lob_reference) == 24);
 
-}  // namespace jogasaki
+}  // namespace jogasaki::lob

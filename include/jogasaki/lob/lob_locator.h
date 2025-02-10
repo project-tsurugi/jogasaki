@@ -43,12 +43,26 @@ public:
     {}
 
     /**
+     * @brief construct new object
+     * @param content of the lob data
+     */
+    explicit lob_locator(std::shared_ptr<std::string> data) :
+        data_(std::move(data))
+    {}
+
+    /**
      * @brief return path of the blob data file
      */
     [[nodiscard]] std::string_view path() const noexcept {
         return path_;
     }
 
+    /**
+     * @brief return content of the blob data
+     */
+    [[nodiscard]] std::shared_ptr<std::string> const& data() const noexcept {
+        return data_;
+    }
     /**
      * @brief compare two blob object references
      * @param a first arg to compare
@@ -78,11 +92,15 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, lob_locator const& value) {
+        if (value.data_) {
+            return out << "data:" << value.data_;
+        }
         return out << "path:" << value.path_;
     }
 
 private:
     std::string path_{};
+    std::shared_ptr<std::string> data_{};
 };
 
 }  // namespace jogasaki::lob

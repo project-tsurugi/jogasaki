@@ -26,6 +26,14 @@
 
 namespace jogasaki::lob {
 
+template<auto Kind>
+struct lob_reference_tag_t {
+    explicit lob_reference_tag_t() = default;
+};
+
+template<auto Kind>
+inline constexpr lob_reference_tag_t<Kind> lob_reference_tag {};
+
 /**
  * @brief lob field data object
  * @details Trivially copyable immutable class holding lob reference.
@@ -38,21 +46,42 @@ public:
     constexpr lob_reference() = default;
 
     /**
+     * @brief construct unresolved object with lob data provided
+     * @param locator the locator of the lob data
+     */
+    explicit lob_reference(lob_locator const& locator) :
+        kind_(lob_reference_kind::provided),
+        locator_(std::addressof(locator))
+    {}
+
+    /**
+     * @brief construct unresolved object with lob data generated
+     * @param locator the locator of the lob data
+     */
+    lob_reference(lob_reference_tag_t<lob_reference_kind::generated>, lob_locator const& locator) :
+        kind_(lob_reference_kind::generated),
+        locator_(std::addressof(locator))
+    {}
+
+    /**
+     * @brief construct unresolved object with lob data generated
+     * @param locator the locator of the lob data
+     */
+    explicit lob_reference(lob_id_type id) :
+        kind_(lob_reference_kind::fetched),
+        id_(id),
+        provider_(lob_data_provider::datastore)
+    {}
+
+    /**
      * @brief construct new object allocating from the given memory resource when long format is needed
      * @param id lob reference id
      * @param provider the provider that gives the lob data
      */
     lob_reference(lob_id_type id, lob_data_provider provider) :
+        kind_(lob_reference_kind::resolved),
         id_(id),
         provider_(provider)
-    {}
-
-    /**
-     * @brief construct unresolved object
-     * @param locator the locator of the lob data
-     */
-    explicit lob_reference(lob_locator const& locator) :
-        locator_(std::addressof(locator))
     {}
 
     /**
@@ -128,6 +157,7 @@ public:
     }
 
 private:
+    lob_reference_kind kind_{lob_reference_kind::undefined};
     lob_id_type id_{};
     lob_data_provider provider_{};
     lob_locator const* locator_{};
@@ -136,6 +166,6 @@ private:
 static_assert(std::is_trivially_copyable_v<lob_reference>);
 static_assert(std::is_trivially_destructible_v<lob_reference>);
 static_assert(std::alignment_of_v<lob_reference> == 8);
-static_assert(sizeof(lob_reference) == 24);
+static_assert(sizeof(lob_reference) == 32);
 
 }  // namespace jogasaki::lob

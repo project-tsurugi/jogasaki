@@ -600,16 +600,16 @@ TEST_F(host_variables_test, blob_types) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", blob_locator{path1});
-    ps->set_clob("p2", clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_clob("p2", lob::clob_locator{path2});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);
     execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
     ASSERT_EQ(1, result.size());
 
-    auto ref1 = result[0].get_value<blob_reference>(1);
-    auto ref2 = result[0].get_value<clob_reference>(2);
+    auto ref1 = result[0].get_value<lob::blob_reference>(1);
+    auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
     auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
     auto ret1 = ds->get_blob_file(ref1.object_id());
@@ -619,8 +619,8 @@ TEST_F(host_variables_test, blob_types) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  blob_reference{ref1.object_id(), lob_data_provider::datastore},
-                   clob_reference{ref2.object_id(), lob_data_provider::datastore}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
 }
@@ -639,7 +639,7 @@ TEST_F(host_variables_test, blob_pool_release) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", blob_locator{path1});
+    ps->set_blob("p1", lob::blob_locator{path1});
     std::shared_ptr<limestone::api::blob_pool> pool{};
     {
         auto tx = utils::create_transaction(*db_);

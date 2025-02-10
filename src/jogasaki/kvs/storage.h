@@ -24,7 +24,7 @@
 #include <sharksfin/StorageOptions.h>
 #include <sharksfin/api.h>
 
-#include <jogasaki/lob_id.h>
+#include <jogasaki/lob/lob_id.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/fail.h>
 
@@ -172,7 +172,7 @@ public:
         std::string_view key,
         std::string_view value,
         put_option option = put_option::create_or_update,
-        std::vector<lob_id_type> const& lobs = {}
+        std::vector<lob::lob_id_type> const& lobs = {}
     );
 
     /**

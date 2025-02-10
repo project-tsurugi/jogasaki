@@ -25,7 +25,7 @@ namespace jogasaki::datastore {
 status register_lob(
     std::string_view path,
     transaction_context* tx,
-    lob_id_type& out,
+    lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
 ) {
     auto* ds = get_datastore(tx->database());

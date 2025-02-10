@@ -34,9 +34,9 @@
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
-#include <jogasaki/blob_reference.h>
-#include <jogasaki/clob_reference.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/lob/blob_reference.h>
+#include <jogasaki/lob/clob_reference.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -274,7 +274,7 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::blob>>, T> read(order odr, bool discard) {
         auto v = read<std::uint64_t>(odr, discard);
-        return blob_reference{v, lob_data_provider::datastore};
+        return lob::blob_reference{v, lob::lob_data_provider::datastore};
     }
 
     /**
@@ -285,7 +285,7 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::clob>>, T> read(order odr, bool discard) {
         auto v = read<std::uint64_t>(odr, discard);
-        return clob_reference{v, lob_data_provider::datastore};
+        return lob::clob_reference{v, lob::lob_data_provider::datastore};
     }
 
     /**

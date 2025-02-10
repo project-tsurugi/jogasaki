@@ -21,7 +21,7 @@
 #include <string>
 #include <type_traits>
 
-namespace jogasaki {
+namespace jogasaki::lob {
 
 /**
  * @brief lob locator object

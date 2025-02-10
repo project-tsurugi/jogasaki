@@ -16,26 +16,26 @@
 
 #pragma once
 
-#include <jogasaki/lob_locator.h>
+#include <jogasaki/lob/lob_locator.h>
 
-namespace jogasaki {
+namespace jogasaki::lob {
 
 /**
- * @brief blob locator object
+ * @brief clob locator object
  * @details immutable class holding information to locate lob data
  */
-class blob_locator : public lob_locator {
+class clob_locator : public lob_locator {
 public:
     /**
      * @brief default constructor representing empty object
      */
-    constexpr blob_locator() = default;
+    constexpr clob_locator() = default;
 
     /**
      * @brief construct new object
      * @param path the lob data file path
      */
-    explicit blob_locator(std::string path) :
+    explicit clob_locator(std::string path) :
         lob_locator(std::move(path))
     {}
 

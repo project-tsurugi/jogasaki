@@ -16,29 +16,13 @@
 
 #pragma once
 
-#include <jogasaki/lob_locator.h>
+#include <cstdint>
 
-namespace jogasaki {
+namespace jogasaki::lob {
 
 /**
- * @brief clob locator object
- * @details immutable class holding information to locate lob data
+ * @brief blob id ype
  */
-class clob_locator : public lob_locator {
-public:
-    /**
-     * @brief default constructor representing empty object
-     */
-    constexpr clob_locator() = default;
-
-    /**
-     * @brief construct new object
-     * @param path the lob data file path
-     */
-    explicit clob_locator(std::string path) :
-        lob_locator(std::move(path))
-    {}
-
-};
+using lob_id_type = std::uint64_t;
 
 }  // namespace jogasaki

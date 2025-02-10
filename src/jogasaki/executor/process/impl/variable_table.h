@@ -34,7 +34,7 @@ using takatori::util::maybe_shared_ptr;
  */
 class variable_table {
 public:
-    using lob_locator = std::variant<blob_locator, clob_locator>;
+    using lob_locator = std::variant<lob::blob_locator, lob::clob_locator>;
 
     /**
      * @brief construct empty instance
@@ -80,7 +80,7 @@ public:
      * @brief add lob locator to maintain the locator lifecycle for blob reference
      */
     template <class T>
-    std::enable_if_t<std::is_same_v<blob_locator, T> || std::is_same_v<clob_locator, T>, T> const& add_lob_locator(T locator) {
+    std::enable_if_t<std::is_same_v<lob::blob_locator, T> || std::is_same_v<lob::clob_locator, T>, T> const& add_lob_locator(T locator) {
         lob_locators_.emplace_back(std::in_place_type<T>, std::forward<T>(locator));
         return std::get<T>(lob_locators_.back());
     }

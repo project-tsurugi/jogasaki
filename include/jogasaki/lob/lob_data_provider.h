@@ -23,7 +23,7 @@
 #include <cstdint>
 #include <string_view>
 
-namespace jogasaki {
+namespace jogasaki::lob {
 
 /**
  * @brief blob/clob data provider kind

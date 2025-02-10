@@ -22,7 +22,7 @@
 #include <sharksfin/api.h>
 
 #include <jogasaki/kvs/error.h>
-#include <jogasaki/lob_id.h>
+#include <jogasaki/lob/lob_id.h>
 
 #include "iterator.h"
 #include "transaction.h"
@@ -65,7 +65,7 @@ status storage::content_put(
     std::string_view key,
     std::string_view value,
     put_option option,
-    std::vector<lob_id_type> const& lobs
+    std::vector<lob::lob_id_type> const& lobs
 ) {
     auto res = sharksfin::content_put_with_blobs(
         tx.handle(),

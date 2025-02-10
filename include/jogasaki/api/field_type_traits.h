@@ -19,10 +19,10 @@
 #include <string_view>
 #include <type_traits>
 
-#include <jogasaki/blob_locator.h>
-#include <jogasaki/blob_reference.h>
-#include <jogasaki/clob_locator.h>
-#include <jogasaki/clob_reference.h>
+#include <jogasaki/lob/blob_locator.h>
+#include <jogasaki/lob/blob_reference.h>
+#include <jogasaki/lob/clob_locator.h>
+#include <jogasaki/lob/clob_reference.h>
 #include <takatori/datetime/date.h>
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
@@ -88,10 +88,10 @@ template <>
 struct field_type_traits<field_type_kind::time_point> : simple_field_type_traits<takatori::datetime::time_point> {};
 
 template <>
-struct field_type_traits<field_type_kind::blob> : simple_field_type_traits<blob_reference, void, blob_locator> {};
+struct field_type_traits<field_type_kind::blob> : simple_field_type_traits<lob::blob_reference, void, lob::blob_locator> {};
 
 template <>
-struct field_type_traits<field_type_kind::clob> : simple_field_type_traits<clob_reference, void, clob_locator> {};
+struct field_type_traits<field_type_kind::clob> : simple_field_type_traits<lob::clob_reference, void, lob::clob_locator> {};
 
 template <>
 struct field_type_traits<field_type_kind::pointer> : simple_field_type_traits<void*> {};

@@ -30,7 +30,7 @@
 #include <jogasaki/common_types.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/transaction_option.h>
-#include <jogasaki/lob_id.h>
+#include <jogasaki/lob/lob_id.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/fail.h>
 
@@ -42,7 +42,7 @@ using sharksfin::DatabaseHandle;
 class transaction;
 
 // ensure jogasaki blob id compatible with sharksfin
-static_assert(std::is_same_v<jogasaki::lob_id_type, ::sharksfin::blob_id_type>);
+static_assert(std::is_same_v<lob::lob_id_type, ::sharksfin::blob_id_type>);
 
 /**
  * @brief represent database in the transactional storage engine

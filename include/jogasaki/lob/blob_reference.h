@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <jogasaki/lob_reference.h>
+#include <jogasaki/lob/lob_reference.h>
 
-namespace jogasaki {
+namespace jogasaki::lob {
 
 /**
  * @brief blob field data object

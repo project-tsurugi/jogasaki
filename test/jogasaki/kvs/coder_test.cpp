@@ -322,13 +322,13 @@ TEST_F(coder_test, blob_desc) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     auto u64max = std::numeric_limits<std::uint64_t>::max();
-    EXPECT_EQ(status::ok, s.write(blob_reference{10, lob_data_provider::datastore}, desc));
-    EXPECT_EQ(status::ok, s.write(blob_reference{u64max, lob_data_provider::datastore}, desc));
+    EXPECT_EQ(status::ok, s.write(lob::blob_reference{10, lob::lob_data_provider::datastore}, desc));
+    EXPECT_EQ(status::ok, s.write(lob::blob_reference{u64max, lob::lob_data_provider::datastore}, desc));
 
     auto rs = s.readable();
-    auto ref0 =  rs.read<blob_reference>(desc, false);
+    auto ref0 =  rs.read<lob::blob_reference>(desc, false);
     EXPECT_EQ(10, ref0.object_id());
-    auto ref1 =  rs.read<blob_reference>(desc, false);
+    auto ref1 =  rs.read<lob::blob_reference>(desc, false);
     EXPECT_EQ(u64max, ref1.object_id());
 
     EXPECT_EQ('\xFF', buf[0]);
@@ -354,13 +354,13 @@ TEST_F(coder_test, clob_desc) {
     std::string buf(100, 0);
     kvs::writable_stream s{buf};
     auto u64max = std::numeric_limits<std::uint64_t>::max();
-    EXPECT_EQ(status::ok, s.write(clob_reference{10, lob_data_provider::datastore}, desc));
-    EXPECT_EQ(status::ok, s.write(blob_reference{u64max, lob_data_provider::datastore}, desc));
+    EXPECT_EQ(status::ok, s.write(lob::clob_reference{10, lob::lob_data_provider::datastore}, desc));
+    EXPECT_EQ(status::ok, s.write(lob::blob_reference{u64max, lob::lob_data_provider::datastore}, desc));
 
     auto rs = s.readable();
-    auto ref0 =  rs.read<clob_reference>(desc, false);
+    auto ref0 =  rs.read<lob::clob_reference>(desc, false);
     EXPECT_EQ(10, ref0.object_id());
-    auto ref1 =  rs.read<clob_reference>(desc, false);
+    auto ref1 =  rs.read<lob::clob_reference>(desc, false);
     EXPECT_EQ(u64max, ref1.object_id());
 
     EXPECT_EQ('\xFF', buf[0]);

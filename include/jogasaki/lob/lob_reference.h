@@ -19,11 +19,11 @@
 #include <cstdint>
 #include <type_traits>
 
-#include "lob_data_provider.h"
-#include "lob_id.h"
-#include "lob_locator.h"
+#include <jogasaki/lob/lob_data_provider.h>
+#include <jogasaki/lob/lob_id.h>
+#include <jogasaki/lob/lob_locator.h>
 
-namespace jogasaki {
+namespace jogasaki::lob {
 
 /**
  * @brief lob field data object

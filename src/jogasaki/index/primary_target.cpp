@@ -28,7 +28,7 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/kvs/readable_stream.h>
 #include <jogasaki/kvs/writable_stream.h>
-#include <jogasaki/lob_id.h>
+#include <jogasaki/lob/lob_id.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/utils/handle_encode_errors.h>
@@ -208,7 +208,7 @@ status resolve_lob_field(
     accessor::record_ref rec,
     index::field_info const& field,
     transaction_context* tx,
-    std::vector<lob_id_type>& lobs
+    std::vector<lob::lob_id_type>& lobs
 ) {
     if (rec.is_null(field.nullity_offset_)) {
         return status::ok;
@@ -217,13 +217,13 @@ status resolve_lob_field(
     if (ref.resolved()) {
         return status::ok;
     }
-    lob_id_type id{};
+    lob::lob_id_type id{};
     std::shared_ptr<error::error_info> error{};
     if (auto res = datastore::register_lob(ref.locator()->path(), tx, id, error); res != status::ok) {
         error::set_error_info(context, error);
         return res;
     }
-    rec.set_value(field.offset_, T{id, lob_data_provider::datastore});
+    rec.set_value(field.offset_, T{id, lob::lob_data_provider::datastore});
     lobs.emplace_back(id);
     return status::ok;
 }
@@ -232,16 +232,16 @@ status resolve_fields(
     request_context& context,
     accessor::record_ref rec,
     std::vector<index::field_info> const& fields,
-    std::vector<lob_id_type>& lobs
+    std::vector<lob::lob_id_type>& lobs
 ) {
     auto tx = context.transaction();
     for (auto&& f : fields) {
         if (f.type_.kind() == meta::field_type_kind::blob) {
-            if (auto res = resolve_lob_field<blob_reference>(context, rec, f, tx.get(), lobs); res != status::ok) {
+            if (auto res = resolve_lob_field<lob::blob_reference>(context, rec, f, tx.get(), lobs); res != status::ok) {
                 return res;
             }
         } else if (f.type_.kind() == meta::field_type_kind::clob) {
-            if (auto res = resolve_lob_field<clob_reference>(context, rec, f, tx.get(), lobs); res != status::ok) {
+            if (auto res = resolve_lob_field<lob::clob_reference>(context, rec, f, tx.get(), lobs); res != status::ok) {
                 return res;
             }
         }
@@ -257,7 +257,7 @@ status primary_target::encode_put(
     accessor::record_ref value_record,
     std::string_view& encoded_key
 ) {
-    std::vector<lob_id_type> lobs{};
+    std::vector<lob::lob_id_type> lobs{};
     if (ctx.req_context()) {  // some testcase does not set req_context
         if (auto res = resolve_fields(*ctx.req_context(), value_record, extracted_values_, lobs); res != status::ok) {
             // error info set by resolve_fields

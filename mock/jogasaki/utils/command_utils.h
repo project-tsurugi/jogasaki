@@ -28,8 +28,8 @@
 #include "jogasaki/proto/sql/response.pb.h"
 #include <jogasaki/api.h>
 #include <jogasaki/api/impl/map_error_code.h>
-#include <jogasaki/blob_locator.h>
-#include <jogasaki/clob_locator.h>
+#include <jogasaki/lob/blob_locator.h>
+#include <jogasaki/lob/clob_locator.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/request_statistics.h>
@@ -446,7 +446,7 @@ inline void fill_parameters(
                 break;
             }
             case ValueCase::kBlob: {
-                auto loc = std::any_cast<blob_locator>(p.value_);
+                auto loc = std::any_cast<lob::blob_locator>(p.value_);
                 auto* b = c0->mutable_blob();
                 b->mutable_local_path()->assign(loc.path());
                 // for convenience, we use the path string as channel name as well
@@ -454,7 +454,7 @@ inline void fill_parameters(
                 break;
             }
             case ValueCase::kClob: {
-                auto loc = std::any_cast<clob_locator>(p.value_);
+                auto loc = std::any_cast<lob::clob_locator>(p.value_);
                 auto* c = c0->mutable_blob();
                 c->mutable_local_path()->assign(loc.path());
                 // for convenience, we use the path string as channel name as well

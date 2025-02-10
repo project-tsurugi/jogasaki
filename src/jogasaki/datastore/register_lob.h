@@ -21,7 +21,7 @@
 #include "datastore.h"
 
 #include <jogasaki/kvs/database.h>
-#include <jogasaki/lob_id.h>
+#include <jogasaki/lob/lob_id.h>
 #include <jogasaki/transaction_context.h>
 
 namespace jogasaki::datastore {
@@ -38,7 +38,7 @@ namespace jogasaki::datastore {
 status register_lob(
     std::string_view path,
     transaction_context* tx,
-    lob_id_type& out,
+    lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
 );
 

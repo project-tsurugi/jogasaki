@@ -1348,8 +1348,8 @@ TEST_F(service_api_test, blob_types) {
     create_file(path1, "DEF");
     {
         std::vector<parameter> parameters{
-            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<blob_locator>, blob_locator{path0}}},
-            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<clob_locator>, clob_locator{path1}}},
+            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<lob::blob_locator>, lob::blob_locator{path0}}},
+            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<lob::clob_locator>, lob::clob_locator{path1}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
@@ -1400,14 +1400,14 @@ TEST_F(service_api_test, blob_types) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                auto v0 = v[0].get_value<blob_reference>(0);
-                auto v1 = v[0].get_value<clob_reference>(1);
+                auto v0 = v[0].get_value<lob::blob_reference>(0);
+                auto v1 = v[0].get_value<lob::clob_reference>(1);
 
                 EXPECT_EQ((mock::typed_nullable_record<ft::blob, ft::clob>(
                     std::tuple{meta::blob_type(), meta::clob_type()},
                     {
-                        blob_reference{v0.object_id(), lob_data_provider::datastore},
-                        clob_reference{v1.object_id(), lob_data_provider::datastore},
+                        lob::blob_reference{v0.object_id(), lob::lob_data_provider::datastore},
+                        lob::clob_reference{v1.object_id(), lob::lob_data_provider::datastore},
                     },
                     {false, false}
                 )), v[0]);
@@ -1450,8 +1450,8 @@ TEST_F(service_api_test, blob_types_error_handling) {
     create_file(path1, "DEF");
     {
         std::vector<parameter> parameters{
-            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<blob_locator>, blob_locator{path0}}},
-            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<clob_locator>, clob_locator{path1}}},
+            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<lob::blob_locator>, lob::blob_locator{path0}}},
+            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<lob::clob_locator>, lob::clob_locator{path1}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 

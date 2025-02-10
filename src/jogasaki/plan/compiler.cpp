@@ -879,12 +879,12 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
         auto os = info->at(name);
 
         data::any a{};
-        if (e.value().type_index() == data::value::index<blob_locator>) {
-            auto& loc = vars->add_lob_locator(e.value().ref<blob_locator>());
-            a = data::any{std::in_place_type<blob_reference>, blob_reference{loc}};
-        } else if (e.value().type_index() == data::value::index<clob_locator>) {
-            auto& loc = vars->add_lob_locator(e.value().ref<clob_locator>());
-            a = data::any{std::in_place_type<clob_reference>, clob_reference{loc}};
+        if (e.value().type_index() == data::value::index<lob::blob_locator>) {
+            auto& loc = vars->add_lob_locator(e.value().ref<lob::blob_locator>());
+            a = data::any{std::in_place_type<lob::blob_reference>, lob::blob_reference{loc}};
+        } else if (e.value().type_index() == data::value::index<lob::clob_locator>) {
+            auto& loc = vars->add_lob_locator(e.value().ref<lob::clob_locator>());
+            a = data::any{std::in_place_type<lob::clob_reference>, lob::clob_reference{loc}};
         } else {
             // value_to_any does not support blob or clob
             utils::value_to_any(e.value(), a);

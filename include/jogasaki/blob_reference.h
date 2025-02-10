@@ -16,20 +16,15 @@
 
 #pragma once
 
-#include <cstdint>
-#include <type_traits>
-
-#include "lob_data_provider.h"
-#include "lob_id.h"
-#include "blob_locator.h"
+#include <jogasaki/lob_reference.h>
 
 namespace jogasaki {
 
 /**
  * @brief blob field data object
- * @details Trivially copyable immutable class holding blob reference.
+ * @details Trivially copyable immutable class holding lob reference.
  */
-class blob_reference {
+class blob_reference : public lob_reference {
 public:
     /**
      * @brief default constructor representing empty object
@@ -38,103 +33,21 @@ public:
 
     /**
      * @brief construct new object allocating from the given memory resource when long format is needed
-     * @param id blob reference id
-     * @param provider the provider that gives the blob data
+     * @param id lob reference id
+     * @param provider the provider that gives the lob data
      */
     blob_reference(lob_id_type id, lob_data_provider provider) :
-        id_(id),
-        provider_(provider)
+        lob_reference(id, provider)
     {}
 
     /**
      * @brief construct unresolved object
-     * @param locator the locator of the blob data
+     * @param locator the locator of the lob data
      */
-    explicit blob_reference(blob_locator const& locator) :
-        locator_(std::addressof(locator))
+    explicit blob_reference(lob_locator const& locator) :
+        lob_reference(locator)
     {}
 
-    /**
-     * @brief return object id of the lob data
-     */
-    [[nodiscard]] lob_id_type object_id() const noexcept {
-        return id_;
-    }
-
-    /**
-     * @brief return provider of the lob data
-     */
-    [[nodiscard]] lob_data_provider provider() const noexcept {
-        return provider_;
-    }
-
-    /**
-     * @brief return whether the object is resolved
-     * @return true if the object is resolved
-     * @return false otherwise
-     */
-    [[nodiscard]] bool resolved() const noexcept {
-        return locator_ == nullptr;
-    }
-
-    /**
-     * @brief return locator of the blob data
-     */
-    [[nodiscard]] blob_locator const* locator() const noexcept {
-        return locator_;
-    }
-
-    /**
-     * @brief compare two blob object references
-     * @param a first arg to compare
-     * @param b second arg to compare
-     * @return true if a == b
-     * @return false otherwise
-     */
-    friend bool operator==(blob_reference const& a, blob_reference const& b) noexcept {
-        if (! a.resolved() && ! b.resolved()) {
-            return a.locator_ == b.locator_;
-        }
-        if (a.resolved() && b.resolved()) {
-            return a.id_ == b.id_ && a.provider_ == b.provider_;
-        }
-        // one is resolved and the other is not
-        return false;
-    }
-
-    /**
-     * @brief compare two blob object references
-     * @param a first arg to compare
-     * @param b second arg to compare
-     * @return true if a != b
-     * @return false otherwise
-     */
-    friend bool operator!=(blob_reference const& a, blob_reference const& b) noexcept {
-        return ! (a == b);
-    }
-
-    /**
-     * @brief appends string representation of the given value.
-     * @param out the target output
-     * @param value the target value
-     * @return the output
-     */
-    friend std::ostream& operator<<(std::ostream& out, blob_reference const& value) {
-        if (value.resolved()) {
-            return out << "id:" << value.id_ << ",provider:" << value.provider_;
-        }
-        return out << *value.locator_;
-    }
-
-private:
-    lob_id_type id_{};
-    lob_data_provider provider_{};
-    blob_locator const* locator_{};
 };
-
-static_assert(std::is_trivially_copyable_v<blob_reference>);
-static_assert(std::is_trivially_destructible_v<blob_reference>);
-static_assert(std::alignment_of_v<blob_reference> == 8);
-static_assert(sizeof(blob_reference) == 24);
 
 }  // namespace jogasaki

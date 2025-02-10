@@ -16,18 +16,15 @@
 
 #pragma once
 
-#include <cstdint>
-#include <ostream>
-#include <string>
-#include <type_traits>
+#include <jogasaki/lob_locator.h>
 
 namespace jogasaki {
 
 /**
- * @brief lob locator object
- * @details Trivially copyable immutable class holding blob reference.
+ * @brief clob locator object
+ * @details immutable class holding information to locate lob data
  */
-class clob_locator {
+class clob_locator : public lob_locator {
 public:
     /**
      * @brief default constructor representing empty object
@@ -39,50 +36,9 @@ public:
      * @param path the lob data file path
      */
     explicit clob_locator(std::string path) :
-        path_(std::move(path))
+        lob_locator(std::move(path))
     {}
 
-    /**
-     * @brief return path of the clob data file
-     */
-    [[nodiscard]] std::string_view path() const noexcept {
-        return path_;
-    }
-
-    /**
-     * @brief compare two blob object references
-     * @param a first arg to compare
-     * @param b second arg to compare
-     * @return true if a == b
-     * @return false otherwise
-     */
-    friend bool operator==(clob_locator const& a, clob_locator const& b) noexcept {
-        return a.path_ == b.path_;
-    }
-
-    /**
-     * @brief compare two blob object references
-     * @param a first arg to compare
-     * @param b second arg to compare
-     * @return true if a != b
-     * @return false otherwise
-     */
-    friend bool operator!=(clob_locator const& a, clob_locator const& b) noexcept {
-        return ! (a == b);
-    }
-
-    /**
-     * @brief appends string representation of the given value.
-     * @param out the target output
-     * @param value the target value
-     * @return the output
-     */
-    friend std::ostream& operator<<(std::ostream& out, clob_locator const& value) {
-        return out << "path:" << value.path_;
-    }
-
-private:
-    std::string path_{};
 };
 
 }  // namespace jogasaki

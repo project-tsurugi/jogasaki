@@ -34,6 +34,8 @@
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/blob_reference.h>
+#include <jogasaki/clob_reference.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/meta/decimal_field_option.h>

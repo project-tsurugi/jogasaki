@@ -446,8 +446,6 @@ public:
 
     [[nodiscard]] jogasaki::api::database* database() const noexcept;
 
-    static constexpr std::size_t default_writer_count =
-        32; // from tateyama::endpoint::ipc::ipc_response
 private:
 
     struct cache_align callback_control {
@@ -612,12 +610,10 @@ private:
     /**
      * @brief caluculate the count of the write_count
      * @param es the executable_statement
-     * @param tc the transaction_context
      * @return count of the write_count
      */
     [[nodiscard]] std::size_t get_write_count(
-        std::unique_ptr<jogasaki::api::executable_statement> const& es,
-        std::shared_ptr<transaction_context> const& tc) const noexcept;
+        std::unique_ptr<jogasaki::api::executable_statement> const& es) const noexcept;
 };
 
 // public for testing purpose

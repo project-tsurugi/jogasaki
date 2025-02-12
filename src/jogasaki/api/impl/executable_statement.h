@@ -66,4 +66,12 @@ private:
     maybe_shared_ptr<api::parameter_set const> parameters_{}; // to own parameter set by the end of statement execution
 };
 
+/**
+ * @brief accessor to the impl of api::executable_statement
+ * @return reference to the impl object
+ */
+inline api::impl::executable_statement& get_impl(api::executable_statement& es) {
+    return unsafe_downcast<api::impl::executable_statement>(es);
+}
+
 } // namespace jogasaki::api::impl

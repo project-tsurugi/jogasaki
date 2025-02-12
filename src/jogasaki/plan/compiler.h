@@ -82,6 +82,31 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     parameter_set const* parameters,
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
 );
+/**
+ * @brief calculate partition for terminal
+ * @param s the plan of step
+ * @return size of the partition
+ */
+[[nodiscard]] size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept;
+/**
+ * @brief calculate partition for intermediate
+ * @param s the plan of step
+ * @return size of the partition
+ */
+[[nodiscard]] size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept;
+/**
+ * @brief calculate partition
+ * @param s the plan of step
+ * @return size of the partition
+ */
+[[nodiscard]] size_t calculate_partition(takatori::plan::step const& s) noexcept;
+
+/**
+ * @brief determine whether to stop calculating the partition.
+ * @param s the plan of step
+ * @return true if stop calculate partition
+ */
+[[nodiscard]] bool stop_calculate_partition(takatori::plan::step const& s) noexcept;
 
 }  // namespace impl
 
@@ -115,29 +140,4 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
  */
 [[nodiscard]] status prepare(std::string_view sql, compiler_context& ctx);
 
-/**
- * @brief calculate partition for terminal
- * @param s the plan of step
- * @return size of the partition
- */
-[[nodiscard]] size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept;
-/**
- * @brief calculate partition for intermediate
- * @param s the plan of step
- * @return size of the partition
- */
-[[nodiscard]] size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept;
-/**
- * @brief calculate partition
- * @param s the plan of step
- * @return size of the partition
- */
-[[nodiscard]] size_t calculate_partition(takatori::plan::step const& s) noexcept;
-
-/**
- * @brief determine whether to stop calculating the partition.
- * @param s the plan of step
- * @return true if stop calculate partition
- */
-[[nodiscard]] bool stop_calculate_partition(takatori::plan::step const& s) noexcept;
 }  // namespace jogasaki::plan

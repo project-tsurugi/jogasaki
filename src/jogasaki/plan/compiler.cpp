@@ -273,7 +273,6 @@ std::shared_ptr<mirror_container> preprocess_mirror(
                         case takatori::plan::step_kind::forward:
                             // TODO check if UDF is not used
                             container->work_level().set_minimum(statement_work_level_kind::simple_multirecord_operation);
-                            container->increment_step_kind_forward_count();
                             break;
                         default:
                             break;

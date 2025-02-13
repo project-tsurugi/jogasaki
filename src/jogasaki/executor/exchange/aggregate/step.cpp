@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,8 @@ step::step(
 
 void step::activate(request_context& rctx) {
     auto* down = downstream(0);
-    auto downstream_partitions = down ? down->partitions() : default_partitions;
+    auto downstream_partitions =
+        down ? down->partitions() : global::config_pool()->default_partitions();
     data_flow_object(
         rctx,
         std::make_unique<aggregate::flow>(info_, std::addressof(rctx), this, downstream_partitions)
@@ -71,6 +72,6 @@ process::step *step::upstream(std::size_t index) const noexcept {
     if (input_ports()[0]->opposites().size() <= index) return nullptr;
     return dynamic_cast<process::step*>(input_ports()[0]->opposites()[index]->owner());
 }
-}
+} // namespace jogasaki::executor::exchange::aggregate
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -101,10 +101,10 @@ private:
     std::vector<std::unique_ptr<aggregate::source>> sources_{};
     class request_context* context_{};
     step* owner_{};
-    std::size_t downstream_partitions_{default_partitions};
+    std::size_t downstream_partitions_{global::config_pool()->default_partitions()};
     bool generate_record_on_empty_{false};
 };
 
-}
+} // namespace jogasaki::executor::exchange::aggregate
 
 

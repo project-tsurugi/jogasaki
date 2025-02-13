@@ -1412,7 +1412,7 @@ void service::execute_query(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        const auto max_write_count = get_write_count(e);
+        const auto max_write_count = get_write_count(*e);
         if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
@@ -1604,7 +1604,7 @@ void service::execute_dump(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        const auto max_write_count = get_write_count(e);
+        const auto max_write_count = get_write_count(*e);
         if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
@@ -1750,9 +1750,8 @@ jogasaki::api::database* service::database() const noexcept {
     return db_;
 }
 
-std::size_t service::get_write_count(
-    std::unique_ptr<jogasaki::api::executable_statement> const& es) const noexcept {
-    const auto& impl_stmt = get_impl(*es);
+std::size_t service::get_write_count(jogasaki::api::executable_statement const& es) const noexcept {
+    const auto& impl_stmt = get_impl(es);
     const auto partitions = impl_stmt.body()->mirrors()->get_partitions();
     if (VLOG_IS_ON(log_debug)) {
         std::stringstream ss{};

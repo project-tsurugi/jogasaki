@@ -613,7 +613,7 @@ private:
      * @return count of the write_count
      */
     [[nodiscard]] std::size_t get_write_count(
-        std::unique_ptr<jogasaki::api::executable_statement> const& es) const noexcept;
+        jogasaki::api::executable_statement const& es) const noexcept;
 };
 
 // public for testing purpose

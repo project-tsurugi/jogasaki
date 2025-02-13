@@ -74,4 +74,12 @@ inline api::impl::executable_statement& get_impl(api::executable_statement& es) 
     return unsafe_downcast<api::impl::executable_statement>(es);
 }
 
+/**
+ * @brief accessor to the impl of api::executable_statement
+ * @return reference to the const impl object
+ */
+inline api::impl::executable_statement const& get_impl(api::executable_statement const& es) {
+    return unsafe_downcast<api::impl::executable_statement const>(es);
+}
+
 } // namespace jogasaki::api::impl

@@ -1214,17 +1214,12 @@ size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept 
     return sum;
 }
 size_t calculate_partition(takatori::plan::step const& s) noexcept {
-    if (s.kind() != takatori::plan::step_kind::process) {
-        VLOG_LP(log_error) << "The bottom of graph_type kind is process";
-        return global::config_pool()->default_partitions();
-    }
     auto& process = unsafe_downcast<takatori::plan::process>(s);
     if (!process.downstreams().empty()) {
         VLOG_LP(log_error) << "The bottom of graph_type must not have downstreams";
         return global::config_pool()->default_partitions();
     }
     if (process.upstreams().empty()) { return terminal_calculate_partition(s); }
-    if (!has_emit_operator(s)) { return global::config_pool()->default_partitions(); }
     return intermediate_calculate_partition(s);
 }
 

@@ -1181,11 +1181,16 @@ size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept 
     size_t sum = 0;
     switch (s.kind()) {
         case takatori::plan::step_kind::process: {
-            if (unsafe_downcast<takatori::plan::process>(s).upstreams().empty()) {
-                return terminal_calculate_partition(s);
-            }
-            for (auto&& t : unsafe_downcast<takatori::plan::process>(s).upstreams()) {
-                sum = intermediate_calculate_partition(t);
+            auto& process         = unsafe_downcast<takatori::plan::process>(s);
+            const auto& upstreams = process.upstreams();
+            if (upstreams.empty()) { return terminal_calculate_partition(s); }
+            for (auto&& t : upstreams) {
+                auto par = intermediate_calculate_partition(t);
+                if (sum != 0 && sum != par) {
+                    VLOG_LP(log_error) << "two upstreams have different partitions " << sum << ", "
+                                       << par << ", this should not happen normally";
+                }
+                sum = par;
             }
             break;
         }

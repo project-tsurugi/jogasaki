@@ -1163,11 +1163,20 @@ size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept {
     takatori::relation::sort_from_upstream(
         process.operators(), [&partition](takatori::relation::expression const& op) {
             if (op.kind() == takatori::relation::expression_kind::scan) {
-                partition = global::config_pool()->scan_default_parallel();
+                // Cannot determine if the transaction is RTX, so not checking here.
+                // kvs::transaction_option::transaction_type::read_only;
+                if (global::config_pool()->rtx_parallel_scan()) {
+                    partition = global::config_pool()->scan_default_parallel();
+                } else {
+                    partition = 1;
+                }
+            } else if (op.kind() == takatori::relation::expression_kind::find) {
+                partition = 1;
             }
         });
     return partition;
 }
+
 size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept {
     size_t sum = 0;
     switch (s.kind()) {

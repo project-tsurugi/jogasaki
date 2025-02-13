@@ -91,6 +91,8 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
 /**
  * @brief calculate partition for intermediate
  * @param s the plan of step
+ * @details "scan" and "find" do not appear in the same location.
+ * @see https://github.com/project-tsurugi/takatori/blob/master/docs/ja/execution-model.md
  * @return size of the partition
  */
 [[nodiscard]] size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept;

@@ -647,7 +647,56 @@ TEST_F(sql_test, nullif_expression) {
         EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[1]);
     }
+    {
+        // it's possible to compare null with null - compiler once made it as an error
+        std::vector<mock::basic_record> result{};
+        execute_query("select nullif(null, null) from t0", result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::unknown>(-1, {true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::unknown>(-1, {true})), result[1]);
+    }
 }
+
+TEST_F(sql_test, null_comparison_by_operator) {
+    // compare literal-like NULL with itself - once compiler made it as an error
+    execute_statement("create table t0 (c0 int)");
+    execute_statement("INSERT INTO t0 VALUES (1), (NULL)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 where NULL = NULL", result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 where NULL <> NULL", result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 where c0 = NULL", result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 where c0 <> NULL", result);
+        ASSERT_EQ(0, result.size());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 where NULL IS NULL", result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4>(-1, {true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[1]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select * from t0 where NULL IS NOT NULL", result);
+        ASSERT_EQ(0, result.size());
+    }
+}
+
 
 TEST_F(sql_test, type_of_cast_conversion) {
     // verify the result type of cast - issue #982

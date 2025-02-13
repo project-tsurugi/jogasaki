@@ -106,7 +106,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
  * @param s the plan of step
  * @return true if stop calculate partition
  */
-[[nodiscard]] bool stop_calculate_partition(takatori::plan::step const& s) noexcept;
+[[nodiscard]] bool has_emit_operator(takatori::plan::step const& s) noexcept;
 
 }  // namespace impl
 

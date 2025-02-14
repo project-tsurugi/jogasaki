@@ -46,6 +46,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/octet_field_option.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::kvs {
 
@@ -280,6 +281,7 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::blob>>, status> write(T data, order odr) {
+        assert_with_exception(data.kind() == lob::lob_reference_kind::resolved, data.kind());
         // only object id part is needed for kvs data
         write<std::uint64_t>(data.object_id(), odr);
         return status::ok;
@@ -293,6 +295,7 @@ public:
      */
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::clob>>, status> write(T data, order odr) {
+        assert_with_exception(data.kind() == lob::lob_reference_kind::resolved, data.kind());
         // only object id part is needed for kvs data
         write<std::uint64_t>(data.object_id(), odr);
         return status::ok;

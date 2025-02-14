@@ -99,15 +99,6 @@ public:
     }
 
     /**
-     * @brief return whether the object is resolved
-     * @return true if the object is resolved
-     * @return false otherwise
-     */
-    [[nodiscard]] bool resolved() const noexcept {
-        return locator_ == nullptr;
-    }
-
-    /**
      * @brief return locator of the lob data
      */
     [[nodiscard]] lob_locator const* locator() const noexcept {

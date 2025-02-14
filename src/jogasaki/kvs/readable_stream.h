@@ -274,7 +274,7 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::blob>>, T> read(order odr, bool discard) {
         auto v = read<std::uint64_t>(odr, discard);
-        return lob::blob_reference{v, lob::lob_data_provider::datastore};
+        return lob::blob_reference{v};
     }
 
     /**
@@ -285,7 +285,7 @@ public:
     template<class T>
     std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::clob>>, T> read(order odr, bool discard) {
         auto v = read<std::uint64_t>(odr, discard);
-        return lob::clob_reference{v, lob::lob_data_provider::datastore};
+        return lob::clob_reference{v};
     }
 
     /**

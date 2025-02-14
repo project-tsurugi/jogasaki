@@ -1219,7 +1219,6 @@ size_t calculate_partition(takatori::plan::step const& s) noexcept {
         VLOG_LP(log_error) << "The bottom of graph_type must not have downstreams";
         return global::config_pool()->default_partitions();
     }
-    if (process.upstreams().empty()) { return terminal_calculate_partition(s); }
     return intermediate_calculate_partition(s);
 }
 

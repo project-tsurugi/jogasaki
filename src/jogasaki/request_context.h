@@ -278,7 +278,7 @@ public:
             acc->second = std::move(arg);
         }
     }
-    
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};

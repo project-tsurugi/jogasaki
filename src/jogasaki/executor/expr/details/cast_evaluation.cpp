@@ -1491,7 +1491,7 @@ any cast_from_octet(evaluator_context& ctx,
         case k::date: break;
         case k::time_of_day: break;
         case k::time_point: break;
-        case k::blob: break; return from_octet::to_blob(sv, ctx);
+        case k::blob: return from_octet::to_blob(sv, ctx);
         case k::clob: break;
         case k::datetime_interval: break;
         case k::array: break;

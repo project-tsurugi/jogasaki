@@ -654,4 +654,31 @@ TEST_F(host_variables_test, blob_pool_release) {
     EXPECT_TRUE(static_cast<datastore::blob_pool_mock&>(*pool).released());
 }
 
+TEST_F(host_variables_test, insert_generated_blob) {
+    global::config_pool()->mock_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+
+    execute_statement("INSERT INTO t VALUES (0, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto ref1 = result[0].get_value<lob::blob_reference>(1);
+    auto ref2 = result[0].get_value<lob::clob_reference>(2);
+
+    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+    auto ret1 = ds->get_blob_file(ref1.object_id());
+    ASSERT_TRUE(ret1);
+    EXPECT_EQ("ABC", read_file(ret1.path().string())) << ret1.path().string();
+    auto ret2 = ds->get_blob_file(ref2.object_id());
+    ASSERT_TRUE(ret2);
+    EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
+              result[0]);
+    EXPECT_EQ(status::ok, tx->commit());
+}
+
 }

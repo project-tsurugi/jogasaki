@@ -47,15 +47,22 @@ limestone::api::blob_id_type blob_pool_mock::register_file(boost::filesystem::pa
 }
 
 limestone::api::blob_id_type blob_pool_mock::register_data(std::string_view data) {
-    // not yet implemented
-    (void) data;
-    return {};
+    // treat data as a file path
+    auto id = static_cast<limestone::api::blob_id_type>(datastore_mock::id_src_++);
+    parent_->path_to_id_[std::string{data}] = id;
+    parent_->id_to_path_[id] = data;
+    return id;
 }
 
 limestone::api::blob_id_type blob_pool_mock::duplicate_data(limestone::api::blob_id_type reference) {
-    // not yet implemented
-    (void) reference;
-    return {};
+    if (parent_->id_to_path_.count(reference) == 0) {
+        LOG(ERROR) << "lob id not registered yet: " << reference;
+    }
+    auto id = static_cast<limestone::api::blob_id_type>(datastore_mock::id_src_++);
+    auto path = parent_->id_to_path_[reference];
+    parent_->path_to_id_[path] = id;
+    parent_->id_to_path_[id] = path;
+    return id;
 }
 
 }  // namespace jogasaki::datastore

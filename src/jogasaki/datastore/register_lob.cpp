@@ -22,8 +22,10 @@
 
 namespace jogasaki::datastore {
 
-status register_lob(
+status register_lob_impl(
     std::string_view path,
+    std::string_view data,
+    lob::lob_id_type in,
     transaction_context* tx,
     lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
@@ -39,7 +41,13 @@ status register_lob(
         if (! tx->blob_pool()) {
             tx->blob_pool(ds->acquire_blob_pool());
         }
-        out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path}}, false);
+        if (! data.empty()) {
+            out = tx->blob_pool()->register_data(data);
+        } else if (! path.empty()) {
+            out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path}}, false);
+        } else {
+            out = tx->blob_pool()->duplicate_data(in);
+        }
     } catch (limestone::api::limestone_blob_exception const& e) {
         status res = status::err_io_error;
         // TODO improve error code
@@ -47,6 +55,33 @@ status register_lob(
         return res;
     }
     return status::ok;
+}
+
+status register_lob(
+    std::string_view path,
+    transaction_context* tx,
+    lob::lob_id_type& out,
+    std::shared_ptr<error::error_info>& error
+) {
+    return register_lob_impl(path, {}, {}, tx, out, error);
+}
+
+status register_lob_data(
+    std::string_view data,
+    transaction_context* tx,
+    lob::lob_id_type& out,
+    std::shared_ptr<error::error_info>& error
+) {
+    return register_lob_impl({}, data, {}, tx, out, error);
+}
+
+status duplicate_lob(
+    lob::lob_id_type in,
+    transaction_context* tx,
+    lob::lob_id_type& out,
+    std::shared_ptr<error::error_info>& error
+) {
+    return register_lob_impl({}, {}, in, tx, out, error);
 }
 
 }  // namespace jogasaki::datastore

@@ -32,7 +32,11 @@ constexpr std::size_t service_message_version_major = 1;
 constexpr std::size_t service_message_version_minor = 4;
 
 /**
- * @brief default number of partitions
+ * @brief default number of partitions for testing and mocking purposes.
+ *
+ * @details this constant is intended solely for use in test and mock scenarios.
+ * For production code, retrieve the default number of partitions using
+ * the appropriate configuration method, such as `configuration::default_partitions()`.
  */
 constexpr std::size_t default_partitions = 5;
 

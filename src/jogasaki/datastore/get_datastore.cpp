@@ -29,10 +29,11 @@ namespace jogasaki::datastore {
 
 datastore* get_datastore(kvs::database* db, bool reset_cache) {
     static std::unique_ptr<datastore> ds = nullptr;
-    if (ds && ! reset_cache) {
+    auto use_mock = global::config_pool()->mock_datastore();
+    if (ds && ! reset_cache && ! use_mock) {
         return ds.get();
     }
-    if(! global::config_pool()->mock_datastore()) {
+    if(! use_mock) {
         std::any a{};
         if(auto res = db->get_datastore(a); res != status::ok) {
             LOG_LP(ERROR) << res << " failed to initialize datastore - falling back to mock";

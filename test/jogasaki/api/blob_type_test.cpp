@@ -40,6 +40,7 @@
 #include <jogasaki/datastore/get_datastore.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/lob/lob_id.h>
 #include <jogasaki/meta/decimal_field_option.h>
 #include <jogasaki/meta/field_type.h>
@@ -376,10 +377,15 @@ TEST_F(blob_type_test, insert_from_select) {
 }
 
 TEST_F(blob_type_test, insert_generated_blob) {
-    global::config_pool()->mock_datastore(true);
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+
+    // global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(db_impl()->kvs_db().get(), true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 
-    execute_statement("INSERT INTO t VALUES (0, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
+    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);
     execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
@@ -391,10 +397,10 @@ TEST_F(blob_type_test, insert_generated_blob) {
     auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
-    EXPECT_EQ("ABC", read_file(ret1.path().string())) << ret1.path().string();
+    EXPECT_EQ("\x00\x01\x02"sv, read_file(ret1.path().string())) << ret1.path().string();
     auto ret2 = ds->get_blob_file(ref2.object_id());
     ASSERT_TRUE(ret2);
-    EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
+    EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
                   {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
                    lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),

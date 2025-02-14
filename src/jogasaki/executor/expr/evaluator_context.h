@@ -224,7 +224,7 @@ public:
         lob_locators_.emplace_back(std::move(arg));
     }
 
-    std::deque<std::shared_ptr<lob::lob_locator>> const& lob_locators() const noexcept {
+    [[nodiscard]] std::deque<std::shared_ptr<lob::lob_locator>> const& lob_locators() const noexcept {
         return lob_locators_;
     }
 

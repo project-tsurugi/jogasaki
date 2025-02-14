@@ -274,7 +274,7 @@ public:
      */
     void add_locator(std::shared_ptr<lob::lob_locator> arg) noexcept {
         decltype(lob_locators_)::accessor acc{};
-        if (lob_locators_.insert(acc, reinterpret_cast<std::uintptr_t>(arg.get()))) {
+        if (lob_locators_.insert(acc, reinterpret_cast<std::uintptr_t>(arg.get()))) {  //NOLINT
             acc->second = std::move(arg);
         }
     }

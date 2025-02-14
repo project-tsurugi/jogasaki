@@ -87,11 +87,6 @@ public:
 
     [[nodiscard]] std::shared_ptr<std::string> const& sql_text_shared() const noexcept;
 
-    /**
-     * @brief accessor to the mirror_container
-     * @return the mirror container
-     */
-    [[nodiscard]] std::shared_ptr<mirror_container> get_mirrors() const noexcept ;
 private:
     maybe_shared_ptr<::takatori::statement::statement> statement_{};
     yugawara::compiled_info compiled_info_{};

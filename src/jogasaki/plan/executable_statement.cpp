@@ -97,8 +97,5 @@ std::shared_ptr<std::string> const &executable_statement::sql_text_shared() cons
     return sql_text_;
 }
 
-std::shared_ptr<mirror_container> executable_statement::get_mirrors() const noexcept {
-    return mirrors_;
-}
 
 } // namespace jogasaki::plan

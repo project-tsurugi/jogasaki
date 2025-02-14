@@ -142,6 +142,7 @@ TEST_F(blob_type_test, insert) {
 TEST_F(blob_type_test, blob_pool_release) {
     // verify blob pool is correctly released when transaction completes
     global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(db_impl()->kvs_db().get(), true);
     execute_statement("create table t (c0 int primary key, c1 blob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},
@@ -374,8 +375,7 @@ TEST_F(blob_type_test, insert_from_select) {
     }
 }
 
-// cast with blob not yet supported
-TEST_F(blob_type_test, DISABLED_insert_generated_blob) {
+TEST_F(blob_type_test, insert_generated_blob) {
     global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 

@@ -9,7 +9,7 @@ add_executable(aggregate-cli
 
 set_target_properties(aggregate-cli
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "aggregate-cli"
 )
 

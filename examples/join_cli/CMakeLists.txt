@@ -9,7 +9,7 @@ add_executable(join-cli
 
 set_target_properties(join-cli
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "join-cli"
 )
 

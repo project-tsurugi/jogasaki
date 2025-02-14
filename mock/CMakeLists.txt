@@ -22,7 +22,7 @@ target_include_directories(common
 
 set_target_properties(common
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN"
                 OUTPUT_NAME jogasaki-common-utils
 )
 

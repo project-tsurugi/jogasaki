@@ -9,7 +9,7 @@ add_executable(group-cli
 
 set_target_properties(group-cli
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "group-cli"
 )
 

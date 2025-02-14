@@ -9,7 +9,7 @@ add_executable(mock-aggregate-cli
 
 set_target_properties(mock-aggregate-cli
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "mock-aggregate-cli"
 )
 

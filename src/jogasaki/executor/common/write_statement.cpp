@@ -91,6 +91,16 @@ using takatori::util::string_builder;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
+//FIXME move to common code location
+void transfer_blob_locators(
+    request_context& dest,
+    expr::evaluator_context& src
+) {
+    for (auto&& e : src.lob_locators()) {
+        dest.add_locator(e);
+    }
+}
+
 status fill_evaluated_value(
     wrt::write_field const& f,
     request_context& ctx,
@@ -164,6 +174,7 @@ status fill_evaluated_value(
         }
         utils::copy_field(f.type_, out.ref(), f.offset_, converted, nocopy);
     }
+    transfer_blob_locators(ctx, c);
     return status::ok;
 }
 

@@ -169,7 +169,7 @@ TEST_F(blob_type_test, blob_pool_release) {
 }
 
 TEST_F(blob_type_test, update) {
-    // global::config_pool()->mock_datastore(true);
+    global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},
@@ -242,7 +242,7 @@ TEST_F(blob_type_test, update) {
 
 TEST_F(blob_type_test, update_partially) {
     // update some blob column while keeping the other unchanged
-    // global::config_pool()->mock_datastore(true);
+    global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},
@@ -313,7 +313,7 @@ TEST_F(blob_type_test, update_partially) {
 
 TEST_F(blob_type_test, insert_from_select) {
     // update some blob column while keeping the other unchanged
-    // global::config_pool()->mock_datastore(true);
+    global::config_pool()->mock_datastore(true);
     execute_statement("create table src (c0 int primary key, c1 blob, c2 clob)");
     execute_statement("create table dest (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{

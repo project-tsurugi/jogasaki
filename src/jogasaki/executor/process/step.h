@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,11 +88,11 @@ private:
     std::shared_ptr<processor_info> info_{};
     std::shared_ptr<abstract::process_executor_factory> executor_factory_{};
     std::shared_ptr<class io_info> io_info_{};
-    std::size_t partitions_{default_partitions};
+    std::size_t partitions_{global::config_pool()->default_partitions()};
     std::shared_ptr<class relation_io_map> relation_io_map_{};
     std::shared_ptr<class io_exchange_map> io_exchange_map_{std::make_shared<class io_exchange_map>()};
 
     std::shared_ptr<class io_info> create_io_info();
 };
 
-}
+} // namespace jogasaki::executor::process

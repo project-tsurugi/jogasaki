@@ -52,11 +52,11 @@ statement_work_level& mirror_container::work_level() noexcept {
     return work_level_;
 }
 
-void mirror_container::increment_step_kind_forward_count() noexcept {
-    ++step_kind_forward_count_;
+void mirror_container::set_partitions(std::size_t size) noexcept {
+    partitions_ = size;
 }
-std::size_t mirror_container::get_step_kind_forward_count() const noexcept {
-    return step_kind_forward_count_;
+std::size_t mirror_container::get_partitions() const noexcept {
+    return partitions_;
 }
 
 } // namespace jogasaki::plan

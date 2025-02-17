@@ -273,13 +273,23 @@ std::shared_ptr<mirror_container> preprocess_mirror(
                         case takatori::plan::step_kind::forward:
                             // TODO check if UDF is not used
                             container->work_level().set_minimum(statement_work_level_kind::simple_multirecord_operation);
-                            container->increment_step_kind_forward_count();
                             break;
                         default:
                             break;
                     }
                 }
             );
+            takatori::plan::enumerate_bottom(
+                unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
+                [&container](takatori::plan::step const& s) {
+                    if (s.kind() == takatori::plan::step_kind::process) {
+                        if (impl::has_emit_operator(s)) {
+                            container->set_partitions(impl::calculate_partition(s));
+                        }
+                    } else {
+                        VLOG_LP(log_error) << "The bottom of graph_type must be process.";
+                    }
+                });
             break;
         case statement::statement_kind::write:
             container->work_level().set_minimum(statement_work_level_kind::simple_write);
@@ -1135,6 +1145,81 @@ status create_executable_statement(compiler_context& ctx, parameter_set const* p
             throw_exception(std::logic_error{""});
     }
     return status::ok;
+}
+
+bool has_emit_operator(takatori::plan::step const& s) noexcept {
+    bool has_emit = false;
+    auto& process = unsafe_downcast<takatori::plan::process const>(s);
+    takatori::relation::sort_from_upstream(
+        process.operators(), [&has_emit](takatori::relation::expression const& op) {
+            if (op.kind() == takatori::relation::expression_kind::emit) { has_emit = true; }
+        });
+    return has_emit;
+}
+
+size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept {
+    size_t partition = global::config_pool()->default_partitions();
+    auto& process    = unsafe_downcast<takatori::plan::process const>(s);
+    takatori::relation::sort_from_upstream(
+        process.operators(), [&partition](takatori::relation::expression const& op) {
+            if (op.kind() == takatori::relation::expression_kind::scan) {
+                // Cannot determine if the transaction is RTX, so not checking here.
+                // kvs::transaction_option::transaction_type::read_only;
+                if (global::config_pool()->rtx_parallel_scan()) {
+                    partition = global::config_pool()->scan_default_parallel();
+                } else {
+                    partition = 1;
+                }
+            } else if (op.kind() == takatori::relation::expression_kind::find) {
+                partition = 1;
+            }
+        });
+    return partition;
+}
+
+size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept {
+    size_t sum = 0;
+    switch (s.kind()) {
+        case takatori::plan::step_kind::process: {
+            auto& process         = unsafe_downcast<takatori::plan::process>(s);
+            const auto& upstreams = process.upstreams();
+            if (upstreams.empty()) { return terminal_calculate_partition(s); }
+            for (auto&& t : upstreams) {
+                auto par = intermediate_calculate_partition(t);
+                if (sum != 0 && sum != par) {
+                    VLOG_LP(log_error) << "two upstreams have different partitions " << sum << ", "
+                                       << par << ", this should not happen normally";
+                }
+                sum = par;
+            }
+            break;
+        }
+        case takatori::plan::step_kind::group:
+            return global::config_pool()->default_partitions();
+            break;
+        case takatori::plan::step_kind::aggregate:
+            return global::config_pool()->default_partitions();
+            break;
+        case takatori::plan::step_kind::forward: {
+            for (auto&& t : unsafe_downcast<takatori::plan::exchange>(s).upstreams()) {
+                sum += intermediate_calculate_partition(t);
+            }
+            break;
+        }
+        default:
+            VLOG_LP(log_error) << "unknown step_kind";
+            return global::config_pool()->default_partitions();
+            break;
+    }
+    return sum;
+}
+size_t calculate_partition(takatori::plan::step const& s) noexcept {
+    auto& process = unsafe_downcast<takatori::plan::process>(s);
+    if (!process.downstreams().empty()) {
+        VLOG_LP(log_error) << "The bottom of graph_type must not have downstreams";
+        return global::config_pool()->default_partitions();
+    }
+    return intermediate_calculate_partition(s);
 }
 
 } // namespace impl

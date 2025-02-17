@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@
 #include <jogasaki/plan/executable_statement.h>
 #include <jogasaki/plan/mirror_container.h>
 #include <jogasaki/plan/parameter_set.h>
+#include <takatori/plan/step.h>
 #include <jogasaki/status.h>
 
 namespace jogasaki::plan {
@@ -81,6 +82,33 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     parameter_set const* parameters,
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
 );
+/**
+ * @brief calculate partition for terminal
+ * @param s the plan of step
+ * @return size of the partition
+ */
+[[nodiscard]] size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept;
+/**
+ * @brief calculate partition for intermediate
+ * @param s the plan of step
+ * @details "scan" and "find" do not appear in the same location.
+ * @see https://github.com/project-tsurugi/takatori/blob/master/docs/ja/execution-model.md
+ * @return size of the partition
+ */
+[[nodiscard]] size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept;
+/**
+ * @brief calculate partition
+ * @param s the plan of step
+ * @return size of the partition
+ */
+[[nodiscard]] size_t calculate_partition(takatori::plan::step const& s) noexcept;
+
+/**
+ * @brief determine whether to stop calculating the partition.
+ * @param s the plan of step
+ * @return true if stop calculate partition
+ */
+[[nodiscard]] bool has_emit_operator(takatori::plan::step const& s) noexcept;
 
 }  // namespace impl
 

@@ -68,6 +68,7 @@
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
+#include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
@@ -445,8 +446,6 @@ public:
 
     [[nodiscard]] jogasaki::api::database* database() const noexcept;
 
-    static constexpr std::size_t default_writer_count =
-        32; // from tateyama::endpoint::ipc::ipc_response
 private:
 
     struct cache_align callback_control {
@@ -607,6 +606,14 @@ private:
         request_info const& req_info
     );
     [[nodiscard]] std::size_t new_resultset_id() const noexcept;
+
+    /**
+     * @brief caluculate the count of the write_count
+     * @param es the executable_statement
+     * @return count of the write_count
+     */
+    [[nodiscard]] std::size_t get_write_count(
+        jogasaki::api::executable_statement const& es) const noexcept;
 };
 
 // public for testing purpose

@@ -15,7 +15,7 @@ add_executable(service-benchmark
 
 set_target_properties(service-benchmark
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "cli"
 )
 

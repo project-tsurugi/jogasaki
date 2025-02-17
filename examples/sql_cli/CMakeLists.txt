@@ -8,7 +8,7 @@ add_executable(sql-cli
 
 set_target_properties(sql-cli
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "sql-cli"
 )
 

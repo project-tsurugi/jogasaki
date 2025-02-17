@@ -8,7 +8,7 @@ add_executable(client-cli
 
 set_target_properties(client-cli
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "client-cli"
 )
 

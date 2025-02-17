@@ -16,7 +16,7 @@ add_executable(service-cli
 
 set_target_properties(service-cli
         PROPERTIES
-                INSTALL_RPATH "\$ORIGIN/../lib"
+                INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
                 RUNTIME_OUTPUT_NAME "cli"
 )
 

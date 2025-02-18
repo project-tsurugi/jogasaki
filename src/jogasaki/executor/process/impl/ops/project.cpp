@@ -35,6 +35,7 @@
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/wrt/transfer_locator.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/field_type_kind.h>
@@ -102,6 +103,8 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
         if (result.error()) {
             return handle_expression_error(ctx, result, c);
         }
+        wrt::transfer_blob_locators(*ctx.req_context(), c);
+
         using t = takatori::type::type_kind;
         bool is_null = result.empty();
         ref.set_null(info.nullity_offset(), is_null);

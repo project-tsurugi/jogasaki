@@ -408,4 +408,37 @@ TEST_F(blob_type_test, insert_generated_blob) {
     EXPECT_EQ(status::ok, tx->commit());
 }
 
+TEST_F(blob_type_test, update_generated_blob) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+
+    // global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+
+    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
+    execute_statement("UPDATE t SET c1=CAST(CAST('000102' as varbinary) as BLOB), c2 = CAST(CAST('ABC' as varchar) as CLOB) WHERE c0 = 1");
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto ref1 = result[0].get_value<lob::blob_reference>(1);
+    auto ref2 = result[0].get_value<lob::clob_reference>(2);
+
+    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+    auto ret1 = ds->get_blob_file(ref1.object_id());
+    ASSERT_TRUE(ret1);
+    EXPECT_EQ("\x00\x01\x02"sv, read_file(ret1.path().string())) << ret1.path().string();
+    auto ret2 = ds->get_blob_file(ref2.object_id());
+    ASSERT_TRUE(ret2);
+    EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
+              result[0]);
+    EXPECT_EQ(status::ok, tx->commit());
+}
+
 }

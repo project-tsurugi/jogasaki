@@ -301,9 +301,10 @@ database::database(
 
 database::database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db) :
     cfg_(std::move(cfg)),
-    kvs_db_(std::make_unique<kvs::database>(db))
+    kvs_db_(std::make_shared<kvs::database>(db))
 {
     custom_external_log_cfg(cfg_);
+    global::db(kvs_db_);
 }
 
 std::shared_ptr<class configuration> const& database::configuration() const noexcept {

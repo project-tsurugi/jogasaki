@@ -37,7 +37,7 @@ public:
     [[nodiscard]] std::string path() const;
 
     test::temporary_folder temporary_{};  //NOLINT
-    std::unique_ptr<database> db_{};  //NOLINT
+    std::shared_ptr<database> db_{};  //NOLINT
 
 };
 

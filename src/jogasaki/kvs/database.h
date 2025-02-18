@@ -82,7 +82,7 @@ public:
      * returned object, and close/dispose calls to DatabaseHandle will be made when the returned object is closed or
      * destructed.
      */
-    [[nodiscard]] static std::unique_ptr<database> open(std::map<std::string, std::string> const& options = {});
+    [[nodiscard]] static std::shared_ptr<database> open(std::map<std::string, std::string> const& options = {});
 
     /**
      * @brief close the database

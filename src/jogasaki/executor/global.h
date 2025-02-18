@@ -41,6 +41,10 @@ namespace jogasaki::executor::function {
 class scalar_function_repository;
 }
 
+namespace jogasaki::kvs {
+class database;
+}
+
 namespace jogasaki::memory {
 class page_pool;
 }
@@ -111,5 +115,13 @@ takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::uti
  */
 std::shared_ptr<yugawara::function::configurable_provider> const&
 scalar_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg = nullptr);
+
+/**
+ * @brief thread-safe accessor to the kvs database
+ * @details the container will be initialized on the first call and can be shared by multiple threads
+ * @param arg new database. Pass nullptr just to refer current one.
+ * @return reference to the kvs database
+ */
+std::shared_ptr<kvs::database> const& db(std::shared_ptr<kvs::database> arg = nullptr);
 
 }  // namespace jogasaki::global

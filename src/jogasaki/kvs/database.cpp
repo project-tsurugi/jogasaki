@@ -27,6 +27,7 @@
 #include <sharksfin/StatusCode.h>
 
 #include <jogasaki/common_types.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging_helper.h>
 
@@ -47,7 +48,7 @@ database::~database() noexcept {
     }
 }
 
-std::unique_ptr<database> database::open(std::map<std::string, std::string> const& options) {
+std::shared_ptr<database> database::open(std::map<std::string, std::string> const& options) {
     sharksfin::DatabaseOptions dbopts{};
     for(auto& p : options) {
         dbopts.attribute(p.first, p.second);
@@ -57,8 +58,9 @@ std::unique_ptr<database> database::open(std::map<std::string, std::string> cons
         LOG_LP(ERROR) << "database_open failed with " << res;
         return {};
     }
-    auto ret = std::make_unique<database>(handle);
+    auto ret = std::make_shared<database>(handle);
     ret->handle_borrowed_ = false;
+    global::db(ret);
     return ret;
 }
 

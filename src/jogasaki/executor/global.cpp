@@ -24,6 +24,7 @@
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
+#include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/page_pool.h>
 
 namespace jogasaki::global {
@@ -73,6 +74,14 @@ maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuratio
         pool = std::move(arg);
     }
     return pool;
+}
+
+std::shared_ptr<kvs::database> const& db(std::shared_ptr<kvs::database> arg) {
+    static std::shared_ptr<kvs::database> db = std::make_shared<kvs::database>();
+    if(arg) {
+        db = std::move(arg);
+    }
+    return db;
 }
 
 }  // namespace jogasaki::global

@@ -219,5 +219,81 @@ TEST_F(recovery_blob_test, DISABLED_update) {
 
 }
 
+// FIXME uncomment when this is fixed
+TEST_F(recovery_blob_test, DISABLED_update_with_cast) {
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    // do same as update testcase, but by cast expression
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('414243' as varbinary) as blob), CAST('DEF' as clob))");
+    lob::lob_id_type old_id1;
+    lob::lob_id_type old_id2;
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
+        ASSERT_EQ(1, result.size());
+
+        auto ref1 = result[0].get_value<lob::blob_reference>(1);
+        old_id1 = ref1.object_id();
+        auto ref2 = result[0].get_value<lob::clob_reference>(2);
+        old_id2 = ref2.object_id();
+        EXPECT_EQ(status::ok, tx->commit());
+    }
+    execute_statement("UPDATE t SET c1 = CAST(CAST('616263' as varbinary) as blob) WHERE c0 = 1");
+    lob::lob_id_type new_id1;
+    lob::lob_id_type new_id2;
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
+        ASSERT_EQ(1, result.size());
+
+        auto ref1 = result[0].get_value<lob::blob_reference>(1);
+        new_id1 = ref1.object_id();
+        auto ref2 = result[0].get_value<lob::clob_reference>(2);
+        new_id2 = ref2.object_id();
+        EXPECT_EQ(status::ok, tx->commit());
+    }
+    EXPECT_NE(new_id1, old_id1);
+    EXPECT_NE(new_id2, old_id2);
+
+    ASSERT_EQ(status::ok, db_->stop());
+    ASSERT_EQ(status::ok, db_->start());
+
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto ref1 = result[0].get_value<lob::blob_reference>(1);
+    auto ref2 = result[0].get_value<lob::clob_reference>(2);
+
+    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), true); // reset cache because ds instance is recreated
+    auto ret1 = ds->get_blob_file(ref1.object_id());
+    ASSERT_TRUE(ret1);
+    EXPECT_EQ("abc", read_file(ret1.path().string())) << ret1.path().string();
+    auto ret2 = ds->get_blob_file(ref2.object_id());
+    ASSERT_TRUE(ret2);
+    EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
+              result[0]);
+
+    EXPECT_NE(old_id1, ref1.object_id());
+    EXPECT_NE(old_id2, ref2.object_id());
+
+    // maybe old id is not usable any more
+    auto old_ret1 = ds->get_blob_file(old_id1);
+    ASSERT_FALSE(old_ret1);
+    auto old_ret2 = ds->get_blob_file(old_id2);
+    ASSERT_FALSE(old_ret2);
+
+    EXPECT_EQ(status::ok, tx->commit());
+
+}
 
 }

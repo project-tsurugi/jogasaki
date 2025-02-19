@@ -61,7 +61,6 @@
 #include <jogasaki/api/transaction_handle_internal.h>
 
 namespace jogasaki::testing {
-
 using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::meta;
@@ -104,10 +103,10 @@ TEST_F(blob_type_test, insert) {
     global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-        {"p2", api::field_type_kind::clob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
 
     auto path1 = path()+"/blob_types1.dat";
     auto path2 = path()+"/blob_types2.dat";
@@ -147,9 +146,9 @@ TEST_F(blob_type_test, blob_pool_release) {
     datastore::get_datastore(db_impl()->kvs_db().get(), true);
     execute_statement("create table t (c0 int primary key, c1 blob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+        };
 
     auto path1 = path()+"/blob_types1.dat";
     create_file(path1, "ABC");
@@ -175,10 +174,10 @@ TEST_F(blob_type_test, update) {
     global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-        {"p2", api::field_type_kind::clob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
 
     auto path1 = path()+"/blob_types1.dat";
     auto path2 = path()+"/blob_types2.dat";
@@ -248,10 +247,10 @@ TEST_F(blob_type_test, update_partially) {
     global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-        {"p2", api::field_type_kind::clob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
 
     auto path1 = path()+"/blob_types1.dat";
     auto path2 = path()+"/blob_types2.dat";
@@ -320,10 +319,10 @@ TEST_F(blob_type_test, insert_from_select) {
     execute_statement("create table src (c0 int primary key, c1 blob, c2 clob)");
     execute_statement("create table dest (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-        {"p2", api::field_type_kind::clob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
 
     auto path1 = path()+"/blob_types1.dat";
     auto path2 = path()+"/blob_types2.dat";
@@ -381,6 +380,7 @@ TEST_F(blob_type_test, insert_generated_blob) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
+    global::config_pool()->enable_blob_cast(true);
 
     // global::config_pool()->mock_datastore(true);
     datastore::get_datastore(db_impl()->kvs_db().get(), true);
@@ -423,6 +423,7 @@ TEST_F(blob_type_test, update_generated_blob) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
+    global::config_pool()->enable_blob_cast(true);
 
     // global::config_pool()->mock_datastore(true);
     datastore::get_datastore(db_impl()->kvs_db().get(), true);
@@ -470,9 +471,9 @@ TEST_F(blob_type_test, insert_file_io_error) {
     // verify limestone raises io error and it's handled correctly
     execute_statement("create table t (c0 int primary key, c1 blob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+        };
 
     auto path1 = path()+"/dummy_file.dat";
     auto ps = api::create_parameter_set();
@@ -485,6 +486,7 @@ TEST_F(blob_type_test, read_file_error) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
+    global::config_pool()->enable_blob_cast(true);
     // verify limestone raises error and it's handled correctly
     execute_statement("create table t (c0 int primary key, c1 blob)");
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB))");
@@ -511,4 +513,31 @@ TEST_F(blob_type_test, read_file_error) {
     // we handle this situation as an invalid reference rather than io error
     test_stmt_err("SELECT CAST(c1 as varbinary) from t", error_code::lob_reference_invalid);
 }
+
+TEST_F(blob_type_test, cast_not_allowed_insert) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+    global::config_pool()->enable_blob_cast(false);
+
+    // global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    test_stmt_err("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))", error_code::unsupported_runtime_feature_exception);
+}
+
+TEST_F(blob_type_test, cast_not_allowed_update) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+    global::config_pool()->enable_blob_cast(true);
+
+    // global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
+    global::config_pool()->enable_blob_cast(false);
+    test_stmt_err("UPDATE t SET c1=CAST(CAST('000102' as varbinary) as BLOB), c2 = CAST(CAST('ABC' as varchar) as CLOB) WHERE c0 = 1", error_code::unsupported_runtime_feature_exception);
+}
+
 }

@@ -83,6 +83,14 @@ any supports_boolean(evaluator_context& ctx) {
     return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
+any supports_lobs(evaluator_context& ctx) {
+    if(global::config_pool()->enable_blob_cast()) {
+        return {};
+    }
+    ctx.add_error({error_kind::unsupported, "cast with blob/clob types are unsupported"});
+    return {std::in_place_type<error>, error(error_kind::unsupported)};
+}
+
 /**
  * @brief validate integer is in the valid range
  * @tparam Target target type to validate the src against
@@ -1661,6 +1669,10 @@ any conduct_cast(
             }
         } else if(src.kind() == k::int1 || src.kind() == k::int2 || tgt.kind() == k::int1 || tgt.kind() == k::int2) {
             if(auto a = supports_small_integers(ctx); a.error()) {
+                return a;
+            }
+        } else if(src.kind() == k::blob || src.kind() == k::clob || tgt.kind() == k::blob || tgt.kind() == k::clob) {
+            if(auto a = supports_lobs(ctx); a.error()) {
                 return a;
             }
         }

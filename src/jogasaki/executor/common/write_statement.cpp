@@ -121,6 +121,16 @@ status fill_evaluated_value(
             );
             return rc;
         }
+        if(err.kind() == expr::error_kind::unsupported) {
+            auto rc = status::err_unsupported;
+            set_error(
+                ctx,
+                error_code::unsupported_runtime_feature_exception,
+                "unsupported expression",
+                rc
+            );
+            return rc;
+        }
         auto rc = status::err_expression_evaluation_failure;
         set_error(
             ctx,

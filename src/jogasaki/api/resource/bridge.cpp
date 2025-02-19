@@ -198,6 +198,9 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<bool>("lowercase_regular_identifiers")) {
         ret->lowercase_regular_identifiers(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_blob_cast")) {
+        ret->enable_blob_cast(v.value());
+    }
 
     constexpr std::string_view KEY_COMMIT_RESPONSE{"commit_response"};
     if (auto v = jogasaki_config->get<std::string>(KEY_COMMIT_RESPONSE)) {

@@ -523,6 +523,14 @@ public:
         mock_datastore_ = arg;
     }
 
+    [[nodiscard]] bool enable_blob_cast() const noexcept {
+        return enable_blob_cast_;
+    }
+
+    void enable_blob_cast(bool arg) noexcept {
+        enable_blob_cast_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -583,6 +591,7 @@ public:
         print_non_default(enable_join_scan);
         print_non_default(key_distribution);
         print_non_default(mock_datastore);
+        print_non_default(enable_blob_cast);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -647,6 +656,7 @@ private:
     bool enable_join_scan_ = true;
     key_distribution_kind key_distribution_{key_distribution_kind::uniform};
     bool mock_datastore_ = false;
+    bool enable_blob_cast_ = false;
 };
 
 }  // namespace jogasaki

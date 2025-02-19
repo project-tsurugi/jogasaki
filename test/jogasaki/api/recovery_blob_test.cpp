@@ -66,6 +66,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
+        datastore::get_datastore(db_impl()->kvs_db().get(), true);  // reset cache for datastore object as db setup recreates it
     }
 
     void TearDown() override {

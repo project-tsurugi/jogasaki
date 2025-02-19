@@ -226,6 +226,8 @@ TEST_F(recovery_blob_test, DISABLED_update_with_cast) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
+    global::config_pool()->enable_blob_cast(true);
+
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('414243' as varbinary) as blob), CAST('DEF' as clob))");
     lob::lob_id_type old_id1;

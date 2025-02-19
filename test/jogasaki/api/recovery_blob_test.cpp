@@ -220,8 +220,7 @@ TEST_F(recovery_blob_test, DISABLED_update) {
 
 }
 
-// FIXME uncomment when this is fixed
-TEST_F(recovery_blob_test, DISABLED_update_with_cast) {
+TEST_F(recovery_blob_test, update_with_cast) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     // do same as update testcase, but by cast expression
     if (jogasaki::kvs::implementation_id() == "memory") {

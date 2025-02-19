@@ -1465,9 +1465,9 @@ TEST_F(service_api_test, blob_types_error_handling) {
         EXPECT_TRUE(res->completed());
         ASSERT_TRUE(st);
 
-        auto [success, error, stats] = decode_execute_result(res->body_);
-        ASSERT_TRUE(! success);
-        std::cerr << "error:" << error.message_ << std::endl;
+        auto& rec = res->error_;
+        EXPECT_EQ(::tateyama::proto::diagnostics::Code::IO_ERROR, rec.code());
+        std::cerr << "error:" << rec.message() << std::endl;
     }
     test_dispose_prepare(stmt_handle);
 }

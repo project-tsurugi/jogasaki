@@ -1510,6 +1510,14 @@ any cast_from_octet(evaluator_context& ctx,
     return return_unsupported();
 }
 
+error_kind map_lob_error_code(error_code code) {
+    switch (code) {
+        case error_code::lob_file_io_error: return error_kind::lob_file_io_error;
+        case error_code::lob_reference_invalid: return error_kind::lob_reference_invalid;
+        default: break;
+    }
+    return error_kind::undefined;
+}
 template<class String, class Ref>
 any lob_to_string(
     Ref const& src,
@@ -1520,15 +1528,17 @@ any lob_to_string(
     std::string path{};
     std::shared_ptr<jogasaki::error::error_info> info{};
     if (auto res = datastore::find_path_by_lob_id(src.object_id(), path, info); res != status::ok) {
-        auto& e = ctx.add_error({error_kind::lob_error, std::string{info->message()}});
+        auto err_kind = map_lob_error_code(info->code());
+        auto& e = ctx.add_error({err_kind, std::string{info->message()}});
         e.new_argument() << src;
-        return any{std::in_place_type<error>, error(error_kind::lob_error)};
+        return any{std::in_place_type<error>, error(err_kind)};
     }
     std::string content{};
     if (auto res = utils::read_lob_file(path, content, info); res != status::ok) {
-        auto& e = ctx.add_error({error_kind::lob_error, std::string{info->message()}});
+        auto err_kind = map_lob_error_code(info->code());
+        auto& e = ctx.add_error({err_kind, std::string{info->message()}});
         e.new_argument() << src;
-        return any{std::in_place_type<error>, error(error_kind::lob_error)};
+        return any{std::in_place_type<error>, error(err_kind)};
     }
     return handle_length<String>(content, ctx, len, add_padding, false);
 }

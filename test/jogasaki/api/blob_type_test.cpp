@@ -481,11 +481,11 @@ TEST_F(blob_type_test, insert_file_io_error) {
     test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::lob_file_io_error);
 }
 
-TEST_F(blob_type_test, read_file_io_error) {
+TEST_F(blob_type_test, read_file_error) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    // verify limestone raises io error and it's handled correctly
+    // verify limestone raises error and it's handled correctly
     execute_statement("create table t (c0 int primary key, c1 blob)");
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB))");
 
@@ -507,6 +507,8 @@ TEST_F(blob_type_test, read_file_io_error) {
     // remove the blob file
     ASSERT_TRUE(boost::filesystem::remove(path));
 
-    test_stmt_err("SELECT CAST(c1 as varbinary) from t", error_code::lob_file_io_error);
+    // limestone checks existence of file and if it does not exist, get_blob_file raises exception
+    // we handle this situation as an invalid reference rather than io error
+    test_stmt_err("SELECT CAST(c1 as varbinary) from t", error_code::lob_reference_invalid);
 }
 }

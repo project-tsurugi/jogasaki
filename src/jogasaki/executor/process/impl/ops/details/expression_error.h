@@ -75,12 +75,25 @@ operation_status handle_expression_error_impl(
         ctx.abort();
         return {operation_status_kind::aborted};
     }
-    if (err.kind() == expr::error_kind::lob_error) {
+    if (err.kind() == expr::error_kind::lob_file_io_error) {
         auto rc = status::err_io_error;
         error::set_error_impl(
             *ctx.req_context(),
             error_code::lob_file_io_error,
             "I/O error occurred while evaluating lob data",
+            filepath,
+            position,
+            rc,
+            false);
+        ctx.abort();
+        return {operation_status_kind::aborted};
+    }
+    if (err.kind() == expr::error_kind::lob_reference_invalid) {
+        auto rc = status::err_invalid_state;
+        error::set_error_impl(
+            *ctx.req_context(),
+            error_code::lob_reference_invalid,
+            "invalid lob reference was used to evaluate expression",
             filepath,
             position,
             rc,

@@ -46,6 +46,9 @@ enum class error_kind : std::size_t {
     ///@brief string or other representation's format error
     format_error,
 
+    ///@brief lob expression evaluation error
+    lob_error,
+
     ///@brief unsupported features used in the expression
     unsupported,
 
@@ -68,6 +71,7 @@ enum class error_kind : std::size_t {
         case kind::lost_precision: return "lost_precision"sv;
         case kind::lost_precision_value_too_long: return "lost_precision_value_too_long"sv;
         case kind::format_error: return "format_error"sv;
+        case kind::lob_error: return "lob_error"sv;
         case kind::unsupported: return "unsupported"sv;
         case kind::unknown: return "unknown"sv;
     }

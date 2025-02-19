@@ -27,7 +27,9 @@
 #include <type_traits>
 #include <utility>
 
+#include <takatori/type/blob.h>
 #include <takatori/type/character.h>
+#include <takatori/type/clob.h>
 #include <takatori/type/decimal.h>
 #include <takatori/type/octet.h>
 #include <takatori/type/type_kind.h>
@@ -41,15 +43,18 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/datastore/find_path_by_lob_id.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/diagnostic_record.h>
-#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/expr/details/decimal_context_guard.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/hex_to_octet.h>
+#include <jogasaki/utils/read_lob_file.h>
 #include <jogasaki/utils/to_string.h>
 
 #include "common.h"
@@ -1505,6 +1510,131 @@ any cast_from_octet(evaluator_context& ctx,
     return return_unsupported();
 }
 
+template<class String, class Ref>
+any lob_to_string(
+    Ref const& src,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding
+) {
+    std::string path{};
+    std::shared_ptr<jogasaki::error::error_info> info{};
+    if (auto res = datastore::find_path_by_lob_id(src.object_id(), path, info); res != status::ok) {
+        auto& e = ctx.add_error({error_kind::lob_error, std::string{info->message()}});
+        e.new_argument() << src;
+        return any{std::in_place_type<error>, error(error_kind::lob_error)};
+    }
+    std::string content{};
+    if (auto res = utils::read_lob_file(path, content, info); res != status::ok) {
+        auto& e = ctx.add_error({error_kind::lob_error, std::string{info->message()}});
+        e.new_argument() << src;
+        return any{std::in_place_type<error>, error(error_kind::lob_error)};
+    }
+    return handle_length<String>(content, ctx, len, add_padding, false);
+}
+
+namespace from_blob {
+
+any to_octet(
+    lob::blob_reference const& src,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding
+) {
+    return lob_to_string<accessor::binary>(src, ctx, len, add_padding);
+}
+
+}  // namespace from_blob
+
+any cast_from_blob(evaluator_context& ctx,
+    ::takatori::type::data const& tgt,
+    any const& a
+) {
+    using k = takatori::type::type_kind;
+    auto blob_ref = a.to<runtime_t<meta::field_type_kind::blob>>();
+    switch(tgt.kind()) {
+        case k::boolean: break;
+        case k::int1: break;
+        case k::int2: break;
+        case k::int4: break;
+        case k::int8: break;
+        case k::float4: break;
+        case k::float8: break;
+        case k::decimal: break;
+        case k::character: break;
+        case k::octet: {
+            auto& typ = unsafe_downcast<takatori::type::octet>(tgt);
+            return from_blob::to_octet(blob_ref, ctx, typ.length(), ! typ.varying());
+        }
+        case k::bit: break;
+        case k::date: break;
+        case k::time_of_day: break;
+        case k::time_point: break;
+        case k::blob: return a;
+        case k::clob: break;
+        case k::datetime_interval: break;
+        case k::array: break;
+        case k::record: break;
+        case k::unknown: break;
+        case k::row_reference: break;
+        case k::row_id: break;
+        case k::declared: break;
+        case k::extension: break;
+    }
+    return return_unsupported();
+}
+
+namespace from_clob {
+
+any to_character(
+    lob::clob_reference const& src,
+    evaluator_context& ctx,
+    std::optional<std::size_t> len,
+    bool add_padding
+) {
+    return lob_to_string<accessor::text>(src, ctx, len, add_padding);
+}
+
+}  // namespace from_clob
+
+any cast_from_clob(evaluator_context& ctx,
+    ::takatori::type::data const& tgt,
+    any const& a
+) {
+    using k = takatori::type::type_kind;
+    auto clob_ref = a.to<runtime_t<meta::field_type_kind::clob>>();
+    switch(tgt.kind()) {
+        case k::boolean: break;
+        case k::int1: break;
+        case k::int2: break;
+        case k::int4: break;
+        case k::int8: break;
+        case k::float4: break;
+        case k::float8: break;
+        case k::decimal: break;
+        case k::character: {
+            auto& typ = unsafe_downcast<takatori::type::character>(tgt);
+            return from_clob::to_character(clob_ref, ctx, typ.length(), ! typ.varying());
+        }
+        case k::octet: break;
+        case k::bit: break;
+        case k::date: break;
+        case k::time_of_day: break;
+        case k::time_point: break;
+        case k::blob: break;
+        case k::clob: return a;
+        case k::datetime_interval: break;
+        case k::array: break;
+        case k::record: break;
+        case k::unknown: break;
+        case k::row_reference: break;
+        case k::row_id: break;
+        case k::declared: break;
+        case k::extension: break;
+    }
+    return return_unsupported();
+}
+
 any conduct_cast(
     evaluator_context& ctx,
     ::takatori::type::data const& src,
@@ -1558,8 +1688,8 @@ any conduct_cast(
         case k::date: break;
         case k::time_of_day: break;
         case k::time_point: break;
-        case k::blob: break;  //TODO implement conv. to binaries
-        case k::clob: break;  //TODO implement conv. to characters
+        case k::blob: return cast_from_blob(ctx, tgt, a);
+        case k::clob: return cast_from_clob(ctx, tgt, a);
         case k::datetime_interval: break;
         case k::array: break;
         case k::record: break;

@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "register_lob.h"
+#include "find_path_by_lob_id.h"
 
+#include <takatori/util/string_builder.h>
 #include <limestone/api/limestone_exception.h>
 
 #include <jogasaki/datastore/get_datastore.h>
@@ -22,15 +23,14 @@
 
 namespace jogasaki::datastore {
 
-status register_lob_impl(
-    std::string_view path,
-    std::string_view data,
-    lob::lob_id_type in,
-    transaction_context* tx,
-    lob::lob_id_type& out,
+using takatori::util::string_builder;
+
+status find_path_by_lob_id(
+    lob::lob_id_type id,
+    std::string& path,
     std::shared_ptr<error::error_info>& error
 ) {
-    auto* ds = get_datastore(tx->database());
+    auto* ds = get_datastore(global::db().get());
     if (ds == nullptr) {
         // should not happen normally
         status res = status::err_invalid_state;
@@ -38,50 +38,21 @@ status register_lob_impl(
         return res;
     }
     try {
-        if (! tx->blob_pool()) {
-            tx->blob_pool(ds->acquire_blob_pool());
+        auto file = ds->get_blob_file(id);
+        if (! file) {
+            status res = status::err_invalid_state;
+            error = create_error_info(error_code::lob_reference_invalid,
+                string_builder{} << "failed to get the valid lob data for id:" << id << string_builder::to_string,
+                res);
+            return res;
         }
-        if (! data.empty()) {
-            out = tx->blob_pool()->register_data(data);
-        } else if (! path.empty()) {
-            out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path}}, false);
-        } else {
-            out = tx->blob_pool()->duplicate_data(in);
-        }
+        path = file.path().string();
     } catch (limestone::api::limestone_blob_exception const& e) {
-        // assuming only the possible scenario is IO error with register_file
         status res = status::err_io_error;
         error = create_error_info(error_code::lob_file_io_error, e.what(), res);
         return res;
     }
     return status::ok;
-}
-
-status register_lob(
-    std::string_view path,
-    transaction_context* tx,
-    lob::lob_id_type& out,
-    std::shared_ptr<error::error_info>& error
-) {
-    return register_lob_impl(path, {}, {}, tx, out, error);
-}
-
-status register_lob_data(
-    std::string_view data,
-    transaction_context* tx,
-    lob::lob_id_type& out,
-    std::shared_ptr<error::error_info>& error
-) {
-    return register_lob_impl({}, data, {}, tx, out, error);
-}
-
-status duplicate_lob(
-    lob::lob_id_type in,
-    transaction_context* tx,
-    lob::lob_id_type& out,
-    std::shared_ptr<error::error_info>& error
-) {
-    return register_lob_impl({}, {}, in, tx, out, error);
 }
 
 }  // namespace jogasaki::datastore

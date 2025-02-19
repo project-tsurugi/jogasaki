@@ -92,6 +92,8 @@ enum class error_code : std::int64_t {
 
     // internal use
     request_canceled = 50011,
+    lob_file_io_error = 50012,
+    lob_reference_invalid = 50013,
 };
 
 /**
@@ -163,6 +165,8 @@ enum class error_code : std::int64_t {
         case code::rtx_exception: return "rtx_exception"sv;
         case code::blocked_by_concurrent_operation_exception: return "blocked_by_concurrent_operation_exception"sv;
         case code::request_canceled: return "request_canceled"sv;
+        case code::lob_file_io_error: return "lob_file_io_error"sv;
+        case code::lob_reference_invalid: return "lob_reference_invalid"sv;
     }
     std::abort();
 }

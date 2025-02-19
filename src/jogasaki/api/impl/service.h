@@ -145,10 +145,22 @@ inline bool promote_error_if_needed(
     error::error_info* err_info,
     request_info const& req_info
 ) {
-    if(! err_info || err_info->code() != error_code::request_canceled) {
+    if(! err_info) {
         return false;
     }
-    report_error(res, tateyama::proto::diagnostics::Code::OPERATION_CANCELED, err_info->message(), req_info.id());
+    switch (err_info->code()) {
+        case error_code::request_canceled:
+            report_error(res, tateyama::proto::diagnostics::Code::OPERATION_CANCELED, err_info->message(), req_info.id());
+            break;
+        case error_code::lob_file_io_error:
+            report_error(res, tateyama::proto::diagnostics::Code::IO_ERROR, err_info->message(), req_info.id());
+            break;
+        case error_code::lob_reference_invalid:
+            report_error(res, tateyama::proto::diagnostics::Code::ILLEGAL_STATE, err_info->message(), req_info.id());
+            break;
+        default:
+            return false;
+    }
     return true;
 }
 

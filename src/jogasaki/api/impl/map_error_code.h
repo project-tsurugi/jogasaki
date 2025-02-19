@@ -88,7 +88,11 @@ inline sql::error::Code map_error(jogasaki::error_code s) {
         case jogasaki::error_code::ltx_write_exception: return sql::error::LTX_WRITE_EXCEPTION;
         case jogasaki::error_code::rtx_exception: return sql::error::RTX_EXCEPTION;
         case jogasaki::error_code::blocked_by_concurrent_operation_exception: return sql::error::BLOCKED_BY_CONCURRENT_OPERATION_EXCEPTION;
-        case jogasaki::error_code::request_canceled: return sql::error::SQL_SERVICE_EXCEPTION; // This is internal code and should not be exposed
+
+        // below are internal codes and should not be exposed
+        case jogasaki::error_code::request_canceled: return sql::error::SQL_SERVICE_EXCEPTION;
+        case jogasaki::error_code::lob_file_io_error: return sql::error::SQL_SERVICE_EXCEPTION;
+        case jogasaki::error_code::lob_reference_invalid: return sql::error::SQL_SERVICE_EXCEPTION;
     }
     std::abort();
 }

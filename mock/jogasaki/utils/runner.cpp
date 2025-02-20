@@ -120,7 +120,7 @@ runner& runner::run() {
     } else {
         // Call api for statement (i.e. no result records).
         // There is no execute() api without requesting result set, so use execute_async with sync = true
-        if(! executor::execute_async(
+        if((! executor::execute_async(
                get_impl(*db_),
                tc,
                maybe_shared_ptr{stmt.get()},
@@ -131,8 +131,8 @@ runner& runner::run() {
                    *out_stats = stats;
                },
                request_info{},
-               true
-           ) &&
+               true) ||
+             res != status::ok) &&
            ! expect_error_) {
             exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }

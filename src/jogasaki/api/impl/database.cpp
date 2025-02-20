@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -187,6 +187,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(enable_join_scan) " << cfg.enable_join_scan() << " : whether to enable index join using join_scan operator";
     LOGCFG << "(dev_rtx_key_distribution) " << cfg.key_distribution() << " : key distribution policy used for RTX parallel scan";
     LOGCFG << "(dev_enable_blob_cast) " << cfg.enable_blob_cast() << " : whether to enable cast expression to/from blob/clob data";
+    LOGCFG << "(max_result_set_writers) " << cfg.max_result_set_writers() << " : max number of result set writers";
 }
 
 status database::start() {
@@ -1381,4 +1382,4 @@ std::unique_ptr<database> create_database(std::shared_ptr<class configuration> c
 std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db) {
     return std::make_unique<impl::database>(std::move(cfg), db);
 }
-}
+} // namespace jogasaki::api::impl

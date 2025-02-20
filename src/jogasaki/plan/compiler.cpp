@@ -1214,12 +1214,19 @@ size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept 
     return sum;
 }
 size_t calculate_partition(takatori::plan::step const& s) noexcept {
-    auto& process = unsafe_downcast<takatori::plan::process>(s);
+    auto& process  = unsafe_downcast<takatori::plan::process>(s);
+    auto partition = global::config_pool()->default_partitions();
     if (!process.downstreams().empty()) {
         VLOG_LP(log_error) << "The bottom of graph_type must not have downstreams";
-        return global::config_pool()->default_partitions();
+    } else {
+        partition = intermediate_calculate_partition(s);
     }
-    return intermediate_calculate_partition(s);
+    if (partition > global::config_pool()->max_result_set_writers()) {
+        LOG_LP(ERROR) << "The result calculated by calculate_partition(" << partition
+                      << ") exceeded max_result_set_writers("
+                      << global::config_pool()->max_result_set_writers() << ")";
+    }
+    return partition;
 }
 
 } // namespace impl

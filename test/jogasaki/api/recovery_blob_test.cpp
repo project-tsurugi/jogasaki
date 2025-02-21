@@ -81,10 +81,10 @@ TEST_F(recovery_blob_test, basic) {
     }
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-        {"p2", api::field_type_kind::clob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
 
     auto path1 = path()+"/blob_types1.dat";
     auto path2 = path()+"/blob_types2.dat";
@@ -122,18 +122,17 @@ TEST_F(recovery_blob_test, basic) {
     EXPECT_EQ(status::ok, tx->commit());
 }
 
-// FIXME uncomment when this is fixed
-TEST_F(recovery_blob_test, DISABLED_update) {
+TEST_F(recovery_blob_test, update) {
     // verify old lob id is not usable any more
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
     }
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
-        {"p0", api::field_type_kind::int4},
-        {"p1", api::field_type_kind::blob},
-        {"p2", api::field_type_kind::clob},
-    };
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
 
     auto path1 = path()+"/blob_types1.dat";
     auto path2 = path()+"/blob_types2.dat";
@@ -211,17 +210,18 @@ TEST_F(recovery_blob_test, DISABLED_update) {
 
     EXPECT_NE(old_id1, ref1.object_id());
     EXPECT_NE(old_id2, ref2.object_id());
-    auto old_ret1 = ds->get_blob_file(old_id1);
-    ASSERT_FALSE(old_ret1);
-    auto old_ret2 = ds->get_blob_file(old_id2);
-    ASSERT_FALSE(old_ret2);
+
+    // TODO uncomment when limestone supports gc
+    // auto old_ret1 = ds->get_blob_file(old_id1);
+    // ASSERT_FALSE(old_ret1);
+    // auto old_ret2 = ds->get_blob_file(old_id2);
+    // ASSERT_FALSE(old_ret2);
 
     EXPECT_EQ(status::ok, tx->commit());
 
 }
 
-// FIXME uncomment when this is fixed
-TEST_F(recovery_blob_test, DISABLED_update_with_cast) {
+TEST_F(recovery_blob_test, update_with_cast) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     // do same as update testcase, but by cast expression
     if (jogasaki::kvs::implementation_id() == "memory") {
@@ -290,10 +290,11 @@ TEST_F(recovery_blob_test, DISABLED_update_with_cast) {
     EXPECT_NE(old_id2, ref2.object_id());
 
     // maybe old id is not usable any more
-    auto old_ret1 = ds->get_blob_file(old_id1);
-    ASSERT_FALSE(old_ret1);
-    auto old_ret2 = ds->get_blob_file(old_id2);
-    ASSERT_FALSE(old_ret2);
+    // TODO uncomment when limestone supports gc
+    // auto old_ret1 = ds->get_blob_file(old_id1);
+    // ASSERT_FALSE(old_ret1);
+    // auto old_ret2 = ds->get_blob_file(old_id2);
+    // ASSERT_FALSE(old_ret2);
 
     EXPECT_EQ(status::ok, tx->commit());
 

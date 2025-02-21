@@ -128,6 +128,8 @@ T* mutable_object(sql::response::Response& r) {
         return r.mutable_execute_result();
     } else if constexpr (std::is_same_v<T, sql::response::ExtractStatementInfo>) {  //NOLINT
         return r.mutable_extract_statement_info();
+    } else if constexpr (std::is_same_v<T, sql::response::GetLargeObjectData>) {  //NOLINT
+        return r.mutable_get_large_object_data();
     } else {
         static_fail();
     }
@@ -426,6 +428,19 @@ inline void success<sql::response::ExtractStatementInfo>(
     reply(res, r, req_info);
 }
 
+template<>
+inline void success<sql::response::GetLargeObjectData>(
+    tateyama::api::server::response& res,
+    std::string_view channel_name, //NOLINT(performance-unnecessary-value-param)
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+) {
+    sql::response::Response r{};
+    auto* gt = r.mutable_get_large_object_data();
+    auto* success = gt->mutable_success();
+    success->mutable_channel_name()->assign(channel_name);
+    reply(res, r, req_info);
+}
+
 inline void send_body_head(
     tateyama::api::server::response& res,
     channel_info const& info,
@@ -579,6 +594,11 @@ private:
         request_info const& req_info
     );
     void command_extract_statement_info(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        request_info const& req_info
+    );
+    void command_get_large_object_data(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
         request_info const& req_info

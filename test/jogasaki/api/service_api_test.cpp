@@ -221,6 +221,8 @@ public:
     template <class ... Args>
     void test_load(bool transactional, error_code expected, Args ... args);
 
+    void test_get_lob(std::uint64_t id, std::string_view expected_path);
+
     void execute_statement_as_query(std::string_view sql);
 
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
@@ -1330,6 +1332,28 @@ TEST_F(service_api_test, boolean_type) {
     test_dispose_prepare(query_handle);
 }
 
+void service_api_test::test_get_lob(std::uint64_t id, std::string_view expected_path) {
+    auto s = encode_get_large_object_data(id);
+
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [channel_name, contents, error] = decode_get_large_object_data(res->body_);
+    bool found = false;
+    for (auto&& b : res->blobs_) {
+        if (b->channel_name() == channel_name) {
+            ASSERT_EQ(expected_path, b->path());
+            found = true;
+        }
+    }
+    ASSERT_TRUE(found);
+}
+
 TEST_F(service_api_test, blob_types) {
     // global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
@@ -1420,6 +1444,11 @@ TEST_F(service_api_test, blob_types) {
                 ASSERT_TRUE(f1);
                 EXPECT_EQ("ABC", read_file(f0.path().string()));
                 EXPECT_EQ("DEF", read_file(f1.path().string()));
+
+                {
+                    test_get_lob(v0.object_id(), f0.path().string());
+                    test_get_lob(v1.object_id(), f1.path().string());
+                }
             }
         }
         {

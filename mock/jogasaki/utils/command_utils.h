@@ -781,4 +781,41 @@ inline std::tuple<std::string, std::string, error> decode_extract_statement_info
     return {extract.success().sql(), extract.success().transaction_id().id(), {}};
 }
 
+inline std::string encode_get_large_object_data(std::uint64_t id) {
+    sql::request::Request r{};
+    auto* gd = r.mutable_get_large_object_data();
+    auto* ref = gd->mutable_reference();
+    ref->set_object_id(id);
+    ref->set_provider(sql::common::LargeObjectProvider::DATASTORE);
+
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_get_large_object_data();
+    return s;
+}
+
+inline std::tuple<std::string, std::string, error> decode_get_large_object_data(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_get_large_object_data())  {
+        LOG(ERROR) << "**** missing get_large_object_data **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {{}, {}, {}};
+    }
+    auto& gd = resp.get_large_object_data();
+    if (gd.has_error()) {
+        auto& er = gd.error();
+        return {{}, {}, {api::impl::map_error(er.code()), er.detail()}};
+    }
+    auto& s = gd.success();
+    if (s.data_case() == proto::sql::response::GetLargeObjectData_Success::DataCase::kChannelName) {
+        return {s.channel_name(), {}, {}};
+    }
+    if (s.data_case() == proto::sql::response::GetLargeObjectData_Success::DataCase::kContents) {
+        auto c = s.contents();
+        return {{}, {s.contents()}, {}};
+    }
+    std::abort();
+}
+
 }  // namespace jogasaki::utils

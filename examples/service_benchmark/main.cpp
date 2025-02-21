@@ -114,6 +114,7 @@ DEFINE_bool(secondary, false, "use secondary index");  //NOLINT
 DEFINE_int64(scan_block_size, 100, "max records processed by scan operator before yielding to other tasks");  //NOLINT
 DEFINE_int64(scan_yield_interval, 1, "max time (ms) processed by scan operator before yielding to other tasks");  //NOLINT
 DEFINE_int64(scan_default_parallel, 1, "max parallel execution count of scan tasks");  //NOLINT
+DEFINE_int64(max_result_set_writers, 64, "max number of result set writers");  //NOLINT
 
 namespace tateyama::service_benchmark {
 

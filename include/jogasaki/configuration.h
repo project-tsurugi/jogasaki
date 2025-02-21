@@ -531,6 +531,14 @@ public:
         enable_blob_cast_ = arg;
     }
 
+    [[nodiscard]] std::size_t max_result_set_writers() const noexcept {
+        return max_result_set_writers_;
+    }
+
+    void max_result_set_writers(std::size_t arg) noexcept {
+        max_result_set_writers_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -592,6 +600,7 @@ public:
         print_non_default(key_distribution);
         print_non_default(mock_datastore);
         print_non_default(enable_blob_cast);
+        print_non_default(max_result_set_writers);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -657,6 +666,7 @@ private:
     key_distribution_kind key_distribution_{key_distribution_kind::uniform};
     bool mock_datastore_ = false;
     bool enable_blob_cast_ = false;
+    std::size_t max_result_set_writers_ = 64;
 };
 
 }  // namespace jogasaki

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -159,8 +159,24 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<bool>("prepare_analytics_benchmark_tables")) {
         ret->prepare_analytics_benchmark_tables(v.value());
     }
+    if (auto v = jogasaki_config->get<std::size_t>("max_result_set_writers")) {
+        const std::size_t writers = v.value();
+        if (writers > 256) {
+            LOG_LP(ERROR) << "Too large max_result_set_writers (" << writers
+                          << ") given. It must be equal to or less than 256.";
+            return false;
+        }
+        ret->max_result_set_writers(writers);
+    }
     if (auto v = jogasaki_config->get<std::size_t>("default_partitions")) {
-        ret->default_partitions(v.value());
+        const std::size_t partitions = v.value();
+        if (partitions > ret->max_result_set_writers()) {
+            LOG_LP(ERROR) << "Too large default_partitions (" << partitions
+                          << ") given. It must be equal to or less than max_result_set_writers ("
+                          << ret->max_result_set_writers() << ").";
+            return false;
+        }
+        ret->default_partitions(partitions);
     }
     if (auto v = jogasaki_config->get<bool>("stealing_enabled")) {
         ret->stealing_enabled(v.value());
@@ -258,7 +274,14 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
         ret->direct_commit_callback(v.value());
     }
     if (auto v = jogasaki_config->get<std::size_t>("scan_default_parallel")) {
-        ret->scan_default_parallel(v.value());
+        const std::size_t parallel = v.value();
+        if (parallel > ret->max_result_set_writers()) {
+            LOG_LP(ERROR) << "Too large scan_default_parallel (" << parallel
+                          << ") given. It must be equalt to or less than max_result_set_writers ("
+                          << ret->max_result_set_writers() << ").";
+            return false;
+        }
+        ret->scan_default_parallel(parallel);
     }
     if (auto v = jogasaki_config->get<bool>("dev_inplace_teardown")) {
         ret->inplace_teardown(v.value());
@@ -319,5 +342,5 @@ std::shared_ptr<jogasaki::configuration> convert_config(tateyama::api::configura
     }
 }
 
-}
+} // namespace  jogasaki::api::resource
 

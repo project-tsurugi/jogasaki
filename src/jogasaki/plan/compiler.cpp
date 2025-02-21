@@ -245,10 +245,10 @@ void preprocess(
     });
 }
 
-std::shared_ptr<mirror_container> preprocess_mirror(
+std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
     maybe_shared_ptr<statement::statement> const& statement,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
-    compiled_info info
+    compiled_info info, compiler_context &ctx
 ) {
     auto container = std::make_shared<mirror_container>();
     switch(statement->kind()) {
@@ -290,6 +290,16 @@ std::shared_ptr<mirror_container> preprocess_mirror(
                         VLOG_LP(log_error) << "The bottom of graph_type must be process.";
                     }
                 });
+            if (container->get_partitions() > global::config_pool()->max_result_set_writers()) {
+                auto msg = string_builder{}
+                           << "The result calculated by calculate_partition("
+                           << container->get_partitions() << ") exceeded max_result_set_writers("
+                           << global::config_pool()->max_result_set_writers() << ")"
+                           << string_builder::to_string;
+                set_compile_error(
+                    ctx, error_code::sql_execution_exception, msg, status::err_unsupported);
+                return {status::err_compiler_error, container};
+            }
             break;
         case statement::statement_kind::write:
             container->work_level().set_minimum(statement_work_level_kind::simple_write);
@@ -312,7 +322,7 @@ std::shared_ptr<mirror_container> preprocess_mirror(
             throw_exception(std::logic_error{""});
     }
     container->host_variable_info(create_host_variable_info(provider, info));
-    return container;
+    return {status::ok, container};
 }
 
 template <mizugaki::analyzer::sql_analyzer_result_kind Kind>
@@ -467,11 +477,13 @@ status create_prepared_statement(
     auto stmt = result.release_statement();
     stmt->runtime_hint() = sp->result();
     auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
+    auto [mirror_status, mirror] = preprocess_mirror(s, provider, result.info(), ctx);
+    if (mirror_status != status::ok) { return mirror_status; }
     out = std::make_shared<plan::prepared_statement>(
         s,
         result.info(),
         provider,
-        preprocess_mirror(s, provider, result.info()),
+        mirror,
         ctx.sql_text()
     );
     return status::ok;
@@ -1220,11 +1232,6 @@ size_t calculate_partition(takatori::plan::step const& s) noexcept {
         VLOG_LP(log_error) << "The bottom of graph_type must not have downstreams";
     } else {
         partition = intermediate_calculate_partition(s);
-    }
-    if (partition > global::config_pool()->max_result_set_writers()) {
-        LOG_LP(ERROR) << "The result calculated by calculate_partition(" << partition
-                      << ") exceeded max_result_set_writers("
-                      << global::config_pool()->max_result_set_writers() << ")";
     }
     return partition;
 }

@@ -56,10 +56,11 @@ void preprocess(
     std::shared_ptr<mirror_container> const& container
 );
 
-[[nodiscard]] std::shared_ptr<mirror_container> preprocess_mirror(
+[[nodiscard]] std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
     maybe_shared_ptr<takatori::statement::statement> const& statement,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
-    compiled_info info
+    compiled_info info,
+    compiler_context &ctx
 );
 
 [[nodiscard]] executor::process::step create(
@@ -99,7 +100,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
 /**
  * @brief calculate partition
  * @param s the plan of step
- * @return size of the partition
+ * @return the computed partition size.
  */
 [[nodiscard]] size_t calculate_partition(takatori::plan::step const& s) noexcept;
 

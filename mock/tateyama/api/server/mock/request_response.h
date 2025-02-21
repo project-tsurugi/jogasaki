@@ -281,6 +281,7 @@ public:
     std::size_t session_id_{};  //NOLINT
     proto::diagnostics::Record error_{};  //NOLINT
     std::atomic_bool cancel_requested_{};  //NOLINT
+    std::vector<std::unique_ptr<blob_info>> blobs_{};
 };
 
 }  // namespace tateyama::api::server::mock

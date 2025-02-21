@@ -148,7 +148,8 @@ void test_response::cancel() {
     cancel_requested_ = true;
 }
 
-status test_response::add_blob(std::unique_ptr<blob_info>) {
+status test_response::add_blob(std::unique_ptr<blob_info> arg) {
+    blobs_.emplace_back(std::move(arg));
     return status::ok;
 }
 

@@ -63,6 +63,7 @@
 #include <jogasaki/common.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/datastore/get_lob_data.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
@@ -902,6 +903,46 @@ executor::file::time_unit_kind from(::jogasaki::proto::sql::common::TimeUnit kin
     std::abort();
 }
 
+void service::command_get_large_object_data(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    request_info const& req_info
+) {
+    auto& gd = proto_req.get_large_object_data();
+    if(! gd.has_reference()) {
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "invalid request format - missing reference",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
+        return;
+    }
+    auto const& reference = gd.reference();
+
+    std::shared_ptr<error::error_info> err{};
+    std::unique_ptr<tateyama::api::server::blob_info> info{};
+    if (auto st = datastore::get_lob_data(
+            reference.object_id(),
+            static_cast<lob::lob_data_provider>(reference.provider()), err,
+            info);
+        st != status::ok) {
+        details::error<sql::response::GetLargeObjectData>(*res, err.get(), req_info);
+        return;
+    }
+    auto ch = info->channel_name();
+    if (auto st = res->add_blob(std::move(info)); st != tateyama::status::ok) {
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "failed to add blob to response",
+            status::err_unknown
+        );
+        details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
+        return;
+    }
+    details::success<sql::response::GetLargeObjectData>(*res, ch, req_info);
+}
+
 void service::command_execute_dump(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
@@ -1207,6 +1248,11 @@ bool service::process(
         case sql::request::Request::RequestCase::kExtractStatementInfo: {
             trace_scope_name("cmd-extract_statement_info");  //NOLINT
             command_extract_statement_info(proto_req, res, req_info);
+            break;
+        }
+        case sql::request::Request::RequestCase::kGetLargeObjectData: {
+            trace_scope_name("cmd-get_large_object_data");  //NOLINT
+            command_get_large_object_data(proto_req, res, req_info);
             break;
         }
         default:

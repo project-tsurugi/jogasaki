@@ -88,7 +88,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-        datastore::get_datastore(db_impl()->kvs_db().get(), true);  // reset cache for datastore object as db setup recreates it
+        datastore::get_datastore(true);  // reset cache for datastore object as db setup recreates it
     }
 
     void TearDown() override {
@@ -126,7 +126,7 @@ TEST_F(blob_type_test, insert) {
     auto ref1 = result[0].get_value<lob::blob_reference>(1);
     auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+    auto* ds = datastore::get_datastore();
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
     EXPECT_EQ("ABC", read_file(ret1.path().string())) << ret1.path().string();
@@ -143,7 +143,7 @@ TEST_F(blob_type_test, insert) {
 TEST_F(blob_type_test, blob_pool_release) {
     // verify blob pool is correctly released when transaction completes
     global::config_pool()->mock_datastore(true);
-    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int4},
@@ -226,7 +226,7 @@ TEST_F(blob_type_test, update) {
     auto ref1 = result[0].get_value<lob::blob_reference>(1);
     auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+    auto* ds = datastore::get_datastore(false);
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
     EXPECT_EQ("abc", read_file(ret1.path().string())) << ret1.path().string();
@@ -296,7 +296,7 @@ TEST_F(blob_type_test, update_partially) {
     auto ref1 = result[0].get_value<lob::blob_reference>(1);
     auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+    auto* ds = datastore::get_datastore(false);
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
     EXPECT_EQ("abc", read_file(ret1.path().string())) << ret1.path().string();
@@ -349,7 +349,7 @@ TEST_F(blob_type_test, insert_from_select) {
     auto ref1 = result[0].get_value<lob::blob_reference>(1);
     auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+    auto* ds = datastore::get_datastore(false);
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
     EXPECT_EQ("ABC", read_file(ret1.path().string())) << ret1.path().string();
@@ -383,7 +383,7 @@ TEST_F(blob_type_test, insert_generated_blob) {
     global::config_pool()->enable_blob_cast(true);
 
     // global::config_pool()->mock_datastore(true);
-    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
@@ -405,7 +405,7 @@ TEST_F(blob_type_test, insert_generated_blob) {
         auto ref1 = result[0].get_value<lob::blob_reference>(1);
         auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-        auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+        auto* ds = datastore::get_datastore(false);
         auto ret1 = ds->get_blob_file(ref1.object_id());
         ASSERT_TRUE(ret1);
         EXPECT_EQ("\x00\x01\x02"sv, read_file(ret1.path().string())) << ret1.path().string();
@@ -426,7 +426,7 @@ TEST_F(blob_type_test, update_generated_blob) {
     global::config_pool()->enable_blob_cast(true);
 
     // global::config_pool()->mock_datastore(true);
-    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
@@ -449,7 +449,7 @@ TEST_F(blob_type_test, update_generated_blob) {
         auto ref1 = result[0].get_value<lob::blob_reference>(1);
         auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-        auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+        auto* ds = datastore::get_datastore(false);
         auto ret1 = ds->get_blob_file(ref1.object_id());
         ASSERT_TRUE(ret1);
         EXPECT_EQ("\x00\x01\x02"sv, read_file(ret1.path().string())) << ret1.path().string();
@@ -500,7 +500,7 @@ TEST_F(blob_type_test, read_file_error) {
 
         auto ref1 = result[0].get_value<lob::blob_reference>(0);
 
-        auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), false);
+        auto* ds = datastore::get_datastore(false);
         auto ret1 = ds->get_blob_file(ref1.object_id());
         ASSERT_TRUE(ret1);
         EXPECT_EQ(status::ok, tx->commit());
@@ -521,7 +521,7 @@ TEST_F(blob_type_test, cast_not_allowed_insert) {
     global::config_pool()->enable_blob_cast(false);
 
     // global::config_pool()->mock_datastore(true);
-    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     test_stmt_err("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))", error_code::unsupported_runtime_feature_exception);
 }
@@ -533,7 +533,7 @@ TEST_F(blob_type_test, cast_not_allowed_update) {
     global::config_pool()->enable_blob_cast(true);
 
     // global::config_pool()->mock_datastore(true);
-    datastore::get_datastore(db_impl()->kvs_db().get(), true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
     global::config_pool()->enable_blob_cast(false);

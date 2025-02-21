@@ -30,7 +30,7 @@ status register_lob_impl(
     lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
 ) {
-    auto* ds = get_datastore(tx->database());
+    auto* ds = get_datastore();
     if (ds == nullptr) {
         // should not happen normally
         status res = status::err_invalid_state;

@@ -1412,7 +1412,7 @@ TEST_F(service_api_test, blob_types) {
                     {false, false}
                 )), v[0]);
 
-                auto* ds = datastore::get_datastore(db_impl()->kvs_db().get());
+                auto* ds = datastore::get_datastore();
                 auto f0 = ds->get_blob_file(v0.object_id());
                 auto f1 = ds->get_blob_file(v1.object_id());
                 ASSERT_TRUE(f0);

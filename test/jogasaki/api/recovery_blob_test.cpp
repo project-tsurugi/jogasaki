@@ -66,7 +66,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-        datastore::get_datastore(db_impl()->kvs_db().get(), true);  // reset cache for datastore object as db setup recreates it
+        datastore::get_datastore(true);  // reset cache for datastore object as db setup recreates it
     }
 
     void TearDown() override {
@@ -108,7 +108,7 @@ TEST_F(recovery_blob_test, basic) {
     auto ref1 = result[0].get_value<lob::blob_reference>(1);
     auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), true); // reset cache because ds instance is recreated
+    auto* ds = datastore::get_datastore(true); // reset cache because ds instance is recreated
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
     EXPECT_EQ("ABC", read_file(ret1.path().string())) << ret1.path().string();
@@ -196,7 +196,7 @@ TEST_F(recovery_blob_test, update) {
     auto ref1 = result[0].get_value<lob::blob_reference>(1);
     auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), true); // reset cache because ds instance is recreated
+    auto* ds = datastore::get_datastore(true); // reset cache because ds instance is recreated
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
     EXPECT_EQ("abc", read_file(ret1.path().string())) << ret1.path().string();
@@ -274,7 +274,7 @@ TEST_F(recovery_blob_test, update_with_cast) {
     auto ref1 = result[0].get_value<lob::blob_reference>(1);
     auto ref2 = result[0].get_value<lob::clob_reference>(2);
 
-    auto* ds = datastore::get_datastore(db_impl()->kvs_db().get(), true); // reset cache because ds instance is recreated
+    auto* ds = datastore::get_datastore(true); // reset cache because ds instance is recreated
     auto ret1 = ds->get_blob_file(ref1.object_id());
     ASSERT_TRUE(ret1);
     EXPECT_EQ("abc", read_file(ret1.path().string())) << ret1.path().string();

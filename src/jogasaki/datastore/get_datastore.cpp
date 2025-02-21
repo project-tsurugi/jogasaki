@@ -27,7 +27,8 @@
 
 namespace jogasaki::datastore {
 
-datastore* get_datastore(kvs::database* db, bool reset_cache) {
+datastore* get_datastore(bool reset_cache) {
+    auto db = global::db().get();
     static std::unique_ptr<datastore> ds = nullptr;
     if (ds && ! reset_cache) {
         return ds.get();

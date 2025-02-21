@@ -59,7 +59,7 @@ public:
 
 TEST_F(datastore_mock_test, get_datastore_mock) {
     global::config_pool()->mock_datastore(true);
-    auto* ds = get_datastore(db_.get(), true);
+    auto* ds = get_datastore(true);
     ASSERT_TRUE(ds);
     EXPECT_EQ(datastore_kind::mock, ds->kind());
 }
@@ -69,13 +69,13 @@ TEST_F(datastore_mock_test, get_datastore_prod) {
         GTEST_SKIP() << "jogasaki-memory doesn't support prod datastore";
     }
     global::config_pool()->mock_datastore(false);
-    auto* ds = get_datastore(db_.get(), true);
+    auto* ds = get_datastore(true);
     ASSERT_TRUE(ds);
     EXPECT_EQ(datastore_kind::production, ds->kind());
 }
 
 TEST_F(datastore_mock_test, acquire_blob_pool) {
-    auto* ds = get_datastore(db_.get(), true);
+    auto* ds = get_datastore(true);
     ASSERT_TRUE(ds);
     auto pool = ds->acquire_blob_pool();
     ASSERT_TRUE(pool);
@@ -83,7 +83,7 @@ TEST_F(datastore_mock_test, acquire_blob_pool) {
 }
 
 TEST_F(datastore_mock_test, register_file) {
-    auto* ds = get_datastore(db_.get(), true);
+    auto* ds = get_datastore(true);
     ASSERT_TRUE(ds);
     auto pool = ds->acquire_blob_pool();
     ASSERT_TRUE(pool);

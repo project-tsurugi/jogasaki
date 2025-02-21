@@ -25,11 +25,9 @@ namespace jogasaki::datastore {
 
 /**
 * @brief get mock or production datastore instance
-* @param db database to fetch the production datastore. You can pass nullptr
-* if only mock instance is necessary.
 * @param reset_cache indicates whether to clear and reset the cached object. Use for testing.
 * @return the datastore instance
 */
-datastore* get_datastore(kvs::database* db, bool reset_cache = false);
+datastore* get_datastore(bool reset_cache = false);
 
 }  // namespace jogasaki::datastore

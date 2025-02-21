@@ -30,7 +30,7 @@ status find_path_by_lob_id(
     std::string& path,
     std::shared_ptr<error::error_info>& error
 ) {
-    auto* ds = get_datastore(global::db().get());
+    auto* ds = get_datastore();
     if (ds == nullptr) {
         // should not happen normally
         status res = status::err_invalid_state;

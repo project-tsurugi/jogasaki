@@ -101,6 +101,7 @@ using kind = meta::field_type_kind;
 
 TEST_F(blob_type_test, insert) {
     global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int4},
@@ -142,7 +143,7 @@ TEST_F(blob_type_test, insert) {
 
 TEST_F(blob_type_test, blob_pool_release) {
     // verify blob pool is correctly released when transaction completes
-    global::config_pool()->mock_datastore(true);
+    global::config_pool()->mock_datastore(true); // this test requires mock datastore
     datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
@@ -172,6 +173,7 @@ TEST_F(blob_type_test, blob_pool_release) {
 
 TEST_F(blob_type_test, update) {
     global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int4},
@@ -245,6 +247,7 @@ TEST_F(blob_type_test, update) {
 TEST_F(blob_type_test, update_partially) {
     // update some blob column while keeping the other unchanged
     global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int4},
@@ -316,6 +319,7 @@ TEST_F(blob_type_test, update_partially) {
 TEST_F(blob_type_test, insert_from_select) {
     // update some blob column while keeping the other unchanged
     global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
     execute_statement("create table src (c0 int primary key, c1 blob, c2 clob)");
     execute_statement("create table dest (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
@@ -382,8 +386,9 @@ TEST_F(blob_type_test, insert_generated_blob) {
     }
     global::config_pool()->enable_blob_cast(true);
 
+    // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
-    datastore::get_datastore(true);
+    // datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
@@ -425,8 +430,9 @@ TEST_F(blob_type_test, update_generated_blob) {
     }
     global::config_pool()->enable_blob_cast(true);
 
+    // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
-    datastore::get_datastore(true);
+    // datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
@@ -520,7 +526,7 @@ TEST_F(blob_type_test, cast_not_allowed_insert) {
     }
     global::config_pool()->enable_blob_cast(false);
 
-    // global::config_pool()->mock_datastore(true);
+    global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     test_stmt_err("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))", error_code::unsupported_runtime_feature_exception);
@@ -532,7 +538,7 @@ TEST_F(blob_type_test, cast_not_allowed_update) {
     }
     global::config_pool()->enable_blob_cast(true);
 
-    // global::config_pool()->mock_datastore(true);
+    global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");

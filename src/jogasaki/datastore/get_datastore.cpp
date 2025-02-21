@@ -28,14 +28,13 @@
 namespace jogasaki::datastore {
 
 datastore* get_datastore(bool reset_cache) {
-    auto db = global::db().get();
     static std::unique_ptr<datastore> ds = nullptr;
     if (ds && ! reset_cache) {
         return ds.get();
     }
     if(! global::config_pool()->mock_datastore()) {
         std::any a{};
-        if(auto res = db->get_datastore(a); res != status::ok) {
+        if(auto res = global::db()->get_datastore(a); res != status::ok) {
             LOG_LP(ERROR) << res << " failed to initialize datastore - falling back to mock";
         } else {
             ds = std::make_unique<datastore_prod>(static_cast<limestone::api::datastore*>(std::any_cast<void*>(a)));

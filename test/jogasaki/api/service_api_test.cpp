@@ -117,6 +117,7 @@ public:
 
         utils::utils_raise_exception_on_error = true;
         temporary_.prepare();
+        datastore::get_datastore(true); // in case mixing mock/prod datastore
     }
 
     void TearDown() override {
@@ -1330,7 +1331,7 @@ TEST_F(service_api_test, boolean_type) {
 }
 
 TEST_F(service_api_test, blob_types) {
-    global::config_pool()->mock_datastore(true);
+    // global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
@@ -1433,6 +1434,7 @@ TEST_F(service_api_test, blob_types) {
 
 TEST_F(service_api_test, blob_types_error_handling) {
     global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true); // reset cache for mock
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
@@ -1446,7 +1448,10 @@ TEST_F(service_api_test, blob_types_error_handling) {
 
     auto path0 = path() + "/" + std::string{datastore::datastore_mock::file_name_to_raise_io_exception} + ".dat";
     auto path1 = path() + "/clob1.dat";
-    create_file(path0, "ABC");
+    if (global::config_pool()->mock_datastore()) {
+        // mock raises io exception by the file name, while prod raises by detecting missing file
+        create_file(path0, "ABC");
+    }
     create_file(path1, "DEF");
     {
         std::vector<parameter> parameters{

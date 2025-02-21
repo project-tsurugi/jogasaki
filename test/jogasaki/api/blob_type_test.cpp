@@ -391,7 +391,7 @@ TEST_F(blob_type_test, insert_generated_blob) {
     // datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 
-    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
+    execute_statement("INSERT INTO t VALUES (1, CAST(x'000102' as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
     {
         // quickly verify the blobs by casting
         std::vector<mock::basic_record> result{};
@@ -435,7 +435,7 @@ TEST_F(blob_type_test, update_generated_blob) {
     // datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
 
-    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
+    execute_statement("INSERT INTO t VALUES (1, CAST(x'000102' as BLOB), CAST('ABC' as CLOB))");
     execute_statement("UPDATE t SET c1=CAST(CAST('000102' as varbinary) as BLOB), c2 = CAST(CAST('ABC' as varchar) as CLOB) WHERE c0 = 1");
     {
         // quickly verify the blobs by casting
@@ -495,7 +495,7 @@ TEST_F(blob_type_test, read_file_error) {
     global::config_pool()->enable_blob_cast(true);
     // verify limestone raises error and it's handled correctly
     execute_statement("create table t (c0 int primary key, c1 blob)");
-    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB))");
+    execute_statement("INSERT INTO t VALUES (1, CAST(x'000102' as BLOB))");
 
     boost::filesystem::path path{};
     {
@@ -529,7 +529,8 @@ TEST_F(blob_type_test, cast_not_allowed_insert) {
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
-    test_stmt_err("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("INSERT INTO t VALUES (1, CAST(x'000102' as BLOB), CAST('ABC' as CLOB))", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("INSERT INTO t VALUES (1, x'000102', 'ABC')", error_code::unsupported_runtime_feature_exception);
 }
 
 TEST_F(blob_type_test, cast_not_allowed_update) {
@@ -541,9 +542,10 @@ TEST_F(blob_type_test, cast_not_allowed_update) {
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
-    execute_statement("INSERT INTO t VALUES (1, CAST(CAST('000102' as varbinary) as BLOB), CAST(CAST('ABC' as varchar) as CLOB))");
+    execute_statement("INSERT INTO t VALUES (1, CAST(x'000102' as BLOB), CAST('ABC' as CLOB))");
     global::config_pool()->enable_blob_cast(false);
-    test_stmt_err("UPDATE t SET c1=CAST(CAST('000102' as varbinary) as BLOB), c2 = CAST(CAST('ABC' as varchar) as CLOB) WHERE c0 = 1", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("UPDATE t SET c1=CAST(x'000102' as BLOB), c2 = CAST('ABC' as CLOB) WHERE c0 = 1", error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("UPDATE t SET c1=x'000102', c2 ='ABC' WHERE c0 = 1", error_code::unsupported_runtime_feature_exception);
 }
 
 }

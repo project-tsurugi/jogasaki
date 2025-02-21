@@ -281,12 +281,6 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
                           << ret->max_result_set_writers() << ").";
             return false;
         }
-        if (parallel > ret->default_partitions()) {
-            LOG_LP(ERROR) << "Too large scan_default_parallel (" << parallel
-                          << ") given. It must be equal to or less than default_partitions ("
-                          << ret->default_partitions() << ").";
-            return false;
-        }
         ret->scan_default_parallel(parallel);
     }
     if (auto v = jogasaki_config->get<bool>("dev_inplace_teardown")) {

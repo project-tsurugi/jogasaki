@@ -163,7 +163,7 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
         const std::size_t writers = v.value();
         if (writers > 256) {
             LOG_LP(ERROR) << "Too large max_result_set_writers (" << writers
-                          << ") given. It must be smaller than 256.";
+                          << ") given. It must be equal to or less than 256.";
             return false;
         }
         ret->max_result_set_writers(writers);
@@ -172,7 +172,7 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
         const std::size_t partitions = v.value();
         if (partitions > ret->max_result_set_writers()) {
             LOG_LP(ERROR) << "Too large default_partitions (" << partitions
-                          << ") given. It must be smaller than max_result_set_writers ("
+                          << ") given. It must be equal to or less than max_result_set_writers ("
                           << ret->max_result_set_writers() << ").";
             return false;
         }
@@ -277,8 +277,14 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
         const std::size_t parallel = v.value();
         if (parallel > ret->max_result_set_writers()) {
             LOG_LP(ERROR) << "Too large scan_default_parallel (" << parallel
-                          << ") given. It must be smaller than max_result_set_writers ("
+                          << ") given. It must be equalt to or less than max_result_set_writers ("
                           << ret->max_result_set_writers() << ").";
+            return false;
+        }
+        if (parallel > ret->default_partitions()) {
+            LOG_LP(ERROR) << "Too large scan_default_parallel (" << parallel
+                          << ") given. It must be equal to or less than default_partitions ("
+                          << ret->default_partitions() << ").";
             return false;
         }
         ret->scan_default_parallel(parallel);

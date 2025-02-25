@@ -292,13 +292,14 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
                 });
             if (container->get_partitions() > global::config_pool()->max_result_set_writers()) {
                 auto msg = string_builder{}
-                           << "The result calculated by calculate_partition("
-                           << container->get_partitions() << ") exceeded max_result_set_writers("
+                           << "The requested statement was too complex to process."
+                           << "The calculated paration (" << container->get_partitions() << ") "
+                           << "exceeded sql.max_result_set_writers ("
                            << global::config_pool()->max_result_set_writers() << ")"
                            << string_builder::to_string;
-                set_compile_error(
-                    ctx, error_code::sql_execution_exception, msg, status::err_unsupported);
-                return {status::err_compiler_error, container};
+                set_compile_error(ctx, error_code::unsupported_runtime_feature_exception, msg,
+                    status::err_unsupported);
+                return {status::err_unsupported, container};
             }
             break;
         case statement::statement_kind::write:
@@ -483,7 +484,7 @@ status create_prepared_statement(
         s,
         result.info(),
         provider,
-        mirror,
+        std::move(mirror),
         ctx.sql_text()
     );
     return status::ok;

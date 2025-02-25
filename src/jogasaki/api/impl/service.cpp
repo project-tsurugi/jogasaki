@@ -930,7 +930,7 @@ void service::command_get_large_object_data(
         details::error<sql::response::GetLargeObjectData>(*res, err.get(), req_info);
         return;
     }
-    auto ch = info->channel_name();
+    auto* p = info.get();
     if (auto st = res->add_blob(std::move(info)); st != tateyama::status::ok) {
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -940,7 +940,9 @@ void service::command_get_large_object_data(
         details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
         return;
     }
-    details::success<sql::response::GetLargeObjectData>(*res, ch, req_info);
+    VLOG_LP(log_trace) << "blob added to response as channel:" << p->channel_name() << " path:" << p->path();
+
+    details::success<sql::response::GetLargeObjectData>(*res, p->channel_name(), req_info);
 }
 
 void service::command_execute_dump(

@@ -454,9 +454,11 @@ message ExtractStatementInfo {
 // request to retrieve large object data.
 message GetLargeObjectData {
 
-    // the reference to large object data to retrieve.
-    common.LargeObjectReference reference = 1;
+    // the target transaction handle.
+    common.Transaction transaction_handle = 1;
 
+    // the reference to large object data to retrieve.
+    common.LargeObjectReference reference = 2;
 }
 
 /* For request message to the SQL service. */

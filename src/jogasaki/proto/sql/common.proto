@@ -127,7 +127,28 @@ message Column {
     // the type dimension for array types.
     uint32 dimension = 11;
 
-    // FIXME type details (e.g. decimal precisions)
+    // the length for data types that have associated length.
+    oneof length_opt {
+        uint32 length = 12;
+    }
+
+    // the precision for decimal types.
+    oneof precision_opt {
+        uint32 precision = 13;
+    }
+
+    // the scale for decimal types.
+    oneof scale_opt {
+        uint32 scale = 14;
+    }
+
+    reserved 15 to 20;
+
+    // whether the column is nullable or not
+    oneof nullable_opt {
+        bool nullable = 21;
+    }
+
 }
 
 // the row type.

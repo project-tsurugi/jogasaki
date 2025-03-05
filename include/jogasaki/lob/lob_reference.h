@@ -46,7 +46,7 @@ public:
     constexpr lob_reference() = default;
 
     /**
-     * @brief construct unresolved object with lob data provided
+     * @brief construct `provided` object
      * @param locator the locator of the lob data
      */
     explicit lob_reference(lob_locator const& locator) :
@@ -57,6 +57,7 @@ public:
     /**
      * @brief construct unresolved object with lob data generated
      * @param locator the locator of the lob data
+     * TODO remove
      */
     lob_reference(lob_reference_tag_t<lob_reference_kind::generated>, lob_locator const& locator) :
         kind_(lob_reference_kind::generated),
@@ -64,7 +65,7 @@ public:
     {}
 
     /**
-     * @brief construct unresolved object with lob data fetched
+     * @brief construct `fetched` object
      * @param id the lob reference id
      */
     explicit lob_reference(lob_id_type id) :
@@ -74,7 +75,7 @@ public:
     {}
 
     /**
-     * @brief construct new object allocating from the given memory resource when long format is needed
+     * @brief construct `resolved` object
      * @param id lob reference id
      * @param provider the provider that gives the lob data
      */

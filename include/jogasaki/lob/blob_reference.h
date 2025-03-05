@@ -32,7 +32,23 @@ public:
     constexpr blob_reference() = default;
 
     /**
-     * @brief construct new object allocating from the given memory resource when long format is needed
+     * @brief construct `provided` object
+     * @param locator the locator of the lob data
+     */
+    explicit blob_reference(lob_locator const& locator) :
+        lob_reference(locator)
+    {}
+
+    /**
+     * @brief construct `fetched` object
+     * @param id the lob reference id
+     */
+    explicit blob_reference(lob_id_type id) :
+        lob_reference(id)
+    {}
+
+    /**
+     * @brief construct `resolved` object
      * @param id lob reference id
      * @param provider the provider that gives the lob data
      */
@@ -41,27 +57,12 @@ public:
     {}
 
     /**
-     * @brief construct unresolved object
-     * @param locator the locator of the lob data
-     */
-    explicit blob_reference(lob_locator const& locator) :
-        lob_reference(locator)
-    {}
-
-    /**
      * @brief construct unresolved object with lob data generated
      * @param locator the locator of the lob data
+     * TODO remove this constructor
      */
     blob_reference(lob_reference_tag_t<lob_reference_kind::generated> tag, lob_locator const& locator) :
         lob_reference(tag, locator)
-    {}
-
-    /**
-     * @brief construct unresolved object with lob data fetched
-     * @param id the lob reference id
-     */
-    explicit blob_reference(lob_id_type id) :
-        lob_reference(id)
     {}
 
 };

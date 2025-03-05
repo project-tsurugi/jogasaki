@@ -548,4 +548,165 @@ TEST_F(blob_type_test, cast_not_allowed_update) {
     test_stmt_err("UPDATE t SET c1=x'000102', c2 ='ABC' WHERE c0 = 1", error_code::unsupported_runtime_feature_exception);
 }
 
+TEST_F(blob_type_test, implicit_cast) {
+    global::config_pool()->enable_blob_cast(true);
+
+    // global::config_pool()->mock_datastore(true);
+    // datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    execute_statement("INSERT INTO t VALUES (1, x'000102', 'ABC')");
+    {
+        // quickly verify the blobs by casting
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0, CAST(c1 as varbinary), CAST(c2 as varchar) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                      {1,  accessor::binary{"\x00\x01\x02"}, accessor::text{"ABC"}})),
+                  result[0]);
+    }
+}
+
+TEST_F(blob_type_test, invalid_types) {
+    // without cast support, varbinary/varchar cannot be assigned to blob/clob columns
+    global::config_pool()->enable_blob_cast(false);
+
+    // global::config_pool()->mock_datastore(true);
+    // datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob)");
+    test_stmt_err("INSERT INTO t VALUES (1, x'000102')", error_code::unsupported_runtime_feature_exception);
+    execute_statement("drop table t");
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    test_stmt_err("INSERT INTO t VALUES (1, 'ABC')", error_code::unsupported_runtime_feature_exception);
+}
+
+// FIXME fix the problem of invalid parameter types
+TEST_F(blob_type_test, DISABLED_invalid_parameter_types) {
+    // valid type used by host variables (placeholders), but invalid type is used for parameters
+    // global::config_pool()->mock_datastore(true);
+    // datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+        };
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_octet("p1", "\x00\x01\x02"sv);
+
+    test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::unsupported_runtime_feature_exception);
+}
+
+TEST_F(blob_type_test, read_generated_blob) {
+    // cast blob -> varbinary testing with query
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+    global::config_pool()->enable_blob_cast(true);
+
+    // currently mock is not supported
+    // global::config_pool()->mock_datastore(true);
+    // datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 varbinary, c2 varchar)");
+    execute_statement("INSERT INTO t VALUES (1, x'000102', 'ABC')");
+
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        execute_query("SELECT c0, CAST(c1 as blob), CAST(c2 as clob) FROM t", *tx, result);
+        ASSERT_EQ(1, result.size());
+
+        auto ref1 = result[0].get_value<lob::blob_reference>(1);
+        auto ref2 = result[0].get_value<lob::clob_reference>(2);
+
+        auto* ds = datastore::get_datastore(false);
+        auto ret1 = ds->get_blob_file(ref1.object_id());
+        ASSERT_TRUE(ret1);
+        EXPECT_EQ("\x00\x01\x02"sv, read_file(ret1.path().string())) << ret1.path().string();
+        auto ret2 = ds->get_blob_file(ref2.object_id());
+        ASSERT_TRUE(ret2);
+        EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::sql},
+                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::sql}})),
+                  result[0]);
+    }
+}
+
+TEST_F(blob_type_test, read_input_blob) {
+    // read blog input parameter with query without casting
+    // cast blob to varbinary testing with query
+    global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("INSERT INTO t VALUES (1)");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/blob_types1.dat";
+    auto path2 = path()+"/blob_types2.dat";
+    create_file(path1, "ABC");
+    create_file(path2, "DEF");
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_clob("p2", lob::clob_locator{path2});
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT :p0, :p1, :p2 FROM t", variables, *ps, *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto ref1 = result[0].get_value<lob::blob_reference>(1);
+    auto ref2 = result[0].get_value<lob::clob_reference>(2);
+
+    auto* ds = datastore::get_datastore();
+    auto ret1 = ds->get_blob_file(ref1.object_id());
+    ASSERT_TRUE(ret1);
+    EXPECT_EQ("ABC", read_file(ret1.path().string())) << ret1.path().string();
+    auto ret2 = ds->get_blob_file(ref2.object_id());
+    ASSERT_TRUE(ret2);
+    EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::sql},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::sql}})),
+              result[0]);
+    EXPECT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(blob_type_test, read_input_blob_by_casting) {
+    // cast blob to varbinary testing with query
+    global::config_pool()->enable_blob_cast(true);
+    global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("INSERT INTO t VALUES (1)");
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/blob_types1.dat";
+    auto path2 = path()+"/blob_types2.dat";
+    create_file(path1, "ABC");
+    create_file(path2, "DEF");
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_clob("p2", lob::clob_locator{path2});
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT :p0, cast(:p1 as varbinary), cast(:p2 as varchar) FROM t", variables, *ps, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                  {1,  accessor::binary{"\x00\x01\x02"}, accessor::text{"ABC"}})),
+              result[0]);
+}
+
 }

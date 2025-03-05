@@ -584,4 +584,95 @@ TEST_F(host_variables_test, missing_colon) {
     test_stmt_err( "INSERT INTO T0 (C0, C1) VALUES (p0, p1)", variables, *ps, error_code::symbol_analyze_exception);
 }
 
+TEST_F(host_variables_test, missing_parameter) {
+    // valid type used by host variables (placeholders), but no value is set for the parameter
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::int4},
+        };
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+
+    test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::unresolved_placeholder_exception);
+}
+
+TEST_F(host_variables_test, invalid_parameter_types_octet_for_char) {
+    // valid type used by host variables (placeholders), but invalid type is used for parameters
+    execute_statement("create table t (c0 int primary key, c1 varbinary)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::octet},
+        };
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_character("p1", "ABC"sv);
+
+    execute_statement("INSERT INTO t VALUES (:p0, :p1)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c0, c1 FROM t", result);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(host_variables_test, invalid_parameter_types_double_for_int) {
+    // valid type used by host variables (placeholders), but invalid type is used for parameters
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::int4},
+        };
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_float8("p1", 1.1);
+
+    execute_statement("INSERT INTO t VALUES (:p0, :p1)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c0, c1 FROM t", result);
+    ASSERT_EQ(0, result.size());
+}
+
+TEST_F(host_variables_test, admissible_parameter_types_int4_for_int8) {
+    execute_statement("create table t (c0 int primary key, c1 bigint)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::int8},
+        };
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_int4("p1", 10000);
+
+    execute_statement("INSERT INTO t VALUES (:p0, :p1)", variables, *ps);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c1 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int8>(10000)), result[0]);
+    }
+}
+
+TEST_F(host_variables_test, invalid_parameter_types_float4_for_float8) {
+    execute_statement("create table t (c0 int primary key, c1 double)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::float8},
+        };
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_float4("p1", 10.0);
+
+    execute_statement("INSERT INTO t VALUES (:p0, :p1)", variables, *ps);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c1 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::float8>(10.0)), result[0]);
+    }
+}
+
+
 }

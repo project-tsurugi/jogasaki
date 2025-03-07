@@ -93,6 +93,7 @@ inline sql::error::Code map_error(jogasaki::error_code s) {
         case jogasaki::error_code::request_canceled: return sql::error::SQL_SERVICE_EXCEPTION;
         case jogasaki::error_code::lob_file_io_error: return sql::error::SQL_SERVICE_EXCEPTION;
         case jogasaki::error_code::lob_reference_invalid: return sql::error::SQL_SERVICE_EXCEPTION;
+        case jogasaki::error_code::invalid_request: return sql::error::SQL_SERVICE_EXCEPTION;
     }
     std::abort();
 }

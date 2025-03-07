@@ -149,6 +149,9 @@ void test_response::cancel() {
 }
 
 status test_response::add_blob(std::unique_ptr<blob_info> arg) {
+    if (! privileged_) {
+        return status::invalid_request;
+    }
     blobs_.emplace_back(std::move(arg));
     return status::ok;
 }

@@ -1506,6 +1506,73 @@ TEST_F(service_api_test, blob_types_error_handling) {
     test_dispose_prepare(stmt_handle);
 }
 
+TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
+    // verify error when blob is returned on non-priviledged mode
+    global::config_pool()->mock_datastore(true);
+    global::config_pool()->enable_blob_cast(true);
+    datastore::get_datastore(true); // reset cache for mock
+    execute_statement("create table t (c0 int primary key, c1 blob)");
+    execute_statement("insert into t values (0, x'000102')");
+
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select c1 from t"
+    );
+    std::uint64_t tx_handle{};
+    test_begin(tx_handle);
+    lob::lob_id_type id{};
+    {
+        // run query to get blob id
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            ASSERT_EQ(1, cols.size());
+
+            EXPECT_EQ(sql::common::AtomType::BLOB, cols[0].type_);
+            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                id = v[0].get_value<lob::blob_reference>(0).object_id();
+            }
+        }
+    }
+    {
+        // get blob data using the id
+        auto s = encode_get_large_object_data(id);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+        res->set_privileged(false);
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto& rec = res->error_;
+        EXPECT_EQ(::tateyama::proto::diagnostics::Code::INVALID_REQUEST, rec.code());
+        std::cerr << "error:" << rec.message() << std::endl;
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(query_handle);
+}
+
 TEST_F(service_api_test, protobuf1) {
     // verify protobuf behavior
     using namespace std::string_view_literals;

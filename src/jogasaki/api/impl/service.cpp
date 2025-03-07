@@ -932,6 +932,15 @@ void service::command_get_large_object_data(
     }
     auto* p = info.get();
     if (auto st = res->add_blob(std::move(info)); st != tateyama::status::ok) {
+        if (st == tateyama::status::invalid_request) {
+            auto err_info = create_error_info(
+                error_code::invalid_request,
+                "sending blob not allowed in non-privileged mode",
+                status::err_unsupported
+            );
+            details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
+            return;
+        }
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
             "failed to add blob to response",

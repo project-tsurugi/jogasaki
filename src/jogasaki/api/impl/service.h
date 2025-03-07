@@ -160,6 +160,9 @@ inline bool promote_error_if_needed(
         case error_code::lob_reference_invalid:
             report_error(res, tateyama::proto::diagnostics::Code::ILLEGAL_STATE, err_info->message(), req_info.id());
             break;
+        case error_code::invalid_request:
+            report_error(res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, err_info->message(), req_info.id());
+            break;
         default:
             return false;
     }

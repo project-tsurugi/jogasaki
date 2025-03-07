@@ -245,6 +245,10 @@ public:
 
     void session_id(std::size_t id) override;
 
+    void set_privileged(bool arg) {
+        privileged_ = arg;
+    }
+
     template <class Rep = std::int64_t, class Period = std::milli>
     bool wait_completion(std::chrono::duration<Rep, Period> dur = std::chrono::milliseconds{2000}) {
         using clock = std::chrono::steady_clock;
@@ -282,6 +286,7 @@ public:
     proto::diagnostics::Record error_{};  //NOLINT
     std::atomic_bool cancel_requested_{};  //NOLINT
     std::vector<std::unique_ptr<blob_info>> blobs_{};
+    bool privileged_{true};
 };
 
 }  // namespace tateyama::api::server::mock

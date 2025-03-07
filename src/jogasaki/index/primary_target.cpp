@@ -228,7 +228,7 @@ status resolve_lob_field(
     return status::ok;
 }
 
-status resolve_fields(
+status ensure_lobs_resolved_and_collect_ids(
     request_context& context,
     accessor::record_ref rec,
     std::vector<index::field_info> const& fields,
@@ -259,7 +259,9 @@ status primary_target::encode_put(
 ) {
     std::vector<lob::lob_id_type> lobs{};
     if (ctx.req_context()) {  // some testcase does not set req_context
-        if (auto res = resolve_fields(*ctx.req_context(), value_record, extracted_values_, lobs); res != status::ok) {
+      if (auto res = ensure_lobs_resolved_and_collect_ids(
+              *ctx.req_context(), value_record, extracted_values_, lobs);
+          res != status::ok) {
             // error info set by resolve_fields
             return res;
         }

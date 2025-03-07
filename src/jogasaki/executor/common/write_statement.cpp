@@ -63,7 +63,6 @@
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/executor/wrt/fill_record_fields.h>
 #include <jogasaki/executor/wrt/insert_new_record.h>
-#include <jogasaki/executor/wrt/transfer_locator.h>
 #include <jogasaki/executor/wrt/write_field.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/secondary_target.h>
@@ -180,7 +179,6 @@ status fill_evaluated_value(
         }
         utils::copy_field(f.type_, out.ref(), f.offset_, converted, nocopy);
     }
-    wrt::transfer_blob_locators(ctx, c);
     return status::ok;
 }
 

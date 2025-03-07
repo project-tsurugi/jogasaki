@@ -269,16 +269,6 @@ public:
      */
     void commit_ctx(std::shared_ptr<commit_context> arg) noexcept;
 
-    /**
-     * @brief add lob locator used by this request
-     */
-    void add_locator(std::shared_ptr<lob::lob_locator> arg) noexcept {
-        decltype(lob_locators_)::accessor acc{};
-        if (lob_locators_.insert(acc, reinterpret_cast<std::uintptr_t>(arg.get()))) {  //NOLINT
-            acc->second = std::move(arg);
-        }
-    }
-
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -302,8 +292,6 @@ private:
 
     request_info req_info_{};
     std::shared_ptr<commit_context> commit_ctx_{};
-
-    tbb::concurrent_hash_map<std::uintptr_t, std::shared_ptr<lob::lob_locator>> lob_locators_{};
 };
 
 /**

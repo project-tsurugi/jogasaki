@@ -25,7 +25,7 @@ namespace jogasaki::lob {
 
 /**
  * @brief lob locator object
- * @details Trivially copyable immutable class holding blob reference.
+ * @details immutable class holding information to locate lob data
  */
 class lob_locator {
 public:
@@ -43,26 +43,12 @@ public:
     {}
 
     /**
-     * @brief construct new object
-     * @param data content of the lob data
-     */
-    explicit lob_locator(std::shared_ptr<std::string> data) :
-        data_(std::move(data))
-    {}
-
-    /**
      * @brief return path of the blob data file
      */
     [[nodiscard]] std::string_view path() const noexcept {
         return path_;
     }
 
-    /**
-     * @brief return content of the blob data
-     */
-    [[nodiscard]] std::shared_ptr<std::string> const& data() const noexcept {
-        return data_;
-    }
     /**
      * @brief compare two blob object references
      * @param a first arg to compare
@@ -71,13 +57,7 @@ public:
      * @return false otherwise
      */
     friend bool operator==(lob_locator const& a, lob_locator const& b) noexcept {
-        if (a.data_ && b.data_) {
-            return *a.data_ == *b.data_;
-        }
-        if (! a.data_ && ! b.data_) {
-            return a.path_ == b.path_;
-        }
-        return false;
+        return a.path_ == b.path_;
     }
 
     /**
@@ -98,15 +78,11 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, lob_locator const& value) {
-        if (value.data_) {
-            return out << "data:\"" << *value.data_ << "\"";
-        }
         return out << "path:\"" << value.path_ << "\"";
     }
 
 private:
     std::string path_{};
-    std::shared_ptr<std::string> data_{};
 };
 
 }  // namespace jogasaki::lob

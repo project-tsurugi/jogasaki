@@ -56,7 +56,7 @@ public:
 
     /**
      * @brief construct `fetched` object
-     * @param id the lob reference id
+     * @param id the lob reference id fetched from datastore
      */
     explicit lob_reference(lob_id_type id) :
         kind_(lob_reference_kind::fetched),

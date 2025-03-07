@@ -621,6 +621,9 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting) {
 }
 
 TEST_F(blob_type_test, implicit_cast) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
     global::config_pool()->enable_blob_cast(true);
 
     // global::config_pool()->mock_datastore(true);

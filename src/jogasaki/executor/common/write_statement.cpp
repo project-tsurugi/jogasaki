@@ -106,6 +106,7 @@ status fill_evaluated_value(
     process::impl::variable_table empty{};
     expr::evaluator_context c{
         std::addressof(resource),
+        ctx.transaction(),
         utils::make_function_context(*ctx.transaction())
     };
     auto res = eval(c, empty, std::addressof(resource));
@@ -130,6 +131,10 @@ status fill_evaluated_value(
                 rc
             );
             return rc;
+        }
+        if(err.kind() == expr::error_kind::error_info_provided) {
+            set_error_info(ctx, c.get_error_info());
+            return c.get_error_info()->status();
         }
         auto rc = status::err_expression_evaluation_failure;
         set_error(

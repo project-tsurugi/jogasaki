@@ -15,32 +15,29 @@
  */
 #pragma once
 
-#include <memory>
-#include <string_view>
-
-#include "datastore.h"
-
+#include <jogasaki/status.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/lob/lob_id.h>
+#include <jogasaki/lob/lob_reference.h>
 #include <jogasaki/transaction_context.h>
 
 namespace jogasaki::datastore {
 
 /**
- * @brief fetch data file path corresponding to the blob id
- * @param id the requested blob id
+ * @brief register lob file and publish new id
  * @param path the path for the lob file
+ * @param tx transaction to keep the scope object (blob pool) for the lob data
+ * @param out [out] blob id assigned for the input lob data
  * @param error [out] error information is set when status code other than status::ok is returned
  * @return status::ok when successful
- * @return status::err_invalid_state when the log id is invalid
- * @return status::err_io_error when io error occurred in datastore
  * @return any other error otherwise
  */
-status find_path_by_lob_id(
-    lob::lob_id_type id,
-    std::string& path,
+status assign_lob_id(
+    lob::lob_reference const& ref,
+    transaction_context* tx,
+    lob::lob_id_type& id,
     std::shared_ptr<error::error_info>& error
 );
-
 
 }  // namespace jogasaki::datastore

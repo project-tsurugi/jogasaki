@@ -101,6 +101,11 @@ operation_status handle_expression_error_impl(
         ctx.abort();
         return {operation_status_kind::aborted};
     }
+    if(err.kind() == expr::error_kind::error_info_provided) {
+        set_error_info(*ctx.req_context(), ectx.get_error_info());
+        ctx.abort();
+        return {operation_status_kind::aborted};
+    }
     auto rc = status::err_expression_evaluation_failure;
 
     std::stringstream ss{};

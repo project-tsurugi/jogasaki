@@ -222,6 +222,7 @@ public:
                 do {
                     expr::evaluator_context c {
                         ctx.varlen_resource(),
+                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
                         ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
                     };
                     auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
@@ -248,6 +249,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
+                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
                                 ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
                                                   : nullptr
                             };
@@ -290,6 +292,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
+                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
                                 ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
                                                   : nullptr
                             };
@@ -345,6 +348,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
+                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
                                 ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
                                                   : nullptr
                             };

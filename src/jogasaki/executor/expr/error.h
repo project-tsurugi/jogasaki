@@ -52,6 +52,9 @@ enum class error_kind : std::size_t {
     ///@brief invalid lob reference occurred in lob expression evaluation
     lob_reference_invalid,
 
+    ///@brief error occurred and its error info. is provided via evaluator_context
+    error_info_provided,
+
     ///@brief unsupported features used in the expression
     unsupported,
 
@@ -76,6 +79,7 @@ enum class error_kind : std::size_t {
         case kind::format_error: return "format_error"sv;
         case kind::lob_file_io_error: return "lob_file_io_error"sv;
         case kind::lob_reference_invalid: return "lob_reference_invalid"sv;
+        case kind::error_info_provided: return "error_info_provided"sv;
         case kind::unsupported: return "unsupported"sv;
         case kind::unknown: return "unknown"sv;
     }

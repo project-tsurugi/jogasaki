@@ -341,6 +341,7 @@ public:
                 if (condition_) {
                     expr::evaluator_context c{
                         resource,
+                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
                         ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
                     };
                     auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);

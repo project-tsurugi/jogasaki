@@ -22,6 +22,7 @@
 #include <glog/logging.h>
 
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/datastore/assign_lob_id.h>
 #include <jogasaki/datastore/register_lob.h>
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/index/primary_context.h>
@@ -202,38 +203,6 @@ status do_encode(
     return status::ok;
 }
 
-status assign_blob_id(
-    lob::lob_reference const& ref,
-    transaction_context* tx,
-    lob::lob_id_type& id,
-    std::shared_ptr<error::error_info>& error
-) {
-    using k = lob::lob_reference_kind;
-    switch (ref.kind()) {
-        case k::provided: {
-            if (auto res = datastore::register_lob(ref.locator()->path(), tx, id, error); res != status::ok) {
-                return res;
-            }
-            break;
-        }
-        case k::generated: {
-            if (auto res = datastore::register_lob_data(*ref.locator()->data(), tx, id, error); res != status::ok) {
-                return res;
-            }
-            break;
-        }
-        case k::fetched: {
-            if (auto res = datastore::duplicate_lob(ref.object_id(), tx, id, error); res != status::ok) {
-                return res;
-            }
-        }
-        default:
-            // no-op
-            break;
-    }
-    return status::ok;
-}
-
 template<class T>
 status resolve_lob_field(
     request_context& context,
@@ -251,7 +220,7 @@ status resolve_lob_field(
     }
     lob::lob_id_type id{};
     std::shared_ptr<error::error_info> error{};
-    if (auto res = assign_blob_id(ref, tx, id, error); res != status::ok) {
+    if (auto res = datastore::assign_lob_id(ref, tx, id, error); res != status::ok) {
         error::set_error_info(context, error);
         return res;
     }

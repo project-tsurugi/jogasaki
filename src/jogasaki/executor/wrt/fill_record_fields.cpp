@@ -173,6 +173,7 @@ status fill_default_value(
         case process::impl::ops::default_value_kind::function: {
             expr::evaluator_context c{
                 std::addressof(resource),
+                ctx.transaction(),
                 utils::make_function_context(*ctx.transaction())
             };
             auto src = f.function_(c);

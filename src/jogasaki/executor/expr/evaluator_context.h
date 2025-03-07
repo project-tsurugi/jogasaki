@@ -22,6 +22,8 @@
 
 #include <takatori/util/enum_set.h>
 
+#include <jogasaki/transaction_context.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/executor/function/function_evaluation_context.h>
 #include <jogasaki/lob/lob_locator.h>
@@ -134,14 +136,18 @@ public:
     /**
      * @brief create new object
      * @param resource the memory resource
+     * @param tctx the transaction context used for the transaction related evaluation (e.g. blob registration)
+     * You can specify nullptr if no such evaluation will be performed.
      * @param fctx the function evaluation context to retrieve the context for function call (e.g. tx begin ts.)
      * You can specify nullptr if no function call will be evaluated.
      */
     explicit evaluator_context(
         memory_resource* resource,
+        std::shared_ptr<transaction_context> tctx,
         std::shared_ptr<function::function_evaluation_context> fctx = nullptr
     ) :
         resource_(resource),
+        transaction_context_(std::move(tctx)),
         func_ctx_(std::move(fctx))
     {}
 
@@ -224,8 +230,41 @@ public:
         lob_locators_.emplace_back(std::move(arg));
     }
 
+    /**
+     * @brief get lob locators used by this request
+     */
     [[nodiscard]] std::deque<std::shared_ptr<lob::lob_locator>> const& lob_locators() const noexcept {
         return lob_locators_;
+    }
+
+    /**
+     * @brief set error info
+     * @details the error info set here should be used only when expr::error_kind::error_info_provided is returned
+     */
+    void set_error_info(std::shared_ptr<jogasaki::error::error_info> arg) noexcept {
+        error_info_ = std::move(arg);
+    }
+
+    /**
+     * @brief get error info
+     * @details this error info should be used only when expr::error_kind::error_info_provided is returned
+     */
+    [[nodiscard]] std::shared_ptr<jogasaki::error::error_info> const& get_error_info() const noexcept {
+        return error_info_;
+    }
+
+    /**
+     * @brief set transaction context
+     */
+    void set_transaction(std::shared_ptr<transaction_context> arg) noexcept {
+        transaction_context_ = std::move(arg);
+    }
+
+    /**
+     * @brief get transaction context
+     */
+    [[nodiscard]] std::shared_ptr<transaction_context> const& transaction() const noexcept {
+        return transaction_context_;
     }
 
 private:
@@ -234,8 +273,10 @@ private:
     range_error_policy range_error_policy_{range_error_policy::ignore};
     std::vector<error_type> errors_{};
     bool lost_precision_{};
+    std::shared_ptr<transaction_context> transaction_context_{};
     std::shared_ptr<function::function_evaluation_context> func_ctx_{};
     std::deque<std::shared_ptr<lob::lob_locator>> lob_locators_{};
+    std::shared_ptr<jogasaki::error::error_info> error_info_{};
 
 };
 

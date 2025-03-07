@@ -42,13 +42,15 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/datastore/assign_lob_id.h>
+#include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/equal_to.h>
+#include <jogasaki/executor/expr/error.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/less.h>
-#include <jogasaki/executor/expr/error.h>
-#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
 #include <jogasaki/logging.h>
@@ -397,8 +399,27 @@ any engine::operator()(takatori::scalar::binary const& exp) {
 }
 
 template <typename T, typename E = T>
-any create_any(accessor::record_ref ref, executor::process::impl::value_info const& info) {
+std::enable_if_t<! (std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>), any>
+create_any(accessor::record_ref ref, executor::process::impl::value_info const& info) {
     return {std::in_place_type<T>, ref.get_value<E>(info.value_offset())};
+}
+
+template <typename T, typename E = T>
+std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
+create_any(accessor::record_ref ref, executor::process::impl::value_info const& info, evaluator_context& ctx) {
+    // evaluating lob value resolves `provided` reference by registering to datastore
+
+    auto& var = ref.get_reference<E>(info.value_offset());
+    if (var.kind() != lob::lob_reference_kind::provided) {
+        return {std::in_place_type<T>, var};
+    }
+    lob::lob_id_type id{};
+    std::shared_ptr<jogasaki::error::error_info> error{};
+    if (auto st = datastore::assign_lob_id(var, ctx.transaction().get(), id, error); st != status::ok) {
+        ctx.set_error_info(std::move(error));
+        return any{std::in_place_type<class error>, error_kind::error_info_provided};
+    }
+    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore}};
 }
 
 any engine::operator()(takatori::scalar::variable_reference const& exp) {
@@ -428,8 +449,8 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
         case t::date: return create_any<runtime_t<meta::field_type_kind::date>>(ref, info);
         case t::time_of_day: return create_any<runtime_t<meta::field_type_kind::time_of_day>>(ref, info);
         case t::time_point: return create_any<runtime_t<meta::field_type_kind::time_point>>(ref, info);
-        case t::blob: return create_any<runtime_t<meta::field_type_kind::blob>>(ref, info);
-        case t::clob: return create_any<runtime_t<meta::field_type_kind::clob>>(ref, info);
+        case t::blob: return create_any<runtime_t<meta::field_type_kind::blob>>(ref, info, ctx_);
+        case t::clob: return create_any<runtime_t<meta::field_type_kind::clob>>(ref, info, ctx_);
         default: return return_unsupported();
     }
 }

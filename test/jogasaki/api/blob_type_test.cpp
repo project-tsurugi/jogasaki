@@ -671,9 +671,10 @@ TEST_F(blob_type_test, read_input_blob) {
     auto ret2 = ds->get_blob_file(ref2.object_id());
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
+    // currently input blobs are registered to datastore first so the provider is datastore
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::sql},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::sql}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
 }
@@ -694,8 +695,8 @@ TEST_F(blob_type_test, read_input_blob_by_casting) {
 
     auto path1 = path()+"/blob_types1.dat";
     auto path2 = path()+"/blob_types2.dat";
-    create_file(path1, "ABC");
-    create_file(path2, "DEF");
+    create_file(path1, "\x00\x01\x02"sv);
+    create_file(path2, "ABC");
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);

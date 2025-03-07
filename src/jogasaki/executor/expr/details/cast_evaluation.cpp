@@ -1526,6 +1526,7 @@ error_kind map_lob_error_code(error_code code) {
     }
     return error_kind::undefined;
 }
+
 template<class String, class Ref>
 any lob_to_string(
     Ref const& src,
@@ -1536,17 +1537,13 @@ any lob_to_string(
     std::string path{};
     std::shared_ptr<jogasaki::error::error_info> info{};
     if (auto res = datastore::find_path_by_lob_id(src.object_id(), path, info); res != status::ok) {
-        auto err_kind = map_lob_error_code(info->code());
-        auto& e = ctx.add_error({err_kind, std::string{info->message()}});
-        e.new_argument() << src;
-        return any{std::in_place_type<error>, error(err_kind)};
+        ctx.set_error_info(std::move(info));
+        return any{std::in_place_type<error>, error(error_kind::error_info_provided)};
     }
     std::string content{};
     if (auto res = utils::read_lob_file(path, content, info); res != status::ok) {
-        auto err_kind = map_lob_error_code(info->code());
-        auto& e = ctx.add_error({err_kind, std::string{info->message()}});
-        e.new_argument() << src;
-        return any{std::in_place_type<error>, error(err_kind)};
+        ctx.set_error_info(std::move(info));
+        return any{std::in_place_type<error>, error(error_kind::error_info_provided)};
     }
     return handle_length<String>(content, ctx, len, add_padding, false);
 }

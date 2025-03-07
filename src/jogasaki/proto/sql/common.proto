@@ -152,9 +152,9 @@ message Column {
 
     // the scale for decimal types.
     oneof scale_opt {
-        // if nothing is set, that means no precision information is provided.
+        // if nothing is set, that means no scale information is provided.
 
-        // defined precision
+        // defined scale
         uint32 scale = 16;
 
         // arbitrary scale (*)

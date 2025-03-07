@@ -44,6 +44,8 @@
 #include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
 
+#include <jogasaki/api/api_test_base.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
 #include <jogasaki/executor/expr/details/common.h>
@@ -59,6 +61,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_utils/make_triple.h>
+#include <jogasaki/utils/create_tx.h>
 
 namespace jogasaki::executor::expr {
 
@@ -93,11 +96,21 @@ using compiled_info = yugawara::compiled_info;
 
 using takatori::decimal::triple;
 
-class cast_from_string_test : public test_root {
+class cast_from_string_test : public test_root, public api_test_base {
 public:
     void SetUp() override {
         // decimal handling depends on thread local decimal context
         details::ensure_decimal_context();
+        auto cfg = std::make_shared<configuration>();
+        db_setup(cfg);
+    }
+
+    void TearDown() override {
+        db_teardown();
+    }
+
+    bool to_explain() override {
+        return false;
     }
 
     memory::page_pool pool_{};
@@ -510,15 +523,15 @@ TEST_F(cast_from_string_test, to_octet) {
 }
 
 TEST_F(cast_from_string_test, to_clob) {
-    evaluator_context ctx{&resource_};
+    auto tx = utils::create_transaction(*db_);
+    auto tctx = api::get_transaction_context(*tx);
+    evaluator_context ctx{&resource_, tctx};
     auto a = to_clob("ABC", ctx); lost_precision(false);
     EXPECT_EQ(any::index<lob::clob_reference>, a.type_index());
     auto ref = a.to<lob::clob_reference>();
     auto loc = ref.locator();
-    EXPECT_EQ(lob::lob_reference_kind::generated, ref.kind());
-    ASSERT_TRUE(loc);
-    ASSERT_TRUE(loc->data());
-    EXPECT_EQ("ABC", *loc->data());
+    EXPECT_EQ(lob::lob_reference_kind::resolved, ref.kind());
+    ASSERT_FALSE(loc);
 }
 
 }

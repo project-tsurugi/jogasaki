@@ -143,7 +143,7 @@ public:
      */
     explicit evaluator_context(
         memory_resource* resource,
-        std::shared_ptr<transaction_context> tctx,
+        std::shared_ptr<transaction_context> tctx = nullptr,
         std::shared_ptr<function::function_evaluation_context> fctx = nullptr
     ) :
         resource_(resource),

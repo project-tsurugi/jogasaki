@@ -44,6 +44,8 @@
 #include <yugawara/binding/factory.h>
 #include <yugawara/compiled_info.h>
 
+#include <jogasaki/api/api_test_base.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
 #include <jogasaki/executor/expr/details/common.h>
@@ -57,6 +59,7 @@
 #include <jogasaki/test_root.h>
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_utils/make_triple.h>
+#include <jogasaki/utils/create_tx.h>
 
 namespace jogasaki::executor::expr {
 
@@ -91,11 +94,21 @@ using compiled_info = yugawara::compiled_info;
 
 using takatori::decimal::triple;
 
-class cast_octet_test : public test_root {
+class cast_octet_test : public test_root, public api_test_base {
 public:
     void SetUp() override {
         // decimal handling depends on thread local decimal context
         details::ensure_decimal_context();
+        auto cfg = std::make_shared<configuration>();
+        db_setup(cfg);
+    }
+
+    void TearDown() override {
+        db_teardown();
+    }
+
+    bool to_explain() override {
+        return false;
     }
 
     memory::page_pool pool_{};
@@ -128,15 +141,15 @@ TEST_F(cast_octet_test, from_octet) {
 }
 
 TEST_F(cast_octet_test, to_blob) {
-    evaluator_context ctx{&resource_};
+    auto tx = utils::create_transaction(*db_);
+    auto tctx = api::get_transaction_context(*tx);
+    evaluator_context ctx{&resource_, tctx};
     auto a = to_blob("\x00\x01\x02"sv, ctx); lost_precision(false);
     EXPECT_EQ(any::index<lob::blob_reference>, a.type_index());
     auto ref = a.to<lob::blob_reference>();
-    EXPECT_EQ(lob::lob_reference_kind::generated, ref.kind());
+    EXPECT_EQ(lob::lob_reference_kind::resolved, ref.kind());
     auto loc = ref.locator();
-    ASSERT_TRUE(loc);
-    ASSERT_TRUE(loc->data());
-    EXPECT_EQ("\x00\x01\x02"sv, *loc->data());
+    ASSERT_FALSE(loc);
 }
 }
 

@@ -43,13 +43,6 @@ status assign_lob_id(
             }
             break;
         }
-        case k::generated: {
-            // TODO remove
-            if (auto res = register_lob_data(*ref.locator()->data(), tx, id, error); res != status::ok) {
-                return res;
-            }
-            break;
-        }
         case k::fetched: {
             if (auto res = duplicate_lob(ref.object_id(), tx, id, error); res != status::ok) {
                 return res;

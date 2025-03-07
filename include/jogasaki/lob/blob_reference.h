@@ -56,15 +56,6 @@ public:
         lob_reference(id, provider)
     {}
 
-    /**
-     * @brief construct unresolved object with lob data generated
-     * @param locator the locator of the lob data
-     * TODO remove this constructor
-     */
-    blob_reference(lob_reference_tag_t<lob_reference_kind::generated> tag, lob_locator const& locator) :
-        lob_reference(tag, locator)
-    {}
-
 };
 
 }  // namespace jogasaki::lob

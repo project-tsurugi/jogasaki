@@ -55,16 +55,6 @@ public:
     {}
 
     /**
-     * @brief construct unresolved object with lob data generated
-     * @param locator the locator of the lob data
-     * TODO remove
-     */
-    lob_reference(lob_reference_tag_t<lob_reference_kind::generated>, lob_locator const& locator) :
-        kind_(lob_reference_kind::generated),
-        locator_(std::addressof(locator))
-    {}
-
-    /**
      * @brief construct `fetched` object
      * @param id the lob reference id
      */
@@ -127,7 +117,7 @@ public:
         if (a.kind_ == lob_reference_kind::undefined) {
             return true;
         }
-        if (a.kind_ == lob_reference_kind::provided || a.kind_ == lob_reference_kind::generated) {
+        if (a.kind_ == lob_reference_kind::provided) {
             return a.locator_ == b.locator_;
         }
         // fetched or resolved
@@ -155,7 +145,7 @@ public:
         if (value.kind_ == lob_reference_kind::undefined) {
             return out << "undefined";
         }
-        if (value.kind_ == lob_reference_kind::provided || value.kind_ == lob_reference_kind::generated) {
+        if (value.kind_ == lob_reference_kind::provided) {
             if(! value.locator_) {
                 // normally locator should be non-null
                 return out << "null";

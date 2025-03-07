@@ -44,6 +44,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/datastore/find_path_by_lob_id.h>
+#include <jogasaki/datastore/register_lob.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/executor/expr/details/decimal_context_guard.h>
@@ -562,6 +563,20 @@ any to_float8(triple src, evaluator_context& ctx) {
 
 }  // namespace from_decimal
 
+template <class LobReference>
+any string_to_lob(
+    std::string_view s,
+    evaluator_context& ctx
+) {
+    lob::lob_id_type id{};
+    std::shared_ptr<jogasaki::error::error_info> error{};
+    if (auto res = datastore::register_lob_data(s, ctx.transaction().get(), id, error); res != status::ok) {
+        ctx.set_error_info(std::move(error));
+        return {std::in_place_type<class error>, error_kind::error_info_provided};
+    }
+    return {std::in_place_type<LobReference>, LobReference{id, lob::lob_data_provider::datastore}};
+}
+
 namespace from_character {
 
 bool is_valid_nan(std::string_view s) {
@@ -782,12 +797,7 @@ any to_clob(
     std::string_view s,
     evaluator_context& ctx
 ) {
-    auto loc = std::make_shared<lob::lob_locator>(
-        std::make_shared<std::string>(s)
-    );
-    auto ret = any{std::in_place_type<lob::clob_reference>, lob::clob_reference{lob::lob_reference_tag<lob::lob_reference_kind::generated>, *loc}};
-    ctx.add_locator(std::move(loc));
-    return ret;
+    return string_to_lob<lob::clob_reference>(s, ctx);
 }
 
 }  // namespace from_character
@@ -1464,14 +1474,8 @@ any to_blob(
     std::string_view s,
     evaluator_context& ctx
 ) {
-    auto loc = std::make_shared<lob::lob_locator>(
-        std::make_shared<std::string>(s)
-    );
-    auto ret = any{std::in_place_type<lob::blob_reference>, lob::blob_reference{lob::lob_reference_tag<lob::lob_reference_kind::generated>, *loc}};
-    ctx.add_locator(std::move(loc));
-    return ret;
+    return string_to_lob<lob::blob_reference>(s, ctx);
 }
-
 
 }  // namespace from_octet
 

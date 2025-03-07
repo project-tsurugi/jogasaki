@@ -44,7 +44,7 @@ public:
 
     /**
      * @brief construct new object
-     * @param content of the lob data
+     * @param data content of the lob data
      */
     explicit lob_locator(std::shared_ptr<std::string> data) :
         data_(std::move(data))

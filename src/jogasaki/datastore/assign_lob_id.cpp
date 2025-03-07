@@ -55,7 +55,8 @@ status assign_lob_id(
                 return res;
             }
         }
-        default:
+        case k::undefined:
+        case k::resolved:
             // no-op
             break;
     }

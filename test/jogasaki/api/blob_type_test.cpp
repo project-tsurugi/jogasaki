@@ -317,7 +317,7 @@ TEST_F(blob_type_test, update_partially) {
 }
 
 TEST_F(blob_type_test, insert_from_select) {
-    // update some blob column while keeping the other unchanged
+    // insert blob column from select
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
     execute_statement("create table src (c0 int primary key, c1 blob, c2 clob)");
@@ -376,6 +376,80 @@ TEST_F(blob_type_test, insert_from_select) {
         auto ref2_src = result[0].get_value<lob::clob_reference>(2);
         EXPECT_NE(ref1.object_id(), ref1_src.object_id());
         EXPECT_NE(ref2.object_id(), ref2_src.object_id());
+        EXPECT_EQ(status::ok, tx->commit());
+    }
+}
+
+TEST_F(blob_type_test, insert_from_select_duplication) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem handling two blob files of the same path";
+    }
+    // insert blob column from select, by duplicating src column into two dest columns
+    // global::config_pool()->mock_datastore(true); // this test requires prod datastore
+    datastore::get_datastore(true);
+    global::config_pool()->enable_blob_cast(true);
+    execute_statement("create table src (c0 int primary key, c1 blob, c2 clob)");
+    execute_statement("insert into src values (1, CAST(x'000102' as BLOB), CAST('ABC' as CLOB))");
+    execute_statement("create table dest (c0 int primary key, c10 blob, c11 blob, c20 clob, c21 clob)");
+
+    execute_statement("INSERT INTO dest SELECT c0, c1, c1, c2, c2 from src");
+
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, c10, c11, c20, c21 FROM dest", *tx, result);
+    ASSERT_EQ(1, result.size());
+
+    auto ref10 = result[0].get_value<lob::blob_reference>(1);
+    auto ref11 = result[0].get_value<lob::blob_reference>(2);
+    auto ref20 = result[0].get_value<lob::clob_reference>(3);
+    auto ref21 = result[0].get_value<lob::clob_reference>(4);
+
+    EXPECT_NE(ref10.object_id(), ref11.object_id());
+    EXPECT_NE(ref20.object_id(), ref21.object_id());
+
+    auto* ds = datastore::get_datastore(false);
+
+    auto ret10 = ds->get_blob_file(ref10.object_id());
+    ASSERT_TRUE(ret10);
+    EXPECT_EQ("\x00\x01\x02"sv, read_file(ret10.path().string())) << ret10.path().string();
+    auto ret11 = ds->get_blob_file(ref11.object_id());
+    ASSERT_TRUE(ret11);
+    EXPECT_EQ("\x00\x01\x02"sv, read_file(ret11.path().string())) << ret11.path().string();
+
+    auto ret20 = ds->get_blob_file(ref20.object_id());
+    ASSERT_TRUE(ret20);
+    EXPECT_EQ("ABC", read_file(ret20.path().string())) << ret20.path().string();
+    auto ret21 = ds->get_blob_file(ref21.object_id());
+    ASSERT_TRUE(ret21);
+    EXPECT_EQ("ABC", read_file(ret21.path().string())) << ret21.path().string();
+
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::blob,
+                                            kind::clob, kind::clob>({
+                  1,
+                  lob::blob_reference{ref10.object_id(),
+                                      lob::lob_data_provider::datastore},
+                  lob::blob_reference{ref11.object_id(),
+                                      lob::lob_data_provider::datastore},
+                  lob::clob_reference{ref20.object_id(),
+                                      lob::lob_data_provider::datastore},
+                  lob::clob_reference{ref21.object_id(),
+                                      lob::lob_data_provider::datastore},
+                  })),
+              result[0]);
+    EXPECT_EQ(status::ok, tx->commit());
+
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        execute_query("SELECT c0, c1, c2 FROM src", *tx, result);
+        ASSERT_EQ(1, result.size());
+
+        auto ref1_src = result[0].get_value<lob::blob_reference>(1);
+        auto ref2_src = result[0].get_value<lob::clob_reference>(2);
+        EXPECT_NE(ref10.object_id(), ref1_src.object_id());
+        EXPECT_NE(ref11.object_id(), ref1_src.object_id());
+        EXPECT_NE(ref20.object_id(), ref2_src.object_id());
+        EXPECT_NE(ref21.object_id(), ref2_src.object_id());
         EXPECT_EQ(status::ok, tx->commit());
     }
 }

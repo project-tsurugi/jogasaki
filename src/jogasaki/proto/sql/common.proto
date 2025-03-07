@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "google/protobuf/empty.proto";
 
 package jogasaki.proto.sql.common;
 
@@ -127,7 +128,48 @@ message Column {
     // the type dimension for array types.
     uint32 dimension = 11;
 
-    // FIXME type details (e.g. decimal precisions)
+    // the length for data types that have associated length.
+    oneof length_opt {
+        // if nothing is set, that means no length information is provided.
+
+        // defined length
+        uint32 length = 12;
+
+        // arbitrary length (*)
+        google.protobuf.Empty arbitrary_length = 13;
+    }
+
+    // the precision for decimal types.
+    oneof precision_opt {
+        // if nothing is set, that means no precision information is provided.
+
+        // defined precision
+        uint32 precision = 14;
+
+        // arbitrary precision (*)
+        google.protobuf.Empty arbitrary_precision = 15;
+    }
+
+    // the scale for decimal types.
+    oneof scale_opt {
+        // if nothing is set, that means no scale information is provided.
+
+        // defined scale
+        uint32 scale = 16;
+
+        // arbitrary scale (*)
+        google.protobuf.Empty arbitrary_scale = 17;
+    }
+
+    reserved 18 to 20;
+
+    // whether the column is nullable or not
+    oneof nullable_opt {
+        // if nothing is set, that means no nullable information is provided.
+
+        bool nullable = 21;
+    }
+
 }
 
 // the row type.

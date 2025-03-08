@@ -224,20 +224,6 @@ public:
     }
 
     /**
-     * @brief add lob locator used by this request
-     */
-    void add_locator(std::shared_ptr<lob::lob_locator> arg) noexcept {
-        lob_locators_.emplace_back(std::move(arg));
-    }
-
-    /**
-     * @brief get lob locators used by this request
-     */
-    [[nodiscard]] std::deque<std::shared_ptr<lob::lob_locator>> const& lob_locators() const noexcept {
-        return lob_locators_;
-    }
-
-    /**
      * @brief set error info
      * @details the error info set here should be used only when expr::error_kind::error_info_provided is returned
      */
@@ -275,7 +261,6 @@ private:
     bool lost_precision_{};
     std::shared_ptr<transaction_context> transaction_context_{};
     std::shared_ptr<function::function_evaluation_context> func_ctx_{};
-    std::deque<std::shared_ptr<lob::lob_locator>> lob_locators_{};
     std::shared_ptr<jogasaki::error::error_info> error_info_{};
 
 };

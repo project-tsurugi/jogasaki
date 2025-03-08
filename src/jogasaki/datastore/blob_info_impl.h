@@ -47,12 +47,10 @@ public:
      */
     blob_info_impl(
         std::string_view channel_name,
-        std::filesystem::path path,
-        bool is_temporary
+        std::filesystem::path path
     ) :
         channel_name_(channel_name),
-        path_(std::move(path)),
-        is_temporary_(is_temporary)
+        path_(std::move(path))
     {}
 
     /**
@@ -77,7 +75,8 @@ public:
      * @return false otherwise
      */
     [[nodiscard]] bool is_temporary() const noexcept override {
-        return is_temporary_;
+        // currently any blob file is provided by datastore and is not temporary
+        return false;
     }
 
     /**
@@ -85,12 +84,12 @@ public:
      */
     void dispose() override {
         // no-op for now
+        // currently blob file is not temporary, so nothing should be disposed
     }
 
 private:
     std::string channel_name_{};
     std::filesystem::path path_{};
-    bool is_temporary_{};
 };
 
 }  // namespace jogasaki::datastore

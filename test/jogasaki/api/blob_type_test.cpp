@@ -943,4 +943,98 @@ TEST_F(blob_type_test, DISABLED_invalid_parameter_types) {
     test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::unsupported_runtime_feature_exception);
 }
 
+TEST_F(blob_type_test, max_len_to_cast_to_string) {
+    global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
+    global::config_pool()->enable_blob_cast(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    std::string oct_content( octet_type_max_length_for_value, '\x01');
+    std::string char_content(character_type_max_length_for_value, 'x');
+    create_file(path1, oct_content);
+    create_file(path2, char_content);
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_clob("p2", lob::clob_locator{path2});
+    execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
+
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, cast(c1 as varbinary), cast(c2 as varchar) FROM t", *tx, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                  {1,  accessor::binary{oct_content}, accessor::text{char_content}})),
+              result[0]);
+}
+
+TEST_F(blob_type_test, over_max_len_to_cast_to_string) {
+    global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
+    global::config_pool()->enable_blob_cast(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    std::string oct_content( octet_type_max_length_for_value+1, '\x01');
+    std::string char_content(character_type_max_length_for_value+1, 'x');
+    create_file(path1, oct_content);
+    create_file(path2, char_content);
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_clob("p2", lob::clob_locator{path2});
+    execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
+
+    test_stmt_err("SELECT c0, cast(c1 as varbinary) FROM t", error_code::value_too_long_exception);
+    test_stmt_err("SELECT c0, cast(c2 as varchar) FROM t", error_code::value_too_long_exception);
+}
+
+TEST_F(blob_type_test, empty_blobs_cast) {
+    global::config_pool()->mock_datastore(true);
+    datastore::get_datastore(true);
+    global::config_pool()->enable_blob_cast(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    std::string oct_content{};
+    std::string char_content{};
+    create_file(path1, oct_content);
+    create_file(path2, char_content);
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_clob("p2", lob::clob_locator{path2});
+    execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
+
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, cast(c1 as varbinary), cast(c2 as varchar) FROM t", *tx, result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                  {1,  accessor::binary{oct_content}, accessor::text{char_content}})),
+              result[0]);
+}
+
 }

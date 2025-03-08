@@ -39,23 +39,23 @@ std::uint64_t new_lob_id() noexcept {
 status get_lob_data(lob::lob_id_type id, lob::lob_data_provider provider,
                     std::shared_ptr<error::error_info> &error,
                     std::unique_ptr<tateyama::api::server::blob_info> &info) {
-  auto *ds = get_datastore();
-  (void)provider; // currently assuming provider is always datastore
-  auto file = ds->get_blob_file(id);
-  if (!file) {
-    auto res = status::err_invalid_state;
-    error = create_error_info(error_code::lob_reference_invalid,
-                          "invalid blob reference", res);
-    return res;
-  }
+    (void) provider; // currently assuming provider is always datastore
+    auto *ds = get_datastore();
+    auto file = ds->get_blob_file(id);
+    if (!file) {
+        auto res = status::err_invalid_state;
+        error = create_error_info(error_code::lob_reference_invalid,
+                            "invalid blob reference", res);
+        return res;
+    }
 
-  std::string name{"lob-"};
-  name += std::to_string(new_lob_id());
+    std::string name{"lob-"};
+    name += std::to_string(new_lob_id());
 
-  std::filesystem::path path{file.path().string()};
-  info = std::make_unique<blob_info_impl>(name, path, false);
+    std::filesystem::path path{file.path().string()};
+    info = std::make_unique<blob_info_impl>(name, path);
 
-  return status::ok;
+    return status::ok;
 }
 
 } // namespace jogasaki::datastore

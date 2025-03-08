@@ -46,6 +46,7 @@
 #include <jogasaki/datastore/find_path_by_lob_id.h>
 #include <jogasaki/datastore/register_lob.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/executor/expr/details/decimal_context_guard.h>
 #include <jogasaki/executor/expr/error.h>
@@ -1531,6 +1532,19 @@ error_kind map_lob_error_code(error_code code) {
     return error_kind::undefined;
 }
 
+template<class String>
+constexpr std::size_t calc_string_max_length_for_value() {
+    if constexpr (std::is_same_v<String, accessor::text>) {
+        return character_type_max_length_for_value;
+    } else if constexpr (std::is_same_v<String, accessor::binary>) {
+        return octet_type_max_length_for_value;
+    }
+    std::abort();
+}
+
+template<class String>
+constexpr std::size_t string_max_length_for_value = calc_string_max_length_for_value<String>();
+
 template<class String, class Ref>
 any lob_to_string(
     Ref const& src,
@@ -1547,6 +1561,14 @@ any lob_to_string(
     std::string content{};
     if (auto res = utils::read_lob_file(path, content, info); res != status::ok) {
         ctx.set_error_info(std::move(info));
+        return any{std::in_place_type<error>, error(error_kind::error_info_provided)};
+    }
+    if (content.size() > string_max_length_for_value<String>) {
+        ctx.set_error_info(create_error_info(
+            error_code::value_too_long_exception,
+            string_builder{} << "value is too long to convert length:" << content.size() << " maximum:"
+                               << string_max_length_for_value<String> << string_builder::to_string,
+            status::err_invalid_runtime_value));
         return any{std::in_place_type<error>, error(error_kind::error_info_provided)};
     }
     return handle_length<String>(content, ctx, len, add_padding, false);

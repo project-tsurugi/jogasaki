@@ -75,7 +75,6 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
-#include <jogasaki/executor/function/function_evaluation_context.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/expr/error.h>
@@ -150,10 +149,10 @@ TEST_F(single_function_evaluator_test, current_timestamp) {
 
     utils::checkpoint_holder cph{&resource_};
     using clock = std::chrono::system_clock;
-    auto fctx = std::make_shared<function::function_evaluation_context>();
+    auto tctx = std::make_shared<transaction_context>(nullptr);
     takatori::datetime::time_point tp{date{2021, 1, 1}, time_of_day{0,0,0}};
-    fctx->transaction_begin(clock::time_point{tp.seconds_since_epoch()});
-    evaluator_context c{&resource_, nullptr, std::move(fctx)};
+    tctx->start_time(clock::time_point{tp.seconds_since_epoch()});
+    evaluator_context c{&resource_, std::move(tctx)};
     auto a = eval(c);
     ASSERT_TRUE(a);
     ASSERT_EQ(tp, a.to<takatori::datetime::time_point>());

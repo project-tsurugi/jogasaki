@@ -218,13 +218,12 @@ data::any octet_length(
 }
 
 data::any tx_ts_is_available(evaluator_context& ctx) {
-    auto fctx = ctx.func_ctx();
-    if(! fctx) {
+    if(! ctx.transaction()) {
         // programming error
-        ctx.add_error({error_kind::unknown, "missing function context"});
+        ctx.add_error({error_kind::unknown, "missing transaction context"});
         return data::any{std::in_place_type<error>, error(error_kind::unknown)};
     }
-    if(! fctx->transaction_begin().has_value()) {
+    if(! ctx.transaction()->start_time().has_value()) {
         ctx.add_error({error_kind::unknown, "no tx begin time was recorded"});
         return data::any{std::in_place_type<error>, error(error_kind::unknown)};
     }
@@ -240,7 +239,7 @@ data::any current_date(
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
-    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    takatori::datetime::time_point tp{ctx.transaction()->start_time().value()};
     // Contrary to the name `current_date`, it returns the date part of the local timestamp.
     // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
     auto os = global::config_pool()->zone_offset();
@@ -259,7 +258,7 @@ data::any localtime(
     }
     // This func. returns the time part of the local timestamp.
     // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
-    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    takatori::datetime::time_point tp{ctx.transaction()->start_time().value()};
     auto os = global::config_pool()->zone_offset();
     tp += std::chrono::minutes{os};
     return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp.time()};
@@ -275,7 +274,7 @@ data::any current_timestamp(
     if(auto a = tx_ts_is_available(ctx); a.error()) {
         return a;
     }
-    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    takatori::datetime::time_point tp{ctx.transaction()->start_time().value()};
     return data::any{std::in_place_type<runtime_t<kind::time_point>>, tp};
 }
 
@@ -291,7 +290,7 @@ data::any localtimestamp(
     }
     // This func. returns the the local timestamp.
     // But system clock returns chrono::time_point in UTC, so we need to convert it to local timestamp.
-    takatori::datetime::time_point tp{ctx.func_ctx()->transaction_begin().value()};
+    takatori::datetime::time_point tp{ctx.transaction()->start_time().value()};
     auto os = global::config_pool()->zone_offset();
     tp += std::chrono::minutes{os};
     return data::any{std::in_place_type<runtime_t<kind::time_point>>, tp};

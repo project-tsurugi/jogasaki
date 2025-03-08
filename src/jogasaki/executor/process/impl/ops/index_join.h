@@ -48,7 +48,6 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/make_function_context.h>
 #include <jogasaki/utils/modify_status.h>
 
 #include "details/encode_key.h"
@@ -341,8 +340,7 @@ public:
                 if (condition_) {
                     expr::evaluator_context c{
                         resource,
-                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
-                        ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
+                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr
                     };
                     auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                     if (r.error()) {

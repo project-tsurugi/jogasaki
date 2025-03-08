@@ -711,7 +711,7 @@ any engine::operator()(takatori::scalar::function_call const& arg) {
     }
     if(auto f = yugawara::binding::extract_if<yugawara::function::declaration>(arg.function()); f.has_value()) {
         if(auto info = global::scalar_function_repository().find(f->definition_id()); info != nullptr) {
-            if(! ctx_.func_ctx()) {
+            if(! ctx_.transaction()) {
                 throw_exception(std::logic_error{""});
             }
             return info->function_body()(ctx_, inputs);

@@ -56,7 +56,6 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
-#include <jogasaki/utils/make_function_context.h>
 #include <jogasaki/utils/validate_any_type.h>
 
 namespace jogasaki::executor::wrt {
@@ -173,8 +172,7 @@ status fill_default_value(
         case process::impl::ops::default_value_kind::function: {
             expr::evaluator_context c{
                 std::addressof(resource),
-                ctx.transaction(),
-                utils::make_function_context(*ctx.transaction())
+                ctx.transaction()
             };
             auto src = f.function_(c);
             // TODO validate_any_type cannot detect the type difference

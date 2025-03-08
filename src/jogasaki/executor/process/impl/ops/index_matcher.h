@@ -50,7 +50,6 @@
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/make_function_context.h>
 #include <jogasaki/utils/modify_status.h>
 
 #include "details/encode_key.h"

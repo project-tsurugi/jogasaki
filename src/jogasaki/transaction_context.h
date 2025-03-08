@@ -297,14 +297,17 @@ public:
     [[nodiscard]] std::shared_ptr<kvs::transaction_option const> const& option() const noexcept;
 
     void start_time(clock::time_point arg) noexcept;
-    [[nodiscard]] clock::time_point start_time() const noexcept;
+    [[nodiscard]] std::optional<clock::time_point> start_time() const noexcept;
 
     void end_time(clock::time_point arg) noexcept;
-    [[nodiscard]] clock::time_point end_time() const noexcept;
+    [[nodiscard]] std::optional<clock::time_point> end_time() const noexcept;
 
     template<class Duration>
     [[nodiscard]] Duration duration() const noexcept {
-        return std::chrono::duration_cast<Duration>(end_time_ - start_time_);
+        if (! start_time_.has_value() || ! end_time_.has_value()) {
+            return {};
+        }
+        return std::chrono::duration_cast<Duration>(end_time_.value() - start_time_.value());
     }
 
     void label(std::string_view arg) noexcept;
@@ -342,8 +345,8 @@ private:
     std::optional<durability_marker_type> durability_marker_{};
     std::shared_ptr<commit_profile> profile_{std::make_shared<commit_profile>()};
     std::shared_ptr<kvs::transaction_option const> option_{};
-    clock::time_point start_time_{};
-    clock::time_point end_time_{};
+    std::optional<clock::time_point> start_time_{};
+    std::optional<clock::time_point> end_time_{};
     std::string label_{};
     std::shared_ptr<limestone::api::blob_pool> blob_pool_{};
 

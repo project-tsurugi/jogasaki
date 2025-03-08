@@ -42,8 +42,8 @@ issue 記載の下記のとおり。 `current_time` については `TIME WITH T
 
 ## 実装上の注意点・配慮点
 
-* 現在時刻をevaluator内で使用する必要があったため、`function_evaluation_context` を用意して、`evaluator_context` に含めるようにした
-  * 直接 `transaction_context` を持たせてしまうと、「式評価」と「トランザクション」の結びつきが密になりすぎるのでトランザクション開始時刻だけを保持する `function_evaluation_context` 経由とした
+* 現在時刻をevaluator内で使用する必要があったため、`transaction_context` を `evaluator_context` に含めるようにした
+  * 「式評価」と「トランザクション」の結びつきが密になりすぎる欠点はあるが、BLOB処理でも式評価時にトランザクションが必要になるため、式評価にトランザクションは必要なものとすることにした
 
 * `std::chrono::steady_clock` で `now()` を使用して time pointを取得しても、UTC時刻のような絶対時刻を表すわけではない。今回の変更ではUTC時刻の取得が必要だったため、clockを使用しているほとんどの箇所を `std::chrono::system_clock` に変更した。
 

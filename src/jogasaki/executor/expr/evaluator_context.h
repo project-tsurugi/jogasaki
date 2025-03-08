@@ -25,8 +25,6 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/diagnostic_record.h>
-#include <jogasaki/executor/function/function_evaluation_context.h>
-#include <jogasaki/lob/lob_locator.h>
 #include <jogasaki/memory/paged_memory_resource.h>
 
 #include "error.h"
@@ -136,19 +134,16 @@ public:
     /**
      * @brief create new object
      * @param resource the memory resource
-     * @param tctx the transaction context used for the transaction related evaluation (e.g. blob registration)
+     * @param tctx the transaction context used for the transaction related evaluation.
+     * (e.g. blob registration, or tx begin ts for function evaluation)
      * You can specify nullptr if no such evaluation will be performed.
-     * @param fctx the function evaluation context to retrieve the context for function call (e.g. tx begin ts.)
-     * You can specify nullptr if no function call will be evaluated.
      */
     explicit evaluator_context(
         memory_resource* resource,
-        std::shared_ptr<transaction_context> tctx = nullptr,
-        std::shared_ptr<function::function_evaluation_context> fctx = nullptr
+        std::shared_ptr<transaction_context> tctx = nullptr
     ) :
         resource_(resource),
-        transaction_context_(std::move(tctx)),
-        func_ctx_(std::move(fctx))
+        transaction_context_(std::move(tctx))
     {}
 
     /**
@@ -217,13 +212,6 @@ public:
     }
 
     /**
-     * @brief the function evaluation context
-     */
-    [[nodiscard]] std::shared_ptr<function::function_evaluation_context> const& func_ctx() noexcept {
-        return func_ctx_;
-    }
-
-    /**
      * @brief set error info
      * @details the error info set here should be used only when expr::error_kind::error_info_provided is returned
      */
@@ -260,7 +248,6 @@ private:
     std::vector<error_type> errors_{};
     bool lost_precision_{};
     std::shared_ptr<transaction_context> transaction_context_{};
-    std::shared_ptr<function::function_evaluation_context> func_ctx_{};
     std::shared_ptr<jogasaki::error::error_info> error_info_{};
 
 };

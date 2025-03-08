@@ -58,7 +58,6 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/iterator_incrementer.h>
 #include <jogasaki/utils/iterator_pair.h>
-#include <jogasaki/utils/make_function_context.h>
 
 #include "context_helper.h"
 #include "join_context.h"
@@ -222,8 +221,7 @@ public:
                 do {
                     expr::evaluator_context c {
                         ctx.varlen_resource(),
-                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
-                        ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
+                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr
                     };
                     auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                     if(a.error()) {
@@ -249,9 +247,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
-                                ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
-                                                  : nullptr
+                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
@@ -292,9 +288,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
-                                ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
-                                                  : nullptr
+                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
@@ -348,9 +342,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
-                                ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction())
-                                                  : nullptr
+                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {

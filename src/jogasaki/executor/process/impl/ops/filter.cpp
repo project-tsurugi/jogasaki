@@ -28,7 +28,6 @@
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/make_function_context.h>
 
 #include "context_helper.h"
 #include "filter_context.h"
@@ -72,8 +71,7 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     auto& vars = ctx.input_variables();
     auto resource = ctx.varlen_resource();
     expr::evaluator_context c{resource,
-        ctx.req_context() ? ctx.req_context()->transaction() : nullptr,
-        ctx.req_context() ? utils::make_function_context(*ctx.req_context()->transaction()) : nullptr
+        ctx.req_context() ? ctx.req_context()->transaction() : nullptr
     };
     auto res = evaluate_bool(c, evaluator_, vars, resource);
     if (res.error()) {

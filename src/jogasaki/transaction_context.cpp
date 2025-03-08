@@ -164,7 +164,7 @@ void transaction_context::start_time(transaction_context::clock::time_point arg)
     start_time_ = arg;
 }
 
-transaction_context::clock::time_point transaction_context::start_time() const noexcept {
+std::optional<transaction_context::clock::time_point> transaction_context::start_time() const noexcept {
     return start_time_;
 }
 
@@ -172,7 +172,7 @@ void transaction_context::end_time(transaction_context::clock::time_point arg) n
     end_time_ = arg;
 }
 
-transaction_context::clock::time_point transaction_context::end_time() const noexcept {
+std::optional<transaction_context::clock::time_point> transaction_context::end_time() const noexcept {
     return end_time_;
 }
 

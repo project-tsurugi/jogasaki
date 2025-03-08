@@ -35,7 +35,7 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/convert_any.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
-#include <jogasaki/utils/make_function_context.h>
+
 namespace jogasaki::executor::process::impl::ops::details {
 
 status encode_key(  //NOLINT(readability-function-cognitive-complexity)
@@ -54,8 +54,7 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
         for(auto&& k : keys) {
             expr::evaluator_context ctx{
                 std::addressof(resource),
-                context ? context->transaction() : nullptr,
-                context ? utils::make_function_context(*context->transaction()) : nullptr,
+                context ? context->transaction() : nullptr
             };
             auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {

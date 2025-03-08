@@ -665,7 +665,7 @@ private:
     bool enable_join_scan_ = true;
     key_distribution_kind key_distribution_{key_distribution_kind::uniform};
     bool mock_datastore_ = false;
-    bool enable_blob_cast_ = false;
+    bool enable_blob_cast_ = true;
     std::size_t max_result_set_writers_ = 64;
 };
 

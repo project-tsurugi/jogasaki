@@ -231,7 +231,7 @@ public:
      * @brief set transaction context
      */
     void set_transaction(transaction_context* arg) noexcept {
-        transaction_context_ = std::move(arg);
+        transaction_context_ = arg;
     }
 
     /**

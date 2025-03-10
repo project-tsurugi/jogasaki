@@ -234,7 +234,7 @@ status ensure_lobs_resolved_and_collect_ids(
     std::vector<index::field_info> const& fields,
     std::vector<lob::lob_id_type>& lobs
 ) {
-    auto tx = context.transaction();
+    auto& tx = context.transaction();
     for (auto&& f : fields) {
         if (f.type_.kind() == meta::field_type_kind::blob) {
             if (auto res = resolve_lob_field<lob::blob_reference>(context, rec, f, tx.get(), lobs); res != status::ok) {

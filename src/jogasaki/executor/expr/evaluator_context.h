@@ -140,10 +140,10 @@ public:
      */
     explicit evaluator_context(
         memory_resource* resource,
-        std::shared_ptr<transaction_context> tctx = nullptr
+        transaction_context* tctx = nullptr
     ) :
         resource_(resource),
-        transaction_context_(std::move(tctx))
+        transaction_context_(tctx)
     {}
 
     /**
@@ -230,14 +230,14 @@ public:
     /**
      * @brief set transaction context
      */
-    void set_transaction(std::shared_ptr<transaction_context> arg) noexcept {
+    void set_transaction(transaction_context* arg) noexcept {
         transaction_context_ = std::move(arg);
     }
 
     /**
      * @brief get transaction context
      */
-    [[nodiscard]] std::shared_ptr<transaction_context> const& transaction() const noexcept {
+    [[nodiscard]] transaction_context* transaction() const noexcept {
         return transaction_context_;
     }
 
@@ -247,7 +247,7 @@ private:
     range_error_policy range_error_policy_{range_error_policy::ignore};
     std::vector<error_type> errors_{};
     bool lost_precision_{};
-    std::shared_ptr<transaction_context> transaction_context_{};
+    transaction_context* transaction_context_{};
     std::shared_ptr<jogasaki::error::error_info> error_info_{};
 
 };

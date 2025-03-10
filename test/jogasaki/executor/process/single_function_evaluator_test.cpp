@@ -152,7 +152,7 @@ TEST_F(single_function_evaluator_test, current_timestamp) {
     auto tctx = std::make_shared<transaction_context>(nullptr);
     takatori::datetime::time_point tp{date{2021, 1, 1}, time_of_day{0,0,0}};
     tctx->start_time(clock::time_point{tp.seconds_since_epoch()});
-    evaluator_context c{&resource_, std::move(tctx)};
+    evaluator_context c{&resource_, tctx.get()};
     auto a = eval(c);
     ASSERT_TRUE(a);
     ASSERT_EQ(tp, a.to<takatori::datetime::time_point>());

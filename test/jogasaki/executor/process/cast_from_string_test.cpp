@@ -525,7 +525,7 @@ TEST_F(cast_from_string_test, to_octet) {
 TEST_F(cast_from_string_test, to_clob) {
     auto tx = utils::create_transaction(*db_);
     auto tctx = api::get_transaction_context(*tx);
-    evaluator_context ctx{&resource_, tctx};
+    evaluator_context ctx{&resource_, tctx.get()};
     auto a = to_clob("ABC", ctx); lost_precision(false);
     EXPECT_EQ(any::index<lob::clob_reference>, a.type_index());
     auto ref = a.to<lob::clob_reference>();

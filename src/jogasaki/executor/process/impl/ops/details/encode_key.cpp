@@ -54,7 +54,7 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
         for(auto&& k : keys) {
             expr::evaluator_context ctx{
                 std::addressof(resource),
-                context ? context->transaction() : nullptr
+                context ? context->transaction().get() : nullptr
             };
             auto a = k.evaluator_(ctx, input_variables, &resource);
             if (a.error()) {

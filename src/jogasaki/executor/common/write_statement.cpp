@@ -104,7 +104,7 @@ status fill_evaluated_value(
     process::impl::variable_table empty{};
     expr::evaluator_context c{
         std::addressof(resource),
-        ctx.transaction()
+        ctx.transaction().get()
     };
     auto res = eval(c, empty, std::addressof(resource));
     if (res.error()) {

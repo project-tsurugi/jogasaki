@@ -340,7 +340,7 @@ public:
                 if (condition_) {
                     expr::evaluator_context c{
                         resource,
-                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr
+                        ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                     };
                     auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                     if (r.error()) {

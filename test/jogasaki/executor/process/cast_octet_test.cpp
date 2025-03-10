@@ -143,7 +143,7 @@ TEST_F(cast_octet_test, from_octet) {
 TEST_F(cast_octet_test, to_blob) {
     auto tx = utils::create_transaction(*db_);
     auto tctx = api::get_transaction_context(*tx);
-    evaluator_context ctx{&resource_, tctx};
+    evaluator_context ctx{&resource_, tctx.get()};
     auto a = to_blob("\x00\x01\x02"sv, ctx); lost_precision(false);
     EXPECT_EQ(any::index<lob::blob_reference>, a.type_index());
     auto ref = a.to<lob::blob_reference>();

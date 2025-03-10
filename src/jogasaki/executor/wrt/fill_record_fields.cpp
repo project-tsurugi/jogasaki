@@ -172,7 +172,7 @@ status fill_default_value(
         case process::impl::ops::default_value_kind::function: {
             expr::evaluator_context c{
                 std::addressof(resource),
-                ctx.transaction()
+                ctx.transaction().get()
             };
             auto src = f.function_(c);
             // TODO validate_any_type cannot detect the type difference

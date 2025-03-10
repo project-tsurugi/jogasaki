@@ -221,7 +221,7 @@ public:
                 do {
                     expr::evaluator_context c {
                         ctx.varlen_resource(),
-                        ctx.req_context() ? ctx.req_context()->transaction() : nullptr
+                        ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                     };
                     auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                     if(a.error()) {
@@ -247,7 +247,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr
+                                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
@@ -288,7 +288,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr
+                                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
@@ -342,7 +342,7 @@ public:
                         do {
                             expr::evaluator_context c{
                                 ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction() : nullptr
+                                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                             };
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {

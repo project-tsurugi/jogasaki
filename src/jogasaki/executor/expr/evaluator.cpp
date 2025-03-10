@@ -415,7 +415,7 @@ create_any(accessor::record_ref ref, executor::process::impl::value_info const& 
     }
     lob::lob_id_type id{};
     std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto st = datastore::assign_lob_id(var, ctx.transaction().get(), id, error); st != status::ok) {
+    if (auto st = datastore::assign_lob_id(var, ctx.transaction(), id, error); st != status::ok) {
         ctx.set_error_info(std::move(error));
         return any{std::in_place_type<class error>, error_kind::error_info_provided};
     }

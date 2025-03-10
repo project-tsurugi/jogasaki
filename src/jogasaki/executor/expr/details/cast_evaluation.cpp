@@ -571,7 +571,7 @@ any string_to_lob(
 ) {
     lob::lob_id_type id{};
     std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto res = datastore::register_lob_data(s, ctx.transaction().get(), id, error); res != status::ok) {
+    if (auto res = datastore::register_lob_data(s, ctx.transaction(), id, error); res != status::ok) {
         ctx.set_error_info(std::move(error));
         return {std::in_place_type<class error>, error_kind::error_info_provided};
     }

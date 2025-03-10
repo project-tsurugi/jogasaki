@@ -97,10 +97,12 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "datachannel_buffer_size=64\n"
         "max_datachannel_buffers=256\n"
         "admin_sessions=1\n"
+        "allow_blob_privileged=true\n"
 
     "[stream_endpoint]\n"
         "port=41234\n" // choosing a random port that doesn't conflit frequently
         "threads=104\n"
+        "allow_blob_privileged=false\n"
 
     "[cc]\n"
         "epoch_duration=40000\n"

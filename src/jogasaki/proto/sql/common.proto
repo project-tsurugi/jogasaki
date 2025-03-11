@@ -170,6 +170,12 @@ message Column {
         bool nullable = 21;
     }
 
+    // whether the column type is varying or not
+    oneof varying_opt {
+        // if nothing is set, that means no varying information is provided.
+
+        bool varying = 22;
+    }
 }
 
 // the row type.

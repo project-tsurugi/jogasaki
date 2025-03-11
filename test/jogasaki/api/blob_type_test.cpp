@@ -694,6 +694,51 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting) {
     }
 }
 
+TEST_F(blob_type_test, insert_provided_blob_by_casting_) {
+    // regression test similar as insert_provided_blob_by_casting
+    // once reading the blob file is broken and 10 octest are truncated in the middle
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+    global::config_pool()->enable_blob_cast(true);
+
+    // currently mock is not supported
+    // global::config_pool()->mock_datastore(true);
+    // datastore::get_datastore(true);
+
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::blob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    create_file(path1, "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10"sv);
+    create_file(path2, "\x11\x12\x13\x14\x15\x16\x17\x18\x19\x20"sv);
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_blob("p2", lob::blob_locator{path2});
+    execute_statement("create table t (c0 int primary key, c1 binary(10), c2 varbinary)");
+    execute_statement("INSERT INTO t VALUES (:p0, CAST(:p1 as binary(10)), CAST(:p2 as varbinary))", variables, *ps);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0, c1, c2 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::octet, kind::octet>(
+            std::tuple{int4_type(), octet_type(false, 10), octet_type(true)},
+                std::forward_as_tuple(
+                    1,
+                    accessor::binary{
+                        "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10"sv},
+                    accessor::binary{
+                        "\x11\x12\x13\x14\x15\x16\x17\x18\x19\x20"sv}))),
+            result[0]);
+    }
+}
+
 TEST_F(blob_type_test, implicit_cast) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";

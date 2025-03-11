@@ -29,16 +29,25 @@ namespace jogasaki::utils {
 using takatori::util::string_builder;
 
 status read_lob_file(std::string_view path, std::string& out, std::shared_ptr<error::error_info>& error) {
-    std::ifstream fs{std::string{path}, std::ios::binary};
-    if (! fs) {
+    std::ifstream fs{std::string{path}, std::ios::binary | std::ios::ate}; // seek to end to get file size
+    if (! fs.is_open()) {
         auto res = status::err_io_error;
         error = create_error_info(error_code::lob_file_io_error,
             string_builder{} << "failed to open file:" << path << string_builder::to_string,
             res);
         return res;
     }
-    fs >> out;
-    fs.close();
+    auto sz = fs.tellg();
+    fs.seekg(0, std::ios::beg);
+    out.resize(sz);
+
+    if (! fs.read(std::addressof(out[0]), sz)) {
+        auto res = status::err_io_error;
+        error = create_error_info(error_code::lob_file_io_error,
+            string_builder{} << "failed to read file:" << path << string_builder::to_string,
+            res);
+        return res;
+    }
     return status::ok;
 }
 

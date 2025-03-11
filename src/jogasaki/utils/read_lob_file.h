@@ -26,6 +26,15 @@
 
 namespace jogasaki::utils {
 
+/**
+ * @brief read lob data from file
+ * @param path the path to the lob file
+ * @param out the output string
+ * @param error the error information filled when other status code than
+ * status::ok is returned
+ * @return status::ok if success
+ * @return any other status otherwise
+ */
 status read_lob_file(std::string_view path, std::string& out, std::shared_ptr<error::error_info>& error);
 
 }  // namespace jogasaki::utils

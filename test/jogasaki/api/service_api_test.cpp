@@ -1566,7 +1566,7 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
         ASSERT_TRUE(st);
 
         auto& rec = res->error_;
-        EXPECT_EQ(::tateyama::proto::diagnostics::Code::INVALID_REQUEST, rec.code());
+        EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_DENIED, rec.code());
         std::cerr << "error:" << rec.message() << std::endl;
     }
     test_commit(tx_handle);

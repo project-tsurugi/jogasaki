@@ -794,8 +794,8 @@ TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1, true}); // is_temporary = true
-    ps->set_clob("p2", lob::clob_locator{path2, true}); // is_temporary = true
+    ps->set_blob("p1", lob::blob_locator{path1}); // is_temporary = true
+    ps->set_clob("p2", lob::clob_locator{path2}); // is_temporary = true
     execute_statement("INSERT INTO t VALUES (1, :p1, :p2), (2, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);

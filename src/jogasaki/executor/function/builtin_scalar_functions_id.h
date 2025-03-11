@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,10 @@ enum scalar_function_id : std::size_t {
     id_11003,
     id_11004,
     id_11005,
+    id_11006,
+    id_11007,
+    id_11008,
+    id_11009
 };
 
 static_assert(scalar_function_id::id_11000 == 11'000);

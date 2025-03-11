@@ -387,7 +387,6 @@ TEST_F(blob_type_test, insert_from_select_duplication) {
     // insert blob column from select, by duplicating src column into two dest columns
     // global::config_pool()->mock_datastore(true); // this test requires prod datastore
     datastore::get_datastore(true);
-    global::config_pool()->enable_blob_cast(true);
     execute_statement("create table src (c0 int primary key, c1 blob, c2 clob)");
     execute_statement("insert into src values (1, CAST(x'000102' as BLOB), CAST('ABC' as CLOB))");
     execute_statement("create table dest (c0 int primary key, c10 blob, c11 blob, c20 clob, c21 clob)");
@@ -458,7 +457,6 @@ TEST_F(blob_type_test, insert_generated_blob) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
@@ -504,7 +502,6 @@ TEST_F(blob_type_test, insert_generated_empty_blob) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
@@ -548,7 +545,6 @@ TEST_F(blob_type_test, update_generated_blob) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
@@ -595,7 +591,6 @@ TEST_F(blob_type_test, query_generated_blob) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
@@ -673,7 +668,6 @@ TEST_F(blob_type_test, query_provided_blob) {
 
 TEST_F(blob_type_test, query_provided_blob_by_casting) {
     // read blob input parameter with query with casting blob to varbinary
-    global::config_pool()->enable_blob_cast(true);
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
     execute_statement("create table t (c0 int primary key)");
@@ -706,7 +700,6 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
@@ -746,7 +739,6 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting_) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     // currently mock is not supported
     // global::config_pool()->mock_datastore(true);
@@ -789,7 +781,6 @@ TEST_F(blob_type_test, implicit_cast) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     // global::config_pool()->mock_datastore(true);
     // datastore::get_datastore(true);
@@ -1007,7 +998,6 @@ TEST_F(blob_type_test, read_file_error) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
     // verify limestone raises error and it's handled correctly
     execute_statement("create table t (c0 int primary key, c1 blob)");
     execute_statement("INSERT INTO t VALUES (1, CAST(x'000102' as BLOB))");
@@ -1052,7 +1042,6 @@ TEST_F(blob_type_test, cast_not_allowed_update) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
     }
-    global::config_pool()->enable_blob_cast(true);
 
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
@@ -1063,7 +1052,7 @@ TEST_F(blob_type_test, cast_not_allowed_update) {
     test_stmt_err("UPDATE t SET c1=x'000102', c2 ='ABC' WHERE c0 = 1", error_code::unsupported_runtime_feature_exception);
 }
 
-TEST_F(blob_type_test, invalid_types) {
+TEST_F(blob_type_test, invalid_insert_from_literals) {
     // without cast support, varbinary/varchar cannot be assigned to blob/clob columns
     global::config_pool()->enable_blob_cast(false);
 
@@ -1097,7 +1086,6 @@ TEST_F(blob_type_test, DISABLED_invalid_parameter_types) {
 TEST_F(blob_type_test, max_len_to_cast_to_string) {
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
-    global::config_pool()->enable_blob_cast(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int4},
@@ -1130,7 +1118,6 @@ TEST_F(blob_type_test, max_len_to_cast_to_string) {
 TEST_F(blob_type_test, over_max_len_to_cast_to_string) {
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
-    global::config_pool()->enable_blob_cast(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int4},
@@ -1158,7 +1145,6 @@ TEST_F(blob_type_test, over_max_len_to_cast_to_string) {
 TEST_F(blob_type_test, empty_blobs_cast) {
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true);
-    global::config_pool()->enable_blob_cast(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int4},

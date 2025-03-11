@@ -34,9 +34,10 @@ public:
     /**
      * @brief construct new object
      * @param path the lob data file path
+     * @param is_temporary whether the data file on the path is temporary
      */
-    explicit clob_locator(std::string path) :
-        lob_locator(std::move(path))
+    clob_locator(std::string path, bool is_temporary) :
+        lob_locator(std::move(path), is_temporary)
     {}
 
 };

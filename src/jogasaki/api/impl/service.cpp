@@ -1400,7 +1400,7 @@ void service::set_params(
                 auto& v = p.blob();
                 if (req_info.request_source()->has_blob(v.channel_name())) {
                     auto& info = req_info.request_source()->get_blob(v.channel_name());
-                    params->set_blob(p.name(), field_type_traits<kind::blob>::parameter_type{info.path().string()});
+                    params->set_blob(p.name(), field_type_traits<kind::blob>::parameter_type{info.path().string(), info.is_temporary()});
                 }
                 break;
             }
@@ -1408,7 +1408,7 @@ void service::set_params(
                 auto& v = p.clob();
                 if (req_info.request_source()->has_blob(v.channel_name())) {
                     auto& info = req_info.request_source()->get_blob(v.channel_name());
-                    params->set_clob(p.name(), field_type_traits<kind::clob>::parameter_type{info.path().string()});
+                    params->set_clob(p.name(), field_type_traits<kind::clob>::parameter_type{info.path().string(), info.is_temporary()});
                 }
                 break;
             }

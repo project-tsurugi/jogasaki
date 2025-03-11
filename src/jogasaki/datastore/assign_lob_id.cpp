@@ -38,7 +38,7 @@ status assign_lob_id(
     using k = lob::lob_reference_kind;
     switch (ref.kind()) {
         case k::provided: {
-            if (auto res = register_lob(ref.locator()->path(), tx, id, error); res != status::ok) {
+            if (auto res = register_lob(ref.locator()->path(), ref.locator()->is_temporary(), tx, id, error); res != status::ok) {
                 return res;
             }
             break;

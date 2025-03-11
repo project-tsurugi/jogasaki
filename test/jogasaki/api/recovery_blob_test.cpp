@@ -93,8 +93,8 @@ TEST_F(recovery_blob_test, basic) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
 
     ASSERT_EQ(status::ok, db_->stop());
@@ -142,8 +142,8 @@ TEST_F(recovery_blob_test, update) {
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
-        ps->set_blob("p1", lob::blob_locator{path1});
-        ps->set_clob("p2", lob::clob_locator{path2});
+        ps->set_blob("p1", lob::blob_locator{path1, false});
+        ps->set_clob("p2", lob::clob_locator{path2, false});
         execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     }
     lob::lob_id_type old_id1;
@@ -165,7 +165,7 @@ TEST_F(recovery_blob_test, update) {
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
-        ps->set_blob("p1", lob::blob_locator{path3});
+        ps->set_blob("p1", lob::blob_locator{path3, false});
         execute_statement("UPDATE t SET c1 = :p1 WHERE c0 = :p0", variables, *ps);
     }
     lob::lob_id_type new_id1;

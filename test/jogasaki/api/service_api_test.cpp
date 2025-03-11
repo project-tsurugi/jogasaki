@@ -1373,8 +1373,8 @@ TEST_F(service_api_test, blob_types) {
     create_file(path1, "DEF");
     {
         std::vector<parameter> parameters{
-            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<lob::blob_locator>, lob::blob_locator{path0}}},
-            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<lob::clob_locator>, lob::clob_locator{path1}}},
+            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<lob::blob_locator>, lob::blob_locator{path0, false}}},
+            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<lob::clob_locator>, lob::clob_locator{path1, false}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
@@ -1484,8 +1484,8 @@ TEST_F(service_api_test, blob_types_error_handling) {
     create_file(path1, "DEF");
     {
         std::vector<parameter> parameters{
-            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<lob::blob_locator>, lob::blob_locator{path0}}},
-            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<lob::clob_locator>, lob::clob_locator{path1}}},
+            {"p0"s, ValueCase::kBlob, std::any{std::in_place_type<lob::blob_locator>, lob::blob_locator{path0, false}}},
+            {"p1"s, ValueCase::kClob, std::any{std::in_place_type<lob::clob_locator>, lob::clob_locator{path1, false}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 

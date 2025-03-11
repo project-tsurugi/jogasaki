@@ -116,8 +116,8 @@ TEST_F(blob_type_test, insert_provided) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);
@@ -156,7 +156,7 @@ TEST_F(blob_type_test, blob_pool_release) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
     std::shared_ptr<limestone::api::blob_pool> pool{};
     {
         auto tx = utils::create_transaction(*db_);
@@ -194,8 +194,8 @@ TEST_F(blob_type_test, update) {
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
-        ps->set_blob("p1", lob::blob_locator{path1});
-        ps->set_clob("p2", lob::clob_locator{path2});
+        ps->set_blob("p1", lob::blob_locator{path1, false});
+        ps->set_clob("p2", lob::clob_locator{path2, false});
         execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     }
     lob::lob_id_type id1;
@@ -215,8 +215,8 @@ TEST_F(blob_type_test, update) {
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
-        ps->set_blob("p1", lob::blob_locator{path3});
-        ps->set_clob("p2", lob::clob_locator{path4});
+        ps->set_blob("p1", lob::blob_locator{path3, false});
+        ps->set_clob("p2", lob::clob_locator{path4, false});
         execute_statement("UPDATE t SET c1 = :p1, c2 = :p2 WHERE c0 = :p0", variables, *ps);
     }
 
@@ -266,8 +266,8 @@ TEST_F(blob_type_test, update_partially) {
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
-        ps->set_blob("p1", lob::blob_locator{path1});
-        ps->set_clob("p2", lob::clob_locator{path2});
+        ps->set_blob("p1", lob::blob_locator{path1, false});
+        ps->set_clob("p2", lob::clob_locator{path2, false});
         execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
     }
     lob::lob_id_type id1;
@@ -287,7 +287,7 @@ TEST_F(blob_type_test, update_partially) {
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
-        ps->set_blob("p1", lob::blob_locator{path3});
+        ps->set_blob("p1", lob::blob_locator{path3, false});
         execute_statement("UPDATE t SET c1 = :p1 WHERE c0 = :p0", variables, *ps);
     }
 
@@ -339,8 +339,8 @@ TEST_F(blob_type_test, insert_from_select) {
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
-        ps->set_blob("p1", lob::blob_locator{path1});
-        ps->set_clob("p2", lob::clob_locator{path2});
+        ps->set_blob("p1", lob::blob_locator{path1, false});
+        ps->set_clob("p2", lob::clob_locator{path2, false});
         execute_statement("INSERT INTO src VALUES (:p0, :p1, :p2)", variables, *ps);
     }
     execute_statement("INSERT INTO dest SELECT c0, c1, c2 from src");
@@ -646,8 +646,8 @@ TEST_F(blob_type_test, query_provided_blob) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);
     execute_query("SELECT :p0, :p1, :p2 FROM t", variables, *ps, *tx, result);
@@ -692,8 +692,8 @@ TEST_F(blob_type_test, query_provided_blob_by_casting) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     std::vector<mock::basic_record> result{};
     execute_query("SELECT :p0, cast(:p1 as varbinary), cast(:p2 as varchar) FROM t", variables, *ps, result);
     ASSERT_EQ(1, result.size());
@@ -725,8 +725,8 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("create table t (c0 int primary key, c1 varbinary, c2 varchar)");
     execute_statement("INSERT INTO t VALUES (:p0, CAST(:p1 as varbinary), CAST(:p2 as varchar))", variables, *ps);
     {
@@ -765,8 +765,8 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting_) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_blob("p2", lob::blob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_blob("p2", lob::blob_locator{path2, false});
     execute_statement("create table t (c0 int primary key, c1 binary(10), c2 varbinary)");
     execute_statement("INSERT INTO t VALUES (:p0, CAST(:p1 as binary(10)), CAST(:p2 as varbinary))", variables, *ps);
     {
@@ -825,8 +825,8 @@ TEST_F(blob_type_test, insert_provided_multiple_times) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("INSERT INTO t VALUES (1, :p1, :p2), (2, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);
@@ -885,8 +885,8 @@ TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1}); // is_temporary = true
-    ps->set_clob("p2", lob::clob_locator{path2}); // is_temporary = true
+    ps->set_blob("p1", lob::blob_locator{path1, true}); // is_temporary = true
+    ps->set_clob("p2", lob::clob_locator{path2, true}); // is_temporary = true
     execute_statement("INSERT INTO t VALUES (1, :p1, :p2), (2, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);
@@ -945,8 +945,8 @@ TEST_F(blob_type_test, update_provided_multiple_times) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("UPDATE t SET c1 = :p1, c2 = :p2", variables, *ps);
     std::vector<mock::basic_record> result{};
     auto tx = utils::create_transaction(*db_);
@@ -999,7 +999,7 @@ TEST_F(blob_type_test, insert_file_io_error) {
     auto path1 = path()+"/dummy_file.dat";
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
     test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::lob_file_io_error);
 }
 
@@ -1114,8 +1114,8 @@ TEST_F(blob_type_test, max_len_to_cast_to_string) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
 
     std::vector<mock::basic_record> result{};
@@ -1147,8 +1147,8 @@ TEST_F(blob_type_test, over_max_len_to_cast_to_string) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
 
     test_stmt_err("SELECT c0, cast(c1 as varbinary) FROM t", error_code::value_too_long_exception);
@@ -1175,8 +1175,8 @@ TEST_F(blob_type_test, empty_blobs_cast) {
 
     auto ps = api::create_parameter_set();
     ps->set_int4("p0", 1);
-    ps->set_blob("p1", lob::blob_locator{path1});
-    ps->set_clob("p2", lob::clob_locator{path2});
+    ps->set_blob("p1", lob::blob_locator{path1, false});
+    ps->set_clob("p2", lob::clob_locator{path2, false});
     execute_statement("INSERT INTO t VALUES (:p0, :p1, :p2)", variables, *ps);
 
     std::vector<mock::basic_record> result{};

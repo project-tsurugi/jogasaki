@@ -26,6 +26,7 @@ status register_lob_impl(
     std::optional<std::string_view> path,
     std::optional<std::string_view> data,
     lob::lob_id_type in,
+    bool is_temporary,
     transaction_context* tx,
     lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
@@ -44,7 +45,7 @@ status register_lob_impl(
         if (data.has_value()) {
             out = tx->blob_pool()->register_data(data.value());
         } else if (path.has_value()) {
-            out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path.value()}}, false);
+            out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path.value()}}, is_temporary);
         } else {
             out = tx->blob_pool()->duplicate_data(in);
         }
@@ -59,11 +60,12 @@ status register_lob_impl(
 
 status register_lob(
     std::string_view path,
+    bool is_temporary,
     transaction_context* tx,
     lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
 ) {
-    return register_lob_impl(path, {}, {}, tx, out, error);
+    return register_lob_impl(path, {}, {}, is_temporary, tx, out, error);
 }
 
 status register_lob_data(
@@ -72,7 +74,7 @@ status register_lob_data(
     lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
 ) {
-    return register_lob_impl({}, data, {}, tx, out, error);
+    return register_lob_impl({}, data, {}, {}, tx, out, error);
 }
 
 status duplicate_lob(
@@ -81,7 +83,7 @@ status duplicate_lob(
     lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error
 ) {
-    return register_lob_impl({}, {}, in, tx, out, error);
+    return register_lob_impl({}, {}, in, {}, tx, out, error);
 }
 
 }  // namespace jogasaki::datastore

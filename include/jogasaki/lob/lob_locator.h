@@ -37,9 +37,11 @@ public:
     /**
      * @brief construct new object
      * @param path the lob data file path
+     * @param is_temporary whether the data file on the path is temporary
      */
-    explicit lob_locator(std::string path) :
-        path_(std::move(path))
+    lob_locator(std::string path, bool is_temporary) :
+        path_(std::move(path)),
+        is_temporary_(is_temporary)
     {}
 
     /**
@@ -50,6 +52,13 @@ public:
     }
 
     /**
+     * @brief return whether the blob data file is temporary
+     */
+    [[nodiscard]] bool is_temporary() const noexcept {
+        return is_temporary_;
+    }
+
+    /**
      * @brief compare two blob object references
      * @param a first arg to compare
      * @param b second arg to compare
@@ -57,7 +66,7 @@ public:
      * @return false otherwise
      */
     friend bool operator==(lob_locator const& a, lob_locator const& b) noexcept {
-        return a.path_ == b.path_;
+        return a.path_ == b.path_ && a.is_temporary_ == b.is_temporary_;
     }
 
     /**
@@ -78,11 +87,12 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, lob_locator const& value) {
-        return out << "path:\"" << value.path_ << "\"";
+        return out << "path:\"" << value.path_ << "\"" << " is_temporary:" << value.is_temporary_;
     }
 
 private:
     std::string path_{};
+    bool is_temporary_{};
 };
 
 }  // namespace jogasaki::lob

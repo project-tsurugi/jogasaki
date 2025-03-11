@@ -29,6 +29,7 @@ namespace jogasaki::datastore {
 /**
  * @brief register lob file and publish new id
  * @param path the path for the lob file
+ * @param is_temporary true if the lob data file is temporary
  * @param tx transaction to keep the scope object (blob pool) for the lob data
  * @param out [out] blob id assigned for the input lob data
  * @param error [out] error information is set when status code other than status::ok is returned
@@ -37,6 +38,7 @@ namespace jogasaki::datastore {
  */
 status register_lob(
     std::string_view path,
+    bool is_temporary,
     transaction_context* tx,
     lob::lob_id_type& out,
     std::shared_ptr<error::error_info>& error

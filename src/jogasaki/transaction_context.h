@@ -33,6 +33,7 @@
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/interference_size.h>
 
 namespace limestone::api {
 
@@ -56,7 +57,7 @@ inline std::uint32_t lower(std::uint64_t arg) {
 /**
  * @brief worker and its use count manager
  */
-class worker_manager {
+class cache_align worker_manager {
 public:
     constexpr static std::uint32_t empty_worker = static_cast<std::uint32_t>(-1);
 

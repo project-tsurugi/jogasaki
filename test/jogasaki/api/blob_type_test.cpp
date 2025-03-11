@@ -774,6 +774,66 @@ TEST_F(blob_type_test, insert_provided_multiple_times) {
     EXPECT_EQ(status::ok, tx->commit());
 }
 
+//TODO enable the testcase when handling temporary blob is implemented (see issue #1114)
+TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true) {
+    // same as insert_provided_multiple_times except the passed blob is temporary
+
+    // global::config_pool()->mock_datastore(true);
+    // datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+            {"p0", api::field_type_kind::int4},
+            {"p1", api::field_type_kind::blob},
+            {"p2", api::field_type_kind::clob},
+        };
+
+    auto path1 = path()+"/file1.dat";
+    auto path2 = path()+"/file2.dat";
+    create_file(path1, "\x00\x01\x02"sv);
+    create_file(path2, "ABC");
+
+    auto ps = api::create_parameter_set();
+    ps->set_int4("p0", 1);
+    ps->set_blob("p1", lob::blob_locator{path1, true}); // is_temporary = true
+    ps->set_clob("p2", lob::clob_locator{path2, true}); // is_temporary = true
+    execute_statement("INSERT INTO t VALUES (1, :p1, :p2), (2, :p1, :p2)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    auto tx = utils::create_transaction(*db_);
+    execute_query("SELECT c0, c1, c2 FROM t ORDER BY c0", *tx, result);
+    ASSERT_EQ(2, result.size());
+
+    auto ref0_1 = result[0].get_value<lob::blob_reference>(1);
+    auto ref0_2 = result[0].get_value<lob::clob_reference>(2);
+    auto ref1_1 = result[1].get_value<lob::blob_reference>(1);
+    auto ref1_2 = result[1].get_value<lob::clob_reference>(2);
+    EXPECT_NE(ref0_1.object_id(), ref1_1.object_id());
+    EXPECT_NE(ref0_2.object_id(), ref1_2.object_id());
+
+    auto* ds = datastore::get_datastore();
+    auto ret0_1 = ds->get_blob_file(ref0_1.object_id());
+    ASSERT_TRUE(ret0_1);
+    EXPECT_EQ("\x00\x01\x02"sv, read_file(ret0_1.path().string())) << ret0_1.path().string();
+    auto ret0_2 = ds->get_blob_file(ref0_2.object_id());
+    ASSERT_TRUE(ret0_2);
+    EXPECT_EQ("ABC", read_file(ret0_2.path().string())) << ret0_2.path().string();
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}})),
+              result[0]);
+
+    auto ret1_1 = ds->get_blob_file(ref1_1.object_id());
+    ASSERT_TRUE(ret1_1);
+    EXPECT_EQ("\x00\x01\x02"sv, read_file(ret1_1.path().string())) << ret1_1.path().string();
+    auto ret1_2 = ds->get_blob_file(ref1_2.object_id());
+    ASSERT_TRUE(ret1_2);
+    EXPECT_EQ("ABC", read_file(ret1_2.path().string())) << ret1_2.path().string();
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}})),
+              result[1]);
+    EXPECT_EQ(status::ok, tx->commit());
+}
+
 TEST_F(blob_type_test, update_provided_multiple_times) {
     // update and assign the same provided blob for multiple records
     // expecting same data with different object id

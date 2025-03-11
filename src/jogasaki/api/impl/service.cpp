@@ -932,9 +932,9 @@ void service::command_get_large_object_data(
     }
     auto* p = info.get();
     if (auto st = res->add_blob(std::move(info)); st != tateyama::status::ok) {
-        if (st == tateyama::status::invalid_request) {
+        if (st == tateyama::status::operation_denied) {
             auto err_info = create_error_info(
-                error_code::invalid_request,
+                error_code::operation_denied,
                 "sending blob not allowed in non-privileged mode",
                 status::err_unsupported
             );

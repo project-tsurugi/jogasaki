@@ -94,7 +94,7 @@ enum class error_code : std::int64_t {
     request_canceled = 50011,
     lob_file_io_error = 50012,
     lob_reference_invalid = 50013,
-    invalid_request = 50014,
+    operation_denied = 50014,
 };
 
 /**
@@ -168,7 +168,7 @@ enum class error_code : std::int64_t {
         case code::request_canceled: return "request_canceled"sv;
         case code::lob_file_io_error: return "lob_file_io_error"sv;
         case code::lob_reference_invalid: return "lob_reference_invalid"sv;
-        case code::invalid_request: return "invalid_request"sv;
+        case code::operation_denied: return "operation_denied"sv;
     }
     std::abort();
 }

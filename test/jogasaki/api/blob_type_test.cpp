@@ -498,6 +498,52 @@ TEST_F(blob_type_test, insert_generated_blob) {
     }
 }
 
+TEST_F(blob_type_test, insert_generated_empty_blob) {
+    // same as insert_generated_blob, but with empty blob
+    // regression testcase reported in issue #1162
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";
+    }
+    global::config_pool()->enable_blob_cast(true);
+
+    // currently mock is not supported
+    // global::config_pool()->mock_datastore(true);
+    // datastore::get_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
+
+    execute_statement("INSERT INTO t VALUES (1, CAST(x'' as BLOB), CAST('' as CLOB))");
+    {
+        // quickly verify the blobs by casting
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0, CAST(c1 as varbinary), CAST(c2 as varchar) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                      {1,  accessor::binary{""}, accessor::text{""}})),
+                  result[0]);
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        execute_query("SELECT c0, c1, c2 FROM t", *tx, result);
+        ASSERT_EQ(1, result.size());
+
+        auto ref1 = result[0].get_value<lob::blob_reference>(1);
+        auto ref2 = result[0].get_value<lob::clob_reference>(2);
+
+        auto* ds = datastore::get_datastore(false);
+        auto ret1 = ds->get_blob_file(ref1.object_id());
+        ASSERT_TRUE(ret1);
+        EXPECT_EQ(""sv, read_file(ret1.path().string())) << ret1.path().string();
+        auto ret2 = ds->get_blob_file(ref2.object_id());
+        ASSERT_TRUE(ret2);
+        EXPECT_EQ(""sv, read_file(ret2.path().string())) << ret2.path().string();
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
+                  result[0]);
+    }
+}
+
 TEST_F(blob_type_test, update_generated_blob) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has to use mock and there is a problem generated blob for mock";

@@ -23,8 +23,8 @@
 namespace jogasaki::datastore {
 
 status register_lob_impl(
-    std::string_view path,
-    std::string_view data,
+    std::optional<std::string_view> path,
+    std::optional<std::string_view> data,
     lob::lob_id_type in,
     transaction_context* tx,
     lob::lob_id_type& out,
@@ -41,10 +41,10 @@ status register_lob_impl(
         if (! tx->blob_pool()) {
             tx->blob_pool(ds->acquire_blob_pool());
         }
-        if (! data.empty()) {
-            out = tx->blob_pool()->register_data(data);
-        } else if (! path.empty()) {
-            out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path}}, false);
+        if (data.has_value()) {
+            out = tx->blob_pool()->register_data(data.value());
+        } else if (path.has_value()) {
+            out = tx->blob_pool()->register_file(boost::filesystem::path{std::string{path.value()}}, false);
         } else {
             out = tx->blob_pool()->duplicate_data(in);
         }

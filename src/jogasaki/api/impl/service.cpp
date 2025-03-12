@@ -1444,7 +1444,7 @@ void service::execute_query(
     std::shared_ptr<error::error_info> err_info{};
     if(q.has_sql()) {
         if(auto rc = get_impl(*db_).create_executable(q.sql(), e, err_info); rc != jogasaki::status::ok) {
-            VLOG(log_error) << log_location_prefix << "error in db_->create_executable() : " << rc;
+            abort_tx(tx, req_info, err_info);
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }

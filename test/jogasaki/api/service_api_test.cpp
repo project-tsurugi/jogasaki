@@ -1620,6 +1620,31 @@ TEST_F(service_api_test, empty_request) {
     ASSERT_TRUE(st);
 }
 
+TEST_F(service_api_test, syntax_error_aborts_tx) {
+    std::uint64_t tx_handle{};
+    std::uint64_t stmt_handle{0};
+    {
+        test_begin(tx_handle);
+        auto text = "select * from dummy"s;
+        auto s = encode_execute_query(tx_handle, text);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_FALSE(success);
+            ASSERT_EQ(error_code::symbol_analyze_exception, error.code_);
+            ASSERT_FALSE(error.message_.empty());
+        }
+        test_commit(tx_handle, true, error_code::inactive_transaction_exception); // verify tx already aborted
+    }
+}
+
 TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
     std::uint64_t tx_handle{};
     std::uint64_t stmt_handle{0};

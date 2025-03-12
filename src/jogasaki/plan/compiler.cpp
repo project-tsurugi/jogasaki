@@ -886,7 +886,8 @@ status validate_host_variables(
         // only following type differences are admissible:
         // - int4 parameter assigned for int8 host variable
         // - time_of_day or time_point parameter/host variables differ only in the existence of time zone offset
-        if (ptype != vtype) {
+        // - parameter is null, i.e. its type is unknown
+        if (ptype.kind() != meta::field_type_kind::unknown && ptype != vtype) {
             if (! (ptype.kind() == meta::field_type_kind::int4 && vtype.kind() == meta::field_type_kind::int8) &&
                 ! (ptype.kind() == meta::field_type_kind::time_point && vtype.kind() == meta::field_type_kind::time_point) &&
                 ! (ptype.kind() == meta::field_type_kind::time_of_day && vtype.kind() == meta::field_type_kind::time_of_day)) {

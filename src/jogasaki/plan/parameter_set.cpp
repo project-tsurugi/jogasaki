@@ -176,7 +176,7 @@ void parameter_set::set_reference_column(std::string_view name, std::string_view
 void parameter_set::set_null(std::string_view name) {
     add(std::string(name),
         {
-            meta::field_type{meta::field_enum_tag<kind::undefined>},
+            meta::field_type{meta::field_enum_tag<kind::unknown>},
             data::value{}
         }
     );

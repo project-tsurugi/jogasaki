@@ -140,7 +140,7 @@ TEST_F(sql_long_length_varlen_data_test, create_table_binary_longest_key) {
         {"p0", api::field_type_kind::octet},
     };
     auto ps = api::create_parameter_set();
-    ps->set_character("p0", long_str);
+    ps->set_octet("p0", long_str);
     execute_statement("INSERT INTO t VALUES (:p0)", variables, *ps);
     {
         std::vector<mock::basic_record> result{};
@@ -183,7 +183,7 @@ TEST_F(sql_long_length_varlen_data_test, too_long_varbinary_data) {
         {"p0", api::field_type_kind::octet},
     };
     auto ps = api::create_parameter_set();
-    ps->set_character("p0", long_str);
+    ps->set_octet("p0", long_str);
     execute_statement("INSERT INTO t VALUES (0, :p0)", variables, *ps);
     {
         std::vector<mock::basic_record> result{};

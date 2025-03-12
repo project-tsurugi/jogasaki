@@ -387,7 +387,7 @@ size_t get_byte(encoding_type e) {
         case encoding_type::UTF8_2BYTE: return 2;
         case encoding_type::UTF8_3BYTE: return 3;
         case encoding_type::UTF8_4BYTE: return 4;
-        case encoding_type::INVALID: return 1; // or 0
+        case encoding_type::INVALID: return 0;
     }
     return 0;
 }
@@ -414,6 +414,15 @@ size_t get_size_byte(std::string_view view, const size_t start_byte, const size_
     }
     // offset is sum of tmp_bytes
     return offset - start_byte;
+}
+bool is_valid_utf8(std::string_view view) {
+    size_t offset = 0;
+    while (offset < view.size()) {
+        size_t char_size = get_byte(detect_next_encoding(view, offset));
+        if (char_size == 0) { return false; }
+        offset += char_size;
+    }
+    return true;
 }
 
 } // namespace impl
@@ -476,8 +485,9 @@ data::any substring(evaluator_context&, sequence_view<data::any> args) {
 
     if (src.type_index() == data::any::index<accessor::text>) {
         auto text = src.to<runtime_t<kind::character>>();
-        return extract_substring(
-            static_cast<std::string_view>(text), std::in_place_type<runtime_t<kind::character>>);
+        auto str  = static_cast<std::string_view>(text);
+        if (!impl::is_valid_utf8(str)) { return {}; }
+        return extract_substring(str, std::in_place_type<runtime_t<kind::character>>);
     }
 
     std::abort();

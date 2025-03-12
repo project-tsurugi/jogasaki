@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ enum class scalar_function_kind : std::size_t {
     localtime,
     current_timestamp,
     localtimestamp,
+    substring
 };
 
 /**
@@ -47,6 +48,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::localtime: return "localtime"sv;
         case kind::current_timestamp: return "current_timestamp"sv;
         case kind::localtimestamp: return "localtimestamp"sv;
+        case kind::substring: return "substring"sv;
     }
     std::abort();
 }

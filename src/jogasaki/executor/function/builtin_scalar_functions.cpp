@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -190,6 +190,52 @@ void add_builtin_scalar_functions(
             {},
         });
     }
+    /////////
+    // substring
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substring, builtin::substring, 3);
+        auto name = "substring";
+        auto id   = scalar_function_id::id_11006;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying), t::int8(), t::int8()},
+        });
+        info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substring, builtin::substring, 2);
+        id = scalar_function_id::id_11007;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying), t::int8()},
+        });
+        info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substring, builtin::substring, 3);
+        id = scalar_function_id::id_11008;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::octet(t::varying),
+            {t::octet(t::varying), t::int8(), t::int8()},
+        });
+        info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substring, builtin::substring, 2);
+        id = scalar_function_id::id_11009;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::octet(t::varying),
+            {t::octet(t::varying), t::int8()},
+        });
+    }
 }
 
 namespace builtin {
@@ -296,6 +342,158 @@ data::any localtimestamp(
     return data::any{std::in_place_type<runtime_t<kind::time_point>>, tp};
 }
 
-}  // namespace builtin
+namespace impl {
+enum class encoding_type { ASCII_1BYTE, UTF8_2BYTE, UTF8_3BYTE, UTF8_4BYTE, INVALID };
+//
+//  mizugaki/src/mizugaki/parser/sql_scanner.ll
+//  ASCII   [\x00-\x7f]
+//  UTF8_2  [\xc2-\xdf]
+//  UTF8_3  [\xe0-\xef]
+//  UTF8_4  [\xf0-\xf4]
+//  U       [\x80-\xbf]
+//
 
-}  // namespace jogasaki::executor::function
+bool is_continuation_byte(unsigned char c) { return (c & 0xC0U) == 0x80U; }
+encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
+    if (view.empty()) return encoding_type::INVALID;
+    if (offset >= view.size()) return encoding_type::INVALID;
+    const auto offset_2nd = offset + 1;
+    const auto offset_3rd = offset + 2;
+    auto first            = static_cast<unsigned char>(view[offset]);
+    if (first <= 0x7FU) { return encoding_type::ASCII_1BYTE; }
+    if (first >= 0xC2U && first <= 0xDFU) {
+        return (view.size() >= 2 && is_continuation_byte(view[offset_2nd]))
+                   ? encoding_type::UTF8_2BYTE
+                   : encoding_type::INVALID;
+    }
+    if (first >= 0xE0U && first <= 0xEFU) {
+        return (view.size() >= 3 && is_continuation_byte(view[offset_2nd]) &&
+                   is_continuation_byte(view[offset_3rd]))
+                   ? encoding_type::UTF8_3BYTE
+                   : encoding_type::INVALID;
+    }
+    if (first >= 0xF0U && first <= 0xF4U) {
+        const auto offset_4th = offset + 3;
+        return (view.size() >= 4 && is_continuation_byte(view[offset_2nd]) &&
+                   is_continuation_byte(view[offset_3rd]) && is_continuation_byte(view[offset_4th]))
+                   ? encoding_type::UTF8_4BYTE
+                   : encoding_type::INVALID;
+    }
+    return encoding_type::INVALID;
+}
+size_t get_byte(encoding_type e) {
+    switch (e) {
+        case encoding_type::ASCII_1BYTE: return 1;
+        case encoding_type::UTF8_2BYTE: return 2;
+        case encoding_type::UTF8_3BYTE: return 3;
+        case encoding_type::UTF8_4BYTE: return 4;
+        case encoding_type::INVALID: return 0;
+    }
+    return 0;
+}
+size_t get_start_index_byte(
+    std::string_view view, const int64_t zero_based_start, bool is_character_type) {
+    if (!is_character_type) { return zero_based_start; }
+    size_t tmp_byte = 0;
+    size_t offset   = 0;
+    for (int64_t i = 0; i < zero_based_start; ++i) {
+        tmp_byte = get_byte(detect_next_encoding(view, offset));
+        offset += tmp_byte;
+    }
+    // offset is sum of tmp_bytes
+    return offset;
+}
+size_t get_size_byte(std::string_view view, const size_t start_byte, const size_t letter_count,
+    bool is_character_type) {
+    if (!is_character_type) { return letter_count; }
+    size_t tmp_byte = 0;
+    size_t offset   = start_byte;
+    for (size_t i = 0; i < letter_count; ++i) {
+        tmp_byte = get_byte(detect_next_encoding(view, offset));
+        offset += tmp_byte;
+    }
+    // offset is sum of tmp_bytes
+    return offset - start_byte;
+}
+bool is_valid_utf8(std::string_view view) {
+    size_t offset = 0;
+    while (offset < view.size()) {
+        size_t char_size = get_byte(detect_next_encoding(view, offset));
+        if (char_size == 0) { return false; }
+        offset += char_size;
+    }
+    return true;
+}
+
+template <typename TypeTag>
+data::any extract_substring(std::string_view view, TypeTag type_tag, int64_t zero_based_start,
+    std::optional<runtime_t<kind::int8>> casted_length) {
+    constexpr bool is_character_type =
+        std::is_same_v<std::decay_t<TypeTag>, std::in_place_type_t<runtime_t<kind::character>>>;
+    const auto view_size = view.size();
+    if (view_size == 0 || zero_based_start < 0 ||
+        static_cast<std::size_t>(zero_based_start) >= view_size) {
+        return {};
+    }
+    const auto start_byte = impl::get_start_index_byte(view, zero_based_start, is_character_type);
+    if (start_byte >= view_size) { return {}; }
+    std::string_view sub_view;
+    if (casted_length) {
+        const auto casted_length_value = casted_length.value();
+        if (casted_length_value == 0) { return data::any{type_tag, ""}; }
+        if (casted_length_value > 0) {
+            const auto substr_length_byte =
+                impl::get_size_byte(view, start_byte, casted_length_value, is_character_type);
+            if (view_size < substr_length_byte + start_byte) {
+                sub_view = view.substr(start_byte, view_size - start_byte);
+            } else {
+                sub_view = view.substr(start_byte, substr_length_byte);
+            }
+        } else {
+            return {};
+        }
+    } else {
+        sub_view = view.substr(start_byte);
+    }
+    return data::any{type_tag, sub_view};
+}
+
+} // namespace impl
+
+data::any substring(evaluator_context&, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 2 || args.size() == 3); // NOLINT
+
+    std::optional<std::reference_wrapper<data::any>> length;
+    std::optional<runtime_t<kind::int8>> casted_length;
+
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+
+    auto& start = static_cast<data::any&>(args[1]);
+    if (start.empty()) { return {}; }
+
+    const auto zero_based_start = start.to<runtime_t<kind::int8>>() - 1;
+
+    if (args.size() > 2) {
+        length        = static_cast<data::any&>(args[2]);
+        casted_length = length->get().to<runtime_t<kind::int8>>();
+    }
+    if (src.type_index() == data::any::index<accessor::binary>) {
+        auto bin = src.to<runtime_t<kind::octet>>();
+        return impl::extract_substring(static_cast<std::string_view>(bin),
+            std::in_place_type<runtime_t<kind::octet>>, zero_based_start, casted_length);
+    }
+    if (src.type_index() == data::any::index<accessor::text>) {
+        auto text = src.to<runtime_t<kind::character>>();
+        auto str  = static_cast<std::string_view>(text);
+        if (!impl::is_valid_utf8(str)) { return {}; }
+        return impl::extract_substring(
+            str, std::in_place_type<runtime_t<kind::character>>, zero_based_start, casted_length);
+    }
+
+    std::abort();
+}
+
+} // namespace builtin
+
+} // namespace jogasaki::executor::function

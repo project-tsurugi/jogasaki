@@ -48,6 +48,6 @@ enum scalar_function_id : std::size_t {
 };
 
 static_assert(scalar_function_id::id_11000 == 11'000);
-static_assert(scalar_function_id::id_11005 == 11'005);
+static_assert(scalar_function_id::id_11009 == 11'009);
 
 }  // namespace jogasaki::executor::function

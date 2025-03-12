@@ -867,7 +867,8 @@ status validate_host_variables(
     if(! info) return status::ok;
     for(auto it = info->name_list_begin(); it != info->name_list_end(); ++it) {
         auto& name = it->first;
-        if(! parameters->find(name)) {
+        auto p = parameters->find(name);
+        if (! p.has_value()) {
             std::stringstream ss{};
             ss << "Value is not assigned for host variable '" << name << "'";
             auto res = status::err_unresolved_host_variable;
@@ -879,6 +880,24 @@ status validate_host_variables(
                 res
             );
             return res;
+        }
+        auto& ptype = p.value().type();
+        auto& vtype = info->meta()->at(info->at(name).index());
+        // only following type differences are admissible:
+        // - int4 parameter assigned for int8 host variable
+        // - time_of_day or time_point parameter/host variables differ only in the existence of time zone offset
+        if (ptype != vtype) {
+            if (! (ptype.kind() == meta::field_type_kind::int4 && vtype.kind() == meta::field_type_kind::int8) &&
+                ! (ptype.kind() == meta::field_type_kind::time_point && vtype.kind() == meta::field_type_kind::time_point) &&
+                ! (ptype.kind() == meta::field_type_kind::time_of_day && vtype.kind() == meta::field_type_kind::time_of_day)) {
+                std::stringstream ss{};
+                ss << "parameter and host variable types are not compatible name:'"
+                   << name << "' parameter:" << ptype << " variable:" << vtype;
+                auto res = status::err_unresolved_host_variable;
+                VLOG_LP(log_error) << res << ": " << ss.str();
+                set_compile_error(ctx, error_code::parameter_exception, ss.str(), res);
+                return res;
+            }
         }
     }
     return status::ok;

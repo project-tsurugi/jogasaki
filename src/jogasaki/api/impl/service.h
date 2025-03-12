@@ -26,8 +26,11 @@
 #include <boost/stacktrace/stacktrace.hpp>
 #include <tbb/concurrent_hash_map.h>
 
+#include <takatori/type/character.h>
 #include <takatori/type/data.h>
 #include <takatori/type/date.h>
+#include <takatori/type/decimal.h>
+#include <takatori/type/octet.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
@@ -35,8 +38,6 @@
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/reference_list_view.h>
-#include <yugawara/storage/column.h>
-#include <yugawara/storage/table.h>
 #include <tateyama/api/configuration.h>
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/request.h>
@@ -45,6 +46,8 @@
 #include <tateyama/framework/service.h>
 #include <tateyama/status.h>
 #include <tateyama/utils/cache_align.h>
+#include <yugawara/storage/column.h>
+#include <yugawara/storage/table.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/error_info.h>
@@ -253,38 +256,84 @@ inline void success<sql::response::Prepare>(
     reply(res, r, req_info);
 }
 
-inline ::jogasaki::proto::sql::common::AtomType to_atom_type(takatori::type::data const& type) {
+inline void set_column_type(
+    takatori::type::data const& type,
+    ::jogasaki::proto::sql::common::Column& c
+) {
     using k = takatori::type::type_kind;
     using AtomType = ::jogasaki::proto::sql::common::AtomType;
+    AtomType typ = AtomType::UNKNOWN;
     switch(type.kind()) {
-        case k::boolean: return AtomType::BOOLEAN;
-        case k::int4: return AtomType::INT4;
-        case k::int8: return AtomType::INT8;
-        case k::float4: return AtomType::FLOAT4;
-        case k::float8: return AtomType::FLOAT8;
-        case k::decimal: return AtomType::DECIMAL;
-        case k::character: return AtomType::CHARACTER;
-        case k::octet: return AtomType::OCTET;
-        case k::bit: return AtomType::BIT;
-        case k::date: return AtomType::DATE;
+        case k::boolean: typ = AtomType::BOOLEAN; break;
+        case k::int4: typ = AtomType::INT4; break;
+        case k::int8: typ = AtomType::INT8; break;
+        case k::float4: typ = AtomType::FLOAT4; break;
+        case k::float8: typ = AtomType::FLOAT8; break;
+        case k::decimal: {
+            typ = AtomType::DECIMAL;
+            auto prec = static_cast<takatori::type::decimal const&>(type).precision();
+            auto scale = static_cast<takatori::type::decimal const&>(type).scale();
+            if (prec.has_value()) {
+                c.set_precision(prec.value());
+            } else {
+                c.mutable_arbitrary_precision();
+            }
+            if (scale.has_value()) {
+                c.set_scale(scale.value());
+            } else {
+                c.mutable_arbitrary_scale();
+            }
+            break;
+        }
+        case k::character: {
+            typ = AtomType::CHARACTER;
+            auto len = static_cast<takatori::type::character const&>(type).length();
+            auto varying = static_cast<takatori::type::character const&>(type).varying();
+            if (len.has_value()) {
+                c.set_length(len.value());
+            } else {
+                c.mutable_arbitrary_length();
+            }
+            c.set_varying(varying);
+            break;
+        }
+        case k::octet: {
+            typ = AtomType::OCTET;
+            auto len = static_cast<takatori::type::octet const&>(type).length();
+            auto varying = static_cast<takatori::type::octet const&>(type).varying();
+            if (len.has_value()) {
+                c.set_length(len.value());
+            } else {
+                c.mutable_arbitrary_length();
+            }
+            c.set_varying(varying);
+            break;
+        }
+        case k::bit: typ = AtomType::BIT; break;
+        case k::date: typ = AtomType::DATE; break;
         case k::time_of_day: {
             if(static_cast<takatori::type::time_of_day const&>(type).with_time_zone()) { //NOLINT
-                return AtomType::TIME_OF_DAY_WITH_TIME_ZONE;
+                typ = AtomType::TIME_OF_DAY_WITH_TIME_ZONE;
+                break;
             }
-            return AtomType::TIME_OF_DAY;
+            typ = AtomType::TIME_OF_DAY;
+            break;
         }
         case k::time_point: {
             if(static_cast<takatori::type::time_point const&>(type).with_time_zone()) { //NOLINT
-                return AtomType::TIME_POINT_WITH_TIME_ZONE;
+                typ = AtomType::TIME_POINT_WITH_TIME_ZONE;
+                break;
             }
-            return AtomType::TIME_POINT;
+            typ = AtomType::TIME_POINT;
+            break;
         }
-        case k::blob: return AtomType::BLOB;
-        case k::clob: return AtomType::CLOB;
-        case k::datetime_interval: return AtomType::DATETIME_INTERVAL;
+        case k::blob: typ = AtomType::BLOB; break;
+        case k::clob: typ = AtomType::CLOB; break;
+        case k::datetime_interval: typ = AtomType::DATETIME_INTERVAL; break;
         default:
-            return AtomType::UNKNOWN;
+            break;
     }
+    c.set_atom_type(typ);
 }
 
 template<>
@@ -325,7 +374,8 @@ inline void success<sql::response::DescribeTable>(
         }
         auto* c = cols->Add();
         c->set_name(std::string{col.simple_name()});
-        c->set_atom_type(to_atom_type(col.type()));
+        set_column_type(col.type(), *c);
+        c->set_nullable(col.criteria().nullity().nullable());
     }
     reply(res, r, req_info);
 }

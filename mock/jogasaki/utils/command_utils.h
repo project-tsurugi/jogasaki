@@ -455,7 +455,7 @@ inline void fill_parameters(
             }
             case ValueCase::kClob: {
                 auto loc = std::any_cast<lob::clob_locator>(p.value_);
-                auto* c = c0->mutable_blob();
+                auto* c = c0->mutable_clob();
                 c->mutable_local_path()->assign(loc.path());
                 // for convenience, we use the path string as channel name as well
                 c->mutable_channel_name()->assign(loc.path());

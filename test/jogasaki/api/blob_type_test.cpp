@@ -1065,8 +1065,7 @@ TEST_F(blob_type_test, invalid_insert_from_literals) {
     test_stmt_err("INSERT INTO t VALUES (1, 'ABC')", error_code::unsupported_runtime_feature_exception);
 }
 
-// FIXME fix the problem of invalid parameter types
-TEST_F(blob_type_test, DISABLED_invalid_parameter_types) {
+TEST_F(blob_type_test, invalid_parameter_types) {
     // valid type used by host variables (placeholders), but invalid type is used for parameters
     // global::config_pool()->mock_datastore(true);
     // datastore::get_datastore(true);
@@ -1080,7 +1079,7 @@ TEST_F(blob_type_test, DISABLED_invalid_parameter_types) {
     ps->set_int4("p0", 1);
     ps->set_octet("p1", "\x00\x01\x02"sv);
 
-    test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::unsupported_runtime_feature_exception);
+    test_stmt_err("INSERT INTO t VALUES (:p0, :p1)", variables, *ps, error_code::parameter_exception);
 }
 
 TEST_F(blob_type_test, max_len_to_cast_to_string) {

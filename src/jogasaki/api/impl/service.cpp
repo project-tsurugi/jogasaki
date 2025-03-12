@@ -935,7 +935,7 @@ void service::command_get_large_object_data(
         if (st == tateyama::status::operation_denied) {
             auto err_info = create_error_info(
                 error_code::operation_denied,
-                "sending blob not allowed in non-privileged mode",
+                "BLOB handling in privileged mode is not allowed",
                 status::err_unsupported
             );
             details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);

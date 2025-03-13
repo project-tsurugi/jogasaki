@@ -4,7 +4,7 @@
 
 ## この文書について
 
-* この文書では`SUBSTRING`外部仕様を示す
+* この文書では`SUBSTRING`の外部仕様を示す
 
 # 目次
 
@@ -38,7 +38,7 @@ SUBSTRING(string_expression FROM start_position [FOR length])
 
 ### 文字列を返すケース(典型的なパターン)
 
-SUBSTRING関数は string_expression の start_position 位置から length だけ部分文字列を取得します
+`SUBSTRING`関数は `string_expression` の `start_position` 位置から `length` だけ部分文字列を取得します
 
 以下に例を挙げて説明します。
 
@@ -47,8 +47,6 @@ SUBSTRING ( 'abcde' FROM 2 FOR 3 )
 ```
 
 この場合、2文字目の`b`を起点にして3文字目の`d`までの`"bcd"`文字列を取り出します。この動作は、PostgreSQL(14.12)、MariaDB(10.6.18)、Oracleの主要DBと同じです。
-
-また後述の`NULLを返すケース`、`空文字を返すケース以外`はすべて文字列を返します。
 
 ### 有効コードポイント数を超えるパターン
 
@@ -67,7 +65,7 @@ SUBSTRING ( 'abcde' FROM 2 FOR 3 )
 
 #### 空文字を返すケース
 
-空文字を返すケースは`NULLを返すケース以外`でかつ`length = 0`
+`NULL`を返すケース以外でかつ`length = 0`の場合、空文字列を返します
 
 
 ## 付録
@@ -133,7 +131,7 @@ SUBSTRING ( 'abcde' FROM 2 FOR 3 )
 ### string_expressionの型で結果が異なる例
 
 `varchar(20)`および`char(20)`に文字列`"abcde"`を格納した場合
-varcharは可変長なので`"abcde"`という文字列扱いですが、charは固定長のため`"abcde               "`という風にeの後続に15個の空白文字が格納されています。
+`varchar`は可変長なので`"abcde"`という文字列扱いですが、`char`は固定長のため`"abcde               "`という風にeの後続に15個の空白文字が格納されています。
 
 `start_position`を1、`length`を5と指定し場合、`varchar`,`char`両方とも`"abcde"`を返しますが`start_position`を1、`length`を6と指定し場合、`varchar`は`abcde`、`char`は`"abcde "`を返すことに注意してください。
 

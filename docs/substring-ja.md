@@ -1,85 +1,72 @@
-# SUBSTRING動作仕様
+# SUBSTRING外部仕様
 
 2025-03-13 nishimura
 
 ## この文書について
 
-* この文書では`SUBSTRING`動作仕様を示す
+* この文書では`SUBSTRING`外部仕様を示す
 
 # 目次
 
 1. [定義](#定義)
-2. [動作仕様](#動作仕様)
+2. [外部仕様](#外部仕様)
 3. [注意事項](#注意事項)
 4. [早見表](#早見表)
 
 ## 定義
 
-`SUBSTRING`関数の各種`expression`を以下の通り定義する
+`SUBSTRING`は、文字列から部分文字列を抽出するためISO/IEC 9075 で定義された関数です。
+
+
+`SUBSTRING`関数の構文は以下の通りです。
 
 ```
-SUBSTRING(string_expression FROM start_position FOR length)
+SUBSTRING(string_expression FROM start_position [FOR length])
 ```
 
-以下の略称を使用する
+* string_expression：部分文字列を抽出する対象の文字列式(以下SE)
+* start_position：抽出を開始する位置を指定する整数式で、文字列の最初の文字を位置1とします。(以下S)
+* length：抽出する文字数を指定する整数式（省略可能、以下L）
 
-* SE - string_expression
-* S  - start_position
-* L  - length
+## 外部仕様
 
-`Tsurugi`では`string_expression` SEの型として`char`、`varchar`、`binary`、`varbinary`の4つのみ許容されます。
+`Tsurugi`では`string_expression` の型として`char`、`varchar`、`binary`、`varbinary`の4つのみ許容されます。以下に具体的にどのような文字列を返すについて述べます。
 
-## 動作仕様
+### 文字列を返すケース(典型的なパターン)
+
+以下に例を挙げて説明します。
+
+```
+select SUBSTRING ( "abcde" FROM 2 FOR 3 ) FROM T1
+```
+
+この場合、2文字目の`b`を起点にして3文字目の`d`までの`"bcd"`文字列を取り出します。この動作は、PostgreSQL(14.12)、MariaDB(10.6.18)、Oracleの主要DBと同じです。
+
+また後述の`NULLを返すケース`、`空文字を返すケース以外`はすべて文字列を返します。
+
+### 文字列を返すケース(文字長は超えない、可変長で文字数を超過するパターン)
+
+可変長の `varchar(20)` に`"abcde"`を格納して`start_position = 4`、`length = 3`を指定した場合、 `length`が文字数を超えますがその場合、
+`length`は指定可能な最大値`2`を指定されたとみなして`"de"`を返します。
+
+### 文字列を返すケース(文字長を超える、可変長、固定長共通)
+
+`start_position`の文字長を`SP_LEN`と指定して、`start_position`と`length`の合計が`SP_LEN`を超える場合、`length`は指定可能な最大値`SP_LEN`-`start_position`が指定されたと見なされます。
 
 ### NULLを返すケース
 
 `NULLを返すケース`は以下の通りです。
 
 * `UTF-8`として不正な文字列が存在する(対象文字列の型が`varchar`もしくは`char`のみ)
-* 対象文字列が`NULL`
-* `start_position` (S) < 1 または `SE`の長さ < `start_position`
+* `string_expression` (SE) が`NULL`
+* `start_position` (S) < 1 または `SE`の長さ < `start_position` (S)
 * `length` (L) < 0
-* `length` に`NULL`を指定する
+* `length` (L) が`NULL`
+* `start_position` (S) が`NULL`
 
 ### 空文字を返すケース
 
 空文字を返すケースは`NULLを返すケース以外`でかつ`length (L) = 0`
-
-### 文字列を返すケース(典型的なパターン)
-
-`NULLを返すケース`、`空文字を返すケース以外`はすべて文字列を返します。
-
-以下に例を挙げて説明します。
-
-対象文字列`"abcde"`を格納したテーブル`T1`の`C1`列に対して、`SUBSTRING`を使用して文字を取り出す典型的なSQL文は以下の通りです。
-
-```
-select SUBSTRING ( C1 FROM 2 FOR 3 ) FROM T1
-```
-
-この場合、2文字目の`b`を起点にして3文字目の`d`までの`"bcd"`文字列を取り出します。この動作は、PostgreSQL(14.12)、MariaDB(10.6.18)、Oracleの主要DBと同じです。
-
-### 文字列を返すケース(可変長で文字数を超過するパターン)
-
-`length` (L) が可変長で格納した文字数を超える場合、例えば`varchar(20)`型に`"abcde"`を格納して`SUBSTRING`、`start_position` (S) =3 `length` (L) =4 適用した場合、
-
-```
-select SUBSTRING ( C1 FROM 3 FOR 4 ) FROM T1
-```
-
-`c`からは3文字しかないため、`c`起点の文字数より大きい`length` (L) を指定したケースになりますが、この場合は指定可能な文字数の最大値を返します。
-
-このケースの場合指定可能な文字数は`c`起点で`e`の位置までの文字数、すなわち`3`です。
-
-```
-select SUBSTRING ( C1 FROM 3 FOR 3 ) FROM T1
-```
-
-よって`"cde"`が返却されます。
-
-### 文字列を返すケース(固定長で文字数を超過するパターン)
-
-`length` (L) が固定長で指定した文字数を超える場合、例えば`char(20)`に格納された文字列に対して、`start_position = 3`、`length = 40`という指定があるとします。この場合、`length`の指定は実際に格納されている最大の文字数に調整されます。例の場合、`length = 17`が最大値となり、指定可能な範囲内で文字列が返されます。
 
 ## 注意事項
 

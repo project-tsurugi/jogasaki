@@ -620,4 +620,45 @@ TEST_F(function_substring_test, invalid_utf8_4byte) {
     }
 }
 
+TEST_F(function_substring_test, 3rd_null) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(20))");
+    execute_statement("insert into t values ('abcde')");
+    std::string query = std::string("SELECT substring(c0 FROM 1 FOR NULL ) FROM t");
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+}
+
+TEST_F(function_substring_test, 2nd_3rd_null) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(20))");
+    execute_statement("insert into t values ('abcde')");
+    std::string query = std::string("SELECT substring(c0 FROM NULL FOR NULL ) FROM t");
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+}
+
+TEST_F(function_substring_test, 2nd_null) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(20))");
+    execute_statement("insert into t values ('abcde')");
+    std::string query = std::string("SELECT substring(c0 FROM NULL ) FROM t");
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+}
+
+
+TEST_F(function_substring_test, 2nd_null_3rd_number) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(20))");
+    execute_statement("insert into t values ('abcde')");
+    std::string query = std::string("SELECT substring(c0 FROM NULL FOR 2 ) FROM t");
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+}
+
 }  // namespace jogasaki::testing

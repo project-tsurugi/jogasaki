@@ -29,16 +29,16 @@ SUBSTRING(string_expression FROM start_position [FOR length])
 
 ## 外部仕様
 
-`Tsurugi`では`string_expression` の型として`char`、`varchar`、`binary`、`varbinary`の4つのみ許容されます。
-
-`binary`、`varbinary`の場合はバイナリデータをバイト単位で処理します。戻り値の型は`varbinary`になります。
-`char`、`varchar`はUTF-8データをコードポイント数単位で処理します。戻り値の型は`varchar`になります。
+* `Tsurugi`では`string_expression` の型として`char`、`varchar`、`binary`、`varbinary`の4つのみ許容されます。
+* `binary`、`varbinary`の場合はバイナリデータをバイト単位で処理します。戻り値の型は`varbinary`になります。
+* `char`、`varchar`はUTF-8データをコードポイント数単位で処理します。戻り値の型は`varchar`になります。
 
 以下に具体的にどのような文字列を返すについて述べます。
 
 ### 文字列を返すケース(典型的なパターン)
 
-`SUBSTRING`関数は `string_expression` の `start_position` 位置から `length` だけ部分文字列を取得します。`length`指定がない場合、または`start_position`と`length`の合計値が`string_expression`に格納された文字列の終端を超える場合、`start_position`から終端までの文字列を返します。
+* `SUBSTRING`関数は `string_expression` の `start_position` 位置から `length` だけ部分文字列を取得します。
+* `length`指定がない場合、または`start_position`と`length`の合計値が`string_expression`に格納された文字列の終端を超える場合、`start_position`から終端までの文字列を返します。
 
 以下に例を挙げて説明します。
 
@@ -55,7 +55,7 @@ SUBSTRING ( 'abcde' FROM 2 FOR 3 )
 以下の場合は`NULL`を返します
 
 * `UTF-8`として不正な文字列が存在する(対象文字列の型が`varchar`もしくは`char`のみ)
-*  `string_expression`, `start_position`, `length`のいずれかがNULL
+* `string_expression`, `start_position`, `length`のいずれかが`NULL`
 * `start_position`< 1 または `string_expression`の長さ < `start_position`
 * `length` < 0
 

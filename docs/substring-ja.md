@@ -39,6 +39,7 @@ SUBSTRING(string_expression FROM start_position FOR length)
 * 対象文字列が`NULL`
 * `start_position` (S) < 1 または `SE`の長さ < `start_position`
 * `length` (L) < 0
+* `length` に`NULL`を指定する
 
 ### 空文字を返すケース
 

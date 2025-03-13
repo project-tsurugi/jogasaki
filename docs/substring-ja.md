@@ -10,8 +10,8 @@
 
 1. [定義](#定義)
 2. [外部仕様](#外部仕様)
-3. [注意事項](#注意事項)
-4. [早見表](#早見表)
+3. [早見表](#早見表)
+4. [付録](#付録)
 
 ## 定義
 
@@ -30,7 +30,12 @@ SUBSTRING(string_expression FROM start_position [FOR length])
 
 ## 外部仕様
 
-`Tsurugi`では`string_expression` の型として`char`、`varchar`、`binary`、`varbinary`の4つのみ許容されます。以下に具体的にどのような文字列を返すについて述べます。
+`Tsurugi`では`string_expression` の型として`char`、`varchar`、`binary`、`varbinary`の4つのみ許容されます。
+
+`binary`、`varbinary`の場合はバイナリデータをバイト単位で処理します。
+`char`、`varchar`はUTF-8データをコードポイント数単位で処理します。
+
+以下に具体的にどのような文字列を返すについて述べます。
 
 ### 文字列を返すケース(典型的なパターン)
 
@@ -44,14 +49,15 @@ select SUBSTRING ( "abcde" FROM 2 FOR 3 ) FROM T1
 
 また後述の`NULLを返すケース`、`空文字を返すケース以外`はすべて文字列を返します。
 
-### 文字列を返すケース(文字長は超えない、可変長で文字数を超過するパターン)
+### 文字列を返すケース(最大文字長は超えない、有効文字数を超えるパターン)
 
-可変長の `varchar(20)` に`"abcde"`を格納して`start_position = 4`、`length = 3`を指定した場合、 `length`が文字数を超えますがその場合、
-`length`は指定可能な最大値`2`を指定されたとみなして`"de"`を返します。
+VARCHAR(n)ではnを`最大文字長`、格納された文字数を`有効文字数`と呼びます。
 
-### 文字列を返すケース(文字長を超える、可変長、固定長共通)
+可変長の `varchar(20)` に`"abcde"`を格納して`start_position = 4`、`length = 3`を指定した場合、 `length`は`最大文字長`は超えないが`有効文字数`は超過する。その場合`length`は有効文字数で指定可能な最大値`2`を指定されたと見なして`"de"`を返します。
 
-`start_position`の文字長を`SP_LEN`と指定して、`start_position`と`length`の合計が`SP_LEN`を超える場合、`length`は指定可能な最大値`SP_LEN`-`start_position`が指定されたと見なされます。
+### 文字列を返すケース(最大文字長を超える)
+
+`start_position`の最大文字長を`SP_LEN`と指定して、`start_position`と`length`の合計が`SP_LEN`を超える場合、`length`は指定可能な最大値`SP_LEN`-`start_position`が指定されたと見なします。
 
 ### NULLを返すケース
 
@@ -68,24 +74,6 @@ select SUBSTRING ( "abcde" FROM 2 FOR 3 ) FROM T1
 
 空文字を返すケースは`NULLを返すケース以外`でかつ`length (L) = 0`
 
-## 注意事項
-
-### 2,3,4バイト文字も文字数としては1カウント
-
-`SUBSTRING`関数で指定する`start_position` (S) および`length` (L) は、文字数を基準にしているため、UTF-8 のような可変長エンコーディングでは、1文字が複数バイトになることがあります。このため、文字列のバイト数と文字数は一致しません。`start_position`と`length`は文字単位で指定することを意識してください。
-
-特に`Tsurugi`では文字列は`UTF-8`として認識されていますので、例えば`"あ"`は3バイト文字ですが文字数としては1とカウントされます。
-
-ただし、例外としてSEの型が`binary`と`varbinary`の場合のみバイナリ文字列として認識され1バイト1文字としてカウントされます。
-
-### string_expressionの型で結果が異なる例
-
-`varchar(20)`および`char(20)`に文字列`"abcde"`を格納した場合
-varcharは可変長なので`"abcde"`という文字列扱いですが、charは固定長のため`"abcde               "`という風にeの後続に15個の空白文字が格納されています。
-
-`start_position`を1、`length`を5と指定し場合、可変長、固定長両方とも`"abcde"`を返しますが
-
-`start_position`を1、`length`を6と指定し場合、可変長は`abcde`、固定長は`"abcde "`を返すことに注意してください
 
 ## 早見表
 
@@ -93,6 +81,9 @@ varcharは可変長なので`"abcde"`という文字列扱いですが、charは
 
 | FROM | FOR  |返却値 |
 | ---- | ---- | ---- |
+|NULL|なし |NULL|
+|0 |NULL |NULL|
+|NULL |NULL |NULL|
 |-1 |なし |NULL|
 |0 |なし |NULL|
 |1 |なし |abcde|
@@ -140,3 +131,14 @@ varcharは可変長なので`"abcde"`という文字列扱いですが、charは
 |6|-1|NULL|
 |6|0|NULL|
 |6|1|NULL|
+
+## 付録
+
+### string_expressionの型で結果が異なる例
+
+`varchar(20)`および`char(20)`に文字列`"abcde"`を格納した場合
+varcharは可変長なので`"abcde"`という文字列扱いですが、charは固定長のため`"abcde               "`という風にeの後続に15個の空白文字が格納されています。
+
+`start_position`を1、`length`を5と指定し場合、可変長、固定長両方とも`"abcde"`を返しますが
+
+`start_position`を1、`length`を6と指定し場合、可変長は`abcde`、固定長は`"abcde "`を返すことに注意してください

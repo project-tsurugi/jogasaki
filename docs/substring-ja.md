@@ -38,7 +38,7 @@ SUBSTRING(string_expression FROM start_position [FOR length])
 
 ### 文字列を返すケース(典型的なパターン)
 
-`SUBSTRING`関数は `string_expression` の `start_position` 位置から `length` だけ部分文字列を取得します
+`SUBSTRING`関数は `string_expression` の `start_position` 位置から `length` だけ部分文字列を取得します。`length`指定がない場合、または`start_position`と`length`の合計値が`string_expression`に格納された文字列の終端を超える場合、`start_position`から終端までの文字列を返します。
 
 以下に例を挙げて説明します。
 
@@ -47,10 +47,6 @@ SUBSTRING ( 'abcde' FROM 2 FOR 3 )
 ```
 
 この場合、2文字目の`b`を起点にして3文字目の`d`までの`"bcd"`文字列を取り出します。この動作は、PostgreSQL(14.12)、MariaDB(10.6.18)、Oracleの主要DBと同じです。
-
-### 有効コードポイント数を超えるパターン
-
-`start_position`と`length`の合計値が`string_expression`の`有効コードポイント数`を超える場合、`length`に`有効コードポイント数` - `start_position`が指定されたと見なします。
 
 ### 特殊値を返すケース
 

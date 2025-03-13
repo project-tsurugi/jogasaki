@@ -475,7 +475,8 @@ data::any substring(evaluator_context&, sequence_view<data::any> args) {
     const auto zero_based_start = start.to<runtime_t<kind::int8>>() - 1;
 
     if (args.size() > 2) {
-        length        = static_cast<data::any&>(args[2]);
+        length = static_cast<data::any&>(args[2]);
+        if (!length || length->get().empty()) { return {}; }
         casted_length = length->get().to<runtime_t<kind::int8>>();
     }
     if (src.type_index() == data::any::index<accessor::binary>) {

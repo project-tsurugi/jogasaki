@@ -26,6 +26,7 @@
 #include <yugawara/variable/configurable_provider.h>
 
 #include <jogasaki/plan/mirror_container.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki::plan {
 
@@ -65,7 +66,7 @@ public:
         compiled_info_(std::move(compiled_info)),
         host_variables_(std::move(host_variables)),
         mirrors_(std::move(mirrors)),
-        sql_text_(std::make_shared<std::string>(sql_text))
+        sql_text_(utils::make_shared_cache_aligned<std::string>(sql_text))
     {}
 
     [[nodiscard]] maybe_shared_ptr<::takatori::statement::statement> const& statement() const noexcept {

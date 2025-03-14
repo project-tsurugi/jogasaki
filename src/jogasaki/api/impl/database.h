@@ -63,6 +63,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/use_counter.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 #include "commit_stats.h"
 
@@ -300,10 +301,10 @@ protected:
 private:
     std::shared_ptr<class configuration> cfg_{};
     std::shared_ptr<yugawara::storage::configurable_provider> tables_{
-        std::make_shared<yugawara::storage::configurable_provider>()
+        utils::make_shared_cache_aligned<yugawara::storage::configurable_provider>()
     };
     std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{
-        std::make_shared<yugawara::aggregate::configurable_provider>()
+        utils::make_shared_cache_aligned<yugawara::aggregate::configurable_provider>()
     };
     std::shared_ptr<yugawara::function::configurable_provider> scalar_functions_{
         global::scalar_function_provider()
@@ -314,10 +315,10 @@ private:
     tbb::concurrent_hash_map<api::statement_handle, std::shared_ptr<impl::prepared_statement>> prepared_statements_{};
     tbb::concurrent_hash_map<api::transaction_handle, std::shared_ptr<transaction_context>> transactions_{};
     bool initialized_{false};
-    std::shared_ptr<durability_manager> durability_manager_{std::make_shared<durability_manager>()};
+    std::shared_ptr<durability_manager> durability_manager_{utils::make_shared_cache_aligned<durability_manager>()};
     std::atomic_bool stop_requested_{false};
     utils::use_counter requests_inprocess_{};
-    std::shared_ptr<commit_stats> commit_stats_{std::make_shared<commit_stats>()};
+    std::shared_ptr<commit_stats> commit_stats_{utils::make_shared_cache_aligned<commit_stats>()};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

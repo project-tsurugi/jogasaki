@@ -81,7 +81,7 @@ status store::begin_transaction(transaction_option const &option, std::shared_pt
     if (state != sharksfin::StatusCode::OK) {
         return convert(state);
     }
-    tx = std::make_shared<transaction>(db_, handle);
+    tx = utils::make_shared_cache_aligned<transaction>(db_, handle);
     //
     decltype(transactions_)::accessor acc{};
     if (transactions_.insert(acc, tx->system_id())) {

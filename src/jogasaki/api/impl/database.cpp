@@ -121,6 +121,7 @@
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -234,11 +235,11 @@ status database::start() {
     if (cfg_->activate_scheduler()) {
         if (! task_scheduler_) {
             if (cfg_->single_thread()) {
-                task_scheduler_ = std::make_shared<scheduler::serial_task_scheduler>();
+                task_scheduler_ = utils::make_shared_cache_aligned<scheduler::serial_task_scheduler>();
             } else if(cfg_->enable_hybrid_scheduler()) {
-                task_scheduler_ = std::make_shared<scheduler::hybrid_task_scheduler>(scheduler::thread_params(cfg_));
+                task_scheduler_ = utils::make_shared_cache_aligned<scheduler::hybrid_task_scheduler>(scheduler::thread_params(cfg_));
             } else {
-                task_scheduler_ = std::make_shared<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
+                task_scheduler_ = utils::make_shared_cache_aligned<scheduler::stealing_task_scheduler>(scheduler::thread_params(cfg_));
             }
         }
         task_scheduler_->start();
@@ -303,7 +304,7 @@ database::database(
 
 database::database(std::shared_ptr<class configuration> cfg, sharksfin::DatabaseHandle db) :
     cfg_(std::move(cfg)),
-    kvs_db_(std::make_shared<kvs::database>(db))
+    kvs_db_(utils::make_shared_cache_aligned<kvs::database>(db))
 {
     custom_external_log_cfg(cfg_);
     global::db(kvs_db_);
@@ -318,13 +319,13 @@ database::database() : database(std::make_shared<class configuration>()) {}
 void database::init() {
     global::config_pool(cfg_);
     if(initialized_) return;
-    tables_ = std::make_shared<yugawara::storage::configurable_provider>();
-    scalar_functions_ = global::scalar_function_provider(std::make_shared<yugawara::function::configurable_provider>());
+    tables_ = utils::make_shared_cache_aligned<yugawara::storage::configurable_provider>();
+    scalar_functions_ = global::scalar_function_provider(utils::make_shared_cache_aligned<yugawara::function::configurable_provider>());
     executor::function::add_builtin_scalar_functions(
         *scalar_functions_,
         global::scalar_function_repository()
     );
-    aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
+    aggregate_functions_ = utils::make_shared_cache_aligned<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,
         global::incremental_aggregate_function_repository()
@@ -384,12 +385,12 @@ status database::prepare_common(
     std::shared_ptr<error::error_info>& out,
     plan::compile_option const& option
 ) {
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::prepare);
-    req->statement_text(std::make_shared<std::string>(sql)); //TODO want to use shared_ptr created in plan::prepare
+    auto req = utils::make_shared_cache_aligned<scheduler::request_detail>(scheduler::request_detail_kind::prepare);
+    req->statement_text(utils::make_shared_cache_aligned<std::string>(sql)); //TODO want to use shared_ptr created in plan::prepare
     req->status(scheduler::request_detail_status::accepted);
     log_request(*req);
-    auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
-    auto ctx = std::make_shared<plan::compiler_context>();
+    auto resource = utils::make_shared_cache_aligned<memory::lifo_paged_memory_resource>(&global::page_pool());
+    auto ctx = utils::make_shared_cache_aligned<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
@@ -460,7 +461,7 @@ status database::prepare(
     std::shared_ptr<error::error_info>& out,
     plan::compile_option const& option
 ) {
-    auto host_variables = std::make_shared<yugawara::variable::configurable_provider>();
+    auto host_variables = utils::make_shared_cache_aligned<yugawara::variable::configurable_provider>();
     for(auto&& [n, t] : variables) {
         add_variable(*host_variables, n, t);
     }
@@ -483,7 +484,7 @@ status database::create_executable(
         return rc;
     }
     std::unique_ptr<api::executable_statement> exec{};
-    auto parameters = std::make_shared<impl::parameter_set>();
+    auto parameters = utils::make_shared_cache_aligned<impl::parameter_set>();
     if(auto rc = resolve_common(*prepared, parameters, exec, out); rc != status::ok) {
         return rc;
     }
@@ -582,7 +583,7 @@ std::shared_ptr<kvs::transaction_option> from(transaction_option const& option, 
     }
     // SQL IUD almost always (except INSERT OR REPLACE) require read semantics, so write preserve will be added to rai.
     std::vector<std::string> rai{add_wp_to_read_area_inclusive(*wps, option.read_areas_inclusive())};
-    return std::make_shared<kvs::transaction_option>(
+    return utils::make_shared_cache_aligned<kvs::transaction_option>(
         type,
         add_secondary_indices(*wps, tables),
         add_secondary_indices(rai, tables),
@@ -683,7 +684,7 @@ status database::resolve_common(
     std::shared_ptr<error::error_info>& out
 ) {
     auto resource = std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool());
-    auto ctx = std::make_shared<plan::compiler_context>();
+    auto ctx = utils::make_shared_cache_aligned<plan::compiler_context>();
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
@@ -1154,7 +1155,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         req
     );
 
-    auto handle = std::make_shared<transaction_handle>();
+    auto handle = utils::make_shared_cache_aligned<transaction_handle>();
     auto jobid = rctx->job()->id();
     auto t = scheduler::create_custom_task(rctx.get(),
         [this, rctx, option, handle, jobid]() {

@@ -25,6 +25,7 @@
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki::api::impl {
 
@@ -37,7 +38,7 @@ std::shared_ptr<request_context> create_request_context(
     std::shared_ptr<scheduler::request_detail> request_detail
 ) {
     auto& c = db.configuration();
-    auto rctx = std::make_shared<request_context>(
+    auto rctx = utils::make_shared_cache_aligned<request_context>(
         c,
         std::move(resource),
         db.kvs_db(),
@@ -48,14 +49,14 @@ std::shared_ptr<request_context> create_request_context(
     rctx->req_info(req_info);
     rctx->scheduler(db.scheduler());
     rctx->stmt_scheduler(
-        std::make_shared<scheduler::statement_scheduler>(
+        utils::make_shared_cache_aligned<scheduler::statement_scheduler>(
             db.configuration(),
             *db.task_scheduler()
         )
     );
     rctx->storage_provider(db.tables());
 
-    auto job = std::make_shared<scheduler::job_context>();
+    auto job = utils::make_shared_cache_aligned<scheduler::job_context>();
     job->request(std::move(request_detail));
     rctx->job(maybe_shared_ptr{job.get()});
 

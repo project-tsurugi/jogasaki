@@ -26,6 +26,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki::error {
 
@@ -37,7 +38,7 @@ std::shared_ptr<error_info> create_error_info_with_stack_impl(
     status st,
     std::string_view stacktrace
 ) {
-    auto info = std::make_shared<error_info>(code, message, filepath, position, stacktrace);
+    auto info = utils::make_shared_cache_aligned<error_info>(code, message, filepath, position, stacktrace);
     info->status(st);
     if(! stacktrace.empty()) {
         // currently assuming the error is severe if stacktrace is provided

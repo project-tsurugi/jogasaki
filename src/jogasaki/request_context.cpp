@@ -40,11 +40,12 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki {
 
 request_context::request_context() :
-    config_(std::make_shared<class configuration>())
+    config_(utils::make_shared_cache_aligned<class configuration>())
 {}
 
 request_context::request_context(
@@ -189,7 +190,7 @@ std::shared_ptr<error::error_info> request_context::error_info() const noexcept 
 
 std::shared_ptr<request_statistics> const& request_context::enable_stats() noexcept {
     if(! stats_) {
-        stats_ = std::make_shared<request_statistics>();
+        stats_ = utils::make_shared_cache_aligned<request_statistics>();
     }
     return stats_;
 }
@@ -201,20 +202,20 @@ std::shared_ptr<request_statistics> const& request_context::stats() const noexce
 void prepare_scheduler(request_context& rctx) {
     std::shared_ptr<scheduler::task_scheduler> sched{};
     if(rctx.configuration()->single_thread()) {
-        sched = std::make_shared<scheduler::serial_task_scheduler>();
+        sched = utils::make_shared_cache_aligned<scheduler::serial_task_scheduler>();
     } else {
         if(rctx.configuration()->enable_hybrid_scheduler()) {
-            sched = std::make_shared<scheduler::hybrid_task_scheduler>(
+            sched = utils::make_shared_cache_aligned<scheduler::hybrid_task_scheduler>(
                 scheduler::thread_params(rctx.configuration()));
         } else {
-            sched = std::make_shared<scheduler::stealing_task_scheduler>(
+            sched = utils::make_shared_cache_aligned<scheduler::stealing_task_scheduler>(
                 scheduler::thread_params(rctx.configuration()));
         }
     }
     rctx.scheduler(std::move(sched));
 
     rctx.stmt_scheduler(
-        std::make_shared<scheduler::statement_scheduler>(
+        utils::make_shared_cache_aligned<scheduler::statement_scheduler>(
             rctx.configuration(),
             *rctx.scheduler()
         )

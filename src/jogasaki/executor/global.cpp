@@ -26,6 +26,7 @@
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/page_pool.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki::global {
 
@@ -61,7 +62,7 @@ executor::function::scalar_function_repository& scalar_function_repository() {
 std::shared_ptr<yugawara::function::configurable_provider> const&
 scalar_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg) {
     static std::shared_ptr<yugawara::function::configurable_provider> provider =
-        std::make_shared<yugawara::function::configurable_provider>();
+        utils::make_shared_cache_aligned<yugawara::function::configurable_provider>();
     if(arg) {
         provider = std::move(arg);
     }
@@ -69,7 +70,7 @@ scalar_function_provider(std::shared_ptr<yugawara::function::configurable_provid
 }
 
 maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuration> arg) {
-    static maybe_shared_ptr<configuration> pool = std::make_shared<configuration>();
+    static maybe_shared_ptr<configuration> pool = utils::make_shared_cache_aligned<configuration>();
     if(arg) {
         pool = std::move(arg);
     }
@@ -77,7 +78,7 @@ maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuratio
 }
 
 std::shared_ptr<kvs::database> const& db(std::shared_ptr<kvs::database> arg) {
-    static std::shared_ptr<kvs::database> db = std::make_shared<kvs::database>();
+    static std::shared_ptr<kvs::database> db = utils::make_shared_cache_aligned<kvs::database>();
     if(arg) {
         db = std::move(arg);
     }

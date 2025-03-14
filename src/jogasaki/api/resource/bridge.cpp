@@ -41,6 +41,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/convert_offset_string.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki::api::resource {
 
@@ -323,7 +324,7 @@ bool process_session_config(std::shared_ptr<jogasaki::configuration>& ret, tatey
 }
 
 std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
-    auto ret = std::make_shared<jogasaki::configuration>();
+    auto ret = utils::make_shared_cache_aligned<jogasaki::configuration>();
     if(! process_sql_config(ret, cfg)) {
         return {};
     };

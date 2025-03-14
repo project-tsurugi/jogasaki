@@ -59,7 +59,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
     }
 
     auto req_detail =
-        std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::process_durability_callback);
+        utils::make_shared_cache_aligned<scheduler::request_detail>(scheduler::request_detail_kind::process_durability_callback);
     req_detail->status(scheduler::request_detail_status::accepted);
     log_request(*req_detail);
 

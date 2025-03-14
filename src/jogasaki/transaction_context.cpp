@@ -29,6 +29,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki {
 
@@ -188,7 +189,7 @@ std::shared_ptr<transaction_context> wrap(
     std::unique_ptr<kvs::transaction>&& arg,
     std::shared_ptr<kvs::transaction_option const> options
 ) noexcept {
-    return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)}, std::move(options));
+    return utils::make_shared_cache_aligned<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)}, std::move(options));
 }
 
 bool details::worker_manager::increment_and_set_on_zero(uint32_t& worker_index) {

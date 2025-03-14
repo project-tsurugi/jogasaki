@@ -27,15 +27,16 @@
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 
 namespace jogasaki::api::impl {
 
 result_set::result_set(std::unique_ptr<data::result_store> store) noexcept:
     store_(std::move(store)),
-    meta_(std::make_shared<meta::external_record_meta>(
+    meta_(utils::make_shared_cache_aligned<meta::external_record_meta>(
         store_->meta() ?
         store_->meta() :
-        std::make_shared<meta::record_meta>(), // it's possible store has no result and no metadata
+        utils::make_shared_cache_aligned<meta::record_meta>(), // it's possible store has no result and no metadata
         std::vector<std::optional<std::string>>{}
     ))
 {}

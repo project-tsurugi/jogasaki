@@ -135,6 +135,7 @@
 #include <jogasaki/plan/storage_processor.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/make_shared_cache_aligned.h>
 #include <jogasaki/utils/value_to_any.h>
 
 #define set_compile_error(ctx, code, msg, st) jogasaki::plan::impl::set_compile_error_impl(ctx, code, msg, __FILE__, line_number_string, st, "") //NOLINT
@@ -250,7 +251,7 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     compiled_info info, compiler_context &ctx
 ) {
-    auto container = std::make_shared<mirror_container>();
+    auto container = utils::make_shared_cache_aligned<mirror_container>();
     switch(statement->kind()) {
         case statement::statement_kind::execute:
             container->work_level().set_minimum(statement_work_level_kind::key_operation);
@@ -480,7 +481,7 @@ status create_prepared_statement(
     auto s = std::shared_ptr<::takatori::statement::statement>(std::move(stmt));
     auto [mirror_status, mirror] = preprocess_mirror(s, provider, result.info(), ctx);
     if (mirror_status != status::ok) { return mirror_status; }
-    out = std::make_shared<plan::prepared_statement>(
+    out = utils::make_shared_cache_aligned<plan::prepared_statement>(
         s,
         result.info(),
         provider,
@@ -520,7 +521,7 @@ status prepare(
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
 ) {
-    ctx.sql_text(std::make_shared<std::string>(sql));
+    ctx.sql_text(utils::make_shared_cache_aligned<std::string>(sql));
     mizugaki::parser::sql_parser parser{};
 
 
@@ -547,7 +548,7 @@ status prepare(
     }
 
     auto& compilation_unit = result.value();
-    auto schema_provider = std::make_shared<yugawara::schema::configurable_provider>();
+    auto schema_provider = utils::make_shared_cache_aligned<yugawara::schema::configurable_provider>();
     auto& schema = schema_provider->add(schema::declaration{
         std::nullopt,
         std::string{public_schema_name},

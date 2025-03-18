@@ -55,8 +55,14 @@ std::shared_ptr<request_context> create_request_context(
     );
     rctx->storage_provider(db.tables());
 
+    if (request_detail && req_info.request_source()) {
+        request_detail->local_id(req_info.request_source()->local_id());
+        request_detail->session_id(req_info.request_source()->session_id());
+    }
+
     auto job = std::make_shared<scheduler::job_context>();
     job->request(std::move(request_detail));
+
     rctx->job(maybe_shared_ptr{job.get()});
 
     auto& ts = *db.task_scheduler();

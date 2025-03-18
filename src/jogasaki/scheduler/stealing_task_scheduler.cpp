@@ -205,6 +205,8 @@ void stealing_task_scheduler::print_diagnostic(std::ostream &os) {
             if(auto diag = ctx->request()) {
                 os << "    job_kind: " << diag->kind() << std::endl;
                 os << "    job_status: " << diag->status() << std::endl;
+                os << "    session_id: " << diag->session_id() << std::endl;
+                os << "    local_id: " << diag->local_id() << std::endl;
                 os << "    sql_text: " << diag->statement_text() << std::endl;
                 os << "    transaction_id: " << diag->transaction_id() << std::endl;
                 os << "    channel_status: " << diag->channel_status() << std::endl;

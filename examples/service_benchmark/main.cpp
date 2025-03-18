@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #include <atomic>
+#include <boost/thread/latch.hpp>
 #include <chrono>
+#include <csignal>
 #include <cstdint>
 #include <cstdlib>
 #include <cxxabi.h>
@@ -22,6 +24,8 @@
 #include <exception>
 #include <functional>
 #include <future>
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -35,9 +39,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <boost/thread/latch.hpp>
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
@@ -314,7 +315,6 @@ struct data_profile {
     std::int64_t district_id_max_{}; //exclusive   //NOLINT
 };
 
-
 class cli {
     takatori::util::maybe_shared_ptr<jogasaki::api::database> db_{};
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
@@ -342,6 +342,9 @@ class cli {
     std::size_t secondary_index_count_{}; //NOLINT
 
 public:
+    void print_diagnostics() {
+        db_->print_diagnostic(std::cerr);
+    }
 
     void prepare_data(jogasaki::api::database& db, std::size_t rows) {
         auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(db);
@@ -979,6 +982,12 @@ private:
 
 }  // namespace
 
+tateyama::service_benchmark::cli* cli_ = nullptr;
+
+void sighup_handler(int) {
+    cli_->print_diagnostics();
+}
+
 extern "C" int main(int argc, char* argv[]) {
     // ignore log level
     if (FLAGS_log_dir.empty()) {
@@ -988,13 +997,17 @@ extern "C" int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
     gflags::SetUsageMessage("service benchmark");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-    tateyama::service_benchmark::cli e{};
+    tateyama::service_benchmark::cli c{};
+    cli_ = std::addressof(c);
+    if (signal(SIGHUP, sighup_handler) == SIG_ERR) {
+        LOG(ERROR) << "failed to set sighup signal handler";
+    }
     auto cfg = std::make_shared<jogasaki::configuration>();
-    if (! e.fill_from_flags(*cfg)) {
+    if (! c.fill_from_flags(*cfg)) {
         return -1;
     }
     try {
-        e.run(cfg);  // NOLINT
+        c.run(cfg);  // NOLINT
     } catch (std::exception& e) {
         LOG(ERROR) << e.what();
         return -1;

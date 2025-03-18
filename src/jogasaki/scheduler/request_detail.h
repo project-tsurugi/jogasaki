@@ -409,6 +409,39 @@ public:
     [[nodiscard]] affected_transactions const& affected_txs() const noexcept {
         return affected_transactions_;
     }
+
+    /**
+     * @brief setter of the session id of the request
+     * @attention call this method only from single thread
+     */
+    void session_id(std::size_t arg) {
+        session_id_ = arg;
+    }
+
+    /**
+     * @brief accessor for the session id of the request
+     * @return session id of the request
+     */
+    [[nodiscard]] std::size_t session_id() const noexcept {
+        return session_id_;
+    }
+
+    /**
+     * @brief setter of the session local id of the request
+     * @attention call this method only from single thread
+     */
+    void local_id(std::size_t arg) {
+        local_id_ = arg;
+    }
+
+    /**
+     * @brief accessor for the session local id of the request
+     * @return session local id of the request
+     */
+    [[nodiscard]] std::size_t local_id() const noexcept {
+        return local_id_;
+    }
+
 private:
     std::size_t id_{id_src_++};
     request_detail_kind kind_{};
@@ -425,6 +458,8 @@ private:
     std::atomic_size_t sticky_task_worker_enforced_count_{};
     std::atomic<hybrid_execution_mode_kind> hybrid_execution_mode_{hybrid_execution_mode_kind::undefined};
     affected_transactions affected_transactions_{};
+    std::size_t session_id_{};
+    std::size_t local_id_{};
 
     cache_align static inline std::atomic_size_t id_src_{0}; //NOLINT
 };

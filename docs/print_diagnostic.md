@@ -14,6 +14,8 @@ jogasakiタスクスケジューラが各種キューに保持しているタス
   - jobs.job_id: ジョブの識別子
   - jobs.job_kind: ジョブの種別
   - jobs.job_status: ジョブの状態
+  - session_id: リクエストが送信されたセッションのID
+  - local_id: リクエストのセッションローカルID
   - jobs.sql_text: SQLを実行するジョブの場合はその内容
   - jobs.transaction_id: ジョブがトランザクションを使用している場合はそのID
   - jobs.channel_status: ジョブが出力用チャネルを使用している場合はその状態 (未実装)
@@ -50,6 +52,8 @@ jobs:
   - job_id: 000000000010e0e5
     job_kind: execute_statement
     job_status: finishing
+    session_id: 3
+    local_id: 4695
     sql_text: insert into sbtest1(id, k, c, pad) values(:id, :k, :c, :pad)
     transaction_id: TID-0000001c00000086
     channel_status: undefined
@@ -58,6 +62,8 @@ jobs:
   - job_id: 000000000010e0e4
     job_kind: execute_statement
     job_status: finishing
+    session_id: 3
+    local_id: 4695
     sql_text: insert into sbtest1(id, k, c, pad) values(:id, :k, :c, :pad)
     transaction_id: TID-0000001000000088
     channel_status: undefined

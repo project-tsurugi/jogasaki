@@ -110,7 +110,7 @@ void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator 
 }
 
 std::string transaction_id_str(transaction_context& tx) {
-    if(auto txid = tx.object()->transaction_id(); ! txid.empty()) {
+    if(auto txid = tx.transaction_id(); ! txid.empty()) {
         return "transaction:" + std::string{txid} + " ";
     }
     return {};
@@ -121,7 +121,7 @@ std::string create_abort_message(
 ) {
     auto& tx = *rctx.transaction();
     auto& tables = rctx.storage_provider();
-    auto result = tx.object()->recent_call_result();
+    auto result = tx.recent_call_result();
     std::string_view desc{};
     std::stringstream ss{};
     if(result) {

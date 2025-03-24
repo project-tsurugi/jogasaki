@@ -55,7 +55,6 @@
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/utils/abort_transaction.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>

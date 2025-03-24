@@ -105,7 +105,7 @@ sequence* manager::register_sequence(
             return {};
         }
         if(auto rc = db_->create_sequence(seq_id); rc != status::ok) {
-            (void) tx->abort();
+            (void) tx->abort_transaction();
             throw_exception(exception{rc});
         }
         sequences_[def_id] = details::sequence_element{seq_id};
@@ -128,7 +128,7 @@ sequence* manager::register_sequence(
     sequence_versioned_value v{1, initial_value};
     auto rc = db_->read_sequence(seq_id, v);
     if(rc != status::ok && rc != status::err_not_found) {
-        (void) tx->abort();
+        (void) tx->abort_transaction();
         throw_exception(exception{rc});
     }
     if(rc == status::err_not_found || v.version_ == 0) {
@@ -210,7 +210,7 @@ bool manager::remove_sequence(
     }
     if (auto rc = db_->delete_sequence(sequences_[def_id].id()); rc != status::ok && rc != status::err_not_found) {
         // status::err_not_found never comes here because the sequence is already in sequences_
-        (void) tx->abort();
+        (void) tx->abort_transaction();
         throw_exception(exception{rc});
     }
     remove_id_map(def_id, tx);

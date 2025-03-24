@@ -28,7 +28,7 @@ namespace jogasaki::utils {
 using takatori::util::throw_exception;
 
 void abort_transaction(kvs::transaction& tx) {
-    if (auto res = tx.abort(); res != status::ok) {
+    if (auto res = tx.abort_transaction(); res != status::ok) {
         throw_exception(std::logic_error{"abort failed unexpectedly"});
     }
 }

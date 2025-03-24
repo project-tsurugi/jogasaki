@@ -87,7 +87,7 @@ public:
      * @return status::ok if the operation is successful
      * @return other status code when error occurs
      */
-    [[nodiscard]] status abort();
+    [[nodiscard]] status abort_transaction();
 
     /**
      * @brief return the native transaction control handle in the transaction layer

@@ -165,8 +165,16 @@ public:
      * @brief abort the transaction and have transaction engine rollback the on-going processing (if it supports rollback)
      * @return status::ok when successful
      * @return error code otherwise
+     * @deprecated use `abort_transaction` instead
      */
     status abort(request_info const& req_info = {});
+
+    /**
+     * @brief abort the transaction and have transaction engine rollback the on-going processing (if it supports rollback)
+     * @return status::ok when successful
+     * @return error code otherwise
+     */
+    status abort_transaction(request_info const& req_info = {});
 
     /**
      * @brief execute the statement in the transaction. No result records are expected

@@ -172,9 +172,9 @@ public:
     [[nodiscard]] bool commit(commit_callback_type cb);
 
     /**
-     * @see kvs::transaction::abort()
+     * @see kvs::transaction::abort_transaction()
      */
-    [[nodiscard]] status abort();
+    [[nodiscard]] status abort_transaction();
 
     /**
      * @see kvs::transaction::control_handle()

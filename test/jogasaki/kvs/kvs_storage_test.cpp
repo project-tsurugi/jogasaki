@@ -138,7 +138,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         EXPECT_EQ("k2", k);
         EXPECT_EQ("v2", v);
         ASSERT_EQ(status::not_found, it->next());
-        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok, tx->abort_transaction());
     }
     {
         auto tx = db_->create_transaction();
@@ -158,7 +158,7 @@ TEST_F(kvs_storage_test, scan_range_inclusive_exclusive) {
         EXPECT_EQ("k3", k);
         EXPECT_EQ("v3", v);
         ASSERT_EQ(status::not_found, it->next());
-        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok, tx->abort_transaction());
     }
 }
 
@@ -201,7 +201,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         EXPECT_EQ("k2", k);
         EXPECT_EQ("v2", v);
         ASSERT_EQ(status::not_found, it->next());
-        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok, tx->abort_transaction());
     }
     {
         auto tx = db_->create_transaction();
@@ -226,7 +226,7 @@ TEST_F(kvs_storage_test, scan_range_prefix_inclusive_exclusive) {
         EXPECT_EQ("k3/1", k);
         EXPECT_EQ("v3/1", v);
         ASSERT_EQ(status::not_found, it->next());
-        ASSERT_EQ(status::ok, tx->abort());
+        ASSERT_EQ(status::ok, tx->abort_transaction());
     }
 }
 

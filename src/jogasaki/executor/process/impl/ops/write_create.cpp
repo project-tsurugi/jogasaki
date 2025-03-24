@@ -89,7 +89,7 @@ std::vector<index::secondary_target> create_secondary_targets(
 }
 
 void abort_transaction(transaction_context& tx) {
-    if (auto res = tx.abort(); res != status::ok) {
+    if (auto res = tx.abort_transaction(); res != status::ok) {
         throw_exception(std::logic_error{"abort failed unexpectedly"});
     }
 }

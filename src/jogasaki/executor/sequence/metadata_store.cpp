@@ -57,12 +57,12 @@ void metadata_store::put(std::size_t def_id, std::size_t id) {
     kvs::coding_context ctx{};
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, ctx, key);
         res != status::ok) {
-        (void) tx_->abort();
+        (void) tx_->abort_transaction();
         throw_exception(exception{res, "encode failed"});
     }
     if(auto res = kvs::encode_nullable(v, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, ctx, value);
         res != status::ok) {
-        (void) tx_->abort();
+        (void) tx_->abort_transaction();
         throw_exception(exception{res, "encode_nullable failed"});
     }
     if (auto res = stg_->content_put(
@@ -85,7 +85,7 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
         if(r == status::not_found) {
             return {{}, {}, false};
         }
-        (void) tx.abort();
+        (void) tx.abort_transaction();
         throw_exception(exception{r});
     }
     if (auto r = it->read_value(v); r != status::ok) {
@@ -93,7 +93,7 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
         if(r == status::not_found) {
             return {{}, {}, false};
         }
-        (void) tx.abort();
+        (void) tx.abort_transaction();
         throw_exception(exception{r});
     }
     kvs::readable_stream key{k.data(), k.size()};
@@ -102,7 +102,7 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
     kvs::coding_context ctx{};
     if(auto res = kvs::decode(key, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, ctx, dest);
         res != status::ok) {
-        (void) tx.abort();
+        (void) tx.abort_transaction();
         throw_exception(exception{res});
     }
     sequence_definition_id def_id{};
@@ -110,7 +110,7 @@ std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
     def_id = dest.to<std::int64_t>();
     if(auto res = kvs::decode_nullable(value, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_value, ctx, dest);
         res != status::ok) {
-        (void) tx.abort();
+        (void) tx.abort_transaction();
         throw_exception(exception{res});
     }
     id = dest.to<std::int64_t>();
@@ -158,7 +158,7 @@ bool metadata_store::remove(std::size_t def_id) {
     data::any k{std::in_place_type<std::int64_t>, def_id};
     kvs::coding_context ctx{};
     if(auto res = kvs::encode(k, meta::field_type{meta::field_enum_tag<kind::int8>}, kvs::spec_key_ascending, ctx, key); res != status::ok) {
-        (void) tx_->abort();
+        (void) tx_->abort_transaction();
         throw_exception(exception{res, "encode failed"});
     }
     if (auto res = stg_->content_delete(*tx_, {key.data(), key.size()}); res != status::ok) {

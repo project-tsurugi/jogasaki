@@ -56,7 +56,7 @@ status read_key_entry(
         if(r == status::not_found) {
             return r;
         }
-        (void) tx.abort();
+        (void) tx.abort_transaction();
         return r;
     }
     out = std::string{k};

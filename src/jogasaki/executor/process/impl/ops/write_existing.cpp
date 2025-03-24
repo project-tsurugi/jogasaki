@@ -108,7 +108,7 @@ operation_status write_existing::operator()(write_existing_context& ctx) {
 }
 
 void abort_transaction(transaction_context& tx) {
-    if (auto res = tx.abort(); res != status::ok) {
+    if (auto res = tx.abort_transaction(); res != status::ok) {
         throw_exception(std::logic_error{"abort failed unexpectedly"});
     }
 }

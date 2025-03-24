@@ -76,8 +76,8 @@ bool transaction_context::commit(transaction_context::commit_callback_type cb) {
     return transaction_->commit(std::move(cb));
 }
 
-status transaction_context::abort() {
-    return transaction_->abort();
+status transaction_context::abort_transaction() {
+    return transaction_->abort_transaction();
 }
 
 sharksfin::TransactionControlHandle transaction_context::control_handle() const noexcept {

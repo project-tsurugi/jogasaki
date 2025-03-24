@@ -95,7 +95,7 @@ TEST_F(kvs_database_test, create_transaction) {
     ASSERT_TRUE(db_);
     auto tx = db_->create_transaction();
     ASSERT_TRUE(tx);
-    ASSERT_EQ(status::ok, tx->abort());
+    ASSERT_EQ(status::ok, tx->abort_transaction());
 }
 
 TEST_F(kvs_database_test, create_storage_with_options) {

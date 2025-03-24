@@ -384,12 +384,12 @@ std::string extract_transaction(
     return std::string{t->transaction_id()};
 }
 
-void abort_tx(
+void abort_transaction(
     jogasaki::api::transaction_handle tx,
     request_info const& req_info,
     std::shared_ptr<error::error_info> const& err_info = {}) {
     // expecting no error from abort
-    if(tx.abort(req_info) == status::err_invalid_argument) {
+    if(tx.abort_transaction(req_info) == status::err_invalid_argument) {
         return;
     }
     if(err_info) {
@@ -420,14 +420,14 @@ void service::command_execute_statement(
             "Invalid request format - missing sql",
             status::err_invalid_argument
         );
-        abort_tx(tx, req_info, err_info);
+        abort_transaction(tx, req_info, err_info);
         details::error<sql::response::ExecuteResult>(*res, err_info.get(), req_info);
         return;
     }
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     std::shared_ptr<error::error_info> err_info{};
     if(auto rc = get_impl(*db_).create_executable(sql, e, err_info); rc != jogasaki::status::ok) {
-        abort_tx(tx, req_info, err_info);
+        abort_transaction(tx, req_info, err_info);
         details::error<sql::response::ExecuteResult>(*res, err_info.get(), req_info);
         return;
     }
@@ -454,7 +454,7 @@ void service::command_execute_query(
             status::err_invalid_argument
         );
         details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
-        abort_tx(tx, req_info, err_info);
+        abort_transaction(tx, req_info, err_info);
         return;
     }
     execute_query(res, details::query_info{sql}, tx, req_info);
@@ -503,7 +503,7 @@ void service::command_execute_prepared_statement(
     }
     auto handle = validate_statement_handle<sql::response::ExecuteResult>(pq, db_, *res, req_info);
     if(! handle) {
-        abort_tx(tx, req_info);
+        abort_transaction(tx, req_info);
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
@@ -513,7 +513,7 @@ void service::command_execute_prepared_statement(
     std::shared_ptr<error::error_info> err_info{};
     if(auto rc = get_impl(*db_).resolve(handle, std::shared_ptr{std::move(params)}, e, err_info);
        rc != jogasaki::status::ok) {
-        abort_tx(tx, req_info, err_info);
+        abort_transaction(tx, req_info, err_info);
         details::error<sql::response::ExecuteResult>(*res, err_info.get(), req_info);
         return;
     }
@@ -533,7 +533,7 @@ void service::command_execute_prepared_query(
     }
     auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, db_, *res, req_info);
     if(! handle) {
-        abort_tx(tx, req_info);
+        abort_transaction(tx, req_info);
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
@@ -614,7 +614,7 @@ void service::command_rollback(
     req->status(scheduler::request_detail_status::accepted);
     log_request(*req);
 
-    if(auto rc = tx.abort(req_info); rc == jogasaki::status::ok) {
+    if(auto rc = tx.abort_transaction(req_info); rc == jogasaki::status::ok) {
         details::success<sql::response::ResultOnly>(*res, req_info);
     } else {
         std::shared_ptr<error::error_info> err_info{};
@@ -625,7 +625,7 @@ void service::command_rollback(
                 rc
             );
         } else {
-            VLOG(log_error) << log_location_prefix << "error in transaction_->abort()";
+            VLOG(log_error) << log_location_prefix << "error in transaction_->abort_transaction()";
             err_info = create_error_info(
                 error_code::sql_execution_exception,
                 "Unexpected error in aborting transaction.",
@@ -1444,7 +1444,7 @@ void service::execute_query(
     std::shared_ptr<error::error_info> err_info{};
     if(q.has_sql()) {
         if(auto rc = get_impl(*db_).create_executable(q.sql(), e, err_info); rc != jogasaki::status::ok) {
-            abort_tx(tx, req_info, err_info);
+            abort_transaction(tx, req_info, err_info);
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }

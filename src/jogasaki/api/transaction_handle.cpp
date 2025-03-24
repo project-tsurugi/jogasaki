@@ -111,6 +111,10 @@ void transaction_handle::commit_async(  //NOLINT(readability-make-member-functio
 }
 
 status transaction_handle::abort(request_info const& req_info) {  //NOLINT(readability-make-member-function-const)
+    return abort_transaction(req_info);
+}
+
+status transaction_handle::abort_transaction(request_info const& req_info) {  //NOLINT(readability-make-member-function-const)
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     (void) db;

@@ -175,7 +175,7 @@ status abort_transaction(
     request_info const& req_info
 ) {
     std::string txid{tx->transaction_id()};
-    auto ret = tx->object()->abort();
+    auto ret = tx->object()->abort_transaction();
     VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
         << txid
         << " status:"

@@ -68,7 +68,7 @@ TEST_F(kvs_iterator_test, compare_and_print) {
     std::cout << *it2 << std::endl;
     ASSERT_TRUE(*it1 == *it1);
     ASSERT_TRUE(*it1 != *it2);
-    (void)tx->abort();
+    (void)tx->abort_transaction();
 }
 
 TEST_F(kvs_iterator_test, full_scan) {

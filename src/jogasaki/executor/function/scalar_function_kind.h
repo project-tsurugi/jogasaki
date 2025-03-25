@@ -30,7 +30,8 @@ enum class scalar_function_kind : std::size_t {
     localtime,
     current_timestamp,
     localtimestamp,
-    substring
+    substring,
+    upper
 };
 
 /**
@@ -49,6 +50,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::current_timestamp: return "current_timestamp"sv;
         case kind::localtimestamp: return "localtimestamp"sv;
         case kind::substring: return "substring"sv;
+        case kind::upper: return "upper"sv;
     }
     std::abort();
 }

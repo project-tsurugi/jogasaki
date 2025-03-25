@@ -225,6 +225,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
         }
         loop_count++;
     }
+    VLOG(log_debug) << "scan operator loop_count:" << loop_count;
     finish(context);
     if (st != status::not_found) {
         return error_abort(ctx, st);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -174,6 +174,73 @@ TEST_F(uniform_distribution_test, gen_strings_narrow_range) {
         auto res = generate_strings("a\x01\xFE"sv, "a\x02"sv, 256);
         ASSERT_EQ(1, res.size());
         EXPECT_EQ("a\x01\xFF"sv, res[0]);
+    }
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_basic) {
+    const int n = 15;  // 16 - 1
+    auto pivots = generate_strings2(n, "1\x40"sv, "1\x4fzzz"sv);
+    ASSERT_EQ(n, pivots.size());
+    // diff = "\x00\x0fzzz"; so step (= diff / 16) < "\x00\x01"
+    // "1\x40" < p[0] < "1\x41" < p[1] < "1\x42" < ... < "1\x4e" < p[0x0e] < "1\x4f" < "1\x4fzzz"
+    for (int i = 0; i < n; i++) {
+        EXPECT_GE(pivots[i].size(), 2);
+        EXPECT_EQ(pivots[i][0], '1');
+        EXPECT_EQ(pivots[i][1], '\x40' + i);
+    }
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_empty) {
+    auto pivots = generate_strings2(9, "0"sv, "0"sv);
+    ASSERT_TRUE(pivots.empty());
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_invalid_range) {
+    auto pivots = generate_strings2(9, "1"sv, "0"sv);
+    ASSERT_TRUE(pivots.empty());
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_narrow_range_2b) {
+    // verify narrow range (fetched from old alogorithm test)
+    std::string lkey = "a\x01\xFF";
+    std::string rkey = "a\x02";
+    auto pivots = generate_strings2(100, lkey, rkey);
+    ASSERT_EQ(100, pivots.size());
+    ASSERT_LT(lkey, pivots[0]);
+    for (int i = 1; i < 100; i++) {
+        ASSERT_LT(pivots[i - 1], pivots[i]);
+    }
+    ASSERT_LT(pivots[99], rkey);
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_narrow_range_5b_0) {
+    // too narrow range; give up
+    auto lkey = "aaa\xff\xff\xff\xff"sv;
+    auto rkey = "aab"sv;
+    auto pivots = generate_strings2(100, lkey, rkey);
+    ASSERT_TRUE(pivots.empty());
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_narrow_range_5b_1) {
+    // narrow range
+    auto lkey = "aaa\xff\xff\xff\xff"sv;
+    auto rkey = "aab\x00\x00\x00\x00"sv;
+    auto pivots = generate_strings2(100, lkey, rkey);
+    ASSERT_EQ(1, pivots.size());
+    ASSERT_EQ("aab\x00\x00\x00"sv, pivots[0]);
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_narrow_range_5b_2) {
+    // narrow range
+    auto lkey = "aaa\xff\xff\xfe\xff"sv;
+    auto rkey = "aab\x00\x00\x00\x00"sv;
+    auto pivots = generate_strings2(100, lkey, rkey);
+    ASSERT_LE(1, pivots.size());
+    ASSERT_GE(2, pivots.size());
+    ASSERT_EQ("aaa\xff\xff\xff"sv, pivots[0]);
+    if (pivots.size() == 2) {
+        // "aab\x00\x00\x00" is in range, but this is too close to rkey; so may not be in pivots
+        ASSERT_EQ("aab\x00\x00\x00"sv, pivots[0]);
     }
 }
 

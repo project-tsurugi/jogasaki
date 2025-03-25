@@ -163,8 +163,8 @@ static std::vector<std::string> generate_strings2(std::uint64_t max_count, std::
     auto head_32bit = [](std::string_view sv) {
         std::uint64_t ret = 0U;
         for (unsigned int i = 0; i < 4; i++) {
-            char c = (i >= sv.size()) ? 0 : sv[i];
-            ret = (ret << 8U) | static_cast<unsigned char>(c);
+            unsigned char c = (i >= sv.size()) ? 0U : static_cast<unsigned char>(sv[i]);
+            ret = (ret << 8U) | c;
         }
         return ret;
     };

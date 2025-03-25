@@ -236,6 +236,39 @@ void add_builtin_scalar_functions(
             {t::octet(t::varying), t::int8()},
         });
     }
+    /////////
+    // upper
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::upper,
+            builtin::upper,
+            1
+        );
+        auto name = "upper";
+        auto id = scalar_function_id::id_11010;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying)},
+        });
+
+        info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::upper,
+            builtin::upper,
+            1
+        );
+        id = scalar_function_id::id_11011;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::octet(t::varying),
+            {t::octet(t::varying)},
+        });
+    }
 }
 
 namespace builtin {
@@ -458,6 +491,23 @@ data::any extract_substring(std::string_view view, TypeTag type_tag, int64_t zer
     return data::any{type_tag, sub_view};
 }
 
+template <typename T> data::any convert_to_upper(evaluator_context& ctx, const data::any& src) {
+    auto text = src.to<T>();
+    auto str  = static_cast<std::string_view>(text);
+    std::string upper_str;
+    upper_str.reserve(str.size());
+
+    for (char c : str) {
+        if (static_cast<unsigned char>(c) < 0x80) {
+            upper_str += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        } else {
+            upper_str += c;
+        }
+    }
+
+    return data::any{std::in_place_type<T>, T{ctx.resource(), upper_str}};
+}
+
 } // namespace impl
 
 data::any substring(evaluator_context&, sequence_view<data::any> args) {
@@ -492,6 +542,18 @@ data::any substring(evaluator_context&, sequence_view<data::any> args) {
             str, std::in_place_type<runtime_t<kind::character>>, zero_based_start, casted_length);
     }
 
+    std::abort();
+}
+
+data::any upper(evaluator_context& ctx, sequence_view<data::any> args) {
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+    if (src.type_index() == data::any::index<accessor::text>) {
+        return impl::convert_to_upper<runtime_t<kind::character>>(ctx, src);
+    }
+    if (src.type_index() == data::any::index<accessor::binary>) {
+        return impl::convert_to_upper<runtime_t<kind::octet>>(ctx, src);
+    }
     std::abort();
 }
 

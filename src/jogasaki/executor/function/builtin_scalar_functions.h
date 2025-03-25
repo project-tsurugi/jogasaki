@@ -70,6 +70,11 @@ data::any substring(
     sequence_view<data::any> args
 );
 
+data::any upper(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

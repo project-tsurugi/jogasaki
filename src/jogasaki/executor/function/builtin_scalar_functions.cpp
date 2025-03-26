@@ -255,6 +255,25 @@ void add_builtin_scalar_functions(
             {t::character(t::varying)},
         });
     }
+    /////////
+    // lower
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::lower,
+            builtin::lower,
+            1
+        );
+        auto name = "lower";
+        auto id = scalar_function_id::id_11011;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying)},
+        });
+    }
 }
 
 namespace builtin {
@@ -476,22 +495,18 @@ data::any extract_substring(std::string_view view, TypeTag type_tag, int64_t zer
     }
     return data::any{type_tag, sub_view};
 }
-
-template <typename T> data::any convert_to_upper(evaluator_context& ctx, const data::any& src) {
+template <typename T, typename Func>
+data::any convert_case(evaluator_context& ctx, const data::any& src, Func case_converter) {
     auto text = src.to<T>();
-    auto str  = static_cast<std::string_view>(text);
-    std::string upper_str;
-    upper_str.reserve(str.size());
+    T v{ctx.resource(), text};
+    auto str = static_cast<std::string_view>(v);
 
-    for (char c : str) {
-        if (static_cast<unsigned char>(c) < 0x80) {
-            upper_str += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-        } else {
-            upper_str += c;
-        }
+    // NOLINTNEXTLINE(modernize-loop-convert)
+    for (size_t i = 0; i < str.size(); ++i) {
+        auto& c = const_cast<char&>(str[i]);
+        if (static_cast<unsigned char>(c) < 0x80) { c = case_converter(c); }
     }
-
-    return data::any{std::in_place_type<T>, T{ctx.resource(), upper_str}};
+    return data::any{std::in_place_type<T>, v};
 }
 
 } // namespace impl
@@ -535,7 +550,18 @@ data::any upper(evaluator_context& ctx, sequence_view<data::any> args) {
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
     if (src.type_index() == data::any::index<accessor::text>) {
-        return impl::convert_to_upper<runtime_t<kind::character>>(ctx, src);
+        return impl::convert_case<runtime_t<kind::character>>(
+            ctx, src, [](char c) { return (c >= 'a' && c <= 'z') ? (c - 0x20) : c; });
+    }
+    std::abort();
+}
+
+data::any lower(evaluator_context& ctx, sequence_view<data::any> args) {
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+    if (src.type_index() == data::any::index<accessor::text>) {
+        return impl::convert_case<runtime_t<kind::character>>(
+            ctx, src, [](char c) { return (c >= 'A' && c <= 'Z') ? (c + 0x20) : c; });
     }
     std::abort();
 }

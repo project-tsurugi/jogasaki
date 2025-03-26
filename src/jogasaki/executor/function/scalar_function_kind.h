@@ -32,7 +32,9 @@ enum class scalar_function_kind : std::size_t {
     localtimestamp,
     substring,
     upper,
-    lower
+    lower,
+    character_length,
+    char_length
 };
 
 /**
@@ -53,6 +55,8 @@ enum class scalar_function_kind : std::size_t {
         case kind::substring: return "substring"sv;
         case kind::upper: return "upper"sv;
         case kind::lower: return "lower"sv;
+        case kind::character_length: return "character_length"sv;
+        case kind::char_length: return "char_length"sv;
     }
     std::abort();
 }

@@ -274,6 +274,44 @@ void add_builtin_scalar_functions(
             {t::character(t::varying)},
         });
     }
+    /////////
+    // character_length
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::character_length,
+            builtin::character_length,
+            1
+        );
+        auto name = "character_length";
+        auto id = scalar_function_id::id_11012;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::character(t::varying)},
+        });
+    }
+    /////////
+    // char_length
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::char_length,
+            builtin::character_length,
+            1
+        );
+        auto name = "char_length";
+        auto id = scalar_function_id::id_11013;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::character(t::varying)},
+        });
+    }
 }
 
 namespace builtin {
@@ -463,6 +501,18 @@ bool is_valid_utf8(std::string_view view) {
     return true;
 }
 
+size_t get_utf8_length(std::string_view view) {
+    size_t offset = 0;
+    size_t count  = 0;
+    while (offset < view.size()) {
+        size_t char_size = get_byte(detect_next_encoding(view, offset));
+        if (char_size == 0) { return 0; }
+        offset += char_size;
+        count++;
+    }
+    return count;
+}
+
 template <typename TypeTag>
 data::any extract_substring(std::string_view view, TypeTag type_tag, int64_t zero_based_start,
     std::optional<runtime_t<kind::int8>> casted_length) {
@@ -562,6 +612,18 @@ data::any lower(evaluator_context& ctx, sequence_view<data::any> args) {
     if (src.type_index() == data::any::index<accessor::text>) {
         return impl::convert_case<runtime_t<kind::character>>(
             ctx, src, [](char c) { return (c >= 'A' && c <= 'Z') ? (c + 0x20) : c; });
+    }
+    std::abort();
+}
+
+data::any character_length(evaluator_context&, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1); // NOLINT
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+    if (src.type_index() == data::any::index<accessor::text>) {
+        auto text = src.to<runtime_t<kind::character>>();
+        return data::any{std::in_place_type<runtime_t<kind::int8>>,
+            impl::get_utf8_length(static_cast<std::string_view>(text))};
     }
     std::abort();
 }

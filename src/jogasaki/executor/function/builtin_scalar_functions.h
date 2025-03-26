@@ -80,6 +80,11 @@ data::any lower(
     sequence_view<data::any> args
 );
 
+data::any character_length(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

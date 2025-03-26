@@ -18,7 +18,14 @@ message Session {
 
 /* For transaction handle. */
 message Transaction {
-  uint64 handle = 1;
+
+    // primary part of the transaction handle.
+    uint64 handle = 1;
+
+    // secret value to avoid assigning same handle to different transactions by accident.
+    oneof secret_opt {
+        uint64 secret = 2;
+    }
 }
 
 /* For transaction referenceable id. */

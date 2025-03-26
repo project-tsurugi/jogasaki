@@ -1,4 +1,4 @@
-# UPPER LOWER外部仕様
+# CHARACTER_LENGTH外部仕様
 
 2025-03-27 nishimura
 
@@ -27,13 +27,18 @@ CHAR_LENGTH(string_expression) -- CHARACTER_LENGTH のエイリアス
 
 * `string_expression`：変換対象の文字列式
 
-`CHARACTER_LENGTH` 関数は、`string_expression` に含まれる**文字の数**を返します。  
+`CHARACTER_LENGTH` 関数は、`string_expression` に含まれる**文字数**を返します。
 
 
 ## 外部仕様
 
 * `Tsurugi`では`string_expression` の型として`char`、`varchar`の2つのみ許容されます。
-* `char`、`varchar` は UTF-8 データをコードポイント単位で処理し、1文字単位でカウントします。
+* `char`、`varchar` は UTF-8 データをコードポイント単位で処理します。
+* `Tsurugi` における「文字数」は、UTF-8 におけるコードポイント数を指します。
 * **不正なUTF-8シーケンスが入力された場合、0を返します**
 * 入力値が `NULL` の場合、戻り値は `NULL`を返します。
+
+## 付録
+
+コードポイントついては、[Unicode Code Points](https://unicode.org/glossary/#code_point) を参照してください。
 

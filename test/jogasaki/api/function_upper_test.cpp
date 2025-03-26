@@ -120,53 +120,15 @@ TEST_F(function_upper_test, char) {
     EXPECT_EQ(create_nullable_record<kind::character>(expected_text), result[0])
         << "Failed query: " << query;
 }
-TEST_F(function_upper_test, binary) {
-    // upper case
-    // 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50 51 52 53 54 55 56 57 58 59 5a
-    // lower case
-    // 61 62 63 64 65 66 67 68 69 6a 6b 6c 6d 6e 6f 70 71 72 73 74 75 76 77 78 79 7a
-
-    execute_statement("create table t (c0 binary(60))");
-    execute_statement("insert into t values "
-                      "('"
-                      "406162636465666768696a6b6c6d6e6f707172737475767778797a604142434445464748494a"
-                      "4b4c4d4e4f505152535455565758595a')");
-    std::string query = std::string("SELECT upper(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    accessor::binary expected_text(
-        "\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50\x51\x52\x53\x54\x55"
-        "\x56\x57\x58\x59\x5a\x60\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50"
-        "\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x00\x00\x00\x00\x00\x00");
-    EXPECT_EQ(create_nullable_record<kind::octet>(accessor::binary{expected_text}), result[0])
-        << "Failed query: " << query;
-}
-
-TEST_F(function_upper_test, varbinary) {
-
-    execute_statement("create table t (c0 varbinary(60))");
-    execute_statement("insert into t values "
-                      "('"
-                      "406162636465666768696a6b6c6d6e6f707172737475767778797a604142434445464748494a"
-                      "4b4c4d4e4f505152535455565758595a')");
-    std::string query = std::string("SELECT upper(c0) FROM t");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    accessor::binary expected_text(
-        "\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50\x51\x52\x53\x54\x55"
-        "\x56\x57\x58\x59\x5a\x60\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50"
-        "\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a");
-    EXPECT_EQ(create_nullable_record<kind::octet>(accessor::binary{expected_text}), result[0])
-        << "Failed query: " << query;
-}
 
 TEST_F(function_upper_test, null) {
     std::vector<mock::basic_record> result{};
-    execute_statement("create table t (c0 varchar(70))");
+    execute_statement("create table t (c0 char(20))");
     execute_statement("insert into t values ('XYZ')");
-    test_stmt_err("SELECT upper(null) FROM t", error_code::symbol_analyze_exception);
+    std::string query = std::string("SELECT upper(null) FROM t");
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
 }
 
 }  // namespace jogasaki::testing

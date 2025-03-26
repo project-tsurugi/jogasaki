@@ -31,8 +31,7 @@ LOWER(string_expression)
 
 ## 外部仕様
 
-* `Tsurugi`では`string_expression` の型として`char`、`varchar`、`binary`、`varbinary`の4つのみ許容されます。
-* `binary`、`varbinary`の場合はバイナリデータをバイト単位で処理し、 **Basic Latin（U+0041～U+005A, U+0061～U+007A）** のみ変換を行います戻り値の型は`varbinary`になります。
+* `Tsurugi`では`string_expression` の型として`char`、`varchar`の2つのみ許容されます。
 * `char`、`varchar`はUTF-8データをコードポイント単位で処理し、 **Basic Latin（U+0041～U+005A, U+0061～U+007A）** のみ変換を行います。戻り値の型は`varchar`になります。
 
 

@@ -254,20 +254,6 @@ void add_builtin_scalar_functions(
             t::character(t::varying),
             {t::character(t::varying)},
         });
-
-        info = std::make_shared<scalar_function_info>(
-            scalar_function_kind::upper,
-            builtin::upper,
-            1
-        );
-        id = scalar_function_id::id_11011;
-        repo.add(id, info);
-        functions.add({
-            id,
-            name,
-            t::octet(t::varying),
-            {t::octet(t::varying)},
-        });
     }
 }
 
@@ -550,9 +536,6 @@ data::any upper(evaluator_context& ctx, sequence_view<data::any> args) {
     if (src.empty()) { return {}; }
     if (src.type_index() == data::any::index<accessor::text>) {
         return impl::convert_to_upper<runtime_t<kind::character>>(ctx, src);
-    }
-    if (src.type_index() == data::any::index<accessor::binary>) {
-        return impl::convert_to_upper<runtime_t<kind::octet>>(ctx, src);
     }
     std::abort();
 }

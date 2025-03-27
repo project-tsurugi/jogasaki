@@ -501,16 +501,16 @@ bool is_valid_utf8(std::string_view view) {
     return true;
 }
 
-size_t get_utf8_length(std::string_view view) {
+std::pair<size_t, bool> get_utf8_length(std::string_view view) {
     size_t offset = 0;
     size_t count  = 0;
     while (offset < view.size()) {
         size_t char_size = get_byte(detect_next_encoding(view, offset));
-        if (char_size == 0) { return 0; }
+        if (char_size == 0) { return {0, false}; }
         offset += char_size;
         count++;
     }
-    return count;
+    return {count, true};
 }
 
 template <typename TypeTag>
@@ -622,8 +622,8 @@ data::any character_length(evaluator_context&, sequence_view<data::any> args) {
     if (src.empty()) { return {}; }
     if (src.type_index() == data::any::index<accessor::text>) {
         auto text        = src.to<runtime_t<kind::character>>();
-        const size_t len = impl::get_utf8_length(static_cast<std::string_view>(text));
-        if (len == 0) { return {}; }
+        auto [len, valid] = impl::get_utf8_length(static_cast<std::string_view>(text));
+        if (!valid) { return {}; }
         return data::any{std::in_place_type<runtime_t<kind::int8>>, len};
     }
     std::abort();

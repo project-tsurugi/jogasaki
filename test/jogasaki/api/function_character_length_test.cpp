@@ -115,6 +115,15 @@ TEST_F(function_character_length_test, char) {
     EXPECT_EQ((create_nullable_record<kind::int8>(30)), result[0]);
 }
 
+TEST_F(function_character_length_test, varchar_empty) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(40))");
+    execute_statement("insert into t values ('')");
+    execute_query("SELECT character_length(c0) FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::int8>(0)), result[0]);
+}
+
 TEST_F(function_character_length_test, invalid_utf8_1byte) {
     std::vector<mock::basic_record> result{};
     execute_statement("create table t (c0 varchar(100))");

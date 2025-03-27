@@ -185,7 +185,7 @@ TEST_F(serializer_test, ser_bool) {
 static tateyama::proto::kvs::data::Decimal dec(const std::uint64_t hi, const std::uint64_t lo, const int exp) noexcept {
     std::string buf{};
     auto bufsize = sizeof(lo) + sizeof(hi);
-    buf.reserve(bufsize);
+    buf.resize(bufsize);
     auto v = lo;
     for (int i = 0; i < 8; i++) {
         buf[15 - i] = static_cast<std::uint8_t>(v & 0xffU);

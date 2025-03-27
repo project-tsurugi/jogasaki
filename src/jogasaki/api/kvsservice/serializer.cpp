@@ -256,7 +256,7 @@ static inline void set_decimal(data::any &dest, tateyama::proto::kvs::data::Valu
     const auto hi = triple.coefficient_high();
     std::string buf{};
     const auto buflen = sizeof(lo) + sizeof(hi);
-    buf.reserve(buflen);
+    buf.resize(buflen);
     auto v = lo;
     for (int i = 0; i < 8; i++) {
         buf[15 - i] = static_cast<char>(v & 0xffU);

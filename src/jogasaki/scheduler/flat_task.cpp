@@ -54,10 +54,9 @@ namespace jogasaki::scheduler {
 
 using takatori::util::string_builder;
 
-void flat_task::bootstrap(tateyama::task_scheduler::context& ctx) {
+void flat_task::bootstrap(tateyama::task_scheduler::context&) {
     log_entry << *this;
     trace_scope_name("bootstrap");  //NOLINT
-    job()->preferred_worker_index().store(ctx.index());
     auto& sc = scheduler::statement_scheduler::impl::get_impl(*req_context_->stmt_scheduler());
     auto& dc = scheduler::dag_controller::impl::get_impl(sc.controller());
     dc.init(*graph_, *req_context_);

@@ -125,7 +125,7 @@ TEST_F(function_char_length_test, invalid_utf8_1byte) {
     execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
     execute_query("SELECT char_length(c0) FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::int8>(0)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int8>({0}, {true})), result[0]);
 }
 
 TEST_F(function_char_length_test, invalid_utf8_2byte) {
@@ -138,7 +138,7 @@ TEST_F(function_char_length_test, invalid_utf8_2byte) {
     execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
     execute_query("SELECT char_length(c0) FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::int8>(0)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int8>({0}, {true})), result[0]);
 }
 
 TEST_F(function_char_length_test, invalid_utf8_3byte) {
@@ -151,7 +151,7 @@ TEST_F(function_char_length_test, invalid_utf8_3byte) {
     execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
     execute_query("SELECT char_length(c0) FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::int8>(0)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int8>({0}, {true})), result[0]);
 }
 TEST_F(function_char_length_test, invalid_utf8_4byte) {
     std::vector<mock::basic_record> result{};
@@ -163,7 +163,7 @@ TEST_F(function_char_length_test, invalid_utf8_4byte) {
     execute_statement("INSERT INTO t (c0) VALUES (:p0)", variables, *ps);
     execute_query("SELECT char_length(c0) FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::int8>(0)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int8>({0}, {true})), result[0]);
 }
 
 TEST_F(function_char_length_test, null) {

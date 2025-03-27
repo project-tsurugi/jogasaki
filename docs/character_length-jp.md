@@ -33,9 +33,9 @@ CHAR_LENGTH(string_expression) -- CHARACTER_LENGTH のエイリアス
 ## 外部仕様
 
 * `Tsurugi`では`string_expression` の型として`char`、`varchar`の2つのみ許容されます。
-* `char`、`varchar` は UTF-8 データをコードポイント単位で処理します。
-* `Tsurugi` における「文字数」は、UTF-8 におけるコードポイント数を指します。
-* **不正なUTF-8シーケンスが入力された場合、0を返します**
+* `Tsurugi`の`char`、`varchar` は UTF-8 データをコードポイント単位で処理します。
+* `Tsurugi`の`char`、`varchar` における「文字数」は、UTF-8 におけるコードポイント数を指します。
+* **不正なUTF-8シーケンスが入力された場合、NULLを返します**
 * 入力値が `NULL` の場合、戻り値は `NULL`を返します。
 
 ## 付録

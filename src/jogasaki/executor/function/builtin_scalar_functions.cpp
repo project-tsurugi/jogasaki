@@ -621,9 +621,10 @@ data::any character_length(evaluator_context&, sequence_view<data::any> args) {
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
     if (src.type_index() == data::any::index<accessor::text>) {
-        auto text = src.to<runtime_t<kind::character>>();
-        return data::any{std::in_place_type<runtime_t<kind::int8>>,
-            impl::get_utf8_length(static_cast<std::string_view>(text))};
+        auto text        = src.to<runtime_t<kind::character>>();
+        const size_t len = impl::get_utf8_length(static_cast<std::string_view>(text));
+        if (len == 0) { return {}; }
+        return data::any{std::in_place_type<runtime_t<kind::int8>>, len};
     }
     std::abort();
 }

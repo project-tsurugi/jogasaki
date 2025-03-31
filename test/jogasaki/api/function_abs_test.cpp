@@ -95,7 +95,6 @@ struct TestCase {
 };
 
 using namespace std::string_view_literals;
-
 TEST_F(function_abs_test, int) {
     execute_statement("create table t (c0 INT)");
     execute_statement("insert into t values (-8)");
@@ -247,4 +246,188 @@ TEST_F(function_abs_test, decimal_1_1_max) {
         std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 9, -1)});
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
 }
+TEST_F(function_abs_test, float_min) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values (-3.40282e+38)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float4>(3.40282e+38)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, float_max) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values (3.40282e+38)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float4>(3.40282e+38)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, float_normal) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values (-3.14159265358979323846)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float4>(3.14159265358979323846)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, float_minus_zero) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values (-0.0)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float4>(0.0)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, float_minus_nan) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values ('-NaN')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float4>(std::numeric_limits<float>::quiet_NaN())), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, float_nan) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values ('NaN')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float4>(std::numeric_limits<float>::quiet_NaN())), result[0])
+        << "Failed query: " << query;
+}
+
+TEST_F(function_abs_test, float_infinity) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values ('Infinity')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ(
+        create_nullable_record<kind::float4>(std::numeric_limits<float>::infinity()), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, float_minus_infinity) {
+    execute_statement("create table t (c0 float)");
+    execute_statement("insert into t values ('-Infinity')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ(
+        create_nullable_record<kind::float4>(std::numeric_limits<float>::infinity()), result[0])
+        << "Failed query: " << query;
+}
+
+TEST_F(function_abs_test, double_min) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values (-1.79769e+308)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float8>(1.79769e+308)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, double_max) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values (1.79769e+308)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float8>(1.79769e+308)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, double_normal) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values (-3.14159265358979323846)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float8>(3.14159265358979323846)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, double_minus_zero) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values (-0.0)");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float8>(0.0)), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, double_minus_nan) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values ('-NaN')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float8>(std::numeric_limits<double>::quiet_NaN())), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, double_nan) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values ('NaN')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ((create_nullable_record<kind::float8>(std::numeric_limits<double>::quiet_NaN())), result[0])
+        << "Failed query: " << query;
+}
+
+TEST_F(function_abs_test, double_infinity) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values ('Infinity')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ(
+        create_nullable_record<kind::float8>(std::numeric_limits<double>::infinity()), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_abs_test, double_minus_infinity) {
+    execute_statement("create table t (c0 double)");
+    execute_statement("insert into t values ('-Infinity')");
+
+    std::string query = std::string("SELECT abs(c0) FROM t");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    EXPECT_EQ(
+        create_nullable_record<kind::float8>(std::numeric_limits<double>::infinity()), result[0])
+        << "Failed query: " << query;
+}
+
 } // namespace jogasaki::testing

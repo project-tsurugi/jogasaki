@@ -312,6 +312,57 @@ void add_builtin_scalar_functions(
             {t::character(t::varying)},
         });
     }
+    /////////
+    // abs
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::abs,
+            builtin::abs,
+            1
+        );
+        auto name = "abs";
+        auto id = scalar_function_id::id_11014;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4()},
+        });
+        id = scalar_function_id::id_11015;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8()},
+        });
+        id = scalar_function_id::id_11016;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4()},
+        });
+        id = scalar_function_id::id_11017;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8()},
+        });
+        id = scalar_function_id::id_11018;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal()},
+        });
+    }
 }
 
 namespace builtin {
@@ -559,6 +610,16 @@ data::any convert_case(evaluator_context& ctx, const data::any& src, Func case_c
     return data::any{std::in_place_type<T>, v};
 }
 
+int32_t abs_val(int32_t x) {
+    int32_t mask = x >> 31;   // NOLINT(hicpp-signed-bitwise)
+    return (x + mask) ^ mask; // NOLINT(hicpp-signed-bitwise)
+}
+
+int64_t abs_val(int64_t x) {
+    int64_t mask = x >> 63;   // NOLINT(hicpp-signed-bitwise)
+    return (x + mask) ^ mask; // NOLINT(hicpp-signed-bitwise)
+}
+
 } // namespace impl
 
 data::any substring(evaluator_context&, sequence_view<data::any> args) {
@@ -626,6 +687,48 @@ data::any character_length(evaluator_context&, sequence_view<data::any> args) {
             return data::any{std::in_place_type<runtime_t<kind::int8>>, *len};
         }
         return {};
+    }
+    std::abort();
+}
+
+data::any abs(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1); // NOLINT
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+    switch (src.type_index()) {
+        case data::any::index<runtime_t<kind::int4>>: {
+            auto abs_value = src.to<runtime_t<kind::int4>>();
+            if (abs_value == std::numeric_limits<runtime_t<kind::int4>>::min()) {
+                ctx.add_error({error_kind::overflow,
+                    "integer out of range: cannot convert INT minimum value."});
+                return data::any{std::in_place_type<error>, error(error_kind::overflow)};
+            }
+            return data::any{std::in_place_type<runtime_t<kind::int4>>, impl::abs_val(abs_value)};
+        }
+        case data::any::index<runtime_t<kind::int8>>: {
+            auto abs_value = src.to<runtime_t<kind::int8>>();
+            if (abs_value == std::numeric_limits<runtime_t<kind::int8>>::min()) {
+                ctx.add_error({error_kind::overflow,
+                    "integer out of range: cannot convert BIGINT minimum value."});
+                return data::any{std::in_place_type<error>, error(error_kind::overflow)};
+            }
+            return data::any{std::in_place_type<runtime_t<kind::int8>>, impl::abs_val(abs_value)};
+        }
+        case data::any::index<runtime_t<kind::float4>>: {
+            auto abs_value = src.to<runtime_t<kind::float4>>();
+            return data::any{std::in_place_type<runtime_t<kind::float4>>, std::fabs(abs_value)};
+        }
+        case data::any::index<runtime_t<kind::float8>>: {
+            auto abs_value = src.to<runtime_t<kind::float8>>();
+            return data::any{std::in_place_type<runtime_t<kind::float8>>, std::fabs(abs_value)};
+        }
+        case data::any::index<runtime_t<kind::decimal>>: {
+            auto value     = src.to<runtime_t<kind::decimal>>();
+            auto new_value = takatori::decimal::triple{
+                +1, value.coefficient_high(), value.coefficient_low(), value.exponent()};
+            return data::any{std::in_place_type<runtime_t<kind::decimal>>, new_value};
+        }
+        default: std::abort();
     }
     std::abort();
 }

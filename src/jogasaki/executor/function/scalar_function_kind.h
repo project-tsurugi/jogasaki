@@ -34,7 +34,8 @@ enum class scalar_function_kind : std::size_t {
     upper,
     lower,
     character_length,
-    char_length
+    char_length,
+    abs
 };
 
 /**
@@ -57,6 +58,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::lower: return "lower"sv;
         case kind::character_length: return "character_length"sv;
         case kind::char_length: return "char_length"sv;
+        case kind::abs: return "abs"sv;
     }
     std::abort();
 }

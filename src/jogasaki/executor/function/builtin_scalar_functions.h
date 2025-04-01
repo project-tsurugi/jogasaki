@@ -90,6 +90,11 @@ data::any abs(
     sequence_view<data::any> args
 );
 
+data::any position(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

@@ -436,7 +436,7 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
         } else {
             // Add the initial scan ranges
             scan_ranges.emplace_back(std::make_shared<impl::scan_range>(std::move(begin),
-                bound(kvs::end_point_kind::inclusive, pivots.front().size(),
+                bound(kvs::end_point_kind::exclusive, pivots.front().size(),
                     std::make_unique<data::aligned_buffer>(pivots.front())),
                 is_empty));
             // Add the intermediate scan ranges

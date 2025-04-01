@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -157,5 +157,76 @@ TEST_F(parallel_scan_test, multiple_pivots) {
     EXPECT_EQ((create_nullable_record<kind::int4>(90)), result[8]);
     EXPECT_EQ((create_nullable_record<kind::int4>(100)), result[9]);
 }
-
+TEST_F(parallel_scan_test, count_rtx_parallel_pivot_0) {
+    // issues #1180
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    std::ostringstream query;
+    query << "insert into t values ";
+    auto cfg = std::make_shared<configuration>();
+    cfg->rtx_parallel_scan(true);
+    cfg->scan_default_parallel(2);
+    cfg->key_distribution(key_distribution_kind::uniform);
+    global::config_pool(cfg);
+    for (int i = 1; i <= 1; ++i) {
+        if (i > 1) { query << ", "; }
+        query << "(" << i << ")";
+    }
+    execute_statement(query.str());
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::vector<mock::basic_record> result{};
+    std::string query2 = std::string("SELECT COUNT(c0) FROM t");
+    execute_query(query2, *tx, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query2;
+    // NOT 1001
+    EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]) << "Failed query: " << query2;
+    ASSERT_EQ(status::ok, tx->commit());
 }
+TEST_F(parallel_scan_test, count_rtx_parallel_pivot_1) {
+    // issues #1180
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    std::ostringstream query;
+    query << "insert into t values ";
+    auto cfg = std::make_shared<configuration>();
+    cfg->rtx_parallel_scan(true);
+    cfg->scan_default_parallel(2);
+    cfg->key_distribution(key_distribution_kind::uniform);
+    global::config_pool(cfg);
+    for (int i = 1; i <= 1000; ++i) {
+        if (i > 1) { query << ", "; }
+        query << "(" << i << ")";
+    }
+    execute_statement(query.str());
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::vector<mock::basic_record> result{};
+    std::string query2 = std::string("SELECT COUNT(c0) FROM t");
+    execute_query(query2, *tx, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query2;
+    // NOT 1001
+    EXPECT_EQ((create_nullable_record<kind::int8>(1000)), result[0]) << "Failed query: " << query2;
+    ASSERT_EQ(status::ok, tx->commit());
+}
+TEST_F(parallel_scan_test, count_rtx_parallel_pivot_4) {
+    // issues #1180
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    std::ostringstream query;
+    query << "insert into t values ";
+    auto cfg = std::make_shared<configuration>();
+    cfg->rtx_parallel_scan(true);
+    cfg->scan_default_parallel(4);
+    cfg->key_distribution(key_distribution_kind::uniform);
+    global::config_pool(cfg);
+    for (int i = 1; i <= 1000; ++i) {
+        if (i > 1) { query << ", "; }
+        query << "(" << i << ")";
+    }
+    execute_statement(query.str());
+    auto tx = utils::create_transaction(*db_, true, false);
+    std::vector<mock::basic_record> result{};
+    std::string query2 = std::string("SELECT COUNT(c0) FROM t");
+    execute_query(query2, *tx, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query2;
+    // NOT 1001
+    EXPECT_EQ((create_nullable_record<kind::int8>(1000)), result[0]) << "Failed query: " << query2;
+    ASSERT_EQ(status::ok, tx->commit());
+}
+} // namespace jogasaki::testing

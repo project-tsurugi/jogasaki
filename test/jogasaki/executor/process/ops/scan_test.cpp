@@ -585,7 +585,15 @@ TEST_F(scan_test, host_variables) {
     EXPECT_EQ((jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>(100, 20, 2)), result[0]);
     ASSERT_EQ(status::ok, tx->commit());
 }
-
+/**
+ * @brief Scan information test for #1180 (RTX scan with parallelism of 1)
+ *
+ * This test is a **scan information validation test related to #1180**, and
+ * `scan_test::scan_info_rtx_parallel_1` ensures that the **RTX scan with parallelism of 1**
+ * functions correctly.
+ *
+ * - Ensures that both the **start and end endpoints of the range scan are `exclusive`**
+ */
 TEST_F(scan_test, scan_info_rtx_parallel_1) {
     // issues #1180
     const int parallel = 1;
@@ -698,7 +706,15 @@ TEST_F(scan_test, scan_info_rtx_parallel_1) {
     EXPECT_EQ(zzz[0]->begin().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
     EXPECT_EQ(zzz[0]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
 }
-
+/**
+ * @brief Scan information test for #1180 (RTX scan with parallelism of 2)
+ *
+ * This test is a **scan information validation test related to #1180**, and
+ * `scan_test::scan_info_rtx_parallel_2` ensures that the **RTX scan with parallelism of 2**
+ * functions correctly.
+ *
+ * - Ensures that the **start endpoint is `exclusive`** for the first range and the **end endpoint is `inclusive`** for the second range.
+ */
 TEST_F(scan_test, scan_info_rtx_parallel_2) {
     // issues #1180
     const int parallel = 2;
@@ -819,6 +835,18 @@ TEST_F(scan_test, scan_info_rtx_parallel_2) {
     EXPECT_EQ(zzz[1]->begin().endpointkind(), jogasaki::kvs::end_point_kind::inclusive);
     EXPECT_EQ(zzz[1]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
 }
+/**
+ * @brief #1180 Scan Information Test (RTX Scan with Parallelism 4)
+ *
+ * This test is related to **issue #1180**, which verifies the correct functionality of
+ * the **RTX scan with parallelism 4**. The test ensures that scan ranges are properly
+ * divided into 4 parts when `scan_default_parallel(4)` is used.
+ *
+ * - Checks that the `begin` and `end` endpoints of the ranges are correctly assigned:
+ *   - The first range begins with an **exclusive** endpoint, while the following ranges
+ *     have an **inclusive** start and **exclusive** end.
+ * - Verifies the accuracy of endpoint kinds in the created scan ranges.
+ */
 TEST_F(scan_test, scan_info_rtx_parallel_4) {
     // issues #1180
     const int parallel = 4;

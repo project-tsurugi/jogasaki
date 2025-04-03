@@ -157,6 +157,16 @@ TEST_F(parallel_scan_test, multiple_pivots) {
     EXPECT_EQ((create_nullable_record<kind::int4>(90)), result[8]);
     EXPECT_EQ((create_nullable_record<kind::int4>(100)), result[9]);
 }
+/**
+ * @brief Tests the functionality of parallel scanning with zero pivots.
+ *
+ * This test verifies that the parallel scan still functions correctly
+ * when `key_distribution::compute_pivots` does not return any pivots.
+ *
+ * - Ensures that a simple table with one record is correctly counted.
+ * - Covers issue #1180.
+ *
+ */
 TEST_F(parallel_scan_test, count_rtx_parallel_pivot_0) {
     // issues #1180
     execute_statement("CREATE TABLE t (c0 int primary key)");
@@ -164,7 +174,7 @@ TEST_F(parallel_scan_test, count_rtx_parallel_pivot_0) {
     query << "insert into t values ";
     auto cfg = std::make_shared<configuration>();
     cfg->rtx_parallel_scan(true);
-    cfg->scan_default_parallel(2);
+    cfg->scan_default_parallel(1);
     cfg->key_distribution(key_distribution_kind::uniform);
     global::config_pool(cfg);
     for (int i = 1; i <= 1; ++i) {
@@ -181,8 +191,17 @@ TEST_F(parallel_scan_test, count_rtx_parallel_pivot_0) {
     EXPECT_EQ((create_nullable_record<kind::int8>(1)), result[0]) << "Failed query: " << query2;
     ASSERT_EQ(status::ok, tx->commit());
 }
+/**
+ * @brief Tests the functionality of parallel scanning when only one pivot is returned.
+ *
+ * This test verifies that the parallel scan works correctly even when
+ * `key_distribution::compute_pivots` returns only a single pivot.
+ *
+ * - Ensures that the scan still returns the correct count with minimal parallelization.
+ * - Covers issue #1180.
+ *
+ */
 TEST_F(parallel_scan_test, count_rtx_parallel_pivot_1) {
-    // issues #1180
     execute_statement("CREATE TABLE t (c0 int primary key)");
     std::ostringstream query;
     query << "insert into t values ";
@@ -205,8 +224,18 @@ TEST_F(parallel_scan_test, count_rtx_parallel_pivot_1) {
     EXPECT_EQ((create_nullable_record<kind::int8>(1000)), result[0]) << "Failed query: " << query2;
     ASSERT_EQ(status::ok, tx->commit());
 }
-TEST_F(parallel_scan_test, count_rtx_parallel_pivot_4) {
-    // issues #1180
+/**
+ * @brief Original test for parallel scanning with four pivots (#1180).
+ *
+ * This test serves as the **original** verification for issue #1180,
+ * ensuring that the parallel scan correctly handles the case where
+ * `key_distribution::compute_pivots` returns four pivots.
+ *
+ * - It is **the base test case for #1180**, establishing correctness for parallel scan.
+ * - Ensures that increasing the number of pivots does not affect correctness.
+ *
+ */
+TEST_F(parallel_scan_test, count_rtx_parallel_pivot_3) {
     execute_statement("CREATE TABLE t (c0 int primary key)");
     std::ostringstream query;
     query << "insert into t values ";

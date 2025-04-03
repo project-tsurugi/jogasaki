@@ -791,7 +791,6 @@ data::any position(evaluator_context&, sequence_view<data::any> args) {
     if (lstr.type_index() == data::any::index<accessor::text>) {
         auto ltext  = lstr.to<runtime_t<kind::character>>();
         auto substr = static_cast<std::string_view>(ltext);
-        if (!impl::is_valid_utf8(substr)) { return {}; }
         if (substr.empty()) { return data::any{std::in_place_type<runtime_t<kind::int8>>, 1}; }
         if (rstr.type_index() == data::any::index<accessor::text>) {
             auto rtext = rstr.to<runtime_t<kind::character>>();

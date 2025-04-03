@@ -201,7 +201,7 @@ TEST_F(function_position_test, invalidutf8_1byte_sub) {
         std::string query = std::string("SELECT position(c0 IN 'a' ) FROM t");
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+        EXPECT_EQ(create_nullable_record<kind::int8>(0), result[0]) << "Failed query: " << query;
     }
     {
         std::vector<mock::basic_record> result{};
@@ -231,7 +231,7 @@ TEST_F(function_position_test, invalid_utf8_2byte) {
         std::string query = std::string("SELECT position(c0 IN 'a' ) FROM t");
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+        EXPECT_EQ(create_nullable_record<kind::int8>(0), result[0]) << "Failed query: " << query;
     }
     {
         std::vector<mock::basic_record> result{};
@@ -261,7 +261,7 @@ TEST_F(function_position_test, invalid_utf8_3byte) {
         std::string query = std::string("SELECT position(c0 IN 'a' ) FROM t");
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+        EXPECT_EQ(create_nullable_record<kind::int8>(0), result[0]) << "Failed query: " << query;
     }
     {
         std::vector<mock::basic_record> result{};
@@ -291,7 +291,7 @@ TEST_F(function_position_test, invalid_utf8_4byte) {
         std::string query = std::string("SELECT position(c0 IN 'a' ) FROM t");
         execute_query(query, result);
         ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-        EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+        EXPECT_EQ(create_nullable_record<kind::int8>(0), result[0]) << "Failed query: " << query;
     }
     {
         std::vector<mock::basic_record> result{};

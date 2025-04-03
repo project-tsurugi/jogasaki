@@ -34,7 +34,7 @@ POSITION(substring IN string_expression)
 
 * `Tsurugi` では `substring`、`string_expression` の型として `char`、`varchar` の2つのみ許容される。
 * `POSITION` は UTF-8 データをコードポイント単位で処理する。**ただし将来的に変更になる可能性がある。**
-* **不正な UTF-8 シーケンスが入力された場合、NULL を返す。**
+* `string_expression` に **不正な UTF-8 シーケンスが入力された場合、NULL を返す。**
 * `substring` が `string_expression` 内に存在しない場合、戻り値は `0` を返す。
 * `substring` または `string_expression` が `NULL` の場合、戻り値は `NULL` を返す。
 * `substring` が `空文字` の場合戻り値は `1`を返す。

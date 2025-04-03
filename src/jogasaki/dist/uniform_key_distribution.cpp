@@ -153,7 +153,7 @@ std::vector<std::string> generate_strings(std::string_view lo, std::string_view 
     return pivots;
 }
 
-static std::vector<std::string> generate_strings2(std::uint64_t max_count, std::string_view lo, std::string_view hi) {
+std::vector<std::string> generate_strings2(std::uint64_t max_count, std::string_view lo, std::string_view hi) {
     // divide next 4-octets (32 bit) after common_prefix
     if (hi <= lo) {
         // invalid arguments or one point
@@ -169,9 +169,10 @@ static std::vector<std::string> generate_strings2(std::uint64_t max_count, std::
         return ret;
     };
 
-    std::uint64_t h = head_32bit(hi.substr(cpl));
+    std::uint64_t h = head_32bit(hi.substr(cpl));  // round down
     std::uint64_t l = head_32bit(lo.substr(cpl)) + ((lo.size() <= cpl + 4) ? 0 : 1);  // round up
-    // assert(h >= l + 0x00ffffff);
+    // (1U<<24)-1 <= h-l < 1UL<<32;
+    max_count = std::min(max_count, (1UL << 24U) - 2U);
 
     std::vector<std::string> pivots{};
     pivots.reserve(max_count);
@@ -179,6 +180,8 @@ static std::vector<std::string> generate_strings2(std::uint64_t max_count, std::
     std::string buf{lo.substr(0, cpl + 4)};
     buf.resize(cpl + 4);
     for (std::size_t i = 0; i < max_count; i++) {
+        // (h - l) / (max_count + 1) >= 1  // c32 must change for every i
+        // (i + 1) * (h - l) < 1UL<<56     // never overflow uint64
         std::uint64_t c32 = l + (h - l) * (i + 1) / (max_count + 1);
         buf[cpl + 0] = static_cast<char>(c32 >> 24U);
         buf[cpl + 1] = static_cast<char>(c32 >> 16U);

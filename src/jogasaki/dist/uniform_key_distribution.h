@@ -111,4 +111,17 @@ std::size_t common_prefix_len(std::string_view lo, std::string_view hi);
 std::vector<std::string>
 generate_strings(std::string_view lo, std::string_view hi, std::size_t chars = 256);
 
+/**
+ * @brief generate strings between two strings
+ * @param max_count the number of pivot points
+ * @param lo the smaller string
+ * @param hi the larger string
+ * @details the function generates strings between lo and hi (exclusively)
+ * If the given range is one point or invalid (i.e. hi <= lo), the function returns an empty vector.
+ * @return the generated strings
+ * @note the function is public for testing
+ */
+std::vector<std::string>
+generate_strings2(std::uint64_t max_count, std::string_view lo, std::string_view hi);
+
 }  // namespace jogasaki::dist

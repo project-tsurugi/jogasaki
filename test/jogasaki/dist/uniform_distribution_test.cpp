@@ -177,6 +177,29 @@ TEST_F(uniform_distribution_test, gen_strings_narrow_range) {
     }
 }
 
+TEST_F(uniform_distribution_test, generate_strings2_basic) {
+    const int n = 15;  // 16 - 1
+    auto p = generate_strings2(n, "1\x40"sv, "1\x4fzzz"sv);
+    ASSERT_EQ(n, p.size());
+    // diff = "\x00\x0fzzz"; so step (diff / 16) < "\x00\x01"
+    // "1\x40" < p[0] < "1\x41" < p[1] < "1\x42" < ... < "1\x4e" < p[0x0e] < "1\x4f" < "1\x4fzzz"
+    for (int i = 0; i < n; i++) {
+        EXPECT_GE(p[i].size(), 2);
+        EXPECT_EQ(p[i][0], '1');
+        EXPECT_EQ(p[i][1], '\x40' + i);
+    }
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_empty) {
+    auto p = generate_strings2(9, "0"sv, "0"sv);
+    ASSERT_TRUE(p.empty());
+}
+
+TEST_F(uniform_distribution_test, generate_strings2_invalid_range) {
+    auto p = generate_strings2(9, "1"sv, "0"sv);
+    ASSERT_TRUE(p.empty());
+}
+
 TEST_F(uniform_distribution_test, compute_pivots) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory doesn't support uniform key distribution yet";

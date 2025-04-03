@@ -363,6 +363,25 @@ void add_builtin_scalar_functions(
             {t::decimal()},
         });
     }
+    /////////
+    // position
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::position, builtin::position, 2);
+        auto name = "position";
+        auto id   = scalar_function_id::id_11019;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {
+                t::character(t::varying),
+                t::character(t::varying),
+            },
+        });
+    }
 }
 
 namespace builtin {
@@ -620,6 +639,34 @@ int64_t abs_val(int64_t x) {
     return (x + mask) ^ mask; // NOLINT(hicpp-signed-bitwise)
 }
 
+size_t count_utf8_chars(std::string_view str, size_t i) {
+    size_t offset     = 0;
+    size_t char_count = 1;
+    while (offset < i) {
+        char_count++;
+        size_t char_size = get_byte(detect_next_encoding(str, offset));
+        if (offset + char_size >= i) break;
+        offset += char_size;
+    }
+    return char_count;
+}
+data::any extract_position(std::string_view substr, std::string_view str) {
+    const std::size_t str_size    = str.size();
+    const std::size_t substr_size = substr.size();
+    std::size_t pos               = std::string_view::npos;
+    for (std::size_t i = 0; i + substr_size <= str_size; ++i) {
+        if (std::memcmp(str.data() + i, substr.data(), substr_size) == 0) {
+            pos = i;
+            break;
+        }
+    }
+    if (pos == std::string_view::npos) {
+        return data::any{std::in_place_type<runtime_t<kind::int8>>, 0};
+    }
+    const std::size_t char_count = count_utf8_chars(str, pos);
+    return data::any{std::in_place_type<runtime_t<kind::int8>>, char_count};
+}
+
 } // namespace impl
 
 data::any substring(evaluator_context&, sequence_view<data::any> args) {
@@ -729,6 +776,29 @@ data::any abs(evaluator_context& ctx, sequence_view<data::any> args) {
             return data::any{std::in_place_type<runtime_t<kind::decimal>>, new_value};
         }
         default: std::abort();
+    }
+    std::abort();
+}
+
+data::any position(evaluator_context&, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 2); // NOLINT
+
+    auto& lstr = static_cast<data::any&>(args[0]);
+    if (lstr.empty()) { return {}; }
+
+    auto& rstr = static_cast<data::any&>(args[1]);
+    if (rstr.empty()) { return {}; }
+    if (lstr.type_index() == data::any::index<accessor::text>) {
+        auto ltext  = lstr.to<runtime_t<kind::character>>();
+        auto substr = static_cast<std::string_view>(ltext);
+        if (substr.empty()) { return data::any{std::in_place_type<runtime_t<kind::int8>>, 1}; }
+        if (rstr.type_index() == data::any::index<accessor::text>) {
+            auto rtext = rstr.to<runtime_t<kind::character>>();
+            auto str   = static_cast<std::string_view>(rtext);
+            if (!impl::is_valid_utf8(str)) { return {}; }
+            if (str.empty()) { return data::any{std::in_place_type<runtime_t<kind::int8>>, 0}; }
+            return impl::extract_position(substr, str);
+        }
     }
     std::abort();
 }

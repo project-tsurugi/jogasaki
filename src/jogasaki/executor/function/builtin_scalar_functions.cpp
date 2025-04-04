@@ -382,6 +382,58 @@ void add_builtin_scalar_functions(
             },
         });
     }
+    /////////
+    // mod
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::mod, builtin::mod, 2);
+        auto name = "mod";
+        auto id   = scalar_function_id::id_11020;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {
+            t::int4(),
+            t::int4()
+            },
+        });
+        id   = scalar_function_id::id_11021;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {
+            t::int4(),
+            t::int8()
+            },
+        });
+        id   = scalar_function_id::id_11022;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {
+            t::int8(),
+            t::int4()
+            },
+        });
+        id   = scalar_function_id::id_11023;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {
+            t::int8(),
+            t::int8()
+            },
+        });
+    }
 }
 
 namespace builtin {
@@ -667,6 +719,16 @@ data::any extract_position(std::string_view substr, std::string_view str) {
     return data::any{std::in_place_type<runtime_t<kind::int8>>, char_count};
 }
 
+template <typename DividendType, typename DivisorType, typename ResultType>
+data::any evaluate_mod(evaluator_context& ctx, DividendType dividend, DivisorType divisor) {
+    if (divisor == 0) {
+        ctx.add_error({error_kind::arithmetic_error, "division by zero"});
+        return data::any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    }
+    auto result = dividend % divisor;
+    return data::any{std::in_place_type<ResultType>, result};
+}
+
 } // namespace impl
 
 data::any substring(evaluator_context&, sequence_view<data::any> args) {
@@ -799,6 +861,41 @@ data::any position(evaluator_context&, sequence_view<data::any> args) {
             if (str.empty()) { return data::any{std::in_place_type<runtime_t<kind::int8>>, 0}; }
             return impl::extract_position(substr, str);
         }
+    }
+    std::abort();
+}
+
+data::any mod(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 2); // NOLINT
+    auto& first = static_cast<data::any&>(args[0]);
+    if (first.empty()) { return {}; }
+    auto& second = static_cast<data::any&>(args[1]);
+    if (second.empty()) { return {}; }
+    const auto first_type  = first.type_index();
+    const auto second_type = second.type_index();
+    if (first_type == data::any::index<runtime_t<kind::int4>> &&
+        second_type == data::any::index<runtime_t<kind::int4>>) {
+        const auto dividend = first.to<runtime_t<kind::int4>>();
+        const auto divisor  = second.to<runtime_t<kind::int4>>();
+        return impl::evaluate_mod<runtime_t<kind::int4>, runtime_t<kind::int4>, runtime_t<kind::int4>>(ctx, dividend, divisor);
+    }
+    if (first_type == data::any::index<runtime_t<kind::int4>> &&
+        second_type == data::any::index<runtime_t<kind::int8>>) {
+        const auto dividend = static_cast<runtime_t<kind::int8>>(first.to<runtime_t<kind::int4>>());
+        const auto divisor  = second.to<runtime_t<kind::int8>>();
+        return impl::evaluate_mod<runtime_t<kind::int8>, runtime_t<kind::int8>, runtime_t<kind::int8>>(ctx, dividend, divisor);
+    }
+    if (first_type == data::any::index<runtime_t<kind::int8>> &&
+        second_type == data::any::index<runtime_t<kind::int4>>) {
+        const auto dividend = first.to<runtime_t<kind::int8>>();
+        const auto divisor  = static_cast<runtime_t<kind::int8>>(second.to<runtime_t<kind::int4>>());
+        return impl::evaluate_mod<runtime_t<kind::int8>, runtime_t<kind::int8>, runtime_t<kind::int8>>(ctx, dividend, divisor);
+    }
+    if (first_type == data::any::index<runtime_t<kind::int8>> &&
+        second_type == data::any::index<runtime_t<kind::int8>>) {
+        const auto dividend = first.to<runtime_t<kind::int8>>();
+        const auto divisor  = second.to<runtime_t<kind::int8>>();
+        return impl::evaluate_mod<runtime_t<kind::int8>, runtime_t<kind::int8>, runtime_t<kind::int8>>(ctx, dividend, divisor);
     }
     std::abort();
 }

@@ -12,27 +12,31 @@
   * トランザクションの開始前から、トランザクションハンドルを利用者に返すまでの状態 (初期状態)
 * active
   * トランザクションのユーザ操作を受け付けている状態
+* going-to-commit 
+  * トランザクションのコミット要求を受けコミット処理を開始したが、まだCCへは要求していない状態
 * committing
-  * トランザクションのコミット要求を受けコミット処理を開始し、まだ完了していない状態
+  * CCへコミット要求を行い、まだ完了していない状態
 * committed
   * トランザクションのコミットに成功した状態 (終了状態)
+* going-to-abort
+  * トランザクションのアボート要求を受けアボート処理を開始したが、まだCCへは要求していない状態
 * aborted
   * トランザクションがアボートした状態 (終了状態)
-* going-to-abort
-  * トランザクションをアボートすべきだが、まだされていない可能性がある状態
 
 ## 操作一覧
 
 * ready
   * トランザクションが開始され、トランザクションハンドルが利用可能になった
 * r/w
-  * トランザクション内の読み書き操作を行い、成功した
+  * トランザクション内の読み書き操作を行った(成功または失敗)
 * cancel
   * ジョブのキャンセルがリクエストされ、それを受理した
 * commit
-  * コミットがリクエストされ、CCにコミットの開始を通達した
+  * コミットがリクエストされ、(jogasakiでの) コミット処理を開始した
+* task-empty
+  * トランザクションを使用しているタスクの同時実行数が0になった
 * abort
-  * r/w 操作に失敗した、または明示的にアボートがリクエストされCCにその旨を通達した
+  * アボートがリクエストされ、それを受理した
 * accept
   * CC がコミットを完了させた
 * reject
@@ -42,35 +46,35 @@
 
 ## 状態遷移マトリックス
 
-| 状態 \ 操作 | ready | r/w | cancel | commit | abort | accept | reject | info |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| init | active | - | aborted | - | - | - | - | - |
-| active | - | active | going-to-abort | committing | aborted | - | - | - |
-| committing | - | - | aborted[^1] | committing | aborted[^2] | committed | aborted | - |
-| going-to-abort | - | aborted | going-to-abort | aborted | aborted | - | - | aborted |
+| 状態 \ 操作 | ready | r/w | cancel | commit | abort | accept | reject | task-empty | info |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | 
+| init | active | - | aborted | - | - | - | - | - | - | - |
+| active | - | active/aborted [^4] | aborted/going-to-abort[^1] | going-to-commit | aborted/going-to-abort[^1] | - | - | - | - |
+| going-to-commit | - | - [^2] | - [^2] | - [^2] | - [^2] | - | - | committing | - [^3] |
+| going-to-abort | - | - [^2] | - [^2] | - [^2] | - [^2] | - | - | aborted | - [^5] |
+| committing | - | - [^2] | - [^2] | - [^2] | - [^2] | committed | aborted | - | - [^3] |
 
-[^1]: 正しく受理された場合のみabortedに遷移する。point-of-no-return を超えていた場合、キャンセル要求は受理されない
-[^2]: 正しく受理された場合のみabortedに遷移する。point-of-no-return を超えていた場合、アボート要求は受理されない
+[^1]: 実行中のタスクがあれば `going-to-abort` へ遷移、そうでなければ `aborted` へ遷移
+[^2]: inactive transaction エラーとして通知
+[^3]: コミット処理中として報告
+[^4]: 操作が成功であれば `active` へ遷移、失敗であれば `aborted` へ遷移
+[^5]: アボート済として報告 (コミット処理と異なりアボート確定)
 
 ## 状態遷移図
 
-[状態遷移マトリックス](#状態遷移マトリックス) の主な部分を下記に示す(すべてを記述すると図が複雑になるため一部省略)。
+[状態遷移マトリックス](#状態遷移マトリックス) の主な部分を下記に示す
 
-```dot
-digraph {
-  edge [dir=forward];
-  init -> active [label="ready"];
-  init -> aborted [label="cancel"];
-  active -> active [label="r/w"];
-  active -> committing [label="commit"];
-  active -> aborted [label="abort"];
-  active -> "going-to-abort" [label="cancel"];
-  committing -> committed [label="accept"];
-  committing -> aborted [label="reject,cancel"];
-  "going-to-abort" -> aborted [label="r/w, commit, abort, info"];
-  "going-to-abort" -> "going-to-abort" [label="cancel"];
-}
+```mermaid
+graph LR
+  init -- ready --> active
+  init -- cancel --> aborted
+  active -- r/w (成功) --> active
+  active -- r/w (失敗) --> aborted
+  active -- commit --> going-to-commit
+  active -- "abort, cancel (同時実行タスクなし)" --> aborted
+  active -- "abort, cancel (同時実行タスクあり)" --> going-to-abort
+  committing -- accept --> committed
+  committing -- reject --> aborted
+  going-to-abort -- "task-empty" --> aborted
+  going-to-commit -- "task-empty" --> committing
 ```
-
-(githubプレビューでは表示されない。Markdown Preview Enhanced を推奨)
-

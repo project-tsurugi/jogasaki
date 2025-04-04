@@ -95,6 +95,11 @@ data::any position(
     sequence_view<data::any> args
 );
 
+data::any mod(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

@@ -54,10 +54,14 @@ enum scalar_function_id : std::size_t {
     id_11016,
     id_11017,
     id_11018,
-    id_11019
+    id_11019,
+    id_11020,
+    id_11021,
+    id_11022,
+    id_11023
 };
 
 static_assert(scalar_function_id::id_11000 == 11'000);
-static_assert(scalar_function_id::id_11019 == 11'019);
+static_assert(scalar_function_id::id_11023 == 11'023);
 
 }  // namespace jogasaki::executor::function

@@ -271,8 +271,8 @@ inline void set_column_type(
         case k::float8: typ = AtomType::FLOAT8; break;
         case k::decimal: {
             typ = AtomType::DECIMAL;
-            auto prec = static_cast<takatori::type::decimal const&>(type).precision();
-            auto scale = static_cast<takatori::type::decimal const&>(type).scale();
+            auto prec = static_cast<takatori::type::decimal const&>(type).precision(); //NOLINT
+            auto scale = static_cast<takatori::type::decimal const&>(type).scale(); //NOLINT
             if (prec.has_value()) {
                 c.set_precision(prec.value());
             } else {
@@ -287,8 +287,8 @@ inline void set_column_type(
         }
         case k::character: {
             typ = AtomType::CHARACTER;
-            auto len = static_cast<takatori::type::character const&>(type).length();
-            auto varying = static_cast<takatori::type::character const&>(type).varying();
+            auto len = static_cast<takatori::type::character const&>(type).length(); //NOLINT
+            auto varying = static_cast<takatori::type::character const&>(type).varying(); //NOLINT
             if (len.has_value()) {
                 c.set_length(len.value());
             } else {
@@ -299,8 +299,8 @@ inline void set_column_type(
         }
         case k::octet: {
             typ = AtomType::OCTET;
-            auto len = static_cast<takatori::type::octet const&>(type).length();
-            auto varying = static_cast<takatori::type::octet const&>(type).varying();
+            auto len = static_cast<takatori::type::octet const&>(type).length(); //NOLINT
+            auto varying = static_cast<takatori::type::octet const&>(type).varying(); //NOLINT
             if (len.has_value()) {
                 c.set_length(len.value());
             } else {

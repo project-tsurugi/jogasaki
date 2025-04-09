@@ -10,7 +10,7 @@ on:
         default: 'ubuntu-22.04'
 
 jobs:
-  Build:
+  Test:
     runs-on: [self-hosted, docker]
     permissions:
       checks: write
@@ -42,7 +42,7 @@ jobs:
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DBUILD_TESTS=ON ..
           cmake --build . --target all --clean-first
 
       - name: CTest

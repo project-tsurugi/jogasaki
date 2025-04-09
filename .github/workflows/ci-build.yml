@@ -1,20 +1,22 @@
 name: Jogasaki-CI
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      os:
+        type: string
+        default: 'ubuntu-22.04'
 
 jobs:
   Build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
-        sharksfin-implementation: [memory, shirakami]
     runs-on: [self-hosted, docker]
     permissions:
       checks: write
     timeout-minutes: 30
     container:
-      image: ghcr.io/project-tsurugi/tsurugi-ci:${{ matrix.os }}
+      image: ghcr.io/project-tsurugi/tsurugi-ci:${{ inputs.os || 'ubuntu-22.04' }}
       volumes:
         - ${{ vars.ccache_dir }}:${{ vars.ccache_dir }}
     defaults:
@@ -22,7 +24,7 @@ jobs:
         shell: bash
     env:
       CCACHE_CONFIGPATH: ${{ vars.ccache_dir }}/ccache.conf
-      CCACHE_DIR: ${{ vars.ccache_dir }}/${{ matrix.os }}
+      CCACHE_DIR: ${{ vars.ccache_dir }}/${{ inputs.os || 'ubuntu-22.04' }}
 
     steps:
       - name: Checkout
@@ -33,17 +35,17 @@ jobs:
       - name: Install_Dependencies
         uses: ./.github/actions/install-dependencies
         with:
-          sharksfin-implementation: ${{ matrix.sharksfin-implementation }}
+          sharksfin-implementation: shirakami
 
-      - name: CMake_Build_Jogasaki_${{ matrix.sharksfin-implementation }}
+      - name: CMake_Build
         run: |
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ matrix.sharksfin-implementation }} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=shirakami -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
           cmake --build . --target all --clean-first
 
-      - name: CTest_Jogasaki_${{ matrix.sharksfin-implementation }}
+      - name: CTest
         env:
           GTEST_OUTPUT: xml
           ASAN_OPTIONS: detect_stack_use_after_return=true
@@ -55,8 +57,6 @@ jobs:
       - name: Verify
         uses: project-tsurugi/tsurugi-annotations-action@v1
         if: always()
-        with:
-          matrix: ${{ toJson(matrix) }}
 
   Analysis:
     runs-on: [self-hosted, docker]

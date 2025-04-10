@@ -15,9 +15,9 @@
  */
 #include "transaction_context.h"
 
+#include <glog/logging.h>
 #include <ostream>
 #include <utility>
-#include <glog/logging.h>
 
 #include <limestone/api/blob_pool.h>
 #include <sharksfin/TransactionState.h>
@@ -29,6 +29,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki {
 
@@ -243,6 +244,58 @@ std::uint32_t details::worker_manager::worker_id() const noexcept {
 std::uint32_t details::worker_manager::use_count() const noexcept {
     std::size_t cur = use_count_and_worker_id_.load();
     return upper(cur);
+}
+
+bool details::termination_manager::try_set_going_to_abort(termination_state& ts) {
+    auto exp = state_.load();
+    do {
+        if (exp.going_to_abort() || exp.going_to_commit()) {
+            return false;
+        }
+        ts = exp;
+        ts.set_going_to_abort();
+    } while (! state_.compare_exchange_strong(exp, ts));
+
+    return true;
+}
+
+bool details::termination_manager::try_set_going_to_commit(termination_state& ts) {
+    auto exp = state_.load();
+    do {
+        if (exp.going_to_abort() || exp.going_to_commit()) {
+            return false;
+        }
+        ts = exp;
+        ts.set_going_to_commit();
+    } while (! state_.compare_exchange_strong(exp, ts));
+
+    return true;
+}
+
+bool details::termination_manager::try_increment_task_use_count(termination_state& ts) {
+    auto exp = state_.load();
+    do {
+        if (exp.going_to_abort() || exp.going_to_commit()) {
+            return false;
+        }
+        ts = exp;
+        ts.task_use_count(exp.task_use_count() + 1);
+    } while (! state_.compare_exchange_strong(exp, ts));
+
+    return true;
+}
+
+void details::termination_manager::decrement_task_use_count(termination_state& ts) {
+    auto exp = state_.load();
+    do {
+        assert_with_exception(exp.task_use_count() > 0, exp.task_use_count());
+        ts = exp;
+        ts.task_use_count(exp.task_use_count() - 1);
+    } while (! state_.compare_exchange_strong(exp, ts));
+}
+
+details::termination_state details::termination_manager::state() const noexcept {
+    return state_;
 }
 
 }  // namespace jogasaki

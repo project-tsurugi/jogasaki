@@ -141,7 +141,8 @@ public:
 
     /**
      * @brief check if in-transaction task exists using the transaction context
-     * @return true if no in-transaction task exists using the transaction context, false otherwise
+     * @return true if no in-transaction task exists using the transaction
+     * context, false otherwise
      */
     [[nodiscard]] bool task_empty() const noexcept {
         return task_use_count() == 0;
@@ -163,6 +164,60 @@ inline std::uint32_t upper(std::uint64_t arg) {
 inline std::uint32_t lower(std::uint64_t arg) {
     return static_cast<std::uint32_t>(arg & ((1UL << 32U)-1));
 }
+
+/**
+ * @brief transaction termination manager
+ */
+class cache_align termination_manager {
+public:
+
+    /**
+     * @brief try to set the going-to-abort flag
+     * @details atomically do the following: check both going-to-abort and going-to-commit flags are not set,
+     * and then set the going-to-abort flag returning the final state.
+     * @param ts [out] the termination state set by this call
+     * @return true if the going-to-abort flag is set successfully
+     * @return false if any of the flags are already set
+     */
+    bool try_set_going_to_abort(termination_state& ts);
+
+    /**
+     * @brief try to set the going-to-commit flag
+     * @param ts [out] the termination state set by this call
+     * @details atomically do the following: check both going-to-abort and going-to-commit flags are not set,
+     * and then set the going-to-commit flag returning the final state.
+     * @return true if the going-to-commit flag is set successfully
+     * @return false if any of the flags are already set
+     */
+    bool try_set_going_to_commit(termination_state& ts);
+
+    /**
+     * @brief try to increment the task use count
+     * @param ts [out] the termination state set by this call
+     * @details atomically do the following: check both going-to-abort and
+     * going-to-commit flags are not set, and then increment the task use count returning the final state.
+     * @return true if the task use count is incremented successfully
+     * @return false if any of the flags are already set
+     */
+    bool try_increment_task_use_count(termination_state& ts);
+
+    /**
+     * @brief decrement the task use count
+     * @param ts [out] the termination state set by this call
+     * @details atomically decrement the task use count and return the final
+     * state.
+     */
+    void decrement_task_use_count(termination_state& ts);
+
+    /**
+     * @brief get the current termination state
+     * @return the current termination state
+     */
+    [[nodiscard]] termination_state state() const noexcept;
+
+private:
+    std::atomic<termination_state> state_{};
+};
 
 /**
  * @brief worker and its use count manager
@@ -446,6 +501,14 @@ public:
         blob_pool_ = std::move(arg);
     }
 
+    /**
+     * @brief accessor to the mutex for transaction lock
+     * @return the mutex
+     */
+    details::termination_manager& termination_mgr() noexcept {
+        return term_mgr_;
+    }
+
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
@@ -460,6 +523,7 @@ private:
     std::optional<clock::time_point> end_time_{};
     std::string label_{};
     std::shared_ptr<limestone::api::blob_pool> blob_pool_{};
+    details::termination_manager term_mgr_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

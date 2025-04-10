@@ -83,5 +83,61 @@ TEST_F(transaction_context_test, overwriting_error_info) {
     ASSERT_EQ(error_code::constraint_violation_exception, c.error_info()->code());
 }
 
+TEST_F(transaction_context_test, termination_state) {
+    {
+        details::termination_state ts{};
+        EXPECT_EQ(0, static_cast<std::uint64_t>(ts));
+        EXPECT_EQ(0, ts.task_use_count());
+        EXPECT_TRUE(ts.task_empty());
+        EXPECT_TRUE(! ts.going_to_abort());
+        EXPECT_TRUE(! ts.going_to_commit());
+    }
+    {
+        details::termination_state ts{};
+        ts.task_use_count(1);
+        EXPECT_EQ(1, ts.task_use_count());
+        EXPECT_TRUE(! ts.task_empty());
+        EXPECT_TRUE(! ts.going_to_abort());
+        EXPECT_TRUE(! ts.going_to_commit());
+    }
+    {
+        details::termination_state ts{};
+        auto max = (1UL << 62) - 1;
+        ts.task_use_count(max);
+        EXPECT_EQ(max, ts.task_use_count());
+        EXPECT_TRUE(! ts.task_empty());
+        EXPECT_TRUE(! ts.going_to_abort());
+        EXPECT_TRUE(! ts.going_to_commit());
+    }
+    {
+        details::termination_state ts{};
+        ts.set_going_to_abort();
+        EXPECT_EQ(0, ts.task_use_count());
+        EXPECT_TRUE(ts.going_to_abort());
+        EXPECT_TRUE(! ts.going_to_commit());
+    }
+    {
+        details::termination_state ts{};
+        ts.set_going_to_commit();
+        EXPECT_EQ(0, ts.task_use_count());
+        EXPECT_TRUE(! ts.going_to_abort());
+        EXPECT_TRUE(ts.going_to_commit());
+    }
+    {
+        details::termination_state ts{};
+        auto max = (1UL << 62) - 1;
+        ts.task_use_count(max);
+        ts.set_going_to_commit();
+        ts.set_going_to_abort();
+        EXPECT_EQ(max, ts.task_use_count());
+        EXPECT_TRUE(ts.going_to_abort());
+        EXPECT_TRUE(ts.going_to_commit());
+        ts.clear();
+        EXPECT_EQ(0, ts.task_use_count());
+        EXPECT_TRUE(! ts.going_to_abort());
+        EXPECT_TRUE(! ts.going_to_commit());
+    }
+}
+
 }
 

@@ -93,7 +93,17 @@ struct TestCase {
     std::optional<std::string> divisor;
     std::optional<int> expected;
 };
+struct TestCase_Decimal {
+    std::optional<std::string> dividend;
+    std::optional<std::string> divisor;
+    std::int8_t sigh;
+    std::uint64_t high;
+    std::uint64_t low;
+    std::int32_t exponent;
+};
+
 using namespace std::string_view_literals;
+
 
 TEST_F(function_mod_test, int_int) {
     execute_statement("create table t (c0 INT)");
@@ -360,4 +370,86 @@ TEST_F(function_mod_test, bigint_bigint) {
         test_stmt_err("SELECT mod(0::BIGINT,0::BIGINT) FROM t", error_code::value_evaluation_exception);
     }
 }
+TEST_F(function_mod_test, decimal) {
+    execute_statement("create table t (c0 DECIMAL)");
+    execute_statement("insert into t values (-8::DECIMAL)");
+    auto fm =
+        meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
+
+    std::vector<TestCase_Decimal> test_cases = {
+        // basic
+        {"5.5::DECIMAL(5,2)", "2::DECIMAL", 1, 0, 15, -1},    // 1.5
+        {"5.5::DECIMAL(5,2)", "-2::DECIMAL", 1, 0, 15, -1},   // 1.5
+        {"-5.5::DECIMAL(5,2)", "2::DECIMAL", -1, 0, 15, -1},  // -1.5
+        {"-5.5::DECIMAL(5,2)", "-2::DECIMAL", -1, 0, 15, -1}, // -1.5
+
+        {"5.5::DECIMAL(5,2)", "2::INT", 1, 0, 15, -1},    // 1.5
+        {"5.5::DECIMAL(5,2)", "-2::INT", 1, 0, 15, -1},   // 1.5
+        {"-5.5::DECIMAL(5,2)", "2::INT", -1, 0, 15, -1},  // -1.5
+        {"-5.5::DECIMAL(5,2)", "-2::INT", -1, 0, 15, -1}, // -1.5
+
+        {"5.5::DECIMAL(5,2)", "2::BIGINT", 1, 0, 15, -1},    // 1.5
+        {"5.5::DECIMAL(5,2)", "-2::BIGINT", 1, 0, 15, -1},   // 1.5
+        {"-5.5::DECIMAL(5,2)", "2::BIGINT", -1, 0, 15, -1},  // -1.5
+        {"-5.5::DECIMAL(5,2)", "-2::BIGINT", -1, 0, 15, -1}, // -1.5
+
+        {"76::INT", "33.3::DECIMAL(5,2)", 1, 0, 94, -1},       // 9.4
+        {"76::INT", "-33.3::DECIMAL(5,2)", 1, 0, 94, -1},      // 9.4
+        {"-76::INT", "33.3::DECIMAL(5,2)", -1, 0, 94, -1},     // -9.4
+        {"-76::INT", "-33.3::DECIMAL(5,2)", -1, 0, 94, -1},    // -9.4
+        {"76::BIGINT", "33.3::DECIMAL(5,2)", 1, 0, 94, -1},    // 9.4
+        {"76::BIGINT", "-33.3::DECIMAL(5,2)", 1, 0, 94, -1},   // 9.4
+        {"-76::BIGINT", "33.3::DECIMAL(5,2)", -1, 0, 94, -1},  // -9.4
+        {"-76::BIGINT", "-33.3::DECIMAL(5,2)", -1, 0, 94, -1}, // -9.4
+
+        {"4.55::DECIMAL(5,3)", "2.22::DECIMAL(5,3)", 1, 0, 11, -2},   // 0.11
+        {"4.55::DECIMAL(5,3)", "-2.22::DECIMAL(5,3)", 1, 0, 11, -2},  // 0.11
+        {"-4.55::DECIMAL(5,3)", "2.22::DECIMAL(5,3)", -1, 0, 11, -2}, //-0.11
+        {"-4.55::DECIMAL(5,3)", "-2.22::DECIMAL(5,3)", -1, 0, 11, -2} //-0.11
+    };
+
+    for (const auto& test : test_cases) {
+        std::vector<mock::basic_record> result{};
+        if (test.dividend.has_value() && test.divisor.has_value()) {
+            std::string query = std::string("SELECT mod(") + test.dividend.value() +
+                                std::string(",") + test.divisor.value() + std::string(") FROM t");
+            execute_query(query, result);
+            auto r1 = mock::typed_nullable_record<kind::decimal>(
+                std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(
+                                    test.sigh, test.high, test.low, test.exponent)});
+            ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+            EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
+        }
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        std::string query = std::string("SELECT mod(NULL,2::DECIMAL) FROM t");
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+        EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        std::string query = std::string("SELECT mod(2::DECIMAL,NULL) FROM t");
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+        EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        std::string query = std::string("SELECT mod(NULL,NULL) FROM t");
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+        EXPECT_TRUE(result[0].is_null(0)) << "Failed query: " << query;
+    }
+    {
+        test_stmt_err(
+            "SELECT mod(2::DECIMAL,0::DECIMAL) FROM t", error_code::value_evaluation_exception);
+    }
+    {
+        test_stmt_err(
+            "SELECT mod(0::DECIMAL,0::DECIMAL) FROM t", error_code::value_evaluation_exception);
+    }
+}
+
 } // namespace jogasaki::testing

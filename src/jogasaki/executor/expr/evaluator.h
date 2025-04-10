@@ -66,7 +66,6 @@ public:
     any concat_any(any const& left, any const& right);
     any multiply_any(any const& left, any const& right);
     any divide_any(any const& left, any const& right);
-    any remainder_any(any const& left, any const& right);
     any conditional_and_any(any const& left, any const& right);
     any conditional_or_any(any const& left, any const& right);
     any operator()(takatori::scalar::binary const& exp);
@@ -177,5 +176,7 @@ private:
     executor::process::impl::variable_table& variables,
     memory::lifo_paged_memory_resource* resource = nullptr
 );
+
+[[nodiscard]] any remainder_any(any const& left, any const& right);
 
 }  // namespace jogasaki::executor::expr

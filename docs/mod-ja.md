@@ -1,10 +1,10 @@
 # MOD外部仕様
 
-2025-04-07 nishimura
+2025-04-10 nishimura
 
 ## この文書について
 
-* この文書では `MOD` の外部仕様を示す
+* この文書では `MOD` と`%`の外部仕様を示す
 
 # 目次
 
@@ -15,6 +15,7 @@
 
 `MOD` は、剰余（余り）を計算するために **ISO/IEC 9075**（SQL標準）で定義された関数です。
 `Tsurugi` は **ISO/IEC 9075** の `MOD` の仕様に準拠しています。
+`Tsurugi` では`MOD`と`%`は同じ動作をします。
 
 ### 関数の構文
 
@@ -30,7 +31,7 @@ MOD(numeric_expression_1, numeric_expression_2)
 
 ## 外部仕様
 
-* `Tsurugi` では `numeric_expression_1` および `numeric_expression_2` の型として `INTEGER`、`BIGINT`のみ許容されます。**ただし将来的に変更になる可能性がある。**
+* `Tsurugi` では `numeric_expression_1` および `numeric_expression_2` の型として `INTEGER`、`BIGINT`、`DECIMAL`のみ許容されます。**ただし将来的に変更になる可能性がある。**
 * 除数（第2引数）がゼロの場合、エラーが発生します。
 * いずれかの引数が `NULL` の場合、戻り値は `NULL` になります。
 * 被除数と除数の型が異なる場合、精度がより高い型へ自動的に昇格します。結果の値は被除数及び除数と同じ型になります。

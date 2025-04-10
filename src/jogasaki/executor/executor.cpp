@@ -752,7 +752,7 @@ void process_commit_callback(
             scheduler::create_custom_task(rctx.get(), [rctx, last_less_equals_accepted]() {
                 body(rctx, last_less_equals_accepted);
                 return model::task_result::complete;
-            }, false)
+            }, model::task_transaction_kind::none)
         );
     }
     if(last_less_equals_accepted) {
@@ -824,7 +824,7 @@ scheduler::job_context::job_id_type commit_async(
                 process_commit_callback(st, ec, marker, jobid, rctx, txid, database, option);
             });
         return model::task_result::complete;
-    }, true);
+    }, model::task_transaction_kind::sticky); //FIXME change to none
     rctx->job()->callback([rctx, txid, jobid](){
         // no-op just log and keep rctx
         VLOG_LP(log_trace) << "commit job end job_id:" << utils::hex(jobid) << " " << txid;

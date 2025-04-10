@@ -101,7 +101,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                 }
                 return model::task_result::yield;
             },
-            false
+            model::task_transaction_kind::none
         ),
         scheduler::schedule_option{scheduler::schedule_policy_kind::suspended_worker}
     );

@@ -277,6 +277,11 @@ public:
     [[nodiscard]] bool sticky() const noexcept;
 
     /**
+     * @brief returns whether the task is in-transaction
+     */
+    [[nodiscard]] bool in_transaction() const noexcept;
+
+    /**
      * @brief accessor to the job context that the task belongs to.
      */
     [[nodiscard]] request_context* req_context() const noexcept;
@@ -289,6 +294,7 @@ private:
     model::graph* graph_{};
     executor::common::write_statement* write_{};
     bool sticky_{};
+    bool in_transaction_{};
     std::shared_ptr<statement_context> sctx_{};
     std::shared_ptr<executor::file::loader> loader_{};
 

@@ -111,7 +111,7 @@ TEST_F(teardown_test, basic) {
                     ++completed_task_count;
                     return model::task_result::complete;
                 },
-                false
+                model::task_transaction_kind::none
             )
         );
     }

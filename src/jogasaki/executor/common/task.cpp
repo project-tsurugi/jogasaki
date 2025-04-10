@@ -54,6 +54,11 @@ std::ostream& task::write_to(std::ostream& out) const {
 bool task::has_transactional_io() {
     return false;
 }
+
+model::task_transaction_kind task::transaction_capability() {
+    return model::task_transaction_kind::none;
+}
+
 }
 
 

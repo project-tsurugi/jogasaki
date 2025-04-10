@@ -39,7 +39,7 @@ class custom_task : public model::task {
 public:
     custom_task();
 
-    explicit custom_task(task_body_type body, bool transactional_io = false);
+    explicit custom_task(task_body_type body, model::task_transaction_kind transaction_capability = model::task_transaction_kind::none);
 
     /**
      * @brief returns task id that uniquely identifies the task
@@ -58,6 +58,12 @@ public:
      */
     [[nodiscard]] bool has_transactional_io() override;
 
+    /**
+     * @brief accessor to transaction capability of the task
+     * @return the flag indicates the transactional operations conducted by this task
+     */
+    [[nodiscard]] model::task_transaction_kind transaction_capability() override;
+
 protected:
     std::ostream& write_to(std::ostream& out) const override;
 
@@ -66,6 +72,7 @@ private:
     identity_type id_{id_src++};
     task_body_type body_{};
     bool transactional_io_{};
+    model::task_transaction_kind transaction_capability_{};
 };
 
 } // namespace details
@@ -73,7 +80,7 @@ private:
 flat_task create_custom_task(
     request_context* rctx,
     task_body_type body,
-    bool has_transaction_io = false
+    model::task_transaction_kind transaction_capability
 );
 
 } // namespace jogasaki::scheduler

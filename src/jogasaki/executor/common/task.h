@@ -46,6 +46,7 @@ public:
 
     [[nodiscard]] bool has_transactional_io() override;
 
+    [[nodiscard]] model::task_transaction_kind transaction_capability() override;
 protected:
     std::ostream& write_to(std::ostream& out) const override;;
 

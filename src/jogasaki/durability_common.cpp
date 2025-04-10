@@ -62,7 +62,7 @@ void submit_commit_response(
             }
             scheduler::submit_teardown(*rctx, teardown_try_on_suspended_worker);
             return model::task_result::complete;
-        }, false)
+        }, model::task_transaction_kind::none)
     );
 }
 

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <ostream>
 
 namespace jogasaki::model {
@@ -55,6 +56,23 @@ enum class task_result : std::size_t {
      * @attention this is future functionality and not yet supported
      */
     yield,
+};
+
+enum class task_transaction_kind : std::uint32_t {
+    /**
+     * @brief only out-of-transaction operations (including commit) are conducted by this task
+     */
+    none = 0,
+
+    /**
+     * @brief in-transaction operations are conducted by this task
+     */
+    in_transaction,
+
+    /**
+     * @brief task conducts in-transaction and other operations that require serialized execution
+     */
+    sticky,
 };
 
 class task {
@@ -113,6 +131,12 @@ public:
      * @return whether the task contains transactional I/O operations that requires special handling in scheduling
      */
     [[nodiscard]] virtual bool has_transactional_io() = 0;
+
+    /**
+     * @brief accessor to transaction capability of the task
+     * @return the flag indicates the transactional operations conducted by this task
+     */
+    [[nodiscard]] virtual task_transaction_kind transaction_capability() = 0;
 
 protected:
     virtual std::ostream& write_to(std::ostream& out) const = 0;

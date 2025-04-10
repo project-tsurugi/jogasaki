@@ -1223,7 +1223,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 }
             );
             return model::task_result::complete;
-        }, false);  // create transaction is not sticky task
+        }, model::task_transaction_kind::none);  // create transaction is neither sticky nor in-transaction
     rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid, req_info](){
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:started "
             << (*handle ? handle->transaction_id_unchecked() : "<tx id not available>")
@@ -1334,7 +1334,7 @@ bool database::execute_load(
                 (void) rctx;
                 ldr->bootstrap();
                 return model::task_result::complete;
-            }, false)
+            }, model::task_transaction_kind::none)
     );
     return true;
 }

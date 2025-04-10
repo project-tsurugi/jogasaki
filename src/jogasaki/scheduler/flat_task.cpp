@@ -339,7 +339,8 @@ flat_task::flat_task(
     kind_(flat_task_kind::wrapped),
     req_context_(rctx),
     origin_(std::move(origin)),
-    sticky_(origin_->has_transactional_io())
+    sticky_(origin_->transaction_capability() == model::task_transaction_kind::sticky),
+    in_transaction_(origin_->transaction_capability() != model::task_transaction_kind::none)
 {}
 
 flat_task::flat_task(

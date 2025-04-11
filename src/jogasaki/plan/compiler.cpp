@@ -574,6 +574,9 @@ status prepare(
         opts.system_zone_offset() = std::chrono::minutes{cfg->zone_offset()};
     }
 
+    // function names are exception and always lowercased
+    opts.lowercase_function_regular_identifiers() = true;
+
     mizugaki::analyzer::sql_analyzer analyzer{};
 
     // It's possible multiple statements are passed, but runtime only supports single statement for now.

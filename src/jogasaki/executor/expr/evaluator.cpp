@@ -311,16 +311,7 @@ any remainder<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_t
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)%static_cast<decimal::Decimal>(r)};
 }
 
-any engine::remainder_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    auto [l, r] = promote_binary_numeric(left, right);
-    switch(l.type_index()) {
-        case any::index<runtime_t<meta::field_type_kind::int4>>: return remainder(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
-        case any::index<runtime_t<meta::field_type_kind::int8>>: return remainder(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return remainder(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: return return_unsupported();
-    }
-}
+
 
 any engine::conditional_and_any(any const& left, any const& right) {
     // first, check if either of operands is false because then
@@ -773,6 +764,23 @@ any evaluate_bool(
         return a;
     }
     return any{std::in_place_type<bool>, a && a.to<bool>()};
+}
+
+any remainder_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right); // NOLINT
+    auto [l, r] = details::promote_binary_numeric(left, right);
+    switch (l.type_index()) {
+        case any::index<runtime_t<meta::field_type_kind::int4>>:
+            return details::remainder(l.to<runtime_t<meta::field_type_kind::int4>>(),
+                r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>:
+            return details::remainder(l.to<runtime_t<meta::field_type_kind::int8>>(),
+                r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>:
+            return details::remainder(l.to<runtime_t<meta::field_type_kind::decimal>>(),
+                r.to<runtime_t<meta::field_type_kind::decimal>>());
+        default: return details::return_unsupported();
+    }
 }
 
 }  // namespace jogasaki::executor::expr

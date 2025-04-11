@@ -50,6 +50,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/builtin_scalar_functions_id.h>
 #include <jogasaki/executor/function/field_locator.h>
@@ -379,6 +380,114 @@ void add_builtin_scalar_functions(
             {
                 t::character(t::varying),
                 t::character(t::varying),
+            },
+        });
+    }
+    /////////
+    // mod
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::mod, builtin::mod, 2);
+        auto name = "mod";
+        auto id   = scalar_function_id::id_11020;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {
+                t::int4(),
+                t::int4()
+            },
+        });
+        id   = scalar_function_id::id_11021;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {
+                t::int4(),
+                t::int8()
+            },
+        });
+        id   = scalar_function_id::id_11022;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {
+                t::int8(),
+                t::int4()
+            },
+        });
+        id   = scalar_function_id::id_11023;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {
+                t::int8(),
+                t::int8()
+            },
+        });
+        //
+        id   = scalar_function_id::id_11024;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {
+                t::int4(),
+                t::decimal()
+            },
+        });
+        id   = scalar_function_id::id_11025;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {
+                t::decimal(),
+                t::int4()
+            },
+        });
+        id   = scalar_function_id::id_11026;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {
+                t::decimal(),
+                t::int8()
+            },
+        });
+        id   = scalar_function_id::id_11027;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {
+                t::int8(),
+                t::decimal()
+            },
+        });
+        id   = scalar_function_id::id_11028;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {
+                t::decimal(),
+                t::decimal()
             },
         });
     }
@@ -801,6 +910,15 @@ data::any position(evaluator_context&, sequence_view<data::any> args) {
         }
     }
     std::abort();
+}
+
+data::any mod(evaluator_context&, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 2); // NOLINT
+    auto& first = static_cast<data::any&>(args[0]);
+    if (first.empty()) { return {}; }
+    auto& second = static_cast<data::any&>(args[1]);
+    if (second.empty()) { return {}; }
+    return expr::remainder_any(first, second);
 }
 
 } // namespace builtin

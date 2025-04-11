@@ -491,6 +491,66 @@ void add_builtin_scalar_functions(
             },
         });
     }
+    /////////
+    // substr
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substr, builtin::substring, 3);
+        auto name = "substr";
+        auto id   = scalar_function_id::id_11029;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {
+                t::character(t::varying),
+                t::int8(),
+                t::int8()
+            },
+        });
+        info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substr, builtin::substring, 2);
+        id = scalar_function_id::id_11030;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {
+                t::character(t::varying),
+                t::int8()
+            },
+        });
+        info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substr, builtin::substring, 3);
+        id = scalar_function_id::id_11031;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::octet(t::varying),
+            {
+                t::octet(t::varying),
+                t::int8(),
+                t::int8()
+            },
+        });
+        info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::substr, builtin::substring, 2);
+        id = scalar_function_id::id_11032;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::octet(t::varying),
+            {
+                t::octet(t::varying),
+                t::int8()
+            },
+        });
+    }
 }
 
 namespace builtin {

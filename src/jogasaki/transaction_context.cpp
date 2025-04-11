@@ -298,7 +298,7 @@ void details::termination_manager::decrement_task_use_count(termination_state& t
     } while (! state_.compare_exchange_strong(exp, ts));
 }
 
-details::termination_state details::termination_manager::state() const noexcept {
+termination_state details::termination_manager::state() const noexcept {
     return state_;
 }
 

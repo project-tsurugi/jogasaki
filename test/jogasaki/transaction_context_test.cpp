@@ -85,7 +85,7 @@ TEST_F(transaction_context_test, overwriting_error_info) {
 
 TEST_F(transaction_context_test, termination_state) {
     {
-        details::termination_state ts{};
+        termination_state ts{};
         EXPECT_EQ(0, static_cast<std::uint64_t>(ts));
         EXPECT_EQ(0, ts.task_use_count());
         EXPECT_TRUE(ts.task_empty());
@@ -93,7 +93,7 @@ TEST_F(transaction_context_test, termination_state) {
         EXPECT_TRUE(! ts.going_to_commit());
     }
     {
-        details::termination_state ts{};
+        termination_state ts{};
         ts.task_use_count(1);
         EXPECT_EQ(1, ts.task_use_count());
         EXPECT_TRUE(! ts.task_empty());
@@ -101,7 +101,7 @@ TEST_F(transaction_context_test, termination_state) {
         EXPECT_TRUE(! ts.going_to_commit());
     }
     {
-        details::termination_state ts{};
+        termination_state ts{};
         auto max = (1UL << 62) - 1;
         ts.task_use_count(max);
         EXPECT_EQ(max, ts.task_use_count());
@@ -110,21 +110,21 @@ TEST_F(transaction_context_test, termination_state) {
         EXPECT_TRUE(! ts.going_to_commit());
     }
     {
-        details::termination_state ts{};
+        termination_state ts{};
         ts.set_going_to_abort();
         EXPECT_EQ(0, ts.task_use_count());
         EXPECT_TRUE(ts.going_to_abort());
         EXPECT_TRUE(! ts.going_to_commit());
     }
     {
-        details::termination_state ts{};
+        termination_state ts{};
         ts.set_going_to_commit();
         EXPECT_EQ(0, ts.task_use_count());
         EXPECT_TRUE(! ts.going_to_abort());
         EXPECT_TRUE(ts.going_to_commit());
     }
     {
-        details::termination_state ts{};
+        termination_state ts{};
         auto max = (1UL << 62) - 1;
         ts.task_use_count(max);
         ts.set_going_to_commit();
@@ -149,71 +149,71 @@ TEST_F(transaction_context_test, termination_manager) {
     {
         // increment and decrement task_use_count
         details::termination_manager mgr{};
-        details::termination_state st{};
-        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
+        termination_state ts{};
+        EXPECT_TRUE(mgr.try_increment_task_use_count(ts));
         EXPECT_EQ(1, mgr.state().task_use_count());
-        EXPECT_EQ(1, st.task_use_count());
-        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
+        EXPECT_EQ(1, ts.task_use_count());
+        EXPECT_TRUE(mgr.try_increment_task_use_count(ts));
         EXPECT_EQ(2, mgr.state().task_use_count());
-        EXPECT_EQ(2, st.task_use_count());
-        mgr.decrement_task_use_count(st);
+        EXPECT_EQ(2, ts.task_use_count());
+        mgr.decrement_task_use_count(ts);
         EXPECT_EQ(1, mgr.state().task_use_count());
-        EXPECT_EQ(1, st.task_use_count());
-        mgr.decrement_task_use_count(st);
+        EXPECT_EQ(1, ts.task_use_count());
+        mgr.decrement_task_use_count(ts);
         EXPECT_EQ(0, mgr.state().task_use_count());
-        EXPECT_EQ(0, st.task_use_count());
+        EXPECT_EQ(0, ts.task_use_count());
     }
     {
         // set going_to_abort is possible only once
         details::termination_manager mgr{};
-        details::termination_state st{};
-        EXPECT_TRUE(mgr.try_set_going_to_abort(st));
+        termination_state ts{};
+        EXPECT_TRUE(mgr.try_set_going_to_abort(ts));
         EXPECT_TRUE(mgr.state().going_to_abort());
-        EXPECT_TRUE(st.going_to_abort());
-        EXPECT_TRUE(! mgr.try_set_going_to_abort(st));
-        EXPECT_TRUE(! mgr.try_set_going_to_commit(st));
-        EXPECT_TRUE(! mgr.try_increment_task_use_count(st));
+        EXPECT_TRUE(ts.going_to_abort());
+        EXPECT_TRUE(! mgr.try_set_going_to_abort(ts));
+        EXPECT_TRUE(! mgr.try_set_going_to_commit(ts));
+        EXPECT_TRUE(! mgr.try_increment_task_use_count(ts));
     }
     {
         // set going_to_commit is possible only once
         details::termination_manager mgr{};
-        details::termination_state st{};
-        EXPECT_TRUE(mgr.try_set_going_to_commit(st));
+        termination_state ts{};
+        EXPECT_TRUE(mgr.try_set_going_to_commit(ts));
         EXPECT_TRUE(mgr.state().going_to_commit());
-        EXPECT_TRUE(st.going_to_commit());
-        EXPECT_TRUE(! mgr.try_set_going_to_abort(st));
-        EXPECT_TRUE(! mgr.try_set_going_to_commit(st));
-        EXPECT_TRUE(! mgr.try_increment_task_use_count(st));
+        EXPECT_TRUE(ts.going_to_commit());
+        EXPECT_TRUE(! mgr.try_set_going_to_abort(ts));
+        EXPECT_TRUE(! mgr.try_set_going_to_commit(ts));
+        EXPECT_TRUE(! mgr.try_increment_task_use_count(ts));
     }
     {
         // set going_to_commit while task_use_count > 0
         details::termination_manager mgr{};
-        details::termination_state st{};
-        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
-        EXPECT_TRUE(mgr.try_set_going_to_commit(st));
+        termination_state ts{};
+        EXPECT_TRUE(mgr.try_increment_task_use_count(ts));
+        EXPECT_TRUE(mgr.try_set_going_to_commit(ts));
         EXPECT_TRUE(! mgr.state().going_to_commit());
-        EXPECT_TRUE(! st.going_to_commit());
+        EXPECT_TRUE(! ts.going_to_commit());
         EXPECT_TRUE(mgr.state().going_to_abort());
-        EXPECT_TRUE(st.going_to_abort());
-        EXPECT_EQ(1, st.task_use_count());
+        EXPECT_TRUE(ts.going_to_abort());
+        EXPECT_EQ(1, ts.task_use_count());
         EXPECT_EQ(1, mgr.state().task_use_count());
     }
     {
         // decrement task count is possible even if flags are set
         details::termination_manager mgr{};
-        details::termination_state st{};
-        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
-        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
-        EXPECT_EQ(2, st.task_use_count());
-        EXPECT_TRUE(mgr.try_set_going_to_abort(st));
+        termination_state ts{};
+        EXPECT_TRUE(mgr.try_increment_task_use_count(ts));
+        EXPECT_TRUE(mgr.try_increment_task_use_count(ts));
+        EXPECT_EQ(2, ts.task_use_count());
+        EXPECT_TRUE(mgr.try_set_going_to_abort(ts));
         EXPECT_TRUE(mgr.state().going_to_abort());
-        EXPECT_TRUE(st.going_to_abort());
-        mgr.decrement_task_use_count(st);
-        EXPECT_EQ(1, st.task_use_count());
-        EXPECT_TRUE(! mgr.try_increment_task_use_count(st));
-        EXPECT_EQ(1, st.task_use_count());
-        mgr.decrement_task_use_count(st);
-        EXPECT_EQ(0, st.task_use_count());
+        EXPECT_TRUE(ts.going_to_abort());
+        mgr.decrement_task_use_count(ts);
+        EXPECT_EQ(1, ts.task_use_count());
+        EXPECT_TRUE(! mgr.try_increment_task_use_count(ts));
+        EXPECT_EQ(1, ts.task_use_count());
+        mgr.decrement_task_use_count(ts);
+        EXPECT_EQ(0, ts.task_use_count());
         EXPECT_EQ(0, mgr.state().task_use_count());
     }
 }

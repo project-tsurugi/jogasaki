@@ -1,10 +1,10 @@
-# SUBSTRING外部仕様
+# SUBSTRING、SUBSTR外部仕様
 
-2025-03-13 nishimura
+2025-04-11 nishimura
 
 ## この文書について
 
-* この文書では`SUBSTRING`の外部仕様を示す
+* この文書では`SUBSTRING`、`SUBSTR`の外部仕様を示します。
 
 # 目次
 
@@ -14,13 +14,14 @@
 
 ## 定義
 
-`SUBSTRING`は、文字列から部分文字列を抽出するためISO/IEC 9075 で定義された関数です。
+`SUBSTRING`は、文字列から部分文字列を抽出するためISO/IEC 9075 で定義された関数です。`SUBSTR`は`SUBSTRING`のエイリアスです。
 
 
 `SUBSTRING`関数の構文は以下の通りです。
 
 ```
 SUBSTRING(string_expression FROM start_position [FOR length])
+SUBSTR(string_expression , start_position [, length]) -- SUBSTRING のエイリアス
 ```
 
 * string_expression：部分文字列を抽出する対象の文字列式

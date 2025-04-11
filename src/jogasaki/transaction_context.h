@@ -173,31 +173,34 @@ public:
 
     /**
      * @brief try to set the going-to-abort flag
+     * @param ts [out] the termination state set by this call (valid only if the function returns true)
      * @details atomically do the following: check both going-to-abort and going-to-commit flags are not set,
      * and then set the going-to-abort flag returning the final state.
-     * @param ts [out] the termination state set by this call
      * @return true if the going-to-abort flag is set successfully
-     * @return false if any of the flags are already set
+     * @return false if any of the flags are already set (no update made to the termination state)
      */
     bool try_set_going_to_abort(termination_state& ts);
 
     /**
      * @brief try to set the going-to-commit flag
-     * @param ts [out] the termination state set by this call
-     * @details atomically do the following: check both going-to-abort and going-to-commit flags are not set,
-     * and then set the going-to-commit flag returning the final state.
-     * @return true if the going-to-commit flag is set successfully
-     * @return false if any of the flags are already set
+     * @param ts [out] the termination state set by this call (valid only if the function returns true)
+     * @details atomically do the following:
+     * - check both going-to-abort and going-to-commit flags are not set
+     * - set going-to-commit flag if task use count is zero
+     * - set going-to-abort flag otherwise
+     * - return the final state
+     * @return true if either going-to-commit or going-to-abort flag is set successfully
+     * @return false if any of the flags are already set (no update made to the termination state)
      */
     bool try_set_going_to_commit(termination_state& ts);
 
     /**
      * @brief try to increment the task use count
-     * @param ts [out] the termination state set by this call
+     * @param ts [out] the termination state set by this call (valid only if the function returns true)
      * @details atomically do the following: check both going-to-abort and
      * going-to-commit flags are not set, and then increment the task use count returning the final state.
      * @return true if the task use count is incremented successfully
-     * @return false if any of the flags are already set
+     * @return false if any of the flags are already set (no update made to the termination state)
      */
     bool try_increment_task_use_count(termination_state& ts);
 
@@ -206,6 +209,7 @@ public:
      * @param ts [out] the termination state set by this call
      * @details atomically decrement the task use count and return the final
      * state.
+     * @warning the behavior is undefined if the task use count is already zero
      */
     void decrement_task_use_count(termination_state& ts);
 

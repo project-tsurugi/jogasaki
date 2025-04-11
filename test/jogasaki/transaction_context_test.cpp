@@ -185,6 +185,37 @@ TEST_F(transaction_context_test, termination_manager) {
         EXPECT_TRUE(! mgr.try_set_going_to_commit(st));
         EXPECT_TRUE(! mgr.try_increment_task_use_count(st));
     }
+    {
+        // set going_to_commit while task_use_count > 0
+        details::termination_manager mgr{};
+        details::termination_state st{};
+        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
+        EXPECT_TRUE(mgr.try_set_going_to_commit(st));
+        EXPECT_TRUE(! mgr.state().going_to_commit());
+        EXPECT_TRUE(! st.going_to_commit());
+        EXPECT_TRUE(mgr.state().going_to_abort());
+        EXPECT_TRUE(st.going_to_abort());
+        EXPECT_EQ(1, st.task_use_count());
+        EXPECT_EQ(1, mgr.state().task_use_count());
+    }
+    {
+        // decrement task count is possible even if flags are set
+        details::termination_manager mgr{};
+        details::termination_state st{};
+        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
+        EXPECT_TRUE(mgr.try_increment_task_use_count(st));
+        EXPECT_EQ(2, st.task_use_count());
+        EXPECT_TRUE(mgr.try_set_going_to_abort(st));
+        EXPECT_TRUE(mgr.state().going_to_abort());
+        EXPECT_TRUE(st.going_to_abort());
+        mgr.decrement_task_use_count(st);
+        EXPECT_EQ(1, st.task_use_count());
+        EXPECT_TRUE(! mgr.try_increment_task_use_count(st));
+        EXPECT_EQ(1, st.task_use_count());
+        mgr.decrement_task_use_count(st);
+        EXPECT_EQ(0, st.task_use_count());
+        EXPECT_EQ(0, mgr.state().task_use_count());
+    }
 }
 
 

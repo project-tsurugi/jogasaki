@@ -266,7 +266,11 @@ bool details::termination_manager::try_set_going_to_commit(termination_state& ts
             return false;
         }
         ts = exp;
-        ts.set_going_to_commit();
+        if (exp.task_empty()) {
+            ts.set_going_to_commit();
+        } else {
+            ts.set_going_to_abort();
+        }
     } while (! state_.compare_exchange_strong(exp, ts));
 
     return true;

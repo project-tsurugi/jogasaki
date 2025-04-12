@@ -170,30 +170,34 @@ status commit(
     return ret;
 }
 
+void log_tx_aborted(
+    transaction_context& tx,
+    request_info const& req_info
+) {
+    tx.end_time(transaction_context::clock::now());
+    std::string txid{tx.transaction_id()};
+    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
+        << txid
+        << " status:aborted";
+    auto tx_type = utils::tx_type_from(tx);
+    external_log::tx_end(
+        req_info,
+        "",
+        txid,
+        tx_type,
+        external_log::result_value::fail,
+        tx.duration<std::chrono::nanoseconds>().count(),
+        tx.label()
+    );
+}
+
 status abort_transaction(
     std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
     std::string txid{tx->transaction_id()};
     auto ret = tx->abort_transaction();
-    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
-        << txid
-        << " status:"
-        << (ret == status::ok ? "aborted" : "error"); // though we do not expect abort fails
-    if(ret == status::ok) {
-        // TODO abort is almost always successful. distinguish "real abort"
-        auto tx_type = utils::tx_type_from(*tx);
-        tx->end_time(transaction_context::clock::now());
-        external_log::tx_end(
-            req_info,
-            "",
-            txid,
-            tx_type,
-            external_log::result_value::fail,
-            tx->duration<std::chrono::nanoseconds>().count(),
-            tx->label()
-        );
-    }
+    log_tx_aborted(*tx, req_info);
     return ret;
 }
 

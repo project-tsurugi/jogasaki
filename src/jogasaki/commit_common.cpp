@@ -20,6 +20,7 @@
 
 #include <jogasaki/commit_response.h>
 #include <jogasaki/external_log/event_logging.h>
+#include <jogasaki/external_log/events.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
@@ -28,30 +29,43 @@
 
 namespace jogasaki {
 
-void log_commit_end(request_context& rctx) {
+void log_end_of_tx(
+    transaction_context& tx,
+    bool aborted,
+    request_info const& req_info
+) {
+    tx.end_time(transaction_context::clock::now());
+    auto txid = tx.transaction_id();
+    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
+        << txid
+        << " status:"
+        << (aborted ? "aborted" : "committed");
+    auto tx_type = utils::tx_type_from(tx);
+    auto result = aborted ? external_log::result_value::fail : external_log::result_value::success;
+    external_log::tx_end(
+        req_info,
+        "",
+        txid,
+        tx_type,
+        result,
+        tx.duration<std::chrono::nanoseconds>().count(),
+        tx.label()
+    );
+}
+
+void log_end_of_commit_request(request_context& rctx) {
     auto txid = rctx.transaction()->transaction_id();
     auto jobid = rctx.job()->id();
     VLOG(log_debug_timing_event) << "/:jogasaki:timing:committed "
         << txid
         << " job_id:"
         << utils::hex(jobid);
-    VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:finished "
-        << txid
-        << " status:"
-        << (rctx.status_code() == status::ok ? "committed" : "aborted");
     rctx.transaction()->profile()->set_commit_job_completed();
-    auto tx_type = utils::tx_type_from(*rctx.transaction());
-    auto result = utils::result_from(rctx.status_code());
-    rctx.transaction()->end_time(transaction_context::clock::now());
-    external_log::tx_end(
-        rctx.req_info(),
-        "",
-        txid,
-        tx_type,
-        result,
-        rctx.transaction()->duration<std::chrono::nanoseconds>().count(),
-        rctx.transaction()->label()
-    );
+}
+
+void log_end_of_tx_and_commit_request(request_context& rctx) {
+    log_end_of_commit_request(rctx);
+    log_end_of_tx(*rctx.transaction(), rctx.status_code() != status::ok, rctx.req_info());
 }
 
 }  // namespace jogasaki

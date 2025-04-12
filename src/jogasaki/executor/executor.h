@@ -316,14 +316,4 @@ bool execute_load(
     std::shared_ptr<kvs::transaction_option const> options
 );
 
-/**
- * @brief internal function to log transaction aborted
- * @param tx the transaction
- * @param req_info the request info. used to pass common info to external logging
- */
-void log_tx_aborted(
-    transaction_context& tx,
-    request_info const& req_info = {}
-);
-
 }  // namespace jogasaki::executor

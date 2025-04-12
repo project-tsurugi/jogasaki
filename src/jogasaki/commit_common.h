@@ -24,9 +24,27 @@
 namespace jogasaki {
 
 /**
- * @brief log commit end event
+ * @brief log transaction ended
+ * @param tx the transaction context
+ * @param aborted true if aborted, false if committed
+ * @param req_info the request info to provide session common info.
+ */
+void log_end_of_tx(
+    transaction_context& tx,
+    bool aborted,
+    request_info const& req_info
+);
+
+/**
+ * @brief log the end of commit request
  * @param rctx the request context
  */
-void log_commit_end(request_context& rctx);
+void log_end_of_commit_request(request_context& rctx);
+
+/**
+ * @brief log both end of tx and commit request
+ * @param rctx the request context
+ */
+void log_end_of_tx_and_commit_request(request_context& rctx);
 
 }  // namespace jogasaki

@@ -54,7 +54,7 @@ void submit_commit_response(
     auto& ts = *rctx->scheduler();
     ts.schedule_task(
         scheduler::create_custom_task(rctx.get(), [rctx, kind, teardown_try_on_suspended_worker, is_error]() {
-            log_commit_end(*rctx);
+            log_end_of_tx_and_commit_request(*rctx);
             if(is_error) {
                 rctx->commit_ctx()->on_error()(kind, rctx->status_code(), rctx->error_info());
             } else {

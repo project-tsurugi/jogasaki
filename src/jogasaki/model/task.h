@@ -27,6 +27,31 @@ enum class task_kind : std::size_t {
 };
 
 /**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(task_kind value) noexcept {
+    using namespace std::string_view_literals;
+    using kind = task_kind;
+    switch (value) {
+        case kind::main: return "main"sv;
+        case kind::pre: return "pre"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, task_kind value) {
+    return out << to_string_view(value);
+}
+
+/**
  * @brief response codes to the scheduler in order to inform how to treat the finished task
  */
 enum class task_result : std::size_t {
@@ -58,6 +83,34 @@ enum class task_result : std::size_t {
     yield,
 };
 
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(task_result value) noexcept {
+    using namespace std::string_view_literals;
+    using kind = task_result;
+    switch (value) {
+        case kind::proceed: return "proceed"sv;
+        case kind::complete: return "complete"sv;
+        case kind::complete_and_teardown: return "complete_and_teardown"sv;
+        case kind::sleep: return "sleep"sv;
+        case kind::yield: return "yield"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, task_result value) {
+    return out << to_string_view(value);
+}
+
 enum class task_transaction_kind : std::uint32_t {
     /**
      * @brief only out-of-transaction operations (including commit) are conducted by this task
@@ -74,6 +127,32 @@ enum class task_transaction_kind : std::uint32_t {
      */
     sticky,
 };
+
+/**
+ * @brief returns string representation of the value.
+ * @param value the target value
+ * @return the corresponded string representation
+ */
+[[nodiscard]] constexpr inline std::string_view to_string_view(task_transaction_kind value) noexcept {
+    using namespace std::string_view_literals;
+    using kind = task_transaction_kind;
+    switch (value) {
+        case kind::none: return "none"sv;
+        case kind::in_transaction: return "in_transaction"sv;
+        case kind::sticky: return "sticky"sv;
+    }
+    std::abort();
+}
+
+/**
+ * @brief appends string representation of the given value.
+ * @param out the target output
+ * @param value the target value
+ * @return the output
+ */
+inline std::ostream& operator<<(std::ostream& out, task_transaction_kind value) {
+    return out << to_string_view(value);
+}
 
 class task {
 public:

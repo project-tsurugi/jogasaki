@@ -36,17 +36,17 @@ public:
         step_type* src,
         std::shared_ptr<abstract::process_executor> exec,
         std::shared_ptr<abstract::processor> processor,
-        bool has_transactional_io
+        model::task_transaction_kind transaction_capability
     );
 
     [[nodiscard]] model::task_result operator()() override;
 
-    [[nodiscard]] bool has_transactional_io() override;
+    [[nodiscard]] model::task_transaction_kind transaction_capability() override;
 
 private:
     std::shared_ptr<abstract::process_executor> executor_{};
     std::shared_ptr<abstract::processor> processor_{};
-    bool has_transactional_io_{};
+    model::task_transaction_kind transaction_capability_{};
 };
 
 }

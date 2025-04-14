@@ -53,12 +53,6 @@ public:
     [[nodiscard]] model::task_result operator()() override;
 
     /**
-     * @brief accessor to I/O operation property of the task
-     * @return whether the task contains transactional I/O operations that requires special handling in scheduling
-     */
-    [[nodiscard]] bool has_transactional_io() override;
-
-    /**
      * @brief accessor to transaction capability of the task
      * @return the flag indicates the transactional operations conducted by this task
      */
@@ -71,7 +65,6 @@ private:
     cache_align static inline std::atomic_size_t id_src = 20000;  //NOLINT
     identity_type id_{id_src++};
     task_body_type body_{};
-    bool transactional_io_{};
     model::task_transaction_kind transaction_capability_{};
 };
 

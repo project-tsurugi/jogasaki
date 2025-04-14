@@ -51,11 +51,8 @@ std::ostream& task::write_to(std::ostream& out) const {
     return out << "task[id="sv << std::to_string(static_cast<identity_type>(id_)) << "]"sv;
 }
 
-bool task::has_transactional_io() {
-    return false;
-}
-
 model::task_transaction_kind task::transaction_capability() {
+    // by default, task conduct out-of-transaction operation
     return model::task_transaction_kind::none;
 }
 

@@ -41,12 +41,12 @@ task::task(
     task::step_type *src,
     std::shared_ptr<abstract::process_executor> exec,
     std::shared_ptr<abstract::processor> processor,
-    bool has_transactional_io
+    model::task_transaction_kind transaction_capability
 ) :
     common::task(context, src),
     executor_(std::move(exec)),
     processor_(std::move(processor)),
-    has_transactional_io_(has_transactional_io)
+    transaction_capability_(transaction_capability)
 {}
 
 model::task_result task::operator()() {
@@ -104,8 +104,8 @@ model::task_result task::operator()() {
     }
 }
 
-bool task::has_transactional_io() {
-    return has_transactional_io_;
+model::task_transaction_kind task::transaction_capability() {
+    return transaction_capability_;
 }
 
 } // namespace jogasaki::executor::process

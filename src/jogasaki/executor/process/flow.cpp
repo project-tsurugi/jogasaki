@@ -41,6 +41,7 @@
 #include <jogasaki/executor/process/step.h>
 #include <jogasaki/executor/process/task.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
+#include <jogasaki/model/task.h>
 #include <jogasaki/plan/compiler.h>
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
@@ -139,19 +140,27 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         ==  kvs::transaction_option::transaction_type::read_only;
     auto& d = info_->details();
     auto exec = factory(proc, contexts);
+    auto tx_capability = model::task_transaction_kind::none;
+    if (d.has_write_operations() ||
+        d.has_find_operator() ||
+        d.has_scan_operator() ||
+        d.has_join_find_or_scan_operator()
+        ) {
+        // process has tx operations
+        if (is_rtx && global::config_pool()->rtx_parallel_scan()) {
+            // parallel rtx operations need not to be sticky
+            tx_capability = model::task_transaction_kind::in_transaction;
+        } else {
+            tx_capability = model::task_transaction_kind::sticky;
+        }
+    }
     for (std::size_t i=0; i < partitions; ++i) {
         tasks_.emplace_back(std::make_unique<task>(
             context_,
             step_,
             exec,
             proc,
-                !(is_rtx && global::config_pool()->rtx_parallel_scan() ) &&
-                (
-                    d.has_write_operations() ||
-                    d.has_find_operator() ||
-                    d.has_scan_operator() ||
-                    d.has_join_find_or_scan_operator()
-                )
+            tx_capability
         ));
     }
     return tasks_;

@@ -39,10 +39,6 @@ model::task_result details::custom_task::operator()() {
     return body_();
 }
 
-bool details::custom_task::has_transactional_io() {
-    return transactional_io_;
-}
-
 model::task_transaction_kind details::custom_task::transaction_capability() {
     return transaction_capability_;
 }

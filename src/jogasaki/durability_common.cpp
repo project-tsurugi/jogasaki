@@ -41,7 +41,7 @@
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/utils/set_cancel_status.h>
+#include <jogasaki/utils/cancel_request.h>
 
 namespace jogasaki {
 

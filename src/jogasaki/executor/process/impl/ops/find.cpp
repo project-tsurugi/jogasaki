@@ -49,7 +49,6 @@
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
-#include <jogasaki/utils/set_cancel_status.h>
 
 #include "context_helper.h"
 #include "details/encode_key.h"
@@ -163,7 +162,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     if(utils::request_cancel_enabled(request_cancel_kind::find) && ctx.req_context()) {
         auto res_src = ctx.req_context()->req_info().response_source();
         if(res_src && res_src->check_cancel()) {
-            set_cancel_status(*ctx.req_context());
+            cancel_request(*ctx.req_context());
             ctx.abort();
             finish(context);
             return {operation_status_kind::aborted};

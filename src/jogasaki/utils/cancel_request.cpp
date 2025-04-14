@@ -20,10 +20,33 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include <jogasaki/executor/global.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/status.h>
 
 namespace jogasaki::utils {
+
+void cancel_request_impl(
+    request_context& context,
+    std::string_view filepath,
+    std::string_view position
+) {
+    error::set_error_impl(
+        context,
+        error_code::request_canceled,
+        "the operation has been canceled",
+        filepath,
+        position,
+        status::request_canceled,
+        false
+    );
+    if (context.transaction()) {
+        executor::abort_transaction(context.transaction(), context.req_info());
+    }
+}
 
 bool request_cancel_enabled(request_cancel_kind kind) noexcept {
     auto& c = global::config_pool();

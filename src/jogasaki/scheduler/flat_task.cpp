@@ -48,7 +48,6 @@
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/latch.h>
-#include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::scheduler {
@@ -176,7 +175,7 @@ bool flat_task::write() {
     if(utils::request_cancel_enabled(request_cancel_kind::write)) {
         auto res_src = req_context_->req_info().response_source();
         if(res_src && res_src->check_cancel()) {
-            set_cancel_status(*req_context_);
+            cancel_request(*req_context_);
             if(check_or_submit_teardown(*req_context_, true)) {
                 ret = true;
             };

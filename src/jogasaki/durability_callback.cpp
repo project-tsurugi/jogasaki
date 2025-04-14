@@ -41,7 +41,7 @@
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/utils/set_cancel_status.h>
+#include <jogasaki/utils/cancel_request.h>
 
 namespace jogasaki {
 
@@ -83,7 +83,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                     [marker](element_reference_type e){
                         VLOG(log_trace) << "/:jogasaki:durability_callback:operator() check_cancel "
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
-                        set_cancel_status(*e);
+                        cancel_request(*e);
                         submit_commit_response(e, commit_response_kind::stored, true, true);
                     }
                 );

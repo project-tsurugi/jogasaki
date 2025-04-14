@@ -2670,8 +2670,11 @@ TEST_F(service_api_test, cancel_insert) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("insert into t values (1)", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+
+    // Canceling sql makes tx undefined state, so the status is unknown by design.
+    // But typically tx becomes inactive due to abort, so we use it here and similar testing
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_scan) {
@@ -2681,8 +2684,8 @@ TEST_F(service_api_test, cancel_scan) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t order by c0", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_find) {
@@ -2692,8 +2695,8 @@ TEST_F(service_api_test, cancel_find) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t where c0 = 0", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_group) {
@@ -2705,8 +2708,8 @@ TEST_F(service_api_test, cancel_group) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t0 join t1 on t0.c0 = t1.c0", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_aggregate) {
@@ -2716,8 +2719,8 @@ TEST_F(service_api_test, cancel_aggregate) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select max(c0) from t0", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_take_cogroup) {
@@ -2729,8 +2732,8 @@ TEST_F(service_api_test, cancel_take_cogroup) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t0 join t1 on t0.c0 = t1.c0", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_take_group) {
@@ -2740,16 +2743,15 @@ TEST_F(service_api_test, cancel_take_group) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select max(c0) from t0", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_tx_begin) {
     enable_request_cancel(request_cancel_kind::transaction_begin_wait);
     std::uint64_t tx_handle{};
     test_cancel_transaction_begin(tx_handle, "label");
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    // we don't have valid tx handle, so there is nothing to verify
 }
 
 TEST_F(service_api_test, cancel_take_flat) {
@@ -2759,17 +2761,17 @@ TEST_F(service_api_test, cancel_take_flat) {
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select c0 from t0 limit 1", tx_handle);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, DISABLED_cancel_precommit) {
     enable_request_cancel(request_cancel_kind::transaction_precommit);
     std::uint64_t tx_handle{};
     test_cancel_transaction_begin(tx_handle, "label");
-    test_cancel_transaction_commit(tx_handle, true);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_cancel_transaction_commit(tx_handle, false);  // disable auto dispose
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, cancel_durable_wait) {
@@ -2779,9 +2781,9 @@ TEST_F(service_api_test, cancel_durable_wait) {
     enable_request_cancel(request_cancel_kind::transaction_durable_wait);
     std::uint64_t tx_handle{};
     test_begin(tx_handle);
-    test_cancel_transaction_commit(tx_handle, true);
-    // test_commit(tx_handle, false);
-    // test_get_error_info(tx_handle, false, error_code::none);
+    test_cancel_transaction_commit(tx_handle, false);  // disable auto dispose
+    test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
+    test_get_error_info(tx_handle, false, error_code::none);  // tx in unknown state, so no error info.
 }
 
 TEST_F(service_api_test, error_with_unsupported_query) {

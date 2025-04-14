@@ -20,10 +20,29 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include <jogasaki/request_context.h>
 #include <jogasaki/request_cancel_config.h>
+
+#define cancel_request(rctx) jogasaki::utils::cancel_request_impl(rctx, __FILE__, line_number_string) //NOLINT
 
 namespace jogasaki::utils {
 
+/**
+ * @brief set cancel status in request/transaction context
+ * @details set cancel error info or status to the request context, and try abort if transaction is involved in the request
+ */
+void cancel_request_impl(
+    request_context& context,
+    std::string_view filepath,
+    std::string_view position
+);
+
+/**
+ * @brief accessor to the flag on whether the request cancel kind is enabled
+ * @param kind cancel kind to query
+ * @return true if the cancel kind is enabled
+ * @return false otherwise
+ */
 bool request_cancel_enabled(request_cancel_kind kind) noexcept;
 
 }  // namespace jogasaki::utils

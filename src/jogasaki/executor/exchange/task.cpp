@@ -29,7 +29,6 @@
 #include <jogasaki/model/task.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/flat_task.h>
-#include <jogasaki/utils/set_cancel_status.h>
 #include <jogasaki/utils/cancel_request.h>
 
 namespace jogasaki::executor::exchange {
@@ -40,7 +39,7 @@ model::task_result task::operator()() {
     if(utils::request_cancel_enabled(request_cancel_kind::group)) {
         auto res_src = context()->req_info().response_source();
         if(res_src && res_src->check_cancel()) {
-            set_cancel_status(*context());
+            cancel_request(*context());
             scheduler::submit_teardown(*context());
             return model::task_result::complete;
         }

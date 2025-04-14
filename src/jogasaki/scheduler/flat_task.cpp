@@ -16,9 +16,10 @@
 #include "flat_task.h"
 
 #include <atomic>
+#include <glog/logging.h>
+#include <jogasaki/commit_common.h>
 #include <mutex>
 #include <type_traits>
-#include <glog/logging.h>
 
 #include <takatori/util/string_builder.h>
 #include <tateyama/common.h>
@@ -193,6 +194,23 @@ bool flat_task::write() {
 }
 
 bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
+    if (in_transaction_ && req_context_ && req_context_->transaction()) {
+        auto& tctx = *req_context_->transaction();
+
+        termination_state ts{};
+        if (! tctx.termination_mgr().try_increment_task_use_count(ts)) {
+            // set error info. for request context, and not for transaction context
+            // if request context already has error info, it's not overwritten
+            set_error(
+                *req_context_,
+                error_code::inactive_transaction_exception,
+                "the other request already made to terminate the transaction",
+                status::err_inactive_transaction
+            );
+            return check_or_submit_teardown(*req_context_, true, true);
+        }
+    }
+
     // The variables begin and end are needed only for timing event log.
     // Avoid calling clock::now() if log level is low. In case its cost is unexpectedly high.
     std::chrono::time_point<clock> begin{};
@@ -233,6 +251,18 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
                             << " job_id:" << utils::hex(req_context_->job()->id()) << " kind:" << kind_
                             << " sticky:" << sticky_ << " worker:" << ctx.index() << " stolen:" << ctx.task_is_stolen();
 
+    if (in_transaction_ && req_context_ && req_context_->transaction()) {
+        auto& tctx = *req_context_->transaction();
+        termination_state ts{};
+        tctx.termination_mgr().decrement_task_use_count(ts);
+        if (ts.going_to_abort() && ts.task_empty()) {
+            (void) req_context_->transaction()->abort_transaction();
+            // request_info in the request context might not be the cause of the abort
+            // rather it is the request processing SQL that is interrupted by the abort
+            // TODO fix if that is a problem.
+            log_end_of_tx(*req_context_->transaction(), true, req_context_->req_info());
+        }
+    }
     return to_finish_job;
 }
 
@@ -425,6 +455,10 @@ flat_task::flat_task(
 
 bool flat_task::sticky() const noexcept {
     return sticky_;
+}
+
+bool flat_task::in_transaction() const noexcept {
+    return in_transaction_;
 }
 
 request_context* flat_task::req_context() const noexcept {

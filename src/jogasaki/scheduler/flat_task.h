@@ -286,6 +286,14 @@ public:
      */
     [[nodiscard]] request_context* req_context() const noexcept;
 
+    /**
+     * @brief execute the task
+     * @return true if job completes together with the task
+     * @return false if only task completes
+     * @note this function is private but made public only for testing.
+     */
+    bool execute(tateyama::task_scheduler::context& ctx);
+
 private:
     std::size_t id_{undefined_id};
     flat_task_kind kind_{};
@@ -299,12 +307,6 @@ private:
     std::shared_ptr<executor::file::loader> loader_{};
 
     cache_align static inline std::atomic_size_t id_src_{};  //NOLINT
-
-    /**
-     * @return true if job completes together with the task
-     * @return false if only task completes
-     */
-    bool execute(tateyama::task_scheduler::context& ctx);
 
     void bootstrap(tateyama::task_scheduler::context& ctx);
     void dag_schedule();

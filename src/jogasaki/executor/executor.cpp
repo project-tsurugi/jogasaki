@@ -145,6 +145,7 @@ status init(
 }
 
 }
+
 status commit(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,
@@ -170,14 +171,20 @@ status commit(
     return ret;
 }
 
-status abort_transaction(
+void abort_transaction(
     std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
-    std::string txid{tx->transaction_id()};
-    auto ret = tx->abort_transaction();
+    termination_state ts{};
+    if (! tx->termination_mgr().try_set_going_to_abort(ts)) {
+        // abort request does not return success/failure or the state of the tx
+        return;
+    }
+    if (! ts.task_empty()) {
+        return;
+    }
+    (void) tx->abort_transaction();
     log_end_of_tx(*tx, true, req_info);
-    return ret;
 }
 
 status execute(
@@ -796,6 +803,35 @@ scheduler::job_context::job_id_type commit_async(
             << txid
             << " job_id:"
             << utils::hex(jobid);
+
+        auto handle_error = [](request_context& rctx) {
+            log_end_of_tx_and_commit_request(rctx);
+            rctx.commit_ctx()->on_error()(commit_response_kind::available, rctx.status_code(), rctx.error_info());
+            scheduler::submit_teardown(rctx, true);
+        };
+
+        termination_state ts{};
+        if (! rctx->transaction()->termination_mgr().try_set_going_to_commit(ts)) {
+            set_error(
+                *rctx,
+                error_code::inactive_transaction_exception,
+                "the other request already made to terminate the transaction",
+                status::err_inactive_transaction
+            );
+            handle_error(*rctx);
+            return model::task_result::complete;
+        }
+        if (! ts.task_empty()) {
+            set_error(
+                *rctx,
+                error_code::restricted_operation_exception,
+                "commit requested while other transaction operations are on-going",
+                status::err_illegal_operation
+            );
+            handle_error(*rctx);
+            return model::task_result::complete;
+        }
+
         rctx->transaction()->profile()->set_commit_requested();
         [[maybe_unused]] auto b = rctx->transaction()->commit(
             [jobid, rctx, txid, &database, option](
@@ -807,7 +843,7 @@ scheduler::job_context::job_id_type commit_async(
                 process_commit_callback(st, ec, marker, jobid, rctx, txid, database, option);
             });
         return model::task_result::complete;
-    }, model::task_transaction_kind::sticky); //FIXME change to none
+    }, model::task_transaction_kind::none);
     rctx->job()->callback([rctx, txid, jobid](){
         // no-op just log and keep rctx
         VLOG_LP(log_trace) << "commit job end job_id:" << utils::hex(jobid) << " " << txid;

@@ -41,7 +41,9 @@
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/impl/request_context_factory.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/tables.h>
@@ -49,12 +51,14 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
+#include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/tables.h>
 
 #include "api_test_base.h"
+
 
 namespace jogasaki::api {
 
@@ -315,7 +319,7 @@ TEST_F(transaction_test, tx_destroyed_from_other_threads) {
 }
 
 // TODO following test leaks many objects
-TEST_F(transaction_test, DISABLED_tx_aborted_from_other_threads) {
+TEST_F(transaction_test, tx_aborted_from_other_threads) {
     // verify crash doesn't occur even tx is aborted by operation on different thread
     // and the error info is available then
     utils::set_global_tx_option(utils::create_tx_option{false, true}); // use occ to finish insert quickly
@@ -414,6 +418,217 @@ TEST_F(transaction_test, DISABLED_tx_aborted_from_other_threads) {
     ASSERT_LT(0, inactive_tx); // verify at least one inactive tx
     ASSERT_LT(0, aborted_f2); // verify at least one inactive tx
     ASSERT_EQ(0, get_impl(*db_).transaction_count());
+}
+
+auto get_termination_state(transaction_handle handle) {
+    auto tctx = get_transaction_context(handle);
+    return tctx->termination_mgr().state();
+}
+
+TEST_F(transaction_test, initial_termination_state) {
+    auto tx = utils::create_transaction(*db_);
+    {
+        auto ts = get_termination_state(*tx);
+        EXPECT_TRUE(! ts.going_to_commit());
+        EXPECT_TRUE(! ts.going_to_abort());
+        EXPECT_TRUE(ts.task_empty());
+    }
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(transaction_test, commit_after_commit) {
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->commit());
+    {
+        auto ts = get_termination_state(*tx);
+        EXPECT_TRUE(ts.going_to_commit());
+        EXPECT_TRUE(! ts.going_to_abort());
+        EXPECT_TRUE(ts.task_empty());
+    }
+    ASSERT_EQ(status::err_inactive_transaction, tx->commit());
+}
+
+TEST_F(transaction_test, commit_after_abort) {
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->abort_transaction());
+    {
+        auto ts = get_termination_state(*tx);
+        EXPECT_TRUE(! ts.going_to_commit());
+        EXPECT_TRUE(ts.going_to_abort());
+        EXPECT_TRUE(ts.task_empty());
+    }
+    ASSERT_EQ(status::err_inactive_transaction, tx->commit());
+}
+
+TEST_F(transaction_test, abort_after_abort) {
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->abort_transaction());
+    {
+        auto ts = get_termination_state(*tx);
+        EXPECT_TRUE(! ts.going_to_commit());
+        EXPECT_TRUE(ts.going_to_abort());
+        EXPECT_TRUE(ts.task_empty());
+    }
+    ASSERT_EQ(status::ok, tx->abort_transaction());
+    {
+        auto ts = get_termination_state(*tx);
+        EXPECT_TRUE(! ts.going_to_commit());
+        EXPECT_TRUE(ts.going_to_abort());
+        EXPECT_TRUE(ts.task_empty());
+    }
+}
+
+TEST_F(transaction_test, query_after_commit) {
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (1)");
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->commit());
+    test_stmt_err("select * from t", *tx, error_code::inactive_transaction_exception);
+    test_stmt_err("insert into t values (2)", *tx, error_code::inactive_transaction_exception);
+}
+
+TEST_F(transaction_test, query_after_abort) {
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (1)");
+    auto tx = utils::create_transaction(*db_);
+    ASSERT_EQ(status::ok, tx->abort_transaction());
+    test_stmt_err("select * from t", *tx, error_code::inactive_transaction_exception);
+    test_stmt_err("insert into t values (2)", *tx, error_code::inactive_transaction_exception);
+}
+
+TEST_F(transaction_test, task_use_count) {
+    // verify task_use_count is incremented and decremented correctly
+    auto tx = utils::create_transaction(*db_);
+    auto tctx = get_transaction_context(*tx);
+
+    auto rctx = impl::create_request_context(
+        get_impl(*db_),
+        tctx,
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        {},
+        nullptr
+    );
+
+    std::atomic_bool executing = false;
+    std::atomic_bool finish = false;
+    auto task = create_custom_task(
+        rctx.get(), [&]() {
+            executing = true;
+            while (! finish) {}
+        return model::task_result::complete;
+    },
+        model::task_transaction_kind::in_transaction);
+    EXPECT_TRUE(! task.sticky());
+    EXPECT_TRUE(task.in_transaction());
+
+    std::atomic_bool executed = false;
+    tateyama::task_scheduler::context ctx{};
+    auto f = std::async(std::launch::async, [&]() {
+        task.execute(ctx);
+        executed = true;
+    });
+    while (! executing) {}
+    ASSERT_EQ(1, tctx->termination_mgr().state().task_use_count());
+    finish = true;
+    while (! executed) {}
+    ASSERT_EQ(0, tctx->termination_mgr().state().task_use_count());
+    ASSERT_EQ(status::ok, tx->commit());
+}
+
+TEST_F(transaction_test, commit_while_task_is_running) {
+    // verify commit aborts when there are on-going tasks
+    auto tx = utils::create_transaction(*db_);
+    auto tctx = get_transaction_context(*tx);
+
+    auto rctx = impl::create_request_context(
+        get_impl(*db_),
+        tctx,
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        {},
+        nullptr
+    );
+
+    std::atomic_bool executing = false;
+    std::atomic_bool finish = false;
+    auto task = create_custom_task(
+        rctx.get(), [&]() {
+            executing = true;
+            while (! finish) {}
+        return model::task_result::complete;
+    },
+        model::task_transaction_kind::in_transaction);
+    EXPECT_TRUE(! task.sticky());
+    EXPECT_TRUE(task.in_transaction());
+
+    std::atomic_bool executed = false;
+    tateyama::task_scheduler::context ctx{};
+    auto f = std::async(std::launch::async, [&]() {
+        task.execute(ctx);
+        executed = true;
+    });
+    while (! executing) {}
+    ASSERT_EQ(1, tctx->termination_mgr().state().task_use_count());
+
+    ASSERT_EQ(status::err_illegal_operation, tx->commit());
+    ASSERT_TRUE(tctx->termination_mgr().state().going_to_abort());
+    ASSERT_TRUE(! tctx->termination_mgr().state().going_to_commit());
+
+    finish = true;
+    while (! executed) {}
+    ASSERT_EQ(0, tctx->termination_mgr().state().task_use_count());
+    ASSERT_EQ(status::err_inactive_transaction, tx->commit());
+}
+
+TEST_F(transaction_test, abort_while_task_is_running) {
+    // verify commit aborts when there are on-going tasks
+    auto tx = utils::create_transaction(*db_);
+    auto tctx = get_transaction_context(*tx);
+
+    auto rctx = impl::create_request_context(
+        get_impl(*db_),
+        tctx,
+        nullptr,
+        std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
+        {},
+        nullptr
+    );
+
+    std::atomic_bool executing = false;
+    std::atomic_bool finish = false;
+    auto task = create_custom_task(
+        rctx.get(), [&]() {
+            executing = true;
+            while (! finish) {}
+        return model::task_result::complete;
+    },
+        model::task_transaction_kind::in_transaction);
+    EXPECT_TRUE(! task.sticky());
+    EXPECT_TRUE(task.in_transaction());
+
+    std::atomic_bool executed = false;
+    tateyama::task_scheduler::context ctx{};
+    auto f = std::async(std::launch::async, [&]() {
+        task.execute(ctx);
+        executed = true;
+    });
+    while (! executing) {}
+    ASSERT_EQ(1, tctx->termination_mgr().state().task_use_count());
+
+    ASSERT_EQ(status::ok, tx->abort_transaction());
+    ASSERT_TRUE(tctx->termination_mgr().state().going_to_abort());
+    ASSERT_TRUE(! tctx->termination_mgr().state().going_to_commit());
+
+    // TODO verify that abort is not actually requested to cc
+
+    finish = true;
+    while (! executed) {}
+    ASSERT_EQ(0, tctx->termination_mgr().state().task_use_count());
+
+    // TODO verify that abort is already requested to cc
+
+    ASSERT_EQ(status::err_inactive_transaction, tx->commit());
 }
 
 

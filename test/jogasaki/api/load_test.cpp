@@ -175,7 +175,7 @@ public:
         if (expected == status::ok) {
             ASSERT_EQ(status::ok, executor::commit(get_impl(*db_), tx));
         } else {
-            ASSERT_EQ(status::ok, executor::abort_transaction(tx));
+            executor::abort_transaction(tx);
         }
     }
 

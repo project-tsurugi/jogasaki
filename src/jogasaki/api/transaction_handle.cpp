@@ -118,7 +118,8 @@ status transaction_handle::abort_transaction(request_info const& req_info) {  //
     auto [db, tx] = cast(db_, body_);
     if(! tx) return status::err_invalid_argument;
     (void) db;
-    return executor::abort_transaction(tx, req_info);
+    executor::abort_transaction(tx, req_info);
+    return status::ok;
 }
 
 status transaction_handle::execute(  //NOLINT(readability-make-member-function-const)

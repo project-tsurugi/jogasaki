@@ -59,7 +59,6 @@
 
 #include "api_test_base.h"
 
-
 namespace jogasaki::api {
 
 using namespace std::string_literals;
@@ -355,7 +354,7 @@ TEST_F(transaction_test, tx_aborted_from_other_threads) {
                     t.execute_async(
                         maybe_shared_ptr{stmt0.get()},
                         ch0,
-                        [&, ch0, i, cb, t](status st, std::string_view msg) {
+                        [&, ch0, i, cb, t](status st, std::string_view msg) mutable {
                             ++statements_executed;
                             if (st != status::ok) {
                                 if(st == status::err_invalid_argument) {
@@ -371,6 +370,8 @@ TEST_F(transaction_test, tx_aborted_from_other_threads) {
                                 } else {
                                     LOG(ERROR) << st;
                                 }
+                            } else {
+                                t.commit();
                             }
                             if(db_->destroy_transaction(t) == status::ok) {
                                 ++destroyed_f1;
@@ -575,9 +576,13 @@ TEST_F(transaction_test, commit_while_task_is_running) {
     ASSERT_TRUE(tctx->termination_mgr().state().going_to_abort());
     ASSERT_TRUE(! tctx->termination_mgr().state().going_to_commit());
 
+    EXPECT_EQ(transaction_state_kind::going_to_abort, tctx->state());
+
     finish = true;
     while (! executed) {}
     ASSERT_EQ(0, tctx->termination_mgr().state().task_use_count());
+    EXPECT_EQ(transaction_state_kind::aborted, tctx->state());
+
     ASSERT_EQ(status::err_inactive_transaction, tx->commit());
 }
 
@@ -620,13 +625,13 @@ TEST_F(transaction_test, abort_while_task_is_running) {
     ASSERT_TRUE(tctx->termination_mgr().state().going_to_abort());
     ASSERT_TRUE(! tctx->termination_mgr().state().going_to_commit());
 
-    // TODO verify that abort is not actually requested to cc
+    EXPECT_EQ(transaction_state_kind::going_to_abort, tctx->state());
 
     finish = true;
     while (! executed) {}
     ASSERT_EQ(0, tctx->termination_mgr().state().task_use_count());
 
-    // TODO verify that abort is already requested to cc
+    EXPECT_EQ(transaction_state_kind::aborted, tctx->state());
 
     ASSERT_EQ(status::err_inactive_transaction, tx->commit());
 }

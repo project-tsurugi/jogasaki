@@ -163,9 +163,10 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
     state s{state::init};
     auto& inputs = ctx.inputs_;
     auto& queue = ctx.queue_;
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_cogroup);
     while(s != state::end) {
-        if(utils::request_cancel_enabled(request_cancel_kind::take_cogroup) && ctx.req_context()) {
-            auto res_src = ctx.req_context()->req_info().response_source();
+        if(cancel_enabled && ctx.req_context()) {
+            auto& res_src = ctx.req_context()->req_info().response_source();
             if(res_src && res_src->check_cancel()) {
                 cancel_request(*ctx.req_context());
                 ctx.abort();

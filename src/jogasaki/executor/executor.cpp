@@ -509,7 +509,7 @@ void external_log_stmt_explain(
     (void) statement;
     (void) string_builder{};
 #ifdef ENABLE_ALTIMETER
-    if(auto req = req_info.request_source()) {
+    if(auto& req = req_info.request_source()) {
         auto& vars = req->session_variable_set();
         auto v = vars.get(session_variable_sql_plan_recording);
         bool* p = std::get_if<bool>(std::addressof(v));

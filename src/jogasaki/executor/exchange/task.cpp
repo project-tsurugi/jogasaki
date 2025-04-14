@@ -37,7 +37,7 @@ model::task_result task::operator()() {
     VLOG_LP(log_debug) << *this << " exchange_task executed.";
 
     if(utils::request_cancel_enabled(request_cancel_kind::group)) {
-        auto res_src = context()->req_info().response_source();
+        auto& res_src = context()->req_info().response_source();
         if(res_src && res_src->check_cancel()) {
             cancel_request(*context());
             scheduler::submit_teardown(*context());

@@ -1197,14 +1197,15 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                 return model::task_result::complete;
             }
 
+            auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::transaction_begin_wait);
             auto canceled = std::make_shared<bool>();
             auto& ts = *rctx->scheduler();
             ts.schedule_conditional_task(
                 scheduler::conditional_task{
                     rctx.get(),
-                    [handle, rctx, canceled]() {
-                        if(utils::request_cancel_enabled(request_cancel_kind::transaction_begin_wait)) {
-                            auto res_src = rctx->req_info().response_source();
+                    [handle, rctx, canceled, cancel_enabled]() {
+                        if(cancel_enabled) {
+                            auto& res_src = rctx->req_info().response_source();
                             if(res_src && res_src->check_cancel()) {
                                 *canceled = true;
                                 return true;

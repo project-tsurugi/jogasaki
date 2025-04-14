@@ -92,6 +92,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
         auto r = ctx.task_context().reader(reader_index_);
         ctx.reader_ = r.reader<io::group_reader>();
     }
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_group);
     auto resource = ctx.varlen_resource();
     while(ctx.reader_->next_group()) {
         utils::checkpoint_holder group_cp{resource};
@@ -112,8 +113,8 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
         if(! ctx.reader_->next_member()) continue;
         bool has_next = true;
         while(has_next) {
-            if(utils::request_cancel_enabled(request_cancel_kind::take_group) && ctx.req_context()) {
-                auto res_src = ctx.req_context()->req_info().response_source();
+            if(cancel_enabled && ctx.req_context()) {
+                auto& res_src = ctx.req_context()->req_info().response_source();
                 if(res_src && res_src->check_cancel()) {
                     cancel_request(*ctx.req_context());
                     ctx.abort();

@@ -38,7 +38,7 @@ void fill_common_properties(
     ::altimeter::log_item& item
 ) {
     item.category(::altimeter::event::category);
-    auto req = req_info.request_source();
+    auto& req = req_info.request_source();
     if(! req) {
         return;
     }

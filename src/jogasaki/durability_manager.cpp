@@ -104,7 +104,7 @@ bool durability_manager::check_cancel(
         vec.emplace_back(std::move(top));
     }
     for(auto&& e : vec) {
-        auto res_src = e->req_info().response_source();
+        auto& res_src = e->req_info().response_source();
         if(res_src && res_src->check_cancel()) {
             cb(e);
             continue;

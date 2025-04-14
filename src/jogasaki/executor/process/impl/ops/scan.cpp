@@ -163,9 +163,10 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto scan_block_size = global::config_pool()->scan_block_size();
     auto scan_yield_interval = static_cast<std::int64_t>(global::config_pool()->scan_yield_interval());
     auto previous_time = std::chrono::steady_clock::now();
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::scan);
     while(true) {
-        if(utils::request_cancel_enabled(request_cancel_kind::scan) && ctx.req_context()) {
-            auto res_src = ctx.req_context()->req_info().response_source();
+        if(cancel_enabled && ctx.req_context()) {
+            auto& res_src = ctx.req_context()->req_info().response_source();
             if(res_src && res_src->check_cancel()) {
                 cancel_request(*ctx.req_context());
                 ctx.abort();

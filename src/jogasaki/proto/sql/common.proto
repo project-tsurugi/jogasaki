@@ -183,6 +183,14 @@ message Column {
 
         bool varying = 22;
     }
+
+    reserved 23 to 99;
+
+    // the optional description of the declaration.
+    oneof description_opt {
+        // the description of the declaration.
+        string description = 100;
+    }
 }
 
 // the row type.

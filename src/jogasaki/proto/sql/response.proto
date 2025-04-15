@@ -129,6 +129,14 @@ message DescribeTable {
 
     // the table column information.
     repeated common.Column columns = 4;
+
+    reserved 5 to 19;
+
+    // the optional description of the declaration.
+    oneof description_opt {
+      // the description of the declaration.
+      string description = 20;
+    }
   }
 
   // the response body.

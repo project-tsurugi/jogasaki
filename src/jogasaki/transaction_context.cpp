@@ -74,14 +74,11 @@ status transaction_context::commit(bool async) {
 }
 
 bool transaction_context::commit(transaction_context::commit_callback_type cb) {
-    state_.set(transaction_state_kind::cc_committing);
     return transaction_->commit(std::move(cb));
 }
 
 status transaction_context::abort_transaction() {
-    auto ret = transaction_->abort_transaction();
-    state_.set(transaction_state_kind::aborted);
-    return ret;
+    return transaction_->abort_transaction();
 }
 
 sharksfin::TransactionControlHandle transaction_context::control_handle() const noexcept {
@@ -133,12 +130,6 @@ bool transaction_context::error_info(
             return false;
         }
     } while (! std::atomic_compare_exchange_strong(std::addressof(error_info_), std::addressof(s), info));
-
-    // new error set for the transaction means the transaction will be finally aborted
-    // but we cannot tell if the transaction is already aborted by cc, or sql engine is going to abort it.
-    // So we currently roughly assume that the transaction got aborted by cc if the state is active and
-    // otherwise, the transaction is going to be aborted by sql engine.
-    state_.set_if(transaction_state_kind::active, transaction_state_kind::aborted);
     return true;
 }
 

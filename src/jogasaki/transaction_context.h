@@ -34,7 +34,6 @@
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
 #include <jogasaki/termination_state.h>
-#include <jogasaki/transaction_state.h>
 #include <jogasaki/utils/interference_size.h>
 
 namespace limestone::api {
@@ -403,23 +402,6 @@ public:
         return term_mgr_;
     }
 
-    /**
-     * @brief accessor to the state of this transaction
-     * @return the state kind
-     * @note this function is thread-safe
-     */
-    [[nodiscard]] transaction_state_kind state() const noexcept {
-        return state_.kind();
-    }
-
-    /**
-     * @brief setter for the state of this transaction
-     * @return the state kind
-     * @note this function is thread-safe
-     */
-    void state(transaction_state_kind kind) noexcept {
-        state_.set(kind);
-    }
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t id_{};
@@ -435,7 +417,6 @@ private:
     std::string label_{};
     std::shared_ptr<limestone::api::blob_pool> blob_pool_{};
     details::termination_manager term_mgr_{};
-    transaction_state state_{};
 
     static inline std::atomic_size_t id_source_{};  //NOLINT
 };

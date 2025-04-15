@@ -140,7 +140,6 @@ status init(
         return res;
     }
     out = wrap(std::move(kvs_tx), std::move(options));
-    out->state(transaction_state_kind::init);
 
     return status::ok;
 }
@@ -181,7 +180,6 @@ void abort_transaction(
         // abort request does not return success/failure or the state of the tx
         return;
     }
-    tx->state(transaction_state_kind::going_to_abort);
     if (! ts.task_empty()) {
         return;
     }
@@ -707,7 +705,7 @@ void process_commit_callback(
             error_code::inactive_transaction_exception :
             error_code::cc_exception;
         set_error(*rctx, code, msg, res);
-        submit_commit_response(rctx, commit_response_kind::accepted, true, false, false);
+        submit_commit_response(rctx, commit_response_kind::accepted, true, false);
         return;
     }
     rctx->transaction()->durability_marker(marker);
@@ -753,7 +751,7 @@ void process_commit_callback(
     // commit_response = stored, propagated, or undefined
     // current marker should have been set at least once on callback registration
     if(marker <= database.durable_manager()->current_marker()) {
-        submit_commit_response(rctx, commit_response_kind::stored, false, false, false);
+        submit_commit_response(rctx, commit_response_kind::stored, false, false);
         return;
     }
     database.durable_manager()->add_to_waitlist(rctx);
@@ -824,7 +822,6 @@ scheduler::job_context::job_id_type commit_async(
             return model::task_result::complete;
         }
         if (! ts.task_empty()) {
-            rctx->transaction()->state(transaction_state_kind::going_to_abort);
             set_error(
                 *rctx,
                 error_code::restricted_operation_exception,
@@ -835,7 +832,6 @@ scheduler::job_context::job_id_type commit_async(
             return model::task_result::complete;
         }
 
-        rctx->transaction()->state(transaction_state_kind::going_to_commit);
         rctx->transaction()->profile()->set_commit_requested();
         [[maybe_unused]] auto b = rctx->transaction()->commit(
             [jobid, rctx, txid, &database, option](

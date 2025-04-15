@@ -29,14 +29,12 @@ namespace jogasaki {
  * @param rctx the request context
  * @param kind the kind of the commit response
  * @param is_error whether the commit response is an error
- * @param is_canceled whether the commit request is canceled in the middle of processing. If this is true, is_error is ignored.
  * @param teardown_try_on_suspended_worker whether to submit teardown on the suspended worker
  */
 void submit_commit_response(
     std::shared_ptr<request_context> rctx,
     commit_response_kind kind,
     bool is_error,
-    bool is_canceled,
     bool teardown_try_on_suspended_worker
 );
 

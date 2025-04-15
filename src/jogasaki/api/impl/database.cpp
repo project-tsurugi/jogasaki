@@ -1234,7 +1234,6 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             auto tx_type = utils::tx_type_from(*tx);
             tx->start_time(transaction_context::clock::now());
             external_log::tx_start(req_info, "", txidstr, tx_type, tx->label());
-            tx->state(transaction_state_kind::active);
         }
         on_completion(
             *handle,

@@ -332,6 +332,9 @@ message GetTransactionStatus {
   message Success {
     // the transaction status.
     TransactionStatus status = 1;
+
+    // additional information for the transaction status.
+    string message = 2;
   }
 
   reserved 1 to 10;

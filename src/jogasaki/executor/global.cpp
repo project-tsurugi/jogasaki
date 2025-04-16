@@ -20,6 +20,7 @@
 
 #include <yugawara/function/configurable_provider.h>
 
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
@@ -78,6 +79,14 @@ maybe_shared_ptr<configuration> const& config_pool(maybe_shared_ptr<configuratio
 
 std::shared_ptr<kvs::database> const& db(std::shared_ptr<kvs::database> arg) {
     static std::shared_ptr<kvs::database> db = std::make_shared<kvs::database>();
+    if(arg) {
+        db = std::move(arg);
+    }
+    return db;
+}
+
+std::shared_ptr<api::impl::database> const& database_impl(std::shared_ptr<api::impl::database> arg) {
+    static std::shared_ptr<api::impl::database> db = std::make_shared<api::impl::database>();
     if(arg) {
         db = std::move(arg);
     }

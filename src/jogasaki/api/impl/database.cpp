@@ -1374,11 +1374,11 @@ std::shared_ptr<durability_manager> const& database::durable_manager() const noe
 
 namespace jogasaki::api {
 
-std::unique_ptr<database> create_database(std::shared_ptr<class configuration> cfg) {
-    return std::make_unique<impl::database>(std::move(cfg));
+std::shared_ptr<database> create_database(std::shared_ptr<class configuration> cfg) {
+    return global::database_impl(std::make_shared<impl::database>(std::move(cfg)));
 }
 
-std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db) {
-    return std::make_unique<impl::database>(std::move(cfg), db);
+std::shared_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db) {
+    return global::database_impl(std::make_shared<impl::database>(std::move(cfg), db));
 }
 } // namespace jogasaki::api::impl

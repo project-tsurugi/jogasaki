@@ -305,6 +305,50 @@ message GetLargeObjectData {
     }
 }
 
+// the transaction status.
+enum TransactionStatus {
+  // the transaction status unknown or not provided.
+  TRANSACTION_STATUS_UNSPECIFIED = 0;
+  // the transaction is started and running.
+  RUNNING = 10;
+  // the transaction is in the process of committing.
+  COMMITTING = 20;
+  // the transaction has been committed and visible for others.
+  AVAILABLE = 30;
+  // the transaction has been committed and saved on the local disk.
+  STORED = 40;
+  // the transaction has been committed and propagated to all the suitable nodes.
+  PROPAGATED = 50;
+  // the transaction is in the process of aborting.
+  ABORTING = 60;
+  // the transaction has been aborted.
+  ABORTED = 70;
+}
+
+// response of GetTransactionStatus request.
+message GetTransactionStatus {
+
+  // request is successfully completed.
+  message Success {
+    // the transaction status.
+    TransactionStatus status = 1;
+
+    // additional information for the transaction status.
+    string message = 2;
+  }
+
+  reserved 1 to 10;
+
+  // the response body.
+  oneof result {
+    // request is successfully completed.
+    Success success = 11;
+
+    // error was occurred.
+    Error error = 12;
+  }
+}
+
 /* For response message from the SQL service. */
 message Response {
   oneof response {
@@ -322,6 +366,7 @@ message Response {
     ExecuteResult execute_result = 12;
     ExtractStatementInfo extract_statement_info = 13;
     GetLargeObjectData get_large_object_data = 14;
+    GetTransactionStatus get_transaction_status = 15;
   }
 }
 
@@ -363,3 +408,4 @@ message ExtractStatementInfo {
     }
 
 }
+

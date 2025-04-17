@@ -461,6 +461,13 @@ message GetLargeObjectData {
     common.LargeObjectReference reference = 2;
 }
 
+// request to retrieve the transaction status.
+message GetTransactionStatus {
+
+    // the target transaction handle.
+    common.Transaction transaction_handle = 1;
+}
+
 /* For request message to the SQL service. */
 message Request {
   common.Session session_handle = 1;
@@ -487,9 +494,10 @@ message Request {
     ExplainByText explain_by_text = 21;
     ExtractStatementInfo extract_statement_info = 22;
     GetLargeObjectData get_large_object_data = 23;
+    GetTransactionStatus get_transaction_status = 24;
   }
 
-  reserved 24 to 99;
+  reserved 25 to 99;
 
   // service message version (major)
   uint64 service_message_version_major = 100;

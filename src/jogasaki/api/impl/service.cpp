@@ -333,7 +333,7 @@ jogasaki::api::transaction_handle from(::jogasaki::proto::sql::common::Transacti
     // for backward compatibility, use pointer as surrogate id if it's not sent from client
     return jogasaki::api::transaction_handle{
         tx.handle(),
-        tx.has_secret() ? tx.secret() : tx.handle(),
+        (tx.secret_opt_case() == jogasaki::proto::sql::common::Transaction::SecretOptCase::kSecret) ? tx.secret() : tx.handle(),
     }; //NOLINT
 }
 

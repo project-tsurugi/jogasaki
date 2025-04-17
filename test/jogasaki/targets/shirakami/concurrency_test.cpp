@@ -102,7 +102,7 @@ public:
         ASSERT_EQ(status::ok, tx.execute(*stmt));
     }
 
-    std::unique_ptr<jogasaki::api::database> db_;
+    std::shared_ptr<jogasaki::api::database> db_;
 };
 
 using namespace std::string_view_literals;

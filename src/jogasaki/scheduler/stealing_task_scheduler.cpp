@@ -53,10 +53,6 @@ stealing_task_scheduler::stealing_task_scheduler(thread_params params) :
     })
 {}
 
-std::size_t determine_worker(transaction_context const& tx, std::size_t worker_count) {
-    return tx.id() % worker_count;  //NOLINT
-}
-
 void stealing_task_scheduler::do_schedule_conditional_task(conditional_task &&t) {
     trace_scope_name("do_schedule_conditional_task");  //NOLINT
     scheduler_.schedule_conditional(std::move(t));

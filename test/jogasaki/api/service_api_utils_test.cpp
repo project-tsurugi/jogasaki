@@ -119,7 +119,7 @@ public:
         db_teardown();
         temporary_.clean();
     }
-    void test_begin(std::uint64_t& handle,
+    void test_begin(api::transaction_handle& handle,
         bool readonly = false,
         bool is_long = false,
         std::vector<std::string> const& write_preserves = {},
@@ -134,33 +134,33 @@ public:
         bool modifies_definitions = false
     );
     void test_commit(
-        std::uint64_t& handle,
+        api::transaction_handle& handle,
         bool auto_dispose_on_commit_success = true,
         error_code expected = error_code::none
     );
-    void test_dispose_transaction(std::uint64_t handle, error_code expected = error_code::none);
-    void test_rollback(std::uint64_t& handle);
+    void test_dispose_transaction(api::transaction_handle tx_handle, error_code expected = error_code::none);
+    void test_rollback(api::transaction_handle& tx_handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::shared_ptr<request_statistics>& stats);
-    void test_statement(std::string_view sql, std::uint64_t tx_handle);
-    void test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats);
-    void test_statement(std::string_view sql, std::uint64_t tx_handle, error_code exp);
+    void test_statement(std::string_view sql, api::transaction_handle tx_handle);
+    void test_statement(std::string_view sql, api::transaction_handle tx_handle, std::shared_ptr<request_statistics>& stats);
+    void test_statement(std::string_view sql, api::transaction_handle tx_handle, error_code exp);
     void test_statement(
-        std::string_view sql, std::uint64_t tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats);
+        std::string_view sql, api::transaction_handle tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats);
     void test_query(std::string_view query = "select * from T0");
 
     void test_query(
         std::string_view sql,
-        std::uint64_t tx_handle,
+        api::transaction_handle tx_handle,
         std::vector<sql::common::AtomType> const& column_types,
         std::vector<bool> const& nullabilities,
         std::vector<mock::basic_record> const& expected,
         std::vector<std::string> const& exp_colnames
     );
 
-    void test_cancel_statement(std::string_view sql, std::uint64_t tx_handle);
-    void test_cancel_transaction_begin(std::uint64_t tx_handle, std::string_view label);
-    void test_cancel_transaction_commit(std::uint64_t tx_handle, bool auto_dispose_on_commit_success);
+    void test_cancel_statement(std::string_view sql, api::transaction_handle tx_handle);
+    void test_cancel_transaction_begin(api::transaction_handle tx_handle, std::string_view label);
+    void test_cancel_transaction_commit(api::transaction_handle tx_handle, bool auto_dispose_on_commit_success);
 
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
@@ -185,11 +185,11 @@ public:
         EXPECT_EQ(-1, decode_prepare(res->body_));
     }
     void test_get_error_info(
-        std::uint64_t handle,
+        api::transaction_handle tx_handle,
         bool expect_error, // expecting error occuring in GetErrorInfo
         error_code expected // common for both error occuring in GetErrorInfo and already executed request
     ) {
-        auto s = encode_get_error_info(handle);
+        auto s = encode_get_error_info(tx_handle);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
@@ -224,7 +224,7 @@ public:
 };
 
 
-void service_api_utils_test::test_begin(std::uint64_t& handle,
+void service_api_utils_test::test_begin(api::transaction_handle& tx_handle,
     bool readonly,
     bool is_long,
     std::vector<std::string> const& write_preserves,
@@ -233,7 +233,7 @@ void service_api_utils_test::test_begin(std::uint64_t& handle,
 ) {
     begin_result result{};
     test_begin(result, readonly, is_long, write_preserves, label, modifies_definitions);
-    handle = result.handle_;
+    tx_handle = result.handle_;
 }
 
 void service_api_utils_test::test_begin(
@@ -254,11 +254,11 @@ void service_api_utils_test::test_begin(
 }
 
 void service_api_utils_test::test_commit(
-    std::uint64_t& handle,
+    transaction_handle& tx_handle,
     bool auto_dispose_on_commit_success,
     error_code expected
 ) {
-    auto s = encode_commit(handle, auto_dispose_on_commit_success);
+    auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -276,8 +276,8 @@ void service_api_utils_test::test_commit(
     }
 }
 
-void service_api_utils_test::test_rollback(std::uint64_t& handle) {
-    auto s = encode_rollback(handle);
+void service_api_utils_test::test_rollback(api::transaction_handle& tx_handle) {
+    auto s = encode_rollback(tx_handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -299,13 +299,13 @@ void service_api_utils_test::test_dispose_prepare(std::uint64_t& handle) {
 }
 
 void service_api_utils_test::test_statement(
-    std::string_view sql, std::uint64_t tx_handle, error_code exp) {
+    std::string_view sql, api::transaction_handle tx_handle, error_code exp) {
     std::shared_ptr<request_statistics> stats{};
     test_statement(sql, tx_handle, exp, stats);
 }
 
 void service_api_utils_test::test_statement(
-    std::string_view sql, std::uint64_t tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats) {
+    std::string_view sql, api::transaction_handle tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -324,23 +324,23 @@ void service_api_utils_test::test_statement(
         ASSERT_EQ(exp, error.code_);
     }
 }
-void service_api_utils_test::test_statement(std::string_view sql, std::uint64_t tx_handle) {
+void service_api_utils_test::test_statement(std::string_view sql, api::transaction_handle tx_handle) {
     test_statement(sql, tx_handle, error_code::none);
 }
 
-void service_api_utils_test::test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats) {
+void service_api_utils_test::test_statement(std::string_view sql, api::transaction_handle tx_handle, std::shared_ptr<request_statistics>& stats) {
     test_statement(sql, tx_handle, error_code::none, stats);
 }
 
 void service_api_utils_test::test_statement(std::string_view sql) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_statement(sql, tx_handle);
     test_commit(tx_handle);
 }
 
 void service_api_utils_test::test_statement(std::string_view sql, std::shared_ptr<request_statistics>& stats) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_statement(sql, tx_handle, stats);
     test_commit(tx_handle);
@@ -348,7 +348,7 @@ void service_api_utils_test::test_statement(std::string_view sql, std::shared_pt
 
 void service_api_utils_test::test_query(
     std::string_view sql,
-    std::uint64_t tx_handle,
+    api::transaction_handle tx_handle,
     std::vector<sql::common::AtomType> const& column_types,
     std::vector<bool> const& nullabilities,
     std::vector<mock::basic_record> const& expected,
@@ -392,7 +392,7 @@ void service_api_utils_test::test_query(
 }
 
 void service_api_utils_test::test_query(std::string_view query) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_query(
         query,
@@ -412,7 +412,7 @@ void service_api_utils_test::test_query(std::string_view query) {
 }
 
 void service_api_utils_test::execute_statement_as_query(std::string_view sql) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     auto s = encode_execute_query(tx_handle, "insert into T0(C0, C1) values (1, 10.0)");
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -449,7 +449,7 @@ void service_api_utils_test::test_dump(std::vector<std::string>& files, std::str
         std::pair{"c0"s, sql::common::AtomType::INT8},
         std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     do {
         std::vector<parameter> parameters{
@@ -504,7 +504,7 @@ void service_api_utils_test::test_load(bool transactional, error_code expected, 
         std::pair{"p0"s, sql::common::AtomType::INT8},
         std::pair{"p1"s, sql::common::AtomType::FLOAT8}
     );
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     if(transactional) {
         test_begin(tx_handle);
     }
@@ -551,10 +551,10 @@ bool contains(std::vector<std::string> const& v, std::string_view s) {
 }
 
 void service_api_utils_test::test_dispose_transaction(
-    std::uint64_t handle,
+    api::transaction_handle tx_handle,
     error_code expected
 ) {
-    auto s = encode_dispose_transaction(handle);
+    auto s = encode_dispose_transaction(tx_handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
@@ -572,7 +572,7 @@ void service_api_utils_test::test_dispose_transaction(
     }
 }
 
-void service_api_utils_test::test_cancel_transaction_commit(std::uint64_t tx_handle, bool auto_dispose_on_commit_success) {
+void service_api_utils_test::test_cancel_transaction_commit(api::transaction_handle tx_handle, bool auto_dispose_on_commit_success) {
     auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -587,7 +587,7 @@ void service_api_utils_test::test_cancel_transaction_commit(std::uint64_t tx_han
     EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_CANCELED, rec.code());
 }
 
-void service_api_utils_test::test_cancel_transaction_begin(std::uint64_t tx_handle, std::string_view label) {
+void service_api_utils_test::test_cancel_transaction_begin(api::transaction_handle tx_handle, std::string_view label) {
     auto s = encode_begin(false, true, {}, label, false);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -603,7 +603,7 @@ void service_api_utils_test::test_cancel_transaction_begin(std::uint64_t tx_hand
 }
 
 void service_api_utils_test::test_cancel_statement(
-    std::string_view sql, std::uint64_t tx_handle) {
+    std::string_view sql, api::transaction_handle tx_handle) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -630,7 +630,7 @@ TEST_F(service_api_utils_test, extract_sql) {
         // non-prepared statement
         auto text = "insert into T0 values (1,1)"s;
 
-        std::uint64_t tx_handle{};
+        api::transaction_handle tx_handle{};
         test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_statement(tx_handle, text);
@@ -651,7 +651,7 @@ TEST_F(service_api_utils_test, extract_sql) {
         // non-prepared query
         auto text = "select * from T1"s;
 
-        std::uint64_t tx_handle{};
+        api::transaction_handle tx_handle{};
         test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_query(tx_handle, text);
@@ -677,7 +677,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         auto text = "insert into T0 values (1,1)"s;
         test_prepare(stmt_handle, text);
 
-        std::uint64_t tx_handle{};
+        api::transaction_handle tx_handle{};
         test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
@@ -702,7 +702,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         auto text = "select * from T1"s;
         test_prepare(stmt_handle, text);
 
-        std::uint64_t tx_handle{};
+        api::transaction_handle tx_handle{};
         test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
@@ -726,7 +726,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
 TEST_F(service_api_utils_test, extract_sql_error) {
     // verify error with unsupported sql messages
 
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     auto s = encode_commit(tx_handle, true);
 
     sql::request::Request req{};
@@ -747,7 +747,7 @@ TEST_F(service_api_utils_test, extract_sql_failing_to_fetch_tx_id) {
     auto text = "select * from T1"s;
     test_prepare(stmt_handle, text);
 
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_commit(tx_handle, true);
 

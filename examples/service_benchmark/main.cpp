@@ -51,6 +51,7 @@
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/api/impl/service.h>
+#include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/tables.h>
@@ -533,7 +534,7 @@ public:
         }
     }
     bool do_statement(
-        std::uint64_t handle,
+        jogasaki::api::transaction_handle tx_handle,
         data_seed& seed,
         std::size_t client,
         std::int64_t& result_count
@@ -545,7 +546,7 @@ public:
                 result_count = 0;
                 std::int64_t id = profile_.new_order_max_ + (seed.seq_++);
                 res = issue_common(false,
-                    handle,
+                    tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"no_o_id", ValueCase::kInt8Value, id},
                         {"no_d_id", ValueCase::kInt8Value, static_cast<int64_t>(1)},
@@ -562,7 +563,7 @@ public:
                 std::int64_t id = profile_.stock_item_id_min_ + seed.rnd_() % mod;
                 std::int64_t w_id = FLAGS_prepare_data ? id : (client+1);
                 res = issue_common(false,
-                    handle,
+                    tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"s_quantity", ValueCase::kFloat8Value, static_cast<double>(seed.rnd_())}, //NOLINT
                         {"s_i_id", ValueCase::kInt8Value, id},
@@ -578,7 +579,7 @@ public:
                 std::int64_t id = profile_.district_id_min_ + seed.rnd_() % mod;
                 std::int64_t w_id = FLAGS_prepare_data ? id : (client+1);
                 res = issue_common(true,
-                    handle,
+                    tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"d_w_id", ValueCase::kInt8Value, w_id},
                         {"d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(id)},
@@ -597,7 +598,7 @@ public:
             case mode::query2: {
                 std::int64_t w_id = FLAGS_prepare_data ? 1 : (client+1);
                 res = issue_common(true,
-                    handle,
+                    tx_handle,
                     std::vector<jogasaki::utils::parameter>{
                         {"no_d_id", ValueCase::kInt8Value, static_cast<std::int64_t>(1)},
                         {"no_w_id", ValueCase::kInt8Value, w_id},
@@ -650,10 +651,10 @@ public:
                     data_seed seed{i, 0};
                     std::vector<std::string> write_preserves{"NEW_ORDER", "STOCK"};
                     while((transactions_ == -1 && !stop) || (transactions_ != -1 && ret.transactions_ < transactions_)) {
-                        std::uint64_t handle{};
+                        jogasaki::api::transaction_handle tx_handle{};
                         {
                             auto b = clock ::now();
-                            if (auto res = begin_tx(handle, rtx_, ltx_, write_preserves); !res) {
+                            if (auto res = begin_tx(tx_handle, rtx_, ltx_, write_preserves); !res) {
                                 std::abort();
                             }
                             ret.begin_ns_ += std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - b).count();
@@ -661,7 +662,7 @@ public:
                         for(std::size_t j=0, n=statements_; j < n; ++j) {
                             {
                                 auto b = clock::now();
-                                if(auto res = do_statement(handle, seed, i, ret.records_); !res) {
+                                if(auto res = do_statement(tx_handle, seed, i, ret.records_); !res) {
                                     LOG(ERROR) << "do_statement failed";
                                     std::abort();
                                 }
@@ -682,7 +683,7 @@ public:
                         ++ret.transactions_;
                         {
                             auto b = clock ::now();
-                            if (auto res = commit_tx(handle); !res) {
+                            if (auto res = commit_tx(tx_handle); !res) {
                                 LOG(ERROR) << "commit_tx failed";
                                 std::abort();
                             }
@@ -822,7 +823,7 @@ public:
     }
 
 private:
-    bool begin_tx(std::uint64_t& handle,
+    bool begin_tx(jogasaki::api::transaction_handle& tx_handle,
             bool readonly,
             bool is_long,
             std::vector<std::string> const& write_preserves
@@ -837,7 +838,7 @@ private:
             return false;
         }
         auto [h, id] = jogasaki::utils::decode_begin(res->body_);
-        handle = h;
+        tx_handle = h;
         (void) id;
         return true;
     }
@@ -867,9 +868,9 @@ private:
         on_going_statements_.clear();
     }
 
-    bool commit_tx(std::uint64_t handle) {
+    bool commit_tx(jogasaki::api::transaction_handle tx_handle) {
         wait_for_statements();
-        auto s = jogasaki::utils::encode_commit(handle, true);
+        auto s = jogasaki::utils::encode_commit(tx_handle, true);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -885,9 +886,9 @@ private:
         return ret;
     }
 
-    bool abort_tx(std::uint64_t handle) {
+    bool abort_tx(jogasaki::api::transaction_handle tx_handle) {
         wait_for_statements();
-        auto s = jogasaki::utils::encode_rollback(handle);
+        auto s = jogasaki::utils::encode_rollback(tx_handle);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -927,13 +928,13 @@ private:
 
     bool issue_common(
         bool query,
-        std::uint64_t handle,
+        jogasaki::api::transaction_handle tx_handle,
         std::vector<jogasaki::utils::parameter> const& parameters,
         std::function<void(std::string_view)> on_write
     ) {
         auto s = query ?
-            jogasaki::utils::encode_execute_prepared_query(handle, stmt_handle_, parameters) :
-            jogasaki::utils::encode_execute_prepared_statement(handle, stmt_handle_, parameters);
+            jogasaki::utils::encode_execute_prepared_query(tx_handle, stmt_handle_, parameters) :
+            jogasaki::utils::encode_execute_prepared_statement(tx_handle, stmt_handle_, parameters);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         if (query) {

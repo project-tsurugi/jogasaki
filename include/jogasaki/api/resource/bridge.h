@@ -96,7 +96,7 @@ public:
      */
     [[nodiscard]] std::string_view label() const noexcept override;
 private:
-    std::unique_ptr<jogasaki::api::database> db_;  // to use incomplete object, do not add {} after var. name.
+    std::shared_ptr<jogasaki::api::database> db_;  // to use incomplete object, do not add {} after var. name.
     bool started_{false};
 
 };

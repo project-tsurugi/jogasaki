@@ -238,7 +238,8 @@ inline void success<sql::response::Begin>(
     auto* t = s->mutable_transaction_handle();
     auto idstr = tx.transaction_id();
     tid->set_id(idstr.data(), idstr.size());
-    t->set_handle(static_cast<std::size_t>(tx));
+    t->set_handle(tx.get());
+    t->set_secret(tx.surrogate_id());
     reply(res, r, req_info);
 }
 

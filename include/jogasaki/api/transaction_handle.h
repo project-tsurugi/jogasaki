@@ -89,22 +89,22 @@ public:
 
     /**
      * @brief create new object from integer
-     * @param arg integer representing target object pointer
-     * @param db integer representing database object pointer
+     * @param ptr integer representing target object pointer
+     * @param surrogate_id the surrogate id of the transaction
      */
-    explicit transaction_handle(
-        std::uintptr_t arg,
-        std::uintptr_t db
+    transaction_handle(
+        std::uintptr_t ptr,
+        std::size_t surrogate_id
     ) noexcept;
 
     /**
      * @brief create new object from integer
-     * @param arg integer representing target object pointer
-     * @param db integer representing database object pointer
+     * @param ptr target object pointer
+     * @param surrogate_id the surrogate id of the transaction
      */
-    explicit transaction_handle(
-        void* arg,
-        void* db
+    transaction_handle(
+        void *ptr,
+        std::size_t surrogate_id
     ) noexcept;
 
     /**
@@ -112,18 +112,6 @@ public:
      * @return the handle value
      */
     [[nodiscard]] std::uintptr_t get() const noexcept;
-
-    /**
-     * @brief accessor to the db handle
-     * @return the db handle value
-     */
-    [[nodiscard]] std::uintptr_t db() const noexcept;
-
-    /**
-     * @brief conversion operator to std::size_t
-     * @return the hash value that can be used for equality comparison
-     */
-    explicit operator std::size_t() const noexcept;
 
     /**
      * @brief conversion operator to bool
@@ -325,9 +313,15 @@ public:
      */
     [[nodiscard]] status error_info(std::shared_ptr<api::error_info>& out) const noexcept;
 
+    /**
+     * @brief return the surrogate id of the transaction
+     * @return surrogate transaction id
+     */
+    [[nodiscard]] std::size_t surrogate_id() const noexcept;
+
 private:
     std::uintptr_t body_{};
-    std::uintptr_t db_{};
+    std::size_t surrogate_id_{};
 };
 
 static_assert(std::is_trivially_copyable_v<transaction_handle>);
@@ -336,7 +330,7 @@ static_assert(std::is_trivially_copyable_v<transaction_handle>);
  * @brief equality comparison operator
  */
 inline bool operator==(transaction_handle const& a, transaction_handle const& b) noexcept {
-    return a.get() == b.get();
+    return a.surrogate_id() == b.surrogate_id();
 }
 
 /**
@@ -353,7 +347,7 @@ inline bool operator!=(transaction_handle const& a, transaction_handle const& b)
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, transaction_handle value) {
-    return out << "transaction_handle[" << value.get() << "]";
+    return out << "transaction_handle[" << value.get() << "," << value.surrogate_id() << "]";
 }
 
 }  // namespace jogasaki::api
@@ -369,7 +363,7 @@ struct std::hash<jogasaki::api::transaction_handle> {
      * @return computed hash code
      */
     std::size_t operator()(jogasaki::api::transaction_handle const& value) const noexcept {
-        return static_cast<std::size_t>(value);
+        return value.surrogate_id();
     }
 };
 

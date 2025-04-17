@@ -179,7 +179,7 @@ inline std::string encode_begin(
 constexpr static std::uint64_t handle_undefined = static_cast<std::uint64_t>(-1);
 
 struct begin_result {
-    std::uint64_t handle_{handle_undefined};
+    api::transaction_handle handle_{};
     std::string transaction_id_{};
 };
 
@@ -199,7 +199,7 @@ inline begin_result decode_begin(std::string_view res) {
         return {};
     }
     auto& s = begin.success();
-    return {s.transaction_handle().handle(), s.transaction_id().id()};
+    return {api::transaction_handle{s.transaction_handle().handle(), s.transaction_handle().secret()}, s.transaction_id().id()};
 }
 
 inline std::uint64_t decode_prepare(std::string_view res) {
@@ -222,19 +222,23 @@ inline std::uint64_t decode_prepare(std::string_view res) {
 }
 
 inline std::string encode_commit(
-    std::uint64_t handle,
+    api::transaction_handle tx_handle,
     bool auto_dispose_on_commit_success
 ) {
     sql::request::Request r{};
     auto cm = r.mutable_commit();
-    cm->mutable_transaction_handle()->set_handle(handle);
+    auto h = cm->mutable_transaction_handle();
+    h->set_handle(tx_handle.get());
+    h->set_secret(tx_handle.surrogate_id());
     cm->set_auto_dispose(auto_dispose_on_commit_success);
     return serialize(r);
 }
 
-inline std::string encode_rollback(std::uint64_t handle) {
+inline std::string encode_rollback(api::transaction_handle tx_handle) {
     sql::request::Request r{};
-    r.mutable_rollback()->mutable_transaction_handle()->set_handle(handle);
+    auto h = r.mutable_rollback()->mutable_transaction_handle();
+    h->set_handle(tx_handle.get());
+    h->set_secret(tx_handle.surrogate_id());
     return serialize(r);
 }
 
@@ -310,7 +314,7 @@ inline std::string encode_dispose_prepare(std::uint64_t handle) {
 }
 
 template<class T>
-std::string encode_execute_statement_or_query(std::uint64_t tx_handle, std::string_view sql) {
+std::string encode_execute_statement_or_query(api::transaction_handle tx_handle, std::string_view sql) {
     sql::request::Request r{};
     T* stmt{};
     if constexpr (std::is_same_v<T, sql::request::ExecuteQuery>) {
@@ -320,7 +324,9 @@ std::string encode_execute_statement_or_query(std::uint64_t tx_handle, std::stri
     } else {
         std::abort();
     }
-    stmt->mutable_transaction_handle()->set_handle(tx_handle);
+    auto h = stmt->mutable_transaction_handle();
+    h->set_handle(tx_handle.get());
+    h->set_secret(tx_handle.surrogate_id());
     stmt->mutable_sql()->assign(sql);
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
@@ -334,10 +340,10 @@ std::string encode_execute_statement_or_query(std::uint64_t tx_handle, std::stri
     return s;
 }
 
-inline std::string encode_execute_statement(std::uint64_t tx_handle, std::string_view sql) {
+inline std::string encode_execute_statement(api::transaction_handle tx_handle, std::string_view sql) {
     return encode_execute_statement_or_query<sql::request::ExecuteStatement>(tx_handle, sql);
 }
-inline std::string encode_execute_query(std::uint64_t tx_handle, std::string_view sql) {
+inline std::string encode_execute_query(api::transaction_handle tx_handle, std::string_view sql) {
     return encode_execute_statement_or_query<sql::request::ExecuteQuery>(tx_handle, sql);
 }
 
@@ -472,7 +478,7 @@ inline void fill_parameters(
  * @brief encode msg for execute
  * @tparam T
  * @tparam Args
- * @param tx_handle the tx handle used for execute. Specify 0 not to include tx in the msg (non-transactional operation)
+ * @param tx_handle the tx handle used for execute. Specify default constructed transaction handle not to include tx in the msg (non-transactional operation)
  * @param stmt_handle the statement handle to execute
  * @param parameters parameters to fill
  * @param args
@@ -480,7 +486,7 @@ inline void fill_parameters(
  */
 template<class T, class ...Args>
 std::string encode_execute_prepared_statement_or_query(
-    std::uint64_t tx_handle,
+    api::transaction_handle tx_handle,
     std::uint64_t stmt_handle,
     std::vector<parameter> const& parameters,
     Args...args
@@ -506,8 +512,10 @@ std::string encode_execute_prepared_statement_or_query(
     } else {
         std::abort();
     }
-    if(tx_handle != 0) {
-        stmt->mutable_transaction_handle()->set_handle(tx_handle);
+    if(tx_handle) {
+        auto h = stmt->mutable_transaction_handle();
+        h->set_handle(tx_handle.get());
+        h->set_secret(tx_handle.surrogate_id());
     }
     stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
     auto* params = stmt->mutable_parameters();
@@ -529,19 +537,19 @@ std::string encode_execute_prepared_statement_or_query(
     return s;
 }
 
-inline std::string encode_execute_prepared_statement(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
+inline std::string encode_execute_prepared_statement(api::transaction_handle tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
     return encode_execute_prepared_statement_or_query<sql::request::ExecutePreparedStatement>(tx_handle, stmt_handle, parameters);
 }
-inline std::string encode_execute_prepared_query(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
+inline std::string encode_execute_prepared_query(api::transaction_handle tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters) {
     return encode_execute_prepared_statement_or_query<sql::request::ExecutePreparedQuery>(tx_handle, stmt_handle, parameters);
 }
 template <class ... Args>
-std::string encode_execute_dump(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters, Args...args) {
+std::string encode_execute_dump(api::transaction_handle tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters, Args...args) {
     return encode_execute_prepared_statement_or_query<sql::request::ExecuteDump>(tx_handle, stmt_handle, parameters, args...);
 }
 
 template <class ... Args>
-std::string encode_execute_load(std::uint64_t tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters, Args...args) {
+std::string encode_execute_load(api::transaction_handle tx_handle, std::uint64_t stmt_handle, std::vector<parameter> const& parameters, Args...args) {
     return encode_execute_prepared_statement_or_query<sql::request::ExecuteLoad>(tx_handle, stmt_handle, parameters, args...);
 }
 
@@ -633,15 +641,19 @@ inline std::string encode_batch() {
     return s;
 }
 
-inline std::string encode_get_error_info(std::uint64_t handle) {
+inline std::string encode_get_error_info(api::transaction_handle tx_handle) {
     sql::request::Request r{};
-    r.mutable_get_error_info()->mutable_transaction_handle()->set_handle(handle);
+    auto h = r.mutable_get_error_info()->mutable_transaction_handle();
+    h->set_handle(tx_handle.get());
+    h->set_secret(tx_handle.surrogate_id());
     return serialize(r);
 }
 
-inline std::string encode_dispose_transaction(std::uint64_t handle) {
+inline std::string encode_dispose_transaction(api::transaction_handle tx_handle) {
     sql::request::Request r{};
-    r.mutable_dispose_transaction()->mutable_transaction_handle()->set_handle(handle);
+    auto h = r.mutable_dispose_transaction()->mutable_transaction_handle();
+    h->set_handle(tx_handle.get());
+    h->set_secret(tx_handle.surrogate_id());
     return serialize(r);
 }
 

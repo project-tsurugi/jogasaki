@@ -183,16 +183,16 @@ TEST_F(framework_test, send_request_with_header) {
     auto* db = sqlsvc->database();
     db->config()->skip_smv_check(true);
     sv.start();
-    std::uint64_t handle{};
+    api::transaction_handle tx_handle{};
     {
         auto s = utils::encode_begin(false, false, std::vector<std::string>{});
         std::string result = ep->send(s, 100, framework::service_id_sql);
         auto [h, id] = utils::decode_begin(result);
-        handle = h;
+        tx_handle = h;
         (void) id;
     }
     {
-        auto s = utils::encode_commit(handle, true);
+        auto s = utils::encode_commit(tx_handle, true);
         std::string result = ep->send(s, 100, framework::service_id_sql);
         auto [success, error] = utils::decode_result_only(result);
         ASSERT_TRUE(success);

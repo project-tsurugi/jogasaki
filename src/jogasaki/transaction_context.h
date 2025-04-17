@@ -208,10 +208,10 @@ public:
     [[nodiscard]] std::shared_ptr<kvs::transaction> const& object() const;
 
     /**
-     * @brief the transaction id
-     * @return the id to uniquely identify the transaction context
+     * @brief the transaction surrogate id
+     * @return the internal id to uniquely identify the transaction context
      */
-    [[nodiscard]] std::size_t id() const noexcept;
+    [[nodiscard]] std::size_t surrogate_id() const noexcept;
 
     /**
      * @brief check if the object is valid
@@ -422,7 +422,7 @@ public:
     }
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
-    std::size_t id_{};
+    std::size_t surrogate_id_{};
     details::worker_manager mgr_{};
     mutex_type mutex_{};
     std::shared_ptr<error::error_info> error_info_{};
@@ -437,7 +437,7 @@ private:
     details::termination_manager term_mgr_{};
     transaction_state state_{};
 
-    static inline std::atomic_size_t id_source_{};  //NOLINT
+    cache_align static inline std::atomic_size_t surrogate_id_source_{};  //NOLINT
 };
 
 /**

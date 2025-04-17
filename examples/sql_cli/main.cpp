@@ -77,7 +77,7 @@ using namespace jogasaki::executor::process::impl;
 using namespace jogasaki::executor::expr;
 
 class cli {
-    std::unique_ptr<api::database> db_{};
+    std::shared_ptr<api::database> db_{};
     std::shared_ptr<api::transaction_handle> tx_{};
     common_cli::temporary_folder temporary_{};
 public:

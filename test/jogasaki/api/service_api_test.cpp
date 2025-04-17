@@ -124,7 +124,8 @@ public:
         db_teardown();
         temporary_.clean();
     }
-    void test_begin(std::uint64_t& handle,
+    void test_begin(
+        api::transaction_handle& tx_handle,
         bool readonly = false,
         bool is_long = false,
         std::vector<std::string> const& write_preserves = {},
@@ -139,33 +140,33 @@ public:
         bool modifies_definitions = false
     );
     void test_commit(
-        std::uint64_t& handle,
+        api::transaction_handle& tx_handle,
         bool auto_dispose_on_commit_success = true,
         error_code expected = error_code::none
     );
-    void test_dispose_transaction(std::uint64_t handle, error_code expected = error_code::none);
-    void test_rollback(std::uint64_t& handle);
+    void test_dispose_transaction(api::transaction_handle tx_handle, error_code expected = error_code::none);
+    void test_rollback(api::transaction_handle& tx_handle);
     void test_statement(std::string_view sql);
     void test_statement(std::string_view sql, std::shared_ptr<request_statistics>& stats);
-    void test_statement(std::string_view sql, std::uint64_t tx_handle);
-    void test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats);
-    void test_statement(std::string_view sql, std::uint64_t tx_handle, error_code exp);
+    void test_statement(std::string_view sql, api::transaction_handle tx_handle);
+    void test_statement(std::string_view sql, api::transaction_handle tx_handle, std::shared_ptr<request_statistics>& stats);
+    void test_statement(std::string_view sql, api::transaction_handle tx_handle, error_code exp);
     void test_statement(
-        std::string_view sql, std::uint64_t tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats);
+        std::string_view sql, api::transaction_handle tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats);
     void test_query(std::string_view query = "select * from T0");
 
     void test_query(
         std::string_view sql,
-        std::uint64_t tx_handle,
+        api::transaction_handle tx_handle,
         std::vector<sql::common::AtomType> const& column_types,
         std::vector<bool> const& nullabilities,
         std::vector<mock::basic_record> const& expected,
         std::vector<std::string> const& exp_colnames
     );
 
-    void test_cancel_statement(std::string_view sql, std::uint64_t tx_handle);
-    void test_cancel_transaction_begin(std::uint64_t tx_handle, std::string_view label);
-    void test_cancel_transaction_commit(std::uint64_t tx_handle, bool auto_dispose_on_commit_success);
+    void test_cancel_statement(std::string_view sql, api::transaction_handle tx_handle);
+    void test_cancel_transaction_begin(api::transaction_handle tx_handle, std::string_view label);
+    void test_cancel_transaction_commit(api::transaction_handle tx_handle, bool auto_dispose_on_commit_success);
 
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
@@ -190,11 +191,11 @@ public:
         EXPECT_EQ(-1, decode_prepare(res->body_));
     }
     void test_get_error_info(
-        std::uint64_t handle,
+        api::transaction_handle tx_handle,
         bool expect_error, // expecting error occuring in GetErrorInfo
         error_code expected // common for both error occuring in GetErrorInfo and already executed request
     ) {
-        auto s = encode_get_error_info(handle);
+        auto s = encode_get_error_info(tx_handle);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
@@ -231,7 +232,8 @@ public:
 };
 
 
-void service_api_test::test_begin(std::uint64_t& handle,
+void service_api_test::test_begin(
+    api::transaction_handle& tx_handle,
     bool readonly,
     bool is_long,
     std::vector<std::string> const& write_preserves,
@@ -240,7 +242,7 @@ void service_api_test::test_begin(std::uint64_t& handle,
 ) {
     begin_result result{};
     test_begin(result, readonly, is_long, write_preserves, label, modifies_definitions);
-    handle = result.handle_;
+    tx_handle = result.handle_;
 }
 
 void service_api_test::test_begin(
@@ -261,11 +263,11 @@ void service_api_test::test_begin(
 }
 
 void service_api_test::test_commit(
-    std::uint64_t& handle,
+    api::transaction_handle& tx_handle,
     bool auto_dispose_on_commit_success,
     error_code expected
 ) {
-    auto s = encode_commit(handle, auto_dispose_on_commit_success);
+    auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -283,8 +285,8 @@ void service_api_test::test_commit(
     }
 }
 
-void service_api_test::test_rollback(std::uint64_t& handle) {
-    auto s = encode_rollback(handle);
+void service_api_test::test_rollback(api::transaction_handle& tx_handle) {
+    auto s = encode_rollback(tx_handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -295,14 +297,14 @@ void service_api_test::test_rollback(std::uint64_t& handle) {
 }
 
 TEST_F(service_api_test, begin_and_commit) {
-    std::uint64_t handle{};
-    test_begin(handle);
-    test_commit(handle);
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    test_commit(tx_handle);
 }
 
 TEST_F(service_api_test, error_on_commit) {
-    std::uint64_t handle{0};
-    auto s = encode_commit(handle, true);
+    api::transaction_handle tx_handle{};
+    auto s = encode_commit(tx_handle, true);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -316,10 +318,10 @@ TEST_F(service_api_test, error_on_commit) {
 }
 
 TEST_F(service_api_test, rollback) {
-    std::uint64_t handle{};
-    test_begin(handle);
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
     {
-        auto s = encode_rollback(handle);
+        auto s = encode_rollback(tx_handle);
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
@@ -331,8 +333,8 @@ TEST_F(service_api_test, rollback) {
 }
 
 TEST_F(service_api_test, error_on_rollback) {
-    std::uint64_t handle{0};
-    auto s = encode_rollback(handle);
+    api::transaction_handle tx_handle{};
+    auto s = encode_rollback(tx_handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
@@ -404,13 +406,13 @@ TEST_F(service_api_test, error_on_dispose) {
 }
 
 void service_api_test::test_statement(
-    std::string_view sql, std::uint64_t tx_handle, error_code exp) {
+    std::string_view sql, api::transaction_handle tx_handle, error_code exp) {
     std::shared_ptr<request_statistics> stats{};
     test_statement(sql, tx_handle, exp, stats);
 }
 
 void service_api_test::test_statement(
-    std::string_view sql, std::uint64_t tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats) {
+    std::string_view sql, api::transaction_handle tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -429,23 +431,23 @@ void service_api_test::test_statement(
         ASSERT_EQ(exp, error.code_);
     }
 }
-void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle) {
+void service_api_test::test_statement(std::string_view sql, api::transaction_handle tx_handle) {
     test_statement(sql, tx_handle, error_code::none);
 }
 
-void service_api_test::test_statement(std::string_view sql, std::uint64_t tx_handle, std::shared_ptr<request_statistics>& stats) {
+void service_api_test::test_statement(std::string_view sql, api::transaction_handle tx_handle, std::shared_ptr<request_statistics>& stats) {
     test_statement(sql, tx_handle, error_code::none, stats);
 }
 
 void service_api_test::test_statement(std::string_view sql) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_statement(sql, tx_handle);
     test_commit(tx_handle);
 }
 
 void service_api_test::test_statement(std::string_view sql, std::shared_ptr<request_statistics>& stats) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_statement(sql, tx_handle, stats);
     test_commit(tx_handle);
@@ -453,7 +455,7 @@ void service_api_test::test_statement(std::string_view sql, std::shared_ptr<requ
 
 void service_api_test::test_query(
     std::string_view sql,
-    std::uint64_t tx_handle,
+    api::transaction_handle tx_handle,
     std::vector<sql::common::AtomType> const& column_types,
     std::vector<bool> const& nullabilities,
     std::vector<mock::basic_record> const& expected,
@@ -497,7 +499,7 @@ void service_api_test::test_query(
 }
 
 void service_api_test::test_query(std::string_view query) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_query(
         query,
@@ -522,7 +524,7 @@ TEST_F(service_api_test, execute_statement_and_query) {
 }
 
 TEST_F(service_api_test, execute_prepared_statement_and_query) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -628,7 +630,7 @@ TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
 }
 
 TEST_F(service_api_test, data_types) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -725,7 +727,7 @@ TEST_F(service_api_test, data_types) {
 }
 
 TEST_F(service_api_test, decimals) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -842,7 +844,7 @@ TEST_F(service_api_test, decimals) {
 }
 
 TEST_F(service_api_test, temporal_types) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -955,7 +957,7 @@ TEST_F(service_api_test, temporal_types) {
 TEST_F(service_api_test, timestamptz) {
     // there was an issue with timestamp close to 0000-00-00
     execute_statement("create table T (C0 TIMESTAMP WITH TIME ZONE)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -1046,7 +1048,7 @@ TEST_F(service_api_test, timestamptz_with_offset) {
         query_handle,
         "select * from T"
     );
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     {
         std::vector<parameter> parameters{};
@@ -1094,7 +1096,7 @@ TEST_F(service_api_test, timestamptz_with_offset) {
 
 TEST_F(service_api_test, binary_type) {
     execute_statement("create table T (C0 VARBINARY(5), C1 BINARY(5))");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -1174,7 +1176,7 @@ TEST_F(service_api_test, binary_type) {
 
 TEST_F(service_api_test, long_binary_data) {
     execute_statement("create table T (C0 BIGINT, C1 VARBINARY(*))");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -1254,7 +1256,7 @@ TEST_F(service_api_test, long_binary_data) {
 TEST_F(service_api_test, boolean_type) {
     db_impl()->configuration()->support_boolean(true);
     execute_statement("create table T (C0 BOOLEAN PRIMARY KEY, C1 BOOLEAN)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -1357,7 +1359,7 @@ void service_api_test::test_get_lob(std::uint64_t id, std::string_view expected_
 TEST_F(service_api_test, blob_types) {
     // global::config_pool()->mock_datastore(true);
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -1465,7 +1467,7 @@ TEST_F(service_api_test, blob_types_error_handling) {
     global::config_pool()->mock_datastore(true);
     datastore::get_datastore(true); // reset cache for mock
     execute_statement("create table t (c0 int primary key, c1 blob, c2 clob)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -1519,7 +1521,7 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
         query_handle,
         "select c1 from t"
     );
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     lob::lob_id_type id{};
     {
@@ -1621,7 +1623,7 @@ TEST_F(service_api_test, empty_request) {
 }
 
 TEST_F(service_api_test, syntax_error_aborts_tx) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     std::uint64_t stmt_handle{0};
     {
         test_begin(tx_handle);
@@ -1646,7 +1648,7 @@ TEST_F(service_api_test, syntax_error_aborts_tx) {
 }
 
 TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     std::uint64_t stmt_handle{0};
     {
         test_begin(tx_handle);
@@ -1688,7 +1690,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
 }
 
 void service_api_test::execute_statement_as_query(std::string_view sql) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     auto s = encode_execute_query(tx_handle, "insert into T0(C0, C1) values (1, 10.0)");
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
@@ -1891,7 +1893,7 @@ TEST_F(service_api_test, explain_by_text_bypass_restriction) {
 }
 
 TEST_F(service_api_test, null_host_variable) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -1931,7 +1933,7 @@ TEST_F(service_api_test, null_host_variable) {
 }
 
 TEST_F(service_api_test, begin_long_tx) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     {
         test_begin(tx_handle, false, true, {"T0", "T1"}, "mylabel");
         test_commit(tx_handle);
@@ -1943,7 +1945,7 @@ TEST_F(service_api_test, begin_long_tx) {
 }
 
 TEST_F(service_api_test, long_tx_simple) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     {
         test_begin(tx_handle, false, true, {"T0"});
         test_statement("insert into T0(C0, C1) values (1, 10.0)", tx_handle);
@@ -1991,7 +1993,7 @@ void service_api_test::test_dump(std::vector<std::string>& files, std::string_vi
         std::pair{"c0"s, sql::common::AtomType::INT8},
         std::pair{"c1"s, sql::common::AtomType::FLOAT8}
     );
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     do {
         std::vector<parameter> parameters{
@@ -2095,7 +2097,7 @@ TEST_F(service_api_test, dump_error_with_query_result) {
         query_handle,
         "select C0, 1.0/C1 from T0"
     );
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     do {
         auto s = encode_execute_dump(tx_handle, query_handle, {}, std::string{service_api_test::temporary_.path()});
@@ -2189,7 +2191,7 @@ void service_api_test::test_load(bool transactional, error_code expected, Args..
         std::pair{"p0"s, sql::common::AtomType::INT8},
         std::pair{"p1"s, sql::common::AtomType::FLOAT8}
     );
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     if(transactional) {
         test_begin(tx_handle);
     }
@@ -2330,7 +2332,7 @@ TEST_F(service_api_test, describe_pkless_table) {
 }
 
 TEST_F(service_api_test, empty_result_set) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_query(
         "select * from T0",
@@ -2352,7 +2354,7 @@ TEST_F(service_api_test, empty_result_set) {
 TEST_F(service_api_test, create_many_tx) {
     // verify there is neither resource leak nor lack of closing/destructing tx objects
     for(std::size_t i=0; i < 300; ++i) {
-        std::uint64_t tx_handle{};
+        api::transaction_handle tx_handle{};
         test_begin(tx_handle);
         test_commit(tx_handle);
     }
@@ -2411,7 +2413,7 @@ TEST_F(service_api_test, get_search_path) {
 }
 
 TEST_F(service_api_test, modifies_definitions) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle, false, true, {}, "modifies_definitions", true);
     test_statement("CREATE TABLE TT(C0 INT)", tx_handle);
     test_commit(tx_handle);
@@ -2421,7 +2423,7 @@ TEST_F(service_api_test, get_error_info) {
     // verify get error info is not affected by err_inactive_transaction (request failure, not transaction failure)
     test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
     test_statement("INSERT INTO TT VALUES (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_statement("INSERT INTO TT VALUES (0)", tx_handle, error_code::unique_constraint_violation_exception);
     test_statement("INSERT INTO TT VALUES (1)", tx_handle, error_code::inactive_transaction_exception);
@@ -2431,22 +2433,22 @@ TEST_F(service_api_test, get_error_info) {
 }
 
 TEST_F(service_api_test, dispose_transaction_invalid_handle) {
-    test_dispose_transaction(1);  // disposing invalid handle is no-op
+    test_dispose_transaction(api::transaction_handle{1, 1});  // disposing invalid handle is no-op
 }
 
 TEST_F(service_api_test, dispose_transaction_missing_handle) {
     // protobuf treats 0 as if not handle is specified
     // this case is handled as an error because sending 0 is usage error anyway
-    test_dispose_transaction(0, error_code::sql_execution_exception);
+    test_dispose_transaction({}, error_code::sql_execution_exception);
 }
 
 TEST_F(service_api_test, dispose_transaction) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory cannot spwan multiple transactions";
     }
-    std::uint64_t tx_handle0{};
+    api::transaction_handle tx_handle0{};
     test_begin(tx_handle0);
-    std::uint64_t tx_handle1{};
+    api::transaction_handle tx_handle1{};
     test_begin(tx_handle1);
 
     EXPECT_EQ(2, get_impl(*db_).transaction_count());
@@ -2461,7 +2463,7 @@ TEST_F(service_api_test, dispose_transaction_aborted) {
     test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
     test_statement("INSERT INTO TT VALUES (0)");
     {
-        std::uint64_t tx_handle{};
+        api::transaction_handle tx_handle{};
         test_begin(tx_handle);
         test_statement("INSERT INTO TT VALUES (0)", tx_handle, error_code::unique_constraint_violation_exception);
 
@@ -2476,7 +2478,7 @@ TEST_F(service_api_test, dispose_transaction_auto_dispose) {
     test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
     test_statement("INSERT INTO TT VALUES (0)");
     {
-        std::uint64_t tx_handle{};
+        api::transaction_handle tx_handle{};
         test_begin(tx_handle);
         test_statement("INSERT INTO TT VALUES (1)", tx_handle);
         test_commit(tx_handle);
@@ -2487,10 +2489,10 @@ TEST_F(service_api_test, dispose_transaction_auto_dispose) {
 }
 
 void service_api_test::test_dispose_transaction(
-    std::uint64_t handle,
+    api::transaction_handle tx_handle,
     error_code expected
 ) {
-    auto s = encode_dispose_transaction(handle);
+    auto s = encode_dispose_transaction(tx_handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
@@ -2512,7 +2514,7 @@ TEST_F(service_api_test, get_error_info_on_compile_error) {
     // verify get error info with compile error
     test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
     test_statement("INSERT INTO TT VALUES (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_statement("INSERT INTO dummy VALUES (0)", tx_handle, error_code::symbol_analyze_exception);
     test_statement("INSERT INTO TT VALUES (1)", tx_handle, error_code::inactive_transaction_exception);
@@ -2522,7 +2524,7 @@ TEST_F(service_api_test, get_error_info_on_compile_error) {
 
 TEST_F(service_api_test, get_error_info_on_empty_commit) {
     // verify get error info sees tx not found after successful commit (auto disposed)
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_commit(tx_handle);
     test_get_error_info(tx_handle, true, error_code::transaction_not_found_exception);
@@ -2530,7 +2532,7 @@ TEST_F(service_api_test, get_error_info_on_empty_commit) {
 
 TEST_F(service_api_test, get_error_info_on_empty_commit_auto_dispose_off) {
     // verify get error info sees error not found (requires auto dispose off to avoid getting disposed very soon)
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_commit(tx_handle, false);
     test_get_error_info(tx_handle, false, error_code::none);
@@ -2611,7 +2613,7 @@ TEST_F(service_api_test, batch_unsupported) {
     ASSERT_EQ(::tateyama::proto::diagnostics::Code::UNSUPPORTED_OPERATION, err.code());
 }
 
-void service_api_test::test_cancel_transaction_commit(std::uint64_t tx_handle, bool auto_dispose_on_commit_success) {
+void service_api_test::test_cancel_transaction_commit(api::transaction_handle tx_handle, bool auto_dispose_on_commit_success) {
     auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -2626,7 +2628,7 @@ void service_api_test::test_cancel_transaction_commit(std::uint64_t tx_handle, b
     EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_CANCELED, rec.code());
 }
 
-void service_api_test::test_cancel_transaction_begin(std::uint64_t tx_handle, std::string_view label) {
+void service_api_test::test_cancel_transaction_begin(api::transaction_handle tx_handle, std::string_view label) {
     auto s = encode_begin(false, true, {}, label, false);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -2642,7 +2644,7 @@ void service_api_test::test_cancel_transaction_begin(std::uint64_t tx_handle, st
 }
 
 void service_api_test::test_cancel_statement(
-    std::string_view sql, std::uint64_t tx_handle) {
+    std::string_view sql, api::transaction_handle tx_handle) {
     auto s = encode_execute_statement(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -2667,7 +2669,7 @@ void enable_request_cancel(request_cancel_kind kind) {
 TEST_F(service_api_test, cancel_insert) {
     enable_request_cancel(request_cancel_kind::write);
     execute_statement("create table t (c0 int primary key)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("insert into t values (1)", tx_handle);
 
@@ -2681,7 +2683,7 @@ TEST_F(service_api_test, cancel_scan) {
     enable_request_cancel(request_cancel_kind::scan);
     execute_statement("create table t (c0 int primary key)");
     execute_statement("insert into t values (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t order by c0", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2692,7 +2694,7 @@ TEST_F(service_api_test, cancel_find) {
     enable_request_cancel(request_cancel_kind::find);
     execute_statement("create table t (c0 int primary key)");
     execute_statement("insert into t values (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t where c0 = 0", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2705,7 +2707,7 @@ TEST_F(service_api_test, cancel_group) {
     execute_statement("insert into t0 values (0)");
     execute_statement("create table t1 (c0 int)");
     execute_statement("insert into t1 values (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t0 join t1 on t0.c0 = t1.c0", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2716,7 +2718,7 @@ TEST_F(service_api_test, cancel_aggregate) {
     enable_request_cancel(request_cancel_kind::group);
     execute_statement("create table t0 (c0 int)");
     execute_statement("insert into t0 values (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select max(c0) from t0", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2729,7 +2731,7 @@ TEST_F(service_api_test, cancel_take_cogroup) {
     execute_statement("insert into t0 values (0)");
     execute_statement("create table t1 (c0 int)");
     execute_statement("insert into t1 values (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select * from t0 join t1 on t0.c0 = t1.c0", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2740,7 +2742,7 @@ TEST_F(service_api_test, cancel_take_group) {
     enable_request_cancel(request_cancel_kind::take_group);
     execute_statement("create table t0 (c0 int)");
     execute_statement("insert into t0 values (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select max(c0) from t0", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2749,7 +2751,7 @@ TEST_F(service_api_test, cancel_take_group) {
 
 TEST_F(service_api_test, cancel_tx_begin) {
     enable_request_cancel(request_cancel_kind::transaction_begin_wait);
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_cancel_transaction_begin(tx_handle, "label");
     // we don't have valid tx handle, so there is nothing to verify
 }
@@ -2758,7 +2760,7 @@ TEST_F(service_api_test, cancel_take_flat) {
     enable_request_cancel(request_cancel_kind::take_flat);
     execute_statement("create table t0 (c0 int)");
     execute_statement("insert into t0 values (0)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_statement("select c0 from t0 limit 1", tx_handle);
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2767,7 +2769,7 @@ TEST_F(service_api_test, cancel_take_flat) {
 
 TEST_F(service_api_test, DISABLED_cancel_precommit) {
     enable_request_cancel(request_cancel_kind::transaction_precommit);
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_cancel_transaction_begin(tx_handle, "label");
     test_cancel_transaction_commit(tx_handle, false);  // disable auto dispose
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2779,7 +2781,7 @@ TEST_F(service_api_test, cancel_durable_wait) {
         GTEST_SKIP() << "jogasaki-memory doesn't call durability callback";
     }
     enable_request_cancel(request_cancel_kind::transaction_durable_wait);
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_cancel_transaction_commit(tx_handle, false);  // disable auto dispose
     test_commit(tx_handle, false, error_code::inactive_transaction_exception); // verify tx is not usable
@@ -2790,7 +2792,7 @@ TEST_F(service_api_test, error_with_unsupported_query) {
     // verify error occurring during task creation is correctly handled
     // bad way of setting error_info on request_context failed to set status code correctly (use error::set_error_info)
     execute_statement("CREATE TABLE t (c0 int)");
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_statement("SELECT count(c0), count(DISTINCT c0) from t", tx_handle, error_code::unsupported_runtime_feature_exception);
     test_get_error_info(tx_handle, false, error_code::unsupported_runtime_feature_exception);
@@ -2798,7 +2800,7 @@ TEST_F(service_api_test, error_with_unsupported_query) {
 }
 
 TEST_F(service_api_test, extract_sql_info) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
     auto query = encode_execute_query(tx_handle, text);
@@ -2819,7 +2821,7 @@ TEST_F(service_api_test, extract_sql_info) {
 }
 
 TEST_F(service_api_test, extract_sql_info_missing_statement) {
-    std::uint64_t tx_handle{};
+    api::transaction_handle tx_handle{};
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
 
     std::uint64_t stmt_handle{};

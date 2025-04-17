@@ -638,7 +638,7 @@ status database::create_transaction_internal(transaction_handle& handle, transac
             return res;
         }
         tx->label(option.label());
-        api::transaction_handle t{tx.get(), this};
+        api::transaction_handle t{tx.get(), tx->surrogate_id()};
         {
             decltype(transactions_)::accessor acc{};
             if (transactions_.insert(acc, t)) {

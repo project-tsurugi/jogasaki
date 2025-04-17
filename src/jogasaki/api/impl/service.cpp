@@ -329,6 +329,14 @@ void service::command_dispose_transaction(
     details::success<sql::response::ResultOnly>(*res, req_info);
 }
 
+jogasaki::api::transaction_handle from(::jogasaki::proto::sql::common::Transaction const& tx) {
+    // for backward compatibility, use pointer as surrogate id if it's not sent from client
+    return jogasaki::api::transaction_handle{
+        tx.handle(),
+        tx.has_secret() ? tx.secret() : tx.handle(),
+    }; //NOLINT
+}
+
 template<class Response, class Request>
 jogasaki::api::transaction_handle validate_transaction_handle(
     Request msg,
@@ -336,6 +344,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     tateyama::api::server::response& res,
     request_info const& req_info
 ) {
+    (void) db;
     if(! msg.has_transaction_handle()) {
         VLOG(log_error) << log_location_prefix << "missing transaction_handle";
         auto err_info = create_error_info(
@@ -346,7 +355,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
         details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
-    jogasaki::api::transaction_handle tx{msg.transaction_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT
+    auto tx = from(msg.transaction_handle());
     if(! tx) {
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -365,6 +374,7 @@ std::string extract_transaction(
     api::database* db,
     std::shared_ptr<error::error_info>& err_info
 ) {
+    (void) db;
     if(! msg.has_transaction_handle()) {
         err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -373,7 +383,7 @@ std::string extract_transaction(
         );
         return {};
     }
-    jogasaki::api::transaction_handle tx{msg.transaction_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT
+    auto tx = from(msg.transaction_handle());
     auto t = get_transaction_context(tx);
     if(! t) {
         // failed to get transaction_context

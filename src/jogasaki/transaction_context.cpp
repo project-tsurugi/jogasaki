@@ -38,7 +38,7 @@ transaction_context::transaction_context(
     std::shared_ptr<kvs::transaction_option const> option
 ) :
     transaction_(std::move(transaction)),
-    id_(id_source_++),
+    surrogate_id_(++surrogate_id_source_),  // begin from 1
     option_(std::move(option))
 {}
 
@@ -61,8 +61,8 @@ std::shared_ptr<kvs::transaction> const& transaction_context::object() const {
     return transaction_;
 }
 
-std::size_t transaction_context::id() const noexcept {
-    return id_;
+std::size_t transaction_context::surrogate_id() const noexcept {
+    return surrogate_id_;
 }
 
 transaction_context::operator bool() const noexcept {

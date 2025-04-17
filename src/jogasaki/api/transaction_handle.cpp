@@ -39,40 +39,33 @@
 namespace jogasaki::api {
 
 transaction_handle::transaction_handle(
-    std::uintptr_t arg,
-    std::uintptr_t db
+    std::uintptr_t ptr,
+    std::size_t surrogate_id
 ) noexcept:
-    body_(arg),
-    db_(db)
+    body_(ptr),
+    surrogate_id_(surrogate_id)
 {}
 
 std::uintptr_t transaction_handle::get() const noexcept {
     return body_;
 }
 
-transaction_handle::operator std::size_t() const noexcept {
-    return reinterpret_cast<std::size_t>(body_);  //NOLINT
-}
-
 transaction_handle::operator bool() const noexcept {
-    return body_ != 0;
+    return surrogate_id_ != 0;
 }
 
 transaction_context* tx(std::uintptr_t arg) {
     return reinterpret_cast<transaction_context*>(arg);  //NOLINT
 }
 
-std::pair<api::impl::database*, std::shared_ptr<transaction_context>> cast(std::uintptr_t db, std::uintptr_t tx) {
-    if(db == 0) return {};
-    auto* dbp = reinterpret_cast<api::impl::database*>(db);  //NOLINT
-    auto t = dbp->find_transaction(transaction_handle{tx, db});
-    return {dbp, std::move(t)};
+std::shared_ptr<transaction_context> cast(std::uintptr_t tx, std::size_t surrogate_id) {
+    return global::database_impl()->find_transaction(transaction_handle{tx, surrogate_id});
 }
 
 status transaction_handle::commit(api::commit_option option) {  //NOLINT(readability-make-member-function-const, performance-unnecessary-value-param)
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) return status::err_invalid_argument;
-    return executor::commit(*db, tx, option);
+    return executor::commit(*global::database_impl(), tx, option);
 }
 
 void transaction_handle::commit_async(callback on_completion) {  //NOLINT(readability-make-member-function-const)
@@ -89,7 +82,7 @@ void transaction_handle::commit_async(  //NOLINT(readability-make-member-functio
     commit_option opt,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) {
         auto res = status::err_invalid_argument;
         on_completion(res,
@@ -100,7 +93,7 @@ void transaction_handle::commit_async(  //NOLINT(readability-make-member-functio
         return;
     }
     executor::commit_async(
-        *db,
+        *global::database_impl(),
         tx,
         [on_completion](status st, std::shared_ptr<error::error_info> info) {
             on_completion(st, api::impl::error_info::create(std::move(info)));
@@ -115,9 +108,8 @@ status transaction_handle::abort(request_info const& req_info) {  //NOLINT(reada
 }
 
 status transaction_handle::abort_transaction(request_info const& req_info) {  //NOLINT(readability-make-member-function-const)
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) return status::err_invalid_argument;
-    (void) db;
     executor::abort_transaction(tx, req_info);
     return status::ok;
 }
@@ -126,12 +118,13 @@ status transaction_handle::execute(  //NOLINT(readability-make-member-function-c
     executable_statement& statement,
     request_info const& req_info
 ) {
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) return status::err_invalid_argument;
     std::unique_ptr<api::result_set> result{};
     std::shared_ptr<error::error_info> info{};
     std::shared_ptr<request_statistics> stats{};
-    return executor::execute(*db, tx, statement, result, info, stats, req_info);
+    return executor::execute(*global::database_impl(), tx, statement, result,
+                             info, stats, req_info);
 }
 
 status transaction_handle::execute(  //NOLINT(readability-make-member-function-const)
@@ -139,11 +132,12 @@ status transaction_handle::execute(  //NOLINT(readability-make-member-function-c
     std::unique_ptr<result_set>& result,
     request_info const& req_info
 ) {
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) return status::err_invalid_argument;
     std::shared_ptr<error::error_info> info{};
     std::shared_ptr<request_statistics> stats{};
-    return executor::execute(*db, tx, statement, result, info, stats, req_info);
+    return executor::execute(*global::database_impl(), tx, statement, result,
+                             info, stats, req_info);
 }
 
 status transaction_handle::execute( //NOLINT
@@ -152,11 +146,13 @@ status transaction_handle::execute( //NOLINT
     std::unique_ptr<result_set>& result,
     request_info const& req_info
 ) {
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) return status::err_invalid_argument;
     std::shared_ptr<error::error_info> info{};
     std::shared_ptr<request_statistics> stats{};
-    return executor::execute(*db, tx, prepared, std::move(parameters), result, info, stats, req_info);
+    return executor::execute(*global::database_impl(), tx, prepared,
+                             std::move(parameters), result, info, stats,
+                             req_info);
 }
 
 bool transaction_handle::execute_async(   //NOLINT(readability-make-member-function-const)
@@ -179,7 +175,7 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
     transaction_handle::error_info_stats_callback on_completion,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) {
         auto res = status::err_invalid_argument;
         on_completion(res,
@@ -191,7 +187,7 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
         return true;
     }
     return executor::execute_async(
-        *db,
+        *global::database_impl(),
         tx,
         statement,
         nullptr,
@@ -228,7 +224,7 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
     transaction_handle::error_info_stats_callback on_completion,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) {
         auto res = status::err_invalid_argument;
         on_completion(res,
@@ -240,7 +236,7 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
         return true;
     }
     return executor::execute_async(
-        *db,
+        *global::database_impl(),
         tx,
         statement,
         channel,
@@ -256,11 +252,11 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
 }
 
 transaction_handle::transaction_handle(
-    void* arg,
-    void* db
+    void* ptr,
+    std::size_t surrogate_id
 ) noexcept:
-    body_(reinterpret_cast<std::uintptr_t>(arg)),  //NOLINT
-    db_(reinterpret_cast<std::uintptr_t>(db))  //NOLINT
+    body_(reinterpret_cast<std::uintptr_t>(ptr)),  //NOLINT
+    surrogate_id_(surrogate_id)
 {}
 
 bool transaction_handle::is_ready_unchecked() const {
@@ -272,8 +268,7 @@ std::string_view transaction_handle::transaction_id_unchecked() const noexcept {
 }
 
 std::string_view transaction_handle::transaction_id() const noexcept {
-    auto [db, tx] = cast(db_, body_);
-    (void) db;
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) {
         return {};
     }
@@ -282,7 +277,7 @@ std::string_view transaction_handle::transaction_id() const noexcept {
 
 status transaction_handle::error_info(std::shared_ptr<api::error_info>& out) const noexcept {
     out = {};
-    auto [db, tx] = cast(db_, body_);
+    auto tx = cast(body_, surrogate_id_);
     if(! tx) return status::err_invalid_argument;
     if(tx->error_info()) {
         out = api::impl::error_info::create(tx->error_info());
@@ -290,14 +285,12 @@ status transaction_handle::error_info(std::shared_ptr<api::error_info>& out) con
     return status::ok;
 }
 
-std::uintptr_t transaction_handle::db() const noexcept {
-    return db_;
+std::size_t transaction_handle::surrogate_id() const noexcept {
+    return surrogate_id_;
 }
 
 std::shared_ptr<transaction_context> get_transaction_context(transaction_handle arg) {
-    auto [db, tx] = cast(arg.db(), arg.get());
-    (void) db;
-    return tx;
+    return cast(arg.get(), arg.surrogate_id());
 }
 
 }

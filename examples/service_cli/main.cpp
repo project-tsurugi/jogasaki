@@ -116,7 +116,7 @@ struct stmt_info {
 class cli {
     takatori::util::maybe_shared_ptr<jogasaki::api::database> db_{};
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
-    std::uint64_t tx_handle_{};  //NOLINT
+    jogasaki::api::transaction_handle tx_handle_{};  //NOLINT
     bool tx_processing_{};  //NOLINT
     bool debug_{}; //NOLINT
     bool verify_query_records_{};
@@ -500,7 +500,7 @@ private:
         auto ret = handle_result_only(res->body_, for_autocommit);
         tx_processing_ = false; // tx is finished and destroyed even on failure
         if (ret) {
-            tx_handle_ = -1;
+            tx_handle_ = jogasaki::api::transaction_handle{1, 1};
         }
         wait_for_statements(); // just for cleanup
         return ret;
@@ -534,7 +534,7 @@ private:
         auto ret = handle_result_only(res->body_);
         tx_processing_ = false; // tx is finished and destroyed even on failure
         if (ret) {
-            tx_handle_ = -1;
+            tx_handle_ = jogasaki::api::transaction_handle{1, 1};
         }
         wait_for_statements(); // just for cleanup
         return ret;

@@ -638,7 +638,7 @@ status database::create_transaction_internal(transaction_handle& handle, transac
             return res;
         }
         tx->label(option.label());
-        api::transaction_handle t{tx.get(), this};
+        api::transaction_handle t{tx.get(), tx->surrogate_id()};
         {
             decltype(transactions_)::accessor acc{};
             if (transactions_.insert(acc, t)) {
@@ -1375,11 +1375,11 @@ std::shared_ptr<durability_manager> const& database::durable_manager() const noe
 
 namespace jogasaki::api {
 
-std::unique_ptr<database> create_database(std::shared_ptr<class configuration> cfg) {
-    return std::make_unique<impl::database>(std::move(cfg));
+std::shared_ptr<database> create_database(std::shared_ptr<class configuration> cfg) {
+    return global::database_impl(std::make_shared<impl::database>(std::move(cfg)));
 }
 
-std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db) {
-    return std::make_unique<impl::database>(std::move(cfg), db);
+std::shared_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db) {
+    return global::database_impl(std::make_shared<impl::database>(std::move(cfg), db));
 }
 } // namespace jogasaki::api::impl

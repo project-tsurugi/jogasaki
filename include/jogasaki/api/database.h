@@ -471,7 +471,7 @@ protected:
  * @return database api object
  * @return nullptr if error occurs on creation
  */
-std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
+std::shared_ptr<database> create_database(std::shared_ptr<configuration> cfg = std::make_shared<configuration>());
 
 /**
  * @brief factory method for database passing kvs (sharksfin)
@@ -482,6 +482,6 @@ std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg = s
  * @return database api object
  * @return nullptr if error occurs on creation
  */
-std::unique_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db);
+std::shared_ptr<database> create_database(std::shared_ptr<configuration> cfg, sharksfin::DatabaseHandle db);
 
 }

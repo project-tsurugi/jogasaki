@@ -72,6 +72,7 @@
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/transaction_state.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/interference_size.h>
 #include <jogasaki/utils/sanitize_utf8.h>
@@ -133,6 +134,8 @@ T* mutable_object(sql::response::Response& r) {
         return r.mutable_extract_statement_info();
     } else if constexpr (std::is_same_v<T, sql::response::GetLargeObjectData>) {  //NOLINT
         return r.mutable_get_large_object_data();
+    } else if constexpr (std::is_same_v<T, sql::response::GetTransactionStatus>) {  //NOLINT
+        return r.mutable_get_transaction_status();
     } else {
         static_fail();
     }
@@ -411,7 +414,6 @@ inline void success<sql::response::GetSearchPath>(
     reply(res, r, req_info);
 }
 
-
 template<>
 inline void success<sql::response::GetErrorInfo>(
     tateyama::api::server::response& res,
@@ -492,6 +494,58 @@ inline void success<sql::response::GetLargeObjectData>(
     auto* gt = r.mutable_get_large_object_data();
     auto* success = gt->mutable_success();
     success->mutable_channel_name()->assign(channel_name);
+    reply(res, r, req_info);
+}
+
+inline std::pair<sql::response::TransactionStatus, std::string> status_and_message(transaction_state_kind status) {
+    using kind = transaction_state_kind;
+    namespace t = sql::response;
+    sql::response::TransactionStatus st{};
+    std::string msg{};
+    switch (status) {
+        case kind::undefined: {
+            st = t::TRANSACTION_STATUS_UNSPECIFIED;
+            msg = "transaction status not available";
+            break;
+        }
+        case kind::init: {
+            // handle is not yet provided to client, so status query should not come here
+            // returning as unspecified
+            st = t::TRANSACTION_STATUS_UNSPECIFIED;
+            msg = "transaction status not available";
+            break;
+        }
+        case kind::active: st = t::RUNNING; break;
+        case kind::going_to_commit: st = t::COMMITTING; break;
+        case kind::cc_committing: st = t::COMMITTING; break;
+        case kind::committed_available: st = t::AVAILABLE; break;
+        case kind::committed_stored: st = t::STORED; break;
+        case kind::going_to_abort: st = t::ABORTING; break;
+        case kind::aborted: st = t::ABORTED; break;
+        case kind::unknown: {
+            // we use unspecified for unknown
+            st = t::TRANSACTION_STATUS_UNSPECIFIED;
+            msg = "transaction status unknown (operation may be canceled or interrupted)";
+            break;
+        }
+    }
+    return {st, std::move(msg)};
+}
+
+template<>
+inline void success<sql::response::GetTransactionStatus>(
+    tateyama::api::server::response& res,
+    request_info req_info,  //NOLINT(performance-unnecessary-value-param)
+    transaction_state_kind status
+) {
+    sql::response::Response r{};
+    auto* gts = r.mutable_get_transaction_status();
+    auto* success = gts->mutable_success();
+    auto [st, msg] = status_and_message(status);
+    success->set_status(st);
+    if (! msg.empty()) {
+        success->set_message(msg);
+    }
     reply(res, r, req_info);
 }
 
@@ -653,6 +707,11 @@ private:
         request_info const& req_info
     );
     void command_get_large_object_data(
+        sql::request::Request const& proto_req,
+        std::shared_ptr<tateyama::api::server::response> const& res,
+        request_info const& req_info
+    );
+    void command_get_transaction_status(
         sql::request::Request const& proto_req,
         std::shared_ptr<tateyama::api::server::response> const& res,
         request_info const& req_info

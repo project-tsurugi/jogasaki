@@ -56,6 +56,7 @@
 
 #include "api_test_base.h"
 
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/datastore/get_datastore.h>
 
 namespace jogasaki::api {
@@ -223,6 +224,8 @@ public:
     void test_load(bool transactional, error_code expected, Args ... args);
 
     void test_get_lob(std::uint64_t id, std::string_view expected_path);
+
+    void test_get_tx_status(api::transaction_handle tx_handle, std::optional<::jogasaki::proto::sql::response::TransactionStatus> expected_status, error_code expected_err = error_code::none);
 
     void execute_statement_as_query(std::string_view sql);
 
@@ -1573,6 +1576,82 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
     }
     test_commit(tx_handle);
     test_dispose_prepare(query_handle);
+}
+
+void service_api_test::test_get_tx_status(api::transaction_handle tx_handle, std::optional<::jogasaki::proto::sql::response::TransactionStatus> expected_status, error_code expected_err) {
+    auto s = encode_get_transaction_status(tx_handle);
+
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [status, msg, error] = decode_get_transaction_status(res->body_);
+    if (expected_status.has_value()) {
+        ASSERT_EQ(expected_status.value(), status);
+    } else {
+        ASSERT_EQ(expected_err, error.code_);
+    }
+    if (! msg.empty()) {
+        std::cerr << "status: " << status <<  " msg:" << msg << std::endl;
+    }
+}
+
+TEST_F(service_api_test, get_transaction_status) {
+    // verify transaction status using service api
+    // the test depends on the timing, so only a few status can be verified
+    using ts = ::jogasaki::proto::sql::response::TransactionStatus;
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    test_get_tx_status(tx_handle, ts::RUNNING);
+    test_commit(tx_handle, false); // auto_dispose = false
+    wait_epochs();
+    test_get_tx_status(tx_handle, ts::STORED);
+}
+
+TEST_F(service_api_test, get_transaction_status_auto_dispose) {
+    // same as get_transaction_status, but auto_dispose = true that causes transaction to be disposed after succesful commit
+    using ts = ::jogasaki::proto::sql::response::TransactionStatus;
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    test_get_tx_status(tx_handle, ts::RUNNING);
+    test_commit(tx_handle);
+    wait_epochs();
+    test_get_tx_status(tx_handle, std::nullopt, error_code::transaction_not_found_exception);
+}
+
+TEST_F(service_api_test, get_transaction_status_updated_internally) {
+    // verify transaction status by modifying it via internal api
+    using ts = ::jogasaki::proto::sql::response::TransactionStatus;
+    api::transaction_handle tx_handle{};
+    {
+        test_begin(tx_handle);
+        test_get_tx_status(tx_handle, ts::RUNNING);
+        auto tctx = get_transaction_context(tx_handle);
+        tctx->state(transaction_state_kind::going_to_commit);
+        test_get_tx_status(tx_handle, ts::COMMITTING);
+        tctx->state(transaction_state_kind::cc_committing);
+        test_get_tx_status(tx_handle, ts::COMMITTING);
+        tctx->state(transaction_state_kind::committed_available);
+        test_get_tx_status(tx_handle, ts::AVAILABLE);
+        tctx->state(transaction_state_kind::committed_stored);
+        test_get_tx_status(tx_handle, ts::STORED);
+        (void) tctx->abort_transaction(); // just for cleanup
+    }
+    {
+        test_begin(tx_handle);
+        auto tctx = get_transaction_context(tx_handle);
+        tctx->state(transaction_state_kind::going_to_abort);
+        test_get_tx_status(tx_handle, ts::ABORTING);
+        tctx->state(transaction_state_kind::aborted);
+        test_get_tx_status(tx_handle, ts::ABORTED);
+        tctx->state(transaction_state_kind::unknown);
+        test_get_tx_status(tx_handle, ts::TRANSACTION_STATUS_UNSPECIFIED);
+        (void) tctx->abort_transaction(); // just for cleanup
+    }
 }
 
 TEST_F(service_api_test, protobuf1) {

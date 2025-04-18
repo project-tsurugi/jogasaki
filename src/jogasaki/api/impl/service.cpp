@@ -964,6 +964,30 @@ void service::command_get_large_object_data(
     details::success<sql::response::GetLargeObjectData>(*res, p->channel_name(), req_info);
 }
 
+void service::command_get_transaction_status(
+    sql::request::Request const& proto_req,
+    std::shared_ptr<tateyama::api::server::response> const& res,
+    request_info const& req_info
+) {
+    auto& gts = proto_req.get_transaction_status();
+    auto tx = validate_transaction_handle<sql::response::GetTransactionStatus>(gts, db_, *res, req_info);
+    if(! tx) {
+        return;
+    }
+    auto tctx = get_transaction_context(tx);
+    if(! tctx) {
+        // invalid handle
+        auto err_info = create_error_info(
+            error_code::transaction_not_found_exception,
+            "Transaction handle is invalid.",
+            status::err_invalid_argument
+        );
+        details::error<sql::response::GetTransactionStatus>(*res, err_info.get(), req_info);
+        return;
+    }
+    details::success<sql::response::GetTransactionStatus>(*res, req_info, tctx->state());
+}
+
 void service::command_execute_dump(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
@@ -1274,6 +1298,11 @@ bool service::process(
         case sql::request::Request::RequestCase::kGetLargeObjectData: {
             trace_scope_name("cmd-get_large_object_data");  //NOLINT
             command_get_large_object_data(proto_req, res, req_info);
+            break;
+        }
+        case sql::request::Request::RequestCase::kGetTransactionStatus: {
+            trace_scope_name("cmd-get_transaction_status");  //NOLINT
+            command_get_transaction_status(proto_req, res, req_info);
             break;
         }
         default:

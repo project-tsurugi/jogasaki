@@ -830,4 +830,34 @@ inline std::tuple<std::string, std::string, error> decode_get_large_object_data(
     std::abort();
 }
 
+inline std::string encode_get_transaction_status(api::transaction_handle tx_handle) {
+    sql::request::Request r{};
+    auto* gts = r.mutable_get_transaction_status();
+    auto* th = gts->mutable_transaction_handle();
+    th->set_handle(tx_handle.get());
+    th->set_secret(tx_handle.surrogate_id());
+
+    r.mutable_session_handle()->set_handle(1);
+    auto s = serialize(r);
+    r.clear_get_transaction_status();
+    return s;
+}
+
+inline std::tuple<::jogasaki::proto::sql::response::TransactionStatus, std::string, error> decode_get_transaction_status(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_get_transaction_status())  {
+        LOG(ERROR) << "**** missing get_transaction_status **** ";
+        if (utils_raise_exception_on_error) std::abort();
+        return {{}, {}, {}};
+    }
+    auto& gts = resp.get_transaction_status();
+    if (gts.has_error()) {
+        auto& er = gts.error();
+        return {{}, {}, {api::impl::map_error(er.code()), er.detail()}};
+    }
+    auto& s = gts.success();
+    return {s.status(), s.message(), {}};
+}
+
 }  // namespace jogasaki::utils

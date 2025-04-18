@@ -251,6 +251,10 @@ public:
     [[nodiscard]] utils::use_counter const& requests_inprocess() const noexcept;
 
     [[nodiscard]] std::shared_ptr<durability_manager> const& durable_manager() const noexcept;
+
+    // synchronous, not wait for epoch - public just for testing
+    status create_transaction_internal(transaction_handle& handle, transaction_option const& option);
+
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -343,9 +347,6 @@ private:
     );
 
     status validate_option(transaction_option const& option);
-
-    // synchronous, not wait for epoch
-    status create_transaction_internal(transaction_handle& handle, transaction_option const& option);
 
 };
 

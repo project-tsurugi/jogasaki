@@ -84,7 +84,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                         VLOG(log_trace) << "/:jogasaki:durability_callback:operator() check_cancel "
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
                         cancel_request(*e);
-                        submit_commit_response(e, commit_response_kind::stored, true, true);
+                        submit_commit_response(e, commit_response_kind::stored, false, true, true);
                     }
                 );
                 if(mgr->update_current_marker(
@@ -94,7 +94,7 @@ void durability_callback::operator()(durability_callback::marker_type marker) {
                             << "--- current:" << marker << " txid:" << e->transaction()->transaction_id() << " marker:" << *e->transaction()->durability_marker();
                         request_ctx->job()->request()->affected_txs().add(e->transaction()->transaction_id());
                         e->transaction()->profile()->set_durability_cb_invoked(durability_callback_invoked);
-                        submit_commit_response(e, commit_response_kind::stored, false, true);
+                        submit_commit_response(e, commit_response_kind::stored, false, false, true);
                     })) {
                     scheduler::submit_teardown(*request_ctx);
                     return model::task_result::complete;

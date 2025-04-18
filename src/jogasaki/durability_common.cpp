@@ -49,13 +49,25 @@ void submit_commit_response(
     std::shared_ptr<request_context> rctx,  //NOLINT(performance-unnecessary-value-param)
     commit_response_kind kind,
     bool is_error,
+    bool is_canceled,
     bool teardown_try_on_suspended_worker
 ) {
+    if (is_canceled) {
+        // transaction state will not be tracked any more
+        rctx->transaction()->state(transaction_state_kind::unknown);
+    } else if (is_error) {
+        rctx->transaction()->state(transaction_state_kind::aborted);
+    } else {
+        // success
+        rctx->transaction()->state(
+            kind == commit_response_kind::stored ? transaction_state_kind::committed_stored : transaction_state_kind::committed_available
+        );
+    }
     auto& ts = *rctx->scheduler();
     ts.schedule_task(
-        scheduler::create_custom_task(rctx.get(), [rctx, kind, teardown_try_on_suspended_worker, is_error]() {
+        scheduler::create_custom_task(rctx.get(), [rctx, kind, teardown_try_on_suspended_worker, is_error, is_canceled]() {
             log_end_of_tx_and_commit_request(*rctx);
-            if(is_error) {
+            if(is_error || is_canceled) {
                 rctx->commit_ctx()->on_error()(kind, rctx->status_code(), rctx->error_info());
             } else {
                 rctx->commit_ctx()->on_response()(kind);

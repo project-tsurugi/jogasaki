@@ -1,9 +1,9 @@
 name: Jogasaki-Install-Dependencies
 
 inputs:
-  sharksfin-implementation:
-    description: sharksfin implementation (memory or shirakami)
-    required: true
+  sharksfin_implementation:
+    description: switch sharksfin implementation
+    default: shirakami
   checkout:
     description: Skip checkout if false
     default: true
@@ -153,11 +153,15 @@ runs:
 
     - name: Install_Sharksfin
       run: |
+        if [[ "${{ inputs.sharksfin_implementation }}" == "memory" ]]; then
+          _OPTS="-DBUILD_MEMORY=ON -DBUILD_SHIRAKAMI=OFF"
+        fi
+
         cd ${{ inputs.path }}/sharksfin
         rm -fr build
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_MEMORY=ON -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${_OPTS} ..
         cmake --build . --target install --clean-first
       shell: bash
 
@@ -177,6 +181,6 @@ runs:
         rm -fr build
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin-implementation }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin_implementation }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ..
         cmake --build . --target install --clean-first
       shell: bash

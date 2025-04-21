@@ -25,6 +25,7 @@ jobs:
     env:
       CCACHE_CONFIGPATH: ${{ vars.ccache_dir }}/ccache.conf
       CCACHE_DIR: ${{ vars.ccache_dir }}/${{ inputs.os || 'ubuntu-22.04' }}
+      SHARKSFIN_IMPLEMENTATION: shirakami
 
     steps:
       - name: Checkout
@@ -35,14 +36,14 @@ jobs:
       - name: Install_Dependencies
         uses: ./.github/actions/install-dependencies
         with:
-          sharksfin-implementation: shirakami
+          sharksfin_implementation: ${{ env.SHARKSFIN_IMPLEMENTATION }}
 
       - name: CMake_Build
         run: |
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ..
           cmake --build . --target all --clean-first
 
       - name: CTest
@@ -73,6 +74,7 @@ jobs:
     env:
       CCACHE_CONFIGPATH: ${{ vars.ccache_dir }}/ccache.conf
       CCACHE_DIR: ${{ vars.ccache_dir }}/ubuntu-22.04
+      SHARKSFIN_IMPLEMENTATION: memory
 
     steps:
       - name: Checkout
@@ -83,14 +85,14 @@ jobs:
       - name: Install_Dependencies
         uses: ./.github/actions/install-dependencies
         with:
-          sharksfin-implementation: memory
+          sharksfin_implementation: ${{ env.SHARKSFIN_IMPLEMENTATION }}
 
-      - name: CMake_Build_Jogasaki_memory
+      - name: CMake_Build
         run: |
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=memory -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ..
           cmake --build . --target all --clean-first
 
       - name: Clang-Tidy

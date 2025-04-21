@@ -87,10 +87,11 @@ available options:
 * `-DCMAKE_PREFIX_PATH=<installation directory>` - indicate prerequisite installation directory
 * `-DCMAKE_IGNORE_PATH="/usr/local/include;/usr/local/lib/"` - specify the libraries search paths to ignore. This is convenient if the environment has conflicting version installed on system default search paths. (e.g. gflags in /usr/local)
 * `-DBUILD_SHARED_LIBS=OFF` - create static libraries instead of shared libraries
-* `-DBUILD_TESTS=OFF` - don't build test programs
-* `-DBUILD_DOCUMENTS=OFF` - don't build documents by doxygen
-* `-DINSTALL_EXAMPLES=ON` - install example applications
-* `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `memory`)
+* `-DBUILD_TESTS=ON` - build test programs
+* `-DBUILD_DOCUMENTS=ON` - build documents by doxygen
+* `-DBUILD_EXAMPLES=ON` - build example applications
+* `-DINSTALL_EXAMPLES=ON` - install example applications (requires BUILD_EXAMPLES enabled) 
+* `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `shirakami`)
 * `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance
 * `-DINSTALL_API_ONLY=ON` - configure build directory just to install public header files. Use when other components require jogasaki public headers.
 * `-DENABLE_ALTIMETER=ON` - turn on altimeter logging.

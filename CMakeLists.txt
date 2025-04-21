@@ -28,9 +28,9 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 option(ENABLE_SANITIZER "enable sanitizer on debug build" ON)
 option(ENABLE_UB_SANITIZER "enable undefined behavior sanitizer on debug build" OFF)
 option(ENABLE_COVERAGE "enable coverage on debug build" OFF)
-option(BUILD_TESTS "Build test programs" ON)
-option(BUILD_EXAMPLES "Build example programs" ON)
-option(BUILD_DOCUMENTS "build documents" ON)
+option(BUILD_TESTS "Build test programs" OFF)
+option(BUILD_EXAMPLES "Build example programs" OFF)
+option(BUILD_DOCUMENTS "build documents" OFF)
 option(INSTALL_EXAMPLES "install examples" OFF)
 option(BUILD_SHARED_LIBS "build shared libraries instead of static" ON)
 option(ENABLE_GOOGLE_PERFTOOLS "Enable Google Perftools" OFF)
@@ -47,7 +47,7 @@ endif()
 
 if(NOT DEFINED SHARKSFIN_IMPLEMENTATION)
     set(
-            SHARKSFIN_IMPLEMENTATION "memory"
+            SHARKSFIN_IMPLEMENTATION "shirakami"
             CACHE STRING
             "sharksfin target name to link"
             FORCE

@@ -50,6 +50,10 @@ std::uintptr_t transaction_handle::get() const noexcept {
     return body_;
 }
 
+transaction_handle::operator std::size_t() const noexcept {
+    return std::hash<transaction_handle>{}(*this);
+}
+
 transaction_handle::operator bool() const noexcept {
     return surrogate_id_ != 0;
 }

@@ -114,6 +114,15 @@ public:
     [[nodiscard]] std::uintptr_t get() const noexcept;
 
     /**
+     * @brief conversion operator to std::size_t
+     * @return the hash value that can be used for equality comparison
+     * @note this function is kept for compatibility. The old intel tbb (pre-oneTBB) used this function
+     * and build failed on Alma and Rockey linux 9.5
+     * TODO remove when it's not needed
+     */
+    explicit operator std::size_t() const noexcept;
+
+    /**
      * @brief conversion operator to bool
      * @return whether the handle has body (i.e. valid transaction object reference) or not
      */

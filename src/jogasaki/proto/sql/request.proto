@@ -178,6 +178,14 @@ message TransactionOption {
     repeated ReadArea exclusive_read_areas = 13;
 
     reserved 14 to 20;
+
+    // optional setting for RTX scan parallelism.
+    oneof scan_parallel_opt {
+
+        // the parallelism for RTX scan.
+        int32 scan_parallel = 21;
+    }
+
 }
 
 // the transaction commit status.

@@ -575,8 +575,7 @@ std::shared_ptr<api::transaction_option> modify_ras_wps(transaction_option const
     // SQL IUD almost always (except INSERT OR REPLACE) require read semantics, so write preserve will be added to rai.
     std::vector<std::string> rai{add_wp_to_read_area_inclusive(*wps, option.read_areas_inclusive())};
     return std::make_shared<api::transaction_option>(
-        option.readonly(),
-        option.is_long(),
+        option.type(),
         add_secondary_indices(*wps, tables),
         option.label(),
         add_secondary_indices(rai, tables),

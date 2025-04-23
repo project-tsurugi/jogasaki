@@ -157,7 +157,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
 
         if(auto res = executor::create_transaction(
                tx_,
-               std::make_shared<api::transaction_option>()
+               std::make_shared<api::transaction_option>(transaction_type_kind::occ)
            );
            res != status::ok) {
             state_->set_error_status(

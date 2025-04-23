@@ -153,6 +153,17 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     request_info const& req_info
 );
 
+transaction_type_kind from(sql::request::TransactionType arg) {
+    using t = sql::request::TransactionType;
+    switch (arg) {
+        case t::SHORT: return transaction_type_kind::occ;
+        case t::LONG: return transaction_type_kind::ltx;
+        case t::READ_ONLY: return transaction_type_kind::rtx;
+        default: return transaction_type_kind::unknown;
+    }
+    std::abort();
+}
+
 void service::command_begin(
     sql::request::Request const& proto_req,
     std::shared_ptr<tateyama::api::server::response> const& res,
@@ -162,19 +173,13 @@ void service::command_begin(
     std::vector<std::string> wps{};
     std::vector<std::string> rai{};
     std::vector<std::string> rae{};
-    bool readonly = false;
-    bool is_long = false;
+    transaction_type_kind type{};
     bool modifies_definitions = false;
     auto& bg = proto_req.begin();
     std::string_view label{};
     if(bg.has_option()) {
         auto& op = bg.option();
-        if(op.type() == sql::request::TransactionType::READ_ONLY) {
-            readonly = true;
-        }
-        if(op.type() == sql::request::TransactionType::LONG) {
-            is_long = true;
-        }
+        type = from(op.type());
         modifies_definitions = op.modifies_definitions();
         wps.reserve(op.write_preserves().size());
         for(auto&& x : op.write_preserves()) {
@@ -191,8 +196,7 @@ void service::command_begin(
         label = op.label();
     }
     transaction_option opts{
-        readonly,
-        is_long,
+        type,
         std::move(wps),
         label,
         std::move(rai),

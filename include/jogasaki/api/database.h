@@ -191,7 +191,7 @@ public:
      * @deprecated Use `create_transaction_async`. This function is left for testing.
      */
     status create_transaction(transaction_handle& handle, bool readonly) {
-        return do_create_transaction(handle, transaction_option(readonly));
+        return do_create_transaction(handle, transaction_option(readonly ? transaction_type_kind::rtx : transaction_type_kind::occ));
     }
 
     /**

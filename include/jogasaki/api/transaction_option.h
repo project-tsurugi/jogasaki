@@ -18,22 +18,49 @@
 #include <string_view>
 #include <memory>
 
+#include <jogasaki/transaction_type_kind.h>
+
 namespace jogasaki::api {
 
 /**
  * @brief transaction option
- * @details this is used to assign values to transaction option
  */
 class transaction_option {
 public:
+    /**
+     * @brief creates a new object (occ by default)
+     */
+    transaction_option() = default;
+
+    /**
+     * @brief destroys this object
+     */
     ~transaction_option() = default;
+
     transaction_option(transaction_option const& other) = default;
     transaction_option& operator=(transaction_option const& other) = default;
     transaction_option(transaction_option&& other) noexcept = default;
     transaction_option& operator=(transaction_option&& other) noexcept = default;
 
     explicit transaction_option(
-        bool readonly = false,
+        transaction_type_kind type,
+        std::vector<std::string> write_preserves = {},
+        std::string_view label = {},
+        std::vector<std::string> read_areas_inclusive = {},
+        std::vector<std::string> read_areas_exclusive = {},
+        bool modifies_definitions = false
+    ) :
+        type_(type),
+        write_preserves_(std::move(write_preserves)),
+        label_(label),
+        read_areas_inclusive_(std::move(read_areas_inclusive)),
+        read_areas_exclusive_(std::move(read_areas_exclusive)),
+        modifies_definitions_(modifies_definitions)
+    {}
+
+    //@deprecated use ctor with transaction_type_kind above
+    explicit transaction_option(
+        bool readonly,
         bool is_long = false,
         std::vector<std::string> write_preserves = {},
         std::string_view label = {},
@@ -41,8 +68,7 @@ public:
         std::vector<std::string> read_areas_exclusive = {},
         bool modifies_definitions = false
     ) :
-        readonly_(readonly),
-        is_long_(is_long),
+        type_(readonly ? transaction_type_kind::rtx : (is_long ? transaction_type_kind::ltx : transaction_type_kind::occ)),
         write_preserves_(std::move(write_preserves)),
         label_(label),
         read_areas_inclusive_(std::move(read_areas_inclusive)),
@@ -51,21 +77,29 @@ public:
     {}
 
     transaction_option& readonly(bool arg) noexcept {
-        readonly_ = arg;
+        if (arg) {
+            type_ = transaction_type_kind::rtx;
+        }
         return *this;
     }
 
     transaction_option& is_long(bool arg) noexcept {
-        is_long_ = arg;
+        if (arg) {
+            type_ = transaction_type_kind::ltx;
+        }
         return *this;
     }
 
+    [[nodiscard]] transaction_type_kind type() const noexcept {
+        return type_;
+    }
+
     [[nodiscard]] bool readonly() const noexcept {
-        return readonly_;
+        return type_ == transaction_type_kind::rtx;
     }
 
     [[nodiscard]] bool is_long() const noexcept {
-        return is_long_;
+        return type_ == transaction_type_kind::ltx;
     }
 
     [[nodiscard]] std::vector<std::string> const& write_preserves() const noexcept {
@@ -94,8 +128,7 @@ public:
     }
 
 private:
-    bool readonly_ = false;
-    bool is_long_ = false;
+    transaction_type_kind type_{transaction_type_kind::occ};
     std::vector<std::string> write_preserves_{};
     std::string label_{};
     std::vector<std::string> read_areas_inclusive_{};

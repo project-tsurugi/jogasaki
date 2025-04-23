@@ -580,7 +580,8 @@ std::shared_ptr<api::transaction_option> modify_ras_wps(transaction_option const
         option.label(),
         add_secondary_indices(rai, tables),
         add_secondary_indices(option.read_areas_exclusive(), tables),
-        option.modifies_definitions()
+        option.modifies_definitions(),
+        option.rtx_scan_parallel()
     );
 }
 

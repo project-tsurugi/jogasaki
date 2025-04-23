@@ -925,7 +925,7 @@ status create_transaction(
     std::shared_ptr<api::transaction_option const> options
 ) {
     std::shared_ptr<transaction_context> ret{};
-    if(auto res = details::init(*global::database_impl(), options, ret); res != status::ok) {
+    if(auto res = details::init(*global::database_impl(), std::move(options), ret); res != status::ok) {
         return res;
     }
     out = std::move(ret);

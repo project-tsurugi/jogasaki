@@ -27,6 +27,8 @@ namespace jogasaki::api {
  */
 class transaction_option {
 public:
+    using scan_parallel_type = std::optional<std::uint32_t>;
+
     /**
      * @brief creates a new object (occ by default)
      */
@@ -48,14 +50,16 @@ public:
         std::string_view label = {},
         std::vector<std::string> read_areas_inclusive = {},
         std::vector<std::string> read_areas_exclusive = {},
-        bool modifies_definitions = false
+        bool modifies_definitions = false,
+        scan_parallel_type rtx_scan_parallel = std::nullopt
     ) :
         type_(type),
         write_preserves_(std::move(write_preserves)),
         label_(label),
         read_areas_inclusive_(std::move(read_areas_inclusive)),
         read_areas_exclusive_(std::move(read_areas_exclusive)),
-        modifies_definitions_(modifies_definitions)
+        modifies_definitions_(modifies_definitions),
+        rtx_scan_parallel_(rtx_scan_parallel)
     {}
 
     //@deprecated use ctor with transaction_type_kind above
@@ -127,6 +131,15 @@ public:
         return modifies_definitions_;
     }
 
+    transaction_option& rtx_scan_parallel(scan_parallel_type arg) noexcept {
+        rtx_scan_parallel_ = arg;
+        return *this;
+    }
+
+    [[nodiscard]] scan_parallel_type rtx_scan_parallel() const noexcept {
+        return rtx_scan_parallel_;
+    }
+
 private:
     transaction_type_kind type_{transaction_type_kind::occ};
     std::vector<std::string> write_preserves_{};
@@ -134,6 +147,7 @@ private:
     std::vector<std::string> read_areas_inclusive_{};
     std::vector<std::string> read_areas_exclusive_{};
     bool modifies_definitions_ = false;
+    std::optional<std::uint32_t> rtx_scan_parallel_{std::nullopt};
 };
 
 /**
@@ -146,6 +160,12 @@ inline std::ostream& operator<<(std::ostream& out, transaction_option const& val
     out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ")); //NOLINT
     out << " label:" << value.label();
     out << std::boolalpha << " modifies_definitions:" << value.modifies_definitions();
+    out << " rtx_scan_parallel:";
+    if (value.rtx_scan_parallel().has_value()) {
+        out << value.rtx_scan_parallel().value();
+    } else {
+        out << "null";
+    }
     if(! value.write_preserves().empty()) {
         out << " write_preserves:{";
         for (auto &&s: value.write_preserves()) {

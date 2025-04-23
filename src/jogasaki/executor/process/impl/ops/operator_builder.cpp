@@ -54,6 +54,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/utils/from_endpoint.h>
+#include <jogasaki/utils/scan_parallel_enabled.h>
 
 #include "aggregate_group.h"
 #include "emit.h"
@@ -376,9 +377,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::step
     );
 }
 
-
-std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ranges(
-    relation::scan const& node) {
+std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ranges(relation::scan const& node) {
     std::vector<std::shared_ptr<impl::scan_range>> scan_ranges{};
     auto& secondary_or_primary_index =
         yugawara::binding::extract<yugawara::storage::index>(node.source());
@@ -407,23 +406,22 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     bound end(end_end_point_kind, elen, std::move(key_end));
     bool is_empty = (status_result == status::err_integrity_constraint_violation);
 
-    const size_t scan_parallel_count = global::config_pool()->scan_default_parallel();
-    const auto option                = request_context_->transaction()->option();
+    auto [rtx_parallel_scan_enabled, scan_parallel_count] = utils::scan_parallel_enabled(*request_context_->transaction());
+    const auto option = request_context_->transaction()->option();
     const bool is_rtx = option && option->readonly();
-    if (global::config_pool()->rtx_parallel_scan() && scan_parallel_count > 1 && is_rtx &&
-        !is_empty) {
-            std::unique_ptr<kvs::storage> stg{};
-            std::unique_ptr<dist::key_distribution> distribution{};
-            if(global::config_pool()->key_distribution() == key_distribution_kind::uniform) {
-                stg = request_context_->database()->get_storage(secondary_or_primary_index.simple_name());
-                distribution = std::make_unique<dist::uniform_key_distribution>(
-                    *stg,
-                    *request_context_->transaction()->object(),
-                    request_context_
-                );
-            } else {
-                distribution = std::make_unique<dist::simple_key_distribution>();
-            }
+    if (rtx_parallel_scan_enabled && scan_parallel_count > 1 && is_rtx && !is_empty) {
+        std::unique_ptr<kvs::storage> stg{};
+        std::unique_ptr<dist::key_distribution> distribution{};
+        if(global::config_pool()->key_distribution() == key_distribution_kind::uniform) {
+            stg = request_context_->database()->get_storage(secondary_or_primary_index.simple_name());
+            distribution = std::make_unique<dist::uniform_key_distribution>(
+                *stg,
+                *request_context_->transaction()->object(),
+                request_context_
+            );
+        } else {
+            distribution = std::make_unique<dist::simple_key_distribution>();
+        }
         const jogasaki::dist::key_range range(
             begin.key(), begin.endpointkind(), end.key(), end.endpointkind());
         const auto pivot_count = scan_parallel_count - 1;
@@ -453,6 +451,7 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
                     std::make_unique<data::aligned_buffer>(pivots.back())),
                 std::move(end), is_empty));
         }
+        VLOG_LP(log_trace) << "rtx scan runs in parallel:" << scan_ranges.size() << " config. max:" << scan_parallel_count;
     } else {
         scan_ranges.reserve(1);
         scan_ranges.emplace_back(

@@ -31,7 +31,8 @@ std::int64_t tx_type_from(transaction_context const& tx) {
     }
     if (opt->readonly()) {
         return external_log::tx_type_value::rtx;
-    } else if (opt->is_long()) {
+    }
+    if (opt->is_long()) {
         return external_log::tx_type_value::ltx;
     }
     return external_log::tx_type_value::occ;

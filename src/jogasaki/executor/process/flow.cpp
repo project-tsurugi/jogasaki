@@ -46,6 +46,7 @@
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/scan_parallel_enabled.h>
 
 namespace jogasaki::executor::process {
 
@@ -146,7 +147,10 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
         d.has_join_find_or_scan_operator()
         ) {
         // process has tx operations
-        if (is_rtx && global::config_pool()->rtx_parallel_scan()) {
+
+        auto [rtx_parallel_scan_enabled, scan_parallel_count] = utils::scan_parallel_enabled(*context_->transaction());
+        (void) scan_parallel_count;
+        if (is_rtx && rtx_parallel_scan_enabled) {
             // parallel rtx operations need not to be sticky
             tx_capability = model::task_transaction_kind::in_transaction;
         } else {

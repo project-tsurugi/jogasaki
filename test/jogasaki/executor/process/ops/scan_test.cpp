@@ -693,7 +693,7 @@ TEST_F(scan_test, scan_info_rtx_parallel_1) {
     std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
     std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
     auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
-        true, false,
+        transaction_type_kind::rtx,
         std::move(write_preserves),
         "",
         std::move(read_areas_inclusive), std::move(read_areas_exclusive)
@@ -823,7 +823,7 @@ TEST_F(scan_test, scan_info_rtx_parallel_2) {
     std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
     std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
     auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
-        true, false,
+        transaction_type_kind::rtx,
         std::move(write_preserves),
         "",
         std::move(read_areas_inclusive), std::move(read_areas_exclusive)
@@ -952,7 +952,7 @@ TEST_F(scan_test, scan_info_rtx_parallel_4) {
     std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
     std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
     auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
-        true, false,
+        transaction_type_kind::rtx,
         std::move(write_preserves),
         "",
         std::move(read_areas_inclusive), std::move(read_areas_exclusive)
@@ -974,4 +974,122 @@ TEST_F(scan_test, scan_info_rtx_parallel_4) {
     EXPECT_EQ(zzz[3]->begin().endpointkind(), jogasaki::kvs::end_point_kind::inclusive);
     EXPECT_EQ(zzz[3]->end().endpointkind(), jogasaki::kvs::end_point_kind::exclusive);
 }
+
+TEST_F(scan_test, scan_info_rtx_parallel_enabled_by_transaction_context) {
+    // issues #1196 add new functionality to enable rtx parallel scan by optional setting in transaction context
+    const int parallel = 5;
+    auto cfg           = std::make_shared<configuration>();
+    cfg->rtx_parallel_scan(false);
+    cfg->scan_default_parallel(5);
+    cfg->key_distribution(key_distribution_kind::simple);
+    global::config_pool(cfg);
+    auto t0          = create_table({
+                 "T0",
+                 {
+                     {"C0", t::int4(), nullity{false}},
+                     {"C1", t::int8(), nullity{false}},
+                     {"C2", t::int8(), nullity{false}},
+        },
+    });
+    auto primary_idx = create_primary_index(t0, {0, 1}, {2});
+
+    auto host_variable_record =
+        jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
+            100, 10, 100, 30);
+    auto p0 = bindings_(register_variable("p0", kind::int4));
+    auto p1 = bindings_(register_variable("p1", kind::int8));
+    auto p2 = bindings_(register_variable("p2", kind::int4));
+    auto p3 = bindings_(register_variable("p3", kind::int8));
+    variable_table_info host_variable_info{std::unordered_map<variable, std::size_t>{
+                                               {p0, 0},
+                                               {p1, 1},
+                                               {p2, 2},
+                                               {p3, 3},
+                                           },
+        std::unordered_map<std::string, takatori::descriptor::variable>{
+            {"p0", p0},
+            {"p1", p1},
+            {"p2", p2},
+            {"p3", p3},
+        },
+        host_variable_record.record_meta()};
+    variable_table host_variables{host_variable_info};
+    host_variables.store().set(host_variable_record.ref());
+
+    using key    = relation::scan::key;
+    auto first   = relation::endpoint_kind::exclusive;
+    auto end     = relation::endpoint_kind::exclusive;
+    auto& target = process_.operators().insert(relation::scan{bindings_(*primary_idx),
+        {
+            {bindings_(t0->columns()[0]), bindings_.stream_variable("c0")},
+            {bindings_(t0->columns()[1]), bindings_.stream_variable("c1")},
+            {bindings_(t0->columns()[2]), bindings_.stream_variable("c2")},
+        },
+        {
+            {
+                key{bindings_(t0->columns()[0]),
+                    scalar::immediate{takatori::value::int8(100), takatori::type::int8()}},
+                key{bindings_(t0->columns()[1]),
+                    scalar::immediate{takatori::value::int8(200), takatori::type::int8()}},
+            },
+            first,
+        },
+        {
+            {
+                key{bindings_(t0->columns()[0]),
+                    scalar::immediate{takatori::value::int8(251658240), takatori::type::int8()}},
+                key{bindings_(t0->columns()[1]),
+                    scalar::immediate{takatori::value::int8(INT64_MIN), takatori::type::int8()}},
+            },
+            relation::endpoint_kind::exclusive,
+        }});
+
+    auto& offer = add_offer(destinations(target.columns()));
+    target.output() >> offer.input();
+
+    add_column_types(target, t::int4{}, t::int8{}, t::int8{});
+    expression_map_->bind(target.lower().keys()[0].value(), t::int4{});
+    expression_map_->bind(target.lower().keys()[1].value(), t::int8{});
+    expression_map_->bind(target.upper().keys()[0].value(), t::int4{});
+    expression_map_->bind(target.upper().keys()[1].value(), t::int8{});
+    create_processor_info(&host_variables);
+
+    auto out = jogasaki::mock::create_nullable_record<kind::int4, kind::int8, kind::int8>();
+    variable_table_info output_variable_info{
+        create_variable_table_info(destinations(target.columns()), out)};
+    variable_table_info input_variable_info{};
+    variable_table input_variables{input_variable_info};
+    variable_table output_variables{output_variable_info};
+    std::vector<jogasaki::mock::basic_record> result{};
+
+    scan op{0, *processor_info_, 0, *primary_idx, target.columns(), nullptr,
+        std::make_unique<verifier>([&]() {
+            result.emplace_back(
+                output_variables.store().ref(), out.record_meta(), &verifier_varlen_resource_);
+        }),
+        &input_variable_info, &output_variable_info};
+    std::shared_ptr<kvs::transaction> tra;
+    jogasaki::api::kvsservice::table_areas wp{};
+    std::vector<std::string> write_preserves      = {"table1", "table2"};
+    std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
+    std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
+    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
+        transaction_type_kind::rtx,
+        std::move(write_preserves),
+        "",
+        std::move(read_areas_inclusive),
+        std::move(read_areas_exclusive),
+        false,
+        10  // parallelism set for this transaction
+        );
+    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
+    transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
+    request_context_.transaction(transaction_ctx);
+    jogasaki::plan::compiler_context compiler_ctx{};
+    io_exchange_map exchange_map{};
+    operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
+    auto zzz = builder.create_scan_ranges(target);
+    ASSERT_EQ(10, zzz.size());
+}
+
 } // namespace jogasaki::executor::process::impl::ops

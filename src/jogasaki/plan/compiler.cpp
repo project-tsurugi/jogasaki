@@ -1201,7 +1201,7 @@ size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept {
             if (op.kind() == takatori::relation::expression_kind::scan) {
                 // Cannot determine if the transaction is RTX, so not checking here.
                 // kvs::transaction_option::transaction_type::read_only;
-                if (global::config_pool()->rtx_parallel_scan()) {
+                if (global::config_pool()->rtx_parallel_scan()) { // TODO support rtx_scan_parallel setting passed via transaction_context
                     partition = global::config_pool()->scan_default_parallel();
                 } else {
                     partition = 1;

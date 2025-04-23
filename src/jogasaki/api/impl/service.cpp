@@ -177,6 +177,7 @@ void service::command_begin(
     bool modifies_definitions = false;
     auto& bg = proto_req.begin();
     std::string_view label{};
+    std::optional<std::uint32_t> scan_parallel{};
     if(bg.has_option()) {
         auto& op = bg.option();
         type = from(op.type());
@@ -194,6 +195,9 @@ void service::command_begin(
             rae.emplace_back(x.table_name());
         }
         label = op.label();
+        if (op.scan_parallel_opt_case() == sql::request::TransactionOption::kScanParallel) {
+            scan_parallel = op.scan_parallel();
+        }
     }
     transaction_option opts{
         type,
@@ -201,7 +205,8 @@ void service::command_begin(
         label,
         std::move(rai),
         std::move(rae),
-        modifies_definitions
+        modifies_definitions,
+        scan_parallel
     };
     get_impl(*db_).do_create_transaction_async(
         [res, req_info](jogasaki::api::transaction_handle tx, status st, std::shared_ptr<api::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)

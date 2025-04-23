@@ -29,12 +29,12 @@ std::int64_t tx_type_from(transaction_context const& tx) {
     if(! opt) {
         return external_log::tx_type_value::unknown;
     }
-    switch(opt->type()) {
-        case kvs::transaction_option::transaction_type::occ: return external_log::tx_type_value::occ;
-        case kvs::transaction_option::transaction_type::ltx: return external_log::tx_type_value::ltx;
-        case kvs::transaction_option::transaction_type::read_only: return external_log::tx_type_value::rtx;
+    if (opt->readonly()) {
+        return external_log::tx_type_value::rtx;
+    } else if (opt->is_long()) {
+        return external_log::tx_type_value::ltx;
     }
-    std::abort();
+    return external_log::tx_type_value::occ;
 }
 
 std::int64_t result_from(status st) {

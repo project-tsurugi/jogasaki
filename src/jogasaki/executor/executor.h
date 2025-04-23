@@ -302,16 +302,14 @@ bool execute_load(
 
 /**
  * @brief create and start new transaction
- * @param db the parent database that the transaction runs on
  * @param out [OUT] filled with newly created transaction object
  * @param options transaction options
  * @return status::ok when successful
  * @return error otherwise
  */
 [[nodiscard]] status create_transaction(
-    api::impl::database &db,
     std::shared_ptr<transaction_context>& out,
-    std::shared_ptr<kvs::transaction_option const> options
+    std::shared_ptr<api::transaction_option const> options
 );
 
 }  // namespace jogasaki::executor

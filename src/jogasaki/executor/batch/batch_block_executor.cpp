@@ -156,14 +156,8 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
         }
 
         if(auto res = executor::create_transaction(
-               *info_.db(),
                tx_,
-               std::make_shared<kvs::transaction_option>(
-                   kvs::transaction_option::transaction_type::occ,
-                   std::vector<std::string>{},
-                   std::vector<std::string>{},
-                   std::vector<std::string>{}
-               )
+               std::make_shared<api::transaction_option>()
            );
            res != status::ok) {
             state_->set_error_status(

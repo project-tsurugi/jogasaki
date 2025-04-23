@@ -692,10 +692,13 @@ TEST_F(scan_test, scan_info_rtx_parallel_1) {
     std::vector<std::string> write_preserves      = {"table1", "table2"};
     std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
     std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
-    kvs::transaction_option opt(kvs::transaction_option::transaction_type::read_only,
-        write_preserves, read_areas_inclusive, read_areas_exclusive);
-    auto opt_ptr         = std::make_shared<jogasaki::kvs::transaction_option>(opt);
-    auto transaction_ctx = std::make_shared<transaction_context>(tra, opt_ptr);
+    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
+        true, false,
+        std::move(write_preserves),
+        "",
+        std::move(read_areas_inclusive), std::move(read_areas_exclusive)
+        );
+    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
     transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
     request_context_.transaction(transaction_ctx);
     jogasaki::plan::compiler_context compiler_ctx{};
@@ -819,10 +822,13 @@ TEST_F(scan_test, scan_info_rtx_parallel_2) {
     std::vector<std::string> write_preserves      = {"table1", "table2"};
     std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
     std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
-    kvs::transaction_option opt(kvs::transaction_option::transaction_type::read_only,
-        write_preserves, read_areas_inclusive, read_areas_exclusive);
-    auto opt_ptr         = std::make_shared<jogasaki::kvs::transaction_option>(opt);
-    auto transaction_ctx = std::make_shared<transaction_context>(tra, opt_ptr);
+    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
+        true, false,
+        std::move(write_preserves),
+        "",
+        std::move(read_areas_inclusive), std::move(read_areas_exclusive)
+        );
+    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
     transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
     request_context_.transaction(transaction_ctx);
     jogasaki::plan::compiler_context compiler_ctx{};
@@ -945,10 +951,13 @@ TEST_F(scan_test, scan_info_rtx_parallel_4) {
     std::vector<std::string> write_preserves      = {"table1", "table2"};
     std::vector<std::string> read_areas_inclusive = {"area1", "area2"};
     std::vector<std::string> read_areas_exclusive = {"area3", "area4"};
-    kvs::transaction_option opt(kvs::transaction_option::transaction_type::read_only,
-        write_preserves, read_areas_inclusive, read_areas_exclusive);
-    auto opt_ptr         = std::make_shared<jogasaki::kvs::transaction_option>(opt);
-    auto transaction_ctx = std::make_shared<transaction_context>(tra, opt_ptr);
+    auto opt_ptr = std::make_shared<jogasaki::api::transaction_option>(
+        true, false,
+        std::move(write_preserves),
+        "",
+        std::move(read_areas_inclusive), std::move(read_areas_exclusive)
+        );
+    auto transaction_ctx = std::make_shared<transaction_context>(tra, std::move(opt_ptr));
     transaction_ctx->error_info(create_error_info(error_code::none, "", status::err_unknown));
     request_context_.transaction(transaction_ctx);
     jogasaki::plan::compiler_context compiler_ctx{};

@@ -136,8 +136,7 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             i, operators, sink_idx_base + i, scan_ranges.empty() ? nullptr : scan_ranges[i]));
     }
 
-    bool is_rtx = context_->transaction()->option()->type()
-        ==  kvs::transaction_option::transaction_type::read_only;
+    bool is_rtx = context_->transaction()->option()->readonly();
     auto& d = info_->details();
     auto exec = factory(proc, contexts);
     auto tx_capability = model::task_transaction_kind::none;

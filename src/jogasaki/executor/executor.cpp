@@ -130,13 +130,29 @@ bool execute_internal(
     );
 }
 
+std::shared_ptr<kvs::transaction_option const> from(api::transaction_option const& option) {
+    auto type = kvs::transaction_option::transaction_type::occ;
+    if(option.readonly()) {
+        type = kvs::transaction_option::transaction_type::read_only;
+    } else if (option.is_long()) {
+        type = kvs::transaction_option::transaction_type::ltx;
+    }
+    return std::make_shared<kvs::transaction_option>(
+        type,
+        option.write_preserves(),
+        option.read_areas_inclusive(),
+        option.read_areas_exclusive()
+    );
+}
+
 status init(
     api::impl::database& database,
-    std::shared_ptr<kvs::transaction_option const> options,
+    std::shared_ptr<api::transaction_option const> options,
     std::shared_ptr<transaction_context>& out
 ) {
     std::unique_ptr<kvs::transaction> kvs_tx{};
-    if(auto res = kvs::transaction::create_transaction(*database.kvs_db(), kvs_tx, *options); res != status::ok) {
+    auto opt = from(*options);
+    if(auto res = kvs::transaction::create_transaction(*database.kvs_db(), kvs_tx, *opt); res != status::ok) {
         return res;
     }
     out = wrap(std::move(kvs_tx), std::move(options));
@@ -905,16 +921,15 @@ scheduler::job_context::job_id_type commit_async(
 }
 
 status create_transaction(
-    api::impl::database& db,
     std::shared_ptr<transaction_context>& out,
-    std::shared_ptr<kvs::transaction_option const> options
+    std::shared_ptr<api::transaction_option const> options
 ) {
     std::shared_ptr<transaction_context> ret{};
-    if(auto res = details::init(db, std::move(options), ret); res != status::ok) {
+    if(auto res = details::init(*global::database_impl(), options, ret); res != status::ok) {
         return res;
     }
     out = std::move(ret);
-    out->profile()->enabled(db.config()->profile_commits());
+    out->profile()->enabled(global::config_pool()->profile_commits());
     return status::ok;
 }
 

@@ -562,18 +562,11 @@ std::vector<std::string> add_secondary_indices(
     return ret;
 }
 
-std::shared_ptr<kvs::transaction_option> from(transaction_option const& option, yugawara::storage::configurable_provider const& tables) {
-    auto type = kvs::transaction_option::transaction_type::occ;
-    if(option.readonly()) {
-        type = kvs::transaction_option::transaction_type::read_only;
-    } else if (option.is_long()) {
-        type = kvs::transaction_option::transaction_type::ltx;
-    }
-
+std::shared_ptr<api::transaction_option> modify_ras_wps(transaction_option const& option, yugawara::storage::configurable_provider const& tables) {
     // add system tables to wp if modifies_definitions=true
     auto* wps = std::addressof(option.write_preserves());
     std::vector<std::string> with_system_tables{};
-    if(option.modifies_definitions() && type == kvs::transaction_option::transaction_type::ltx) {
+    if(option.modifies_definitions() && option.is_long()) {
         // this is done only for ltx, otherwise passing wps will be an error on cc engine
         with_system_tables = option.write_preserves();
         add_system_tables(with_system_tables);
@@ -581,11 +574,14 @@ std::shared_ptr<kvs::transaction_option> from(transaction_option const& option, 
     }
     // SQL IUD almost always (except INSERT OR REPLACE) require read semantics, so write preserve will be added to rai.
     std::vector<std::string> rai{add_wp_to_read_area_inclusive(*wps, option.read_areas_inclusive())};
-    return std::make_shared<kvs::transaction_option>(
-        type,
+    return std::make_shared<api::transaction_option>(
+        option.readonly(),
+        option.is_long(),
         add_secondary_indices(*wps, tables),
+        option.label(),
         add_secondary_indices(rai, tables),
-        add_secondary_indices(option.read_areas_exclusive(), tables)
+        add_secondary_indices(option.read_areas_exclusive(), tables),
+        option.modifies_definitions()
     );
 }
 
@@ -634,7 +630,7 @@ status database::create_transaction_internal(transaction_handle& handle, transac
     }
     {
         std::shared_ptr<transaction_context> tx{};
-        if(auto res = executor::create_transaction(*this, tx, from(option, *tables_)); res != status::ok) {
+        if(auto res = executor::create_transaction(tx, modify_ras_wps(option, *tables_)); res != status::ok) {
             return res;
         }
         tx->label(option.label());

@@ -409,8 +409,7 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
 
     const size_t scan_parallel_count = global::config_pool()->scan_default_parallel();
     const auto option                = request_context_->transaction()->option();
-    const bool is_rtx =
-        option && option->type() == kvs::transaction_option::transaction_type::read_only;
+    const bool is_rtx = option && option->readonly();
     if (global::config_pool()->rtx_parallel_scan() && scan_parallel_count > 1 && is_rtx &&
         !is_empty) {
             std::unique_ptr<kvs::storage> stg{};

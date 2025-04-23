@@ -26,12 +26,12 @@
 #include <sharksfin/CallResult.h>
 #include <sharksfin/api.h>
 
+#include <jogasaki/api/transaction_option.h>
 #include <jogasaki/commit_profile.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
-#include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
 #include <jogasaki/termination_state.h>
 #include <jogasaki/transaction_state.h>
@@ -192,11 +192,11 @@ public:
     /**
      * @brief create new context object
      * @param transaction the kvs transaction used in this context
-     * @param transaction the kvs transaction option that was used to create `transaction`
+     * @param option the transaction option that was used to create `transaction`
      */
     explicit transaction_context(
         std::shared_ptr<kvs::transaction> transaction,
-        std::shared_ptr<kvs::transaction_option const> option = nullptr
+        std::shared_ptr<api::transaction_option const> option = nullptr
     );
 
     [[nodiscard]] operator kvs::transaction&() const noexcept;  //NOLINT
@@ -354,7 +354,13 @@ public:
      * @brief accessor for the transaction option
      * @return the transaction option
      */
-    [[nodiscard]] std::shared_ptr<kvs::transaction_option const> const& option() const noexcept;
+    [[nodiscard]] std::shared_ptr<api::transaction_option const> const& option() const noexcept;
+
+    /**
+     * @brief setter of the transaction option
+     * @param arg the option to be set
+     */
+    void option(std::shared_ptr<api::transaction_option const> arg) noexcept;
 
     void start_time(clock::time_point arg) noexcept;
     [[nodiscard]] std::optional<clock::time_point> start_time() const noexcept;
@@ -429,7 +435,7 @@ private:
     commit_response_kind commit_response_{commit_response_kind::undefined};
     std::optional<durability_marker_type> durability_marker_{};
     std::shared_ptr<commit_profile> profile_{std::make_shared<commit_profile>()};
-    std::shared_ptr<kvs::transaction_option const> option_{};
+    std::shared_ptr<api::transaction_option const> option_{};
     std::optional<clock::time_point> start_time_{};
     std::optional<clock::time_point> end_time_{};
     std::string label_{};
@@ -443,11 +449,12 @@ private:
 /**
  * @brief wrap the kvs::transaction and convert into transaction context
  * @param arg the kvs::transaction object
+ * @param options the transaction option used to create the transaction
  * @return the converted context
  */
 std::shared_ptr<transaction_context> wrap(
     std::unique_ptr<kvs::transaction>&& arg,
-    std::shared_ptr<kvs::transaction_option const> options = nullptr
+    std::shared_ptr<api::transaction_option const> options = nullptr
 ) noexcept;
 
 } // namespace jogasaki

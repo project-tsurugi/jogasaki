@@ -35,7 +35,7 @@ namespace jogasaki {
 
 transaction_context::transaction_context(
     std::shared_ptr<kvs::transaction> transaction,
-    std::shared_ptr<kvs::transaction_option const> option
+    std::shared_ptr<api::transaction_option const> option
 ) :
     transaction_(std::move(transaction)),
     surrogate_id_(++surrogate_id_source_),  // begin from 1
@@ -166,8 +166,12 @@ std::shared_ptr<commit_profile> const& transaction_context::profile() const noex
     return profile_;
 }
 
-std::shared_ptr<kvs::transaction_option const> const& transaction_context::option() const noexcept {
+std::shared_ptr<api::transaction_option const> const& transaction_context::option() const noexcept {
     return option_;
+}
+
+void transaction_context::option(std::shared_ptr<api::transaction_option const> arg) noexcept {
+    option_ = std::move(arg);
 }
 
 void transaction_context::start_time(transaction_context::clock::time_point arg) noexcept {
@@ -196,7 +200,7 @@ std::string_view transaction_context::label() const noexcept {
 
 std::shared_ptr<transaction_context> wrap(
     std::unique_ptr<kvs::transaction>&& arg,
-    std::shared_ptr<kvs::transaction_option const> options
+    std::shared_ptr<api::transaction_option const> options
 ) noexcept {
     return std::make_shared<transaction_context>(std::shared_ptr<kvs::transaction>{std::move(arg)}, std::move(options));
 }

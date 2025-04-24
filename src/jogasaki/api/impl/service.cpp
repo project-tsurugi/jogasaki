@@ -602,7 +602,7 @@ void service::command_commit(
     auto tctx = get_transaction_context(tx);
     executor::commit_async(
         get_impl(*db_),
-        tctx,
+        std::move(tctx),
         [res, req_info](commit_response_kind) {
             // for now, callback does same regardless of kind
             details::success<sql::response::ResultOnly>(*res, req_info);
@@ -1740,7 +1740,7 @@ void service::execute_dump(
     auto t = get_impl(*db_).find_transaction(tx);
     if(auto rc = executor::execute_dump(  //NOLINT
             get_impl(*db_),
-            t,
+            std::move(t),
             std::shared_ptr{std::move(e)},
             info->data_channel_,
             directory,

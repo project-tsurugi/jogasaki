@@ -98,7 +98,7 @@ runner& runner::run() {
     if(output_records_) {
         // call api for query
         std::unique_ptr<api::result_set> rs{};
-        if(res = executor::execute(get_impl(*db_), tc, *stmt, rs, *out, *out_stats); res != status::ok && ! expect_error_) {
+        if(res = executor::execute(get_impl(*db_), std::move(tc), *stmt, rs, *out, *out_stats); res != status::ok && ! expect_error_) {
             exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }
         auto it = rs->iterator();
@@ -122,7 +122,7 @@ runner& runner::run() {
         // There is no execute() api without requesting result set, so use execute_async with sync = true
         if((! executor::execute_async(
                get_impl(*db_),
-               tc,
+               std::move(tc),
                maybe_shared_ptr{stmt.get()},
                nullptr,
                [&](status st, std::shared_ptr<error::error_info> err, std::shared_ptr<request_statistics> stats) {

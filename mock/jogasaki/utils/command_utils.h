@@ -199,7 +199,7 @@ inline begin_result decode_begin(std::string_view res) {
         return {};
     }
     auto& s = begin.success();
-    return {api::transaction_handle{s.transaction_handle().handle(), s.transaction_handle().secret()}, s.transaction_id().id()};
+    return {api::transaction_handle{s.transaction_handle().handle()}, s.transaction_id().id()};
 }
 
 inline std::uint64_t decode_prepare(std::string_view res) {
@@ -228,8 +228,7 @@ inline std::string encode_commit(
     sql::request::Request r{};
     auto cm = r.mutable_commit();
     auto h = cm->mutable_transaction_handle();
-    h->set_handle(tx_handle.get());
-    h->set_secret(tx_handle.surrogate_id());
+    h->set_handle(tx_handle.surrogate_id());
     cm->set_auto_dispose(auto_dispose_on_commit_success);
     return serialize(r);
 }
@@ -237,8 +236,7 @@ inline std::string encode_commit(
 inline std::string encode_rollback(api::transaction_handle tx_handle) {
     sql::request::Request r{};
     auto h = r.mutable_rollback()->mutable_transaction_handle();
-    h->set_handle(tx_handle.get());
-    h->set_secret(tx_handle.surrogate_id());
+    h->set_handle(tx_handle.surrogate_id());
     return serialize(r);
 }
 
@@ -325,8 +323,7 @@ std::string encode_execute_statement_or_query(api::transaction_handle tx_handle,
         std::abort();
     }
     auto h = stmt->mutable_transaction_handle();
-    h->set_handle(tx_handle.get());
-    h->set_secret(tx_handle.surrogate_id());
+    h->set_handle(tx_handle.surrogate_id());
     stmt->mutable_sql()->assign(sql);
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
@@ -514,8 +511,7 @@ std::string encode_execute_prepared_statement_or_query(
     }
     if(tx_handle) {
         auto h = stmt->mutable_transaction_handle();
-        h->set_handle(tx_handle.get());
-        h->set_secret(tx_handle.surrogate_id());
+        h->set_handle(tx_handle.surrogate_id());
     }
     stmt->mutable_prepared_statement_handle()->set_handle(stmt_handle);
     auto* params = stmt->mutable_parameters();
@@ -644,16 +640,14 @@ inline std::string encode_batch() {
 inline std::string encode_get_error_info(api::transaction_handle tx_handle) {
     sql::request::Request r{};
     auto h = r.mutable_get_error_info()->mutable_transaction_handle();
-    h->set_handle(tx_handle.get());
-    h->set_secret(tx_handle.surrogate_id());
+    h->set_handle(tx_handle.surrogate_id());
     return serialize(r);
 }
 
 inline std::string encode_dispose_transaction(api::transaction_handle tx_handle) {
     sql::request::Request r{};
     auto h = r.mutable_dispose_transaction()->mutable_transaction_handle();
-    h->set_handle(tx_handle.get());
-    h->set_secret(tx_handle.surrogate_id());
+    h->set_handle(tx_handle.surrogate_id());
     return serialize(r);
 }
 
@@ -834,8 +828,7 @@ inline std::string encode_get_transaction_status(api::transaction_handle tx_hand
     sql::request::Request r{};
     auto* gts = r.mutable_get_transaction_status();
     auto* th = gts->mutable_transaction_handle();
-    th->set_handle(tx_handle.get());
-    th->set_secret(tx_handle.surrogate_id());
+    th->set_handle(tx_handle.surrogate_id());
 
     r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);

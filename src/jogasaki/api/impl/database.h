@@ -253,7 +253,7 @@ public:
     [[nodiscard]] std::shared_ptr<durability_manager> const& durable_manager() const noexcept;
 
     // synchronous, not wait for epoch - public just for testing
-    status create_transaction_internal(transaction_handle& handle, transaction_option const& option);
+    status create_transaction_internal(std::shared_ptr<transaction_context>& out, transaction_option const& option);
 
 protected:
     status do_create_table(

@@ -33,6 +33,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/api/field_type_kind.h>
 #include <jogasaki/api/parameter_set.h>
+#include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/error_code.h>
@@ -91,8 +92,8 @@ public:
 using namespace std::string_view_literals;
 
 void set_tx_begin_ts(api::transaction_handle tx, transaction_context::clock::time_point ts) {
-    auto& t = *reinterpret_cast<transaction_context*>(tx.get());
-    t.start_time(ts);
+    auto t = api::get_transaction_context(tx);
+    t->start_time(ts);
 }
 
 TEST_F(function_current_date_test, at_the_begining_of_the_day) {

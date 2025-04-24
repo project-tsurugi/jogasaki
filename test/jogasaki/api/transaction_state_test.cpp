@@ -151,11 +151,10 @@ TEST_F(transaction_state_test, disallowed_state_transition) {
 TEST_F(transaction_state_test, init) {
     auto& db = get_impl(*db_);
     transaction_option opts{false, false};
-    transaction_handle tx{};
+    std::shared_ptr<transaction_context> tx{};
     ASSERT_EQ(status::ok, db.create_transaction_internal(tx, opts));
-    auto tctx = get_transaction_context(tx);
-    EXPECT_EQ(transaction_state_kind::init, tctx->state());
-    ASSERT_EQ(status::ok, tx.commit());
+    EXPECT_EQ(transaction_state_kind::init, tx->state());
+    ASSERT_EQ(status::ok, tx->commit());
 }
 
 TEST_F(transaction_state_test, occ_active) {

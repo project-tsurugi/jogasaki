@@ -338,14 +338,6 @@ void service::command_dispose_transaction(
     details::success<sql::response::ResultOnly>(*res, req_info);
 }
 
-jogasaki::api::transaction_handle from(::jogasaki::proto::sql::common::Transaction const& tx) {
-    // for backward compatibility, use pointer as surrogate id if it's not sent from client
-    return jogasaki::api::transaction_handle{
-        tx.handle(),
-        tx.secret_opt_case() == sql::common::Transaction::SecretOptCase::kSecret ? tx.secret() : tx.handle(),
-    }; //NOLINT
-}
-
 template<class Response, class Request>
 jogasaki::api::transaction_handle validate_transaction_handle(
     Request msg,
@@ -364,7 +356,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
         details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
-    auto tx = from(msg.transaction_handle());
+    api::transaction_handle tx{msg.transaction_handle().handle()};
     if(! tx) {
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -392,7 +384,8 @@ std::string extract_transaction(
         );
         return {};
     }
-    auto tx = from(msg.transaction_handle());
+
+    api::transaction_handle tx{msg.transaction_handle().handle()};
     auto t = get_transaction_context(tx);
     if(! t) {
         // failed to get transaction_context

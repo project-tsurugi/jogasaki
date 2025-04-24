@@ -500,7 +500,7 @@ private:
         auto ret = handle_result_only(res->body_, for_autocommit);
         tx_processing_ = false; // tx is finished and destroyed even on failure
         if (ret) {
-            tx_handle_ = jogasaki::api::transaction_handle{1, 1};
+            tx_handle_ = jogasaki::api::transaction_handle{1};
         }
         wait_for_statements(); // just for cleanup
         return ret;
@@ -534,7 +534,7 @@ private:
         auto ret = handle_result_only(res->body_);
         tx_processing_ = false; // tx is finished and destroyed even on failure
         if (ret) {
-            tx_handle_ = jogasaki::api::transaction_handle{1, 1};
+            tx_handle_ = jogasaki::api::transaction_handle{1};
         }
         wait_for_statements(); // just for cleanup
         return ret;

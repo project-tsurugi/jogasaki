@@ -620,7 +620,7 @@ status database::do_create_transaction(transaction_handle& handle, transaction_o
     }
     return ret;
 }
-status database::create_transaction_internal(transaction_handle& handle, transaction_option const& option) {
+status database::create_transaction_internal(std::shared_ptr<transaction_context>& out, transaction_option const& option) {
     if (! kvs_db_) {
         VLOG_LP(log_error) << "database not started";
         return status::err_invalid_state;
@@ -634,12 +634,12 @@ status database::create_transaction_internal(transaction_handle& handle, transac
             return res;
         }
         tx->label(option.label());
-        api::transaction_handle t{tx.get(), tx->surrogate_id()};
+        api::transaction_handle t{tx->surrogate_id()};
+        out = std::move(tx);
         {
             decltype(transactions_)::accessor acc{};
             if (transactions_.insert(acc, t)) {
-                acc->second = std::move(tx);
-                handle = t;
+                acc->second = out;
             } else {
                 throw_exception(std::logic_error{""});
             }
@@ -1128,7 +1128,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
     );
 }
 
-scheduler::job_context::job_id_type database::do_create_transaction_async(
+scheduler::job_context::job_id_type database::do_create_transaction_async(  //NOLINT(readability-function-cognitive-complexity)
     create_transaction_callback_error_info on_completion,
     transaction_option const& option,
     request_info const& req_info
@@ -1149,15 +1149,15 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
         req
     );
 
-    auto handle = std::make_shared<transaction_handle>();
+    auto tx_pptr = std::make_shared<std::shared_ptr<transaction_context>>(); // tricky, but in order to pass shared_ptr& to lambda
     auto jobid = rctx->job()->id();
     auto t = scheduler::create_custom_task(rctx.get(),
-        [this, rctx, option, handle, jobid]() {
+        [this, rctx, option, tx_pptr, jobid]() {
             VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:starting"
                 << " job_id:"
                 << utils::hex(jobid)
                 << " options:{" << rctx->job()->request()->transaction_option_spec() << "}";
-            auto res = create_transaction_internal(*handle, option);
+            auto res = create_transaction_internal(*tx_pptr, option);
             if(res != status::ok) {
                 // possibly option args are invalid
                 if(res == status::err_invalid_argument) {
@@ -1199,7 +1199,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             ts.schedule_conditional_task(
                 scheduler::conditional_task{
                     rctx.get(),
-                    [handle, rctx, canceled, cancel_enabled]() {
+                    [tx_pptr, rctx, canceled, cancel_enabled]() {
                         if(cancel_enabled) {
                             auto& res_src = rctx->req_info().response_source();
                             if(res_src && res_src->check_cancel()) {
@@ -1207,7 +1207,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
                                 return true;
                             }
                         }
-                        return handle->is_ready_unchecked();
+                        return (*tx_pptr)->is_ready();
                     },
                     [rctx, canceled]() {
                         if(*canceled) {
@@ -1219,21 +1219,26 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(
             );
             return model::task_result::complete;
         }, model::task_transaction_kind::none);  // create transaction is neither sticky nor in-transaction
-    rctx->job()->callback([on_completion=std::move(on_completion), rctx, handle, jobid, req_info](){
+    rctx->job()->callback([on_completion=std::move(on_completion), rctx, tx_pptr, jobid, req_info](){
         VLOG(log_debug_timing_event) << "/:jogasaki:timing:transaction:started "
-            << (*handle ? handle->transaction_id_unchecked() : "<tx id not available>")
+            << (*tx_pptr ? (*tx_pptr)->transaction_id() : "<tx id not available>")
             << " job_id:"
             << utils::hex(jobid);
-        auto txidstr = *handle ? handle->transaction_id_unchecked() : "";
+        auto txidstr = *tx_pptr ? (*tx_pptr)->transaction_id() : "";
         if(rctx->status_code() == status::ok) {
-            auto* tx = reinterpret_cast<transaction_context*>(handle->get());  //NOLINT
+            auto* tx = (*tx_pptr).get();  //NOLINT
             auto tx_type = utils::tx_type_from(*tx);
             tx->start_time(transaction_context::clock::now());
             external_log::tx_start(req_info, "", txidstr, tx_type, tx->label());
             tx->state(transaction_state_kind::active);
         }
+
+        transaction_handle handle{};
+        if (*tx_pptr) {
+            handle = transaction_handle{(*tx_pptr)->surrogate_id()};
+        }
         on_completion(
-            *handle,
+            handle,
             rctx->status_code(),
             api::impl::error_info::create(rctx->error_info())
         );

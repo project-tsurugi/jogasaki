@@ -2512,7 +2512,7 @@ TEST_F(service_api_test, get_error_info) {
 }
 
 TEST_F(service_api_test, dispose_transaction_invalid_handle) {
-    test_dispose_transaction(api::transaction_handle{1, 1});  // disposing invalid handle is no-op
+    test_dispose_transaction(api::transaction_handle{1});  // disposing invalid handle is no-op
 }
 
 TEST_F(service_api_test, dispose_transaction_missing_handle) {

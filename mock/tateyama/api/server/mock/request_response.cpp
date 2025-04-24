@@ -71,8 +71,7 @@ bool test_request::has_blob(std::string_view name) const noexcept {
 
 blob_info const& test_request::get_blob(std::string_view name) const {
     if (! has_blob(name)) {
-        // invalid access
-        return *static_cast<blob_info const*>(nullptr); //NOLINT
+        throw std::invalid_argument("no such blob");
     }
     return *blobs_.at(std::string{name});
 }

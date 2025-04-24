@@ -158,6 +158,25 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     }
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
+    auto process_func = field_mapper_.use_secondary() ?
+        static_cast<status (index_field_mapper::*)(
+            std::string_view,
+            std::string_view,
+            accessor::record_ref,
+            kvs::storage&,
+            transaction_context&,
+            index_field_mapper::memory_resource*,
+            request_context&
+        )>(&index_field_mapper::process_secondary) :
+        static_cast<status (index_field_mapper::*)(
+            std::string_view,
+            std::string_view,
+            accessor::record_ref,
+            kvs::storage&,
+            transaction_context&,
+            index_field_mapper::memory_resource*,
+            request_context&
+        )>(&index_field_mapper::process_primary);
     status st{};
     std::size_t loop_count = 0;
     auto scan_block_size = global::config_pool()->scan_block_size();
@@ -197,8 +216,9 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
-        if(st = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_, resource, *ctx.req_context());
-           st != status::ok) {
+        if (st = (field_mapper_.*process_func)(
+                k, v, target, *ctx.stg_, *ctx.tx_, resource, *ctx.req_context());
+            st != status::ok) {
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }

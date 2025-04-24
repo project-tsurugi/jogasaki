@@ -24,8 +24,8 @@ std::pair<bool, std::uint32_t> scan_parallel_enabled(transaction_context const& 
     auto rtx_parallel_scan_enabled = global::config_pool()->rtx_parallel_scan();
     auto scan_parallel_count = global::config_pool()->scan_default_parallel();
     auto& option= tctx.option();
-    if (option && option->rtx_scan_parallel().has_value()) {
-        scan_parallel_count = option->rtx_scan_parallel().value();
+    if (option && option->scan_parallel().has_value()) {
+        scan_parallel_count = option->scan_parallel().value();
         rtx_parallel_scan_enabled = (scan_parallel_count > 0);
     }
     return {rtx_parallel_scan_enabled, scan_parallel_count};

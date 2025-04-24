@@ -51,7 +51,7 @@ public:
         std::vector<std::string> read_areas_inclusive = {},
         std::vector<std::string> read_areas_exclusive = {},
         bool modifies_definitions = false,
-        scan_parallel_type rtx_scan_parallel = std::nullopt
+        scan_parallel_type scan_parallel = std::nullopt
     ) :
         type_(type),
         write_preserves_(std::move(write_preserves)),
@@ -59,7 +59,7 @@ public:
         read_areas_inclusive_(std::move(read_areas_inclusive)),
         read_areas_exclusive_(std::move(read_areas_exclusive)),
         modifies_definitions_(modifies_definitions),
-        rtx_scan_parallel_(rtx_scan_parallel)
+        scan_parallel_(scan_parallel)
     {}
 
     //@deprecated use ctor with transaction_type_kind above
@@ -131,13 +131,13 @@ public:
         return modifies_definitions_;
     }
 
-    transaction_option& rtx_scan_parallel(scan_parallel_type arg) noexcept {
-        rtx_scan_parallel_ = arg;
+    transaction_option& scan_parallel(scan_parallel_type arg) noexcept {
+        scan_parallel_ = arg;
         return *this;
     }
 
-    [[nodiscard]] scan_parallel_type rtx_scan_parallel() const noexcept {
-        return rtx_scan_parallel_;
+    [[nodiscard]] scan_parallel_type scan_parallel() const noexcept {
+        return scan_parallel_;
     }
 
 private:
@@ -147,7 +147,7 @@ private:
     std::vector<std::string> read_areas_inclusive_{};
     std::vector<std::string> read_areas_exclusive_{};
     bool modifies_definitions_ = false;
-    std::optional<std::uint32_t> rtx_scan_parallel_{std::nullopt};
+    std::optional<std::uint32_t> scan_parallel_{std::nullopt};
 };
 
 /**
@@ -160,9 +160,9 @@ inline std::ostream& operator<<(std::ostream& out, transaction_option const& val
     out << "type:" << (value.is_long() ? "ltx" : (value.readonly() ? "rtx" : "occ")); //NOLINT
     out << " label:" << value.label();
     out << std::boolalpha << " modifies_definitions:" << value.modifies_definitions();
-    out << " rtx_scan_parallel:";
-    if (value.rtx_scan_parallel().has_value()) {
-        out << value.rtx_scan_parallel().value();
+    out << " scan_parallel:";
+    if (value.scan_parallel().has_value()) {
+        out << value.scan_parallel().value();
     } else {
         out << "null";
     }

@@ -398,9 +398,6 @@ public:
             cfg.default_partitions(1);
         }
 
-        if (cfg.assign_numa_nodes_uniformly()) {
-            cfg.core_affinity(true);
-        }
         if (FLAGS_location == "TMP") {
             temporary_.prepare();
             cfg.db_location(temporary_.path());

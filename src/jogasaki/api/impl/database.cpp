@@ -187,11 +187,41 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_rtx_key_distribution) " << cfg.key_distribution() << " : key distribution policy used for RTX parallel scan";
     LOGCFG << "(dev_enable_blob_cast) " << cfg.enable_blob_cast() << " : whether to enable cast expression to/from blob/clob data";
     LOGCFG << "(max_result_set_writers) " << cfg.max_result_set_writers() << " : max number of result set writers";
+    LOGCFG << "(dev_core_affinity) " << cfg.core_affinity() << " : whether to assign cores to worker threads";
+    LOGCFG << "(dev_initial_core) " << cfg.initial_core() << " : the initial core (0-origin) that core assign begins with sequentially";
+    LOGCFG << "(dev_assign_numa_nodes_uniformly) " << cfg.assign_numa_nodes_uniformly() << " : whether to assign nodes to worker threads uniformly";
+    LOGCFG << "(dev_force_numa_node) " << cfg.force_numa_node() << " : whether to assign the single node to all worker threads";
+}
+
+bool validate_core_assignment_parameters(configuration const& cfg) {
+    if(cfg.core_affinity() && (cfg.assign_numa_nodes_uniformly() || cfg.force_numa_node() != configuration::numa_node_unspecified)) {
+        // core assign and node assign cannot be set simultaneously
+        return false;
+    }
+    if (cfg.assign_numa_nodes_uniformly() && cfg.force_numa_node() != configuration::numa_node_unspecified) {
+        // uniform numa nodes and force_numa_node are mutually exclusive
+        return false;
+    }
+    if (cfg.core_affinity() && cfg.initial_core() + cfg.thread_pool_size() > std::thread::hardware_concurrency()) {
+        // the largest core index must not go over the maximum
+        return false;
+    }
+    return true;
 }
 
 status database::start() {
     LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
     dump_public_configurations(*cfg_);
+
+    if (! validate_core_assignment_parameters(*cfg_)) {
+        LOG_LP(ERROR) << std::boolalpha
+            << "invalid core assignment configuration core_affinity:" << cfg_->core_affinity()
+            << " assign_numa_nodes_uniformly:" << cfg_->assign_numa_nodes_uniformly()
+            << " force_numa_node:" << cfg_->force_numa_node()
+            << " thread_pool_size:" << cfg_->thread_pool_size()
+            << " #cores:" << std::thread::hardware_concurrency(); // logical cores
+        return status::err_io_error;
+    }
 
     // this function is not called on maintenance/quiescent mode
     init();

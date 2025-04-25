@@ -74,7 +74,7 @@
 
 DEFINE_bool(single_thread, false, "Whether to run on serial scheduler");  //NOLINT
 DEFINE_int32(thread_count, 1, "Number of threads");  //NOLINT
-DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
+DEFINE_bool(core_affinity, false, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
 DEFINE_bool(debug, false, "debug mode");  //NOLINT
@@ -181,9 +181,6 @@ public:
             cfg.default_partitions(1);
         }
 
-        if (cfg.assign_numa_nodes_uniformly()) {
-            cfg.core_affinity(true);
-        }
         if (FLAGS_location == "TMP") {
             temporary_.prepare();
             cfg.db_location(temporary_.path());

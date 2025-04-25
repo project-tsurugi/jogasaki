@@ -64,7 +64,7 @@ DEFINE_int64(duration, 5000, "Run duration in milli-seconds");  //NOLINT
 DEFINE_int64(queries, -1, "Number of queries per client thread. Specify -1 to use duration instead.");  //NOLINT
 DEFINE_int32(thread_count, 10, "Number of threads");  //NOLINT
 DEFINE_int32(clients, 10, "Number of client threads");  //NOLINT
-DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT
+DEFINE_bool(core_affinity, false, "Whether threads are assigned to cores");  //NOLINT
 DEFINE_int32(initial_core, 1, "initial core number, that the bunch of cores assignment begins with");  //NOLINT
 DEFINE_bool(minimum, false, "run with minimum amount of data");  //NOLINT
 DEFINE_bool(assign_numa_nodes_uniformly, true, "assign cores uniformly on all numa nodes - setting true automatically sets core_affinity=true");  //NOLINT
@@ -263,9 +263,6 @@ bool fill_from_flags(
         cfg.default_partitions(1);
     }
 
-    if (cfg.assign_numa_nodes_uniformly()) {
-        cfg.core_affinity(true);
-    }
     return true;
 }
 

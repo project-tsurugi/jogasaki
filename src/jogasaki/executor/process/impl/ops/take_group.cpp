@@ -183,7 +183,7 @@ std::vector<details::take_group_field> take_group::create_fields(
     BOOST_ASSERT(columns.size() <= key_meta.field_count()+value_meta.field_count());  //NOLINT
                                                   // it's possible requested columns are only part of exchange fields
     fields.resize(columns.size());
-    auto num_keys = 0;
+    [[maybe_unused]] auto num_keys = 0;
     for(auto&& c : columns) {
         if(order.is_key(c.source())) {
             ++num_keys;

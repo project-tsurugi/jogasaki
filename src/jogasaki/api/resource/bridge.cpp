@@ -301,6 +301,18 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
         }
         ret->key_distribution(static_cast<key_distribution_kind>(idx));
     }
+    if (auto v = jogasaki_config->get<std::size_t>("dev_initial_core")) {
+        ret->initial_core(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("dev_core_affinity")) {
+        ret->core_affinity(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("dev_assign_numa_nodes_uniformly")) {
+        ret->assign_numa_nodes_uniformly(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::size_t>("dev_force_numa_node")) {
+        ret->force_numa_node(v.value());
+    }
     return true;
 }
 

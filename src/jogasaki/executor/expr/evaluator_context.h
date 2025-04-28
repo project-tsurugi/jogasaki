@@ -60,7 +60,7 @@ enum class loss_precision_policy : std::size_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(loss_precision_policy value) noexcept {
     using namespace std::string_view_literals;
@@ -99,7 +99,7 @@ enum class range_error_policy : std::size_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(range_error_policy value) noexcept {
     using namespace std::string_view_literals;

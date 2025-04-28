@@ -220,8 +220,8 @@ public:
 
 /**
  * @brief returns string representation of the operator_base
- * @param op the target orerator_base
- * @return the corresponded string representation
+ * @param op the target operator_base
+ * @return the corresponding string representation
  */
 [[nodiscard]] inline std::string_view to_parent_operator_name(operator_base const& op) noexcept {
     using namespace std::string_view_literals;

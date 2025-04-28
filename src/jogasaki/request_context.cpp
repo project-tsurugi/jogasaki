@@ -89,7 +89,7 @@ bool request_context::status_code(status val, std::string_view msg) noexcept {
         s = status_code_.load();
         if (s != status::ok) {
             if(val != status::err_inactive_transaction) {
-                // Inactive tx occurs very frequentyly, so avoid logging here.
+                // Inactive tx occurs very frequently, so avoid logging here.
                 VLOG_LP(log_error) << "Status code " << val << "(\"" << msg << "\")"
                                                                                " is reported subsequently following the original error " << s << ".";
             }
@@ -173,7 +173,7 @@ bool request_context::error_info(std::shared_ptr<error::error_info> const& info)
         if (s && (*s)) {
             if(info->status() != status::err_inactive_transaction &&
                 info->code() != error_code::inactive_transaction_exception) {
-                // Inactive tx occurs very frequentyly, so avoid logging here.
+                // Inactive tx occurs very frequently, so avoid logging here.
                 VLOG_LP(log_error) << "Error " << info->code() << "(\"" << info->message() << "\")"
                                                                                               " is reported subsequently following the original error " << s->code() << ".";
             }

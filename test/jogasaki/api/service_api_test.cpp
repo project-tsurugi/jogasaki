@@ -1613,7 +1613,7 @@ TEST_F(service_api_test, get_transaction_status) {
 }
 
 TEST_F(service_api_test, get_transaction_status_auto_dispose) {
-    // same as get_transaction_status, but auto_dispose = true that causes transaction to be disposed after succesful commit
+    // same as get_transaction_status, but auto_dispose = true that causes transaction to be disposed after successful commit
     using ts = ::jogasaki::proto::sql::response::TransactionStatus;
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);

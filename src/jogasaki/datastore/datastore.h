@@ -33,7 +33,7 @@ enum class datastore_kind : std::int32_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(datastore_kind value) noexcept {
     using namespace std::string_view_literals;
@@ -96,7 +96,7 @@ public:
      * @return unavailable BLOB file if there is no BLOB file for the reference,
      *   that is, the BLOB file has not been registered or has already been removed.
      * @attention the returned BLOB file is only effective
-     *    during the transaction that has provided the corresponded BLOB reference.
+     *    during the transaction that has provided the corresponding BLOB reference.
      */
     [[nodiscard]] virtual limestone::api::blob_file get_blob_file(limestone::api::blob_id_type reference) = 0;
 };

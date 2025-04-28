@@ -52,12 +52,12 @@ configurationクラスのパラメータ名はtsurugi.iniの名前と同じも�
 tsurugi.iniに追加したものについては、tsurugi.iniの内容が正しく実行時に反映されているかをユーザーが確認する目的でサーバーログに出力する。
 https://github.com/project-tsurugi/jogasaki/blob/e6de63be570fabd9a607a6f65ee7129c3d43148f/src/jogasaki/api/impl/database.cpp#L151
 
-configurationに追加したものについては、database開始時にデフォルト値と異なるものをサーバーログに主力しているが、こちらは開発者のデバッグ用途である。
+configurationに追加したものについては、database開始時にデフォルト値と異なるものをサーバーログに出力しているが、こちらは開発者のデバッグ用途である。
 https://github.com/project-tsurugi/jogasaki/blob/e6de63be570fabd9a607a6f65ee7129c3d43148f/include/jogasaki/configuration.h#L453
 
-## tusurgi.iniのデフォルト値とconfigurationのデフォルト値
+## tsurugi.iniのデフォルト値とconfigurationのデフォルト値
 
-tusurgi.iniのデフォルト値とconfigurationのデフォルト値(configurationのデフォルトコンストラクタで詰められる値)は基本的に一致させているが、一部例外もある。
+tsurugi.iniのデフォルト値とconfigurationのデフォルト値(configurationのデフォルトコンストラクタで詰められる値)は基本的に一致させているが、一部例外もある。
 これは、単体テストケースではconfigurationの設定が主に使用されるため、テスト実行時の事情により本番環境と異なる構成で行いたい場合がある(テスト実行に時間がかかりすぎるなど)ためである。
 本番環境でサーバープロセスとして起動する場合は、tsurugi.iniとそのデフォルト値が使用されるので、configurationのデフォルト値は使用されない。
 

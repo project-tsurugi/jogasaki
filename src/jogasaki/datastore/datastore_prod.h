@@ -70,7 +70,7 @@ public:
      *   that is, the BLOB file has not been registered or has already been
      * removed.
      * @attention the returned BLOB file is only effective
-     *    during the transaction that has provided the corresponded BLOB
+     *    during the transaction that has provided the corresponding BLOB
      * reference.
      */
     [[nodiscard]] limestone::api::blob_file get_blob_file(limestone::api::blob_id_type reference) override;

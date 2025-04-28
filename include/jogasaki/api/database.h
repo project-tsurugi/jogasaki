@@ -95,7 +95,7 @@ public:
      * @brief prepare sql statement and create prepared statement
      * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
      * This function stores the prepared statement internally and returns its handle, which must be released with
-     * destoroy_statement() function when caller finishes using the statement.
+     * destroy_statement() function when caller finishes using the statement.
      * @param sql the sql text string to prepare
      * @param statement [out] the handle to be filled with one for the created prepared statement
      * @return status::ok when successful
@@ -112,7 +112,7 @@ public:
      * @brief prepare sql statement and store prepared statement internally
      * @details Prepared statement is the form of parsed statement with placeholders (not resolved.)
      * This function stores the prepared statement internally and returns its handle, which must be released with
-     * destoroy_statement() function when caller finishes using the statement.
+     * destroy_statement() function when caller finishes using the statement.
      * @param sql the sql text string to prepare
      * @param variables the placeholder variable name/type mapping
      * @param statement [out] the handle to be filled with one for the created prepared statement

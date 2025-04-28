@@ -178,7 +178,7 @@ private:
 /**
  * @brief returns the label of the given enum value.
  * @param value the enum value
- * @return the corresponded label
+ * @return the corresponding label
  */
 inline constexpr std::string_view to_string_view(transaction_option::transaction_type value) {
     switch (value) {

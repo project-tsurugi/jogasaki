@@ -220,7 +220,7 @@ public:
         /**
          * @brief find key/value on the hash table
          * @param key the record to find
-         * @param precalculated_hash precalulated hash corresponding to the key
+         * @param precalculated_hash precalculated hash corresponding to the key
          * @return iterator on the found record
          * @return end() when not found
          * @note this doesn't change the state of internal iterator. No const is specified as hopscotch doesn't either.

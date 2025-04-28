@@ -36,7 +36,7 @@ enum class statement_kind : std::size_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(statement_kind value) noexcept {
     using namespace std::string_view_literals;

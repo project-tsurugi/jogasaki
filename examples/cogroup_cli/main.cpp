@@ -63,7 +63,7 @@ DEFINE_int32(thread_pool_size, 10, "Thread pool size");  //NOLINT
 DEFINE_bool(use_multithread, true, "whether using multiple threads");  //NOLINT
 DEFINE_int32(downstream_partitions, 10, "Number of downstream partitions");  //NOLINT
 DEFINE_int32(left_upstream_partitions, 5, "Number of left upstream partitions");  //NOLINT
-DEFINE_int32(right_upstream_partitions, 5, "Number of rifht upstream partitions");  //NOLINT
+DEFINE_int32(right_upstream_partitions, 5, "Number of right upstream partitions");  //NOLINT
 DEFINE_int32(records_per_partition, 100000, "Number of records per partition");  //NOLINT
 DEFINE_int32(chunk_size, 1000000, "Number of records per chunk");  //NOLINT
 DEFINE_bool(core_affinity, true, "Whether threads are assigned to cores");  //NOLINT

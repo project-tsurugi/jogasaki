@@ -43,7 +43,7 @@ enum class context_state {
 /**
  * @brief returns string representation of the context_state.
  * @param state the target context_state
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(context_state state) noexcept {
     using namespace std::string_view_literals;

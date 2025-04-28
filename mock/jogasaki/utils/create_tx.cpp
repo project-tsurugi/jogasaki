@@ -75,7 +75,7 @@ std::shared_ptr<api::transaction_handle> create_transaction(
     if(g_tx_option && g_tx_option->force_occ) {
         return create_transaction(db, false, false);
     }
-    // until LTX build becomes stables, test mainly with LTX //TODO
+    // until LTX build becomes stable, test mainly with LTX //TODO
     (void) force_ltx;
     auto& impl = jogasaki::api::impl::get_impl(db);
     std::vector<std::string> wp{};

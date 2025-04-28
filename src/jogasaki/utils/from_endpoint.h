@@ -28,7 +28,7 @@ namespace relation = takatori::relation;
 /**
  * @brief convert takatori::relation::join_kind to jogasaki::kvs::join_kind
  * @param kind the target kind
- * @return the corresponded kind
+ * @return the corresponding kind
  * @note this function is public for testing
  */
 kvs::end_point_kind from(relation::endpoint_kind type);

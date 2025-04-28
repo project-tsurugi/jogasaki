@@ -80,7 +80,7 @@ public:
     bool shutdown(framework::environment& env) override;
 
     /**
-     * @brief destructor the object
+     * @brief destruct the object
      */
     ~resource() override;
 

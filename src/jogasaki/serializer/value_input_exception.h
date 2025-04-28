@@ -94,7 +94,7 @@ private:
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 constexpr std::string_view to_string_view(value_input_exception::reason_code value) noexcept {
     using namespace std::string_view_literals;

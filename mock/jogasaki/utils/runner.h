@@ -212,7 +212,7 @@ public:
 
     /**
      * @brief indicate whether to show the executed statement in textual format (explained plan)
-     * @param arg flag to dump expalined plan
+     * @param arg flag to dump explained plan
      * @return *this
      */
     runner& show_plan(bool arg) {

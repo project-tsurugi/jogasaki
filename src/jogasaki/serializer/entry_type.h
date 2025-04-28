@@ -75,7 +75,7 @@ enum class entry_type {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 constexpr inline std::string_view to_string_view(entry_type value) noexcept {
     using namespace std::string_view_literals;

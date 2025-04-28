@@ -44,7 +44,7 @@ enum class lob_data_provider : std::int32_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(lob_data_provider value) noexcept {
     using namespace std::string_view_literals;

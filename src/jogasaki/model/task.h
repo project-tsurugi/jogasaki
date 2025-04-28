@@ -29,7 +29,7 @@ enum class task_kind : std::size_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(task_kind value) noexcept {
     using namespace std::string_view_literals;
@@ -86,7 +86,7 @@ enum class task_result : std::size_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(task_result value) noexcept {
     using namespace std::string_view_literals;
@@ -131,7 +131,7 @@ enum class task_transaction_kind : std::uint32_t {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(task_transaction_kind value) noexcept {
     using namespace std::string_view_literals;

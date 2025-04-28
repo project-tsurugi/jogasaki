@@ -52,7 +52,7 @@ enum class request_detail_kind {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(request_detail_kind value) noexcept {
     using namespace std::string_view_literals;
@@ -120,7 +120,7 @@ enum class request_detail_status {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(request_detail_status value) noexcept {
     using namespace std::string_view_literals;
@@ -166,7 +166,7 @@ enum class request_detail_channel_status {
 /**
  * @brief returns string representation of the value.
  * @param value the target value
- * @return the corresponded string representation
+ * @return the corresponding string representation
  */
 [[nodiscard]] constexpr inline std::string_view to_string_view(request_detail_channel_status value) noexcept {
     using namespace std::string_view_literals;

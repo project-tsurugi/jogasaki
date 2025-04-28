@@ -88,7 +88,7 @@ public:
         std::shared_ptr<response> res) override;
 
     /**
-     * @brief destructor the object
+     * @brief destruct the object
      */
     ~service() override;
 

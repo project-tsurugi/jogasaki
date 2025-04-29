@@ -370,6 +370,9 @@ inline void success<sql::response::DescribeTable>(
     success->set_table_name(std::string{tbl->simple_name()});
     success->set_schema_name("");  //FIXME schema resolution
     success->set_database_name("");  //FIXME database name resolution
+    if (! tbl->description().empty()) {
+        success->set_description(tbl->description());
+    }
     auto* cols = success->mutable_columns();
     for(auto&& col : tbl->columns()) {
         if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
@@ -379,6 +382,9 @@ inline void success<sql::response::DescribeTable>(
         c->set_name(std::string{col.simple_name()});
         set_column_type(col.type(), *c);
         c->set_nullable(col.criteria().nullity().nullable());
+        if (! col.description().empty()) {
+            c->set_description(col.description());
+        }
     }
     reply(res, r, req_info);
 }

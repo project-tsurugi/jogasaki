@@ -65,6 +65,9 @@ message SequenceDefinition {
 
     // whether to allow value overflow.
     bool cycle = 24;
+
+    // optional description
+    string description = 40;
 }
 
 // -- functions
@@ -163,6 +166,9 @@ message TableColumn {
 
     // the table column features.
     repeated TableColumnFeature column_features = 100;
+
+    // optional description
+    string description = 120;
 }
 
 // the definition of tables.
@@ -179,6 +185,9 @@ message TableDefinition {
 
     // the table columns.
     repeated TableColumn columns = 21;
+
+    // optional description
+    string description = 30;
 
     // TODO: constraints.
 }
@@ -267,6 +276,9 @@ message IndexDefinition {
 
     // the index features.
     repeated IndexFeature index_features = 42;
+
+    // optional description
+    string description = 50;
 }
 
 /* For text-based table definition (deprecated). */

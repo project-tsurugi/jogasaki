@@ -69,7 +69,11 @@ std::shared_ptr<error::error_info> create_storage_option(
 }
 
 std::shared_ptr<error::error_info>
-validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out) {
+validate_extract(
+    std::string_view payload,
+    proto::metadata::storage::IndexDefinition& out,
+    std::uint64_t& message_version
+) {
     proto::metadata::storage::Storage st{};
     if (! st.ParseFromArray(payload.data(), static_cast<int>(payload.size()))) {
         return create_error_info(
@@ -78,7 +82,8 @@ validate_extract(std::string_view payload, proto::metadata::storage::IndexDefini
             status::err_unknown
         );
     }
-    if(st.message_version() != metadata_format_version) {
+    message_version = st.message_version();
+    if(st.message_version() < compatible_metadata_format_version) {
         return create_error_info(
             error_code::sql_execution_exception,
             string_builder{} << "Incompatible metadata version (" << st.message_version() <<
@@ -99,7 +104,8 @@ std::shared_ptr<error::error_info> deserialize_storage_option_into_provider(
     bool overwrite
 ) {
     proto::metadata::storage::IndexDefinition idef{};
-    if(auto err = recovery::validate_extract(payload, idef)) {
+    std::uint64_t v{};
+    if(auto err = recovery::validate_extract(payload, idef, v)) {
         return err;
     }
     if(auto err = recovery::deserialize_into_provider(idef, src, out, overwrite)) {

@@ -2410,6 +2410,48 @@ TEST_F(service_api_test, describe_pkless_table) {
     EXPECT_EQ(sql::common::AtomType::INT4, result.columns_[0].atom_type_);
 }
 
+TEST_F(service_api_test, describe_table_description) {
+    auto table_ddl = R"(
+        /**
+        * Example table t.
+        * This is a test table.
+        */
+        CREATE TABLE t (
+
+        /** The key column. */
+        k INT PRIMARY KEY,
+
+        /**
+         * The value column.
+         * column for value.
+         */
+        v INT
+
+        )
+    )";
+    execute_statement(table_ddl);
+    auto s = encode_describe_table("t");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ("t", result.table_name_);
+    EXPECT_EQ("Example table t.\nThis is a test table.", result.description_);
+
+    ASSERT_EQ(2, result.columns_.size());
+    EXPECT_EQ("k", result.columns_[0].name_);
+    EXPECT_EQ(sql::common::AtomType::INT4, result.columns_[0].atom_type_);
+    EXPECT_EQ("The key column.", result.columns_[0].description_);
+    EXPECT_EQ("v", result.columns_[1].name_);
+    EXPECT_EQ(sql::common::AtomType::INT4, result.columns_[1].atom_type_);
+    EXPECT_EQ("The value column.\ncolumn for value.", result.columns_[1].description_);
+}
+
 TEST_F(service_api_test, empty_result_set) {
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);

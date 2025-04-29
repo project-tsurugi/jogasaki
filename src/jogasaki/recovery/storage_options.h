@@ -70,11 +70,15 @@ std::shared_ptr<error::error_info> deserialize_storage_option_into_provider(
  * @brief validate and extract the storage option
  * @param payload the storage option string
  * @param out [out] the output index definition
+ * @param message_version [out] the message version of the index definition
  * @return an error_info if the validation or extraction fails
  * @return nullptr if successful
  */
-std::shared_ptr<error::error_info>
-validate_extract(std::string_view payload, proto::metadata::storage::IndexDefinition& out);
+std::shared_ptr<error::error_info> validate_extract(
+    std::string_view payload,
+    proto::metadata::storage::IndexDefinition& out,
+    std::uint64_t& message_version
+);
 
 /**
  * @brief merge the deserialized storage option into target configurable provider and remove from source

@@ -1059,7 +1059,8 @@ status database::recover_index_metadata(
             continue;
         }
         proto::metadata::storage::IndexDefinition idef{};
-        if(auto err = recovery::validate_extract(payload, idef)) {
+        std::uint64_t v{};
+        if(auto err = recovery::validate_extract(payload, idef, v)) {
             LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata: " << *err;
             return err->status();
         }
@@ -1067,7 +1068,7 @@ status database::recover_index_metadata(
             skipped.emplace_back(n);
             continue;
         }
-        LOG_LP(INFO) << "Recovering metadata \"" << n << "\": " << utils::to_debug_string(idef);
+        LOG_LP(INFO) << "Recovering metadata \"" << n << "\" (v=" << v << ") : " << utils::to_debug_string(idef);
         if(auto err = recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
             LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata:" << *err;
             return err->status();

@@ -254,6 +254,7 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
             auto& value = c.default_value().element<yugawara::storage::column_value_kind::sequence>();
             auto seq = col->mutable_identity_next();
             seq->mutable_name()->mutable_element_name()->assign(value->simple_name());
+            seq->mutable_description()->assign(value->description());
             if(value->definition_id().has_value()) {
                 seq->set_definition_id(*value->definition_id());
             }
@@ -282,6 +283,7 @@ void serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         tbl.set_definition_id(*t.definition_id());
     }
     tbl.mutable_name()->mutable_element_name()->assign(t.simple_name());
+    tbl.mutable_description()->assign(t.description());
     auto* cols = tbl.mutable_columns();
     for(auto&& c : t.columns()) {
         auto* col = cols->Add();
@@ -290,6 +292,7 @@ void serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         set_type(col, c);
         set_default(col, c);
         set_column_features(col, c);
+        col->mutable_description()->assign(c.description());
     }
 }
 
@@ -322,7 +325,7 @@ void serialize_index(
     }
     auto* name = idef.mutable_name();
     name->mutable_element_name()->assign(idx.simple_name());
-
+    idef.mutable_description()->assign(idx.description());
     idef.set_synthesized(option.synthesized_);
 
     auto* keys = idef.mutable_keys();
@@ -507,7 +510,8 @@ yugawara::storage::column_value default_value(
                 v.increment_value(),
                 v.min_value(),
                 v.max_value(),
-                v.cycle()
+                v.cycle(),
+                v.description()
             );
             if(v.definition_id_optional_case() != proto::metadata::storage::SequenceDefinition::DEFINITION_ID_OPTIONAL_NOT_SET) {
                 seq->definition_id(v.definition_id());
@@ -567,7 +571,8 @@ yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn
         type(column),
         std::move(criteria),
         default_value(column, provider),
-        create_column_feature_set(column)
+        create_column_feature_set(column),
+        column.description()
     };
 }
 
@@ -597,7 +602,8 @@ void deserialize_table(
         out = provider.add_table(std::make_shared<yugawara::storage::table>(
             definition_id,
             tdef.name().element_name(),
-            std::move(columns)
+            std::move(columns),
+            tdef.description()
         ), overwrite);
     } catch (std::invalid_argument& e) {
         throw_exception(storage_metadata_exception{
@@ -686,7 +692,8 @@ void deserialize_index(
         std::string{simple_name},
         std::move(keys),
         std::move(values),
-        features(idef)
+        features(idef),
+        idef.description()
     );
 }
 

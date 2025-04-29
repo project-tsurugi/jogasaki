@@ -654,13 +654,16 @@ inline std::string encode_dispose_transaction(api::transaction_handle tx_handle)
 struct column_info {
     column_info(
         std::string_view name,
-        sql::common::AtomType atom_type
+        sql::common::AtomType atom_type,
+        std::string_view description = {}
     ) :
         name_(name),
-        atom_type_(atom_type)
+        atom_type_(atom_type),
+        description_(description)
     {}
     std::string name_{};
     sql::common::AtomType atom_type_{};
+    std::string description_{};
 };
 
 struct table_info {
@@ -668,6 +671,7 @@ struct table_info {
     std::string schema_name_{};
     std::string table_name_{};
     std::vector<column_info> columns_{};
+    std::string description_{};
 };
 
 inline std::pair<table_info, error> decode_describe_table(std::string_view res) {
@@ -686,14 +690,15 @@ inline std::pair<table_info, error> decode_describe_table(std::string_view res) 
 
     std::vector<column_info> cols{};
     for(auto&& c : dt.success().columns()) {
-        cols.emplace_back(c.name(), c.atom_type());
+        cols.emplace_back(c.name(), c.atom_type(), c.description());
     }
 
     table_info info{
         dt.success().database_name(),
         dt.success().schema_name(),
         dt.success().table_name(),
-        std::move(cols)
+        std::move(cols),
+        dt.success().description()
     };
     return {info, {}};
 }

@@ -23,6 +23,7 @@
 #include <jogasaki/common_types.h>
 #include <jogasaki/executor/sequence/info.h>
 #include <jogasaki/kvs/transaction.h>
+#include <tateyama/utils/cache_align.h>
 
 namespace jogasaki::executor::sequence {
 
@@ -117,7 +118,16 @@ public:
 private:
     class info const* info_{};
     manager* parent_{};
-    std::atomic<sequence_versioned_value> body_{};
+
+    /**
+     * @brief aligned versioned value to be used in atomic operations
+     * @details Generally it's recommended to align custom struct to its size boundary when used in std::atomic.
+     * Also, for 128-bit types, there has been a confusion around libatomic and clearly assign it on 16-bytes
+     * helps clang to avoid falling down to libatomic.
+     */
+    struct alignas(16) aligned_sequence_versioned_value : public sequence_versioned_value {};
+
+    std::atomic<aligned_sequence_versioned_value> body_{};
 
 };
 

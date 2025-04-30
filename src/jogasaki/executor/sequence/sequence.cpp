@@ -43,8 +43,8 @@ sequence_versioned_value sequence::get() const noexcept {
 
 either<sequence_error, sequence_value> sequence::next(kvs::transaction& tx) {
     parent_->mark_sequence_used_by(tx, *this);
-    sequence_versioned_value cur{};
-    sequence_versioned_value next{};
+    aligned_sequence_versioned_value cur{};
+    aligned_sequence_versioned_value next{};
     do {
         cur = body_.load();
         if(cur.version_ == initial_sequence_version) {

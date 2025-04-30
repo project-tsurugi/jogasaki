@@ -23,7 +23,6 @@
 #include <jogasaki/common_types.h>
 #include <jogasaki/executor/sequence/info.h>
 #include <jogasaki/kvs/transaction.h>
-#include <tateyama/utils/cache_align.h>
 
 namespace jogasaki::executor::sequence {
 

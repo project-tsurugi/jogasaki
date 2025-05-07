@@ -61,8 +61,6 @@ public:
         memory_resource* resource
     ) noexcept;
 
-    any add_any(any const& left, any const& right);
-    any subtract_any(any const& left, any const& right);
     any concat_any(any const& left, any const& right);
     any multiply_any(any const& left, any const& right);
     any divide_any(any const& left, any const& right);
@@ -178,5 +176,6 @@ private:
 );
 
 [[nodiscard]] any remainder_any(any const& left, any const& right);
-
+[[nodiscard]] any add_any(any const& left, any const& right);
+[[nodiscard]] any subtract_any(any const& left, any const& right);
 }  // namespace jogasaki::executor::expr

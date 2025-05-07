@@ -38,7 +38,8 @@ enum class scalar_function_kind : std::size_t {
     abs,
     position,
     mod,
-    substr
+    substr,
+    ceil
 };
 
 /**
@@ -65,6 +66,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::position: return "position"sv;
         case kind::mod: return "mod"sv;
         case kind::substr: return "substr"sv;
+        case kind::ceil: return "ceil"sv;
     }
     std::abort();
 }

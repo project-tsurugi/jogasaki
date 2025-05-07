@@ -551,6 +551,57 @@ void add_builtin_scalar_functions(
             },
         });
     }
+    /////////
+    // ceil
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::ceil,
+            builtin::ceil,
+            1
+        );
+        auto name = "ceil";
+        auto id = scalar_function_id::id_11033;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4()},
+        });
+        id = scalar_function_id::id_11034;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8()},
+        });
+        id = scalar_function_id::id_11035;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4()},
+        });
+        id = scalar_function_id::id_11036;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8()},
+        });
+        id = scalar_function_id::id_11037;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal()},
+        });
+    }
 }
 
 namespace builtin {
@@ -979,6 +1030,49 @@ data::any mod(evaluator_context&, sequence_view<data::any> args) {
     auto& second = static_cast<data::any&>(args[1]);
     if (second.empty()) { return {}; }
     return expr::remainder_any(first, second);
+}
+
+data::any ceil(evaluator_context&, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1); // NOLINT
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+    switch (src.type_index()) {
+        case data::any::index<runtime_t<kind::int4>>: {
+            return data::any{
+                std::in_place_type<runtime_t<kind::int4>>, src.to<runtime_t<kind::int4>>()};
+        }
+        case data::any::index<runtime_t<kind::int8>>: {
+            return data::any{
+                std::in_place_type<runtime_t<kind::int8>>, src.to<runtime_t<kind::int8>>()};
+        }
+        case data::any::index<runtime_t<kind::float4>>: {
+            auto ceil_value = src.to<runtime_t<kind::float4>>();
+            return data::any{std::in_place_type<runtime_t<kind::float4>>, std::ceil(ceil_value)};
+        }
+        case data::any::index<runtime_t<kind::float8>>: {
+            auto ceil_value = src.to<runtime_t<kind::float8>>();
+            return data::any{std::in_place_type<runtime_t<kind::float8>>, std::ceil(ceil_value)};
+        }
+        case data::any::index<runtime_t<kind::decimal>>: {
+            auto value = src.to<runtime_t<kind::decimal>>();
+            auto type  = std::in_place_type<runtime_t<kind::decimal>>;
+            auto sign  = value.sign();
+            auto exp   = value.exponent();
+            if (sign == 0 || exp >= 0) { return src; }
+            constexpr auto one_value = takatori::decimal::triple{+1, 0, 1, 0};
+            auto one                 = data::any{type, one_value};
+            auto remain              = expr::remainder_any(src, one);
+            auto res                 = expr::subtract_any(src, remain);
+            if (sign == 1) {
+                auto check = remain.to<runtime_t<kind::decimal>>();
+                if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return res; }
+                return expr::add_any(res, one);
+            }
+            return res;
+        }
+        default: std::abort();
+    }
+    std::abort();
 }
 
 } // namespace builtin

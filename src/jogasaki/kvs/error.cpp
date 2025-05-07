@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 
 #include <cstdlib>
 #include <ostream>
-#include <boost/stacktrace/stacktrace.hpp>
 #include <glog/logging.h>
 
 #include <sharksfin/StatusCode.h>
+#include <takatori/util/stacktrace.h>
 
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>

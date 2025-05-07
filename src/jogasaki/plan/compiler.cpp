@@ -29,7 +29,6 @@
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
 #include <boost/move/utility_core.hpp>
-#include <boost/stacktrace/stacktrace.hpp>
 #include <glog/logging.h>
 
 #include <takatori/descriptor/element.h>
@@ -68,6 +67,7 @@
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/reference_list_view.h>
 #include <takatori/util/sequence_view.h>
+#include <takatori/util/stacktrace.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/aggregate/declaration.h>
 #include <yugawara/analyzer/index_estimator.h>

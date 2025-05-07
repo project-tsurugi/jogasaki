@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
-#include <boost/stacktrace/stacktrace.hpp>
+
+#include <takatori/util/stacktrace.h>
 
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>

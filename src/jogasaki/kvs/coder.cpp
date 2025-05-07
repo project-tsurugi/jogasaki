@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include <functional>
 #include <memory>
 #include <ostream>
-#include <boost/stacktrace/stacktrace.hpp>
 #include <glog/logging.h>
 
 #include <takatori/datetime/date.h>
@@ -27,6 +26,7 @@
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 #include <takatori/util/exception.h>
+#include <takatori/util/stacktrace.h>
 
 #include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>

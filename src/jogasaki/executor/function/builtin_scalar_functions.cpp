@@ -1095,12 +1095,12 @@ data::any ceil(evaluator_context&, sequence_view<data::any> args) {
             return src;
         }
         case data::any::index<runtime_t<kind::float4>>: {
-            auto ceil_value = src.to<runtime_t<kind::float4>>();
-            return data::any{std::in_place_type<runtime_t<kind::float4>>, std::ceil(ceil_value)};
+            auto value = src.to<runtime_t<kind::float4>>();
+            return data::any{std::in_place_type<runtime_t<kind::float4>>, std::ceil(value)};
         }
         case data::any::index<runtime_t<kind::float8>>: {
-            auto ceil_value = src.to<runtime_t<kind::float8>>();
-            return data::any{std::in_place_type<runtime_t<kind::float8>>, std::ceil(ceil_value)};
+            auto value = src.to<runtime_t<kind::float8>>();
+            return data::any{std::in_place_type<runtime_t<kind::float8>>, std::ceil(value)};
         }
         case data::any::index<runtime_t<kind::decimal>>: {
             auto value = src.to<runtime_t<kind::decimal>>();
@@ -1135,12 +1135,12 @@ data::any floor(evaluator_context&, sequence_view<data::any> args) {
             return src;
         }
         case data::any::index<runtime_t<kind::float4>>: {
-            auto ceil_value = src.to<runtime_t<kind::float4>>();
-            return data::any{std::in_place_type<runtime_t<kind::float4>>, std::floor(ceil_value)};
+            auto value = src.to<runtime_t<kind::float4>>();
+            return data::any{std::in_place_type<runtime_t<kind::float4>>, std::floor(value)};
         }
         case data::any::index<runtime_t<kind::float8>>: {
-            auto ceil_value = src.to<runtime_t<kind::float8>>();
-            return data::any{std::in_place_type<runtime_t<kind::float8>>, std::floor(ceil_value)};
+            auto value = src.to<runtime_t<kind::float8>>();
+            return data::any{std::in_place_type<runtime_t<kind::float8>>, std::floor(value)};
         }
         case data::any::index<runtime_t<kind::decimal>>: {
             auto value = src.to<runtime_t<kind::decimal>>();

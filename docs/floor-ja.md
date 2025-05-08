@@ -24,7 +24,7 @@ FLOOR(numeric_expression)
 
 * `numeric_expression`：切り下げの対象となる数値式
 
-`FLOOR` 関数は、`numeric_expression` の以下の最小の整数値を返します。
+`FLOOR` 関数は、`numeric_expression` の以下の最大の整数値を返します。
 
 ## 外部仕様
 

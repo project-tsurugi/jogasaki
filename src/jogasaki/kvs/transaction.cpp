@@ -53,7 +53,10 @@ transaction::transaction(
 
 transaction::~transaction() noexcept {
     if (active_) {
-        sharksfin::transaction_abort(tx_, false);
+        // transaction is not committed or aborted yet.
+        // Normally this should not happen, but in order to conform to api contract with cc,
+        // we abort the tx here because transaction has been started when this object is created.
+        sharksfin::transaction_abort(tx_);
     }
     sharksfin::transaction_dispose(tx_);
 }

@@ -149,8 +149,10 @@ private:
     sharksfin::TransactionControlHandle tx_{};
     sharksfin::TransactionHandle handle_{};
     kvs::database* database_{};
-    bool active_{false};
     std::shared_ptr<sharksfin::TransactionInfo> info_{};
+
+    // mutable members
+    std::atomic_bool active_{false};
 
     status init(kvs::transaction_option const& options);
 };

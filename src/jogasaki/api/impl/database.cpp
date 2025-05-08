@@ -178,7 +178,6 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(zone_offset) " << cfg.zone_offset() << " : system time zone offset in minutes";
     LOGCFG << "(scan_block_size) " << cfg.scan_block_size() << " : max records processed by scan operator before yielding to other task";
     LOGCFG << "(scan_yield_interval) " << cfg.scan_yield_interval() << " : max time (ms) processed by scan operator before yielding to other tasks";
-    LOGCFG << "(dev_rtx_parallel_scan) " << cfg.rtx_parallel_scan() << " : whether to enable parallel scan for RTX";
     LOGCFG << "(dev_thousandths_ratio_check_local_first) " << cfg.thousandths_ratio_check_local_first() << " : how frequently (represented as count out of 1000 executions) task scheduler checks local task queue first";
     LOGCFG << "(dev_direct_commit_callback) " << cfg.direct_commit_callback() << " : whether to make callback directly from shirakami to client on pre-commit response (only for `available` and `accepted`)";
     LOGCFG << "(scan_default_parallel) " << cfg.scan_default_parallel() << " : max parallel execution count of scan tasks";

@@ -598,7 +598,6 @@ TEST_F(scan_test, scan_info_rtx_parallel_1) {
     // issues #1180
     const int parallel = 1;
     auto cfg           = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->key_distribution(key_distribution_kind::simple);
     global::config_pool(cfg);
@@ -722,7 +721,6 @@ TEST_F(scan_test, scan_info_rtx_parallel_2) {
     // issues #1180
     const int parallel = 2;
     auto cfg           = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->key_distribution(key_distribution_kind::simple);
     global::config_pool(cfg);
@@ -857,7 +855,6 @@ TEST_F(scan_test, scan_info_rtx_parallel_4) {
     // issues #1180
     const int parallel = 4;
     auto cfg           = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->key_distribution(key_distribution_kind::simple);
     global::config_pool(cfg);
@@ -977,10 +974,9 @@ TEST_F(scan_test, scan_info_rtx_parallel_4) {
 
 TEST_F(scan_test, scan_info_rtx_parallel_enabled_by_transaction_context) {
     // issues #1196 add new functionality to enable rtx parallel scan by optional setting in transaction context
-    const int parallel = 5;
+    const int parallel = 0;
     auto cfg           = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(false);
-    cfg->scan_default_parallel(5);
+    cfg->scan_default_parallel(parallel);
     cfg->key_distribution(key_distribution_kind::simple);
     global::config_pool(cfg);
     auto t0          = create_table({

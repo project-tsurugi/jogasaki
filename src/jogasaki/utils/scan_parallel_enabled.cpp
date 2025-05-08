@@ -21,14 +21,12 @@
 namespace jogasaki::utils {
 
 std::pair<bool, std::uint32_t> scan_parallel_enabled(transaction_context const& tctx) {
-    auto rtx_parallel_scan_enabled = global::config_pool()->rtx_parallel_scan();
     auto scan_parallel_count = global::config_pool()->scan_default_parallel();
     auto& option= tctx.option();
     if (option && option->scan_parallel().has_value()) {
         scan_parallel_count = option->scan_parallel().value();
-        rtx_parallel_scan_enabled = (scan_parallel_count > 0);
     }
-    return {rtx_parallel_scan_enabled, scan_parallel_count};
+    return {scan_parallel_count > 0, scan_parallel_count};
 }
 
 } // namespace jogasaki::utils

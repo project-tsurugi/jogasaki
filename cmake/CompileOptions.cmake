@@ -28,8 +28,13 @@ if(ENABLE_COVERAGE)
 endif()
 
 function(set_compile_options target_name)
-    target_compile_options(${target_name}
-        PRIVATE -Wall -Wextra -Werror)
+    if (BUILD_STRICT)
+        target_compile_options(${target_name}
+            PRIVATE -Wall -Wextra -Werror)
+    else()
+        target_compile_options(${target_name}
+            PRIVATE -Wall -Wextra)
+    endif()
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
         target_compile_options(${target_name}
             PRIVATE -Wno-dangling-reference -Wno-maybe-uninitialized)

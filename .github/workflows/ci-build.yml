@@ -8,6 +8,9 @@ on:
       os:
         type: string
         default: 'ubuntu-22.04'
+      cmake_build_option:
+        type: string
+        default: ''
 
 jobs:
   Test:
@@ -37,13 +40,14 @@ jobs:
         uses: ./.github/actions/install-dependencies
         with:
           sharksfin_implementation: ${{ env.SHARKSFIN_IMPLEMENTATION }}
+          cmake_build_option: ${{ inputs.cmake_build_option }}
 
       - name: CMake_Build
         run: |
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ${{ inputs.cmake_build_option }} ..
           cmake --build . --target all --clean-first
 
       - name: CTest
@@ -86,13 +90,14 @@ jobs:
         uses: ./.github/actions/install-dependencies
         with:
           sharksfin_implementation: ${{ env.SHARKSFIN_IMPLEMENTATION }}
+          cmake_build_option: ${{ inputs.cmake_build_option }}
 
       - name: CMake_Build
         run: |
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ${{ inputs.cmake_build_option }} ..
           cmake --build . --target all --clean-first
 
       - name: Clang-Tidy

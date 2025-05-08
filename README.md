@@ -90,7 +90,8 @@ available options:
 * `-DBUILD_TESTS=ON` - build test programs
 * `-DBUILD_DOCUMENTS=ON` - build documents by doxygen
 * `-DBUILD_EXAMPLES=ON` - build example applications
-* `-DINSTALL_EXAMPLES=ON` - install example applications (requires BUILD_EXAMPLES enabled) 
+* `-DBUILD_STRICT=OFF` - don't treat compile warnings as build errors
+* `-DINSTALL_EXAMPLES=ON` - install example applications (requires BUILD_EXAMPLES enabled)
 * `-DSHARKSFIN_IMPLEMENTATION=<implementation name>` - switch sharksfin implementation. Available options are `memory` and `shirakami` (default: `shirakami`)
 * `-DPERFORMANCE_TOOLS=ON` - enable performance tooling to measure engine performance
 * `-DINSTALL_API_ONLY=ON` - configure build directory just to install public header files. Use when other components require jogasaki public headers.

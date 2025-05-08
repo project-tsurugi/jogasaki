@@ -150,13 +150,13 @@ TEST_F(function_ceil_test, maxbigint) {
 }
 TEST_F(function_ceil_test, minbigint) {
     execute_statement("create table t (c0 BIGINT)");
-    execute_statement("insert into t values (-9223372036854775807)");
+    execute_statement("insert into t values (-9223372036854775808)");
 
     std::string query = std::string("SELECT ceil(c0) FROM t");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int8>(-9223372036854775807)), result[0])
+    EXPECT_EQ((create_nullable_record<kind::int8>(-9223372036854775808UL)), result[0])
         << "Failed query: " << query;
 }
 

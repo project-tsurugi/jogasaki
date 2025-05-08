@@ -1038,12 +1038,10 @@ data::any ceil(evaluator_context&, sequence_view<data::any> args) {
     if (src.empty()) { return {}; }
     switch (src.type_index()) {
         case data::any::index<runtime_t<kind::int4>>: {
-            return data::any{
-                std::in_place_type<runtime_t<kind::int4>>, src.to<runtime_t<kind::int4>>()};
+            return src;
         }
         case data::any::index<runtime_t<kind::int8>>: {
-            return data::any{
-                std::in_place_type<runtime_t<kind::int8>>, src.to<runtime_t<kind::int8>>()};
+            return src;
         }
         case data::any::index<runtime_t<kind::float4>>: {
             auto ceil_value = src.to<runtime_t<kind::float4>>();

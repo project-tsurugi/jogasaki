@@ -30,3 +30,4 @@ CEIL(numeric_expression)
 
 * `Tsurugi` では `numeric_expression` の型として `INTEGER`、`BIGINT`、`DECIMAL`、`FLOAT`、`DOUBLE` のみ許容されます。
 * 入力値が `NULL` の場合、戻り値は `NULL` となります。
+* 入力値が `FLOAT` および `DOUBLE` 型の `Infinity`,`-Infinity`,`-0.0`,`NaN` のいずれかである場合は、その値をそのまま返します。

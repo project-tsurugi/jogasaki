@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 #include <boost/assert.hpp>
-#include <boost/stacktrace/stacktrace.hpp>
 #include <tbb/concurrent_hash_map.h>
 
 #include <takatori/type/character.h>
@@ -38,6 +37,7 @@
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 #include <takatori/util/reference_list_view.h>
+#include <takatori/util/stacktrace.h>
 #include <tateyama/api/configuration.h>
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/request.h>

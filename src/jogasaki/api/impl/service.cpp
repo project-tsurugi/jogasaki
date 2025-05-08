@@ -28,12 +28,12 @@
 #include <variant>
 #include <boost/cstdint.hpp>
 #include <boost/dynamic_bitset/dynamic_bitset.hpp>
-#include <boost/stacktrace/stacktrace.hpp>
 #include <glog/logging.h>
 
 #include <takatori/decimal/triple.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/maybe_shared_ptr.h>
+#include <takatori/util/stacktrace.h>
 #include <takatori/util/string_builder.h>
 #include <tateyama/api/server/data_channel.h>
 #include <tateyama/api/server/request.h>

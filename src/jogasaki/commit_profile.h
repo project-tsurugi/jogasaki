@@ -15,11 +15,10 @@
  */
 #pragma once
 
-#include <atomic>
+#include <chrono>
 #include <memory>
 
 #include <jogasaki/commit_response.h>
-#include <jogasaki/error/error_info.h>
 #include <jogasaki/kvs/database.h>
 
 namespace jogasaki {

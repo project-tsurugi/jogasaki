@@ -15,11 +15,10 @@
  */
 #pragma once
 
+#include <atomic>
 #include <memory>
-#include <mutex>
 #include <ostream>
 #include <string_view>
-#include <glog/logging.h>
 
 #include <sharksfin/CallResult.h>
 #include <sharksfin/TransactionInfo.h>
@@ -28,7 +27,6 @@
 
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/status.h>
-#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::kvs {
 

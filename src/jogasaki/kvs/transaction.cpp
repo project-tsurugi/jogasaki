@@ -15,7 +15,6 @@
  */
 #include "transaction.h"
 
-#include <atomic>
 #include <utility>
 #include <vector>
 #include <glog/logging.h>
@@ -31,6 +30,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::kvs {
 

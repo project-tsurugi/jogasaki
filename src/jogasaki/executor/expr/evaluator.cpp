@@ -193,19 +193,6 @@ std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
     };
 }
 
-any engine::add_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    auto [l,r] = promote_binary_numeric(left, right);
-    switch(l.type_index()) {
-        case any::index<runtime_t<meta::field_type_kind::int4>>: return add(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
-        case any::index<runtime_t<meta::field_type_kind::int8>>: return add(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
-        case any::index<runtime_t<meta::field_type_kind::float4>>: return add(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
-        case any::index<runtime_t<meta::field_type_kind::float8>>: return add(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return add(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: return return_unsupported();
-    }
-}
-
 template <class T, class U = T>
 any subtract(T const& l, U const& r) {
     return any{std::in_place_type<T>, l-r};
@@ -214,19 +201,6 @@ any subtract(T const& l, U const& r) {
 template <>
 any subtract<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)-static_cast<decimal::Decimal>(r)};
-}
-
-any engine::subtract_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    auto [l, r] = promote_binary_numeric(left, right);
-    switch(l.type_index()) {
-        case any::index<runtime_t<meta::field_type_kind::int4>>: return subtract(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
-        case any::index<runtime_t<meta::field_type_kind::int8>>: return subtract(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
-        case any::index<runtime_t<meta::field_type_kind::float4>>: return subtract(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
-        case any::index<runtime_t<meta::field_type_kind::float8>>: return subtract(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return subtract(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: return return_unsupported();
-    }
 }
 
 template <class T, class U>
@@ -779,6 +753,31 @@ any remainder_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::decimal>>:
             return details::remainder(l.to<runtime_t<meta::field_type_kind::decimal>>(),
                 r.to<runtime_t<meta::field_type_kind::decimal>>());
+        default: return details::return_unsupported();
+    }
+}
+any add_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l,r] = details::promote_binary_numeric(left, right);
+    switch(l.type_index()) {
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return details::add(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return details::add(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return details::add(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return details::add(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::add(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        default: return details::return_unsupported();
+    }
+}
+
+any subtract_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = details::promote_binary_numeric(left, right);
+    switch(l.type_index()) {
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: return details::return_unsupported();
     }
 }

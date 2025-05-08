@@ -28,7 +28,7 @@ ABS(numeric_expression)
 
 ## 外部仕様
 
-* `Tsurugi` では `numeric_expression` の型として `INTEGER`、`BIGINT`、`DECIMAL`、`FLOAT`、`DOUBLE` のみ許容されます。
+* `Tsurugi` では `numeric_expression` の型として `INTEGER`、`BIGINT`、`DECIMAL`、`REAL`、`DOUBLE` のみ許容されます。
 * `ABS` 関数は、入力値が負の場合は正の値に変換し、正の場合はそのままの値を返します。
 * 入力値が `NULL` の場合、戻り値は `NULL` となります。
 * `ABS` の結果が数値型の最大値を超える場合、エラーを発生させます。

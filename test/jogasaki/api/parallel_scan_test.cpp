@@ -77,7 +77,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->rtx_parallel_scan(true);
         cfg->scan_default_parallel(5);
         cfg->key_distribution(key_distribution_kind::uniform);
         db_setup(cfg);
@@ -173,7 +172,6 @@ TEST_F(parallel_scan_test, count_rtx_parallel_pivot_0) {
     std::ostringstream query;
     query << "insert into t values ";
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(1);
     cfg->key_distribution(key_distribution_kind::uniform);
     global::config_pool(cfg);
@@ -206,7 +204,6 @@ TEST_F(parallel_scan_test, count_rtx_parallel_pivot_1) {
     std::ostringstream query;
     query << "insert into t values ";
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(2);
     cfg->key_distribution(key_distribution_kind::uniform);
     global::config_pool(cfg);
@@ -240,7 +237,6 @@ TEST_F(parallel_scan_test, count_rtx_parallel_pivot_3) {
     std::ostringstream query;
     query << "insert into t values ";
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(4);
     cfg->key_distribution(key_distribution_kind::uniform);
     global::config_pool(cfg);

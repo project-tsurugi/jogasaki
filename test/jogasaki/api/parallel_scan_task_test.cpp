@@ -86,7 +86,6 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->rtx_parallel_scan(true);
         db_setup(cfg);
     }
 

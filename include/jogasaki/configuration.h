@@ -451,14 +451,6 @@ public:
         zone_offset_ = arg;
     }
 
-    [[nodiscard]] bool rtx_parallel_scan() const noexcept {
-        return rtx_parallel_scan_;
-    }
-
-    void rtx_parallel_scan(bool arg) noexcept {
-        rtx_parallel_scan_ = arg;
-    }
-
     [[nodiscard]] std::size_t thousandths_ratio_check_local_first() const noexcept {
         return thousandths_ratio_check_local_first_;
     }
@@ -590,7 +582,6 @@ public:
         print_non_default(zone_offset);
         print_non_default(scan_block_size);
         print_non_default(scan_yield_interval);
-        print_non_default(rtx_parallel_scan);
         print_non_default(thousandths_ratio_check_local_first);
         print_non_default(direct_commit_callback);
         print_non_default(scan_default_parallel);
@@ -656,7 +647,6 @@ private:
     std::int32_t zone_offset_ = 0;
     std::size_t scan_block_size_ = 100;
     std::size_t scan_yield_interval_ = 1;
-    bool rtx_parallel_scan_ = false;
     std::size_t thousandths_ratio_check_local_first_ = 100;
     bool direct_commit_callback_ = false;
     std::size_t scan_default_parallel_ = 4;

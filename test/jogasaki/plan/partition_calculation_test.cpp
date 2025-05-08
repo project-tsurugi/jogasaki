@@ -170,7 +170,6 @@ TEST_F(partition_calculation_test, simple_query_rtx) {
     std::string sql     = "select * from T0";
     compiler_context ctx{};
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -188,11 +187,10 @@ TEST_F(partition_calculation_test, simple_query_rtx) {
 }
 TEST_F(partition_calculation_test, simple_query_no_rtx) {
     std::string sql     = "select * from T0";
-    const int parallel  = 3;
+    const int parallel  = 0;
     const int partition = 7;
     compiler_context ctx{};
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(false);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -215,7 +213,6 @@ TEST_F(partition_calculation_test, simple_query2_rtx) {
     const int partition = 7;
     compiler_context ctx{};
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -233,11 +230,10 @@ TEST_F(partition_calculation_test, simple_query2_rtx) {
 }
 TEST_F(partition_calculation_test, simple_query2_no_rtx) {
     std::string sql     = "select * from T0 where C1 = 1.0;";
-    const int parallel  = 3;
+    const int parallel  = 0;
     const int partition = 7;
     compiler_context ctx{};
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(false);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -259,7 +255,6 @@ TEST_F(partition_calculation_test, project_filter_rtx) {
     const int parallel  = 3;
     const int partition = 7;
     auto cfg            = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -313,10 +308,9 @@ TEST_F(partition_calculation_test, project_filter_rtx) {
 }
 TEST_F(partition_calculation_test, project_filter_no_rtx) {
     std::string sql     = "select C1+C0, C0, C1 from T0 where C1=1.0";
-    const int parallel  = 3;
+    const int parallel  = 0;
     const int partition = 7;
     auto cfg            = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(false);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -374,7 +368,6 @@ TEST_F(partition_calculation_test, left_outer_join_rtx) {
     const int partition = 7;
     std::string sql     = "select T0.C0, T1.C1 from T0 LEFT OUTER JOIN T1 ON T0.C1 = T1.C1";
     auto cfg            = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -465,11 +458,10 @@ TEST_F(partition_calculation_test, left_outer_join_rtx) {
 }
 
 TEST_F(partition_calculation_test, left_outer_join_no_rtx) {
-    const int parallel  = 3;
+    const int parallel  = 0;
     const int partition = 7;
     std::string sql     = "select T0.C0, T1.C1 from T0 LEFT OUTER JOIN T1 ON T0.C1 = T1.C1";
     auto cfg            = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(false);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -565,7 +557,6 @@ TEST_F(partition_calculation_test, union_all_rtx) {
     const int partition = 7;
     compiler_context ctx{};
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(true);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);
@@ -599,11 +590,10 @@ TEST_F(partition_calculation_test, union_all_rtx) {
 
 TEST_F(partition_calculation_test, union_all_no_rtx) {
     std::string sql     = "select * from T0 union all select * from T1";
-    const int parallel  = 3;
+    const int parallel  = 0;
     const int partition = 7;
     compiler_context ctx{};
     auto cfg = std::make_shared<configuration>();
-    cfg->rtx_parallel_scan(false);
     cfg->scan_default_parallel(parallel);
     cfg->default_partitions(partition);
     global::config_pool(cfg);

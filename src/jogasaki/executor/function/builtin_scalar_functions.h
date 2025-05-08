@@ -105,6 +105,11 @@ data::any ceil(
     sequence_view<data::any> args
 );
 
+data::any floor(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

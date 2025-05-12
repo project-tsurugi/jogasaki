@@ -120,63 +120,6 @@ TEST_F(uniform_distribution_test, common_prefix_len) {
     EXPECT_EQ(3, common_prefix_len("abcd", "abc"));
 }
 
-TEST_F(uniform_distribution_test, gen_strings_basic) {
-    auto res = generate_strings("a1", "a3", 3);
-    ASSERT_EQ(6, res.size());
-    EXPECT_EQ("a1\x00"sv, res[0]);
-    EXPECT_EQ("a1\x01"sv, res[1]);
-    EXPECT_EQ("a1\x02"sv, res[2]);
-    EXPECT_EQ("a2\x00"sv, res[3]);
-    EXPECT_EQ("a2\x01"sv, res[4]);
-    EXPECT_EQ("a2\x02"sv, res[5]);
-}
-
-TEST_F(uniform_distribution_test, gen_strings_removing_ones_outside_range) {
-    // same as gen_strings_basic but removing strings outside the range
-    auto res = generate_strings("a1\x01"sv, "a3"sv, 3);
-    ASSERT_EQ(4, res.size());
-    EXPECT_EQ("a1\x02"sv, res[0]);
-    EXPECT_EQ("a2\x00"sv, res[1]);
-    EXPECT_EQ("a2\x01"sv, res[2]);
-    EXPECT_EQ("a2\x02"sv, res[3]);
-}
-
-TEST_F(uniform_distribution_test, gen_strings_with_different_length) {
-    auto res = generate_strings("a"sv, "a\x02"sv, 3);
-    ASSERT_EQ(6, res.size());
-    EXPECT_EQ("a\x00\x00"sv, res[0]);
-    EXPECT_EQ("a\x00\x01"sv, res[1]);
-    EXPECT_EQ("a\x00\x02"sv, res[2]);
-    EXPECT_EQ("a\x01\x00"sv, res[3]);
-    EXPECT_EQ("a\x01\x01"sv, res[4]);
-    EXPECT_EQ("a\x01\x02"sv, res[5]);
-}
-
-TEST_F(uniform_distribution_test, gen_strings_with_different_length_longer_lo) {
-    auto res = generate_strings("a\x01"sv, "b"sv, 3);
-    ASSERT_EQ(1, res.size());
-    EXPECT_EQ("a\x02"sv, res[0]);
-}
-
-TEST_F(uniform_distribution_test, gen_strings_same_hi_lo) {
-    auto res = generate_strings("abc"sv, "abc"sv, 3);
-    ASSERT_EQ(0, res.size());
-}
-
-TEST_F(uniform_distribution_test, gen_strings_narrow_range) {
-    {
-        // verify that the range is too narrow to generate any strings
-        auto res = generate_strings("a\x01\xFF"sv, "a\x02"sv, 256);
-        ASSERT_EQ(0, res.size());
-    }
-    {
-        // verify that the range is narrow and only one string can be generated
-        auto res = generate_strings("a\x01\xFE"sv, "a\x02"sv, 256);
-        ASSERT_EQ(1, res.size());
-        EXPECT_EQ("a\x01\xFF"sv, res[0]);
-    }
-}
-
 TEST_F(uniform_distribution_test, generate_strings2_basic) {
     const int n = 15;  // 16 - 1
     auto pivots = generate_strings2(n, "1\x40"sv, "1\x4fzzz"sv);

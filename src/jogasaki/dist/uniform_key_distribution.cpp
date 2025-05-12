@@ -118,41 +118,6 @@ std::size_t common_prefix_len(std::string_view lo, std::string_view hi) {
     return i;
 }
 
-std::vector<std::string> generate_strings(std::string_view lo, std::string_view hi, std::size_t chars) {
-    // simple implementation to generate a set of strings contained in the range from lo to hi (exclusive)
-    // steps are as follows:
-    // 1. let l and h be the character after the common prefix in lo and hi
-    // 2. generate strings with prefix + l, prefix + (l + 1), ..., prefix + (h - 1)
-    // 3. append one of `chars` characters to each string generated in 2
-    // 4. Within the `chars` * (h - l) strings generated above, adopt only ones in the range from lo to hi
-    if(hi < lo) {
-        // invalid arguments
-        return {};
-    }
-    auto cpl = common_prefix_len(lo, hi);
-
-    // characters after the common prefix in lo and hi
-    auto h = static_cast<std::uint8_t>(cpl < hi.size() ? hi[cpl] : 0);
-    auto l = static_cast<std::uint8_t>(cpl < lo.size() ? lo[cpl] : 0);
-    std::size_t cnt = h - l;
-
-    std::vector<std::string> pivots{};
-    pivots.reserve(cnt * chars);  // at maximum
-
-    for (std::size_t i = 0; i < cnt; ++i) {
-        std::string prefix{lo.data(), cpl};
-        prefix += static_cast<char>(l + i);
-        for (std::size_t j = 0; j < chars; ++j) {
-            std::string p = prefix + static_cast<char>(j);
-            if(p <= lo || hi <= p) {
-                continue;
-            }
-            pivots.emplace_back(std::move(p));
-        }
-    }
-    return pivots;
-}
-
 std::vector<std::string> generate_strings2(std::uint64_t max_count, std::string_view lo, std::string_view hi) {
     // divide next 4-octets (32 bit) after common_prefix
 
@@ -229,20 +194,7 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
         high = range.end_key();
     }
 
-#if 0
-    std::vector<pivot_type> pivots = generate_strings(low, high);
-
-    if (max_count < pivots.size()) {
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(pivots.begin(), pivots.end(), g);
-        pivots.resize(max_count);
-    }
-
-    std::sort(pivots.begin(), pivots.end());
-#else
     std::vector<pivot_type> pivots = generate_strings2(max_count, low, high);
-#endif
 
     if(VLOG_IS_ON(log_debug)) {
         std::stringstream ss{};

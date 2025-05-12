@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -114,7 +114,7 @@ io::record_writer* task_context::external_writer() {
     BOOST_ASSERT(channel_ != nullptr);  //NOLINT
     if (! external_writer_) {
         if(auto res = channel_->acquire(external_writer_); res != status::ok) {
-            fail_with_exception();
+            return nullptr;
         }
     }
     return external_writer_.get();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,6 +96,16 @@ operation_status emit::operator()(emit_context &ctx) {
     }
     if (! ctx.writer_) {
         ctx.writer_ = ctx.task_context().external_writer();
+        if(! ctx.writer_) {
+            set_error(
+                *ctx.req_context(),
+                error_code::sql_execution_exception,
+                "failed to acquire writer",
+                status::err_io_error
+            );
+            ctx.abort();
+            return {operation_status_kind::aborted};
+        }
     }
     if(! ctx.writer_->write(target)) {
         // possibly writer error due to buffer overflow

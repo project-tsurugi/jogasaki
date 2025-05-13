@@ -131,7 +131,53 @@ public:
         memory_resource* resource,
         request_context& req_context
     );
-
+    /**
+     * @brief process input record, map key/value and fill the variables accessing for primary
+     * @details this function identifies the primary index record and fills the variables. If error occurs,
+     * `req_context` is filled with error_info and error status code is returned
+     * @param key the key of the input record (either primary or secondary)
+     * @param value the value of the input record (empty if secondary)
+     * @param target the record reference to fill the variables
+     * @param stg the primary index storage
+     * @param tx the transaction context
+     * @param resource the memory resource to allocate temporary buffers
+     * @param req_context the request context to report errors (nullptr if reporting is not necessary)
+     * @return status::ok if the operation is successful
+     * @return error status code otherwise
+     */
+    [[nodiscard]] status process_primary(
+        std::string_view key,
+        std::string_view value,
+        accessor::record_ref target,
+        kvs::storage& stg,
+        transaction_context& tx,
+        index_field_mapper::memory_resource* resource,
+        request_context& req_context
+    ) noexcept;
+    /**
+     * @brief process input record, map key/value and fill the variables accessing for secondary
+     * @details this function identifies the primary index record and fills the variables. If error occurs,
+     * `req_context` is filled with error_info and error status code is returned
+     * @param key the key of the input record (either primary or secondary)
+     * @param value the value of the input record (empty if secondary)
+     * @param target the record reference to fill the variables
+     * @param stg the primary index storage
+     * @param tx the transaction context
+     * @param resource the memory resource to allocate temporary buffers
+     * @param req_context the request context to report errors (nullptr if reporting is not necessary)
+     * @return status::ok if the operation is successful
+     * @return error status code otherwise
+     */
+    [[nodiscard]] status process_secondary(
+        std::string_view key,
+        std::string_view value,
+        accessor::record_ref target,
+        kvs::storage& stg,
+        transaction_context& tx,
+        memory_resource* resource,
+        request_context& req_context
+    ) noexcept;
+    [[nodiscard]] bool use_secondary() const noexcept;
 private:
     bool use_secondary_{};
     std::vector<index::field_info> primary_key_fields_{};
@@ -161,7 +207,6 @@ private:
         accessor::record_ref target,
         memory_resource* resource
     );
-
 };
 
 }

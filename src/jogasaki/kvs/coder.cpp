@@ -347,9 +347,9 @@ status consume_stream_nullable(
 ) {
     return details::catch_domain_error([&]() {
         using kind = meta::field_type_kind;
-        auto odr = spec.ordering();
+        const auto odr = spec.ordering();
         src.set_context(ctx);
-        auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
+        const auto flag = src.read<runtime_t<kind::boolean>>(odr, false);
         if(! (flag == 0 || flag == 1)) {
             LOG_LP(ERROR) << "unexpected data in nullity bit:" << flag; //NOLINT
             return status::err_data_corruption;

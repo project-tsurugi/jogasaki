@@ -82,7 +82,39 @@ index_field_mapper::index_field_mapper(
         {}
     )
 {}
+[[nodiscard]] bool index_field_mapper::use_secondary() const noexcept { return use_secondary_; }
 
+status index_field_mapper::process_primary(
+    std::string_view key,
+    std::string_view value,
+    accessor::record_ref target,
+    kvs::storage& stg,
+    transaction_context& tx,
+    index_field_mapper::memory_resource* resource,
+    request_context& req_context
+) noexcept {
+    (void)stg;
+    (void)tx;
+    (void)req_context;
+    return populate_field_variables(key, value, target, resource);
+}
+status index_field_mapper::process_secondary(
+    std::string_view key,
+    std::string_view value,
+    accessor::record_ref target,
+    kvs::storage& stg,
+    transaction_context& tx,
+    index_field_mapper::memory_resource* resource,
+    request_context& req_context
+) noexcept {
+    std::string_view k{key};
+    std::string_view v{value};
+    k = extract_primary_key(key);
+    if (auto res = find_primary_index(k, stg, tx, v, req_context); res != status::ok) {
+        return res;
+    }
+    return populate_field_variables(k, v, target, resource);
+}
 status index_field_mapper::process(
     std::string_view key,
     std::string_view value,

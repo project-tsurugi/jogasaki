@@ -28,41 +28,47 @@ status decode_fields(
     accessor::record_ref target,
     memory::lifo_paged_memory_resource* resource
 ) {
-    for(auto&& f : fields) {
-        kvs::coding_context ctx{};
-        if (! f.exists_) {
-            if (f.nullable_) {
-                if(auto res = kvs::consume_stream_nullable(stream, f.type_, f.spec_, ctx); res != status::ok) {
+    kvs::coding_context ctx{};
+    for (auto&& f : fields) {
+        ctx = {};
+        const uint8_t key =
+            (f.exists_   ? uint8_t{2} : uint8_t{0}) |
+            (f.nullable_ ? uint8_t{1} : uint8_t{0});
+        switch (key) {
+            case 1: // !exists && nullable
+                if (auto res = kvs::consume_stream_nullable(stream, f.type_, f.spec_, ctx);
+                    res != status::ok) {
                     return res;
                 }
-                continue;
-            }
-            if(auto res = kvs::consume_stream(stream, f.type_, f.spec_, ctx); res != status::ok) {
-                return res;
-            }
-            continue;
+                break;
+            case 0: // !exists && !nullable
+                if (auto res = kvs::consume_stream(stream, f.type_, f.spec_, ctx);
+                    res != status::ok) {
+                    return res;
+                }
+                break;
+            case 3: // exists && nullable
+                if (auto res = kvs::decode_nullable(stream, f.type_, f.spec_, ctx, target,
+                        f.offset_, f.nullity_offset_, resource);
+                    res != status::ok) {
+                    return res;
+                }
+                break;
+            case 2: // exists && !nullable
+                if (auto res =
+                        kvs::decode(stream, f.type_, f.spec_, ctx, target, f.offset_, resource);
+                    res != status::ok) {
+                    return res;
+                }
+                target.set_null(
+                    f.nullity_offset_, false); // currently assuming target variable fields are
+                // nullable and f.nullity_offset_ is valid
+                // even if f.nullable_ is false
+                break;
+	    default:
+                return status::not_found;
+                break;
         }
-        if (f.nullable_) {
-            if(auto res = kvs::decode_nullable(
-                    stream,
-                    f.type_,
-                    f.spec_,
-                    ctx,
-                    target,
-                    f.offset_,
-                    f.nullity_offset_,
-                    resource
-                ); res != status::ok) {
-                return res;
-            }
-            continue;
-        }
-        if(auto res = kvs::decode(stream, f.type_, f.spec_, ctx, target, f.offset_, resource); res != status::ok) {
-            return res;
-        }
-        target.set_null(f.nullity_offset_, false); // currently assuming target variable fields are
-        // nullable and f.nullity_offset_ is valid
-        // even if f.nullable_ is false
     }
     return status::ok;
 }

@@ -100,7 +100,7 @@ operation_status emit::operator()(emit_context &ctx) {
             set_error(
                 *ctx.req_context(),
                 error_code::sql_execution_exception,
-                "failed to get acquire writer",
+                "failed to acquire writer",
                 status::err_io_error
             );
             ctx.abort();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ public:
      * (e.g. SELECT statement with ORDER BY clause)
      * @note this function is thread-safe and multiple threads can invoke simultaneously.
      * @return status::ok when successful
+     * @return status::io_error when tateyama fails to allocate writer
      * @return other status code when error occurs
      */
     virtual status acquire(std::shared_ptr<writer>& wrt) = 0;
@@ -73,4 +74,4 @@ public:
 
 };
 
-}
+} // namespace jogasaki::api

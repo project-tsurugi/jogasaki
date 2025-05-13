@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -118,37 +118,49 @@ std::size_t common_prefix_len(std::string_view lo, std::string_view hi) {
     return i;
 }
 
-std::vector<std::string> generate_strings(std::string_view lo, std::string_view hi, std::size_t chars) {
-    // simple implementation to generate a set of strings contained in the range from lo to hi (exclusive)
-    // steps are as follows:
-    // 1. let l and h be the character after the common prefix in lo and hi
-    // 2. generate strings with prefix + l, prefix + (l + 1), ..., prefix + (h - 1)
-    // 3. append one of `chars` characters to each string generated in 2
-    // 4. Within the `chars` * (h - l) strings generated above, adopt only ones in the range from lo to hi
-    if(hi < lo) {
-        // invalid arguments
+std::vector<std::string> generate_strings2(std::uint64_t max_count, std::string_view lo, std::string_view hi) {
+    // divide next 4-octets (32 bit) after common_prefix
+
+    if (hi <= lo) {
+        // invalid arguments or one point
         return {};
     }
-    auto cpl = common_prefix_len(lo, hi);
 
-    // characters after the common prefix in lo and hi
-    auto h = static_cast<std::uint8_t>(cpl < hi.size() ? hi[cpl] : 0);
-    auto l = static_cast<std::uint8_t>(cpl < lo.size() ? lo[cpl] : 0);
-    std::size_t cnt = h - l;
+    auto head_32bit = [](std::string_view sv) {
+        std::uint64_t ret = 0U;
+        for (unsigned int i = 0; i < 4; i++) {
+            unsigned char c = (i >= sv.size()) ? 0U : static_cast<unsigned char>(sv[i]);
+            ret = (ret << 8U) | c;
+        }
+        return ret;
+    };
+
+    auto cpl = common_prefix_len(lo, hi);
+    std::uint64_t h = head_32bit(hi.substr(cpl));  // round down
+    std::uint64_t l = head_32bit(lo.substr(cpl)) + ((lo.size() <= cpl + 4) ? 0 : 1);  // round up
+    // h-l < 1UL<<32
+    std::uint64_t count = std::min(max_count, (1UL << 24U) - 1U);
 
     std::vector<std::string> pivots{};
-    pivots.reserve(cnt * chars);  // at maximum
+    pivots.reserve(count);
 
-    for (std::size_t i = 0; i < cnt; ++i) {
-        std::string prefix{lo.data(), cpl};
-        prefix += static_cast<char>(l + i);
-        for (std::size_t j = 0; j < chars; ++j) {
-            std::string p = prefix + static_cast<char>(j);
-            if(p <= lo || hi <= p) {
-                continue;
-            }
-            pivots.emplace_back(std::move(p));
+    std::string buf{lo.substr(0, cpl + 4)};
+    buf.resize(cpl + 4);
+    std::uint64_t prev_c32 = 0U;
+    for (std::size_t i = 0; i < count; i++) {
+        // weighted mean : l < c32 < h <= UINT32_MAX
+        std::uint64_t c32 = l + (h - l) * (i + 1) / (count + 1);
+        // (h - l) * (i + 1) < 1UL<<56 ; so never overflow uint64
+        buf[cpl + 0] = static_cast<char>(c32 >> 24U);
+        buf[cpl + 1] = static_cast<char>(c32 >> 16U);
+        buf[cpl + 2] = static_cast<char>(c32 >> 8U);
+        buf[cpl + 3] = static_cast<char>(c32);
+        bool skip = buf <= lo || hi <= buf || (i > 0 && c32 <= prev_c32);
+        prev_c32 = c32;
+        if (skip) {
+            continue;
         }
+        pivots.emplace_back(buf);
     }
     return pivots;
 }
@@ -182,16 +194,7 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
         high = range.end_key();
     }
 
-    std::vector<pivot_type> pivots = generate_strings(low, high);
-
-    if (max_count < pivots.size()) {
-        std::random_device rd;
-        std::mt19937 g(rd());
-        std::shuffle(pivots.begin(), pivots.end(), g);
-        pivots.resize(max_count);
-    }
-
-    std::sort(pivots.begin(), pivots.end());
+    std::vector<pivot_type> pivots = generate_strings2(max_count, low, high);
 
     if(VLOG_IS_ON(log_debug)) {
         std::stringstream ss{};
@@ -208,7 +211,7 @@ std::vector<uniform_key_distribution::pivot_type> uniform_key_distribution::comp
             first = false;
         }
         ss << "]";
-        VLOG_LP(log_debug) << ss.str();
+        LOG_LP(INFO) << ss.str();
     }
     return pivots;
 }

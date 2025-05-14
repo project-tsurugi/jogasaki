@@ -199,7 +199,7 @@ public:
         std::shared_ptr<api::transaction_option const> option = nullptr
     );
 
-    [[nodiscard]] operator kvs::transaction&() const noexcept;  //NOLINT
+    [[nodiscard]] explicit operator kvs::transaction&() const noexcept;
 
     /**
      * @brief accessor for the wrapped transaction

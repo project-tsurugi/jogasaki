@@ -211,7 +211,7 @@ bool insert_new_record::update_secondaries_before_upsert(
     if(encoded_primary_key.empty()) {
         res = primary_.encode_find(
             wctx.primary_context_,
-            *wctx.request_context_->transaction(),
+            *wctx.request_context_->transaction()->object(),
             wctx.key_store_.ref(),
             wctx.resource_,
             wctx.primary_context_.extracted_key(),
@@ -221,7 +221,7 @@ bool insert_new_record::update_secondaries_before_upsert(
     } else {
         res = primary_.find_by_encoded_key(
             wctx.primary_context_,
-            *wctx.request_context_->transaction(),
+            *wctx.request_context_->transaction()->object(),
             encoded_primary_key,
             wctx.resource_,
             wctx.primary_context_.extracted_key(),

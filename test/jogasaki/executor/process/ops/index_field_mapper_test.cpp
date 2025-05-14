@@ -147,7 +147,7 @@ TEST_F(index_field_mapper_test, simple) {
             {
                 auto tx = wrap(db_->create_transaction());
                 std::unique_ptr<iterator> it{};
-                ASSERT_EQ(status::ok, i2->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+                ASSERT_EQ(status::ok, i2->content_scan(*tx->object(), "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());
 
                 std::string_view key{};
@@ -155,7 +155,7 @@ TEST_F(index_field_mapper_test, simple) {
                 ASSERT_EQ(status::ok, it->read_key(key));
                 ASSERT_EQ(status::ok, it->read_value(value));
                 request_context req_context{};  // to receive error info
-                ASSERT_EQ(status::ok, mapper.process(key, value, result.ref(), *t1, *tx, &resource, req_context));
+                ASSERT_EQ(status::ok, mapper.process(key, value, result.ref(), *t1, *tx->object(), &resource, req_context));
                 it.reset();
                 ASSERT_EQ(status::ok, tx->commit());
                 ASSERT_EQ(10, result.ref().get_value<std::int64_t>(result.record_meta()->value_offset(0)));
@@ -214,7 +214,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
             {
                 auto tx = wrap(db_->create_transaction());
                 std::unique_ptr<iterator> it{};
-                ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+                ASSERT_EQ(status::ok, t1->content_scan(*tx->object(), "", end_point_kind::unbound, "", end_point_kind::unbound, it));
                 ASSERT_EQ(status::ok, it->next());
 
                 std::string_view key{};
@@ -222,7 +222,7 @@ TEST_F(index_field_mapper_test, without_secondary) {
                 ASSERT_EQ(status::ok, it->read_key(key));
                 ASSERT_EQ(status::ok, it->read_value(value));
                 request_context req_context{};  // to receive error info
-                ASSERT_EQ(status::ok, mapper.process(key, value, result.ref(), *t1, *tx, &resource, req_context));
+                ASSERT_EQ(status::ok, mapper.process(key, value, result.ref(), *t1, *tx->object(), &resource, req_context));
                 it.reset();
                 ASSERT_EQ(status::ok, tx->commit());
                 ASSERT_EQ(10, result.ref().get_value<std::int64_t>(result.record_meta()->value_offset(0)));

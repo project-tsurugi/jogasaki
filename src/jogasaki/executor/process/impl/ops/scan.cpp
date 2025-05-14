@@ -197,7 +197,8 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
-        if(st = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_, resource, *ctx.req_context());
+        // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
+        if(st = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_->object(), resource, *ctx.req_context());
            st != status::ok) {
             handle_kvs_errors(*ctx.req_context(), st);
             break;
@@ -260,8 +261,9 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     const auto range = ctx.range_;
     const auto& begin = range->begin();
     const auto& end = range->end();
+    // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
     if(auto res = stg.content_scan(
-            *ctx.tx_,
+            *ctx.tx_->object(),
             begin.key(),
             begin.endpointkind(),
             end.key(),

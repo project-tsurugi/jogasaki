@@ -152,7 +152,7 @@ public:
     /**
      * @brief encode key (store in context), find the record, and fill dest key/value records
      * @param ctx context
-     * @param tx transaction context
+     * @param tx transaction or strand
      * @param key key record to fine entry in the primary index
      * @param varlen_resource resource for variable length data
      * @param dest_key [out] extracted key record
@@ -163,7 +163,7 @@ public:
      */
     status encode_find(
         primary_context& ctx,
-        transaction_context& tx,
+        kvs::transaction& tx,
         accessor::record_ref key,
         memory_resource* varlen_resource,
         accessor::record_ref dest_key,
@@ -173,7 +173,7 @@ public:
     /**
      * @brief same as `encode_find`, except returning view of encoded key for recycle.
      * @param ctx context
-     * @param tx transaction context
+     * @param tx transaction or strand
      * @param key key record to fine entry in the primary index
      * @param varlen_resource resource for variable length data
      * @param dest_key [out] extracted key record
@@ -185,7 +185,7 @@ public:
      */
     status encode_find(
         primary_context& ctx,
-        transaction_context& tx,
+        kvs::transaction& tx,
         accessor::record_ref key,
         memory_resource* varlen_resource,
         accessor::record_ref dest_key,
@@ -196,7 +196,7 @@ public:
     /**
      * @brief find the record and fill dest key/value records
      * @param ctx context
-     * @param tx transaction context
+     * @param tx transaction or strand
      * @param encoded_key encoded key to find the entry
      * @param varlen_resource resource for variable length data
      * @param dest_key [out] extracted key record
@@ -207,7 +207,7 @@ public:
      */
     status find_by_encoded_key(
         primary_context& ctx,
-        transaction_context& tx,
+        kvs::transaction& tx,
         std::string_view encoded_key,
         memory_resource* varlen_resource,
         accessor::record_ref dest_key,

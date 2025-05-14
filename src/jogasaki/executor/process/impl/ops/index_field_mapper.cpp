@@ -88,7 +88,7 @@ status index_field_mapper::process(
     std::string_view value,
     accessor::record_ref target,
     kvs::storage& stg,
-    transaction_context& tx,
+    kvs::transaction& tx,
     index_field_mapper::memory_resource* resource,
     request_context& req_context
 ) {
@@ -132,7 +132,7 @@ std::string_view index_field_mapper::extract_primary_key(std::string_view key) {
 status index_field_mapper::find_primary_index(
     std::string_view key,
     kvs::storage& stg,
-    transaction_context& tx,
+    kvs::transaction& tx,
     std::string_view& value_out,
     request_context& req_context
 ) {

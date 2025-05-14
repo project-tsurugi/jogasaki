@@ -191,7 +191,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
     std::string_view encoded{};
     if(auto res = primary_.encode_find(
             context,
-            *ctx.transaction(),
+            *ctx.transaction()->object(),
             ctx.input_variables().store().ref(),
             ctx.varlen_resource(),
             context.extracted_key(),

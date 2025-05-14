@@ -79,7 +79,7 @@ TEST_F(scan_handle_test, commit_without_releasing_scan_handle) {
         {
             auto tx = wrap(db_->create_transaction());
             std::unique_ptr<iterator> it{};
-            ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+            ASSERT_EQ(status::ok, t1->content_scan(*tx->object(), "", end_point_kind::unbound, "", end_point_kind::unbound, it));
             ASSERT_EQ(status::ok, it->next());
 
             std::string_view key{};
@@ -100,7 +100,7 @@ TEST_F(scan_handle_test, commit_without_releasing_scan_handle) {
         {
             auto tx = wrap(db_->create_transaction());
             std::unique_ptr<iterator> it{};
-            ASSERT_EQ(status::ok, t1->content_scan(*tx, "", end_point_kind::unbound, "", end_point_kind::unbound, it));
+            ASSERT_EQ(status::ok, t1->content_scan(*tx->object(), "", end_point_kind::unbound, "", end_point_kind::unbound, it));
             ASSERT_EQ(status::ok, it->next());
 
             std::string_view key{};

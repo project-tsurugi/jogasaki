@@ -127,7 +127,7 @@ public:
         std::string_view value,
         accessor::record_ref target,
         kvs::storage& stg,
-        transaction_context& tx,
+        kvs::transaction& tx,
         memory_resource* resource,
         request_context& req_context
     );
@@ -150,7 +150,7 @@ private:
     status find_primary_index(
         std::string_view key,
         kvs::storage& stg,
-        transaction_context& tx,
+        kvs::transaction& tx,
         std::string_view& value_out,
         request_context& req_context
     );

@@ -149,6 +149,7 @@ public:
         variable_table& output_variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
+        kvs::transaction& tx,
         memory_resource* resource = nullptr
     ) {
         std::size_t len{};
@@ -170,7 +171,7 @@ public:
         std::string_view value{};
 
         if (! use_secondary_) {
-            auto res = primary_stg.content_get(*ctx.transaction(), key, value);
+            auto res = primary_stg.content_get(tx, key, value);
             status_ = res;
             if (res != status::ok) {
                 utils::modify_concurrent_operation_status(*ctx.transaction(), res, false);
@@ -187,14 +188,14 @@ public:
                        value,
                        output_variables.store().ref(),
                        primary_stg,
-                       *ctx.transaction(),
+                       tx,
                        resource,
                        ctx
                    ) == status::ok;
         }
         // handle secondary index
         if(auto res = secondary_stg->content_scan(
-               *ctx.transaction(),
+               tx,
                key,
                kvs::end_point_kind::prefixed_inclusive,
                key,
@@ -212,7 +213,7 @@ public:
         // remember parameters for current scan
         output_variables_ = std::addressof(output_variables);
         primary_storage_ = std::addressof(primary_stg);
-        tx_ = std::addressof(*ctx.transaction());
+        tx_ = std::addressof(tx);
         resource_ = resource;
         return next(ctx);
     }
@@ -234,6 +235,7 @@ public:
         variable_table& output_variables,
         kvs::storage& primary_stg,
         kvs::storage* secondary_stg,
+        kvs::transaction& tx,
         memory_resource* resource = nullptr
     ) {
         std::size_t begin_len{};
@@ -269,7 +271,7 @@ public:
         std::string_view e{static_cast<char*>(buf2_.data()), end_len};
 
         auto& stg = use_secondary_ ? *secondary_stg : primary_stg;
-        if(auto res = stg.content_scan(*ctx.transaction(),
+        if(auto res = stg.content_scan(tx,
                 b, info_.begin_endpoint_,
                 e, info_.end_endpoint_,
                 it_
@@ -284,7 +286,7 @@ public:
         // remember parameters for current scan
         output_variables_ = std::addressof(output_variables);
         primary_storage_ = std::addressof(primary_stg);
-        tx_ = std::addressof(*ctx.transaction());
+        tx_ = std::addressof(tx);
         resource_ = resource;
         return next(ctx);
     }
@@ -374,7 +376,7 @@ private:
 
     variable_table* output_variables_{};
     kvs::storage* primary_storage_{};
-    transaction_context* tx_{};
+    kvs::transaction* tx_{};
     matcher::memory_resource* resource_{};
     std::unique_ptr<kvs::iterator> it_{};
 };

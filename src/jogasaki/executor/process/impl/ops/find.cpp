@@ -142,7 +142,8 @@ operation_status find::call_downstream(
     context_base::memory_resource* resource,
     abstract::task_context* context
 ) {
-    if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_, resource, *ctx.req_context());
+    // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
+    if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_->object(), resource, *ctx.req_context());
        res != status::ok) {
         return error_abort(ctx, res);
     }
@@ -197,9 +198,10 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     std::string_view k{static_cast<char*>(ctx.key_.data()), len};
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
-        if(auto res = stg.content_get(*ctx.tx_, k, v); res != status::ok) {
+        // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
+        if(auto res = stg.content_get(*ctx.tx_->object(), k, v); res != status::ok) {
             finish(context);
-            utils::modify_concurrent_operation_status(*ctx.tx_, res, false);
+            utils::modify_concurrent_operation_status(*ctx.tx_->object(), res, false);
             if (res == status::not_found) {
                 return {};
             }
@@ -212,7 +214,8 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     }
     auto& stg = *ctx.secondary_stg_;
     std::unique_ptr<kvs::iterator> it{};
-    if(auto res = stg.content_scan(*ctx.tx_,
+    // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
+    if(auto res = stg.content_scan(*ctx.tx_->object(),
             k, kvs::end_point_kind::prefixed_inclusive,
             k, kvs::end_point_kind::prefixed_inclusive,
             it
@@ -231,7 +234,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             return error_abort(ctx, res);
         }
         if(auto res = it->read_key(k); res != status::ok) {
-            utils::modify_concurrent_operation_status(*ctx.tx_, res, true);
+            utils::modify_concurrent_operation_status(*ctx.tx_->object(), res, true); //FIXME tx_
             // shirakami returns error here even if next() above returns ok
             // (e.g. not_found for concurrently deleted entry or concurrent_operation for concurrently inserted)
             // skip the record and continue to next

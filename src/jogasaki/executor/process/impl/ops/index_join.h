@@ -333,6 +333,7 @@ public:
             ctx.output_variables(),
             *ctx.primary_stg_,
             ctx.secondary_stg_.get(),
+            *ctx.tx_->object(),  //FIXME pass kvs::transaction in ctx
             resource
         );
         if(matched || join_kind_ == join_kind::left_outer) {

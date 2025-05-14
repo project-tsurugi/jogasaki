@@ -78,7 +78,7 @@ status primary_target::encode_find_remove(
     accessor::record_ref dest_value
 ) {
     std::string_view k{};
-    if(auto res = encode_find(ctx, tx, key, varlen_resource, dest_key, dest_value, k); res != status::ok) {
+    if(auto res = encode_find(ctx, *tx.object(), key, varlen_resource, dest_key, dest_value, k); res != status::ok) {
         return res;
     }
     return remove_by_encoded_key(ctx, tx, k);
@@ -86,7 +86,7 @@ status primary_target::encode_find_remove(
 
 status primary_target::encode_find(
     primary_context& ctx,
-    transaction_context& tx,
+    kvs::transaction& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource,
     accessor::record_ref dest_key,
@@ -98,7 +98,7 @@ status primary_target::encode_find(
 
 status primary_target::find_by_encoded_key(
     primary_context& ctx,
-    transaction_context& tx,
+    kvs::transaction& tx,
     std::string_view encoded_key,
     memory_resource* varlen_resource,
     accessor::record_ref dest_key,
@@ -126,7 +126,7 @@ status primary_target::find_by_encoded_key(
 }
 status primary_target::encode_find(
     primary_context& ctx,
-    transaction_context& tx,
+    kvs::transaction& tx,
     accessor::record_ref key,
     memory_resource* varlen_resource,
     accessor::record_ref dest_key,
@@ -157,7 +157,7 @@ status primary_target::remove_by_encoded_key(
     transaction_context& tx,
     std::string_view encoded_key
 ) {
-    if(auto res = ctx.stg_->content_delete(tx, encoded_key); res != status::ok) {
+    if(auto res = ctx.stg_->content_delete(*tx.object(), encoded_key); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }
@@ -277,7 +277,7 @@ status primary_target::encode_put(
         handle_encode_errors(*ctx.req_context(), res);
         return res;
     }
-    if(auto res = ctx.stg_->content_put(tx, k, v, opt, lobs); res != status::ok) {
+    if(auto res = ctx.stg_->content_put(*tx.object(), k, v, opt, lobs); res != status::ok) {
         handle_kvs_errors(*ctx.req_context(), res);
         return res;
     }

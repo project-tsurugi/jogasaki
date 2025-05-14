@@ -401,7 +401,7 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
 
             auto tx = wrap(get_impl(*db_).kvs_db()->create_transaction());
             std::unique_ptr<kvs::iterator> it{};
-            if(status::ok != index->content_scan(*tx, buf, end_point_kind::prefixed_inclusive, buf, end_point_kind::prefixed_inclusive, it)) {
+            if(status::ok != index->content_scan(*tx->object(), buf, end_point_kind::prefixed_inclusive, buf, end_point_kind::prefixed_inclusive, it)) {
                 fail();
             };
             while(status::ok == it->next()) {
@@ -414,7 +414,7 @@ std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries
                     fail();
                 }
                 request_context req_context{};  // to receive error info
-                if(status::ok != mapper.process(key, value, result.ref(), *table, *tx, &resource, req_context)) {
+                if(status::ok != mapper.process(key, value, result.ref(), *table, *tx->object(), &resource, req_context)) {
                     fail();
                 }
                 ret.emplace(

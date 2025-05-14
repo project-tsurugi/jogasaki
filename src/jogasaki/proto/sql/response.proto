@@ -307,8 +307,10 @@ message GetLargeObjectData {
 
 // the transaction status.
 enum TransactionStatus {
-  // the transaction status unknown or not provided.
+  // the transaction status is not specified (should not be used normally).
   TRANSACTION_STATUS_UNSPECIFIED = 0;
+  // the transaction status unknown or not provided.
+  UNTRACKED = 1;
   // the transaction is started and running.
   RUNNING = 10;
   // the transaction is in the process of committing.

@@ -1649,7 +1649,7 @@ TEST_F(service_api_test, get_transaction_status_updated_internally) {
         tctx->state(transaction_state_kind::aborted);
         test_get_tx_status(tx_handle, ts::ABORTED);
         tctx->state(transaction_state_kind::unknown);
-        test_get_tx_status(tx_handle, ts::TRANSACTION_STATUS_UNSPECIFIED);
+        test_get_tx_status(tx_handle, ts::UNTRACKED);
         (void) tctx->abort_transaction(); // just for cleanup
     }
 }

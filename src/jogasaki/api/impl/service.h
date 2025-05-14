@@ -509,14 +509,14 @@ inline std::pair<sql::response::TransactionStatus, std::string> status_and_messa
     std::string msg{};
     switch (status) {
         case kind::undefined: {
-            st = t::TRANSACTION_STATUS_UNSPECIFIED;
+            // normally this state is not exposed to client
+            st = t::UNTRACKED;
             msg = "transaction status not available";
             break;
         }
         case kind::init: {
-            // handle is not yet provided to client, so status query should not come here
-            // returning as unspecified
-            st = t::TRANSACTION_STATUS_UNSPECIFIED;
+            // handle is not yet provided to client, so status query should not come here normally
+            st = t::UNTRACKED;
             msg = "transaction status not available";
             break;
         }
@@ -528,8 +528,9 @@ inline std::pair<sql::response::TransactionStatus, std::string> status_and_messa
         case kind::going_to_abort: st = t::ABORTING; break;
         case kind::aborted: st = t::ABORTED; break;
         case kind::unknown: {
-            // we use unspecified for unknown
-            st = t::TRANSACTION_STATUS_UNSPECIFIED;
+            // this state is the result of cancel operation
+            // transaction is not tracked after the cancel request
+            st = t::UNTRACKED;
             msg = "transaction status unknown (operation may be canceled or interrupted)";
             break;
         }

@@ -320,7 +320,7 @@ public:
             std::string_view key{};
             std::string_view value{};
             if(auto r = it_->read_key(key); r != status::ok) {
-                utils::modify_concurrent_operation_status(*tx_, r, true);
+                utils::modify_concurrent_operation_status(*ctx.transaction(), r, true);
                 if(r == status::not_found) {
                     continue;
                 }
@@ -331,7 +331,7 @@ public:
                 return false;
             }
             if(auto r = it_->read_value(value); r != status::ok) {
-                utils::modify_concurrent_operation_status(*tx_, r, true);
+                utils::modify_concurrent_operation_status(*ctx.transaction(), r, true);
                 if(r == status::not_found) {
                     continue;
                 }

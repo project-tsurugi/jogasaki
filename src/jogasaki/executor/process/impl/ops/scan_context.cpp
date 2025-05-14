@@ -33,13 +33,15 @@ scan_context::scan_context(
     transaction_context* tx,
     impl::scan_range const* range,
     context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource
+    context_base::memory_resource* varlen_resource,
+    kvs::transaction* strand
 ) :
     context_base(ctx, variables, resource, varlen_resource),
     stg_(std::move(stg)),
     secondary_stg_(std::move(secondary_stg)),
     tx_(tx),
-    range_(range)
+    range_(range),
+    strand_(strand)
 {}
 
 operator_kind scan_context::kind() const noexcept {
@@ -68,6 +70,10 @@ void scan_context::dump() const noexcept {
        << (tx_ ? tx_ : nullptr) << "\n"
        << "    " << std::setw(20) << "iterator:"
        << (it_ ? it_.get() : nullptr) << "\n";
+}
+
+kvs::transaction* scan_context::strand() const noexcept {
+    return strand_;
 }
 
 } // namespace jogasaki::executor::process::impl::ops

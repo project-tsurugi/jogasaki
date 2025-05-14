@@ -297,6 +297,7 @@ public:
     operation_status process_record(abstract::task_context* context) override {
         BOOST_ASSERT(context != nullptr);  //NOLINT
         context_helper ctx{*context};
+        ctx.acquire_strand_if_needed();
         auto* p = find_context<index_join_context<MatchInfo>>(index(), ctx.contexts());
         if (! p) {
             p = ctx.make_context<index_join_context<MatchInfo>>(
@@ -308,7 +309,8 @@ public:
                 ctx.transaction(),
                 std::make_unique<details::matcher<MatchInfo>>(use_secondary_, match_info_, key_columns_, value_columns_),
                 ctx.resource(),
-                ctx.varlen_resource()
+                ctx.varlen_resource(),
+                ctx.strand()
             );
         }
         return (*this)(*p, context);
@@ -327,13 +329,14 @@ public:
         }
         auto resource = ctx.varlen_resource();
         nullify_output_variables(ctx.output_variables().store().ref());
+        auto& tx = ctx.strand_ != nullptr ? *ctx.strand_ : *ctx.tx_->object();
         bool matched = ctx.matcher_->template process<MatchInfo>(
             *ctx.req_context(),
             ctx.input_variables(),
             ctx.output_variables(),
             *ctx.primary_stg_,
             ctx.secondary_stg_.get(),
-            *ctx.tx_->object(),  //FIXME pass kvs::transaction in ctx
+            tx,
             resource
         );
         if(matched || join_kind_ == join_kind::left_outer) {

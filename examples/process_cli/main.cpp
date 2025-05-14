@@ -394,6 +394,7 @@ private:
                 std::make_unique<memory::lifo_paged_memory_resource>(&pool_),
                 std::shared_ptr<kvs::database>{},
                 std::shared_ptr<transaction_context>{},
+                false,
                 false
             ));
             custom_contexts.emplace_back(std::move(ctx));

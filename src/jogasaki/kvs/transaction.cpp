@@ -52,13 +52,17 @@ transaction::transaction(
 {}
 
 transaction::~transaction() noexcept {
-    if (active_) {
-        // transaction is not committed or aborted yet.
-        // Normally this should not happen, but in order to conform to api contract with cc,
-        // we abort the tx here because transaction has been started when this object is created.
-        sharksfin::transaction_abort(tx_);
+    if (! is_strand_) {
+        if (active_) {
+            // transaction is not committed or aborted yet.
+            // Normally this should not happen, but in order to conform to api contract with cc,
+            // we abort the tx here because transaction has been started when this object is created.
+            sharksfin::transaction_abort(tx_);
+        }
+        sharksfin::transaction_dispose(tx_);
+        return;
     }
-    sharksfin::transaction_dispose(tx_);
+    release_strand();
 }
 
 status transaction::commit(bool async) {
@@ -191,6 +195,23 @@ std::shared_ptr<sharksfin::CallResult> transaction::recent_call_result() noexcep
 std::string_view transaction::transaction_id() const noexcept {
     if(! info_) return {};
     return info_->id();
+}
+
+std::unique_ptr<kvs::transaction> transaction::acquire_strand() noexcept {
+    sharksfin::TransactionHandle handle{};
+    if (transaction_acquire_handle(tx_, std::addressof(handle)) != sharksfin::StatusCode::OK) {
+        return nullptr;
+    }
+    auto ret = std::make_unique<transaction>(*database_);
+    ret->handle_ = handle;
+    ret->tx_ = tx_;
+    ret->info_ = info_;
+    ret->is_strand_ = true;
+    return ret;
+}
+
+bool transaction::release_strand() noexcept {
+    return sharksfin::transaction_release_handle(handle_) == sharksfin::StatusCode::OK;
 }
 
 }

@@ -179,7 +179,7 @@ TEST_F(find_test, simple) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
     auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{ {}, {}, {}, {} };
-    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_, nullptr);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(1, result.size());
@@ -251,7 +251,7 @@ TEST_F(find_test, secondary_index) {
 
     auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{{}, {}, {}, {}};
-    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(), &resource_, &varlen_resource_, nullptr);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
@@ -337,7 +337,7 @@ TEST_F(find_test, host_variable) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_record<kind::float8, kind::int8>(2.0, 200));
     auto tx = wrap(db_->create_transaction());
     mock::task_context task_ctx{ {}, {}, {}, {} };
-    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_);
+    find_context ctx(&task_ctx, input_variables, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), &resource_, &varlen_resource_, nullptr);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(1, result.size());

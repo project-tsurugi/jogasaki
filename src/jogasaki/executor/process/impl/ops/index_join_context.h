@@ -69,13 +69,15 @@ public:
         transaction_context* tx,
         std::unique_ptr<details::matcher<MatchInfo>> matcher,
         memory_resource* resource,
-        memory_resource* varlen_resource
+        memory_resource* varlen_resource,
+        kvs::transaction* strand
     ) :
         context_base(ctx, input_variables, output_variables, resource, varlen_resource),
         primary_stg_(std::move(primary_stg)),
         secondary_stg_(std::move(secondary_stg)),
         tx_(tx),
-        matcher_(std::move(matcher))
+        matcher_(std::move(matcher)),
+        strand_(strand)
     {}
 
     [[nodiscard]] operator_kind kind() const noexcept override {
@@ -96,6 +98,7 @@ private:
     std::unique_ptr<kvs::storage> secondary_stg_{};
     transaction_context* tx_{};
     std::unique_ptr<details::matcher<MatchInfo>> matcher_{};
+    kvs::transaction* strand_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

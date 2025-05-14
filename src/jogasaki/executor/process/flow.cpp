@@ -132,14 +132,8 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
 
     contexts.reserve(partitions);
 
-    for (std::size_t i = 0; i < partitions; ++i) {
-        contexts.emplace_back(create_task_context(
-            i, operators, sink_idx_base + i, scan_ranges.empty() ? nullptr : scan_ranges[i]));
-    }
-
     bool is_rtx = context_->transaction()->option()->readonly();
     auto& d = info_->details();
-    auto exec = factory(proc, contexts);
     auto tx_capability = model::task_transaction_kind::none;
     if (d.has_write_operations() ||
         d.has_find_operator() ||
@@ -157,6 +151,12 @@ sequence_view<std::shared_ptr<model::task>> flow::create_tasks() {
             tx_capability = model::task_transaction_kind::sticky;
         }
     }
+    bool in_transaction_and_non_sticky = tx_capability == model::task_transaction_kind::in_transaction;
+    for (std::size_t i = 0; i < partitions; ++i) {
+        contexts.emplace_back(create_task_context(
+            i, operators, sink_idx_base + i, scan_ranges.empty() ? nullptr : scan_ranges[i], in_transaction_and_non_sticky));
+    }
+    auto exec = factory(proc, contexts);
     for (std::size_t i=0; i < partitions; ++i) {
         tasks_.emplace_back(std::make_unique<task>(
             context_,
@@ -183,7 +183,8 @@ std::shared_ptr<impl::task_context> flow::create_task_context(
     std::size_t partition,
     impl::ops::operator_container const& operators,
     std::size_t sink_index,
-    std::shared_ptr<impl::scan_range> const& range
+    std::shared_ptr<impl::scan_range> const& range,
+    bool in_transaction_and_non_sticky
 ) {
     auto external_output = operators.io_exchange_map().external_output();
     auto ctx = std::make_shared<impl::task_context>(
@@ -204,7 +205,8 @@ std::shared_ptr<impl::task_context> flow::create_task_context(
             std::make_unique<memory::lifo_paged_memory_resource>(&global::page_pool()),
             context_->database(),
             context_->transaction(),
-            empty_input_from_shuffle_
+            empty_input_from_shuffle_,
+            in_transaction_and_non_sticky
         )
     );
     return ctx;

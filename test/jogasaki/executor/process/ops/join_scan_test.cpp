@@ -128,7 +128,7 @@ std::pair<std::shared_ptr<mock::task_context>, std::shared_ptr<request_context>>
     auto rctx = std::make_shared<request_context>();
     rctx->transaction(tx);
     ret->work_context(
-        std::make_unique<impl::work_context>(rctx.get(), 0, 0, nullptr, nullptr, nullptr, tx, false)
+        std::make_unique<impl::work_context>(rctx.get(), 0, 0, nullptr, nullptr, nullptr, tx, false, false)
     );
     return {ret, rctx};
 }
@@ -245,7 +245,8 @@ TEST_F(join_scan_test, simple) {
             op.value_columns()
         ),
         &resource_,
-        &varlen_resource_
+        &varlen_resource_,
+        nullptr
     );
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
@@ -374,7 +375,8 @@ TEST_F(join_scan_test, secondary_index) {
             op.value_columns()
         ),
         &resource_,
-        &varlen_resource_
+        &varlen_resource_,
+        nullptr
     );
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
@@ -520,7 +522,8 @@ TEST_F(join_scan_test, host_variable_with_condition_expr) {
             op.value_columns()
         ),
         &resource_,
-        &varlen_resource_
+        &varlen_resource_,
+        nullptr
     );
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));

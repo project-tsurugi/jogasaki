@@ -58,7 +58,8 @@ public:
         std::unique_ptr<kvs::storage> secondary_stg,
         transaction_context* tx,
         memory_resource* resource,
-        memory_resource* varlen_resource
+        memory_resource* varlen_resource,
+        kvs::transaction* strand
     );
 
     [[nodiscard]] operator_kind kind() const noexcept override;
@@ -67,11 +68,13 @@ public:
 
     [[nodiscard]] transaction_context* transaction() const noexcept;
 
+    [[nodiscard]] kvs::transaction* strand() const noexcept;
 private:
     std::unique_ptr<kvs::storage> stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};
     transaction_context* tx_{};
     data::aligned_buffer key_{};
+    kvs::transaction* strand_{};
 };
 
 }

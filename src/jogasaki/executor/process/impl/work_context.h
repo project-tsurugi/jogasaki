@@ -60,7 +60,8 @@ public:
         std::unique_ptr<memory_resource> varlen_resource,
         std::shared_ptr<kvs::database> database,
         std::shared_ptr<transaction_context> transaction,
-        bool empty_input_from_shuffle
+        bool empty_input_from_shuffle,
+        bool in_transaction_and_non_sticky
     );
 
     /**
@@ -117,17 +118,41 @@ public:
     [[nodiscard]] transaction_context* transaction() const noexcept;
 
     /**
+     * @brief accessor to strand object
+     * @return the strand object
+     * @return nullptr if the no strand is assigned to task
+     */
+    [[nodiscard]] kvs::transaction* strand() const noexcept;
+
+    /**
+     * @brief setter of kvs strand
+     */
+    void strand(std::unique_ptr<kvs::transaction> arg) noexcept;
+
+    /**
+     * @brief dispose the strand object held by this object
+     */
+    void reset_strand() noexcept;
+
+    /**
      * @brief accessor to request context
      * @return the request context that is shared within request
      */
     [[nodiscard]] request_context* req_context() const noexcept;
 
     /**
-     * @brief accesor to the empty_input_from_shuffle flag
+     * @brief accessor to the empty_input_from_shuffle flag
      * @return true if inputs are shuffle exchanges and all of them are empty
      * @return false otherwise
      */
     [[nodiscard]] bool empty_input_from_shuffle() const noexcept;
+
+    /**
+     * @brief accessor to the in_transaction_and_non_sticky flag
+     * @return true if the task runs in-transaction and is not sticky
+     * @return false otherwise
+     */
+    [[nodiscard]] bool in_transaction_and_non_sticky() const noexcept;
 
 private:
     request_context* request_context_{};
@@ -138,6 +163,8 @@ private:
     std::shared_ptr<kvs::database> database_{};
     std::shared_ptr<transaction_context> transaction_{};
     bool empty_input_from_shuffle_{};
+    bool in_transaction_and_non_sticky_{};
+    std::unique_ptr<kvs::transaction> strand_{};
 };
 
 }

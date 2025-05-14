@@ -73,6 +73,18 @@ bool context_helper::empty_input_from_shuffle() const noexcept {
     return work_context_->empty_input_from_shuffle();
 }
 
+void context_helper::acquire_strand_if_needed() noexcept {
+    if (work_context_->in_transaction_and_non_sticky() && work_context_->strand() == nullptr) {
+        work_context_->strand(work_context_->transaction()->object()->acquire_strand());
+    }
+}
+
+kvs::transaction* context_helper::strand() const noexcept {
+    if(! work_context_) {
+        return nullptr;
+    }
+    return work_context_->strand();
+}
 }
 
 

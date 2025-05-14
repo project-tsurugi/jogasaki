@@ -115,6 +115,17 @@ public:
      * @brief accesor to the empty_input_from_shuffle flag
      */
     [[nodiscard]] bool empty_input_from_shuffle() const noexcept;
+
+    /**
+     * @brief acquire and store the strand object in task context if it's not done yet
+     */
+    void acquire_strand_if_needed() noexcept;
+
+    /**
+     * @brief accessor to strand
+     */
+    [[nodiscard]] kvs::transaction* strand() const noexcept;
+
 private:
     abstract::task_context *context_{};
     impl::work_context* work_context_{};

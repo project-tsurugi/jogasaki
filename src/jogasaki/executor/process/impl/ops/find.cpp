@@ -119,6 +119,7 @@ find::find(
 operation_status find::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
+    ctx.acquire_strand_if_needed();
     auto* p = find_context<class find_context>(index(), ctx.contexts());
     if (! p) {
         p = ctx.make_context<class find_context>(index(),
@@ -128,7 +129,8 @@ operation_status find::process_record(abstract::task_context* context) {
             use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
             ctx.transaction(),
             ctx.resource(),
-            ctx.varlen_resource()
+            ctx.varlen_resource(),
+            ctx.strand()
         );
     }
     return (*this)(*p, context);
@@ -142,8 +144,8 @@ operation_status find::call_downstream(
     context_base::memory_resource* resource,
     abstract::task_context* context
 ) {
-    // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
-    if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_->object(), resource, *ctx.req_context());
+    auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
+    if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, tx, resource, *ctx.req_context());
        res != status::ok) {
         return error_abort(ctx, res);
     }
@@ -196,10 +198,10 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         return error_abort(ctx, res);
     }
     std::string_view k{static_cast<char*>(ctx.key_.data()), len};
+    auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
     if (! use_secondary_) {
         auto& stg = *ctx.stg_;
-        // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
-        if(auto res = stg.content_get(*ctx.tx_->object(), k, v); res != status::ok) {
+        if(auto res = stg.content_get(tx, k, v); res != status::ok) {
             finish(context);
             utils::modify_concurrent_operation_status(*ctx.tx_->object(), res, false);
             if (res == status::not_found) {
@@ -214,8 +216,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     }
     auto& stg = *ctx.secondary_stg_;
     std::unique_ptr<kvs::iterator> it{};
-    // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
-    if(auto res = stg.content_scan(*ctx.tx_->object(),
+    if(auto res = stg.content_scan(tx,
             k, kvs::end_point_kind::prefixed_inclusive,
             k, kvs::end_point_kind::prefixed_inclusive,
             it

@@ -29,12 +29,14 @@ find_context::find_context(
     std::unique_ptr<kvs::storage> secondary_stg,
     transaction_context* tx,
     context_base::memory_resource* resource,
-    context_base::memory_resource* varlen_resource
+    context_base::memory_resource* varlen_resource,
+    kvs::transaction* strand
 ) :
     context_base(ctx, input_variables, output_variables, resource, varlen_resource),
     stg_(std::move(stg)),
     secondary_stg_(std::move(secondary_stg)),
-    tx_(tx)
+    tx_(tx),
+    strand_(strand)
 {}
 
 operator_kind find_context::kind() const noexcept {
@@ -47,6 +49,10 @@ void find_context::release() {
 
 transaction_context* find_context::transaction() const noexcept {
     return tx_;
+}
+
+kvs::transaction* find_context::strand() const noexcept {
+    return strand_;
 }
 
 }

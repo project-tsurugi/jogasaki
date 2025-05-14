@@ -181,7 +181,7 @@ TEST_F(scan_test, simple) {
     operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
     auto range = (builder.create_scan_ranges(target))[0];
     mock::task_context task_ctx{ {}, {}, {},{range}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
@@ -251,7 +251,7 @@ TEST_F(scan_test, nullable_fields) {
     operator_builder builder{processor_info_, {}, {}, exchange_map, &request_context_};
     auto range = (builder.create_scan_ranges(target))[0];
     mock::task_context task_ctx{ {}, {}, {},{range}};
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
@@ -355,7 +355,7 @@ TEST_F(scan_test, scan_info) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int8, kind::character>(100, accessor::text{"123456789012345678901234567890/D"}), create_record<kind::float8>(3.0));
 
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
@@ -451,7 +451,7 @@ TEST_F(scan_test, secondary_index) {
     put( *db_, secondary_idx->simple_name(), create_record<kind::int8, kind::int4>(300, 30), {});
 
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), get_storage(*db_, secondary_idx->simple_name()), tx.get(),range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();
     ASSERT_EQ(2, result.size());
@@ -577,7 +577,7 @@ TEST_F(scan_test, host_variables) {
     put( *db_, primary_idx->simple_name(), create_record<kind::int4, kind::int8>(100, 30), create_record<kind::int8>(3));
 
     auto tx = wrap(db_->create_transaction());
-    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), range.get(), request_context_.request_resource(), &varlen_resource_);
+    scan_context ctx(&task_ctx, output_variables, get_storage(*db_, primary_idx->simple_name()), nullptr, tx.get(), range.get(), request_context_.request_resource(), &varlen_resource_, nullptr);
 
     ASSERT_TRUE(static_cast<bool>(op(ctx)));
     ctx.release();

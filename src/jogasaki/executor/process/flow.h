@@ -84,7 +84,8 @@ private:
         std::size_t partition,
         impl::ops::operator_container const& operators,
         std::size_t sink_index,
-        std::shared_ptr<impl::scan_range> const& range
+        std::shared_ptr<impl::scan_range> const& range,
+        bool in_transaction_and_non_sticky
     );
     std::size_t check_empty_input_and_calculate_partitions();
 };

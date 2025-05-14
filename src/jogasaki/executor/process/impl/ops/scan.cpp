@@ -120,6 +120,7 @@ scan::scan(
 operation_status scan::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
     context_helper ctx{*context};
+    ctx.acquire_strand_if_needed();
     auto* p = find_context<scan_context>(index(), ctx.contexts());
     auto stg = ctx.database()->get_storage(storage_name());
     BOOST_ASSERT(stg);  //NOLINT //TODO handle error
@@ -131,7 +132,8 @@ operation_status scan::process_record(abstract::task_context* context) {
             ctx.transaction(),
             unsafe_downcast<impl::scan_range const>(ctx.task_context()->range()),  //NOLINT
             ctx.resource(),
-            ctx.varlen_resource()
+            ctx.varlen_resource(),
+            ctx.strand()
         );
     }
     return (*this)(*p, context);
@@ -197,8 +199,8 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             handle_kvs_errors(*ctx.req_context(), st);
             break;
         }
-        // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
-        if(st = field_mapper_.process(k, v, target, *ctx.stg_, *ctx.tx_->object(), resource, *ctx.req_context());
+        auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
+        if(st = field_mapper_.process(k, v, target, *ctx.stg_, tx, resource, *ctx.req_context());
            st != status::ok) {
             handle_kvs_errors(*ctx.req_context(), st);
             break;
@@ -261,9 +263,9 @@ status scan::open(scan_context& ctx) {  //NOLINT(readability-make-member-functio
     const auto range = ctx.range_;
     const auto& begin = range->begin();
     const auto& end = range->end();
-    // auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object(); //FIXME
+    auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
     if(auto res = stg.content_scan(
-            *ctx.tx_->object(),
+            tx,
             begin.key(),
             begin.endpointkind(),
             end.key(),

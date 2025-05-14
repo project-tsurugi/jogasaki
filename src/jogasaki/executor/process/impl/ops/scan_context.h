@@ -55,7 +55,8 @@ public:
         transaction_context* tx,
         impl::scan_range const* range,
         memory_resource* resource,
-        memory_resource* varlen_resource
+        memory_resource* varlen_resource,
+        kvs::transaction* strand
     );
 
     [[nodiscard]] operator_kind kind() const noexcept override;
@@ -69,6 +70,7 @@ public:
      */
     void dump() const noexcept;
 
+    [[nodiscard]] kvs::transaction* strand() const noexcept;
 private:
     std::unique_ptr<kvs::storage> stg_{};
     std::unique_ptr<kvs::storage> secondary_stg_{};
@@ -76,6 +78,7 @@ private:
     std::unique_ptr<kvs::iterator> it_{};
     std::size_t yield_count_{};
     impl::scan_range const* range_{};
+    kvs::transaction* strand_{};
 };
 
 } // namespace jogasaki::executor::process::impl::ops

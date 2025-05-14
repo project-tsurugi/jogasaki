@@ -108,6 +108,18 @@ public:
     [[nodiscard]] kvs::database* database() const noexcept;
 
     /**
+     * @brief acquire the strand that run under this transaction
+     * @return the new strand object
+     */
+    [[nodiscard]] std::unique_ptr<kvs::transaction> acquire_strand() noexcept;
+
+    /**
+     * @brief release the strand that run under this transaction
+     * @note no-op if this object is not a strand
+     */
+    bool release_strand() noexcept;
+
+    /**
      * @brief return the tx state
      * @return the tx state of this object
      */
@@ -148,6 +160,7 @@ private:
     sharksfin::TransactionHandle handle_{};
     kvs::database* database_{};
     std::shared_ptr<sharksfin::TransactionInfo> info_{};
+    bool is_strand_{};
 
     // mutable members
     std::atomic_bool active_{false};

@@ -156,7 +156,7 @@ TEST_F(function_floor_test, minbigint) {
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    EXPECT_EQ((create_nullable_record<kind::int8>(-9223372036854775808)), result[0])
+    EXPECT_EQ((create_nullable_record<kind::int8>(-9223372036854775808UL)), result[0])
         << "Failed query: " << query;
 }
 

@@ -1280,8 +1280,8 @@ status prepare(std::string_view sql, compiler_context &ctx) {
             set_compile_error_with_stack(
                 ctx,
                 error_code::compile_exception,
-                string_builder{} << "unexpected compile error occurred (likely unsupported SQL): " <<
-                    e.what() << string_builder::to_string,
+                string_builder{} << "unexpected compile error occurred (likely unsupported SQL):\"" <<
+                    e.what() << "\" sql:\"" << sql << "\"" << string_builder::to_string,
                 status::err_compiler_error,
                 ss.str()
             );

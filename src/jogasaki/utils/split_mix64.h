@@ -19,21 +19,24 @@
 
 namespace jogasaki::utils {
 
-constexpr inline std::uint64_t split_mix64(std::uint64_t x) {
+constexpr std::uint64_t split_mix64(std::uint64_t x) {
     x += 0x9e3779b97f4a7c15ULL;
-    x = (x ^ (x>>30)) * 0xbf58476d1ce4e5b9ULL;
-    x = (x ^ (x>>27)) * 0x94d049bb133111ebULL;
-    return x ^ (x>>31);
+    x = (x ^ (x>>30U)) * 0xbf58476d1ce4e5b9ULL;
+    x = (x ^ (x>>27U)) * 0x94d049bb133111ebULL;
+    return x ^ (x>>31U);
 }
 
+/**
+ * @brief hash compare class to mix hash values using split mix 64
+ */
 class split_mix64_hash_compare {
 public:
 
-    std::size_t hash(std::uint64_t const& a ) const {
+    [[nodiscard]] std::size_t hash(std::uint64_t const& a ) const {
         return split_mix64(a);
     }
 
-    bool equal(std::uint64_t const& a, std::uint64_t const& b) const {
+    [[nodiscard]] bool equal(std::uint64_t const& a, std::uint64_t const& b) const {
         return a == b;
     }
 };

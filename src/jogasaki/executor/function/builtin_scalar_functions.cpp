@@ -653,6 +653,138 @@ void add_builtin_scalar_functions(
             {t::decimal()},
         });
     }
+    /////////
+    // round
+    /////////
+    {
+        auto info =
+            std::make_shared<scalar_function_info>(scalar_function_kind::round, builtin::round, 1);
+        auto name = "round";
+        auto id   = scalar_function_id::id_11043;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4()},
+        });
+        id = scalar_function_id::id_11044;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8()},
+        });
+        id = scalar_function_id::id_11045;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4()},
+        });
+        id = scalar_function_id::id_11046;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8()},
+        });
+        id = scalar_function_id::id_11047;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal()},
+        });
+
+        info =
+            std::make_shared<scalar_function_info>(scalar_function_kind::round, builtin::round, 2);
+        id = scalar_function_id::id_11048;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4(), t::int4()},
+        });
+        id = scalar_function_id::id_11049;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8(), t::int4()},
+        });
+        id = scalar_function_id::id_11050;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4(), t::int4()},
+        });
+        id = scalar_function_id::id_11051;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8(), t::int4()},
+        });
+        id = scalar_function_id::id_11052;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal(), t::int4()},
+        });
+
+        id = scalar_function_id::id_11053;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4(), t::int8()},
+        });
+        id = scalar_function_id::id_11054;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8(), t::int8()},
+        });
+        id = scalar_function_id::id_11055;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4(), t::int8()},
+        });
+        id = scalar_function_id::id_11056;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8(), t::int8()},
+        });
+        id = scalar_function_id::id_11057;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal(), t::int8()},
+        });
+    }
 }
 
 namespace builtin {
@@ -938,6 +1070,76 @@ data::any extract_position(std::string_view substr, std::string_view str) {
     return data::any{std::in_place_type<runtime_t<kind::int8>>, char_count};
 }
 
+data::any simple_decimal_round(data::any src, int64_t scale) {
+    auto value     = src.to<runtime_t<kind::decimal>>();
+    auto type      = std::in_place_type<runtime_t<kind::decimal>>;
+    auto sign      = value.sign();
+    auto fix_scale = static_cast<int32_t>(scale);
+    auto one       = data::any{type, takatori::decimal::triple{+1, 0, 1, -fix_scale}};
+    auto remain    = expr::remainder_any(src, one);
+    auto check     = remain.to<runtime_t<kind::decimal>>();
+    if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return src; }
+    if (sign > 0) {
+        auto half_value = takatori::decimal::triple{+1, 0, 5, -fix_scale - 1};
+        auto half       = data::any{type, half_value};
+        auto res        = expr::subtract_any(src, remain);
+        auto com =
+            expr::compare_any(takatori::scalar::comparison_operator::greater_equal, remain, half);
+        if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {
+            return expr::add_any(res, one);
+        }
+        return res;
+    }
+    auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -fix_scale - 1};
+    auto minus_half       = data::any{type, minus_half_value};
+    auto res              = expr::subtract_any(src, remain);
+    auto com =
+        expr::compare_any(takatori::scalar::comparison_operator::less_equal, remain, minus_half);
+    if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {
+        return expr::subtract_any(res, one);
+    }
+    return res;
+}
+
+data::any round(data::any src, int64_t precision, evaluator_context& ctx) {
+    switch (src.type_index()) {
+        case data::any::index<runtime_t<kind::int4>>:
+        case data::any::index<runtime_t<kind::int8>>: return src;
+        case data::any::index<runtime_t<kind::float4>>: {
+            if (precision < -7 || precision > 7) {
+                ctx.add_error({error_kind::unsupported,
+                    "scale out of range for float: must be between -7 and 7"});
+                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+            }
+            auto value  = src.to<runtime_t<kind::float4>>();
+            auto factor = std::pow(10.0F, static_cast<float>(precision));
+            auto result = std::round(value * factor) / factor;
+            return data::any{std::in_place_type<runtime_t<kind::float4>>, result};
+        }
+        case data::any::index<runtime_t<kind::float8>>: {
+            if (precision < -15 || precision > 15) {
+                ctx.add_error({error_kind::unsupported,
+                    "scale out of range for real: must be between -15 and 15"});
+                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+            }
+            auto value  = src.to<runtime_t<kind::float8>>();
+            auto factor = std::pow(10.0, static_cast<double>(precision));
+            auto result = std::round(value * factor) / factor;
+            return data::any{std::in_place_type<runtime_t<kind::float8>>, result};
+        }
+        case data::any::index<runtime_t<kind::decimal>>: {
+            if (precision < -38 || precision > 38) {
+                ctx.add_error(
+                    {error_kind::unsupported, "scale out of range: must be between -38 and 38"});
+                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+            }
+            auto res = simple_decimal_round(src, precision);
+            return res;
+        }
+        default: std::abort();
+    }
+}
+
 } // namespace impl
 
 data::any substring(evaluator_context&, sequence_view<data::any> args) {
@@ -1162,6 +1364,29 @@ data::any floor(evaluator_context&, sequence_view<data::any> args) {
         default: std::abort();
     }
     std::abort();
+}
+
+data::any round(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1 || args.size() == 2); // NOLINT
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+    runtime_t<kind::int8> scale_int8{0};
+    if (args.size() > 1) {
+        auto scale = static_cast<data::any&>(args[1]);
+        if (scale.empty()) { return {}; }
+        switch (scale.type_index()) {
+            case data::any::index<runtime_t<kind::int4>>: {
+                scale_int8 = static_cast<runtime_t<kind::int8>>(scale.to<runtime_t<kind::int4>>());
+                break;
+            }
+            case data::any::index<runtime_t<kind::int8>>: {
+                scale_int8 = scale.to<runtime_t<kind::int8>>();
+                break;
+            }
+            default: std::abort();
+        }
+    }
+    return impl::round(src, scale_int8, ctx);
 }
 
 } // namespace builtin

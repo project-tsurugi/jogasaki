@@ -27,13 +27,14 @@
 #include <tateyama/framework/resource.h>
 #include <tateyama/framework/service.h>
 
-#include <jogasaki/api/kvsservice/store.h>
-
 namespace jogasaki::api::kvsservice {
 
 using tateyama::api::server::request;
 using tateyama::api::server::response;
 namespace framework = tateyama::framework;
+
+// store is the pimpl object for resource class
+class store;
 
 /**
  * @brief kvs resource bridge for tateyama framework

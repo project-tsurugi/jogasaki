@@ -25,6 +25,7 @@
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/kvsservice/status.h>
+#include <jogasaki/utils/split_mix64.h>
 
 #include "transaction.h"
 #include "transaction_option.h"
@@ -96,7 +97,7 @@ public:
 private:
     jogasaki::api::database *db_{};
     sharksfin::DatabaseHandle db_handle_{};
-    tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>> transactions_{};
+    tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>, utils::split_mix64_hash_compare> transactions_{};
 };
 
 }

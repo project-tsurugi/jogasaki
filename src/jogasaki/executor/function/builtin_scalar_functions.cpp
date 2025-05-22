@@ -653,6 +653,138 @@ void add_builtin_scalar_functions(
             {t::decimal()},
         });
     }
+    /////////
+    // round
+    /////////
+    {
+        auto info =
+            std::make_shared<scalar_function_info>(scalar_function_kind::round, builtin::round, 1);
+        auto name = "round";
+        auto id   = scalar_function_id::id_11043;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4()},
+        });
+        id = scalar_function_id::id_11044;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8()},
+        });
+        id = scalar_function_id::id_11045;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4()},
+        });
+        id = scalar_function_id::id_11046;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8()},
+        });
+        id = scalar_function_id::id_11047;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal()},
+        });
+
+        info =
+            std::make_shared<scalar_function_info>(scalar_function_kind::round, builtin::round, 2);
+        id = scalar_function_id::id_11048;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4(), t::int4()},
+        });
+        id = scalar_function_id::id_11049;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8(), t::int4()},
+        });
+        id = scalar_function_id::id_11050;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4(), t::int4()},
+        });
+        id = scalar_function_id::id_11051;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8(), t::int4()},
+        });
+        id = scalar_function_id::id_11052;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal(), t::int4()},
+        });
+
+        id = scalar_function_id::id_11053;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int4(),
+            {t::int4(), t::int8()},
+        });
+        id = scalar_function_id::id_11054;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::int8(),
+            {t::int8(), t::int8()},
+        });
+        id = scalar_function_id::id_11055;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float4(),
+            {t::float4(), t::int8()},
+        });
+        id = scalar_function_id::id_11056;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::float8(),
+            {t::float8(), t::int8()},
+        });
+        id = scalar_function_id::id_11057;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::decimal(),
+            {t::decimal(), t::int8()},
+        });
+    }
 }
 
 namespace builtin {
@@ -938,6 +1070,105 @@ data::any extract_position(std::string_view substr, std::string_view str) {
     return data::any{std::in_place_type<runtime_t<kind::int8>>, char_count};
 }
 
+data::any round_decimal(data::any src, int32_t precision, evaluator_context& ctx,
+    int32_t min_precision, int32_t max_precision) {
+    if (precision < min_precision || precision > max_precision) {
+        ctx.add_error({error_kind::unsupported, "scale out of range: must be between -38 and 38"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    auto value  = src.to<runtime_t<kind::decimal>>();
+    auto type   = std::in_place_type<runtime_t<kind::decimal>>;
+    auto one    = data::any{type, takatori::decimal::triple{+1, 0, 1, -precision}};
+    auto remain = expr::remainder_any(src, one);
+    auto check  = remain.to<runtime_t<kind::decimal>>();
+    if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return src; }
+    if (value.sign() > 0) {
+        auto half_value = takatori::decimal::triple{+1, 0, 5, -precision - 1};
+        auto half       = data::any{type, half_value};
+        auto res        = expr::subtract_any(src, remain);
+        auto com =
+            expr::compare_any(takatori::scalar::comparison_operator::greater_equal, remain, half);
+        if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {
+            return expr::add_any(res, one);
+        }
+        return res;
+    }
+    auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -precision - 1};
+    auto minus_half       = data::any{type, minus_half_value};
+    auto res              = expr::subtract_any(src, remain);
+    auto com =
+        expr::compare_any(takatori::scalar::comparison_operator::less_equal, remain, minus_half);
+    if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {
+        return expr::subtract_any(res, one);
+    }
+    return res;
+}
+
+template <jogasaki::meta::field_type_kind Kind>
+data::any round_integral(data::any src, int32_t precision, evaluator_context& ctx,
+    int32_t min_precision, const char* type_name) {
+    using T = runtime_t<Kind>;
+
+    if (precision < min_precision || precision > 0) {
+        ctx.add_error({error_kind::unsupported, std::string("scale out of range for ") + type_name +
+                                                    ": must be between " +
+                                                    std::to_string(min_precision) + " and 0"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+
+    T divide = 1;
+    for (int32_t i = 0; i < -precision; ++i) {
+        divide *= 10;
+    }
+
+    auto value     = src.to<T>();
+    auto fix_value = (value / divide) * divide;
+    auto remain    = value - fix_value;
+
+    if (remain > 0 && remain >= divide / 2) {
+        fix_value += divide;
+    } else if (remain < 0 && remain <= -divide / 2) {
+        fix_value -= divide;
+    }
+
+    return data::any{std::in_place_type<T>, fix_value};
+}
+
+template <jogasaki::meta::field_type_kind Kind>
+data::any round_floating_point(data::any src, int32_t precision, evaluator_context& ctx,
+    int32_t min_precision, int32_t max_precision, const char* type_name) {
+    using T          = runtime_t<Kind>;
+    using FactorType = std::conditional_t<std::is_same_v<T, float>, float, double>;
+
+    if (precision < min_precision || precision > max_precision) {
+        ctx.add_error({error_kind::unsupported,
+            std::string("scale out of range for ") + type_name + ": must be between " +
+                std::to_string(min_precision) + " and " + std::to_string(max_precision)});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+
+    auto value  = src.to<T>();
+    auto factor = std::pow(static_cast<FactorType>(10.0), static_cast<FactorType>(precision));
+    auto result = std::round(value * factor) / factor;
+
+    return data::any{std::in_place_type<T>, result};
+}
+data::any round(data::any src, int32_t precision, evaluator_context& ctx) {
+    switch (src.type_index()) {
+        case data::any::index<runtime_t<kind::int4>>:
+            return round_integral<kind::int4>(src, precision, ctx, -9, "INT");
+        case data::any::index<runtime_t<kind::int8>>:
+            return round_integral<kind::int8>(src, precision, ctx, -18, "BIGINT");
+        case data::any::index<runtime_t<kind::float4>>:
+            return round_floating_point<kind::float4>(src, precision, ctx, -7, 7, "REAL");
+        case data::any::index<runtime_t<kind::float8>>:
+            return round_floating_point<kind::float8>(src, precision, ctx, -15, 15, "DOUBLE");
+        case data::any::index<runtime_t<kind::decimal>>:
+            return round_decimal(src, precision, ctx, -38, 38);
+        default: std::abort();
+    }
+}
+
 } // namespace impl
 
 data::any substring(evaluator_context&, sequence_view<data::any> args) {
@@ -1162,6 +1393,40 @@ data::any floor(evaluator_context&, sequence_view<data::any> args) {
         default: std::abort();
     }
     std::abort();
+}
+
+data::any round(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1 || args.size() == 2); // NOLINT
+    auto& src = static_cast<data::any&>(args[0]);
+    if (src.empty()) { return {}; }
+    runtime_t<kind::int4> scale_int4{0};
+    if (args.size() > 1) {
+        auto scale = static_cast<data::any&>(args[1]);
+        if (scale.empty()) { return {}; }
+        switch (scale.type_index()) {
+            case data::any::index<runtime_t<kind::int4>>: {
+                scale_int4 = scale.to<runtime_t<kind::int4>>();
+                if (scale_int4 < -38 || scale_int4 > 38) {
+                    ctx.add_error({error_kind::unsupported,
+                        "scale out of range: must be between -38 and 38"});
+                    return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+                }
+                break;
+            }
+            case data::any::index<runtime_t<kind::int8>>: {
+                auto scale_int8 = scale.to<runtime_t<kind::int8>>();
+                if (scale_int8 < -38 || scale_int8 > 38) {
+                    ctx.add_error({error_kind::unsupported,
+                        "scale out of range: must be between -38 and 38"});
+                    return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+                }
+                scale_int4 = static_cast<runtime_t<kind::int4>>(scale_int8);
+                break;
+            }
+            default: std::abort();
+        }
+    }
+    return impl::round(src, scale_int4, ctx);
 }
 
 } // namespace builtin

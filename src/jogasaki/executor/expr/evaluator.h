@@ -62,8 +62,6 @@ public:
     ) noexcept;
 
     any concat_any(any const& left, any const& right);
-    any multiply_any(any const& left, any const& right);
-    any divide_any(any const& left, any const& right);
     any conditional_and_any(any const& left, any const& right);
     any conditional_or_any(any const& left, any const& right);
     any operator()(takatori::scalar::binary const& exp);
@@ -78,7 +76,6 @@ public:
     any is_unknown(any const& exp);
     any operator()(takatori::scalar::unary const& exp);
     any operator()(takatori::scalar::cast const&);
-    any compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right);
     any operator()(takatori::scalar::compare const& exp);
     any operator()(takatori::scalar::match const&);
     any operator()(takatori::scalar::conditional const&);
@@ -175,7 +172,10 @@ private:
     memory::lifo_paged_memory_resource* resource = nullptr
 );
 
+[[nodiscard]] any divide_any(any const& left, any const& right);
+[[nodiscard]] any multiply_any(any const& left, any const& right);
 [[nodiscard]] any remainder_any(any const& left, any const& right);
 [[nodiscard]] any add_any(any const& left, any const& right);
 [[nodiscard]] any subtract_any(any const& left, any const& right);
+[[nodiscard]] any compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right);
 }  // namespace jogasaki::executor::expr

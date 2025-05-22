@@ -35,9 +35,11 @@ ROUND(numeric_expression[, integer_expression])
 * `integer_expression` にはnumeric_expressionの型に対応した上下限値が定められており、その範囲を超えた場合エラーとなります。
 
 | `numeric_expression` の型 | 上限値 | 下限値 |
-| ----------------------- | --- | --- |
-| `REAL`                  | +7  | -7  |
-| `DOUBLE`                | +15 | -15 |
-| `DECIMAL`               | +38 | -38 |
+| -------------------------| ----- | ----- |
+| `INT`                    | +0    | -9    |
+| `BIGINT`                 | +0    | -18   |
+| `REAL`                   | +7    | -7    |
+| `DOUBLE`                 | +15   | -15   |
+| `DECIMAL`                | +38   | -38   |
 
 

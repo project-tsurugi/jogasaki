@@ -1070,17 +1070,15 @@ data::any extract_position(std::string_view substr, std::string_view str) {
     return data::any{std::in_place_type<runtime_t<kind::int8>>, char_count};
 }
 
-data::any simple_decimal_round(data::any src, int64_t scale) {
+data::any decimal_round(data::any src, int32_t scale) {
     auto value     = src.to<runtime_t<kind::decimal>>();
     auto type      = std::in_place_type<runtime_t<kind::decimal>>;
-    auto sign      = value.sign();
-    auto fix_scale = static_cast<int32_t>(scale);
-    auto one       = data::any{type, takatori::decimal::triple{+1, 0, 1, -fix_scale}};
+    auto one       = data::any{type, takatori::decimal::triple{+1, 0, 1, -scale}};
     auto remain    = expr::remainder_any(src, one);
     auto check     = remain.to<runtime_t<kind::decimal>>();
     if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return src; }
-    if (sign > 0) {
-        auto half_value = takatori::decimal::triple{+1, 0, 5, -fix_scale - 1};
+    if (value.sign() > 0) {
+        auto half_value = takatori::decimal::triple{+1, 0, 5, -scale - 1};
         auto half       = data::any{type, half_value};
         auto res        = expr::subtract_any(src, remain);
         auto com =
@@ -1090,7 +1088,7 @@ data::any simple_decimal_round(data::any src, int64_t scale) {
         }
         return res;
     }
-    auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -fix_scale - 1};
+    auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -scale - 1};
     auto minus_half       = data::any{type, minus_half_value};
     auto res              = expr::subtract_any(src, remain);
     auto com =
@@ -1101,14 +1099,58 @@ data::any simple_decimal_round(data::any src, int64_t scale) {
     return res;
 }
 
-data::any round(data::any src, int64_t precision, evaluator_context& ctx) {
+data::any round(data::any src, int32_t precision, evaluator_context& ctx) {
     switch (src.type_index()) {
-        case data::any::index<runtime_t<kind::int4>>:
-        case data::any::index<runtime_t<kind::int8>>: return src;
+        case data::any::index<runtime_t<kind::int4>>: {
+            if (precision < -9 || precision > 0) {
+                ctx.add_error({error_kind::unsupported,
+                    "scale out of range for INT: must be between -9 and 0"});
+                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+            }
+            int divide = 1;
+            for (int32_t i = 0; i < -precision; ++i) {
+                divide *= 10;
+            }
+            auto value     = src.to<runtime_t<kind::int4>>();
+            auto fix_value = (value / divide) * divide;
+            auto remain    = value - fix_value;
+            if (remain > 0 && remain >= divide / 2) {
+                fix_value += divide;
+                data::any{std::in_place_type<runtime_t<kind::int4>>, fix_value};
+            }
+            if (remain < 0 && remain <= -divide / 2) {
+                fix_value -= divide;
+                data::any{std::in_place_type<runtime_t<kind::int4>>, fix_value};
+            }
+            return data::any{std::in_place_type<runtime_t<kind::int4>>, fix_value};
+        }
+        case data::any::index<runtime_t<kind::int8>>: {
+            if (precision < -18 || precision > 0) {
+                ctx.add_error({error_kind::unsupported,
+                    "scale out of range for BIGINT: must be between -18 and 0"});
+                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+            }
+            int divide = 1;
+            for (int32_t i = 0; i < -precision; ++i) {
+                divide *= 10;
+            }
+            auto value     = src.to<runtime_t<kind::int8>>();
+            auto fix_value = (value / divide) * divide;
+            auto remain    = value - fix_value;
+            if (remain > 0 && remain >= divide / 2) {
+                fix_value += divide;
+                data::any{std::in_place_type<runtime_t<kind::int8>>, fix_value};
+            }
+            if (remain < 0 && remain <= -divide / 2) {
+                fix_value -= divide;
+                data::any{std::in_place_type<runtime_t<kind::int8>>, fix_value};
+            }
+            return data::any{std::in_place_type<runtime_t<kind::int8>>, fix_value};
+        }
         case data::any::index<runtime_t<kind::float4>>: {
             if (precision < -7 || precision > 7) {
                 ctx.add_error({error_kind::unsupported,
-                    "scale out of range for float: must be between -7 and 7"});
+                    "scale out of range for REAL: must be between -7 and 7"});
                 return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
             }
             auto value  = src.to<runtime_t<kind::float4>>();
@@ -1119,7 +1161,7 @@ data::any round(data::any src, int64_t precision, evaluator_context& ctx) {
         case data::any::index<runtime_t<kind::float8>>: {
             if (precision < -15 || precision > 15) {
                 ctx.add_error({error_kind::unsupported,
-                    "scale out of range for real: must be between -15 and 15"});
+                    "scale out of range for DOUBLE: must be between -15 and 15"});
                 return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
             }
             auto value  = src.to<runtime_t<kind::float8>>();
@@ -1133,7 +1175,7 @@ data::any round(data::any src, int64_t precision, evaluator_context& ctx) {
                     {error_kind::unsupported, "scale out of range: must be between -38 and 38"});
                 return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
             }
-            auto res = simple_decimal_round(src, precision);
+            auto res = decimal_round(src, precision);
             return res;
         }
         default: std::abort();
@@ -1370,23 +1412,34 @@ data::any round(evaluator_context& ctx, sequence_view<data::any> args) {
     BOOST_ASSERT(args.size() == 1 || args.size() == 2); // NOLINT
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
-    runtime_t<kind::int8> scale_int8{0};
+    runtime_t<kind::int4> scale_int4{0};
     if (args.size() > 1) {
         auto scale = static_cast<data::any&>(args[1]);
         if (scale.empty()) { return {}; }
         switch (scale.type_index()) {
             case data::any::index<runtime_t<kind::int4>>: {
-                scale_int8 = static_cast<runtime_t<kind::int8>>(scale.to<runtime_t<kind::int4>>());
+                scale_int4 = scale.to<runtime_t<kind::int4>>();
+                if (scale_int4 < -38 || scale_int4 > 38) {
+                    ctx.add_error({error_kind::unsupported,
+                        "scale out of range: must be between -38 and 38"});
+                    return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+                }
                 break;
             }
             case data::any::index<runtime_t<kind::int8>>: {
-                scale_int8 = scale.to<runtime_t<kind::int8>>();
+                auto scale_int8 = scale.to<runtime_t<kind::int8>>();
+                if (scale_int8 < -38 || scale_int8 > 38) {
+                    ctx.add_error({error_kind::unsupported,
+                        "scale out of range: must be between -38 and 38"});
+                    return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+                }
+                scale_int4 = static_cast<runtime_t<kind::int4>>(scale_int8);
                 break;
             }
             default: std::abort();
         }
     }
-    return impl::round(src, scale_int8, ctx);
+    return impl::round(src, scale_int4, ctx);
 }
 
 } // namespace builtin

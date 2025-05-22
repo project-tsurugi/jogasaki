@@ -1070,15 +1070,20 @@ data::any extract_position(std::string_view substr, std::string_view str) {
     return data::any{std::in_place_type<runtime_t<kind::int8>>, char_count};
 }
 
-data::any decimal_round(data::any src, int32_t scale) {
-    auto value     = src.to<runtime_t<kind::decimal>>();
-    auto type      = std::in_place_type<runtime_t<kind::decimal>>;
-    auto one       = data::any{type, takatori::decimal::triple{+1, 0, 1, -scale}};
-    auto remain    = expr::remainder_any(src, one);
-    auto check     = remain.to<runtime_t<kind::decimal>>();
+data::any round_decimal(data::any src, int32_t precision, evaluator_context& ctx,
+    int32_t min_precision, int32_t max_precision) {
+    if (precision < min_precision || precision > max_precision) {
+        ctx.add_error({error_kind::unsupported, "scale out of range: must be between -38 and 38"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    auto value  = src.to<runtime_t<kind::decimal>>();
+    auto type   = std::in_place_type<runtime_t<kind::decimal>>;
+    auto one    = data::any{type, takatori::decimal::triple{+1, 0, 1, -precision}};
+    auto remain = expr::remainder_any(src, one);
+    auto check  = remain.to<runtime_t<kind::decimal>>();
     if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return src; }
     if (value.sign() > 0) {
-        auto half_value = takatori::decimal::triple{+1, 0, 5, -scale - 1};
+        auto half_value = takatori::decimal::triple{+1, 0, 5, -precision - 1};
         auto half       = data::any{type, half_value};
         auto res        = expr::subtract_any(src, remain);
         auto com =
@@ -1088,7 +1093,7 @@ data::any decimal_round(data::any src, int32_t scale) {
         }
         return res;
     }
-    auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -scale - 1};
+    auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -precision - 1};
     auto minus_half       = data::any{type, minus_half_value};
     auto res              = expr::subtract_any(src, remain);
     auto com =
@@ -1099,85 +1104,67 @@ data::any decimal_round(data::any src, int32_t scale) {
     return res;
 }
 
+template <jogasaki::meta::field_type_kind Kind>
+data::any round_integral(data::any src, int32_t precision, evaluator_context& ctx,
+    int32_t min_precision, const char* type_name) {
+    using T = runtime_t<Kind>;
+
+    if (precision < min_precision || precision > 0) {
+        ctx.add_error({error_kind::unsupported, std::string("scale out of range for ") + type_name +
+                                                    ": must be between " +
+                                                    std::to_string(min_precision) + " and 0"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+
+    T divide = 1;
+    for (int32_t i = 0; i < -precision; ++i) {
+        divide *= 10;
+    }
+
+    auto value     = src.to<T>();
+    auto fix_value = (value / divide) * divide;
+    auto remain    = value - fix_value;
+
+    if (remain > 0 && remain >= divide / 2) {
+        fix_value += divide;
+    } else if (remain < 0 && remain <= -divide / 2) {
+        fix_value -= divide;
+    }
+
+    return data::any{std::in_place_type<T>, fix_value};
+}
+
+template <jogasaki::meta::field_type_kind Kind>
+data::any round_floating_point(data::any src, int32_t precision, evaluator_context& ctx,
+    int32_t min_precision, int32_t max_precision, const char* type_name) {
+    using T          = runtime_t<Kind>;
+    using FactorType = std::conditional_t<std::is_same_v<T, float>, float, double>;
+
+    if (precision < min_precision || precision > max_precision) {
+        ctx.add_error({error_kind::unsupported,
+            std::string("scale out of range for ") + type_name + ": must be between " +
+                std::to_string(min_precision) + " and " + std::to_string(max_precision)});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+
+    auto value  = src.to<T>();
+    auto factor = std::pow(static_cast<FactorType>(10.0), static_cast<FactorType>(precision));
+    auto result = std::round(value * factor) / factor;
+
+    return data::any{std::in_place_type<T>, result};
+}
 data::any round(data::any src, int32_t precision, evaluator_context& ctx) {
     switch (src.type_index()) {
-        case data::any::index<runtime_t<kind::int4>>: {
-            if (precision < -9 || precision > 0) {
-                ctx.add_error({error_kind::unsupported,
-                    "scale out of range for INT: must be between -9 and 0"});
-                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-            }
-            int divide = 1;
-            for (int32_t i = 0; i < -precision; ++i) {
-                divide *= 10;
-            }
-            auto value     = src.to<runtime_t<kind::int4>>();
-            auto fix_value = (value / divide) * divide;
-            auto remain    = value - fix_value;
-            if (remain > 0 && remain >= divide / 2) {
-                fix_value += divide;
-                data::any{std::in_place_type<runtime_t<kind::int4>>, fix_value};
-            }
-            if (remain < 0 && remain <= -divide / 2) {
-                fix_value -= divide;
-                data::any{std::in_place_type<runtime_t<kind::int4>>, fix_value};
-            }
-            return data::any{std::in_place_type<runtime_t<kind::int4>>, fix_value};
-        }
-        case data::any::index<runtime_t<kind::int8>>: {
-            if (precision < -18 || precision > 0) {
-                ctx.add_error({error_kind::unsupported,
-                    "scale out of range for BIGINT: must be between -18 and 0"});
-                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-            }
-            int divide = 1;
-            for (int32_t i = 0; i < -precision; ++i) {
-                divide *= 10;
-            }
-            auto value     = src.to<runtime_t<kind::int8>>();
-            auto fix_value = (value / divide) * divide;
-            auto remain    = value - fix_value;
-            if (remain > 0 && remain >= divide / 2) {
-                fix_value += divide;
-                data::any{std::in_place_type<runtime_t<kind::int8>>, fix_value};
-            }
-            if (remain < 0 && remain <= -divide / 2) {
-                fix_value -= divide;
-                data::any{std::in_place_type<runtime_t<kind::int8>>, fix_value};
-            }
-            return data::any{std::in_place_type<runtime_t<kind::int8>>, fix_value};
-        }
-        case data::any::index<runtime_t<kind::float4>>: {
-            if (precision < -7 || precision > 7) {
-                ctx.add_error({error_kind::unsupported,
-                    "scale out of range for REAL: must be between -7 and 7"});
-                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-            }
-            auto value  = src.to<runtime_t<kind::float4>>();
-            auto factor = std::pow(10.0F, static_cast<float>(precision));
-            auto result = std::round(value * factor) / factor;
-            return data::any{std::in_place_type<runtime_t<kind::float4>>, result};
-        }
-        case data::any::index<runtime_t<kind::float8>>: {
-            if (precision < -15 || precision > 15) {
-                ctx.add_error({error_kind::unsupported,
-                    "scale out of range for DOUBLE: must be between -15 and 15"});
-                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-            }
-            auto value  = src.to<runtime_t<kind::float8>>();
-            auto factor = std::pow(10.0, static_cast<double>(precision));
-            auto result = std::round(value * factor) / factor;
-            return data::any{std::in_place_type<runtime_t<kind::float8>>, result};
-        }
-        case data::any::index<runtime_t<kind::decimal>>: {
-            if (precision < -38 || precision > 38) {
-                ctx.add_error(
-                    {error_kind::unsupported, "scale out of range: must be between -38 and 38"});
-                return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-            }
-            auto res = decimal_round(src, precision);
-            return res;
-        }
+        case data::any::index<runtime_t<kind::int4>>:
+            return round_integral<kind::int4>(src, precision, ctx, -9, "INT");
+        case data::any::index<runtime_t<kind::int8>>:
+            return round_integral<kind::int8>(src, precision, ctx, -18, "BIGINT");
+        case data::any::index<runtime_t<kind::float4>>:
+            return round_floating_point<kind::float4>(src, precision, ctx, -7, 7, "REAL");
+        case data::any::index<runtime_t<kind::float8>>:
+            return round_floating_point<kind::float8>(src, precision, ctx, -15, 15, "DOUBLE");
+        case data::any::index<runtime_t<kind::decimal>>:
+            return round_decimal(src, precision, ctx, -38, 38);
         default: std::abort();
     }
 }

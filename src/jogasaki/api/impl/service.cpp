@@ -576,7 +576,7 @@ void service::command_commit(
     if(! tx) {
         return;
     }
-    auto nt = from(cm.notification_type());
+    auto nt = from(cm.has_option() ? cm.option().notification_type() : cm.notification_type());
     auto cr = nt != commit_response_kind::undefined ? nt : db_->config()->default_commit_response();
     commit_response_kind_set responses{};
     if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
@@ -590,7 +590,7 @@ void service::command_commit(
     }
 
     commit_option opt{};
-    opt.auto_dispose_on_success(cm.auto_dispose()).commit_response(cr);
+    opt.auto_dispose_on_success(cm.has_option() ? cm.option().auto_dispose() : cm.auto_dispose()).commit_response(cr);
 
     auto tctx = get_transaction_context(tx);
     executor::commit_async(

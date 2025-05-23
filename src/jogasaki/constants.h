@@ -29,7 +29,7 @@ constexpr std::size_t service_message_version_major = 1;
 /**
  * @brief current message version (minor)
  */
-constexpr std::size_t service_message_version_minor = 5;
+constexpr std::size_t service_message_version_minor = 6;
 
 /**
  * @brief default number of partitions for testing and mocking purposes.

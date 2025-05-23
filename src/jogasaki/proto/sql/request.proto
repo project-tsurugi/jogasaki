@@ -387,15 +387,33 @@ message ExecuteLoad {
   repeated string file = 4;
 }
 
+// options for commit request
+message CommitOption {
+    reserved 1 to 10;
+
+    // response will be returned after reaching the commit status.
+    CommitStatus notification_type = 11;
+
+    // dispose the target transaction handle if the success of commit is notified to the client.
+    bool auto_dispose = 12;
+}
+
 /* For commit request. */
 message Commit {
     common.Transaction transaction_handle = 1;
 
     // response will be returned after reaching the commit status.
+    // deprecated: use CommitOption.notification_type
     CommitStatus notification_type = 2;
 
-    // dispose the target transaction handle only if notifies a successfully commit to the client.
+    // dispose the target transaction handle if the success of commit is notified to the client.
+    // deprecated: use CommitOption.auto_dispose
     bool auto_dispose = 3;
+
+    reserved 4 to 10;
+
+    // commit option.
+    CommitOption option = 11;
 }
 
 /* For rollback request. */

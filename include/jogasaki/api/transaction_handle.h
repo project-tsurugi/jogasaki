@@ -36,6 +36,7 @@
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/hex.h>
 
 namespace jogasaki::api {
 
@@ -93,6 +94,16 @@ public:
      */
     explicit transaction_handle(
         std::size_t surrogate_id
+    ) noexcept;
+
+    /**
+     * @brief create new object from id
+     * @param surrogate_id the surrogate id of the transaction
+     * @param session_id the session id of the transaction
+     */
+    transaction_handle(
+        std::size_t surrogate_id,
+        std::size_t session_id
     ) noexcept;
 
     /**
@@ -292,8 +303,15 @@ public:
      */
     [[nodiscard]] std::size_t surrogate_id() const noexcept;
 
+    /**
+     * @brief return the session id of the transaction
+     * @return session id
+     */
+    [[nodiscard]] std::optional<std::size_t> session_id() const noexcept;
+
 private:
     std::size_t surrogate_id_{};
+    std::optional<std::size_t> session_id_{};
 };
 
 static_assert(std::is_trivially_copyable_v<transaction_handle>);
@@ -302,7 +320,16 @@ static_assert(std::is_trivially_copyable_v<transaction_handle>);
  * @brief equality comparison operator
  */
 inline bool operator==(transaction_handle const& a, transaction_handle const& b) noexcept {
-    return a.surrogate_id() == b.surrogate_id();
+    if (a.surrogate_id() != b.surrogate_id()) {
+        return false;
+    }
+    if (a.session_id().has_value() != b.session_id().has_value()) {
+        return false;
+    }
+    if (! a.session_id().has_value()) {
+        return true;
+    }
+    return a.session_id().value() == b.session_id().value();
 }
 
 /**
@@ -319,7 +346,13 @@ inline bool operator!=(transaction_handle const& a, transaction_handle const& b)
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, transaction_handle value) {
-    return out << "transaction_handle[" << value.surrogate_id() << "]";
+    out << "transaction_handle[surrogate_id:" << utils::hex(value.surrogate_id());
+    if (value.session_id().has_value()) {
+        // print session_id in decimal to conform to tateyama log message
+        out << ",session_id:" << value.session_id().value();
+    }
+    out << "]";
+    return out;
 }
 
 }  // namespace jogasaki::api

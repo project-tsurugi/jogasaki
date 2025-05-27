@@ -44,6 +44,14 @@ transaction_handle::transaction_handle(
     surrogate_id_(surrogate_id)
 {}
 
+transaction_handle::transaction_handle(
+    std::size_t surrogate_id,
+    std::size_t session_id
+) noexcept:
+    surrogate_id_(surrogate_id),
+    session_id_(session_id)
+{}
+
 transaction_handle::operator std::size_t() const noexcept {
     return std::hash<transaction_handle>{}(*this);
 }
@@ -56,12 +64,15 @@ transaction_context* tx(std::uintptr_t arg) {
     return reinterpret_cast<transaction_context*>(arg);  //NOLINT
 }
 
-std::shared_ptr<transaction_context> lookup(std::size_t surrogate_id) {
+std::shared_ptr<transaction_context> lookup(std::size_t surrogate_id, std::optional<std::size_t> session_id) {
+    if (session_id.has_value()) {
+        //FIXME implement
+    }
     return global::database_impl()->find_transaction(transaction_handle{surrogate_id});
 }
 
 status transaction_handle::commit(api::commit_option option) {  //NOLINT(readability-make-member-function-const, performance-unnecessary-value-param)
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) return status::err_invalid_argument;
     return executor::commit(*global::database_impl(), std::move(tx), option);
 }
@@ -80,7 +91,7 @@ void transaction_handle::commit_async(  //NOLINT(readability-make-member-functio
     commit_option opt,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) {
         auto res = status::err_invalid_argument;
         on_completion(res,
@@ -106,7 +117,7 @@ status transaction_handle::abort(request_info const& req_info) {  //NOLINT(reada
 }
 
 status transaction_handle::abort_transaction(request_info const& req_info) {  //NOLINT(readability-make-member-function-const)
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) return status::err_invalid_argument;
     executor::abort_transaction(std::move(tx), req_info);
     return status::ok;
@@ -116,7 +127,7 @@ status transaction_handle::execute(  //NOLINT(readability-make-member-function-c
     executable_statement& statement,
     request_info const& req_info
 ) {
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) return status::err_invalid_argument;
     std::unique_ptr<api::result_set> result{};
     std::shared_ptr<error::error_info> info{};
@@ -130,7 +141,7 @@ status transaction_handle::execute(  //NOLINT(readability-make-member-function-c
     std::unique_ptr<result_set>& result,
     request_info const& req_info
 ) {
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) return status::err_invalid_argument;
     std::shared_ptr<error::error_info> info{};
     std::shared_ptr<request_statistics> stats{};
@@ -144,7 +155,7 @@ status transaction_handle::execute( //NOLINT
     std::unique_ptr<result_set>& result,
     request_info const& req_info
 ) {
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) return status::err_invalid_argument;
     std::shared_ptr<error::error_info> info{};
     std::shared_ptr<request_statistics> stats{};
@@ -173,7 +184,7 @@ bool transaction_handle::execute_async(   //NOLINT(readability-make-member-funct
     transaction_handle::error_info_stats_callback on_completion,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) {
         auto res = status::err_invalid_argument;
         on_completion(res,
@@ -222,7 +233,7 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
     transaction_handle::error_info_stats_callback on_completion,  //NOLINT(performance-unnecessary-value-param)
     request_info const& req_info
 ) {
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) {
         auto res = status::err_invalid_argument;
         on_completion(res,
@@ -250,7 +261,7 @@ bool transaction_handle::execute_async(  //NOLINT(readability-make-member-functi
 }
 
 std::string_view transaction_handle::transaction_id() const noexcept {
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) {
         return {};
     }
@@ -259,7 +270,7 @@ std::string_view transaction_handle::transaction_id() const noexcept {
 
 status transaction_handle::error_info(std::shared_ptr<api::error_info>& out) const noexcept {
     out = {};
-    auto tx = lookup(surrogate_id_);
+    auto tx = lookup(surrogate_id_, session_id_);
     if(! tx) return status::err_invalid_argument;
     if(tx->error_info()) {
         out = api::impl::error_info::create(tx->error_info());
@@ -272,7 +283,11 @@ std::size_t transaction_handle::surrogate_id() const noexcept {
 }
 
 std::shared_ptr<transaction_context> get_transaction_context(transaction_handle arg) {
-    return lookup(arg.surrogate_id());
+    return lookup(arg.surrogate_id(), arg.session_id());
+}
+
+std::optional<std::size_t> transaction_handle::session_id() const noexcept {
+    return session_id_;
 }
 
 }

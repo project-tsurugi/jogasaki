@@ -69,7 +69,7 @@ jobs:
       checks: write
     timeout-minutes: 30
     container:
-      image: ghcr.io/project-tsurugi/tsurugi-ci:ubuntu-22.04
+      image: ghcr.io/project-tsurugi/tsurugi-ci:almalinux-latest
       volumes:
         - ${{ vars.ccache_dir }}:${{ vars.ccache_dir }}
     defaults:
@@ -77,7 +77,9 @@ jobs:
         shell: bash
     env:
       CCACHE_CONFIGPATH: ${{ vars.ccache_dir }}/ccache.conf
-      CCACHE_DIR: ${{ vars.ccache_dir }}/ubuntu-22.04
+      CCACHE_DIR: ${{ vars.ccache_dir }}/almalinux-latest
+      CC: clang
+      CXX: clang++
       SHARKSFIN_IMPLEMENTATION: memory
 
     steps:
@@ -97,12 +99,12 @@ jobs:
           rm -rf build
           mkdir build
           cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON -DBUILD_DOCUMENTS=ON ${{ inputs.cmake_build_option }} ..
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${SHARKSFIN_IMPLEMENTATION} -DCMAKE_PREFIX_PATH=${GITHUB_WORKSPACE}/.local -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=ON -DBUILD_STRICT=OFF -DBUILD_DOCUMENTS=ON ${{ inputs.cmake_build_option }} ..
           cmake --build . --target all --clean-first
 
       - name: Clang-Tidy
         run: |
-          python tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(include|src)/.*\.h$' $(pwd)'/src/.*' 2>&1 | awk '!a[$0]++{print > "build/clang-tidy.log"}'
+          python3 tools/bin/run-clang-tidy.py -quiet -export-fixes=build/clang-tidy-fix.yaml -p build -extra-arg=-Wno-unknown-warning-option -header-filter=$(pwd)'/(include|src)/.*\.h$' $(pwd)'/src/.*' 2>&1 | awk '!a[$0]++{print > "build/clang-tidy.log"}'
 
       - name: Doxygen
         run: |

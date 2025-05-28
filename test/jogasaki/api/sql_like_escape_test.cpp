@@ -292,20 +292,20 @@ TEST_F(sql_like_escape_test, escape_equal_like) {
 }
 
 TEST_F(sql_like_escape_test, escape_input_twice) {
-    std::vector<std::pair<std::string, std::string>> like_with_escape = {
-        {"a", "a"}, {"é", "é"}, {"𐍈", "𐍈"}, {"🧡", "🧡"},
-        {"한", "한"}, {"ü", "ü"}, {"%", "%"}, {"_", "_"}};
-    std::string res    = "a";
-    std::string insert = "insert into t1 values ('" + res + "')";
-    execute_statement("create table t1 (c0 varchar)");
-    execute_statement(insert);
-    std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE '") + res + res +
-                        std::string("' ESCAPE '") + res + std::string("'");
-    std::vector<mock::basic_record> result{};
-    execute_query(query, result);
-    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
-    accessor::text expected_text(res);
-    EXPECT_EQ((create_nullable_record<kind::character>(expected_text)), result[0])
-        << "Failed query: " << query;
+    std::vector<std::string> results = {"a", "é", "𐍈", "🧡", "한", "ü", "%", "_"};
+    for (const auto& res : results) {
+        std::string insert = "insert into t1 values ('" + res + "')";
+        execute_statement("create table t1 (c0 varchar)");
+        execute_statement(insert);
+        std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE '") + res + res +
+                            std::string("' ESCAPE '") + res + std::string("'");
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+        accessor::text expected_text(res);
+        EXPECT_EQ((create_nullable_record<kind::character>(expected_text)), result[0])
+            << "Failed query: " << query;
+        execute_statement("drop table t1");
+    }
 }
 } // namespace jogasaki::testing

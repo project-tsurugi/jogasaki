@@ -387,6 +387,8 @@ create_any(accessor::record_ref ref, executor::process::impl::value_info const& 
     return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore}};
 }
 
+
+
 any engine::operator()(takatori::scalar::variable_reference const& exp) {
     auto b = variables_ && variables_.info().exists(exp.variable());
     auto h = host_variables_ != nullptr && *host_variables_ && host_variables_->info().exists(exp.variable());
@@ -601,7 +603,247 @@ any engine::operator()(takatori::scalar::compare const& exp) {
     return compare_any(exp.operator_kind(), l, r);
 }
 
-any engine::operator()(takatori::scalar::match const&) {
+struct Token {
+    enum class Kind {
+        /// A literal string
+        Literal,
+        /// A wildcard (`%`) that matches zero or more characters (greedy).
+        WildcardAny,
+        /// A wildcard (`_`) that matches exactly one character.
+        WildcardOne
+    };
+    Kind kind;
+    /// The literal value to match (used only if kind == Literal).
+    std::string value;
+    Token() = default;
+    Token(Kind k, std::string v) : kind(k), value(std::move(v)) {}
+};
+
+bool isUtf8OneCharacter(std::string_view view) noexcept {
+    const std::size_t char_size = get_byte(detect_next_encoding(view, 0));
+    return (char_size != 0 && char_size == view.size());
+}
+
+// Check if the escape sequence at the end of the pattern is unescaped
+bool hasUnescapedTrailingEscape(std::string_view pattern, std::string_view escape) {
+    // escape must be non-empty and shorter than pattern
+    if (escape.empty() || pattern.size() < escape.size()) { return false; }
+    // Check if the pattern ends with the escape sequence
+    if (!std::equal(escape.begin(), escape.end(), pattern.end() - escape.size())) { return false; }
+
+    std::size_t count           = 0;
+    std::size_t last_escape_pos = pattern.size() - escape.size();
+    // Count how many times the escape sequence appears at the end of the pattern
+    while (last_escape_pos >= escape.size()) {
+        last_escape_pos -= escape.size();
+        if (std::equal(escape.begin(), escape.end(), pattern.begin() + last_escape_pos)) {
+            ++count;
+        } else {
+            break;
+        }
+    }
+    // If the count of escape sequences is odd, it means the last escape is unescaped
+    // If the count is even, it means the last escape is escaped
+    return (count % 2 == 0);
+}
+
+std::vector<Token> tokenizeLikePattern(std::string_view pattern, std::string_view escape) {
+    std::vector<Token> tokens;
+    // Reserve space for tokens to avoid multiple reallocations
+    tokens.reserve(pattern.size());
+    std::string buffer;
+    size_t i{0};
+    while (i < pattern.size()) {
+        // match escape
+        if (!escape.empty() && i + escape.size() <= pattern.size() &&
+            pattern.substr(i, escape.size()) == escape) {
+            i += escape.size();
+            size_t char_size = get_byte(detect_next_encoding(pattern, i));
+            for (size_t j = 0; j < char_size && i < pattern.size(); ++j) {
+                buffer += pattern[i++];
+            }
+        } else if (pattern[i] == '%') {
+            if (!buffer.empty()) {
+                tokens.emplace_back(Token::Kind::Literal, std::move(buffer));
+                buffer.clear();
+            }
+            // Avoid adding multiple consecutive WildcardAny tokens
+            if (tokens.empty() || tokens.back().kind != Token::Kind::WildcardAny) {
+                tokens.emplace_back(Token::Kind::WildcardAny, "");
+            }
+            ++i;
+        } else if (pattern[i] == '_') {
+            if (!buffer.empty()) {
+                tokens.push_back({Token::Kind::Literal, buffer});
+                buffer.clear();
+            }
+            tokens.push_back({Token::Kind::WildcardOne, {}});
+            ++i;
+        } else {
+            size_t char_size = get_byte(detect_next_encoding(pattern, i));
+            for (size_t j = 0; j < char_size && i < pattern.size(); ++j) {
+                buffer += pattern[i++];
+            }
+        }
+    }
+    if (!buffer.empty()) { tokens.emplace_back(Token::Kind::Literal, std::move(buffer)); }
+    return tokens;
+}
+bool starts_with(std::string_view str, std::string_view prefix) {
+    return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
+}
+/**
+ * @brief Match the input string with the given LIKE-style pattern.
+ *
+ * This function checks whether the given input string matches a pattern
+ * expressed as a sequence of tokens.
+ * The pattern can include:
+ *
+ *   - Literal tokens: must match exactly.
+ *   - WildcardOne (`_`): matches exactly one character (UTF-8 aware).
+ *   - WildcardAny (`%`): matches zero or more characters (greedy).
+ *
+ * Matching is **greedy with backtracking**, meaning:
+ *
+ *   - When encountering a `WildcardAny` token (`%`), the algorithm
+ *     initially assumes it matches zero characters (non-consuming match).
+ *   - If later matching fails, the algorithm *backtracks* to this
+ *     `WildcardAny` position and attempts to consume one more character,
+ *     retrying the rest of the pattern.
+ *   - This continues until a successful match is found or all possibilities
+ *     are exhausted.
+ *
+ *   Example:
+ *  - Input:   "abcde"
+ *  - Pattern: "a%de"
+ *
+ *  a -> matches 'a' (Literal)
+ *       input_i += tok.value.size()(1)
+ *       ++pattern_i(1)
+ *  % -> (WildcardAny)
+ *       pattern_backtruck = pattern_i(1);
+ *       input_backtruck   = input_i(1);
+ *       ++pattern_i(2);
+ *  d -> not match  "bcde"
+ *        ++input_backtruck(2);
+ *        input_i   = input_backtruck(1)
+ *        pattern_i = pattern_backtruck(1) + 1;
+ *  d -> not match  "cde"
+ *        ++input_backtruck(3);
+ *        input_i   = input_backtruck(3)
+ *        pattern_i = pattern_backtruck(1) + 1;
+ *  d  -> match  "de"
+ *        input_i += tok.value.size()(4);
+ *        ++pattern_i(3);
+ *  e  -> match  "e"
+ *        input_i += tok.value.size()(5)
+ *        ++pattern_i(4)
+ *  input_i(5) == input.size(5) -> true
+ *
+ *
+ * @param input   The UTF-8 encoded input string to be matched.
+ * @param pattern A sequence of Token objects representing the pattern.
+ * @return true if the input matches the pattern; false otherwise.
+ */
+bool matchLikePattern(std::string_view input, const std::vector<Token>& pattern) {
+    std::size_t pattern_i = 0;
+    std::size_t input_i   = 0;
+
+    std::size_t pattern_backtruck = std::string::npos;
+    std::size_t input_backtruck   = std::string::npos;
+
+    while (input_i <= input.size()) {
+        if (pattern_i < pattern.size()) {
+            const Token& tok = pattern[pattern_i];
+            switch (tok.kind) {
+                case Token::Kind::Literal:
+                    // match
+                    if (starts_with(input.substr(input_i), tok.value)) {
+                        input_i += tok.value.size();
+                        ++pattern_i;
+                        // not match but backtrace exists
+                    } else if (pattern_backtruck != std::string::npos) {
+                        ++input_backtruck;
+                        input_i   = input_backtruck;
+                        pattern_i = pattern_backtruck + 1;
+                    } else {
+                        return false;
+                    }
+                    break;
+
+                case Token::Kind::WildcardOne:
+                    if (input_i < input.size()) {
+                        std::size_t char_size = get_byte(detect_next_encoding(input, input_i));
+                        if (input_i + char_size <= input.size()) {
+                            input_i += char_size;
+                            ++pattern_i;
+                        } else {
+                            return false;
+                        }
+                    } else if (pattern_backtruck != std::string::npos) {
+                        ++input_backtruck;
+                        input_i   = input_backtruck;
+                        pattern_i = pattern_backtruck + 1;
+                    } else {
+                        return false;
+                    }
+                    break;
+                case Token::Kind::WildcardAny:
+                    pattern_backtruck = pattern_i;
+                    input_backtruck   = input_i;
+                    ++pattern_i;
+                    break;
+            }
+            // Digest all patterns
+        } else {
+            if (input_i == input.size()) {
+                return true;
+                // input 'a' and pattern '%' reaches here
+            } else if (pattern_backtruck != std::string::npos) {
+                ++input_backtruck;
+                input_i   = input_backtruck;
+                pattern_i = pattern_backtruck + 1;
+                // input 'abcde' and pattern 'abc' reaches here
+            } else {
+                return false;
+            }
+        }
+    }
+    // input 'abc' and pattern 'abc%%%' reaches here
+    while (pattern_i < pattern.size() && pattern[pattern_i].kind == Token::Kind::WildcardAny) {
+        ++pattern_i;
+    }
+    return pattern_i == pattern.size();
+}
+
+any engine::operator()(takatori::scalar::match const& match) {
+    auto escape_val  = dispatch(*this, match.escape());
+    auto input_val   = dispatch(*this, match.input());
+    auto pattern_val = dispatch(*this, match.pattern());
+    if (escape_val.error() || input_val.error() || pattern_val.error()) return {};
+    if (escape_val.empty() || input_val.empty() || pattern_val.empty()) return {};
+    constexpr auto char_type = any::index<runtime_t<meta::field_type_kind::character>>;
+    if (escape_val.type_index() != char_type || input_val.type_index() != char_type ||
+        pattern_val.type_index() != char_type) {
+        return return_unsupported();
+    }
+    auto kind = match.operator_kind();
+    if (kind == takatori::scalar::match::operator_kind_type::like) {
+        auto escape_text = escape_val.to<runtime_t<kind::character>>();
+        auto escape_str  = static_cast<std::string_view>(escape_text);
+        if (!escape_str.empty() && !isUtf8OneCharacter(escape_str)) { return return_unsupported(); }
+        auto pattern_text = pattern_val.to<runtime_t<kind::character>>();
+        auto pattern_str  = static_cast<std::string_view>(pattern_text);
+        if (escape_str == pattern_str) { return return_unsupported(); }
+        if (hasUnescapedTrailingEscape(pattern_str, escape_str)) { return return_unsupported(); }
+        std::vector<Token> token = tokenizeLikePattern(pattern_str, escape_str);
+        auto input_text          = input_val.to<runtime_t<kind::character>>();
+        auto input_str           = static_cast<std::string>(input_text);
+        auto res                 = matchLikePattern(input_str, token);
+        return any{std::in_place_type<bool>, res};
+    } else if (kind == takatori::scalar::match::operator_kind_type::similar) {
+        return_unsupported();
+    }
     return return_unsupported();
 }
 
@@ -782,4 +1024,41 @@ any subtract_any(any const& left, any const& right) {
     }
 }
 
+constexpr bool is_continuation_byte(unsigned char c) noexcept { return (c & 0xC0U) == 0x80U; }
+encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
+    const auto size = view.size();
+    if (offset >= size) return encoding_type::INVALID;
+    const auto offset_2nd = offset + 1;
+    const auto offset_3rd = offset + 2;
+    const auto first      = static_cast<unsigned char>(view[offset]);
+    if (first <= 0x7FU) { return encoding_type::ASCII_1BYTE; }
+    if (first >= 0xC2U && first <= 0xDFU) {
+        return (size >= 2 && is_continuation_byte(view[offset_2nd])) ? encoding_type::UTF8_2BYTE
+                                                                     : encoding_type::INVALID;
+    }
+    if (first >= 0xE0U && first <= 0xEFU) {
+        return (size >= 3 && is_continuation_byte(view[offset_2nd]) &&
+                   is_continuation_byte(view[offset_3rd]))
+                   ? encoding_type::UTF8_3BYTE
+                   : encoding_type::INVALID;
+    }
+    if (first >= 0xF0U && first <= 0xF4U) {
+        const auto offset_4th = offset + 3;
+        return (size >= 4 && is_continuation_byte(view[offset_2nd]) &&
+                   is_continuation_byte(view[offset_3rd]) && is_continuation_byte(view[offset_4th]))
+                   ? encoding_type::UTF8_4BYTE
+                   : encoding_type::INVALID;
+    }
+    return encoding_type::INVALID;
+}
+std::size_t get_byte(encoding_type e) noexcept {
+    switch (e) {
+        case encoding_type::ASCII_1BYTE: return 1;
+        case encoding_type::UTF8_2BYTE:  return 2;
+        case encoding_type::UTF8_3BYTE:  return 3;
+        case encoding_type::UTF8_4BYTE:  return 4;
+        case encoding_type::INVALID:     return 0;
+    }
+    return 0;
+}
 }  // namespace jogasaki::executor::expr

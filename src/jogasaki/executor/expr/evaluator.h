@@ -178,4 +178,20 @@ private:
 [[nodiscard]] any remainder_any(any const& left, any const& right);
 [[nodiscard]] any add_any(any const& left, any const& right);
 [[nodiscard]] any subtract_any(any const& left, any const& right);
+[[nodiscard]] constexpr bool is_continuation_byte(unsigned char c) noexcept;
+
+enum class encoding_type { ASCII_1BYTE, UTF8_2BYTE, UTF8_3BYTE, UTF8_4BYTE, INVALID };
+/**
+ * @brief Detects the UTF-8 encoding type of the character at the specified offset.
+ *
+ * @param view The UTF-8 encoded string view.
+ * @param offset The position to inspect.
+ * @return encoding_type Type of UTF-8 encoding
+ */
+[[nodiscard]] encoding_type detect_next_encoding(std::string_view view, std::size_t offset);
+/*
+ * @param e encoding_type
+ * @return byte size of the encoding type
+ */
+[[nodiscard]] std::size_t get_byte(encoding_type e) noexcept;
 }  // namespace jogasaki::executor::expr

@@ -44,6 +44,19 @@ public:
     transaction_option(transaction_option&& other) noexcept = default;
     transaction_option& operator=(transaction_option&& other) noexcept = default;
 
+
+    /**
+     * @brief construct new object
+     * @param type the type of the transaction
+     * @param write_preserves write preserves for the transaction
+     * @param label label for the transaction
+     * @param read_areas_inclusive read areas inclusive for the transaction
+     * @param read_areas_exclusive read areas exclusive for the transaction
+     * @param modifies_definitions modifies definitions flag (i.e. whether the transaction issues ddl)
+     * @param scan_parallel default scan parallelism for the transaction. Specify nullopt to use global default.
+     * @param session_id session id for the transaction.
+     * Specify nullopt in order not to associate with any session (deprecated for prod. - kept for testing)
+     */
     explicit transaction_option(
         transaction_type_kind type,
         std::vector<std::string> write_preserves = {},
@@ -51,7 +64,8 @@ public:
         std::vector<std::string> read_areas_inclusive = {},
         std::vector<std::string> read_areas_exclusive = {},
         bool modifies_definitions = false,
-        scan_parallel_type scan_parallel = std::nullopt
+        scan_parallel_type scan_parallel = std::nullopt,
+        std::optional<std::size_t> session_id = std::nullopt
     ) :
         type_(type),
         write_preserves_(std::move(write_preserves)),
@@ -59,7 +73,8 @@ public:
         read_areas_inclusive_(std::move(read_areas_inclusive)),
         read_areas_exclusive_(std::move(read_areas_exclusive)),
         modifies_definitions_(modifies_definitions),
-        scan_parallel_(scan_parallel)
+        scan_parallel_(scan_parallel),
+        session_id_(session_id)
     {}
 
     //@deprecated use ctor with transaction_type_kind above
@@ -140,6 +155,9 @@ public:
         return scan_parallel_;
     }
 
+    [[nodiscard]] std::optional<std::size_t> session_id() const noexcept {
+        return session_id_;
+    }
 private:
     transaction_type_kind type_{transaction_type_kind::occ};
     std::vector<std::string> write_preserves_{};
@@ -148,6 +166,7 @@ private:
     std::vector<std::string> read_areas_exclusive_{};
     bool modifies_definitions_ = false;
     std::optional<std::uint32_t> scan_parallel_{std::nullopt};
+    std::optional<std::size_t> session_id_{std::nullopt};
 };
 
 /**
@@ -163,6 +182,12 @@ inline std::ostream& operator<<(std::ostream& out, transaction_option const& val
     out << " scan_parallel:";
     if (value.scan_parallel().has_value()) {
         out << value.scan_parallel().value();
+    } else {
+        out << "null";
+    }
+    out << " session_id:";
+    if (value.session_id().has_value()) {
+        out << value.session_id().value();
     } else {
         out << "null";
     }

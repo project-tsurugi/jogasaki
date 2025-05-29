@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <tbb/concurrent_hash_map.h>
 
 #include <tateyama/api/server/session_element.h>
@@ -29,25 +31,23 @@ public:
 
     transaction_store() = default;
 
-    std::shared_ptr<transaction_context> lookup(transaction_handle handle) {
-        decltype(transactions_)::const_accessor acc;
-        if (transactions_.find(acc, handle)) {
-            return acc->second;
-        }
-        return nullptr;
-    }
-    bool put(transaction_handle handle, std::shared_ptr<transaction_context> arg) {
-        return transactions_.emplace(handle, std::move(arg));
-    }
-    bool remove(transaction_handle handle, std::shared_ptr<transaction_context> arg) {
-        return transactions_.erase(handle);
-    }
+    explicit transaction_store(std::size_t session_id) noexcept;
 
-    void dispose() override {
-        transactions_.clear();
-        //FIXME implement removing session entry from global hash
-    }
-private:
+    std::shared_ptr<transaction_context> lookup(transaction_handle handle);
+
+    bool put(transaction_handle handle,
+             std::shared_ptr<transaction_context> arg);
+
+    bool remove(transaction_handle handle);
+
+    void dispose() override;
+
+    [[nodiscard]] std::size_t size() const noexcept;
+
+    [[nodiscard]] std::size_t session_id() const noexcept;
+
+  private:
+    std::size_t session_id_{};
     tbb::concurrent_hash_map<transaction_handle, std::shared_ptr<transaction_context>> transactions_{};
 
 };

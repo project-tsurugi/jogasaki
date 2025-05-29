@@ -46,7 +46,7 @@ transaction_handle::transaction_handle(
 
 transaction_handle::transaction_handle(
     std::size_t surrogate_id,
-    std::size_t session_id
+    std::optional<std::size_t> session_id
 ) noexcept:
     surrogate_id_(surrogate_id),
     session_id_(session_id)
@@ -65,10 +65,7 @@ transaction_context* tx(std::uintptr_t arg) {
 }
 
 std::shared_ptr<transaction_context> lookup(std::size_t surrogate_id, std::optional<std::size_t> session_id) {
-    if (session_id.has_value()) {
-        //FIXME implement
-    }
-    return global::database_impl()->find_transaction(transaction_handle{surrogate_id});
+    return global::database_impl()->find_transaction(transaction_handle{surrogate_id, session_id});
 }
 
 status transaction_handle::commit(api::commit_option option) {  //NOLINT(readability-make-member-function-const, performance-unnecessary-value-param)

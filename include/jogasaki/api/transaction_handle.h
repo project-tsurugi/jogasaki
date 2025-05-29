@@ -103,7 +103,7 @@ public:
      */
     transaction_handle(
         std::size_t surrogate_id,
-        std::size_t session_id
+        std::optional<std::size_t> session_id
     ) noexcept;
 
     /**
@@ -329,7 +329,7 @@ inline bool operator==(transaction_handle const& a, transaction_handle const& b)
     if (! a.session_id().has_value()) {
         return true;
     }
-    return a.session_id().value() == b.session_id().value();
+    return *a.session_id() == *b.session_id();
 }
 
 /**
@@ -368,7 +368,14 @@ struct std::hash<jogasaki::api::transaction_handle> {
      * @return computed hash code
      */
     std::size_t operator()(jogasaki::api::transaction_handle const& value) const noexcept {
-        return value.surrogate_id();
+        if (! value.session_id().has_value()) {
+            // normally we don't mix entries with/without session_id, so this doesn't make many collisions
+            return value.surrogate_id();
+        }
+        // simple Boost hash combine just to combine surrogate_id and session_id
+        auto h1 = value.surrogate_id();
+        auto h2 = *value.session_id();
+        return h1 ^ (h2 + 0x9e3779b9U + (h1 << 6U) + (h1 >> 2U));
     }
 };
 

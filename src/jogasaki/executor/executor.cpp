@@ -730,7 +730,7 @@ void process_commit_callback(
 
     // if auto dispose
     if (option.auto_dispose_on_success()) {
-        api::transaction_handle handle{rctx->transaction()->surrogate_id()};
+        api::transaction_handle handle{rctx->transaction()->surrogate_id(), rctx->transaction()->option()->session_id()};
         if (auto rc = database.destroy_transaction(handle); rc != jogasaki::status::ok) {
             VLOG(log_error) << log_location_prefix << "unexpected error destroying transaction: " << rc;
         }

@@ -160,7 +160,6 @@ inline std::string encode_begin(
     if(readonly) {
         opt->set_type(sql::request::TransactionType::READ_ONLY);
     }
-    r.mutable_session_handle()->set_handle(1);
     if(is_long) {
         opt->set_type(sql::request::TransactionType::LONG);
         for(auto&& s : write_preserves) {
@@ -325,7 +324,6 @@ std::string encode_execute_statement_or_query(api::transaction_handle tx_handle,
     auto h = stmt->mutable_transaction_handle();
     h->set_handle(tx_handle.surrogate_id());
     stmt->mutable_sql()->assign(sql);
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     if constexpr (std::is_same_v<T, sql::request::ExecuteQuery>) {
         r.clear_execute_query();
@@ -517,7 +515,6 @@ std::string encode_execute_prepared_statement_or_query(
     auto* params = stmt->mutable_parameters();
     fill_parameters(parameters, params);
 
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     if constexpr (std::is_same_v<T, sql::request::ExecutePreparedQuery>) {
         r.clear_execute_prepared_query();
@@ -556,7 +553,6 @@ inline std::string encode_explain(std::uint64_t stmt_handle, std::vector<paramet
     auto* params = explain->mutable_parameters();
     fill_parameters(parameters, params);
 
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_explain();
     return s;
@@ -567,7 +563,6 @@ inline std::string encode_explain_by_text(std::string_view sql) {
     auto* explain = r.mutable_explain_by_text();
     explain->mutable_sql()->assign(sql);
 
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_explain_by_text();
     return s;
@@ -600,7 +595,6 @@ inline std::string encode_describe_table(std::string_view name) {
     sql::request::Request r{};
     auto* dt = r.mutable_describe_table();
     dt->set_name(std::string{name});
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_describe_table();
     return s;
@@ -610,7 +604,6 @@ inline std::string encode_list_tables() {
     sql::request::Request r{};
     auto* lt = r.mutable_listtables();
     (void) lt;
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_listtables();
     return s;
@@ -620,7 +613,6 @@ inline std::string encode_get_search_path() {
     sql::request::Request r{};
     auto* lt = r.mutable_getsearchpath();
     (void) lt;
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_getsearchpath();
     return s;
@@ -631,7 +623,6 @@ inline std::string encode_batch() {
     sql::request::Request r{};
     auto* bt = r.mutable_batch();
     (void) bt;
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_batch();
     return s;
@@ -770,7 +761,6 @@ inline std::string encode_extract_statement_info(std::string_view payload) {
     auto* extract = r.mutable_extract_statement_info();
     extract->mutable_payload()->assign(payload);
 
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_extract_statement_info();
     return s;
@@ -799,7 +789,6 @@ inline std::string encode_get_large_object_data(std::uint64_t id) {
     ref->set_object_id(id);
     ref->set_provider(sql::common::LargeObjectProvider::DATASTORE);
 
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_get_large_object_data();
     return s;
@@ -835,7 +824,6 @@ inline std::string encode_get_transaction_status(api::transaction_handle tx_hand
     auto* th = gts->mutable_transaction_handle();
     th->set_handle(tx_handle.surrogate_id());
 
-    r.mutable_session_handle()->set_handle(1);
     auto s = serialize(r);
     r.clear_get_transaction_status();
     return s;

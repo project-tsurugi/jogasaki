@@ -301,6 +301,7 @@ status database::stop() {
     prepared_statements_.clear();
 
     transactions_.clear();
+    transaction_stores_.clear();
     if (kvs_db_) {
         if(! kvs_db_->close()) {
             return status::err_io_error;
@@ -610,7 +611,8 @@ std::shared_ptr<api::transaction_option> modify_ras_wps(transaction_option const
         add_secondary_indices(rai, tables),
         add_secondary_indices(option.read_areas_exclusive(), tables),
         option.modifies_definitions(),
-        option.scan_parallel()
+        option.scan_parallel(),
+        option.session_id()
     );
 }
 
@@ -663,13 +665,23 @@ status database::create_transaction_internal(std::shared_ptr<transaction_context
             return res;
         }
         tx->label(option.label());
-        api::transaction_handle t{tx->surrogate_id()};
+        api::transaction_handle t{tx->surrogate_id(), option.session_id().has_value() ? std::optional<std::size_t>{option.session_id().value()} : std::nullopt};
         out = std::move(tx);
-        {
+        if (! option.session_id().has_value()) {
             decltype(transactions_)::accessor acc{};
             if (transactions_.insert(acc, t)) {
                 acc->second = out;
             } else {
+                throw_exception(std::logic_error{""});
+            }
+        } else {
+            auto session_id = option.session_id().value();
+            decltype(transaction_stores_)::accessor acc{};
+            auto new_item = transaction_stores_.insert(acc, session_id);
+            if (new_item) {
+                acc->second = std::make_shared<transaction_store>(session_id);
+            }
+            if (! acc->second->put(t, out)) {
                 throw_exception(std::logic_error{""});
             }
         }
@@ -752,17 +764,25 @@ status database::destroy_statement(
 status database::destroy_transaction(
     api::transaction_handle handle
 ) {
-    decltype(transactions_)::accessor acc{};
-    if (transactions_.find(acc, handle)) {
-        if(cfg_->profile_commits()) {
-            commit_stats_->add(*acc->second->profile());
+    if (! handle.session_id().has_value()) {
+        decltype(transactions_)::accessor acc{};
+        if (transactions_.find(acc, handle)) {
+            if(cfg_->profile_commits()) {
+                commit_stats_->add(*acc->second->profile());
+            }
+            transactions_.erase(acc);
+            return status::ok;
         }
-        transactions_.erase(acc);
-    } else {
         VLOG_LP(log_warning) << "invalid handle";
         return status::err_invalid_argument;
     }
-    return status::ok;
+    decltype(transaction_stores_)::accessor acc{};
+    if (transaction_stores_.find(acc, handle.session_id().value())) {
+        if (acc->second->remove(handle)) {
+            return status::ok;
+        }
+    }
+    return status::err_invalid_argument;
 }
 
 status database::explain(api::executable_statement const& executable, std::ostream& out) {
@@ -1265,7 +1285,10 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(  //NO
 
         transaction_handle handle{};
         if (*tx_pptr) {
-            handle = transaction_handle{(*tx_pptr)->surrogate_id()};
+            handle = transaction_handle{
+                (*tx_pptr)->surrogate_id(),
+                (*tx_pptr)->option()->session_id()
+            };
         }
         on_completion(
             handle,
@@ -1371,11 +1394,22 @@ bool database::execute_load(
 }
 
 std::shared_ptr<transaction_context> database::find_transaction(api::transaction_handle handle) {
-    decltype(transactions_)::accessor acc{};
-    if (transactions_.find(acc, handle)) {
-        return acc->second;
+    if (!handle.session_id().has_value()) {
+        decltype(transactions_)::accessor acc{};
+        if (transactions_.find(acc, handle)) {
+            return acc->second;
+        }
+        return {};
+    }
+    decltype(transaction_stores_)::accessor acc{};
+    if (transaction_stores_.find(acc, handle.session_id().value())) {
+        return acc->second->lookup(handle);
     }
     return {};
+}
+
+bool database::remove_transaction_store(std::size_t session_id) {
+    return transaction_stores_.erase(session_id);
 }
 
 std::shared_ptr<impl::prepared_statement> database::find_statement(api::statement_handle handle) {
@@ -1387,7 +1421,13 @@ std::shared_ptr<impl::prepared_statement> database::find_statement(api::statemen
 }
 
 std::size_t database::transaction_count() const {
-    return transactions_.size();
+    // this function is for testing purposes only and is not thread-safe
+    std::size_t ret{};
+    for (auto&& s : transaction_stores_) {
+        ret += s.second->size();
+    }
+    ret += transactions_.size();
+    return ret;
 }
 
 bool database::stop_requested() const noexcept {

@@ -1186,7 +1186,10 @@ bool service::process(
             details::report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             return true;
         }
-        VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size()
+        VLOG(log_trace) << log_location_prefix
+                        << "request received (session_id=" << req->session_id()
+                        << ",local_id=" << req->local_id() << ",rid=" << reqid
+                        << ",len=" << s.size()
                         << "): " << utils::to_debug_string(proto_req);
     }
     if (! db_->config()->skip_smv_check()) {
@@ -1579,14 +1582,21 @@ void details::reply(
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id()
-                        << " len=" << ss.size() << "): " << utils::to_debug_string(r);
+        VLOG(log_trace) << log_location_prefix << "respond with body_head ("
+                        << "session_id=" << req_info.request_source()->session_id()
+                        << ",local_id=" << req_info.request_source()->local_id()
+                        << ",rid=" << req_info.id()
+                        << ",len=" << ss.size() << "): " << utils::to_debug_string(r);
         res.body_head(ss);
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.size()
+        VLOG(log_trace) << log_location_prefix << "respond with body ("
+                        << "session_id=" << req_info.request_source()->session_id()
+                        << ",local_id=" << req_info.request_source()->local_id()
+                        << ",rid=" << req_info.id()
+                        << ",len=" << ss.size()
                         << "): " << utils::to_debug_string(r);
         res.body(ss);
     }

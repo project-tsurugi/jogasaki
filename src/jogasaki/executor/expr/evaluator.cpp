@@ -60,6 +60,7 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/as_any.h>
 #include <jogasaki/utils/checkpoint_holder.h>
+#include <jogasaki/utils/utf8_utils.h>
 
 #include "details/cast_evaluation.h"
 #include "details/common.h"
@@ -603,28 +604,28 @@ any engine::operator()(takatori::scalar::compare const& exp) {
     return compare_any(exp.operator_kind(), l, r);
 }
 
-struct Token {
-    enum class Kind {
+struct token {
+    enum class kind {
         /// A literal string
-        Literal,
+        literal,
         /// A wildcard (`%`) that matches zero or more characters (greedy).
-        WildcardAny,
+        wildcard_any,
         /// A wildcard (`_`) that matches exactly one character.
-        WildcardOne
+        wildcard_one
     };
-    Token() = default;
-    Token(Kind k, std::string v) : kind(k), value(std::move(v)) {}
-    [[nodiscard]] Kind getKind() const { return kind; }
-    [[nodiscard]] const std::string& getValue() const { return value; }
+    token() = default;
+    token(kind k, std::string v) : kind(k), value(std::move(v)) {}
+    [[nodiscard]] kind get_kind() const { return kind; }
+    [[nodiscard]] const std::string& get_value() const { return value; }
 
   private:
-    Kind kind{Kind::Literal};
-    /// The literal value to match (used only if kind == Literal).
+    kind kind{kind::literal};
+    /// The literal value to match (used only if kind == literal).
     std::string value{};
 };
 
 bool is_single_utf8_character(std::string_view view) noexcept {
-    const std::size_t char_size = get_byte(detect_next_encoding(view, 0));
+    const std::size_t char_size = utils::get_byte(utils::detect_next_encoding(view, 0));
     return (char_size != 0 && char_size == view.size());
 }
 
@@ -655,8 +656,8 @@ inline bool is_escape_sequence(
     return !escape.empty() && i + escape.size() <= pattern.size() &&
            pattern.substr(i, escape.size()) == escape;
 }
-std::vector<Token> tokenize_like_pattern(std::string_view pattern, std::string_view escape) {
-    std::vector<Token> tokens;
+std::vector<token> tokenize_like_pattern(std::string_view pattern, std::string_view escape) {
+    std::vector<token> tokens;
     // Reserve space for tokens to avoid multiple reallocations
     tokens.reserve(pattern.size());
     std::string buffer;
@@ -665,35 +666,35 @@ std::vector<Token> tokenize_like_pattern(std::string_view pattern, std::string_v
         // match escape
         if (is_escape_sequence(pattern, i, escape)) {
             i += escape.size();
-            size_t char_size = get_byte(detect_next_encoding(pattern, i));
+            size_t char_size = utils::get_byte(utils::detect_next_encoding(pattern, i));
             for (size_t j = 0; j < char_size && i < pattern.size(); ++j) {
                 buffer += pattern[i++];
             }
         } else if (pattern[i] == '%') {
             if (!buffer.empty()) {
-                tokens.emplace_back(Token::Kind::Literal, std::move(buffer));
+                tokens.emplace_back(token::kind::literal, std::move(buffer));
                 buffer.clear();
             }
-            // Avoid adding multiple consecutive WildcardAny tokens
-            if (tokens.empty() || tokens.back().getKind() != Token::Kind::WildcardAny) {
-                tokens.emplace_back(Token::Kind::WildcardAny, "");
+            // Avoid adding multiple consecutive wildcard_any tokens
+            if (tokens.empty() || tokens.back().get_kind() != token::kind::wildcard_any) {
+                tokens.emplace_back(token::kind::wildcard_any, "");
             }
             ++i;
         } else if (pattern[i] == '_') {
             if (!buffer.empty()) {
-                tokens.emplace_back(Token::Kind::Literal, buffer);
+                tokens.emplace_back(token::kind::literal, buffer);
                 buffer.clear();
             }
-            tokens.emplace_back(Token::Kind::WildcardOne, "");
+            tokens.emplace_back(token::kind::wildcard_one, "");
             ++i;
         } else {
-            size_t char_size = get_byte(detect_next_encoding(pattern, i));
+            size_t char_size = utils::get_byte(utils::detect_next_encoding(pattern, i));
             for (size_t j = 0; j < char_size && i < pattern.size(); ++j) {
                 buffer += pattern[i++];
             }
         }
     }
-    if (!buffer.empty()) { tokens.emplace_back(Token::Kind::Literal, std::move(buffer)); }
+    if (!buffer.empty()) { tokens.emplace_back(token::kind::literal, std::move(buffer)); }
     return tokens;
 }
 bool starts_with(std::string_view str, std::string_view prefix) {
@@ -701,10 +702,10 @@ bool starts_with(std::string_view str, std::string_view prefix) {
 }
 
 [[nodiscard]] bool match_literal_token(std::string_view input, std::size_t& input_index,
-    const Token& tok, std::size_t& pattern_index, std::size_t& backtrack_input_index,
+    const token& tok, std::size_t& pattern_index, std::size_t& backtrack_input_index,
     std::size_t& backtrack_pattern_index) {
-    if (starts_with(input.substr(input_index), tok.getValue())) {
-        input_index += tok.getValue().size();
+    if (starts_with(input.substr(input_index), tok.get_value())) {
+        input_index += tok.get_value().size();
         ++pattern_index;
         return true;
     }
@@ -720,7 +721,7 @@ bool starts_with(std::string_view str, std::string_view prefix) {
     std::size_t& pattern_index, std::size_t& backtrack_input_index,
     std::size_t& backtrack_pattern_index) {
     if (input_index < input.size()) {
-        std::size_t char_size = get_byte(detect_next_encoding(input, input_index));
+        std::size_t char_size = utils::get_byte(utils::detect_next_encoding(input, input_index));
         if (input_index + char_size <= input.size()) {
             input_index += char_size;
             ++pattern_index;
@@ -749,16 +750,16 @@ void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_ind
  * expressed as a sequence of tokens.
  * The pattern can include:
  *
- *   - Literal tokens: must match exactly.
- *   - WildcardOne (`_`): matches exactly one character (UTF-8 aware).
- *   - WildcardAny (`%`): matches zero or more characters (greedy).
+ *   - literal tokens: must match exactly.
+ *   - wildcard_one (`_`): matches exactly one character (UTF-8 aware).
+ *   - wildcard_any (`%`): matches zero or more characters (greedy).
  *
  * Matching is **greedy with backtracking**, meaning:
  *
- *   - When encountering a `WildcardAny` token (`%`), the algorithm
+ *   - When encountering a `wildcard_any` token (`%`), the algorithm
  *     initially assumes it matches zero characters (non-consuming match).
  *   - If later matching fails, the algorithm *backtracks* to this
- *     `WildcardAny` position and attempts to consume one more character,
+ *     `wildcard_any` position and attempts to consume one more character,
  *     retrying the rest of the pattern.
  *   - This continues until a successful match is found or all possibilities
  *     are exhausted.
@@ -767,10 +768,10 @@ void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_ind
  *  - Input:   "abcde"
  *  - Pattern: "a%de"
  *
- *  a -> matches 'a' (Literal)
+ *  a -> matches 'a' (literal)
  *       input_index += tok.value.size()(1)
  *       ++pattern_index(1)
- *  % -> (WildcardAny)
+ *  % -> (wildcard_any)
  *       backtrack_pattern_index = pattern_index(1);
  *       backtrack_input_index   = input_index(1);
  *       ++pattern_i(2);
@@ -792,10 +793,10 @@ void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_ind
  *
  *
  * @param input   The UTF-8 encoded input string to be matched.
- * @param pattern A sequence of Token objects representing the pattern.
+ * @param pattern A sequence of token objects representing the pattern.
  * @return true if the input matches the pattern; false otherwise.
  */
-bool match_like_pattern(std::string_view input, const std::vector<Token>& pattern) {
+bool match_like_pattern(std::string_view input, const std::vector<token>& pattern) {
     std::size_t pattern_index = 0;
     std::size_t input_index   = 0;
 
@@ -804,21 +805,21 @@ bool match_like_pattern(std::string_view input, const std::vector<Token>& patter
 
     while (input_index <= input.size()) {
         if (pattern_index < pattern.size()) {
-            const Token& tok = pattern[pattern_index];
-            switch (tok.getKind()) {
-                case Token::Kind::Literal:
+            const token& tok = pattern[pattern_index];
+            switch (tok.get_kind()) {
+                case token::kind::literal:
                     if (!match_literal_token(input, input_index, tok, pattern_index,
                             backtrack_input_index, backtrack_pattern_index)) {
                         return false;
                     }
                     break;
-                case Token::Kind::WildcardOne:
+                case token::kind::wildcard_one:
                     if (!match_wildcard_one_token(input, input_index, pattern_index,
                             backtrack_input_index, backtrack_pattern_index)) {
                         return false;
                     }
                     break;
-                case Token::Kind::WildcardAny:
+                case token::kind::wildcard_any:
                     match_wildcard_any_token(
                         pattern_index, input_index, backtrack_pattern_index, backtrack_input_index);
                     break;
@@ -840,7 +841,7 @@ bool match_like_pattern(std::string_view input, const std::vector<Token>& patter
     }
     // input 'abc' and pattern 'abc%%%' reaches here
     while (pattern_index < pattern.size() &&
-           pattern[pattern_index].getKind() == Token::Kind::WildcardAny) {
+           pattern[pattern_index].get_kind() == token::kind::wildcard_any) {
         ++pattern_index;
     }
     return pattern_index == pattern.size();
@@ -868,7 +869,7 @@ any engine::operator()(takatori::scalar::match const& match) {
         auto pattern_str  = static_cast<std::string_view>(pattern_text);
         if (escape_str == pattern_str) { return return_unsupported(); }
         if (has_unescaped_trailing_escape(pattern_str, escape_str)) { return return_unsupported(); }
-        std::vector<Token> token = tokenize_like_pattern(pattern_str, escape_str);
+        std::vector<token> token = tokenize_like_pattern(pattern_str, escape_str);
         auto input_text          = input_val.to<runtime_t<kind::character>>();
         auto input_str           = static_cast<std::string>(input_text);
         auto res                 = match_like_pattern(input_str, token);
@@ -1055,41 +1056,4 @@ any subtract_any(any const& left, any const& right) {
     }
 }
 
-constexpr bool is_continuation_byte(unsigned char c) noexcept { return (c & 0xC0U) == 0x80U; }
-encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
-    const auto size = view.size();
-    if (offset >= size) return encoding_type::INVALID;
-    const auto offset_2nd = offset + 1;
-    const auto offset_3rd = offset + 2;
-    const auto first      = static_cast<unsigned char>(view[offset]);
-    if (first <= 0x7FU) { return encoding_type::ASCII_1BYTE; }
-    if (first >= 0xC2U && first <= 0xDFU) {
-        return (size >= 2 && is_continuation_byte(view[offset_2nd])) ? encoding_type::UTF8_2BYTE
-                                                                     : encoding_type::INVALID;
-    }
-    if (first >= 0xE0U && first <= 0xEFU) {
-        return (size >= 3 && is_continuation_byte(view[offset_2nd]) &&
-                   is_continuation_byte(view[offset_3rd]))
-                   ? encoding_type::UTF8_3BYTE
-                   : encoding_type::INVALID;
-    }
-    if (first >= 0xF0U && first <= 0xF4U) {
-        const auto offset_4th = offset + 3;
-        return (size >= 4 && is_continuation_byte(view[offset_2nd]) &&
-                   is_continuation_byte(view[offset_3rd]) && is_continuation_byte(view[offset_4th]))
-                   ? encoding_type::UTF8_4BYTE
-                   : encoding_type::INVALID;
-    }
-    return encoding_type::INVALID;
-}
-std::size_t get_byte(encoding_type e) noexcept {
-    switch (e) {
-        case encoding_type::ASCII_1BYTE: return 1;
-        case encoding_type::UTF8_2BYTE: return 2;
-        case encoding_type::UTF8_3BYTE: return 3;
-        case encoding_type::UTF8_4BYTE: return 4;
-        case encoding_type::INVALID: return 0;
-    }
-    return 0;
-}
 }  // namespace jogasaki::executor::expr

@@ -308,4 +308,17 @@ TEST_F(sql_like_escape_test, escape_input_twice) {
         execute_statement("drop table t1");
     }
 }
+
+TEST_F(sql_like_escape_test, all_column) {
+    std::string res = "😁öa出";
+    execute_statement("create table t1 (c0 varchar,c1 varchar ,c2 varchar)");
+    execute_statement("INSERT INTO t1 VALUES('😁öa出','%aa%','a')");
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT c0 FROM t1 WHERE c0 LIKE c1 ESCAPE c2", result);
+
+    ASSERT_EQ(1, result.size()) ;
+    accessor::text expected_text(res);
+    EXPECT_EQ((create_nullable_record<kind::character>(expected_text)), result[0]);
+    execute_statement("drop table t1");
+}
 } // namespace jogasaki::testing

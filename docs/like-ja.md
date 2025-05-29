@@ -1,6 +1,6 @@
 # LIKE句外部仕様
 
-2025-05-29 nishimura
+2025-05-30 nishimura
 
 ## この文書について
 
@@ -16,27 +16,29 @@
 
 * like_expression、escape_expression、入力文字列のいずれかが NULL の場合、結果も NULL となる。
 * like_expression：
-  * 一致判定を行うパターン文字列。ワイルドカード文字 `%`（任意の文字列）および `_`（任意の1文字）を含む。
+  * 一致判定を行うパターン文字列。ワイルドカード文字 `%`（任意の文字列）および `_`（任意の1文字）を含むことができる。
 * escape_expression：
-  * escape対象の文字、文字数は0or1でなければならない。文字数が2以上の場合`UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION`を返す。
-  * escape_expressionに指定しない場合、いかなる文字もESCAPE文字と解釈しない。
+  * エスケープ文字、指定できる文字数は0または1のみである。文字数が2以上の場合`UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION`を返す。
+  * escape_expression を指定しない場合、いかなる文字もエスケープ文字とは解釈されない。（デフォルトのエスケープ文字はない）
 
 
 ### 末尾のエスケープ処理
 
-* 末尾文字がESCAPE文字であった場合、末尾から連続してESCAPE文字が奇数回連続した場合`UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION`を返す。
+* 文字列の末尾にエスケープ文字が奇数回連続している場合、`UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION`を返す。
 
 #### 例
 
 | 式                              | 結果または解釈                              |
 |--------------------------------|---------------------------------------------|
-| `LIKE 'abcdd' ESCAPE 'd'`      | `"abcd"` として解釈（`d` がエスケープ文字） |
+| `LIKE 'abcdd' ESCAPE 'd'`      | `"abcd"` と解釈（2つ目の `d` がリテラル扱い） |
 | `LIKE 'abcddd' ESCAPE 'd'`     | `UNSUPPORTED_RUNTIME_FEATURE_EXCEPTION`
 
 ### ワイルドカードのエスケープ  
 
-* %および_のワイルドカード文字がESCAPE文字として指定された場合、ワイルドカード文字ではなく単なるエスケープ文字として解釈される。
+* %および_のワイルドカード文字がエスケープ文字として指定された場合、ワイルドカード文字ではなく単なるエスケープ文字として解釈される。
+
+#### 例
 
 | 式                              | 解釈・マッチ対象                        |
 |--------------------------------|-----------------------------------------|
-| `LIKE 'abc%%' ESCAPE '%'`      | `"abc%"` と解釈され、`"abcd"` にはマッチしない |
+| `LIKE 'abc%%' ESCAPE '%'`      | `"abc%"` と解釈（2つ目の `%` がリテラル扱い）、`"abcd"` にはマッチしない |

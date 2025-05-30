@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <vector>
 #include <boost/container/container_fwd.hpp>
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 #include <takatori/util/fail.h>
 
@@ -30,8 +31,6 @@
 #include <jogasaki/memory/paged_memory_resource.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/test_root.h>
-
-#include "../../third_party/nlohmann/json.hpp"
 
 namespace jogasaki::error {
 

@@ -868,7 +868,7 @@ any engine::operator()(takatori::scalar::match const& match) {
         auto pattern_text = pattern_val.to<runtime_t<kind::character>>();
         auto pattern_str  = static_cast<std::string_view>(pattern_text);
         if (!utils::is_valid_utf8(pattern_str)) { return {}; }
-        if (escape_str == pattern_str) { return return_unsupported(); }
+        if (escape_str == pattern_str) { return return_invalid_input_value(); }
         if (has_unescaped_trailing_escape(pattern_str, escape_str)) {
             return return_invalid_input_value();
         }

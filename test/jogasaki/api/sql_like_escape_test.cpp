@@ -279,15 +279,14 @@ TEST_F(sql_like_escape_test, escape_equal_like) {
     std::string insert = "insert into t1 values ('" + res + "')";
     execute_statement("create table t1 (c0 varchar)");
     execute_statement(insert);
-    std::vector<std::pair<std::string, std::string>> like_with_escape = {{"@", "@"},
-        {"é", "é"}, {"𐍈", "𐍈"}, {"🧡", "🧡"},
-        {"한", "한"}, {"ü", "ü"}, {"%", "%"}, {"_", "_"}};
+    std::vector<std::pair<std::string, std::string>> like_with_escape = {{"@", "@"}, {"é", "é"},
+        {"𐍈", "𐍈"}, {"🧡", "🧡"}, {"한", "한"}, {"ü", "ü"}, {"%", "%"}, {"_", "_"}};
     for (const auto& pattern : like_with_escape) {
         const auto& like   = pattern.first;
         const auto& escape = pattern.second;
         std::string query  = std::string("SELECT c0 FROM t1 WHERE c0 LIKE '") + like +
                             std::string("' ESCAPE '") + escape + std::string("'");
-        test_stmt_err(query, error_code::unsupported_runtime_feature_exception);
+        test_stmt_err(query, error_code::value_evaluation_exception);
     }
 }
 

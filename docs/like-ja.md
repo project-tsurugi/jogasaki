@@ -14,11 +14,11 @@
 
 `LIKE like_expression [ ESCAPE escape_expression ]`
 
-* like_expression、escape_expression、入力文字列のいずれかが NULL の場合、結果も NULL となる。
+* like_expression、escape_expression、または入力文字列が NULL、または不正な UTF-8 シーケンスを含む場合、結果は NULL となる。
 * like_expression：
   * 一致判定を行うパターン文字列。ワイルドカード文字 `%`（任意の文字列）および `_`（任意の1文字）を含むことができる。
 * escape_expression：
-  * エスケープ文字、指定できる文字数は0または1のみである。文字数が2以上の場合、実行時エラーを返す
+  * エスケープ文字として指定できるのは、0文字または1文字のみである。2文字以上の場合、実行時エラーを返す
   * escape_expression を指定しない場合、いかなる文字もエスケープ文字とは解釈されない。（デフォルトのエスケープ文字はない）
 
 

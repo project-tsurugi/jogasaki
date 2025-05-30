@@ -863,13 +863,15 @@ any engine::operator()(takatori::scalar::match const& match) {
         auto escape_text = escape_val.to<runtime_t<kind::character>>();
         auto escape_str  = static_cast<std::string_view>(escape_text);
         if (!escape_str.empty() && !is_single_utf8_character(escape_str)) {
-            return return_unsupported();
+            return return_invalid_input_value();
         }
         auto pattern_text = pattern_val.to<runtime_t<kind::character>>();
         auto pattern_str  = static_cast<std::string_view>(pattern_text);
         if (!utils::is_valid_utf8(pattern_str)) { return {}; }
         if (escape_str == pattern_str) { return return_unsupported(); }
-        if (has_unescaped_trailing_escape(pattern_str, escape_str)) { return return_unsupported(); }
+        if (has_unescaped_trailing_escape(pattern_str, escape_str)) {
+            return return_invalid_input_value();
+        }
         std::vector<token> token = tokenize_like_pattern(pattern_str, escape_str);
         auto input_text          = input_val.to<runtime_t<kind::character>>();
         auto input_str           = static_cast<std::string>(input_text);

@@ -255,7 +255,7 @@ TEST_F(sql_like_escape_test, escape_error_not_one_escape) {
         const auto& escape = pattern.second;
         std::string query  = std::string("SELECT c0 FROM t1 WHERE c0 LIKE '") + like +
                             std::string("' ESCAPE '") + escape + std::string("'");
-        test_stmt_err(query, error_code::unsupported_runtime_feature_exception);
+        test_stmt_err(query, error_code::value_evaluation_exception);
     }
 }
 TEST_F(sql_like_escape_test, escape_end) {
@@ -271,7 +271,7 @@ TEST_F(sql_like_escape_test, escape_end) {
         const auto& escape = pattern.second;
         std::string query  = std::string("SELECT c0 FROM t1 WHERE c0 LIKE '") + like +
                             std::string("' ESCAPE '") + escape + std::string("'");
-        test_stmt_err(query, error_code::unsupported_runtime_feature_exception);
+        test_stmt_err(query, error_code::value_evaluation_exception);
     }
 }
 TEST_F(sql_like_escape_test, escape_equal_like) {
@@ -355,6 +355,6 @@ TEST_F(sql_like_escape_test, invalid_utf8_escape) {
     execute_statement("INSERT INTO t1 (c0,c1,c2) VALUES ('abc','a%',:p0)", variables, *ps);
     std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE c1 ESCAPE c2");
     std::vector<mock::basic_record> result{};
-    test_stmt_err(query, error_code::unsupported_runtime_feature_exception);
+    test_stmt_err(query, error_code::value_evaluation_exception);
 }
 } // namespace jogasaki::testing

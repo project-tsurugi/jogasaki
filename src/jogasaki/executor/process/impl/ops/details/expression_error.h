@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,6 +103,19 @@ operation_status handle_expression_error_impl(
     }
     if(err.kind() == expr::error_kind::error_info_provided) {
         set_error_info(*ctx.req_context(), ectx.get_error_info());
+        ctx.abort();
+        return {operation_status_kind::aborted};
+    }
+    if (err.kind() == expr::error_kind::invalid_input_value) {
+        auto rc = status::err_expression_evaluation_failure;
+        error::set_error_impl(
+            *ctx.req_context(),
+            error_code::value_evaluation_exception,
+            string_builder{} << "invalid input value is used" << string_builder::to_string,
+            filepath,
+            position,
+            rc,
+            false);
         ctx.abort();
         return {operation_status_kind::aborted};
     }

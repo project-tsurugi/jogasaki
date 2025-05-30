@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,9 @@ enum class error_kind : std::size_t {
     ///@brief unsupported features used in the expression
     unsupported,
 
+    ///@brief invalid input value
+    invalid_input_value,
+
     ///@brief unexpected error in the expression
     unknown,
 };
@@ -81,6 +84,7 @@ enum class error_kind : std::size_t {
         case kind::lob_reference_invalid: return "lob_reference_invalid"sv;
         case kind::error_info_provided: return "error_info_provided"sv;
         case kind::unsupported: return "unsupported"sv;
+        case kind::invalid_input_value: return "invalid_input_value"sv;
         case kind::unknown: return "unknown"sv;
     }
     std::abort();

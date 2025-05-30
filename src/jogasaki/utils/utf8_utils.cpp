@@ -17,7 +17,6 @@
 
 namespace jogasaki::utils {
 
-constexpr bool is_continuation_byte(unsigned char c) noexcept { return (c & 0xC0U) == 0x80U; }
 encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
     const auto size = view.size();
     if (offset >= size) return encoding_type::INVALID;
@@ -44,15 +43,14 @@ encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
     }
     return encoding_type::INVALID;
 }
-std::size_t get_byte(encoding_type e) noexcept {
-    switch (e) {
-        case encoding_type::ASCII_1BYTE: return 1;
-        case encoding_type::UTF8_2BYTE: return 2;
-        case encoding_type::UTF8_3BYTE: return 3;
-        case encoding_type::UTF8_4BYTE: return 4;
-        case encoding_type::INVALID: return 0;
-    }
-    return 0;
-}
 
+[[nodiscard]] bool is_valid_utf8(std::string_view view) noexcept {
+    size_t offset = 0;
+    while (offset < view.size()) {
+        size_t char_size = get_byte(detect_next_encoding(view, offset));
+        if (char_size == 0) { return false; }
+        offset += char_size;
+    }
+    return true;
+}
 } // namespace jogasaki::utils

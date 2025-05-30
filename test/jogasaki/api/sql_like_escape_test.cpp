@@ -321,4 +321,40 @@ TEST_F(sql_like_escape_test, all_column) {
     EXPECT_EQ((create_nullable_record<kind::character>(expected_text)), result[0]);
     execute_statement("drop table t1");
 }
+
+TEST_F(sql_like_escape_test, invalid_utf8_input) {
+    execute_statement("create table t1 (c0 varchar)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character}};
+    auto ps = api::create_parameter_set();
+    ps->set_character("p0", "\xF4\x27\x80\x80");
+    execute_statement("INSERT INTO t1 (c0) VALUES (:p0)", variables, *ps);
+    std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE 'c'");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(0, result.size()) << "Query failed: " << query;
+}
+TEST_F(sql_like_escape_test, invalid_utf8_like) {
+    execute_statement("create table t1 (c0 varchar,c1 varchar)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character}};
+    auto ps = api::create_parameter_set();
+    ps->set_character("p0", "\xF4\x27\x80\x80");
+    execute_statement("INSERT INTO t1 (c0,c1) VALUES ('abc',:p0)", variables, *ps);
+    std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE c1");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(0, result.size()) << "Query failed: " << query;
+}
+TEST_F(sql_like_escape_test, invalid_utf8_escape) {
+    execute_statement("create table t1 (c0 varchar,c1 varchar,c2 varchar)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::character}};
+    auto ps = api::create_parameter_set();
+    ps->set_character("p0", "\x80");
+    execute_statement("INSERT INTO t1 (c0,c1,c2) VALUES ('abc','a%',:p0)", variables, *ps);
+    std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE c1 ESCAPE c2");
+    std::vector<mock::basic_record> result{};
+    test_stmt_err(query, error_code::unsupported_runtime_feature_exception);
+}
 } // namespace jogasaki::testing

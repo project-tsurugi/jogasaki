@@ -20,7 +20,20 @@
 
 namespace jogasaki::utils {
 
-[[nodiscard]] constexpr bool is_continuation_byte(unsigned char c) noexcept;
+/**
+ * @brief Checks whether the given byte is a UTF-8 continuation byte.
+ *
+ * Continuation bytes in UTF-8 are those that start with the bits `10xxxxxx`.
+ * This function checks if the given character matches this pattern.
+ *
+ * @see https://datatracker.ietf.org/doc/html/rfc3629#section-3
+ *
+ * @param c The character to check.
+ * @return true if it is a continuation byte, false otherwise.
+ */
+[[nodiscard]] constexpr bool is_continuation_byte(unsigned char c) noexcept {
+    return (c & 0xC0U) == 0x80U;
+}
 
 enum class encoding_type { ASCII_1BYTE, UTF8_2BYTE, UTF8_3BYTE, UTF8_4BYTE, INVALID };
 /**
@@ -35,6 +48,25 @@ enum class encoding_type { ASCII_1BYTE, UTF8_2BYTE, UTF8_3BYTE, UTF8_4BYTE, INVA
  * @param e encoding_type
  * @return byte size of the encoding type
  */
-[[nodiscard]] std::size_t get_byte(encoding_type e) noexcept;
+[[nodiscard]] constexpr std::size_t get_byte(encoding_type e) noexcept {
+    switch (e) {
+        case encoding_type::ASCII_1BYTE: return 1;
+        case encoding_type::UTF8_2BYTE: return 2;
+        case encoding_type::UTF8_3BYTE: return 3;
+        case encoding_type::UTF8_4BYTE: return 4;
+        case encoding_type::INVALID: return 0;
+    }
+    return 0;
+}
+/**
+ * @brief Checks whether the given string view is a valid UTF-8 encoded sequence.
+ *
+ * The function iterates through the bytes of the input string and verifies
+ * that each character conforms to the UTF-8 encoding rules.
+ *
+ * @param view A string view representing the byte sequence to validate.
+ * @return true if the sequence is valid UTF-8; false otherwise.
+ */
+[[nodiscard]] bool is_valid_utf8(std::string_view view) noexcept;
 
 } // namespace jogasaki::utils

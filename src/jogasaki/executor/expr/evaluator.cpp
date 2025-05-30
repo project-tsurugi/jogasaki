@@ -388,8 +388,6 @@ create_any(accessor::record_ref ref, executor::process::impl::value_info const& 
     return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore}};
 }
 
-
-
 any engine::operator()(takatori::scalar::variable_reference const& exp) {
     auto b = variables_ && variables_.info().exists(exp.variable());
     auto h = host_variables_ != nullptr && *host_variables_ && host_variables_->info().exists(exp.variable());
@@ -614,14 +612,14 @@ struct token {
         wildcard_one
     };
     token() = default;
-    token(kind k, std::string v) : kind(k), value(std::move(v)) {}
-    [[nodiscard]] kind get_kind() const { return kind; }
-    [[nodiscard]] const std::string& get_value() const { return value; }
+    token(kind k, std::string v) : kind_(k), value_(std::move(v)) {}
+    [[nodiscard]] kind get_kind() const { return kind_; }
+    [[nodiscard]] std::string const& get_value() const { return value_; }
 
   private:
-    kind kind{kind::literal};
+    kind kind_{kind::literal};
     /// The literal value to match (used only if kind == literal).
-    std::string value{};
+    std::string value_{};
 };
 
 bool is_single_utf8_character(std::string_view view) noexcept {
@@ -682,7 +680,7 @@ std::vector<token> tokenize_like_pattern(std::string_view pattern, std::string_v
             ++i;
         } else if (pattern[i] == '_') {
             if (!buffer.empty()) {
-                tokens.emplace_back(token::kind::literal, buffer);
+                tokens.emplace_back(token::kind::literal, std::move(buffer));
                 buffer.clear();
             }
             tokens.emplace_back(token::kind::wildcard_one, "");
@@ -702,7 +700,7 @@ bool starts_with(std::string_view str, std::string_view prefix) {
 }
 
 [[nodiscard]] bool match_literal_token(std::string_view input, std::size_t& input_index,
-    const token& tok, std::size_t& pattern_index, std::size_t& backtrack_input_index,
+    token const& tok, std::size_t& pattern_index, std::size_t& backtrack_input_index,
     std::size_t& backtrack_pattern_index) {
     if (starts_with(input.substr(input_index), tok.get_value())) {
         input_index += tok.get_value().size();
@@ -796,7 +794,7 @@ void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_ind
  * @param pattern A sequence of token objects representing the pattern.
  * @return true if the input matches the pattern; false otherwise.
  */
-bool match_like_pattern(std::string_view input, const std::vector<token>& pattern) {
+bool match_like_pattern(std::string_view input, std::vector<token> const& pattern) {
     std::size_t pattern_index = 0;
     std::size_t input_index   = 0;
 
@@ -805,7 +803,7 @@ bool match_like_pattern(std::string_view input, const std::vector<token>& patter
 
     while (input_index <= input.size()) {
         if (pattern_index < pattern.size()) {
-            const token& tok = pattern[pattern_index];
+            token const& tok = pattern[pattern_index];
             switch (tok.get_kind()) {
                 case token::kind::literal:
                     if (!match_literal_token(input, input_index, tok, pattern_index,
@@ -851,7 +849,9 @@ any engine::operator()(takatori::scalar::match const& match) {
     auto escape_val  = dispatch(*this, match.escape());
     auto input_val   = dispatch(*this, match.input());
     auto pattern_val = dispatch(*this, match.pattern());
-    if (escape_val.error() || input_val.error() || pattern_val.error()) return {};
+    if (escape_val.error()) return escape_val;
+    if (input_val.error()) return input_val;
+    if (pattern_val.error()) return pattern_val;
     if (escape_val.empty() || input_val.empty() || pattern_val.empty()) return {};
     constexpr auto char_type = any::index<runtime_t<meta::field_type_kind::character>>;
     if (escape_val.type_index() != char_type || input_val.type_index() != char_type ||
@@ -867,12 +867,14 @@ any engine::operator()(takatori::scalar::match const& match) {
         }
         auto pattern_text = pattern_val.to<runtime_t<kind::character>>();
         auto pattern_str  = static_cast<std::string_view>(pattern_text);
+        if (!utils::is_valid_utf8(pattern_str)) { return {}; }
         if (escape_str == pattern_str) { return return_unsupported(); }
         if (has_unescaped_trailing_escape(pattern_str, escape_str)) { return return_unsupported(); }
         std::vector<token> token = tokenize_like_pattern(pattern_str, escape_str);
         auto input_text          = input_val.to<runtime_t<kind::character>>();
         auto input_str           = static_cast<std::string>(input_text);
-        auto res                 = match_like_pattern(input_str, token);
+        if (!utils::is_valid_utf8(input_str)) { return {}; }
+        auto res = match_like_pattern(input_str, token);
         return any{std::in_place_type<bool>, res};
     }
     // kind == takatori::scalar::match::operator_kind_type::similar

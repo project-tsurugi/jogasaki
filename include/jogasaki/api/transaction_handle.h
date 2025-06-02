@@ -36,7 +36,6 @@
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
-#include <jogasaki/utils/hex.h>
 
 namespace jogasaki::api {
 
@@ -346,7 +345,8 @@ inline bool operator!=(transaction_handle const& a, transaction_handle const& b)
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, transaction_handle value) {
-    out << "transaction_handle[surrogate_id:" << utils::hex(value.surrogate_id());
+    // surrogate_id is printed in decimal to avoid using utils::hex in public header
+    out << "transaction_handle[surrogate_id:" << value.surrogate_id();
     if (value.session_id().has_value()) {
         // print session_id in decimal to conform to tateyama log message
         out << ",session_id:" << value.session_id().value();

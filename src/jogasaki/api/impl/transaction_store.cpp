@@ -17,6 +17,8 @@
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 
 namespace jogasaki::api::impl {
 
@@ -41,6 +43,14 @@ bool transaction_store::remove(transaction_handle handle) {
 }
 
 void transaction_store::dispose() {
+    if(VLOG_IS_ON(log_debug)) {
+        for(auto&& t: transactions_) {
+            std::size_t session_id = t.second->option() && t.second->option()->session_id().has_value() ?
+                *t.second->option()->session_id() : 0;
+            VLOG_LP(log_debug) << "disposing transaction:" << t.second->transaction_id() << " session:" << session_id
+                               << " surrogate_id:" << t.second->surrogate_id();
+        }
+    }
     transactions_.clear();
     global::database_impl()->remove_transaction_store(session_id_);
 }

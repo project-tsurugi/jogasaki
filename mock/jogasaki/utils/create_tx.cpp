@@ -49,6 +49,8 @@ create_transaction(api::database& db, api::transaction_option options) {
     return tx;
 }
 
+std::unique_ptr<create_tx_option> g_tx_option = std::make_unique<create_tx_option>();
+
 std::shared_ptr<api::transaction_handle>
 create_transaction(api::database& db, bool readonly, bool is_long,
     std::vector<std::string> const& write_preserves,
@@ -56,17 +58,21 @@ create_transaction(api::database& db, bool readonly, bool is_long,
     std::vector<std::string> const& read_areas_exclusive,
     std::string_view label
 ) {
-    return create_transaction(db, api::transaction_option{
+    std::optional<std::size_t> session_id{};
+    if(g_tx_option && g_tx_option->session_id.has_value()) {
+        session_id = *g_tx_option->session_id;
+    }
+    api::transaction_option opt{
         readonly,
         is_long,
         write_preserves,
         label,
         read_areas_inclusive,
         read_areas_exclusive
-    });
+    };
+    opt.session_id(session_id);
+    return create_transaction(db, std::move(opt));
 }
-
-std::unique_ptr<create_tx_option> g_tx_option{};
 
 std::shared_ptr<api::transaction_handle> create_transaction(
     api::database& db,

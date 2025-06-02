@@ -155,6 +155,11 @@ public:
         return scan_parallel_;
     }
 
+    transaction_option& session_id(std::optional<std::size_t> arg) noexcept {
+        session_id_ = arg;
+        return *this;
+    }
+
     [[nodiscard]] std::optional<std::size_t> session_id() const noexcept {
         return session_id_;
     }

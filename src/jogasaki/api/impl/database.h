@@ -246,6 +246,8 @@ public:
 
     [[nodiscard]] std::shared_ptr<transaction_context> find_transaction(api::transaction_handle handle);
 
+    std::shared_ptr<transaction_store> find_transaction_store(std::size_t session_id);
+
     bool remove_transaction_store(std::size_t session_id);
 
     [[nodiscard]] std::shared_ptr<impl::prepared_statement> find_statement(api::statement_handle handle);

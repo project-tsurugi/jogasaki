@@ -1408,6 +1408,14 @@ std::shared_ptr<transaction_context> database::find_transaction(api::transaction
     return {};
 }
 
+std::shared_ptr<transaction_store> database::find_transaction_store(std::size_t session_id) {
+    decltype(transaction_stores_)::accessor acc{};
+    if (transaction_stores_.find(acc, session_id)) {
+        return acc->second;
+    }
+    return {};
+}
+
 bool database::remove_transaction_store(std::size_t session_id) {
     return transaction_stores_.erase(session_id);
 }

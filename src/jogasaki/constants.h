@@ -197,4 +197,9 @@ constexpr std::size_t initial_sequence_version = 1;
  */
 constexpr static std::string_view session_variable_sql_plan_recording = "sql.plan_recording";
 
+/**
+ * @brief transaction store identifier used in session store
+ */
+constexpr std::size_t session_store_element_id_transactions = 10;
+
 }  // namespace jogasaki

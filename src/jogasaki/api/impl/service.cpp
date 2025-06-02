@@ -214,6 +214,12 @@ void service::command_begin(
     get_impl(*db_).do_create_transaction_async(
         [res, req_info](jogasaki::api::transaction_handle tx, status st, std::shared_ptr<api::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
+                if (tx.session_id().has_value()) {
+                    auto store = global::database_impl()->find_transaction_store(*tx.session_id());
+                    if (store) {
+                        req_info.request_source()->session_store().put(session_store_element_id_transactions, std::move(store));
+                    }
+                }
                 details::success<sql::response::Begin>(*res, tx, req_info);
             } else {
                 details::error<sql::response::Begin>(*res, err_info.get(), req_info);

@@ -310,6 +310,9 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     if (auto v = jogasaki_config->get<std::size_t>("dev_force_numa_node")) {
         ret->force_numa_node(v.value());
     }
+    if (auto v = jogasaki_config->get<bool>("dev_enable_session_store")) {
+        ret->enable_session_store(v.value());
+    }
     return true;
 }
 

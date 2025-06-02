@@ -1626,6 +1626,7 @@ TEST_F(service_api_test, get_transaction_status_auto_dispose) {
 
 TEST_F(service_api_test, get_transaction_status_updated_internally) {
     // verify transaction status by modifying it via internal api
+    global::config_pool()->enable_session_store(true);
     using ts = ::jogasaki::proto::sql::response::TransactionStatus;
     api::transaction_handle tx_handle{};
     {
@@ -2966,6 +2967,7 @@ TEST_F(service_api_test, extract_sql_info_missing_statement) {
 
 TEST_F(service_api_test, tx_on_different_session) {
     // verify handle is not usable on different session
+    global::config_pool()->enable_session_store(true);
     test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
     test_statement("INSERT INTO TT VALUES (0)");
 

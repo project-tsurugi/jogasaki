@@ -207,7 +207,9 @@ void service::command_begin(
         std::move(rae),
         modifies_definitions,
         scan_parallel,
-        req_info.request_source() ? std::optional<std::size_t>{req_info.request_source()->session_id()} : std::nullopt
+        global::config_pool()->enable_session_store() && req_info.request_source() ?
+            std::optional<std::size_t>{req_info.request_source()->session_id()} :
+            std::nullopt
     };
     get_impl(*db_).do_create_transaction_async(
         [res, req_info](jogasaki::api::transaction_handle tx, status st, std::shared_ptr<api::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
@@ -359,7 +361,9 @@ jogasaki::api::transaction_handle validate_transaction_handle(
     }
     api::transaction_handle tx{
         msg.transaction_handle().handle(),
-        req_info.request_source() ? std::optional<std::size_t>{req_info.request_source()->session_id()} : std::nullopt
+        global::config_pool()->enable_session_store() && req_info.request_source() ?
+            std::optional<std::size_t>{req_info.request_source()->session_id()} :
+            std::nullopt
     };
     if(! tx) {
         auto err_info = create_error_info(
@@ -391,7 +395,9 @@ std::string extract_transaction(
     }
     api::transaction_handle tx{
         msg.transaction_handle().handle(),
-        req_info.request_source() ? std::optional<std::size_t>{req_info.request_source()->session_id()} : std::nullopt
+        global::config_pool()->enable_session_store() && req_info.request_source() ?
+            std::optional<std::size_t>{req_info.request_source()->session_id()} :
+            std::nullopt
     };
     auto t = get_transaction_context(tx);
     if(! t) {

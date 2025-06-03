@@ -22,15 +22,36 @@
 
 #include <sharksfin/api.h>
 
-#include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/kvsservice/status.h>
+#include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/utils/split_mix64.h>
 
 #include "transaction.h"
 #include "transaction_option.h"
 
+
 namespace jogasaki::api::kvsservice {
+
+namespace details {
+
+/**
+ * @brief hash compare class to mix hash values using split mix 64
+ */
+class split_mix64_hash_compare {
+
+public:
+
+    [[nodiscard]] std::size_t hash(std::uint64_t const& a) const {
+        return utils::split_mix64(a);
+    }
+
+    [[nodiscard]] bool equal(std::uint64_t const& a, std::uint64_t const& b) const {
+        return a == b;
+    }
+};
+
+}  // namespace details
 
 class store {
 public:
@@ -97,7 +118,7 @@ public:
 private:
     jogasaki::api::database *db_{};
     sharksfin::DatabaseHandle db_handle_{};
-    tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>, utils::split_mix64_hash_compare> transactions_{};
+    tbb::concurrent_hash_map<std::uint64_t, std::shared_ptr<transaction>, details::split_mix64_hash_compare> transactions_{};
 };
 
 }

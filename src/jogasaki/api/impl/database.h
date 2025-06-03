@@ -44,6 +44,7 @@
 #include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/api/impl/statement_store.h>
 #include <jogasaki/api/impl/transaction_store.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
@@ -252,6 +253,10 @@ public:
 
     [[nodiscard]] std::shared_ptr<impl::prepared_statement> find_statement(api::statement_handle handle);
 
+    std::shared_ptr<statement_store> find_statement_store(std::size_t session_id);
+
+    bool remove_statement_store(std::size_t session_id);
+
     [[nodiscard]] bool stop_requested() const noexcept;
 
     [[nodiscard]] utils::use_counter const& requests_inprocess() const noexcept;
@@ -329,6 +334,7 @@ private:
     utils::use_counter requests_inprocess_{};
     std::shared_ptr<commit_stats> commit_stats_{std::make_shared<commit_stats>()};
     tbb::concurrent_hash_map<std::size_t, std::shared_ptr<impl::transaction_store>> transaction_stores_{};
+    tbb::concurrent_hash_map<std::size_t, std::shared_ptr<impl::statement_store>> statement_stores_{};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

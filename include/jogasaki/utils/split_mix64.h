@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <memory>
+#include <cstdint>
 
 namespace jogasaki::utils {
 
@@ -25,20 +25,5 @@ constexpr std::uint64_t split_mix64(std::uint64_t x) {
     x = (x ^ (x>>27U)) * 0x94d049bb133111ebULL;
     return x ^ (x>>31U);
 }
-
-/**
- * @brief hash compare class to mix hash values using split mix 64
- */
-class split_mix64_hash_compare {
-public:
-
-    [[nodiscard]] std::size_t hash(std::uint64_t const& a ) const {
-        return split_mix64(a);
-    }
-
-    [[nodiscard]] bool equal(std::uint64_t const& a, std::uint64_t const& b) const {
-        return a == b;
-    }
-};
 
 }  // namespace jogasaki::utils

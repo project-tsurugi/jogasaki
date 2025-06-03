@@ -36,6 +36,7 @@
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/hash_combine.h>
 
 namespace jogasaki::api {
 
@@ -372,10 +373,7 @@ struct std::hash<jogasaki::api::transaction_handle> {
             // normally we don't mix entries with/without session_id, so this doesn't make many collisions
             return value.surrogate_id();
         }
-        // simple Boost hash combine just to combine surrogate_id and session_id
-        auto h1 = value.surrogate_id();
-        auto h2 = *value.session_id();
-        return h1 ^ (h2 + 0x9e3779b9U + (h1 << 6U) + (h1 >> 2U));
+        return jogasaki::utils::hash_combine(value.surrogate_id(), *value.session_id());
     }
 };
 

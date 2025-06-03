@@ -23,6 +23,8 @@
 #include <type_traits>
 
 #include <jogasaki/api/record_meta.h>
+#include <jogasaki/utils/hash_combine.h>
+#include <jogasaki/utils/split_mix64.h>
 
 namespace jogasaki::api {
 
@@ -52,18 +54,11 @@ public:
     /**
      * @brief create new object from pointer
      * @param arg pointer to the target prepared statement
-     * @param db pointer to the statement object container
+     * @param session_id the session id of the prepared statement
      */
-    explicit statement_handle(void* arg, void* db) noexcept;
-
-    /**
-     * @brief create new object from integer
-     * @param arg integer representing target pointer
-     * @param db integer representing database object pointer
-     */
-    explicit statement_handle(
-        std::uintptr_t arg,
-        std::uintptr_t db
+    statement_handle(
+        void* arg,
+        std::optional<std::size_t> session_id
     ) noexcept;
 
     /**
@@ -73,10 +68,10 @@ public:
     [[nodiscard]] std::uintptr_t get() const noexcept;
 
     /**
-     * @brief accessor to the db handle
-     * @return the db handle value
+     * @brief return the session id of the transaction
+     * @return session id
      */
-    [[nodiscard]] std::uintptr_t db() const noexcept;
+    [[nodiscard]] std::optional<std::size_t> session_id() const noexcept;
 
     /**
      * @brief conversion operator to std::size_t
@@ -105,7 +100,7 @@ public:
 
 private:
     std::uintptr_t body_{};
-    std::uintptr_t db_{};
+    std::optional<std::size_t> session_id_{};
 
 };
 
@@ -115,7 +110,16 @@ static_assert(std::is_trivially_copyable_v<statement_handle>);
  * @brief equality comparison operator
  */
 inline bool operator==(statement_handle const& a, statement_handle const& b) noexcept {
-    return a.get() == b.get();
+    if (a.get() != b.get()) {
+        return false;
+    }
+    if (a.session_id().has_value() != b.session_id().has_value()) {
+        return false;
+    }
+    if (! a.session_id().has_value()) {
+        return true;
+    }
+    return *a.session_id() == *b.session_id();
 }
 
 /**
@@ -132,7 +136,14 @@ inline bool operator!=(statement_handle const& a, statement_handle const& b) noe
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, statement_handle value) {
-    return out << "statement_handle[" << value.get() << "]";
+    // surrogate_id is printed in decimal to avoid using utils::hex in public header
+    out << "statement_handle[body:" << value.get();
+    if (value.session_id().has_value()) {
+        // print session_id in decimal to conform to tateyama log message
+        out << ",session_id:" << value.session_id().value();
+    }
+    out << "]";
+    return out;
 }
 
 }  // namespace jogasaki::api
@@ -148,7 +159,13 @@ struct std::hash<jogasaki::api::statement_handle> {
      * @return computed hash code
      */
     std::size_t operator()(jogasaki::api::statement_handle const& value) const noexcept {
-        return static_cast<std::size_t>(value);
+        // mixing pointer value to avoid collisions
+        auto h = jogasaki::utils::split_mix64(value.get());
+        if (! value.session_id().has_value()) {
+            // normally we don't mix entries with/without session_id, so this doesn't make many collisions
+            return h;
+        }
+        return jogasaki::utils::hash_combine(h, *value.session_id());
     }
 };
 

@@ -299,6 +299,7 @@ status database::stop() {
     global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
     deinit();
     prepared_statements_.clear();
+    statement_stores_.clear();
 
     transactions_.clear();
     transaction_stores_.clear();
@@ -447,13 +448,26 @@ status database::prepare_common(
     std::unique_ptr<impl::prepared_statement> ptr{};
     auto st = prepare_common(sql, std::move(provider), ptr, out, option);
     if (st == status::ok) {
-        decltype(prepared_statements_)::accessor acc{};
-        api::statement_handle handle{ptr.get(), this};
-        if (prepared_statements_.insert(acc, handle)) {
-            acc->second = std::move(ptr);
-            statement = handle;
+        api::statement_handle handle{ptr.get(), option.session_id()};
+        if (! handle.session_id().has_value()) {
+            decltype(prepared_statements_)::accessor acc{};
+            if (prepared_statements_.insert(acc, handle)) {
+                acc->second = std::move(ptr);
+                statement = handle;
+            } else {
+                throw_exception(std::logic_error{""});
+            }
         } else {
-            throw_exception(std::logic_error{""});
+            auto session_id = option.session_id().value();
+            decltype(statement_stores_)::accessor acc{};
+            auto new_item = statement_stores_.insert(acc, session_id);
+            if (new_item) {
+                acc->second = std::make_shared<statement_store>(session_id);
+            }
+            if (! acc->second->put(handle, std::move(ptr))) {
+                throw_exception(std::logic_error{""});
+            }
+            statement = handle;
         }
     }
     return st;
@@ -747,18 +761,31 @@ status database::destroy_statement(
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::dispose_statement);
     req->status(scheduler::request_detail_status::accepted);
     log_request(*req);
-    decltype(prepared_statements_)::accessor acc{};
-    if (prepared_statements_.find(acc, prepared)) {
-        prepared_statements_.erase(acc);
-    } else {
+    if (! prepared.session_id().has_value()) {
+        decltype(prepared_statements_)::accessor acc{};
+        if (prepared_statements_.find(acc, prepared)) {
+            prepared_statements_.erase(acc);
+            req->status(scheduler::request_detail_status::finishing);
+            log_request(*req);
+            return status::ok;
+        }
         VLOG_LP(log_warning) << "destroy_statement for invalid handle";
         req->status(scheduler::request_detail_status::finishing);
         log_request(*req, false);
         return status::err_invalid_argument;
     }
+    decltype(statement_stores_)::accessor acc{};
+    if (statement_stores_.find(acc, prepared.session_id().value())) {
+        if (acc->second->remove(prepared)) {
+            req->status(scheduler::request_detail_status::finishing);
+            log_request(*req);
+            return status::ok;
+        }
+    }
+    VLOG_LP(log_warning) << "destroy_statement for invalid handle";
     req->status(scheduler::request_detail_status::finishing);
-    log_request(*req);
-    return status::ok;
+    log_request(*req, false);
+    return status::err_invalid_argument;
 }
 
 status database::destroy_transaction(
@@ -1416,14 +1443,33 @@ std::shared_ptr<transaction_store> database::find_transaction_store(std::size_t 
     return {};
 }
 
+std::shared_ptr<statement_store> database::find_statement_store(std::size_t session_id) {
+    decltype(statement_stores_)::accessor acc{};
+    if (statement_stores_.find(acc, session_id)) {
+        return acc->second;
+    }
+    return {};
+}
+
 bool database::remove_transaction_store(std::size_t session_id) {
     return transaction_stores_.erase(session_id);
 }
 
+bool database::remove_statement_store(std::size_t session_id) {
+    return statement_stores_.erase(session_id);
+}
+
 std::shared_ptr<impl::prepared_statement> database::find_statement(api::statement_handle handle) {
-    decltype(prepared_statements_)::accessor acc{};
-    if (prepared_statements_.find(acc, handle)) {
-        return acc->second;
+    if (! handle.session_id().has_value()) {
+        decltype(prepared_statements_)::accessor acc{};
+        if (prepared_statements_.find(acc, handle)) {
+            return acc->second;
+        }
+        return {};
+    }
+    decltype(statement_stores_)::accessor acc{};
+    if (statement_stores_.find(acc, handle.session_id().value())) {
+        return acc->second->lookup(handle);
     }
     return {};
 }

@@ -115,13 +115,13 @@ void report_error(
 
 class query_info {
 public:
-    using handle_parameters = std::pair<std::size_t, maybe_shared_ptr<jogasaki::api::parameter_set const>>;
+    using handle_parameters = std::pair<api::statement_handle, maybe_shared_ptr<jogasaki::api::parameter_set const>>;
     explicit query_info(std::string_view sql) :
         entity_(std::in_place_type<std::string_view>, sql)
     {}
 
-    explicit query_info(std::size_t sid, maybe_shared_ptr<jogasaki::api::parameter_set const> params) :
-        entity_(std::in_place_type<handle_parameters>, std::pair{sid, std::move(params)})
+    explicit query_info(statement_handle handle, maybe_shared_ptr<jogasaki::api::parameter_set const> params) :
+        entity_(std::in_place_type<handle_parameters>, std::pair{handle, std::move(params)})
     {}
 
     [[nodiscard]] bool has_sql() const noexcept {
@@ -132,7 +132,7 @@ public:
         return *std::get_if<std::string_view>(std::addressof(entity_));
     }
 
-    [[nodiscard]] std::size_t sid() const noexcept {
+    [[nodiscard]] statement_handle handle() const noexcept {
         return std::get_if<handle_parameters>(std::addressof(entity_))->first;
     }
 
@@ -266,7 +266,13 @@ void service::command_prepare(
     }
     jogasaki::api::statement_handle statement{};
     std::shared_ptr<error::error_info> err_info{};
-    if(auto rc = get_impl(*db_).prepare(sql, variables, statement, err_info); rc == jogasaki::status::ok) {
+    plan::compile_option option{};
+    option.session_id(
+        global::config_pool()->enable_session_store() && req_info.request_source()
+            ? std::optional<std::size_t>{req_info.request_source()->session_id()}
+            : std::nullopt
+    );
+    if(auto rc = get_impl(*db_).prepare(sql, variables, statement, err_info, option); rc == jogasaki::status::ok) {
         details::success<sql::response::Prepare>(*res, statement, req_info);
     } else {
         details::error<sql::response::Prepare>(*res, err_info.get(), req_info);
@@ -386,11 +392,9 @@ jogasaki::api::transaction_handle validate_transaction_handle(
 template<class Request>
 std::string extract_transaction(
     Request msg,
-    api::database* db,
     std::shared_ptr<error::error_info>& err_info,
     request_info const& req_info
 ) {
-    (void) db;
     if(! msg.has_transaction_handle()) {
         err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -494,7 +498,6 @@ void service::command_execute_query(
 template<class Response, class Request>
 jogasaki::api::statement_handle validate_statement_handle(
     Request msg,
-    api::database* db,
     tateyama::api::server::response& res,
     request_info const& req_info
 ) {
@@ -508,7 +511,12 @@ jogasaki::api::statement_handle validate_statement_handle(
         details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
-    jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    jogasaki::api::statement_handle handle{
+        reinterpret_cast<void*>(msg.prepared_statement_handle().handle()),
+        req_info.request_source() ?
+            std::optional<std::size_t>{req_info.request_source()->session_id()} :
+            std::nullopt
+    };  //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     if (! handle) {
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -532,7 +540,7 @@ void service::command_execute_prepared_statement(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<sql::response::ExecuteResult>(pq, db_, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ExecuteResult>(pq, *res, req_info);
     if(! handle) {
         abort_transaction(tx, req_info);
         return;
@@ -562,14 +570,14 @@ void service::command_execute_prepared_query(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, db_, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(pq, *res, req_info);
     if(! handle) {
         abort_transaction(tx, req_info);
         return;
     }
     auto params = jogasaki::api::create_parameter_set();
     set_params(pq.parameters(), params, req_info);
-    execute_query(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, req_info);
+    execute_query(res, details::query_info{handle, std::shared_ptr{std::move(params)}}, tx, req_info);
 }
 
 commit_response_kind from(::jogasaki::proto::sql::request::CommitStatus st) {
@@ -678,7 +686,7 @@ void service::command_dispose_prepared_statement(
 ) {
     auto& ds = proto_req.dispose_prepared_statement();
 
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(ds, db_, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(ds, *res, req_info);
     if(! handle) {
         return;
     }
@@ -700,7 +708,7 @@ void service::command_explain(
     request_info const& req_info
 ) {
     auto& ex = proto_req.explain();
-    auto handle = validate_statement_handle<sql::response::Explain>(ex, db_, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::Explain>(ex, *res, req_info);
     if(! handle) {
         return;
     }
@@ -790,8 +798,8 @@ void service::command_explain_by_text(
 template<class Request>
 std::shared_ptr<impl::prepared_statement> extract_statement(
     Request msg,
-    api::database* db,
-    std::shared_ptr<error::error_info>& out
+    std::shared_ptr<error::error_info>& out,
+    std::optional<std::size_t> session_id
 ) {
     if(! msg.has_prepared_statement_handle()) {
         out = create_error_info(
@@ -801,7 +809,8 @@ std::shared_ptr<impl::prepared_statement> extract_statement(
         );
         return {};
     }
-    jogasaki::api::statement_handle handle{msg.prepared_statement_handle().handle(), reinterpret_cast<std::uintptr_t>(db)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    statement_handle handle{
+        reinterpret_cast<void*>(msg.prepared_statement_handle().handle()), session_id}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     auto stmt = get_statement(handle);
     if (stmt == nullptr) {
         auto m = string_builder{} << "prepared statement not found for handle:" << handle.get() << string_builder::to_string;
@@ -817,17 +826,17 @@ std::shared_ptr<impl::prepared_statement> extract_statement(
 
 bool extract_sql_and_tx_id(
     sql::request::Request const& req,
-    api::database* db,
     std::shared_ptr<std::string>& sql_text,
     std::string& tx_id,
     std::shared_ptr<error::error_info>& err_info,
-    request_info const& req_info
+    request_info const& req_info,
+    std::optional<std::size_t> session_id
 ) {
     switch (req.request_case()) {
         case sql::request::Request::RequestCase::kExecuteStatement: {
             auto& msg = req.execute_statement();
             sql_text = std::make_shared<std::string>(msg.sql());
-            tx_id = extract_transaction(msg, db, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -836,7 +845,7 @@ bool extract_sql_and_tx_id(
         case sql::request::Request::RequestCase::kExecuteQuery: {
             auto& msg = req.execute_query();
             sql_text = std::make_shared<std::string>(msg.sql());
-            tx_id = extract_transaction(msg, db, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -844,12 +853,12 @@ bool extract_sql_and_tx_id(
         }
         case sql::request::Request::RequestCase::kExecutePreparedStatement: {
             auto& msg = req.execute_prepared_statement();
-            auto stmt = extract_statement(msg, db, err_info);
+            auto stmt = extract_statement(msg, err_info, session_id);
             if(! stmt) {
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
-            tx_id = extract_transaction(msg, db, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -857,12 +866,12 @@ bool extract_sql_and_tx_id(
         }
         case sql::request::Request::RequestCase::kExecutePreparedQuery: {
             auto& msg = req.execute_prepared_query();
-            auto stmt = extract_statement(msg, db, err_info);
+            auto stmt = extract_statement(msg, err_info, session_id);
             if(! stmt) {
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
-            tx_id = extract_transaction(msg, db, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -909,10 +918,11 @@ void service::command_extract_statement_info(
         details::error<sql::response::ExtractStatementInfo>(*res, err_info.get(), req_info);
         return;
     }
+
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err{};
     std::string tx_id{};
-    if(! extract_sql_and_tx_id(decoded_req, db_, sql_text, tx_id, err, req_info)) {
+    if(! extract_sql_and_tx_id(decoded_req, sql_text, tx_id, err, req_info, ex.session_id())) {
         details::error<sql::response::ExtractStatementInfo>(*res, err.get(), req_info);
         return;
     }
@@ -1021,7 +1031,7 @@ void service::command_execute_dump(
     if(! tx) {
         return;
     }
-    auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, db_, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ResultOnly>(ed, *res, req_info);
     if(! handle) {
         return;
     }
@@ -1055,7 +1065,7 @@ void service::command_execute_dump(
     }
     execute_dump(
         res,
-        details::query_info{handle.get(), std::shared_ptr{std::move(params)}},
+        details::query_info{handle, std::shared_ptr{std::move(params)}},
         tx,
         ed.directory(),
         opts,
@@ -1079,7 +1089,7 @@ void service::command_execute_load(
     } else {
         // non-transactional load
     }
-    auto handle = validate_statement_handle<sql::response::ExecuteResult>(ed, db_, *res, req_info);
+    auto handle = validate_statement_handle<sql::response::ExecuteResult>(ed, *res, req_info);
     if(! handle) {
         return;
     }
@@ -1091,7 +1101,7 @@ void service::command_execute_load(
     for(auto&& f : list) {
         files.emplace_back(f);
     }
-    execute_load(res, details::query_info{handle.get(), std::shared_ptr{std::move(params)}}, tx, files, req_info);
+    execute_load(res, details::query_info{handle, std::shared_ptr{std::move(params)}}, tx, files, req_info);
 }
 
 void service::command_describe_table(
@@ -1514,7 +1524,7 @@ void service::execute_query(
         }
         has_result_records = e->meta() != nullptr;
     } else {
-        jogasaki::api::statement_handle statement{q.sid(), reinterpret_cast<std::uintptr_t>(db_)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+        auto statement = q.handle();
         if(auto rc = get_impl(*db_).resolve(statement, q.params(), e, err_info); rc != jogasaki::status::ok) {
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
@@ -1722,9 +1732,8 @@ void service::execute_dump(
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     BOOST_ASSERT(! q.has_sql());  //NOLINT
-    jogasaki::api::statement_handle statement{q.sid(), reinterpret_cast<std::uintptr_t>(db_)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     std::shared_ptr<error::error_info> err_info{};
-    if(auto rc = get_impl(*db_).resolve(statement, q.params(), e, err_info); rc != jogasaki::status::ok) {
+    if(auto rc = get_impl(*db_).resolve(q.handle(), q.params(), e, err_info); rc != jogasaki::status::ok) {
         details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
@@ -1803,7 +1812,7 @@ void service::execute_load( //NOLINT
         VLOG(log_info) << log_location_prefix << "load processing file: " << f;
     }
     BOOST_ASSERT(! q.has_sql());  //NOLINT
-    jogasaki::api::statement_handle statement{q.sid(), reinterpret_cast<std::uintptr_t>(db_)}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    auto statement = q.handle();
 
     auto c = std::make_shared<callback_control>(res);
     auto* cbp = c.get();

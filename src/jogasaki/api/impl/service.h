@@ -780,11 +780,11 @@ private:
 // public for testing purpose
 bool extract_sql_and_tx_id(
     sql::request::Request const& req,
-    api::database* db,
     std::shared_ptr<std::string>& sql_text,
     std::string& tx_id,
     std::shared_ptr<error::error_info>& err_info,
-    request_info const& req_info
+    request_info const& req_info,
+    std::optional<std::size_t> session_id
 );
 
 }  // namespace jogasaki::api::impl

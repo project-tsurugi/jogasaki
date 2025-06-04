@@ -356,4 +356,24 @@ TEST_F(sql_like_escape_test, invalid_utf8_escape) {
     std::vector<mock::basic_record> result{};
     test_stmt_err(query, error_code::value_evaluation_exception);
 }
+TEST_F(sql_like_escape_test, input_like_empty) {
+    execute_statement("create table t1 (c0 varchar)");
+    execute_statement("insert into t1 values ('')");
+    {
+        std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE ''");
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    }
+}
+TEST_F(sql_like_escape_test, input_not_empty_like_empty) {
+    execute_statement("create table t1 (c0 varchar)");
+    execute_statement("insert into t1 values ('abcd')");
+    {
+        std::string query = std::string("SELECT c0 FROM t1 WHERE c0 LIKE ''");
+        std::vector<mock::basic_record> result{};
+        execute_query(query, result);
+        ASSERT_EQ(0, result.size()) << "Query failed: " << query;
+    }
+}
 } // namespace jogasaki::testing

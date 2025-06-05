@@ -866,19 +866,19 @@ any engine::operator()(takatori::scalar::match const& match) {
             return return_invalid_input_value();
         }
         auto pattern_text = pattern_val.to<runtime_t<kind::character>>();
-        auto pattern_str  = static_cast<std::string_view>(pattern_text);
         auto input_text   = input_val.to<runtime_t<kind::character>>();
-        auto input_str    = static_cast<std::string>(input_text);
-        if (pattern_str.empty()) {
-            if (input_str.empty()) { return any{std::in_place_type<bool>, true}; }
+        if (pattern_text.empty()) {
+            if (input_text.empty()) { return any{std::in_place_type<bool>, true}; }
             return any{std::in_place_type<bool>, false};
         }
+        auto pattern_str = static_cast<std::string_view>(pattern_text);
         if (!utils::is_valid_utf8(pattern_str)) { return {}; }
         if (escape_str == pattern_str) { return return_invalid_input_value(); }
         if (has_unescaped_trailing_escape(pattern_str, escape_str)) {
             return return_invalid_input_value();
         }
         std::vector<token> token = tokenize_like_pattern(pattern_str, escape_str);
+        auto input_str           = static_cast<std::string_view>(input_text);
         if (!utils::is_valid_utf8(input_str)) { return {}; }
         auto res = match_like_pattern(input_str, token);
         return any{std::in_place_type<bool>, res};

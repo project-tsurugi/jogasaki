@@ -48,6 +48,7 @@
 #include <tateyama/utils/cache_align.h>
 #include <yugawara/storage/column.h>
 #include <yugawara/storage/table.h>
+#include <yugawara/storage/configurable_provider.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/error_info.h>
@@ -361,7 +362,8 @@ template<>
 inline void success<sql::response::DescribeTable>(
     tateyama::api::server::response& res,
     yugawara::storage::table const* tbl,
-    request_info req_info  //NOLINT(performance-unnecessary-value-param)
+    request_info req_info,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<yugawara::storage::configurable_provider> provider  //NOLINT(performance-unnecessary-value-param)
 ) {
     BOOST_ASSERT(tbl != nullptr); //NOLINT
     sql::response::Response r{};
@@ -384,6 +386,14 @@ inline void success<sql::response::DescribeTable>(
         c->set_nullable(col.criteria().nullity().nullable());
         if (! col.description().empty()) {
             c->set_description(col.description());
+        }
+    }
+    auto pi = provider->find_primary_index(*tbl);
+    if(pi) {
+        for(auto&& k : pi->keys()) {
+            if(! utils::is_prefix(k.column().simple_name(), generated_pkey_column_prefix)) {
+                success->mutable_primary_key()->Add(std::string{k.column().simple_name()});
+            }
         }
     }
     reply(res, r, req_info);

@@ -2326,6 +2326,25 @@ TEST_F(service_api_test, describe_table) {
     EXPECT_EQ(sql::common::AtomType::INT8, result.columns_[0].atom_type_);
     EXPECT_EQ("C1", result.columns_[1].name_);
     EXPECT_EQ(sql::common::AtomType::FLOAT8, result.columns_[1].atom_type_);
+    ASSERT_EQ(1, result.primary_key_columns_.size());
+    EXPECT_EQ("C0", result.primary_key_columns_[0]);
+}
+
+TEST_F(service_api_test, describe_table_compound_pk) {
+    execute_statement("create table t (c0 int, c1 int, c2 int, c3 int, primary key(c1, c0))");
+    auto s = encode_describe_table("t");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ(2, result.primary_key_columns_.size());
+    EXPECT_EQ("c1", result.primary_key_columns_[0]);
+    EXPECT_EQ("c0", result.primary_key_columns_[1]);
 }
 
 TEST_F(service_api_test, describe_table_not_found) {
@@ -2410,6 +2429,7 @@ TEST_F(service_api_test, describe_pkless_table) {
     ASSERT_EQ(1, result.columns_.size());
     EXPECT_EQ("C0", result.columns_[0].name_);
     EXPECT_EQ(sql::common::AtomType::INT4, result.columns_[0].atom_type_);
+    ASSERT_EQ(0, result.primary_key_columns_.size());
 }
 
 TEST_F(service_api_test, describe_table_description) {

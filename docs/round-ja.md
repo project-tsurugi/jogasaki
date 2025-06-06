@@ -1,6 +1,6 @@
 # ROUND外部仕様
 
-2025-05-23 nishimura
+2025-06-09 nishimura
 
 ## この文書について
 
@@ -22,7 +22,17 @@ ROUND(numeric_expression[, integer_expression])
 ```
 
 * `numeric_expression`：丸めの対象となる数値式
-* `integer_expression`（省略可能）：小数点以下の桁数を指定する整数式（正の値で小数点以下、負の値で整数部の桁指定）
+* `integer_expression`（省略可能）：
+
+   * `integer_expression` が **0 以上** の場合：  
+     小数点以下の桁数を指定し、**指定した桁数で四捨五入**します。  
+     - `1` → 小数第1位まで残す（例：`123.456 → 123.5`）  
+     - `0` → 小数点以下を考慮して **整数に四捨五入**（例：`123.456 → 123`）  
+
+   * `integer_expression` が **負の値** の場合：  
+     **整数部のうち** `10^(-integer_expression)` **の位で四捨五入**します。  
+     - `-1` → 10の位で四捨五入（例：`123.456 → 120`）  
+     - `-2` → 100の位で四捨五入（例：`123.456 → 100`） 
 
 `ROUND` 関数は、`numeric_expression` を `integer_expression` で指定された桁数に四捨五入した結果を返します。`integer_expression` を省略した場合は、小数点以下0桁（整数）に丸められます。
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include <string>
 #include <type_traits>
 #include <glog/logging.h>
+#include <nlohmann/json.hpp>
 #include <sys/mman.h>
 
 #include <takatori/util/maybe_shared_ptr.h>
@@ -27,7 +28,6 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 
-#include "../third_party/nlohmann/json.hpp"
 
 namespace jogasaki::memory {
 

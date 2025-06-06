@@ -44,6 +44,10 @@ inline jogasaki::data::any return_unsupported() {
     return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
+inline jogasaki::data::any return_invalid_input_value() {
+    return {std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
+
 inline std::string_view trim_spaces(std::string_view src) {
     auto b = std::find_if(src.begin(), src.end(), [](char c){
         return c != ' ';

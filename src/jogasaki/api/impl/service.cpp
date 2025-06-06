@@ -206,11 +206,20 @@ void service::command_begin(
         std::move(rai),
         std::move(rae),
         modifies_definitions,
-        scan_parallel
+        scan_parallel,
+        global::config_pool()->enable_session_store() && req_info.request_source() ?
+            std::optional<std::size_t>{req_info.request_source()->session_id()} :
+            std::nullopt
     };
     get_impl(*db_).do_create_transaction_async(
         [res, req_info](jogasaki::api::transaction_handle tx, status st, std::shared_ptr<api::error_info> err_info) {  //NOLINT(performance-unnecessary-value-param)
             if(st == jogasaki::status::ok) {
+                if (tx.session_id().has_value()) {
+                    auto store = global::database_impl()->find_transaction_store(*tx.session_id());
+                    if (store) {
+                        req_info.request_source()->session_store().put(session_store_element_id_transactions, std::move(store));
+                    }
+                }
                 details::success<sql::response::Begin>(*res, tx, req_info);
             } else {
                 details::error<sql::response::Begin>(*res, err_info.get(), req_info);
@@ -356,7 +365,12 @@ jogasaki::api::transaction_handle validate_transaction_handle(
         details::error<Response>(res, err_info.get(), req_info);
         return {};
     }
-    api::transaction_handle tx{msg.transaction_handle().handle()};
+    api::transaction_handle tx{
+        msg.transaction_handle().handle(),
+        global::config_pool()->enable_session_store() && req_info.request_source() ?
+            std::optional<std::size_t>{req_info.request_source()->session_id()} :
+            std::nullopt
+    };
     if(! tx) {
         auto err_info = create_error_info(
             error_code::sql_execution_exception,
@@ -373,7 +387,8 @@ template<class Request>
 std::string extract_transaction(
     Request msg,
     api::database* db,
-    std::shared_ptr<error::error_info>& err_info
+    std::shared_ptr<error::error_info>& err_info,
+    request_info const& req_info
 ) {
     (void) db;
     if(! msg.has_transaction_handle()) {
@@ -384,8 +399,12 @@ std::string extract_transaction(
         );
         return {};
     }
-
-    api::transaction_handle tx{msg.transaction_handle().handle()};
+    api::transaction_handle tx{
+        msg.transaction_handle().handle(),
+        global::config_pool()->enable_session_store() && req_info.request_source() ?
+            std::optional<std::size_t>{req_info.request_source()->session_id()} :
+            std::nullopt
+    };
     auto t = get_transaction_context(tx);
     if(! t) {
         // failed to get transaction_context
@@ -576,7 +595,7 @@ void service::command_commit(
     if(! tx) {
         return;
     }
-    auto nt = from(cm.notification_type());
+    auto nt = from(cm.has_option() ? cm.option().notification_type() : cm.notification_type());
     auto cr = nt != commit_response_kind::undefined ? nt : db_->config()->default_commit_response();
     commit_response_kind_set responses{};
     if(cr == commit_response_kind::accepted || cr == commit_response_kind::available) {
@@ -590,7 +609,7 @@ void service::command_commit(
     }
 
     commit_option opt{};
-    opt.auto_dispose_on_success(cm.auto_dispose()).commit_response(cr);
+    opt.auto_dispose_on_success(cm.has_option() ? cm.option().auto_dispose() : cm.auto_dispose()).commit_response(cr);
 
     auto tctx = get_transaction_context(tx);
     executor::commit_async(
@@ -801,13 +820,14 @@ bool extract_sql_and_tx_id(
     api::database* db,
     std::shared_ptr<std::string>& sql_text,
     std::string& tx_id,
-    std::shared_ptr<error::error_info>& err_info
+    std::shared_ptr<error::error_info>& err_info,
+    request_info const& req_info
 ) {
     switch (req.request_case()) {
         case sql::request::Request::RequestCase::kExecuteStatement: {
             auto& msg = req.execute_statement();
             sql_text = std::make_shared<std::string>(msg.sql());
-            tx_id = extract_transaction(msg, db, err_info);
+            tx_id = extract_transaction(msg, db, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -816,7 +836,7 @@ bool extract_sql_and_tx_id(
         case sql::request::Request::RequestCase::kExecuteQuery: {
             auto& msg = req.execute_query();
             sql_text = std::make_shared<std::string>(msg.sql());
-            tx_id = extract_transaction(msg, db, err_info);
+            tx_id = extract_transaction(msg, db, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -829,7 +849,7 @@ bool extract_sql_and_tx_id(
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
-            tx_id = extract_transaction(msg, db, err_info);
+            tx_id = extract_transaction(msg, db, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -842,7 +862,7 @@ bool extract_sql_and_tx_id(
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
-            tx_id = extract_transaction(msg, db, err_info);
+            tx_id = extract_transaction(msg, db, err_info, req_info);
             if(err_info) {
                 return false;
             }
@@ -892,7 +912,7 @@ void service::command_extract_statement_info(
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err{};
     std::string tx_id{};
-    if(! extract_sql_and_tx_id(decoded_req, db_, sql_text, tx_id, err)) {
+    if(! extract_sql_and_tx_id(decoded_req, db_, sql_text, tx_id, err, req_info)) {
         details::error<sql::response::ExtractStatementInfo>(*res, err.get(), req_info);
         return;
     }
@@ -1186,7 +1206,10 @@ bool service::process(
             details::report_error(*res, tateyama::proto::diagnostics::Code::INVALID_REQUEST, msg, reqid);
             return true;
         }
-        VLOG(log_trace) << log_location_prefix << "request received (rid=" << reqid << " len=" << s.size()
+        VLOG(log_trace) << log_location_prefix
+                        << "request received (session_id=" << req->session_id()
+                        << ",local_id=" << req->local_id() << ",rid=" << reqid
+                        << ",len=" << s.size()
                         << "): " << utils::to_debug_string(proto_req);
     }
     if (! db_->config()->skip_smv_check()) {
@@ -1579,14 +1602,21 @@ void details::reply(
     }
     if (body_head) {
         trace_scope_name("body_head");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body_head (rid=" << req_info.id()
-                        << " len=" << ss.size() << "): " << utils::to_debug_string(r);
+        VLOG(log_trace) << log_location_prefix << "respond with body_head ("
+                        << "session_id=" << req_info.request_source()->session_id()
+                        << ",local_id=" << req_info.request_source()->local_id()
+                        << ",rid=" << req_info.id()
+                        << ",len=" << ss.size() << "): " << utils::to_debug_string(r);
         res.body_head(ss);
         return;
     }
     {
         trace_scope_name("body");  //NOLINT
-        VLOG(log_trace) << log_location_prefix << "respond with body (rid=" << req_info.id() << " len=" << ss.size()
+        VLOG(log_trace) << log_location_prefix << "respond with body ("
+                        << "session_id=" << req_info.request_source()->session_id()
+                        << ",local_id=" << req_info.request_source()->local_id()
+                        << ",rid=" << req_info.id()
+                        << ",len=" << ss.size()
                         << "): " << utils::to_debug_string(r);
         res.body(ss);
     }

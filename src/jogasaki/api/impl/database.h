@@ -44,6 +44,7 @@
 #include <jogasaki/api/impl/executable_statement.h>
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
+#include <jogasaki/api/impl/transaction_store.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
@@ -171,6 +172,7 @@ public:
         api::transaction_handle handle
     ) override;
 
+    // for testing
     [[nodiscard]] std::size_t transaction_count() const;
 
     [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
@@ -243,6 +245,10 @@ public:
     );
 
     [[nodiscard]] std::shared_ptr<transaction_context> find_transaction(api::transaction_handle handle);
+
+    std::shared_ptr<transaction_store> find_transaction_store(std::size_t session_id);
+
+    bool remove_transaction_store(std::size_t session_id);
 
     [[nodiscard]] std::shared_ptr<impl::prepared_statement> find_statement(api::statement_handle handle);
 
@@ -322,6 +328,7 @@ private:
     std::atomic_bool stop_requested_{false};
     utils::use_counter requests_inprocess_{};
     std::shared_ptr<commit_stats> commit_stats_{std::make_shared<commit_stats>()};
+    tbb::concurrent_hash_map<std::size_t, std::shared_ptr<impl::transaction_store>> transaction_stores_{};
 
     [[nodiscard]] status prepare_common(
         std::string_view sql,

@@ -37,6 +37,7 @@
 #include <tateyama/api/server/session_info.h>
 #include <tateyama/api/server/session_store.h>
 #include <tateyama/api/server/writer.h>
+#include <tateyama/framework/component_ids.h>
 #include <tateyama/proto/diagnostics.pb.h>
 #include <tateyama/status.h>
 
@@ -168,10 +169,11 @@ public:
     test_request() = default;
 
     explicit test_request(std::string_view payload);
+
     test_request(
         std::string_view payload,
         std::size_t session_id,
-        std::size_t service_id
+        std::size_t service_id = tateyama::framework::service_id_sql
     ) :
         payload_(payload),
         session_id_(session_id),

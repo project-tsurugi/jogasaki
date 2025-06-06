@@ -531,6 +531,14 @@ public:
         max_result_set_writers_ = arg;
     }
 
+    [[nodiscard]] bool enable_session_store() const noexcept {
+        return enable_session_store_;
+    }
+
+    void enable_session_store(bool arg) noexcept {
+        enable_session_store_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -592,6 +600,7 @@ public:
         print_non_default(mock_datastore);
         print_non_default(enable_blob_cast);
         print_non_default(max_result_set_writers);
+        print_non_default(enable_session_store);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -657,6 +666,7 @@ private:
     bool mock_datastore_ = false;
     bool enable_blob_cast_ = true;
     std::size_t max_result_set_writers_ = 64;
+    bool enable_session_store_ = true;
 };
 
 }  // namespace jogasaki

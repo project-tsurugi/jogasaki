@@ -773,7 +773,8 @@ bool extract_sql_and_tx_id(
     api::database* db,
     std::shared_ptr<std::string>& sql_text,
     std::string& tx_id,
-    std::shared_ptr<error::error_info>& err_info
+    std::shared_ptr<error::error_info>& err_info,
+    request_info const& req_info
 );
 
 }  // namespace jogasaki::api::impl

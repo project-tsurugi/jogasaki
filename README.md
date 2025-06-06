@@ -17,7 +17,7 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:22.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libmpdec-dev libparquet-dev=16.1.0-1 libparquet-glib-dev=16.1.0-1 libarrow-dev=16.1.0-1 libarrow-glib-dev=16.1.0-1
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libmpdec-dev nlohmann-json3-dev libparquet-dev=16.1.0-1 libparquet-glib-dev=16.1.0-1 libarrow-dev=16.1.0-1 libarrow-glib-dev=16.1.0-1
 ```
 (see "Additional file installation for Apache Parquet" below if installing `libparquet-dev`, `libparquet-glib-dev` fails)
 

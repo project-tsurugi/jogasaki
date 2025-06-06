@@ -165,7 +165,7 @@ public:
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
         auto s = encode_prepare(sql, args...);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
@@ -177,7 +177,7 @@ public:
     template <class ...Args>
     void test_error_prepare(std::uint64_t& handle, std::string sql, Args...args) {
         auto s = encode_prepare(sql, args...);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
@@ -190,7 +190,7 @@ public:
         error_code expected // common for both error occuring in GetErrorInfo and already executed request
     ) {
         auto s = encode_get_error_info(tx_handle);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -220,6 +220,7 @@ public:
 
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
     test::temporary_folder temporary_{};
+    std::size_t session_id_{100};
 
 };
 
@@ -233,7 +234,7 @@ void service_api_utils_test::test_begin(api::transaction_handle& tx_handle,
 ) {
     begin_result result{};
     test_begin(result, readonly, is_long, write_preserves, label, modifies_definitions);
-    tx_handle = result.handle_;
+    tx_handle = {result.handle_.surrogate_id(), session_id_};
 }
 
 void service_api_utils_test::test_begin(
@@ -245,7 +246,7 @@ void service_api_utils_test::test_begin(
     bool modifies_definitions
 ) {
     auto s = encode_begin(readonly, is_long, write_preserves, label, modifies_definitions);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -259,7 +260,7 @@ void service_api_utils_test::test_commit(
     error_code expected
 ) {
     auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -278,7 +279,7 @@ void service_api_utils_test::test_commit(
 
 void service_api_utils_test::test_rollback(api::transaction_handle& tx_handle) {
     auto s = encode_rollback(tx_handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -289,7 +290,7 @@ void service_api_utils_test::test_rollback(api::transaction_handle& tx_handle) {
 
 void service_api_utils_test::test_dispose_prepare(std::uint64_t& handle) {
     auto s = encode_dispose_prepare(handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
@@ -307,7 +308,7 @@ void service_api_utils_test::test_statement(
 void service_api_utils_test::test_statement(
     std::string_view sql, api::transaction_handle tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats) {
     auto s = encode_execute_statement(tx_handle, sql);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -355,7 +356,7 @@ void service_api_utils_test::test_query(
     std::vector<std::string> const& exp_colnames
 ) {
     auto s = encode_execute_query(tx_handle, sql);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -415,7 +416,7 @@ void service_api_utils_test::execute_statement_as_query(std::string_view sql) {
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     auto s = encode_execute_query(tx_handle, "insert into T0(C0, C1) values (1, 10.0)");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -458,7 +459,7 @@ void service_api_utils_test::test_dump(std::vector<std::string>& files, std::str
         };
         auto s = encode_execute_dump(tx_handle, query_handle, parameters, p);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -515,7 +516,7 @@ void service_api_utils_test::test_load(bool transactional, error_code expected, 
         };
         auto s = encode_execute_load(tx_handle, stmt_handle, parameters, files...);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -555,7 +556,7 @@ void service_api_utils_test::test_dispose_transaction(
     error_code expected
 ) {
     auto s = encode_dispose_transaction(tx_handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -574,7 +575,7 @@ void service_api_utils_test::test_dispose_transaction(
 
 void service_api_utils_test::test_cancel_transaction_commit(api::transaction_handle tx_handle, bool auto_dispose_on_commit_success) {
     auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     res->cancel();
     auto st = (*service_)(req, res);
@@ -589,7 +590,7 @@ void service_api_utils_test::test_cancel_transaction_commit(api::transaction_han
 
 void service_api_utils_test::test_cancel_transaction_begin(api::transaction_handle tx_handle, std::string_view label) {
     auto s = encode_begin(false, true, {}, label, false);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     res->cancel();
     auto st = (*service_)(req, res);
@@ -605,7 +606,7 @@ void service_api_utils_test::test_cancel_transaction_begin(api::transaction_hand
 void service_api_utils_test::test_cancel_statement(
     std::string_view sql, api::transaction_handle tx_handle) {
     auto s = encode_execute_statement(tx_handle, sql);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     res->cancel();
     auto st = (*service_)(req, res);
@@ -626,6 +627,13 @@ void enable_request_cancel(request_cancel_kind kind) {
 }
 
 TEST_F(service_api_utils_test, extract_sql) {
+    // request_info is used to extract session_id
+    request_info req_info{
+        1,
+        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
+        nullptr
+    };
+
     {
         // non-prepared statement
         auto text = "insert into T0 values (1,1)"s;
@@ -641,7 +649,8 @@ TEST_F(service_api_utils_test, extract_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
+
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info, req_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -662,7 +671,7 @@ TEST_F(service_api_utils_test, extract_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info, req_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -671,6 +680,12 @@ TEST_F(service_api_utils_test, extract_sql) {
 }
 
 TEST_F(service_api_utils_test, extract_prepared_sql) {
+    // request_info is used to extract session_id
+    request_info req_info{
+        1,
+        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
+        nullptr
+    };
     {
         // prepared statement
         std::uint64_t stmt_handle{};
@@ -688,7 +703,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info, req_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -713,7 +728,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info, req_info));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -735,7 +750,13 @@ TEST_F(service_api_utils_test, extract_sql_error) {
     std::shared_ptr<std::string> sql_text{};
     std::string tx_id{};
     std::shared_ptr<error::error_info> err_info{};
-    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
+    // request_info is used to extract session_id
+    request_info req_info{
+        1,
+        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
+        nullptr
+    };
+    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info, req_info));
     ASSERT_TRUE(err_info);
     EXPECT_EQ(error_code::request_failure_exception, err_info->code());
 }
@@ -760,7 +781,12 @@ TEST_F(service_api_utils_test, extract_sql_failing_to_fetch_tx_id) {
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err_info{};
     std::string tx_id{};
-    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info));
+    request_info req_info{
+        1,
+        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
+        nullptr
+    };
+    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, db_.get(), sql_text, tx_id, err_info, req_info));
     ASSERT_TRUE(sql_text);
     EXPECT_EQ(text, *sql_text);
     EXPECT_TRUE(tx_id.empty());

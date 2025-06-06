@@ -28,8 +28,19 @@
 namespace jogasaki::utils {
 
 struct create_tx_option {
+    create_tx_option(
+        bool force_ltx = false,
+        bool force_occ = false,
+        std::optional<std::size_t> session_id = 100U
+    ) :
+        force_ltx(force_ltx),
+        force_occ(force_occ),
+        session_id(session_id)
+    {}
+
     bool force_ltx = false;
     bool force_occ = false;
+    std::optional<std::size_t> session_id = std::nullopt;
 };
 
 void set_global_tx_option(create_tx_option const& opt);

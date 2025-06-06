@@ -172,7 +172,7 @@ public:
     template <class ...Args>
     void test_prepare(std::uint64_t& handle, std::string sql, Args...args) {
         auto s = encode_prepare(sql, args...);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
@@ -184,7 +184,7 @@ public:
     template <class ...Args>
     void test_error_prepare(std::uint64_t& handle, std::string sql, Args...args) {
         auto s = encode_prepare(sql, args...);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
@@ -197,7 +197,7 @@ public:
         error_code expected // common for both error occuring in GetErrorInfo and already executed request
     ) {
         auto s = encode_get_error_info(tx_handle);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -231,6 +231,7 @@ public:
 
     std::shared_ptr<jogasaki::api::impl::service> service_{};  //NOLINT
     test::temporary_folder temporary_{};
+    std::size_t session_id_{100};
 
 };
 
@@ -245,7 +246,7 @@ void service_api_test::test_begin(
 ) {
     begin_result result{};
     test_begin(result, readonly, is_long, write_preserves, label, modifies_definitions);
-    tx_handle = result.handle_;
+    tx_handle = {result.handle_.surrogate_id(), session_id_};
 }
 
 void service_api_test::test_begin(
@@ -257,7 +258,7 @@ void service_api_test::test_begin(
     bool modifies_definitions
 ) {
     auto s = encode_begin(readonly, is_long, write_preserves, label, modifies_definitions);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -271,7 +272,7 @@ void service_api_test::test_commit(
     error_code expected
 ) {
     auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -290,7 +291,7 @@ void service_api_test::test_commit(
 
 void service_api_test::test_rollback(api::transaction_handle& tx_handle) {
     auto s = encode_rollback(tx_handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -308,7 +309,7 @@ TEST_F(service_api_test, begin_and_commit) {
 TEST_F(service_api_test, error_on_commit) {
     api::transaction_handle tx_handle{};
     auto s = encode_commit(tx_handle, true);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
@@ -325,7 +326,7 @@ TEST_F(service_api_test, rollback) {
     test_begin(tx_handle);
     {
         auto s = encode_rollback(tx_handle);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         auto st = (*service_)(req, res);
         EXPECT_TRUE(res->completed());
@@ -338,7 +339,7 @@ TEST_F(service_api_test, rollback) {
 TEST_F(service_api_test, error_on_rollback) {
     api::transaction_handle tx_handle{};
     auto s = encode_rollback(tx_handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
@@ -352,7 +353,7 @@ TEST_F(service_api_test, error_on_rollback) {
 
 void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
     auto s = encode_dispose_prepare(handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
@@ -395,7 +396,7 @@ TEST_F(service_api_test, error_prepare_with_unsupported_parameter_type) {
 TEST_F(service_api_test, error_on_dispose) {
     std::uint64_t handle{0};
     auto s = encode_dispose_prepare(handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
 
@@ -417,7 +418,7 @@ void service_api_test::test_statement(
 void service_api_test::test_statement(
     std::string_view sql, api::transaction_handle tx_handle, error_code exp, std::shared_ptr<request_statistics>& stats) {
     auto s = encode_execute_statement(tx_handle, sql);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -465,7 +466,7 @@ void service_api_test::test_query(
     std::vector<std::string> const& exp_colnames
 ) {
     auto s = encode_execute_query(tx_handle, sql);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -542,7 +543,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
             {"c1"s, ValueCase::kFloat8Value, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -569,7 +570,7 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
         };
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -655,7 +656,7 @@ TEST_F(service_api_test, data_types) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -684,7 +685,7 @@ TEST_F(service_api_test, data_types) {
         };
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -761,7 +762,7 @@ TEST_F(service_api_test, decimals) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -783,7 +784,7 @@ TEST_F(service_api_test, decimals) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -876,7 +877,7 @@ TEST_F(service_api_test, temporal_types) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -898,7 +899,7 @@ TEST_F(service_api_test, temporal_types) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -980,7 +981,7 @@ TEST_F(service_api_test, timestamptz) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1002,7 +1003,7 @@ TEST_F(service_api_test, timestamptz) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1057,7 +1058,7 @@ TEST_F(service_api_test, timestamptz_with_offset) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1116,7 +1117,7 @@ TEST_F(service_api_test, binary_type) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1138,7 +1139,7 @@ TEST_F(service_api_test, binary_type) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1197,7 +1198,7 @@ TEST_F(service_api_test, long_binary_data) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1219,7 +1220,7 @@ TEST_F(service_api_test, long_binary_data) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1276,7 +1277,7 @@ TEST_F(service_api_test, boolean_type) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1298,7 +1299,7 @@ TEST_F(service_api_test, boolean_type) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1340,7 +1341,7 @@ TEST_F(service_api_test, boolean_type) {
 void service_api_test::test_get_lob(std::uint64_t id, std::string_view expected_path) {
     auto s = encode_get_large_object_data(id);
 
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -1383,7 +1384,7 @@ TEST_F(service_api_test, blob_types) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         req->add_blob(path0, std::make_shared<tateyama::api::server::mock::test_blob_info>(path0, path0, false));
         req->add_blob(path1, std::make_shared<tateyama::api::server::mock::test_blob_info>(path1, path1, false));
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -1407,7 +1408,7 @@ TEST_F(service_api_test, blob_types) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1494,7 +1495,7 @@ TEST_F(service_api_test, blob_types_error_handling) {
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         req->add_blob(path0, std::make_shared<tateyama::api::server::mock::test_blob_info>(path0, path0, false));
         req->add_blob(path1, std::make_shared<tateyama::api::server::mock::test_blob_info>(path1, path1, false));
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -1532,7 +1533,7 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1561,7 +1562,7 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
         // get blob data using the id
         auto s = encode_get_large_object_data(id);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
         res->set_privileged(false);
 
@@ -1581,7 +1582,7 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
 void service_api_test::test_get_tx_status(api::transaction_handle tx_handle, std::optional<::jogasaki::proto::sql::response::TransactionStatus> expected_status, error_code expected_err) {
     auto s = encode_get_transaction_status(tx_handle);
 
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -1625,6 +1626,7 @@ TEST_F(service_api_test, get_transaction_status_auto_dispose) {
 
 TEST_F(service_api_test, get_transaction_status_updated_internally) {
     // verify transaction status by modifying it via internal api
+    global::config_pool()->enable_session_store(true);
     using ts = ::jogasaki::proto::sql::response::TransactionStatus;
     api::transaction_handle tx_handle{};
     {
@@ -1685,7 +1687,7 @@ TEST_F(service_api_test, protobuf1) {
 
 TEST_F(service_api_test, invalid_request) {
     // error returned as parse error
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>("ABC");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>("ABC", session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
@@ -1694,7 +1696,7 @@ TEST_F(service_api_test, invalid_request) {
 
 TEST_F(service_api_test, empty_request) {
     // error returned as "invalid request code"
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>("");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>("", session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->completed());
@@ -1708,7 +1710,7 @@ TEST_F(service_api_test, syntax_error_aborts_tx) {
         test_begin(tx_handle);
         auto text = "select * from dummy"s;
         auto s = encode_execute_query(tx_handle, text);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1733,7 +1735,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1751,7 +1753,7 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
         test_begin(tx_handle);
         std::vector<parameter> parameters{};
         auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1772,7 +1774,7 @@ void service_api_test::execute_statement_as_query(std::string_view sql) {
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     auto s = encode_execute_query(tx_handle, "insert into T0(C0, C1) values (1, 10.0)");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto st = (*service_)(req, res);
     EXPECT_TRUE(res->wait_completion());
@@ -1812,7 +1814,7 @@ TEST_F(service_api_test, explain_insert) {
             {"c1"s, ValueCase::kFloat8Value, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_explain(stmt_handle, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1845,7 +1847,7 @@ TEST_F(service_api_test, explain_query) {
             {"c1"s, ValueCase::kFloat8Value, std::any{std::in_place_type<double>, 10.0}},
         };
         auto s = encode_explain(stmt_handle, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1870,7 +1872,7 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
     std::uint64_t stmt_handle{};
     {
         auto s = encode_explain(stmt_handle, {});
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1899,7 +1901,7 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
     );
     {
         auto s = encode_explain(stmt_handle, {});
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -1917,7 +1919,7 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
 
 TEST_F(service_api_test, explain_by_text) {
     auto s = encode_explain_by_text("select C0, C1 from T0 where C0 = 1 and C1 = 1.0");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -1939,7 +1941,7 @@ TEST_F(service_api_test, explain_by_text) {
 
 TEST_F(service_api_test, explain_by_text_error_on_prepare) {
     auto s = encode_explain_by_text("select * from dummy_table");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -1958,7 +1960,7 @@ TEST_F(service_api_test, explain_by_text_error_on_prepare) {
 TEST_F(service_api_test, explain_by_text_bypass_restriction) {
     // verify explain by text does not return on restricted features
     auto s = encode_explain_by_text("select * from T0 union all select * from T0");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -1987,7 +1989,7 @@ TEST_F(service_api_test, null_host_variable) {
             {"c1"s, ValueCase::kFloat8Value, std::any{}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -2081,7 +2083,7 @@ void service_api_test::test_dump(std::vector<std::string>& files, std::string_vi
         };
         auto s = encode_execute_dump(tx_handle, query_handle, parameters, p);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -2181,7 +2183,7 @@ TEST_F(service_api_test, dump_error_with_query_result) {
     do {
         auto s = encode_execute_dump(tx_handle, query_handle, {}, std::string{service_api_test::temporary_.path()});
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -2281,7 +2283,7 @@ void service_api_test::test_load(bool transactional, error_code expected, Args..
         };
         auto s = encode_execute_load(tx_handle, stmt_handle, parameters, files...);
 
-        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
         auto st = (*service_)(req, res);
@@ -2307,7 +2309,7 @@ void service_api_test::test_load(bool transactional, error_code expected, Args..
 
 TEST_F(service_api_test, describe_table) {
     auto s = encode_describe_table("T0");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2328,7 +2330,7 @@ TEST_F(service_api_test, describe_table) {
 
 TEST_F(service_api_test, describe_table_not_found) {
     auto s = encode_describe_table("DUMMY");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2345,7 +2347,7 @@ TEST_F(service_api_test, describe_table_temporal_types) {
     // verify with_offset is correctly reflected on the output schema
     execute_statement("create table T (C0 DATE, C1 TIME, C2 TIMESTAMP, C3 TIME WITH TIME ZONE, C4 TIMESTAMP WITH TIME ZONE)");
     auto s = encode_describe_table("T");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2372,7 +2374,7 @@ TEST_F(service_api_test, describe_table_blob_types) {
     // verify with_offset is correctly reflected on the output schema
     execute_statement("create table T (C0 BLOB, C1 CLOB)");
     auto s = encode_describe_table("T");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2393,7 +2395,7 @@ TEST_F(service_api_test, describe_pkless_table) {
     // make sure generated pk column is not visible
     execute_statement("create table T (C0 INT)");
     auto s = encode_describe_table("T");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2431,7 +2433,7 @@ TEST_F(service_api_test, describe_table_description) {
     )";
     execute_statement(table_ddl);
     auto s = encode_describe_table("t");
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2505,7 +2507,7 @@ TEST_F(service_api_test, list_tables) {
     execute_statement("create table TT1 (C0 INT)");
     execute_statement("create index II on TT0(C0)");
     auto s = encode_list_tables();
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2521,7 +2523,7 @@ TEST_F(service_api_test, list_tables) {
 
 TEST_F(service_api_test, get_search_path) {
     auto s = encode_get_search_path();
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2614,7 +2616,7 @@ void service_api_test::test_dispose_transaction(
     error_code expected
 ) {
     auto s = encode_dispose_transaction(tx_handle);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2722,7 +2724,7 @@ TEST_F(service_api_test, stats_wo_change) {
 
 TEST_F(service_api_test, batch_unsupported) {
     auto s = encode_batch();
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2736,7 +2738,7 @@ TEST_F(service_api_test, batch_unsupported) {
 
 void service_api_test::test_cancel_transaction_commit(api::transaction_handle tx_handle, bool auto_dispose_on_commit_success) {
     auto s = encode_commit(tx_handle, auto_dispose_on_commit_success);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     res->cancel();
     auto st = (*service_)(req, res);
@@ -2751,7 +2753,7 @@ void service_api_test::test_cancel_transaction_commit(api::transaction_handle tx
 
 void service_api_test::test_cancel_transaction_begin(api::transaction_handle tx_handle, std::string_view label) {
     auto s = encode_begin(false, true, {}, label, false);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     res->cancel();
     auto st = (*service_)(req, res);
@@ -2767,7 +2769,7 @@ void service_api_test::test_cancel_transaction_begin(api::transaction_handle tx_
 void service_api_test::test_cancel_statement(
     std::string_view sql, api::transaction_handle tx_handle) {
     auto s = encode_execute_statement(tx_handle, sql);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     res->cancel();
     auto st = (*service_)(req, res);
@@ -2927,7 +2929,7 @@ TEST_F(service_api_test, extract_sql_info) {
     auto query = encode_execute_query(tx_handle, text);
 
     auto s = encode_extract_statement_info(query);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2949,7 +2951,7 @@ TEST_F(service_api_test, extract_sql_info_missing_statement) {
     auto query = encode_execute_prepared_statement(tx_handle, stmt_handle, {});
 
     auto s = encode_extract_statement_info(query);
-    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
     auto st = (*service_)(req, res);
@@ -2961,6 +2963,30 @@ TEST_F(service_api_test, extract_sql_info_missing_statement) {
     ASSERT_TRUE(result.empty());
     ASSERT_TRUE(tx_id.empty());
     EXPECT_EQ(error_code::statement_not_found_exception, error.code_);
+}
+
+TEST_F(service_api_test, tx_on_different_session) {
+    // verify handle is not usable on different session
+    global::config_pool()->enable_session_store(true);
+    test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");
+    test_statement("INSERT INTO TT VALUES (0)");
+
+    session_id_ = 1000;
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    test_statement("INSERT INTO TT VALUES (1)", tx_handle);
+
+    session_id_ = 2000;
+    api::transaction_handle tx_handle2{tx_handle.surrogate_id(), session_id_};
+    // test_stmt_err uses api::get_transaction_context() in test tool and does not test behavior of service api correctly
+    test_statement("INSERT INTO TT VALUES (2)", tx_handle2, error_code::transaction_not_found_exception);
+
+    session_id_ = 1000;
+    test_statement("INSERT INTO TT VALUES (3)", tx_handle);
+
+    test_commit(tx_handle, false);
+
+    test_dispose_transaction(tx_handle);
 }
 
 }  // namespace jogasaki::api

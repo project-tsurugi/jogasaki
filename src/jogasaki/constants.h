@@ -29,7 +29,7 @@ constexpr std::size_t service_message_version_major = 1;
 /**
  * @brief current message version (minor)
  */
-constexpr std::size_t service_message_version_minor = 5;
+constexpr std::size_t service_message_version_minor = 6;
 
 /**
  * @brief default number of partitions for testing and mocking purposes.
@@ -196,5 +196,10 @@ constexpr std::size_t initial_sequence_version = 1;
  * @details the name for the session variable to enable execution plan output for external logging
  */
 constexpr static std::string_view session_variable_sql_plan_recording = "sql.plan_recording";
+
+/**
+ * @brief transaction store identifier used in session store
+ */
+constexpr std::size_t session_store_element_id_transactions = 10;
 
 }  // namespace jogasaki

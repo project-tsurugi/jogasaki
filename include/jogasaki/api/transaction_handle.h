@@ -96,6 +96,16 @@ public:
     ) noexcept;
 
     /**
+     * @brief create new object from id
+     * @param surrogate_id the surrogate id of the transaction
+     * @param session_id the session id of the transaction
+     */
+    transaction_handle(
+        std::size_t surrogate_id,
+        std::optional<std::size_t> session_id
+    ) noexcept;
+
+    /**
      * @brief conversion operator to std::size_t
      * @return the hash value that can be used for equality comparison
      * @note this function is kept for compatibility. The old intel tbb (pre-oneTBB) used this function
@@ -292,8 +302,15 @@ public:
      */
     [[nodiscard]] std::size_t surrogate_id() const noexcept;
 
+    /**
+     * @brief return the session id of the transaction
+     * @return session id
+     */
+    [[nodiscard]] std::optional<std::size_t> session_id() const noexcept;
+
 private:
     std::size_t surrogate_id_{};
+    std::optional<std::size_t> session_id_{};
 };
 
 static_assert(std::is_trivially_copyable_v<transaction_handle>);
@@ -302,7 +319,16 @@ static_assert(std::is_trivially_copyable_v<transaction_handle>);
  * @brief equality comparison operator
  */
 inline bool operator==(transaction_handle const& a, transaction_handle const& b) noexcept {
-    return a.surrogate_id() == b.surrogate_id();
+    if (a.surrogate_id() != b.surrogate_id()) {
+        return false;
+    }
+    if (a.session_id().has_value() != b.session_id().has_value()) {
+        return false;
+    }
+    if (! a.session_id().has_value()) {
+        return true;
+    }
+    return *a.session_id() == *b.session_id();
 }
 
 /**
@@ -319,7 +345,14 @@ inline bool operator!=(transaction_handle const& a, transaction_handle const& b)
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, transaction_handle value) {
-    return out << "transaction_handle[" << value.surrogate_id() << "]";
+    // surrogate_id is printed in decimal to avoid using utils::hex in public header
+    out << "transaction_handle[surrogate_id:" << value.surrogate_id();
+    if (value.session_id().has_value()) {
+        // print session_id in decimal to conform to tateyama log message
+        out << ",session_id:" << value.session_id().value();
+    }
+    out << "]";
+    return out;
 }
 
 }  // namespace jogasaki::api
@@ -335,7 +368,14 @@ struct std::hash<jogasaki::api::transaction_handle> {
      * @return computed hash code
      */
     std::size_t operator()(jogasaki::api::transaction_handle const& value) const noexcept {
-        return value.surrogate_id();
+        if (! value.session_id().has_value()) {
+            // normally we don't mix entries with/without session_id, so this doesn't make many collisions
+            return value.surrogate_id();
+        }
+        // simple Boost hash combine just to combine surrogate_id and session_id
+        auto h1 = value.surrogate_id();
+        auto h2 = *value.session_id();
+        return h1 ^ (h2 + 0x9e3779b9U + (h1 << 6U) + (h1 >> 2U));
     }
 };
 

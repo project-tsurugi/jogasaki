@@ -1120,7 +1120,7 @@ void service::command_describe_table(
         log_request(*req, false);
         return;
     }
-    details::success<sql::response::DescribeTable>(*res, table.get(), req_info);
+    details::success<sql::response::DescribeTable>(*res, table.get(), req_info, get_impl(*db_).tables());
 
     req->status(scheduler::request_detail_status::finishing);
     log_request(*req);

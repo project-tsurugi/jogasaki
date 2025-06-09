@@ -367,6 +367,14 @@ message DumpOption {
     }
 }
 
+/* For execute dump request with text sql. */
+message ExecuteDumpByText {
+  common.Transaction transaction_handle = 1;
+  string sql = 2;
+  string directory = 3;
+  DumpOption option = 4;
+}
+
 /* For execute dump request. */
 message ExecuteDump {
   common.Transaction transaction_handle = 1;
@@ -521,9 +529,10 @@ message Request {
     ExtractStatementInfo extract_statement_info = 22;
     GetLargeObjectData get_large_object_data = 23;
     GetTransactionStatus get_transaction_status = 24;
+    ExecuteDumpByText execute_dump_by_text = 25;
   }
 
-  reserved 25 to 99;
+  reserved 26 to 99;
 
   // service message version (major)
   uint64 service_message_version_major = 100;

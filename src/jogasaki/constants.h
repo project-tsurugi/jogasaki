@@ -202,4 +202,9 @@ constexpr static std::string_view session_variable_sql_plan_recording = "sql.pla
  */
 constexpr std::size_t session_store_element_id_transactions = 10;
 
+/**
+ * @brief statement store identifier used in session store
+ */
+constexpr std::size_t session_store_element_id_prepared_statements = 11;
+
 }  // namespace jogasaki

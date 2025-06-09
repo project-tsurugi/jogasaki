@@ -27,6 +27,7 @@
 #include <tateyama/task_scheduler/context.h>
 
 #include <jogasaki/api/executable_statement.h>
+#include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
@@ -112,20 +113,20 @@ using error_info_stats_callback = std::function<
 
 struct statement_context {
     statement_context(
-        api::statement_handle prepared,
+        std::shared_ptr<api::impl::prepared_statement const> statement,
         std::shared_ptr<api::parameter_set const> parameters,
         api::impl::database* database,
         std::shared_ptr<transaction_context> tx,
         error_info_stats_callback cb
     ) noexcept :
-        prepared_(prepared),
+        statement_(std::move(statement)),
         parameters_(std::move(parameters)),
         database_(database),
         tx_(std::move(tx)),
         callback_(std::move(cb))
     {}
 
-    api::statement_handle prepared_{};  //NOLINT
+    std::shared_ptr<api::impl::prepared_statement const> statement_{};  //NOLINT
     std::shared_ptr<api::parameter_set const> parameters_{};  //NOLINT
     api::impl::database* database_{};  //NOLINT
     std::shared_ptr<transaction_context> tx_{};  //NOLINT
@@ -142,6 +143,7 @@ struct statement_context {
  */
 class cache_align flat_task {
 public:
+
     using identity_type = std::size_t;
     static constexpr identity_type undefined_id = static_cast<identity_type>(-1);
 
@@ -295,6 +297,7 @@ public:
     bool execute(tateyama::task_scheduler::context& ctx);
 
 private:
+
     std::size_t id_{undefined_id};
     flat_task_kind kind_{};
     maybe_shared_ptr<request_context> req_context_{};
@@ -322,7 +325,6 @@ private:
         using namespace std::string_view_literals;
         return out << "task[id="sv << utils::hex(id()) << "]"sv;
     }
-
 };
 
 /**

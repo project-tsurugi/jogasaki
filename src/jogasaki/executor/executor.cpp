@@ -40,6 +40,7 @@
 #include <jogasaki/api/impl/result_store_channel.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
+#include <jogasaki/api/statement_handle_internal.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/commit_common.h>
 #include <jogasaki/commit_profile.h>
@@ -271,7 +272,7 @@ status execute(
 bool execute_async(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
-    api::statement_handle prepared,
+    std::shared_ptr<api::impl::prepared_statement> stmt,  //NOLINT(performance-unnecessary-value-param)
     std::shared_ptr<api::parameter_set> parameters,
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     error_info_stats_callback on_completion,
@@ -280,8 +281,7 @@ bool execute_async(
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::execute_statement);
     req->status(scheduler::request_detail_status::accepted);
-    auto const& stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get())->body();  //NOLINT
-    req->statement_text(stmt->sql_text_shared());
+    req->statement_text(stmt->body()->sql_text_shared());
     log_request(*req);
 
     auto request_ctx = create_request_context(
@@ -294,7 +294,7 @@ bool execute_async(
     );
     request_ctx->req_info(req_info);
     request_ctx->lightweight(
-        stmt->mirrors()->work_level().value() <=
+        stmt->body()->mirrors()->work_level().value() <=
         static_cast<std::int32_t>(request_ctx->configuration()->lightweight_job_level())
     );
     auto& ts = *database.task_scheduler();
@@ -306,7 +306,7 @@ bool execute_async(
         scheduler::task_enum_tag<scheduler::flat_task_kind::resolve>,
         request_ctx,
         std::make_shared<scheduler::statement_context>(
-            prepared,
+            std::move(stmt),
             std::move(parameters),
             std::addressof(database),
             tx,
@@ -318,6 +318,40 @@ bool execute_async(
     }
     return true;
 
+}
+
+bool execute_async(
+    api::impl::database& database,
+    std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
+    api::statement_handle prepared,
+    std::shared_ptr<api::parameter_set> parameters,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    error_info_stats_callback on_completion,
+    bool sync,
+    request_info const& req_info
+) {
+    auto stmt = get_statement(prepared);
+    if (stmt == nullptr) {
+        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
+        auto rc = status::err_invalid_argument;
+        auto err = create_error_info(
+            error_code::statement_not_found_exception,
+            m,
+            rc
+        );
+        on_completion(rc, std::move(err), nullptr);
+        return false;
+    }
+    return execute_async(
+        database,
+        std::move(tx),
+        std::move(stmt),
+        std::move(parameters),
+        channel,
+        std::move(on_completion),
+        sync,
+        req_info
+    );
 }
 
 bool execute_async(
@@ -657,7 +691,19 @@ bool execute_load(
     (void) req_info;
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
     req->status(scheduler::request_detail_status::accepted);
-    req->statement_text(reinterpret_cast<api::impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
+    auto stmt = get_statement(prepared);
+    if (stmt == nullptr) {
+        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
+        auto rc = status::err_invalid_argument;
+        auto err = create_error_info(
+            error_code::statement_not_found_exception,
+            m,
+            rc
+        );
+        on_completion(rc, std::move(err));
+        return false;
+    }
+    req->statement_text(stmt->body()->sql_text_shared());  //NOLINT
     log_request(*req);
 
     auto rctx = create_request_context(
@@ -670,7 +716,7 @@ bool execute_load(
     );
     auto ldr = std::make_shared<executor::file::loader>(
         std::move(files),
-        prepared,
+        std::move(stmt),
         std::move(parameters),
         tx,
         database

@@ -273,6 +273,12 @@ void service::command_prepare(
             : std::nullopt
     );
     if(auto rc = get_impl(*db_).prepare(sql, variables, statement, err_info, option); rc == jogasaki::status::ok) {
+        if(statement.session_id().has_value()) {
+            auto store = global::database_impl()->find_statement_store(*statement.session_id());
+            if(store) {
+                req_info.request_source()->session_store().put(session_store_element_id_prepared_statements, std::move(store));
+            }
+        }
         details::success<sql::response::Prepare>(*res, statement, req_info);
     } else {
         details::error<sql::response::Prepare>(*res, err_info.get(), req_info);
@@ -512,7 +518,7 @@ jogasaki::api::statement_handle validate_statement_handle(
         return {};
     }
     jogasaki::api::statement_handle handle{
-        reinterpret_cast<void*>(msg.prepared_statement_handle().handle()),
+        reinterpret_cast<void*>(msg.prepared_statement_handle().handle()),  //NOLINT
         req_info.request_source() ?
             std::optional<std::size_t>{req_info.request_source()->session_id()} :
             std::nullopt
@@ -712,18 +718,31 @@ void service::command_explain(
     if(! handle) {
         return;
     }
+    auto stmt = get_statement(handle);
+    if (stmt == nullptr) {
+        auto m = string_builder{} << "prepared statement not found handle:" << handle << string_builder::to_string;
+        auto rc = status::err_invalid_argument;
+        auto err_info = create_error_info(
+            error_code::statement_not_found_exception,
+            m,
+            rc
+        );
+        details::error<sql::response::Explain>(*res, err_info.get(), req_info);
+        // no info. available to start logging with request_detail
+        return;
+    }
     auto params = jogasaki::api::create_parameter_set();
     set_params(ex.parameters(), params, req_info);
 
     // log explain event here to include db_->resolve duration as well as db_->explain
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::explain);
-    req->statement_text(reinterpret_cast<api::impl::prepared_statement*>(handle.get())->body()->sql_text_shared());  //NOLINT
+    req->statement_text(stmt->body()->sql_text_shared());  //NOLINT
     req->status(scheduler::request_detail_status::accepted);
     log_request(*req);
 
     std::unique_ptr<jogasaki::api::executable_statement> e{};
     std::shared_ptr<error::error_info> err_info{};
-    if(auto rc = get_impl(*db_).resolve(handle, std::shared_ptr{std::move(params)}, e, err_info);
+    if(auto rc = get_impl(*db_).resolve_common(*stmt, std::shared_ptr{std::move(params)}, e, err_info);
         rc != jogasaki::status::ok) {
         details::error<sql::response::Explain>(*res, err_info.get(), req_info);
         req->status(scheduler::request_detail_status::finishing);
@@ -810,10 +829,10 @@ std::shared_ptr<impl::prepared_statement> extract_statement(
         return {};
     }
     statement_handle handle{
-        reinterpret_cast<void*>(msg.prepared_statement_handle().handle()), session_id}; //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+        reinterpret_cast<void*>(msg.prepared_statement_handle().handle()), session_id}; //NOLINT
     auto stmt = get_statement(handle);
     if (stmt == nullptr) {
-        auto m = string_builder{} << "prepared statement not found for handle:" << handle.get() << string_builder::to_string;
+        auto m = string_builder{} << "prepared statement not found for handle:" << handle << string_builder::to_string;
         out = create_error_info(
             error_code::statement_not_found_exception,
             m,

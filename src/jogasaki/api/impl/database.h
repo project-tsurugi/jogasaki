@@ -266,6 +266,13 @@ public:
     // synchronous, not wait for epoch - public just for testing
     status create_transaction_internal(std::shared_ptr<transaction_context>& out, transaction_option const& option);
 
+    [[nodiscard]] status resolve_common(
+        impl::prepared_statement const& stmt,
+        maybe_shared_ptr<api::parameter_set const> parameters,
+        std::unique_ptr<api::executable_statement>& statement,
+        std::shared_ptr<error::error_info>& out
+    );
+
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -350,13 +357,6 @@ private:
         api::statement_handle& statement,
         std::shared_ptr<error::error_info>& out,
         plan::compile_option const& option
-    );
-
-    [[nodiscard]] status resolve_common(
-        impl::prepared_statement const& prepared,
-        maybe_shared_ptr<api::parameter_set const> parameters,
-        std::unique_ptr<api::executable_statement>& statement,
-        std::shared_ptr<error::error_info>& out
     );
 
     status validate_option(transaction_option const& option);

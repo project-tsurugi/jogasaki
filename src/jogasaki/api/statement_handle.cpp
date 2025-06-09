@@ -22,10 +22,6 @@
 
 namespace jogasaki::api {
 
-api::record_meta const* statement_handle::meta() const noexcept {
-    return reinterpret_cast<impl::prepared_statement*>(body_)->meta();  //NOLINT
-}
-
 statement_handle::statement_handle(
     void* arg,
     std::optional<std::size_t> session_id
@@ -50,12 +46,24 @@ statement_handle::operator bool() const noexcept {
     return body_ != 0;
 }
 
-bool statement_handle::has_result_records() const noexcept {
-    return reinterpret_cast<impl::prepared_statement*>(body_)->has_result_records();  //NOLINT
-}
-
 std::shared_ptr<impl::prepared_statement> get_statement(statement_handle arg) {
     return global::database_impl()->find_statement(arg);
+}
+
+bool statement_handle::has_result_records() const noexcept {
+    auto stmt = get_statement(*this);
+    if (! stmt) {
+        return false;
+    }
+    return stmt->has_result_records();  //NOLINT
+}
+
+api::record_meta const* statement_handle::meta() const noexcept {
+    auto stmt = get_statement(*this);
+    if (! stmt) {
+        return nullptr;
+    }
+    return stmt->meta();  //NOLINT
 }
 
 }  // namespace jogasaki::api

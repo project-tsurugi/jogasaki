@@ -21,7 +21,6 @@
 #include <mutex>
 #include <type_traits>
 
-#include <takatori/util/string_builder.h>
 #include <tateyama/common.h>
 #include <tateyama/logging_helper.h>
 #include <tateyama/task_scheduler/context.h>
@@ -51,8 +50,6 @@
 #include <jogasaki/utils/trace_log.h>
 
 namespace jogasaki::scheduler {
-
-using takatori::util::string_builder;
 
 void flat_task::bootstrap(tateyama::task_scheduler::context&) {
     log_entry << *this;
@@ -404,14 +401,10 @@ void flat_task::resolve(tateyama::task_scheduler::context& ctx) {
     log_entry << *this;
     (void)ctx;
     auto& e = sctx_->executable_statement_;
-    if(auto res = sctx_->database_->resolve(sctx_->prepared_,
-            maybe_shared_ptr{sctx_->parameters_}, e); res != status::ok) {
-        set_error(
-            *req_context_,
-            error_code::sql_execution_exception,
-            string_builder{} << "creating parallel execution plan failed. status:" << res << string_builder::to_string,
-            res
-        );
+    std::shared_ptr<error::error_info> info{};
+    if(auto res = sctx_->database_->resolve_common(*sctx_->statement_, maybe_shared_ptr{sctx_->parameters_},
+        e, info); res != status::ok) {
+        set_error_info(*req_context_, info);
     } else {
         executor::execute_async_on_context(
                 *sctx_->database_,

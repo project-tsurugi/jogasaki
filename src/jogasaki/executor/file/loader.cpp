@@ -54,14 +54,14 @@ using takatori::util::maybe_shared_ptr;
 
 loader::loader(
     std::vector<std::string> files,
-    api::statement_handle prepared,
+    std::shared_ptr<api::impl::prepared_statement> statement,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::shared_ptr<transaction_context> tx,
     api::impl::database& db,
     std::size_t bulk_size
 ) noexcept:
     files_(std::move(files)),
-    prepared_(prepared),
+    statement_(std::move(statement)),
     parameters_(std::move(parameters)),
     tx_(std::move(tx)),
     db_(std::addressof(db)),
@@ -120,15 +120,14 @@ reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan:
     return {};
 }
 
-void create_reader_option_and_maping(
+void create_reader_option_and_mapping(
     api::parameter_set const& ps,
-    api::statement_handle prepared,
+    api::impl::prepared_statement const& stmt,
     std::unordered_map<std::string, parameter>& mapping,
     reader_option& out
 ) {
     auto pset = static_cast<api::impl::parameter_set const&>(ps).body();  //NOLINT
-    auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
-    auto vinfo = stmt->body()->mirrors()->host_variable_info();
+    auto vinfo = stmt.body()->mirrors()->host_variable_info();
     std::vector<reader_field_locator> locs{};
 
     // create mapping
@@ -186,7 +185,7 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
             }
 
             reader_option opt{};
-            create_reader_option_and_maping(*parameters_, prepared_, mapping_, opt);
+            create_reader_option_and_mapping(*parameters_, *statement_, mapping_, opt);
             reader_ = parquet_reader::open(*next_file_, std::addressof(opt));
             ++next_file_;
             if(! reader_) {
@@ -211,7 +210,7 @@ loader_result loader::operator()() {  //NOLINT(readability-function-cognitive-co
         executor::execute_async(
             *db_,
             tx_,
-            prepared_,
+            statement_,
             std::move(ps),
             nullptr,
             [&](

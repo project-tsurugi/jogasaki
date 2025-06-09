@@ -104,15 +104,14 @@ file::reader_field_locator create_locator(std::string_view name, std::shared_ptr
     return {};
 }
 
-void create_reader_option_and_maping(
+void create_reader_option_and_mapping(
     api::parameter_set const& ps,
-    api::statement_handle prepared,
+    api::impl::prepared_statement const& stmt,
     std::unordered_map<std::string, file::parameter>& mapping,
     file::reader_option& out
 ) {
     auto pset = static_cast<api::impl::parameter_set const&>(ps).body();  //NOLINT
-    auto stmt = reinterpret_cast<api::impl::prepared_statement*>(prepared.get()); //NOLINT
-    auto vinfo = stmt->body()->mirrors()->host_variable_info();
+    auto vinfo = stmt.body()->mirrors()->host_variable_info();
     std::vector<file::reader_field_locator> locs{};
 
     // create mapping
@@ -144,7 +143,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
     auto ps = std::shared_ptr<api::parameter_set>{info_.parameters()->clone()};
     if(! reader_) {
         file::reader_option opt{};
-        create_reader_option_and_maping(*info_.parameters(), info_.prepared(), mapping_, opt);
+        create_reader_option_and_mapping(*info_.parameters(), *info_.statement(), mapping_, opt);
         reader_ = file::parquet_reader::open(file_, std::addressof(opt), block_index_);
         if(! reader_) {
             state_->set_error_status(
@@ -209,7 +208,7 @@ std::pair<bool, bool> batch_block_executor::next_statement() {
     executor::execute_async(
         *info_.db(),
         tx_,
-        info_.prepared(),
+        info_.statement(),
         std::move(ps),
         nullptr,
         [&, state = state_, root = std::move(r)](

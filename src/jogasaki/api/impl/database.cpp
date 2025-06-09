@@ -66,6 +66,7 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/statement_handle.h>
+#include "jogasaki/api/statement_handle_internal.h"
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
@@ -718,8 +719,19 @@ status database::resolve(
     std::unique_ptr<api::executable_statement>& statement,
     std::shared_ptr<error::error_info>& out
 ) {
+    auto stmt = get_statement(prepared);
+    if (stmt == nullptr) {
+        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
+        auto rc = status::err_invalid_argument;
+        out = create_error_info(
+            error_code::statement_not_found_exception,
+            m,
+            rc
+        );
+        return rc;
+    }
     return resolve_common(
-        *reinterpret_cast<impl::prepared_statement*>(prepared.get()),  //NOLINT
+        *stmt,
         std::move(parameters),
         statement,
         out
@@ -727,7 +739,7 @@ status database::resolve(
 }
 
 status database::resolve_common(
-    impl::prepared_statement const& prepared,
+    impl::prepared_statement const& stmt,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::unique_ptr<api::executable_statement>& statement,
     std::shared_ptr<error::error_info>& out
@@ -738,7 +750,7 @@ status database::resolve_common(
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     ctx->function_provider(scalar_functions_);
-    auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
+    auto& ps = stmt.body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
@@ -1374,9 +1386,21 @@ bool database::execute_load(
     std::vector<std::string> files,
     callback on_completion
 ) {
+    auto stmt = get_statement(prepared);
+    if (stmt == nullptr) {
+        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
+        auto rc = status::err_invalid_argument;
+        auto err = create_error_info(
+            error_code::statement_not_found_exception,
+            m,
+            rc
+        );
+        on_completion(rc, std::move(err));
+        return false;
+    }
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
     req->status(scheduler::request_detail_status::accepted);
-    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
+    req->statement_text(stmt->body()->sql_text_shared());  //NOLINT
     log_request(*req);
 
     auto rctx = impl::create_request_context(
@@ -1391,7 +1415,7 @@ bool database::execute_load(
     auto ldr = executor::batch::batch_executor::create_batch_executor(
         std::move(files),
         executor::batch::batch_execution_info{
-            prepared,
+            std::move(stmt),
             std::move(parameters),
             this,
             [rctx]() {

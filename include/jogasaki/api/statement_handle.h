@@ -136,7 +136,7 @@ inline bool operator!=(statement_handle const& a, statement_handle const& b) noe
  * @return the output
  */
 inline std::ostream& operator<<(std::ostream& out, statement_handle value) {
-    // surrogate_id is printed in decimal to avoid using utils::hex in public header
+    // body is printed in decimal to avoid using utils::hex in public header
     out << "statement_handle[body:" << value.get();
     if (value.session_id().has_value()) {
         // print session_id in decimal to conform to tateyama log message

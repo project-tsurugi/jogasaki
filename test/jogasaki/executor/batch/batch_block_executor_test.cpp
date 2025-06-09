@@ -119,11 +119,13 @@ TEST_F(batch_block_executor_test, simple) {
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
 
+    auto stmt = db_impl()->find_statement(prepared);
+
     auto block = batch_block_executor::create_block_executor(
         p.string(),
         0,
         batch_execution_info{
-            prepared,
+            stmt,
             std::shared_ptr{std::move(ps)},
             reinterpret_cast<api::impl::database*>(db_.get()),
             []() {}
@@ -163,6 +165,8 @@ TEST_F(batch_block_executor_test, multiple_row_groups) {
     };
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)", variables, prepared));
 
+    auto stmt = db_impl()->find_statement(prepared);
+
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
 
@@ -170,7 +174,7 @@ TEST_F(batch_block_executor_test, multiple_row_groups) {
         p.string(),
         1,
         batch_execution_info{
-            prepared,
+            stmt,
             std::shared_ptr{std::move(ps)},
             reinterpret_cast<api::impl::database*>(db_.get()),
             []() {}

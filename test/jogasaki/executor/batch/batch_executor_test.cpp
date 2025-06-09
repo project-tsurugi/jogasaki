@@ -156,6 +156,7 @@ TEST_F(batch_executor_test, simple) {
         {"p0", api::field_type_kind::int8},
     };
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)", variables, prepared));
+    auto stmt = db_impl()->find_statement(prepared);
 
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
@@ -166,7 +167,7 @@ TEST_F(batch_executor_test, simple) {
     auto root = batch_executor::create_batch_executor(
         std::vector<std::string>{p0.string(), p1.string()},
         batch_execution_info{
-            prepared,
+            stmt,
             std::shared_ptr{std::move(ps)},
             reinterpret_cast<api::impl::database*>(db_.get()),
             [&](){
@@ -450,6 +451,7 @@ void batch_executor_test::test_bootstrap(
         {"p0", api::field_type_kind::int8},
     };
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)", variables, prepared));
+    auto stmt = db_impl()->find_statement(prepared);
 
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
@@ -460,7 +462,7 @@ void batch_executor_test::test_bootstrap(
     auto root = batch_executor::create_batch_executor(
         files,
         batch_execution_info{
-            prepared,
+            stmt,
             std::shared_ptr{std::move(ps)},
             reinterpret_cast<api::impl::database*>(db_.get()),
             [&](){
@@ -542,6 +544,7 @@ void batch_executor_test::test_error(
         {"p0", api::field_type_kind::int8},
     };
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)", variables, prepared));
+    auto stmt = db_impl()->find_statement(prepared);
 
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
@@ -552,7 +555,7 @@ void batch_executor_test::test_error(
     auto root = batch_executor::create_batch_executor(
         files,
         batch_execution_info{
-            prepared,
+            stmt,
             std::shared_ptr{std::move(ps)},
             reinterpret_cast<api::impl::database*>(db_.get()),
             [&](){

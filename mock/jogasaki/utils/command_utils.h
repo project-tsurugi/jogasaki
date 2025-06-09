@@ -663,6 +663,7 @@ struct table_info {
     std::string table_name_{};
     std::vector<column_info> columns_{};
     std::string description_{};
+    std::vector<std::string> primary_key_columns_{};
 };
 
 inline std::pair<table_info, error> decode_describe_table(std::string_view res) {
@@ -684,12 +685,19 @@ inline std::pair<table_info, error> decode_describe_table(std::string_view res) 
         cols.emplace_back(c.name(), c.atom_type(), c.description());
     }
 
+    std::vector<std::string> primary_key_columns{};
+    primary_key_columns.reserve(dt.success().primary_key_size());
+    for(auto&& p : dt.success().primary_key()) {
+        primary_key_columns.emplace_back(p);
+    }
+
     table_info info{
         dt.success().database_name(),
         dt.success().schema_name(),
         dt.success().table_name(),
         std::move(cols),
-        dt.success().description()
+        dt.success().description(),
+        std::move(primary_key_columns)
     };
     return {info, {}};
 }

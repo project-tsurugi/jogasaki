@@ -130,7 +130,10 @@ message DescribeTable {
     // the table column information.
     repeated common.Column columns = 4;
 
-    reserved 5 to 19;
+    // the primary key column names.
+    repeated string primary_key = 5;
+
+    reserved 6 to 19;
 
     // the optional description of the declaration.
     oneof description_opt {

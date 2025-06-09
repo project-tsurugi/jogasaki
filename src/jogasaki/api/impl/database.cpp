@@ -120,6 +120,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/cancel_request.h>
+#include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/proto_debug_string.h>
@@ -721,14 +722,8 @@ status database::resolve(
 ) {
     auto stmt = get_statement(prepared);
     if (stmt == nullptr) {
-        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
-        auto rc = status::err_invalid_argument;
-        out = create_error_info(
-            error_code::statement_not_found_exception,
-            m,
-            rc
-        );
-        return rc;
+        out = create_statement_handle_error(prepared);
+        return out->status();
     }
     return resolve_common(
         *stmt,
@@ -1388,13 +1383,8 @@ bool database::execute_load(
 ) {
     auto stmt = get_statement(prepared);
     if (stmt == nullptr) {
-        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
-        auto rc = status::err_invalid_argument;
-        auto err = create_error_info(
-            error_code::statement_not_found_exception,
-            m,
-            rc
-        );
+        auto err = create_statement_handle_error(prepared);
+        auto rc = err->status();
         on_completion(rc, std::move(err));
         return false;
     }

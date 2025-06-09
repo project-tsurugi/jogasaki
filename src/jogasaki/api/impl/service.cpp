@@ -82,6 +82,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/convert_offset.h>
+#include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/decimal.h>
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/proto_field_types.h>
@@ -720,13 +721,7 @@ void service::command_explain(
     }
     auto stmt = get_statement(handle);
     if (stmt == nullptr) {
-        auto m = string_builder{} << "prepared statement not found handle:" << handle << string_builder::to_string;
-        auto rc = status::err_invalid_argument;
-        auto err_info = create_error_info(
-            error_code::statement_not_found_exception,
-            m,
-            rc
-        );
+        auto err_info = create_statement_handle_error(handle);
         details::error<sql::response::Explain>(*res, err_info.get(), req_info);
         // no info. available to start logging with request_detail
         return;
@@ -832,12 +827,7 @@ std::shared_ptr<impl::prepared_statement> extract_statement(
         reinterpret_cast<void*>(msg.prepared_statement_handle().handle()), session_id}; //NOLINT
     auto stmt = get_statement(handle);
     if (stmt == nullptr) {
-        auto m = string_builder{} << "prepared statement not found for handle:" << handle << string_builder::to_string;
-        out = create_error_info(
-            error_code::statement_not_found_exception,
-            m,
-            status::err_invalid_argument
-        );
+        out = create_statement_handle_error(handle);
         return {};
     }
     return stmt;
@@ -1863,9 +1853,7 @@ void service::execute_load( //NOLINT
                 },
                 req_info
             ); !rc) {
-            // for now execute_async doesn't raise error. But if it happens in future,
-            // error response should be sent here.
-            throw_exception(std::logic_error{"execute_load failed"});
+            // for now, any errors from execute_load are reported via callback, so there is nothing to do here
         }
     } else {
         //non transactional load
@@ -1885,9 +1873,7 @@ void service::execute_load( //NOLINT
                     }
                 }
             ); !rc) {
-            // for now execute_async doesn't raise error. But if it happens in future,
-            // error response should be sent here.
-            throw_exception(std::logic_error{"execute_load failed"});
+            // for now, any errors from execute_load are reported via callback, so there is nothing to do here
         }
     }
 }

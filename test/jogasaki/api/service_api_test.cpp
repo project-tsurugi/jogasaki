@@ -223,6 +223,9 @@ public:
     template <class ... Args>
     void test_load(bool transactional, error_code expected, Args ... args);
 
+    template <class ... Args>
+    void test_load(bool transactional, std::uint64_t& stmt_handle, error_code expected, Args...files);
+
     void test_get_lob(std::uint64_t id, std::string_view expected_path);
 
     void test_get_tx_status(api::transaction_handle tx_handle, std::optional<::jogasaki::proto::sql::response::TransactionStatus> expected_status, error_code expected_err = error_code::none);
@@ -2263,6 +2266,34 @@ TEST_F(service_api_test, load_missing_files_non_tx) {
     test_load(true, error_code::sql_execution_exception, "dummy1.parquet", "dummy2.parquet");
 }
 
+TEST_F(service_api_test, tx_load_invalid_handle) {
+    // verify error returned from transactional load for invalid statement handle
+    std::vector<std::string> files{};
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T0 (C0, C1) values (:p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::INT8},
+        std::pair{"p1"s, sql::common::AtomType::FLOAT8}
+    );
+    test_dispose_prepare(stmt_handle);
+    test_load(true, stmt_handle, error_code::statement_not_found_exception);
+}
+
+TEST_F(service_api_test, non_tx_load_invalid_handle) {
+    // verify error returned from non-transactional load for invalid statement handle
+    std::vector<std::string> files{};
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T0 (C0, C1) values (:p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::INT8},
+        std::pair{"p1"s, sql::common::AtomType::FLOAT8}
+    );
+    test_dispose_prepare(stmt_handle);
+    test_load(false, stmt_handle, error_code::statement_not_found_exception);
+}
+
 template <class ... Args>
 void service_api_test::test_load(bool transactional, error_code expected, Args...files) {
     std::uint64_t stmt_handle{};
@@ -2272,6 +2303,12 @@ void service_api_test::test_load(bool transactional, error_code expected, Args..
         std::pair{"p0"s, sql::common::AtomType::INT8},
         std::pair{"p1"s, sql::common::AtomType::FLOAT8}
     );
+    test_load(transactional, stmt_handle, expected, files...);
+    test_dispose_prepare(stmt_handle);
+}
+
+template <class ... Args>
+void service_api_test::test_load(bool transactional, std::uint64_t& stmt_handle, error_code expected, Args...files) {
     api::transaction_handle tx_handle{};
     if(transactional) {
         test_begin(tx_handle);
@@ -2304,7 +2341,6 @@ void service_api_test::test_load(bool transactional, error_code expected, Args..
             }
         }
     }
-    test_dispose_prepare(stmt_handle);
 }
 
 TEST_F(service_api_test, describe_table) {

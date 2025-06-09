@@ -86,6 +86,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_error.h>
 #include <jogasaki/utils/assert.h>
+#include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
 
@@ -332,13 +333,8 @@ bool execute_async(
 ) {
     auto stmt = get_statement(prepared);
     if (stmt == nullptr) {
-        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
-        auto rc = status::err_invalid_argument;
-        auto err = create_error_info(
-            error_code::statement_not_found_exception,
-            m,
-            rc
-        );
+        auto err = create_statement_handle_error(prepared);
+        auto rc = err->status();
         on_completion(rc, std::move(err), nullptr);
         return false;
     }
@@ -693,13 +689,8 @@ bool execute_load(
     req->status(scheduler::request_detail_status::accepted);
     auto stmt = get_statement(prepared);
     if (stmt == nullptr) {
-        auto m = string_builder{} << "prepared statement not found handle:" << prepared << string_builder::to_string;
-        auto rc = status::err_invalid_argument;
-        auto err = create_error_info(
-            error_code::statement_not_found_exception,
-            m,
-            rc
-        );
+        auto err = create_statement_handle_error(prepared);
+        auto rc = err->status();
         on_completion(rc, std::move(err));
         return false;
     }

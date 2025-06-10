@@ -764,10 +764,13 @@ inline std::pair<bool, error> decode_get_error_info(std::string_view res) {
     return {true, { api::impl::map_error(err.code()), err.detail(), err.supplemental_text() }};
 }
 
-inline std::string encode_extract_statement_info(std::string_view payload) {
+inline std::string encode_extract_statement_info(std::string_view payload, std::optional<std::size_t> session_id = {}) {
     sql::request::Request r{};
     auto* extract = r.mutable_extract_statement_info();
     extract->mutable_payload()->assign(payload);
+    if(session_id.has_value()) {
+        extract->set_session_id(session_id.value());
+    }
 
     auto s = serialize(r);
     r.clear_extract_statement_info();

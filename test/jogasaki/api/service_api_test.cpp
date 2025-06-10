@@ -3060,7 +3060,7 @@ TEST_F(service_api_test, extract_sql_info) {
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
     auto query = encode_execute_query(tx_handle, text);
 
-    auto s = encode_extract_statement_info(query);
+    auto s = encode_extract_statement_info(query, session_id_);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
@@ -3097,7 +3097,35 @@ TEST_F(service_api_test, extract_sql_info_missing_statement) {
     EXPECT_EQ(error_code::statement_not_found_exception, error.code_);
 }
 
-TEST_F(service_api_test, tx_on_different_session) {
+TEST_F(service_api_test, extract_sql_prepared_on_different_session) {
+    // verify prepared statement and tx that are associated on session 1000 can be extracted on session 2000
+    auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
+    session_id_ = 1000;
+    std::uint64_t stmt_handle{};
+    test_prepare(stmt_handle, text);
+
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+
+    auto query = encode_execute_prepared_query(tx_handle, stmt_handle, {});
+
+    session_id_ = 2000;
+    auto s = encode_extract_statement_info(query, 1000);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, tx_id, error] = decode_extract_statement_info(res->body_);
+    ASSERT_FALSE(result.empty());
+    ASSERT_FALSE(tx_id.empty());
+    EXPECT_EQ(text, result);
+}
+
+TEST_F(service_api_test, use_tx_on_different_session) {
     // verify handle is not usable on different session
     global::config_pool()->enable_session_store(true);
     test_statement("CREATE TABLE TT(C0 INT NOT NULL PRIMARY KEY)");

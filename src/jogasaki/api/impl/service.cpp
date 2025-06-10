@@ -400,7 +400,7 @@ template<class Request>
 std::string extract_transaction(
     Request msg,
     std::shared_ptr<error::error_info>& err_info,
-    request_info const& req_info
+    std::optional<std::size_t> session_id
 ) {
     if(! msg.has_transaction_handle()) {
         err_info = create_error_info(
@@ -412,9 +412,7 @@ std::string extract_transaction(
     }
     api::transaction_handle tx{
         msg.transaction_handle().handle(),
-        global::config_pool()->enable_session_store() && req_info.request_source() ?
-            std::optional<std::size_t>{req_info.request_source()->session_id()} :
-            std::nullopt
+        session_id
     };
     auto t = get_transaction_context(tx);
     if(! t) {
@@ -839,14 +837,13 @@ bool extract_sql_and_tx_id(
     std::shared_ptr<std::string>& sql_text,
     std::string& tx_id,
     std::shared_ptr<error::error_info>& err_info,
-    request_info const& req_info,
     std::optional<std::size_t> session_id
 ) {
     switch (req.request_case()) {
         case sql::request::Request::RequestCase::kExecuteStatement: {
             auto& msg = req.execute_statement();
             sql_text = std::make_shared<std::string>(msg.sql());
-            tx_id = extract_transaction(msg, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, session_id);
             if(err_info) {
                 return false;
             }
@@ -855,7 +852,7 @@ bool extract_sql_and_tx_id(
         case sql::request::Request::RequestCase::kExecuteQuery: {
             auto& msg = req.execute_query();
             sql_text = std::make_shared<std::string>(msg.sql());
-            tx_id = extract_transaction(msg, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, session_id);
             if(err_info) {
                 return false;
             }
@@ -868,7 +865,7 @@ bool extract_sql_and_tx_id(
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
-            tx_id = extract_transaction(msg, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, session_id);
             if(err_info) {
                 return false;
             }
@@ -881,7 +878,7 @@ bool extract_sql_and_tx_id(
                 return false;
             }
             sql_text = stmt->body()->sql_text_shared();
-            tx_id = extract_transaction(msg, err_info, req_info);
+            tx_id = extract_transaction(msg, err_info, session_id);
             if(err_info) {
                 return false;
             }
@@ -932,7 +929,7 @@ void service::command_extract_statement_info(
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err{};
     std::string tx_id{};
-    if(! extract_sql_and_tx_id(decoded_req, sql_text, tx_id, err, req_info, ex.session_id())) {
+    if(! extract_sql_and_tx_id(decoded_req, sql_text, tx_id, err, ex.session_id())) {
         details::error<sql::response::ExtractStatementInfo>(*res, err.get(), req_info);
         return;
     }

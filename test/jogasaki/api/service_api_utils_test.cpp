@@ -634,13 +634,6 @@ void enable_request_cancel(request_cancel_kind kind) {
 }
 
 TEST_F(service_api_utils_test, extract_sql) {
-    // request_info is used to extract session_id
-    request_info req_info{
-        1,
-        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
-        nullptr
-    };
-
     {
         // non-prepared statement
         auto text = "insert into T0 values (1,1)"s;
@@ -657,7 +650,7 @@ TEST_F(service_api_utils_test, extract_sql) {
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
 
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, req_info, session_id_));
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -678,7 +671,7 @@ TEST_F(service_api_utils_test, extract_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, req_info, session_id_));
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -687,12 +680,6 @@ TEST_F(service_api_utils_test, extract_sql) {
 }
 
 TEST_F(service_api_utils_test, extract_prepared_sql) {
-    // request_info is used to extract session_id
-    request_info req_info{
-        1,
-        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
-        nullptr
-    };
     {
         // prepared statement
         statement_handle stmt_handle{};
@@ -710,7 +697,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, req_info, session_id_));
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -734,7 +721,7 @@ TEST_F(service_api_utils_test, extract_prepared_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, req_info, session_id_));
+        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -756,13 +743,7 @@ TEST_F(service_api_utils_test, extract_sql_error) {
     std::shared_ptr<std::string> sql_text{};
     std::string tx_id{};
     std::shared_ptr<error::error_info> err_info{};
-    // request_info is used to extract session_id
-    request_info req_info{
-        1,
-        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
-        nullptr
-    };
-    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, req_info, session_id_));
+    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(err_info);
     EXPECT_EQ(error_code::request_failure_exception, err_info->code());
 }
@@ -787,17 +768,76 @@ TEST_F(service_api_utils_test, extract_sql_failing_to_fetch_tx_id) {
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err_info{};
     std::string tx_id{};
-    request_info req_info{
-        1,
-        std::make_shared<tateyama::api::server::mock::test_request>("", session_id_),
-        nullptr
-    };
-    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, req_info, session_id_));
+    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(sql_text);
     EXPECT_EQ(text, *sql_text);
     EXPECT_TRUE(tx_id.empty());
 
     test_dispose_prepare(stmt_handle);
+}
+
+TEST_F(service_api_utils_test, fail_to_extract_sql_on_different_session) {
+    // statement prepared on session 100, transaction began on session 1000, extract requested on 1000
+
+    session_id_ = 100;
+    std::uint64_t stmt_handle{};
+    auto text = "select * from T1"s;
+    test_prepare(stmt_handle, text);
+
+    session_id_ = 1000;
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+
+    std::vector<parameter> parameters{};
+    auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
+
+    sql::request::Request req{};
+    utils::deserialize(s, req);
+
+    std::shared_ptr<std::string> sql_text{};
+    std::shared_ptr<error::error_info> err_info{};
+    std::string tx_id{};
+    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+    ASSERT_TRUE(err_info);
+    EXPECT_EQ(error_code::statement_not_found_exception, err_info->code());
+
+    test_dispose_prepare(stmt_handle);
+    test_commit(tx_handle, false);
+    test_dispose_transaction(tx_handle);
+}
+
+TEST_F(service_api_utils_test, fail_to_extract_tx_on_different_session) {
+    // tx began on session 100 but statement prepared on session 1000, extract requested on 1000
+    // contrary to statement, this is not an error because depending on timing tx has been disposed and empty tx_id is returned
+    session_id_ = 100;
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+
+    session_id_ = 1000;
+    std::uint64_t stmt_handle{};
+    auto text = "select * from T1"s;
+    test_prepare(stmt_handle, text);
+
+    std::vector<parameter> parameters{};
+    auto s = encode_execute_prepared_query(tx_handle, stmt_handle, parameters);
+
+    sql::request::Request req{};
+    utils::deserialize(s, req);
+
+    std::shared_ptr<std::string> sql_text{};
+    std::shared_ptr<error::error_info> err_info{};
+    std::string tx_id{};
+    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+    ASSERT_TRUE(! err_info);
+    ASSERT_TRUE(sql_text);
+    EXPECT_EQ(text, *sql_text);
+    EXPECT_TRUE(tx_id.empty());
+
+    test_dispose_prepare(stmt_handle);
+
+    session_id_ = 100;
+    test_commit(tx_handle, false);
+    test_dispose_transaction(tx_handle);
 }
 
 }  // namespace jogasaki::api

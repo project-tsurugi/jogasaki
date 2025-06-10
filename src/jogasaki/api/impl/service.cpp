@@ -697,17 +697,18 @@ void service::command_dispose_prepared_statement(
     if(! handle) {
         return;
     }
-    if(auto st = db_->destroy_statement(handle); st == jogasaki::status::ok) {
-        details::success<sql::response::ResultOnly>(*res, req_info);
-    } else {
+    if(auto st = db_->destroy_statement(handle); st != jogasaki::status::ok && st != status::err_invalid_argument) {
+        // return no error for invalid handle - making dispose operation unipotent
         VLOG(log_error) << log_location_prefix << "error destroying statement";
         auto err_info = create_error_info(
             error_code::statement_not_found_exception,
-            string_builder{} << "Invalid statement handle." << string_builder::to_string,
+            string_builder{} << "Invalid statement handle " << handle << string_builder::to_string,
             st
         );
         details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+        return;
     }
+    details::success<sql::response::ResultOnly>(*res, req_info);
 }
 void service::command_explain(
     sql::request::Request const& proto_req,

@@ -164,6 +164,13 @@ public:
         std::vector<mock::basic_record> const& expected,
         std::vector<std::string> const& exp_colnames
     );
+    void test_prepared_statement(std::uint64_t stmt_handle, api::transaction_handle tx_handle, error_code exp);
+    void test_prepared_statement(
+        std::uint64_t stmt_handle,
+        api::transaction_handle tx_handle,
+        error_code exp,
+        std::shared_ptr<request_statistics>& stats
+    );
 
     void test_cancel_statement(std::string_view sql, api::transaction_handle tx_handle);
     void test_cancel_transaction_begin(api::transaction_handle tx_handle, std::string_view label);
@@ -179,7 +186,7 @@ public:
         ASSERT_TRUE(st);
         handle = decode_prepare(res->body_);
     }
-    void test_dispose_prepare(std::uint64_t& handle);
+    void test_dispose_prepare(std::uint64_t handle);
 
     template <class ...Args>
     void test_error_prepare(std::uint64_t& handle, std::string sql, Args...args) {
@@ -354,7 +361,7 @@ TEST_F(service_api_test, error_on_rollback) {
     ASSERT_FALSE(error.message_.empty());
 }
 
-void service_api_test::test_dispose_prepare(std::uint64_t& handle) {
+void service_api_test::test_dispose_prepare(std::uint64_t handle) {
     auto s = encode_dispose_prepare(handle);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -524,6 +531,44 @@ void service_api_test::test_query(std::string_view query) {
     );
     test_commit(tx_handle);
 }
+
+void service_api_test::test_prepared_statement(std::uint64_t stmt_handle, api::transaction_handle tx_handle, error_code exp = error_code::none) {
+    std::shared_ptr<request_statistics> stats{};
+    return test_prepared_statement(stmt_handle, tx_handle, exp, stats);
+}
+
+void service_api_test::test_prepared_statement(
+    std::uint64_t stmt_handle,
+    api::transaction_handle tx_handle,
+    error_code exp,
+    std::shared_ptr<request_statistics>& stats) {
+
+    {
+        std::vector<parameter> parameters{
+                {"p0"s, ValueCase::kInt8Value, std::any{std::in_place_type<std::int64_t>, 1}},
+                {"p1"s, ValueCase::kFloat8Value, std::any{std::in_place_type<double>, 10.0}},
+            };
+        auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto [success, error, statistics] = decode_execute_result(res->body_);
+
+        if(exp == error_code::none) {
+            ASSERT_TRUE(success);
+            stats = std::move(statistics);
+        } else {
+            ASSERT_FALSE(success);
+            ASSERT_EQ(exp, error.code_);
+        }
+    }
+}
+
 
 TEST_F(service_api_test, execute_statement_and_query) {
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
@@ -1872,6 +1917,7 @@ TEST_F(service_api_test, explain_query) {
 }
 
 TEST_F(service_api_test, explain_error_invalid_handle) {
+    // verify error when handle is invalid (zero)
     std::uint64_t stmt_handle{};
     {
         auto s = encode_explain(stmt_handle, {});
@@ -1888,6 +1934,36 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
         ASSERT_TRUE(cols.empty());
 
         ASSERT_EQ(error_code::sql_execution_exception, error.code_);
+        ASSERT_FALSE(error.message_.empty());
+        LOG(INFO) << error.message_;
+    }
+}
+
+TEST_F(service_api_test, explain_error_invalid_handle_non_zero_handle) {
+    // same as explain_error_invalid_handle, but with non-zero handle
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "select C0, C1 from T0 where C0 = :c0 and C1 = :c1",
+        std::pair{"c0"s, sql::common::AtomType::INT8},
+        std::pair{"c1"s, sql::common::AtomType::FLOAT8}
+    );
+    test_dispose_prepare(stmt_handle);
+    {
+        auto s = encode_explain(stmt_handle, {});
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        auto [result, id, version, cols, error] = decode_explain(res->body_);
+        ASSERT_TRUE(result.empty());
+        ASSERT_TRUE(cols.empty());
+
+        ASSERT_EQ(error_code::statement_not_found_exception, error.code_);
         ASSERT_FALSE(error.message_.empty());
         LOG(INFO) << error.message_;
     }
@@ -3043,6 +3119,49 @@ TEST_F(service_api_test, tx_on_different_session) {
     test_commit(tx_handle, false);
 
     test_dispose_transaction(tx_handle);
+}
+
+TEST_F(service_api_test, statement_on_different_session) {
+    // verify handle is not usable on different session
+    global::config_pool()->enable_session_store(true);
+    session_id_ = 1000;
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T0 (C0, C1) values (:p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::INT8},
+        std::pair{"p1"s, sql::common::AtomType::FLOAT8}
+    );
+
+    session_id_ = 2000;
+
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    test_prepared_statement(stmt_handle, tx_handle, error_code::statement_not_found_exception);
+    // test_commit(tx_handle, true); // tx already aborted by the error above
+    test_dispose_transaction(tx_handle);
+
+    session_id_ = 1000;
+    api::transaction_handle tx_handle2{};
+    test_begin(tx_handle2);
+    test_prepared_statement(stmt_handle, tx_handle2);
+    test_commit(tx_handle2, false);
+
+    test_dispose_transaction(tx_handle2);
+    test_dispose_prepare(stmt_handle);
+}
+
+TEST_F(service_api_test, disposing_statement_twice) {
+    // verify there is no error returned when diposing the invalid statement handle
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "insert into T0 (C0, C1) values (:p0, :p1)",
+        std::pair{"p0"s, sql::common::AtomType::INT8},
+        std::pair{"p1"s, sql::common::AtomType::FLOAT8}
+    );
+    test_dispose_prepare(stmt_handle);
+    test_dispose_prepare(stmt_handle);
 }
 
 }  // namespace jogasaki::api

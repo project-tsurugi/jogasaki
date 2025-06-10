@@ -273,6 +273,8 @@ public:
         std::shared_ptr<error::error_info>& out
     );
 
+    status destroy_statement_internal(api::statement_handle prepared);
+
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,

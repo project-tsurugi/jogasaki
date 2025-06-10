@@ -53,11 +53,14 @@ runner& runner::run() {
 
     api::statement_handle prepared{prepared_};
     if(text_is_set_) {
+        plan::compile_option opt{};
+        opt.session_id(100);
         if(auto res = get_impl(*db_).prepare(
                 text_,
                 variables_ ? *variables_ : std::unordered_map<std::string, api::field_type_kind>{},
                 prepared,
-                *out
+                *out,
+                opt
             ); res != status::ok) {
             exec_fail(expect_error_ ? "" : (*out)->message());
         }

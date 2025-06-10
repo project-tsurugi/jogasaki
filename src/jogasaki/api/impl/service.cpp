@@ -780,6 +780,11 @@ void service::command_explain_by_text(
     std::shared_ptr<error::error_info> err_info{};
     plan::compile_option option{};
     option.explain_by_text_only(true);
+    option.session_id(
+        global::config_pool()->enable_session_store() && req_info.request_source()
+            ? std::optional<std::size_t>{req_info.request_source()->session_id()}
+            : std::nullopt
+    );
     if(auto rc = get_impl(*db_).prepare(sql, statement, err_info, option); rc != jogasaki::status::ok) {
         details::error<sql::response::Explain>(*res, err_info.get(), req_info);
         req->status(scheduler::request_detail_status::finishing);
@@ -803,7 +808,10 @@ void service::command_explain_by_text(
     } else {
         throw_exception(std::logic_error{"explain failed"});
     }
-
+    if(auto rc = get_impl(*db_).destroy_statement_internal(statement); rc != jogasaki::status::ok) {
+        // normally this should not happen
+        VLOG_LP(log_warning) << "destroying statement failed for explained statement " << statement;
+    }
     req->status(scheduler::request_detail_status::finishing);
     log_request(*req);
 }

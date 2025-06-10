@@ -762,37 +762,38 @@ status database::resolve_common(
     return status::ok;
 }
 
+status database::destroy_statement_internal(
+    api::statement_handle prepared
+) {
+    if (! prepared.session_id().has_value()) {
+        decltype(prepared_statements_)::accessor acc{};
+        if (prepared_statements_.find(acc, prepared)) {
+            prepared_statements_.erase(acc);
+            return status::ok;
+        }
+        VLOG_LP(log_warning) << "destroy_statement for invalid handle";
+        return status::err_invalid_argument;
+    }
+    decltype(statement_stores_)::accessor acc{};
+    if (statement_stores_.find(acc, prepared.session_id().value())) {
+        if (acc->second->remove(prepared)) {
+            return status::ok;
+        }
+    }
+    VLOG_LP(log_warning) << "destroy_statement for invalid handle";
+    return status::err_invalid_argument;
+}
+
 status database::destroy_statement(
     api::statement_handle prepared
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::dispose_statement);
     req->status(scheduler::request_detail_status::accepted);
     log_request(*req);
-    if (! prepared.session_id().has_value()) {
-        decltype(prepared_statements_)::accessor acc{};
-        if (prepared_statements_.find(acc, prepared)) {
-            prepared_statements_.erase(acc);
-            req->status(scheduler::request_detail_status::finishing);
-            log_request(*req);
-            return status::ok;
-        }
-        VLOG_LP(log_warning) << "destroy_statement for invalid handle";
-        req->status(scheduler::request_detail_status::finishing);
-        log_request(*req, false);
-        return status::err_invalid_argument;
-    }
-    decltype(statement_stores_)::accessor acc{};
-    if (statement_stores_.find(acc, prepared.session_id().value())) {
-        if (acc->second->remove(prepared)) {
-            req->status(scheduler::request_detail_status::finishing);
-            log_request(*req);
-            return status::ok;
-        }
-    }
-    VLOG_LP(log_warning) << "destroy_statement for invalid handle";
+    auto st = destroy_statement_internal(prepared);
     req->status(scheduler::request_detail_status::finishing);
-    log_request(*req, false);
-    return status::err_invalid_argument;
+    log_request(*req, st == status::ok);
+    return st;
 }
 
 status database::destroy_transaction(

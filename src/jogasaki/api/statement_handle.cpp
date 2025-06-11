@@ -22,28 +22,20 @@
 
 namespace jogasaki::api {
 
-api::record_meta const* statement_handle::meta() const noexcept {
-    return reinterpret_cast<impl::prepared_statement*>(body_)->meta();  //NOLINT
-}
-
 statement_handle::statement_handle(
     void* arg,
-    void* db
-) noexcept:
+    std::optional<std::size_t> session_id
+) noexcept :
     body_(reinterpret_cast<std::uintptr_t>(arg)),  //NOLINT
-    db_(reinterpret_cast<std::uintptr_t>(db))  //NOLINT
-{}
-
-statement_handle::statement_handle(
-    std::uintptr_t arg,
-    std::uintptr_t db
-) noexcept:
-    body_(arg),
-    db_(db)
+    session_id_(session_id)  //NOLINT
 {}
 
 std::uintptr_t statement_handle::get() const noexcept {
     return body_;
+}
+
+std::optional<std::size_t> statement_handle::session_id() const noexcept {
+    return session_id_;
 }
 
 statement_handle::operator std::size_t() const noexcept {
@@ -54,25 +46,24 @@ statement_handle::operator bool() const noexcept {
     return body_ != 0;
 }
 
-bool statement_handle::has_result_records() const noexcept {
-    return reinterpret_cast<impl::prepared_statement*>(body_)->has_result_records();  //NOLINT
-}
-
-std::pair<api::impl::database*, std::shared_ptr<impl::prepared_statement>> extract_statement_body(std::uintptr_t db, std::uintptr_t stmt) {
-    if(db == 0) return {};
-    auto* dbp = reinterpret_cast<api::impl::database*>(db);  //NOLINT
-    auto s = dbp->find_statement(statement_handle{stmt, db});
-    return {dbp, std::move(s)};
-}
-
-std::uintptr_t statement_handle::db() const noexcept {
-    return db_;
-}
-
 std::shared_ptr<impl::prepared_statement> get_statement(statement_handle arg) {
-    auto [db, stmt] = extract_statement_body(arg.db(), arg.get());
-    (void) db;
-    return stmt;
+    return global::database_impl()->find_statement(arg);
+}
+
+bool statement_handle::has_result_records() const noexcept {
+    auto stmt = get_statement(*this);
+    if (! stmt) {
+        return false;
+    }
+    return stmt->has_result_records();  //NOLINT
+}
+
+api::record_meta const* statement_handle::meta() const noexcept {
+    auto stmt = get_statement(*this);
+    if (! stmt) {
+        return nullptr;
+    }
+    return stmt->meta();  //NOLINT
 }
 
 }  // namespace jogasaki::api

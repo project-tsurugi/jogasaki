@@ -89,6 +89,7 @@ public:
             {"p1", api::field_type_kind::float8},
         };
         ASSERT_EQ(status::ok, db_->prepare("INSERT INTO T0(C0, C1) VALUES (:p0, :p1)", variables, prepared));
+        auto stmt = db_impl()->find_statement(prepared);
 
         if(! ps) {
             ps = api::create_parameter_set();
@@ -101,7 +102,7 @@ public:
         auto tx = d->find_transaction(*trans);
         ldr = std::make_shared<loader>(
             files,
-            prepared,
+            std::move(stmt),
             std::shared_ptr{std::move(ps)},
             tx,
             *d,

@@ -124,6 +124,7 @@ TEST_F(batch_file_executor_test, simple) {
         {"p0", api::field_type_kind::int8},
     };
     ASSERT_EQ(status::ok, db_->prepare("INSERT INTO TT VALUES (:p0)", variables, prepared));
+    auto stmt = db_impl()->find_statement(prepared);
 
     auto ps = api::create_parameter_set();
     ps->set_reference_column("p0", "C0");
@@ -132,7 +133,7 @@ TEST_F(batch_file_executor_test, simple) {
     auto file = batch_file_executor::create_file_executor(
         p.string(),
         batch_execution_info{
-            prepared,
+            stmt,
             std::shared_ptr{std::move(ps)},
             reinterpret_cast<api::impl::database*>(db_.get()),
             [](){},

@@ -28,6 +28,7 @@
 
 #include <takatori/util/maybe_shared_ptr.h>
 
+#include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/parameter_set.h>
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/executor/file/file_reader.h>
@@ -121,7 +122,7 @@ public:
      */
     loader(
         std::vector<std::string> files,
-        api::statement_handle prepared,
+        std::shared_ptr<api::impl::prepared_statement> statement,
         maybe_shared_ptr<api::parameter_set const> parameters,
         std::shared_ptr<transaction_context> tx,
         api::impl::database& db,
@@ -155,9 +156,10 @@ public:
     [[nodiscard]] std::pair<status, std::string> error_info() const noexcept;
 
 private:
+
     std::vector<std::string> files_{};
     std::atomic_size_t running_statement_count_{};
-    api::statement_handle prepared_{};
+    std::shared_ptr<api::impl::prepared_statement> statement_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
     std::shared_ptr<file_reader> reader_{};
     std::shared_ptr<transaction_context> tx_{};

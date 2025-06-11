@@ -47,9 +47,18 @@ public:
         return explain_by_text_only_;
     }
 
+    void session_id(std::optional<std::size_t> arg) noexcept {
+        session_id_ = arg;
+    }
+
+    [[nodiscard]] std::optional<std::size_t> session_id() const noexcept {
+        return session_id_;
+    }
 private:
     ///@brief indicates the compile request is only to explain by text
     bool explain_by_text_only_{false};
+    ///@brief session id that is associated with the prepared statement
+    std::optional<std::size_t> session_id_{};
 
 };
 

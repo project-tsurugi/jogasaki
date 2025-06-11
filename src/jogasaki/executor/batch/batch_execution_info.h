@@ -54,14 +54,14 @@ public:
 
     /**
      * @brief construct new object
-     * @param prepared the statement to be executed
+     * @param statement the statement to be executed
      * @param parameters the parameter prototype (types and names) whose value will be filled on execution
      * @param db the database instance
      * @param cb the callback to be called on batch execution completion
      * @param opt options to customize executor behavior
      */
     batch_execution_info(
-        api::statement_handle prepared,
+        std::shared_ptr<api::impl::prepared_statement> statement,
         maybe_shared_ptr<api::parameter_set const> parameters,
         api::impl::database* db,
         completion_callback_type cb = {},
@@ -71,7 +71,7 @@ public:
     /**
      * @brief accessor to the prepared statement for batch execution
      */
-    [[nodiscard]] api::statement_handle prepared() const noexcept;
+    [[nodiscard]] std::shared_ptr<api::impl::prepared_statement> const& statement() const noexcept;
 
     /**
      * @brief accessor to the parameter prototype
@@ -94,7 +94,7 @@ public:
     [[nodiscard]] batch_executor_option const& options() const noexcept;
 
 private:
-    api::statement_handle prepared_{};
+    std::shared_ptr<api::impl::prepared_statement> statement_{};
     maybe_shared_ptr<api::parameter_set const> parameters_{};
     api::impl::database* db_{};
     completion_callback_type completion_callback_{};

@@ -211,6 +211,30 @@ bool execute_async(
  * @brief execute statement (or query) asynchronously
  * @param database the database to request execution
  * @param tx the transaction used to execute the request
+ * @param stmt prepared statement to execute
+ * @param parameters parameters to fill place holders
+ * @param channel channel to receive statement result records, pass nullptr if no records are to be received
+ * @param on_completion callback on completion of statement execution
+ * @param sync specify true if execution waits for it completion before function finishes. Testing purpose only.
+ * @param req_info exchange the original request/response info (mainly for logging purpose)
+ * @return status::ok when successful
+ * @return error otherwise
+ */
+bool execute_async(
+    api::impl::database& database,
+    std::shared_ptr<transaction_context> tx,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<api::impl::prepared_statement> stmt,  //NOLINT(performance-unnecessary-value-param)
+    std::shared_ptr<api::parameter_set> parameters,
+    maybe_shared_ptr<executor::io::record_channel> const& channel,
+    error_info_stats_callback on_completion,
+    bool sync = false,
+    request_info const& req_info = {}
+);
+
+/**
+ * @brief execute statement (or query) asynchronously
+ * @param database the database to request execution
+ * @param tx the transaction used to execute the request
  * @param prepared prepared statement to execute
  * @param parameters parameters to fill place holders
  * @param channel channel to receive statement result records, pass nullptr if no records are to be received

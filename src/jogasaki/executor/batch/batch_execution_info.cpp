@@ -24,21 +24,21 @@
 namespace jogasaki::executor::batch {
 
 batch_execution_info::batch_execution_info(
-    api::statement_handle prepared,
+    std::shared_ptr<api::impl::prepared_statement> statement,
     maybe_shared_ptr<const api::parameter_set> parameters,
     api::impl::database *db,
     std::function<void(void)> cb,
     batch_executor_option opt
 ) noexcept:
-    prepared_(prepared),
+    statement_(std::move(statement)),
     parameters_(std::move(parameters)),
     db_(db),
     completion_callback_(std::move(cb)),
     options_(std::move(opt))
 {}
 
-api::statement_handle batch_execution_info::prepared() const noexcept {
-    return prepared_;
+std::shared_ptr<api::impl::prepared_statement> const& batch_execution_info::statement() const noexcept {
+    return statement_;
 }
 
 const maybe_shared_ptr<const api::parameter_set> &batch_execution_info::parameters() const noexcept {

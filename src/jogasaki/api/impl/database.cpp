@@ -66,6 +66,7 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/statement_handle.h>
+#include "jogasaki/api/statement_handle_internal.h"
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
@@ -119,6 +120,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/cancel_request.h>
+#include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/external_log_utils.h>
 #include <jogasaki/utils/hex.h>
 #include <jogasaki/utils/proto_debug_string.h>
@@ -299,6 +301,7 @@ status database::stop() {
     global::page_pool().unsafe_dump_info(LOG(INFO) << log_location_prefix << "Memory pool statistics ");
     deinit();
     prepared_statements_.clear();
+    statement_stores_.clear();
 
     transactions_.clear();
     transaction_stores_.clear();
@@ -447,13 +450,26 @@ status database::prepare_common(
     std::unique_ptr<impl::prepared_statement> ptr{};
     auto st = prepare_common(sql, std::move(provider), ptr, out, option);
     if (st == status::ok) {
-        decltype(prepared_statements_)::accessor acc{};
-        api::statement_handle handle{ptr.get(), this};
-        if (prepared_statements_.insert(acc, handle)) {
-            acc->second = std::move(ptr);
-            statement = handle;
+        api::statement_handle handle{ptr.get(), option.session_id()};
+        if (! handle.session_id().has_value()) {
+            decltype(prepared_statements_)::accessor acc{};
+            if (prepared_statements_.insert(acc, handle)) {
+                acc->second = std::move(ptr);
+                statement = handle;
+            } else {
+                throw_exception(std::logic_error{""});
+            }
         } else {
-            throw_exception(std::logic_error{""});
+            auto session_id = option.session_id().value();
+            decltype(statement_stores_)::accessor acc{};
+            auto new_item = statement_stores_.insert(acc, session_id);
+            if (new_item) {
+                acc->second = std::make_shared<statement_store>(session_id);
+            }
+            if (! acc->second->put(handle, std::move(ptr))) {
+                throw_exception(std::logic_error{""});
+            }
+            statement = handle;
         }
     }
     return st;
@@ -704,8 +720,13 @@ status database::resolve(
     std::unique_ptr<api::executable_statement>& statement,
     std::shared_ptr<error::error_info>& out
 ) {
+    auto stmt = get_statement(prepared);
+    if (stmt == nullptr) {
+        out = create_statement_handle_error(prepared);
+        return out->status();
+    }
     return resolve_common(
-        *reinterpret_cast<impl::prepared_statement*>(prepared.get()),  //NOLINT
+        *stmt,
         std::move(parameters),
         statement,
         out
@@ -713,7 +734,7 @@ status database::resolve(
 }
 
 status database::resolve_common(
-    impl::prepared_statement const& prepared,
+    impl::prepared_statement const& stmt,
     maybe_shared_ptr<api::parameter_set const> parameters,
     std::unique_ptr<api::executable_statement>& statement,
     std::shared_ptr<error::error_info>& out
@@ -724,7 +745,7 @@ status database::resolve_common(
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
     ctx->function_provider(scalar_functions_);
-    auto& ps = unsafe_downcast<impl::prepared_statement>(prepared).body();
+    auto& ps = stmt.body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);
     auto params = unsafe_downcast<impl::parameter_set>(*parameters).body();
@@ -741,24 +762,38 @@ status database::resolve_common(
     return status::ok;
 }
 
+status database::destroy_statement_internal(
+    api::statement_handle prepared
+) {
+    if (! prepared.session_id().has_value()) {
+        decltype(prepared_statements_)::accessor acc{};
+        if (prepared_statements_.find(acc, prepared)) {
+            prepared_statements_.erase(acc);
+            return status::ok;
+        }
+        VLOG_LP(log_warning) << "destroy_statement for invalid handle";
+        return status::err_invalid_argument;
+    }
+    decltype(statement_stores_)::accessor acc{};
+    if (statement_stores_.find(acc, prepared.session_id().value())) {
+        if (acc->second->remove(prepared)) {
+            return status::ok;
+        }
+    }
+    VLOG_LP(log_warning) << "destroy_statement for invalid handle";
+    return status::err_invalid_argument;
+}
+
 status database::destroy_statement(
     api::statement_handle prepared
 ) {
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::dispose_statement);
     req->status(scheduler::request_detail_status::accepted);
     log_request(*req);
-    decltype(prepared_statements_)::accessor acc{};
-    if (prepared_statements_.find(acc, prepared)) {
-        prepared_statements_.erase(acc);
-    } else {
-        VLOG_LP(log_warning) << "destroy_statement for invalid handle";
-        req->status(scheduler::request_detail_status::finishing);
-        log_request(*req, false);
-        return status::err_invalid_argument;
-    }
+    auto st = destroy_statement_internal(prepared);
     req->status(scheduler::request_detail_status::finishing);
-    log_request(*req);
-    return status::ok;
+    log_request(*req, st == status::ok);
+    return st;
 }
 
 status database::destroy_transaction(
@@ -1347,9 +1382,16 @@ bool database::execute_load(
     std::vector<std::string> files,
     callback on_completion
 ) {
+    auto stmt = get_statement(prepared);
+    if (stmt == nullptr) {
+        auto err = create_statement_handle_error(prepared);
+        auto rc = err->status();
+        on_completion(rc, std::move(err));
+        return false;
+    }
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::load);
     req->status(scheduler::request_detail_status::accepted);
-    req->statement_text(reinterpret_cast<impl::prepared_statement*>(prepared.get())->body()->sql_text_shared());  //NOLINT
+    req->statement_text(stmt->body()->sql_text_shared());  //NOLINT
     log_request(*req);
 
     auto rctx = impl::create_request_context(
@@ -1364,7 +1406,7 @@ bool database::execute_load(
     auto ldr = executor::batch::batch_executor::create_batch_executor(
         std::move(files),
         executor::batch::batch_execution_info{
-            prepared,
+            std::move(stmt),
             std::move(parameters),
             this,
             [rctx]() {
@@ -1416,14 +1458,33 @@ std::shared_ptr<transaction_store> database::find_transaction_store(std::size_t 
     return {};
 }
 
+std::shared_ptr<statement_store> database::find_statement_store(std::size_t session_id) {
+    decltype(statement_stores_)::accessor acc{};
+    if (statement_stores_.find(acc, session_id)) {
+        return acc->second;
+    }
+    return {};
+}
+
 bool database::remove_transaction_store(std::size_t session_id) {
     return transaction_stores_.erase(session_id);
 }
 
+bool database::remove_statement_store(std::size_t session_id) {
+    return statement_stores_.erase(session_id);
+}
+
 std::shared_ptr<impl::prepared_statement> database::find_statement(api::statement_handle handle) {
-    decltype(prepared_statements_)::accessor acc{};
-    if (prepared_statements_.find(acc, handle)) {
-        return acc->second;
+    if (! handle.session_id().has_value()) {
+        decltype(prepared_statements_)::accessor acc{};
+        if (prepared_statements_.find(acc, handle)) {
+            return acc->second;
+        }
+        return {};
+    }
+    decltype(statement_stores_)::accessor acc{};
+    if (statement_stores_.find(acc, handle.session_id().value())) {
+        return acc->second->lookup(handle);
     }
     return {};
 }

@@ -226,19 +226,6 @@ any multiply<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_ty
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)*static_cast<decimal::Decimal>(r)};
 }
 
-any engine::multiply_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    auto [l, r] = promote_binary_numeric(left, right);
-    switch(l.type_index()) {
-        case any::index<runtime_t<meta::field_type_kind::int4>>: return multiply(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
-        case any::index<runtime_t<meta::field_type_kind::int8>>: return multiply(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
-        case any::index<runtime_t<meta::field_type_kind::float4>>: return multiply(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
-        case any::index<runtime_t<meta::field_type_kind::float8>>: return multiply(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return multiply(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: return return_unsupported();
-    }
-}
-
 template <class T, class U = T>
 any divide(T const& l, U const& r) {
     if (r == 0) {
@@ -254,19 +241,6 @@ any divide<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)/static_cast<decimal::Decimal>(r)};
-}
-
-any engine::divide_any(any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    auto [l, r] = promote_binary_numeric(left, right);
-    switch(l.type_index()) {
-        case any::index<runtime_t<meta::field_type_kind::int4>>: return divide(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
-        case any::index<runtime_t<meta::field_type_kind::int8>>: return divide(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
-        case any::index<runtime_t<meta::field_type_kind::float4>>: return divide(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
-        case any::index<runtime_t<meta::field_type_kind::float8>>: return divide(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return divide(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        default: return return_unsupported();
-    }
 }
 
 template <class T, class U = T>
@@ -542,24 +516,6 @@ any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
         default: return return_unsupported();
     }
     return any{std::in_place_type<bool>, result};
-}
-
-any engine::compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right) {
-    BOOST_ASSERT(left && right);  //NOLINT
-    auto [l, r] = promote_binary_numeric(left, right);
-    switch(l.type_index()) {
-        case any::index<runtime_t<meta::field_type_kind::int4>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
-        case any::index<runtime_t<meta::field_type_kind::int8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
-        case any::index<runtime_t<meta::field_type_kind::float4>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
-        case any::index<runtime_t<meta::field_type_kind::float8>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
-        case any::index<runtime_t<meta::field_type_kind::character>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::character>>(), r.to<runtime_t<meta::field_type_kind::character>>());
-        case any::index<runtime_t<meta::field_type_kind::octet>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::octet>>(), r.to<runtime_t<meta::field_type_kind::octet>>());
-        case any::index<runtime_t<meta::field_type_kind::date>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::date>>(), r.to<runtime_t<meta::field_type_kind::date>>());
-        case any::index<runtime_t<meta::field_type_kind::time_of_day>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::time_of_day>>(), r.to<runtime_t<meta::field_type_kind::time_of_day>>());
-        case any::index<runtime_t<meta::field_type_kind::time_point>>: return compare(optype, l.to<runtime_t<meta::field_type_kind::time_point>>(), r.to<runtime_t<meta::field_type_kind::time_point>>());
-        default: return return_unsupported();
-    }
 }
 
 any engine::operator()(takatori::scalar::immediate const& exp) {
@@ -1060,6 +1016,48 @@ any subtract_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::float4>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
         case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        default: return details::return_unsupported();
+    }
+}
+
+any compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = details::promote_binary_numeric(left, right);
+    switch(l.type_index()) {
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        case any::index<runtime_t<meta::field_type_kind::character>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::character>>(), r.to<runtime_t<meta::field_type_kind::character>>());
+        case any::index<runtime_t<meta::field_type_kind::octet>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::octet>>(), r.to<runtime_t<meta::field_type_kind::octet>>());
+        case any::index<runtime_t<meta::field_type_kind::date>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::date>>(), r.to<runtime_t<meta::field_type_kind::date>>());
+        case any::index<runtime_t<meta::field_type_kind::time_of_day>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::time_of_day>>(), r.to<runtime_t<meta::field_type_kind::time_of_day>>());
+        case any::index<runtime_t<meta::field_type_kind::time_point>>: return details::compare(optype, l.to<runtime_t<meta::field_type_kind::time_point>>(), r.to<runtime_t<meta::field_type_kind::time_point>>());
+        default: return details::return_unsupported();
+    }
+}
+any multiply_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = details::promote_binary_numeric(left, right);
+    switch(l.type_index()) {
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        default: return details::return_unsupported();
+    }
+}
+any divide_any(any const& left, any const& right) {
+    BOOST_ASSERT(left && right);  //NOLINT
+    auto [l, r] = details::promote_binary_numeric(left, right);
+    switch(l.type_index()) {
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return details::divide(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return details::divide(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return details::divide(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return details::divide(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::divide(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
         default: return details::return_unsupported();
     }
 }

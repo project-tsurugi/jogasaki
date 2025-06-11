@@ -518,7 +518,7 @@ jogasaki::api::statement_handle validate_statement_handle(
     }
     jogasaki::api::statement_handle handle{
         reinterpret_cast<void*>(msg.prepared_statement_handle().handle()),  //NOLINT
-        req_info.request_source() ?
+        global::config_pool()->enable_session_store() && req_info.request_source() ?
             std::optional<std::size_t>{req_info.request_source()->session_id()} :
             std::nullopt
     };  //NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)

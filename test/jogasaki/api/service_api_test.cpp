@@ -3055,6 +3055,7 @@ TEST_F(service_api_test, error_with_unsupported_query) {
 }
 
 TEST_F(service_api_test, extract_sql_info) {
+    global::config_pool()->enable_session_store(true);
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
@@ -3099,6 +3100,7 @@ TEST_F(service_api_test, extract_sql_info_missing_statement) {
 
 TEST_F(service_api_test, extract_sql_prepared_on_different_session) {
     // verify prepared statement and tx that are associated on session 1000 can be extracted on session 2000
+    global::config_pool()->enable_session_store(true);
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
     session_id_ = 1000;
     std::uint64_t stmt_handle{};

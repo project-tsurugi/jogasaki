@@ -118,6 +118,34 @@ TEST_F(sql_temporal_types_test, date_literal) {
     }
 }
 
+TEST_F(sql_temporal_types_test, date_string_literal) {
+    // same as date_literal except using string literal
+    execute_statement("create table t (c0 date)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::date>(
+            std::tuple{date_type()}, { date{2000, 1, 1}}
+        )), result[0]);
+    }
+}
+
+TEST_F(sql_temporal_types_test, date_cast_from_string_literal) {
+    // similar to date_string_literal and using CAST expression
+    execute_statement("create table t (c0 varchar)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(c0 as date) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::date>(
+            std::tuple{date_type()}, { date{2000, 1, 1}}
+        )), result[0]);
+    }
+}
+
 TEST_F(sql_temporal_types_test, time_of_day_literal) {
     execute_statement("create table t (c0 time)");
     execute_statement("INSERT INTO t VALUES (TIME'12:34:56.789012345')");
@@ -131,12 +159,68 @@ TEST_F(sql_temporal_types_test, time_of_day_literal) {
     }
 }
 
+TEST_F(sql_temporal_types_test, time_of_day_string_literal) {
+    // same as time_of_day_literal except using string literal
+    execute_statement("create table t (c0 time)");
+    execute_statement("INSERT INTO t VALUES ('12:34:56.789012345')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(
+            std::tuple{time_of_day_type()}, { time_of_day{12, 34, 56, 789012345ns}}
+        )), result[0]);
+    }
+}
+
+TEST_F(sql_temporal_types_test, time_of_day_cast_from_string_literal) {
+    // similar to time_of_day_string_literal and using CAST expression
+    execute_statement("create table t (c0 varchar)");
+    execute_statement("INSERT INTO t VALUES ('12:34:56.789012345')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT CAST(c0 as time) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(
+            std::tuple{time_of_day_type()}, { time_of_day{12, 34, 56, 789012345ns}}
+        )), result[0]);
+    }
+}
+
 TEST_F(sql_temporal_types_test, ts_literal) {
     execute_statement("create table t (c0 timestamp)");
     execute_statement("INSERT INTO t VALUES (TIMESTAMP'2000-01-01 00:00:00')");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
+            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
+        )), result[0]);
+    }
+}
+
+TEST_F(sql_temporal_types_test, ts_string_literal) {
+    // same as ts_literal except using string literal
+    execute_statement("create table t (c0 timestamp)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01 00:00:00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
+            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
+        )), result[0]);
+    }
+}
+
+TEST_F(sql_temporal_types_test, ts_cast_from_string_literal) {
+    // similar to ts_string_literal and using CAST expression
+    execute_statement("create table t (c0 varchar)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01 00:00:00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT cast(c0 as timestamp) FROM t", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
             std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
@@ -160,9 +244,38 @@ TEST_F(sql_temporal_types_test, ts_literal_with_system_offset) {
     }
 }
 
+TEST_F(sql_temporal_types_test, ts_string_literal_with_system_offset) {
+    // same as ts_literal_with_system_offset except using string literal
+    global::config_pool()->zone_offset(9*60);
+    execute_statement("create table t (c0 timestamp)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01 00:00:00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
+            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
+        )), result[0]);
+    }
+}
+
 TEST_F(sql_temporal_types_test, tstz_literal) {
     execute_statement("create table t (c0 timestamp with time zone)");
     execute_statement("INSERT INTO t VALUES (TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:00+09:00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
+            std::tuple{time_point_type(true)}, { time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}}}
+        )), result[0]);
+    }
+}
+
+TEST_F(sql_temporal_types_test, tstz_string_literal) {
+    // same as tstz_literal except using string literal
+    execute_statement("create table t (c0 timestamp with time zone)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01 00:00:00+09:00')");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
@@ -177,6 +290,20 @@ TEST_F(sql_temporal_types_test, tstz_literal_with_no_offset) {
     // when offset is omitted, system zone offset is used (UTC by default)
     execute_statement("create table t (c0 timestamp with time zone)");
     execute_statement("INSERT INTO t VALUES (TIMESTAMP WITH TIME ZONE'2000-01-01 00:00:00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
+            std::tuple{time_point_type(true)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
+        )), result[0]);
+    }
+}
+
+TEST_F(sql_temporal_types_test, tstz_string_literal_with_no_offset) {
+    // same as tstz_literal_with_no_offset except using string literal
+    execute_statement("create table t (c0 timestamp with time zone)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01 00:00:00')");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
@@ -202,5 +329,28 @@ TEST_F(sql_temporal_types_test, tstz_literal_with_no_offset_and_system_offset) {
         )), result[0]);
     }
 }
+
+TEST_F(sql_temporal_types_test, tstz_string_literal_with_no_offset_and_system_offset) {
+    // same as tstz_literal_with_no_offset_and_system_offset except using string literal
+    global::config_pool()->zone_offset(9*60);
+
+    execute_statement("create table t (c0 timestamp with time zone)");
+    execute_statement("INSERT INTO t VALUES ('2000-01-01 00:00:00')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
+            std::tuple{time_point_type(true)}, { time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}}}
+        )), result[0]);
+    }
+}
+
+TEST_F(sql_temporal_types_test, tstz_string_literal_wrong_offset) {
+    // zone offset is wrongly put to the string literal converted to tstz
+    execute_statement("create table t (c0 timestamp without time zone)");
+    test_stmt_err("INSERT INTO t VALUES ('2000-01-01 00:00:00+09:00')", error_code::value_evaluation_exception);
+}
+
 
 }  // namespace jogasaki::testing

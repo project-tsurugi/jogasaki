@@ -32,6 +32,7 @@
 #include <takatori/type/clob.h>
 #include <takatori/type/decimal.h>
 #include <takatori/type/octet.h>
+#include <takatori/type/time_point.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
@@ -59,6 +60,7 @@
 #include <jogasaki/utils/read_lob_file.h>
 #include <jogasaki/utils/to_string.h>
 
+#include "cast_evaluation_temporal.h"
 #include "common.h"
 #include "constants.h"
 
@@ -832,9 +834,12 @@ any cast_from_character(evaluator_context& ctx,
             return from_character::to_octet(sv, ctx, typ.length(), ! typ.varying(), src_padded);
         }
         case k::bit: break;
-        case k::date: break;
-        case k::time_of_day: break;
-        case k::time_point: break;
+        case k::date: return from_character::to_date(sv, ctx);
+        case k::time_of_day: return from_character::to_time_of_day(sv, ctx);;
+        case k::time_point: {
+            auto& typ = unsafe_downcast<takatori::type::time_point>(tgt);
+            return from_character::to_time_point(sv, typ.with_time_zone(), ctx);
+        }
         case k::blob: break;
         case k::clob: return from_character::to_clob(sv, ctx);
         case k::datetime_interval: break;

@@ -48,6 +48,7 @@
 #include <jogasaki/api/transaction_handle_internal.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
+#include <jogasaki/executor/expr/details/cast_evaluation_temporal.h>
 #include <jogasaki/executor/expr/details/common.h>
 #include <jogasaki/executor/expr/details/decimal_context.h>
 #include <jogasaki/executor/expr/error.h>
@@ -62,11 +63,13 @@
 #include <jogasaki/test_utils.h>
 #include <jogasaki/test_utils/make_triple.h>
 #include <jogasaki/utils/create_tx.h>
+#include "jogasaki/executor/expr/details/cast_evaluation_temporal.h"
 
 namespace jogasaki::executor::expr {
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
+using namespace std::chrono_literals;
 using namespace meta;
 using namespace takatori::util;
 using namespace yugawara::binding;
@@ -95,6 +98,9 @@ using immediate = takatori::scalar::immediate;
 using compiled_info = yugawara::compiled_info;
 
 using takatori::decimal::triple;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 
 class cast_from_string_test : public test_root, public api_test_base {
 public:
@@ -532,6 +538,85 @@ TEST_F(cast_from_string_test, to_clob) {
     auto loc = ref.locator();
     EXPECT_EQ(lob::lob_reference_kind::resolved, ref.kind());
     ASSERT_FALSE(loc);
+}
+
+TEST_F(cast_from_string_test, to_date) {
+    evaluator_context ctx{&resource_};
+    EXPECT_EQ((any{std::in_place_type<date>, date{2000, 1, 1}}), to_date("2000-01-01", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<date>, date{1, 1, 1}}), to_date("1-1-1", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<date>, date{20000, 12, 31}}), to_date("20000-12-31", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_date("", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_date("wrong text", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_date("2000-00-01", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_date("2000-00-", ctx));
+    EXPECT_EQ((any{std::in_place_type<date>, date{2000, 1, 1}}), to_date("  2000-01-01 ", ctx)); lost_precision(false);
+}
+
+TEST_F(cast_from_string_test, to_time_of_day) {
+    evaluator_context ctx{&resource_};
+    EXPECT_EQ((any{std::in_place_type<time_of_day>, time_of_day{0, 0, 0, 0ns}}), to_time_of_day("00:00:00.000000000", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_of_day>, time_of_day{0, 0, 0, 0ns}}), to_time_of_day("00:00:00", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_of_day>, time_of_day{1, 2, 3, 400ms}}), to_time_of_day("1:2:3.4", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_of_day>, time_of_day{23, 59, 59, 999999999ns}}), to_time_of_day("23:59:59.999999999", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_of_day>, time_of_day{23, 59, 59, 0ns}}), to_time_of_day("23:59:59", ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_of_day("", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_of_day("wrong text", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_of_day("00:00", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_of_day("00:00:00.0000000001", ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_of_day("00:00:00.", ctx));
+    EXPECT_EQ((any{std::in_place_type<time_of_day>, time_of_day{0, 0, 0, 0ns}}), to_time_of_day("  00:00:00.000000000 ", ctx)); lost_precision(false);
+}
+
+TEST_F(cast_from_string_test, to_time_point_wo_tz) {
+    evaluator_context ctx{&resource_};
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{1, 1, 1}, time_of_day{0, 0, 0, 0ns}}}), to_time_point("0001-01-01T00:00:00.000000000", false, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{9999, 12, 31}, time_of_day{23, 59, 59, 999999999ns}}}), to_time_point("9999-12-31T23:59:59.999999999", false, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 2}, time_of_day{3, 4, 5, 600ms}}}), to_time_point("2000-1-2 3:4:5.6", false, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 2}, time_of_day{0, 0, 0, 0ns}}}), to_time_point("2000-01-02", false, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_point("", false, ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_point("wrong text", false, ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_point("2000-01-00 03:04:05", false, ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_point("2000-01 03:04:05", false, ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_point("2000-01-02 03:04", false, ctx));
+
+    // specified time zone is invalid when converting to time_point without time zone
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_point("2000-01-02 03:04:05Z", false, ctx));
+    EXPECT_EQ((any{std::in_place_type<error>, error_kind::format_error}), to_time_point("2000-01-02 03:04:05+00:00", false, ctx));
+
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{1, 1, 1}, time_of_day{0, 0, 0, 0ns}}}), to_time_point("  0001-01-01T00:00:00.000000000 ", false, ctx)); lost_precision(false);
+}
+TEST_F(cast_from_string_test, to_time_point_w_tz) {
+    // when converting to time_point with time zone, you can specify/omit time zone
+    // when omitting, the time zone is assumed to be the one given by global config.
+    global::config_pool()->zone_offset(0);
+    evaluator_context ctx{&resource_};
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{1, 1, 1}, time_of_day{0, 0, 0, 0ns}}}), to_time_point("0001-01-01T00:00:00.000000000", true, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{9999, 12, 31}, time_of_day{23, 59, 59, 999999999ns}}}), to_time_point("9999-12-31T23:59:59.999999999", true, ctx)); lost_precision(false);
+
+    global::config_pool()->zone_offset(60); // i.e. +01:00
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 1}, time_of_day{0, 0, 0, 0ns}}}), to_time_point("2000-01-01 01:00:00.000000000", true, ctx)); lost_precision(false);
+    global::config_pool()->zone_offset(-60); // i.e. -01:00
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 1}, time_of_day{2, 0, 0, 0ns}}}), to_time_point("2000-01-01 01:00:00.000000000", true, ctx)); lost_precision(false);
+
+    global::config_pool()->zone_offset(60*9); // i.e. +09:00
+    // specified time zone is invalid when converting to time_point without time zone
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 2}, time_of_day{3, 4, 5, 0ns}}}), to_time_point("2000-01-02 03:04:05Z", true, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 2}, time_of_day{3, 4, 5, 0ns}}}), to_time_point("2000-01-02 03:04:05+00:00", true, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 2}, time_of_day{2, 4, 5, 0ns}}}), to_time_point("2000-01-02 03:04:05+01:00", true, ctx)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<time_point>,
+        time_point{date{2000, 1, 2}, time_of_day{4, 4, 5, 0ns}}}), to_time_point("2000-01-02 03:04:05-01:00", true, ctx)); lost_precision(false);
 }
 
 }

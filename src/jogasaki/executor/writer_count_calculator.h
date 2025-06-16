@@ -15,9 +15,8 @@
  */
 #pragma once
 
-#include <jogasaki/transaction_context.h>
 #include <jogasaki/api/executable_statement.h>
-
+#include <jogasaki/transaction_context.h>
 
 #include <takatori/plan/step.h>
 
@@ -34,26 +33,35 @@ bool has_emit_operator(takatori::plan::step const& s) noexcept;
 /**
  * @brief calculate partition for terminal
  * @param s the plan of step
+ * @param partitions the number of partitions
  * @return size of the partition
  */
-size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept;
+size_t terminal_calculate_partition(takatori::plan::step const& s, size_t partitions) noexcept;
 
 /**
  * @brief calculate partition for intermediate
  * @param s the plan of step
+ * @param partitions the number of partitions
  * @details "scan" and "find" do not appear in the same location.
  * @see https://github.com/project-tsurugi/takatori/blob/master/docs/ja/execution-model.md
  * @return size of the partition
  */
-size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept;
+size_t intermediate_calculate_partition(takatori::plan::step const& s, size_t partitions) noexcept;
 
 /**
  * @brief calculate partition
  * @param s the plan of step
+ * @param partitions the number of partitions
  * @return the computed partition size.
  */
-size_t calculate_partition(takatori::plan::step const& s) noexcept;
-}
+size_t calculate_partition(takatori::plan::step const& s, size_t partitions) noexcept;
+} // namespace impl
+/**
+ * @brief Calculate the maximum number of writers for a given statement.
+ * @param stmt the executable statement
+ * @param tx the transaction context
+ * @return the maximum number of writers
+ */
 [[nodiscard]] std::size_t calculate_max_writer_count(
     api::executable_statement const& stmt, transaction_context const& tx);
 

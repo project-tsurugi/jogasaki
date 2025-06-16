@@ -55,17 +55,18 @@ bool has_emit_operator(takatori::plan::step const& s) noexcept {
     return has_emit;
 }
 
-size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept {
+size_t terminal_calculate_partition(
+    takatori::plan::step const& s, const size_t partitions) noexcept {
     size_t partition = global::config_pool()->default_partitions();
-    auto& process = unsafe_downcast<takatori::plan::process const>(s);
+    auto& process    = unsafe_downcast<takatori::plan::process const>(s);
     takatori::relation::sort_from_upstream(
-        process.operators(), [&partition](takatori::relation::expression const& op) {
+        process.operators(), [&partition, partitions](takatori::relation::expression const& op) {
             if (op.kind() == takatori::relation::expression_kind::scan) {
                 // Cannot determine if the transaction is RTX, so not checking here.
                 // kvs::transaction_option::transaction_type::read_only;
-                if (global::config_pool()->scan_default_parallel() >
+                if (partitions >
                     0) { // TODO support scan_parallel setting passed via transaction_context
-                    partition = global::config_pool()->scan_default_parallel();
+                    partition = partitions;
                 } else {
                     partition = 1;
                 }
@@ -76,15 +77,16 @@ size_t terminal_calculate_partition(takatori::plan::step const& s) noexcept {
     return partition;
 }
 
-size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept {
+size_t intermediate_calculate_partition(
+    takatori::plan::step const& s, std::size_t partitions) noexcept {
     size_t sum = 0;
     switch (s.kind()) {
         case takatori::plan::step_kind::process: {
             auto& process         = unsafe_downcast<takatori::plan::process>(s);
             const auto& upstreams = process.upstreams();
-            if (upstreams.empty()) { return terminal_calculate_partition(s); }
+            if (upstreams.empty()) { return terminal_calculate_partition(s, partitions); }
             for (auto&& t : upstreams) {
-                auto par = intermediate_calculate_partition(t);
+                auto par = intermediate_calculate_partition(t, partitions);
                 if (sum != 0 && sum != par) {
                     VLOG_LP(log_error) << "two upstreams have different partitions " << sum << ", "
                                        << par << ", this should not happen normally";
@@ -101,7 +103,7 @@ size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept 
             break;
         case takatori::plan::step_kind::forward: {
             for (auto&& t : unsafe_downcast<takatori::plan::exchange>(s).upstreams()) {
-                sum += intermediate_calculate_partition(t);
+                sum += intermediate_calculate_partition(t, partitions);
             }
             break;
         }
@@ -113,25 +115,28 @@ size_t intermediate_calculate_partition(takatori::plan::step const& s) noexcept 
     return sum;
 }
 
-size_t calculate_partition(takatori::plan::step const& s) noexcept {
+size_t calculate_partition(takatori::plan::step const& s, const std::size_t partitions) noexcept {
     auto& process  = unsafe_downcast<takatori::plan::process>(s);
     auto partition = global::config_pool()->default_partitions();
     if (!process.downstreams().empty()) {
         VLOG_LP(log_error) << "The bottom of graph_type must not have downstreams";
     } else {
-        partition = intermediate_calculate_partition(s);
+        partition = intermediate_calculate_partition(s, partitions);
     }
     return partition;
 }
 
-size_t get_partitions(maybe_shared_ptr<statement::statement> const& statement) {
+size_t get_partitions(
+    maybe_shared_ptr<statement::statement> const& statement, const std::size_t partitions) {
     if (statement->kind() == statement::statement_kind::execute) {
         auto container = std::make_shared<plan::mirror_container>();
         takatori::plan::enumerate_bottom(
             unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
-            [&container](takatori::plan::step const& s) {
+            [&container, partitions](takatori::plan::step const& s) {
                 if (s.kind() == takatori::plan::step_kind::process) {
-                    if (has_emit_operator(s)) { container->set_partitions(calculate_partition(s)); }
+                    if (has_emit_operator(s)) {
+                        container->set_partitions(calculate_partition(s, partitions));
+                    }
                 } else {
                     VLOG_LP(log_error) << "The bottom of graph_type must be process.";
                 }
@@ -143,18 +148,16 @@ size_t get_partitions(maybe_shared_ptr<statement::statement> const& statement) {
 
 } // namespace impl
 
-
 std::size_t calculate_max_writer_count(
     api::executable_statement const& stmt, transaction_context const& tx) {
-    auto& s = unsafe_downcast<api::impl::executable_statement>(stmt).body()->statement();
+    auto& s         = unsafe_downcast<api::impl::executable_statement>(stmt).body()->statement();
     auto partitions = global::config_pool()->scan_default_parallel();
-    auto& option = tx.option();
+    auto& option    = tx.option();
     if (option && option->scan_parallel().has_value()) {
         partitions = option->scan_parallel().value();
-        global::config_pool()->scan_default_parallel(partitions);
     }
     if (s->kind() == takatori::statement::statement_kind::execute) {
-        partitions = impl::get_partitions(s);
+        partitions = impl::get_partitions(s, partitions);
     }
     if (VLOG_IS_ON(log_debug)) {
         std::stringstream ss{};

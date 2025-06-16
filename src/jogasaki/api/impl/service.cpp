@@ -67,6 +67,7 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
 #include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/logging.h>
@@ -1558,7 +1559,8 @@ void service::execute_query(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        const auto max_write_count = get_write_count(*e);
+        const auto max_write_count =
+            executor::calculate_max_writer_count(*e, *get_transaction_context(tx));
         if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
@@ -1756,7 +1758,8 @@ void service::execute_dump(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        const auto max_write_count = get_write_count(*e);
+        const auto max_write_count =
+            executor::calculate_max_writer_count(*e, *get_transaction_context(tx));
         if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
@@ -1896,17 +1899,6 @@ bool service::start() {
 
 jogasaki::api::database* service::database() const noexcept {
     return db_;
-}
-
-std::size_t service::get_write_count(jogasaki::api::executable_statement const& es) const noexcept {
-    const auto& impl_stmt = get_impl(es);
-    const auto partitions = impl_stmt.body()->mirrors()->get_partitions();
-    if (VLOG_IS_ON(log_debug)) {
-        std::stringstream ss{};
-        ss << "write_count:" << partitions << " Use calculate_partition";
-        VLOG_LP(log_debug) << ss.str();
-    }
-    return partitions;
 }
 
 }  // namespace jogasaki::api::impl

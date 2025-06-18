@@ -36,8 +36,8 @@ namespace jogasaki::executor {
 using takatori::util::maybe_shared_ptr;
 using takatori::util::unsafe_downcast;
 namespace statement = ::takatori::statement;
-
 namespace impl {
+
 const api::impl::executable_statement& get_impl(const api::executable_statement& stmt) {
     return unsafe_downcast<const api::impl::executable_statement>(stmt);
 }
@@ -56,37 +56,32 @@ bool has_emit_operator(takatori::plan::step const& s) noexcept {
 }
 
 size_t terminal_calculate_partition(
-    takatori::plan::step const& s, const size_t partitions) noexcept {
-    size_t partition = global::config_pool()->default_partitions();
-    auto& process    = unsafe_downcast<takatori::plan::process const>(s);
+    takatori::plan::step const& s, const size_t partitions, bool is_rtx) noexcept {
+    std::size_t result = global::config_pool()->default_partitions();
+    auto& process      = unsafe_downcast<takatori::plan::process const>(s);
     takatori::relation::sort_from_upstream(
-        process.operators(), [&partition, partitions](takatori::relation::expression const& op) {
-            if (op.kind() == takatori::relation::expression_kind::scan) {
-                // Cannot determine if the transaction is RTX, so not checking here.
-                // kvs::transaction_option::transaction_type::read_only;
-                if (partitions >
-                    0) { // TODO support scan_parallel setting passed via transaction_context
-                    partition = partitions;
-                } else {
-                    partition = 1;
-                }
-            } else if (op.kind() == takatori::relation::expression_kind::find) {
-                partition = 1;
+        process.operators(), [&](const takatori::relation::expression& op) {
+            switch (op.kind()) {
+                case takatori::relation::expression_kind::scan:
+                    result = (is_rtx && partitions > 0) ? partitions : 1;
+                    break;
+                case takatori::relation::expression_kind::find: result = 1; break;
+                default: break;
             }
         });
-    return partition;
+    return result;
 }
 
 size_t intermediate_calculate_partition(
-    takatori::plan::step const& s, std::size_t partitions) noexcept {
+    takatori::plan::step const& s, std::size_t partitions, bool is_rtx) noexcept {
     size_t sum = 0;
     switch (s.kind()) {
         case takatori::plan::step_kind::process: {
             auto& process         = unsafe_downcast<takatori::plan::process>(s);
             const auto& upstreams = process.upstreams();
-            if (upstreams.empty()) { return terminal_calculate_partition(s, partitions); }
+            if (upstreams.empty()) { return terminal_calculate_partition(s, partitions, is_rtx); }
             for (auto&& t : upstreams) {
-                auto par = intermediate_calculate_partition(t, partitions);
+                auto par = intermediate_calculate_partition(t, partitions, is_rtx);
                 if (sum != 0 && sum != par) {
                     VLOG_LP(log_error) << "two upstreams have different partitions " << sum << ", "
                                        << par << ", this should not happen normally";
@@ -103,7 +98,7 @@ size_t intermediate_calculate_partition(
             break;
         case takatori::plan::step_kind::forward: {
             for (auto&& t : unsafe_downcast<takatori::plan::exchange>(s).upstreams()) {
-                sum += intermediate_calculate_partition(t, partitions);
+                sum += intermediate_calculate_partition(t, partitions, is_rtx);
             }
             break;
         }
@@ -115,35 +110,38 @@ size_t intermediate_calculate_partition(
     return sum;
 }
 
-size_t calculate_partition(takatori::plan::step const& s, const std::size_t partitions) noexcept {
+size_t calculate_partition(
+    takatori::plan::step const& s, const std::size_t partitions, bool is_rtx) noexcept {
     auto& process  = unsafe_downcast<takatori::plan::process>(s);
     auto partition = global::config_pool()->default_partitions();
     if (!process.downstreams().empty()) {
         VLOG_LP(log_error) << "The bottom of graph_type must not have downstreams";
     } else {
-        partition = intermediate_calculate_partition(s, partitions);
+        partition = intermediate_calculate_partition(s, partitions, is_rtx);
     }
     return partition;
 }
 
-size_t get_partitions(
-    maybe_shared_ptr<statement::statement> const& statement, const std::size_t partitions) {
-    if (statement->kind() == statement::statement_kind::execute) {
-        auto container = std::make_shared<plan::mirror_container>();
-        takatori::plan::enumerate_bottom(
-            unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
-            [&container, partitions](takatori::plan::step const& s) {
-                if (s.kind() == takatori::plan::step_kind::process) {
-                    if (has_emit_operator(s)) {
-                        container->set_partitions(calculate_partition(s, partitions));
-                    }
-                } else {
-                    VLOG_LP(log_error) << "The bottom of graph_type must be process.";
+size_t get_partitions(maybe_shared_ptr<statement::statement> const& statement,
+    const std::size_t partitions, bool is_rtx) {
+    if (!statement || statement->kind() != statement::statement_kind::execute) { return 0; }
+    std::size_t result = 0;
+    bool found         = false;
+    takatori::plan::enumerate_bottom(
+        unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
+        [&](const takatori::plan::step& s) {
+            if (s.kind() == takatori::plan::step_kind::process) {
+                if (has_emit_operator(s)) {
+                    result = calculate_partition(s, partitions, is_rtx);
+                    found  = true;
+                    return true;
                 }
-            });
-        return container->get_partitions();
-    }
-    return 0;
+            } else {
+                VLOG_LP(log_error) << "The bottom of graph_type must be process.";
+            }
+            return false;
+        });
+    return found ? result : 0;
 }
 
 } // namespace impl
@@ -157,7 +155,7 @@ std::size_t calculate_max_writer_count(
         partitions = option->scan_parallel().value();
     }
     if (s->kind() == takatori::statement::statement_kind::execute) {
-        partitions = impl::get_partitions(s, partitions);
+        partitions = impl::get_partitions(s, partitions, option->readonly());
     }
     if (VLOG_IS_ON(log_debug)) {
         std::stringstream ss{};

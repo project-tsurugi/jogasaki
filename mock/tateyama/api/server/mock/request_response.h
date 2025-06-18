@@ -132,6 +132,10 @@ public:
     std::string_view connection_information() const noexcept override {
         return "connection-information";
     }
+
+    std::optional<std::string_view> username() const noexcept override {
+        return {};
+    }
 };
 
 class test_blob_info : public blob_info {

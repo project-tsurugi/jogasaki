@@ -1564,13 +1564,22 @@ void service::execute_query(
             // invalid handle
             auto err_info = create_error_info(error_code::transaction_not_found_exception,
                 "Transaction handle is invalid.", status::err_invalid_argument);
-            details::error<sql::response::GetTransactionStatus>(*res, err_info.get(), req_info);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        const auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
-        if (max_write_count > global::config_pool()->max_result_set_writers()) {
+        auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
+        if (!max_write_count.has_value()) {
+            auto msg = string_builder{}
+                       << "calculate_max_writer_count failed (statement_kind::execute not exists)"
+                       << string_builder::to_string;
+            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
+                msg, status::err_resource_limit_reached);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        if (max_write_count.value() > global::config_pool()->max_result_set_writers()) {
             auto msg = string_builder{} << "The requested statement was too complex to process."
-                                        << "The calculated paration (" << max_write_count << ") "
+                                        << "The calculated paration (" << max_write_count.value() << ") "
                                         << "exceeded sql.max_result_set_writers ("
                                         << global::config_pool()->max_result_set_writers() << ")"
                                         << string_builder::to_string;
@@ -1579,7 +1588,7 @@ void service::execute_query(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count.value());
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
@@ -1781,13 +1790,22 @@ void service::execute_dump(
             // invalid handle
             auto err_info = create_error_info(error_code::transaction_not_found_exception,
                 "Transaction handle is invalid.", status::err_invalid_argument);
-            details::error<sql::response::GetTransactionStatus>(*res, err_info.get(), req_info);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        const auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
-        if (max_write_count > global::config_pool()->max_result_set_writers()) {
+        auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
+        if (!max_write_count.has_value()) {
+            auto msg = string_builder{}
+                       << "calculate_max_writer_count failed (statement_kind::execute not exists)"
+                       << string_builder::to_string;
+            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
+                msg, status::err_resource_limit_reached);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        if (max_write_count.value() > global::config_pool()->max_result_set_writers()) {
             auto msg = string_builder{} << "The requested statement was too complex to process."
-                                        << "The calculated paration (" << max_write_count << ") "
+                                        << "The calculated paration (" << max_write_count.value() << ") "
                                         << "exceeded sql.max_result_set_writers ("
                                         << global::config_pool()->max_result_set_writers() << ")"
                                         << string_builder::to_string;
@@ -1796,7 +1814,7 @@ void service::execute_dump(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count.value());
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =

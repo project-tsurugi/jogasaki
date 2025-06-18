@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 #pragma once
-
 #include <jogasaki/api/executable_statement.h>
 #include <jogasaki/transaction_context.h>
+#include <optional>
 
 #include <takatori/plan/step.h>
 
@@ -68,7 +68,7 @@ size_t calculate_partition(takatori::plan::step const& s, size_t partitions, boo
  * @param tx the transaction context
  * @return the maximum number of writers
  */
-[[nodiscard]] std::size_t calculate_max_writer_count(
+[[nodiscard]] std::optional<std::size_t> calculate_max_writer_count(
     api::executable_statement const& stmt, transaction_context const& tx);
 
 } // namespace jogasaki::executor

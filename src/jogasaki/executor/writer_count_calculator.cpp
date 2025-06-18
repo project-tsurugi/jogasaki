@@ -126,27 +126,23 @@ size_t get_partitions(maybe_shared_ptr<statement::statement> const& statement,
     const std::size_t partitions, bool is_rtx) {
     if (!statement || statement->kind() != statement::statement_kind::execute) { return 0; }
     std::size_t result = 0;
-    bool found         = false;
     takatori::plan::enumerate_bottom(
         unsafe_downcast<takatori::statement::execute>(*statement).execution_plan(),
         [&](const takatori::plan::step& s) {
             if (s.kind() == takatori::plan::step_kind::process) {
                 if (has_emit_operator(s)) {
                     result = calculate_partition(s, partitions, is_rtx);
-                    found  = true;
-                    return true;
                 }
             } else {
                 VLOG_LP(log_error) << "The bottom of graph_type must be process.";
             }
-            return false;
         });
-    return found ? result : 0;
+    return result;
 }
 
 } // namespace impl
 
-std::size_t calculate_max_writer_count(
+std::optional<std::size_t> calculate_max_writer_count(
     api::executable_statement const& stmt, transaction_context const& tx) {
     auto& s         = unsafe_downcast<api::impl::executable_statement>(stmt).body()->statement();
     auto partitions = global::config_pool()->scan_default_parallel();
@@ -156,13 +152,14 @@ std::size_t calculate_max_writer_count(
     }
     if (s->kind() == takatori::statement::statement_kind::execute) {
         partitions = impl::get_partitions(s, partitions, option->readonly());
+        if (VLOG_IS_ON(log_debug)) {
+            std::stringstream ss{};
+            ss << "write_count:" << partitions << " Use calculate_partition";
+            VLOG_LP(log_debug) << ss.str();
+        }
+        return partitions;
     }
-    if (VLOG_IS_ON(log_debug)) {
-        std::stringstream ss{};
-        ss << "write_count:" << partitions << " Use calculate_partition";
-        VLOG_LP(log_debug) << ss.str();
-    }
-    return partitions;
+    return std::nullopt;
 }
 
 } // namespace jogasaki::executor

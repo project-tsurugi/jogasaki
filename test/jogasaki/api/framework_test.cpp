@@ -110,6 +110,11 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "epoch_duration=40000\n"
         "waiting_resolver_threads=2\n"
 
+    "[authentication]\n"
+        "enabled=false\n"
+        "url=http://localhost:8080/harinoki\n"
+        "request_timeout=0\n"
+
     "[datastore]\n"
         "logging_max_parallelism=112\n"
         "log_location="

@@ -67,6 +67,7 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
 #include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/logging.h>
@@ -1558,8 +1559,36 @@ void service::execute_query(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        const auto max_write_count = get_write_count(*e);
-        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
+        auto tctx = get_transaction_context(tx);
+        if (!tctx) {
+            // invalid handle
+            auto err_info = create_error_info(error_code::transaction_not_found_exception,
+                "Transaction handle is invalid.", status::err_invalid_argument);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
+        if (!max_write_count.has_value()) {
+            auto msg = string_builder{}
+                       << "calculate_max_writer_count failed (statement_kind::execute not exists)"
+                       << string_builder::to_string;
+            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
+                msg, status::err_unsupported);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        if (max_write_count.value() > global::config_pool()->max_result_set_writers()) {
+            auto msg = string_builder{} << "The requested statement was too complex to process."
+                                        << "The calculated paration (" << max_write_count.value() << ") "
+                                        << "exceeded sql.max_result_set_writers ("
+                                        << global::config_pool()->max_result_set_writers() << ")"
+                                        << string_builder::to_string;
+            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
+                msg, status::err_resource_limit_reached);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count.value());
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
@@ -1756,8 +1785,36 @@ void service::execute_dump(
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
     {
         trace_scope_name("acquire_channel");  //NOLINT
-        const auto max_write_count = get_write_count(*e);
-        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count);
+        auto tctx = get_transaction_context(tx);
+        if (!tctx) {
+            // invalid handle
+            auto err_info = create_error_info(error_code::transaction_not_found_exception,
+                "Transaction handle is invalid.", status::err_invalid_argument);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
+        if (!max_write_count.has_value()) {
+            auto msg = string_builder{}
+                       << "calculate_max_writer_count failed (statement_kind::execute not exists)"
+                       << string_builder::to_string;
+            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
+                msg, status::err_unsupported);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        if (max_write_count.value() > global::config_pool()->max_result_set_writers()) {
+            auto msg = string_builder{} << "The requested statement was too complex to process."
+                                        << "The calculated paration (" << max_write_count.value() << ") "
+                                        << "exceeded sql.max_result_set_writers ("
+                                        << global::config_pool()->max_result_set_writers() << ")"
+                                        << string_builder::to_string;
+            auto err_info =
+                create_error_info(error_code::unsupported_runtime_feature_exception, msg, status::err_resource_limit_reached);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count.value());
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
@@ -1896,17 +1953,6 @@ bool service::start() {
 
 jogasaki::api::database* service::database() const noexcept {
     return db_;
-}
-
-std::size_t service::get_write_count(jogasaki::api::executable_statement const& es) const noexcept {
-    const auto& impl_stmt = get_impl(es);
-    const auto partitions = impl_stmt.body()->mirrors()->get_partitions();
-    if (VLOG_IS_ON(log_debug)) {
-        std::stringstream ss{};
-        ss << "write_count:" << partitions << " Use calculate_partition";
-        VLOG_LP(log_debug) << ss.str();
-    }
-    return partitions;
 }
 
 }  // namespace jogasaki::api::impl

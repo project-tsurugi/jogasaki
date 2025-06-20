@@ -66,7 +66,8 @@ size_t calculate_partition(takatori::plan::step const& s, size_t partitions, boo
  * @brief Calculate the maximum number of writers for a given statement.
  * @param stmt the executable statement
  * @param tx the transaction context
- * @return the maximum number of writers
+ * @return the maximum number of writers.
+ *         Returns std::nullopt if the statement is not an EXECUTE statement.
  */
 [[nodiscard]] std::optional<std::size_t> calculate_max_writer_count(
     api::executable_statement const& stmt, transaction_context const& tx);

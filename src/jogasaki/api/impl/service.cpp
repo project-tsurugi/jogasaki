@@ -1573,7 +1573,7 @@ void service::execute_query(
                        << "calculate_max_writer_count failed (statement_kind::execute not exists)"
                        << string_builder::to_string;
             auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
-                msg, status::err_resource_limit_reached);
+                msg, status::err_unsupported);
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
@@ -1799,7 +1799,7 @@ void service::execute_dump(
                        << "calculate_max_writer_count failed (statement_kind::execute not exists)"
                        << string_builder::to_string;
             auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
-                msg, status::err_resource_limit_reached);
+                msg, status::err_unsupported);
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }

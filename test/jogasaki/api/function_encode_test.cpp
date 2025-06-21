@@ -116,7 +116,7 @@ TEST_F(function_encode_test, two) {
     execute_statement("create table t (c0 varbinary(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'Base64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
@@ -130,7 +130,7 @@ TEST_F(function_encode_test, three) {
     execute_statement("create table t (c0 varbinary(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'bAse64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
@@ -144,7 +144,7 @@ TEST_F(function_encode_test, four) {
     execute_statement("create table t (c0 varbinary(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'baSe64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
@@ -158,7 +158,7 @@ TEST_F(function_encode_test, zero) {
     execute_statement("create table t (c0 varbinary(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'basE64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
@@ -172,7 +172,7 @@ TEST_F(function_encode_test, zeroone) {
     execute_statement("create table t (c0 varbinary(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'BASE64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
@@ -186,7 +186,21 @@ TEST_F(function_encode_test, four_over) {
     execute_statement("create table t (c0 varbinary(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'BAse64') FROM t ");
+    std::vector<mock::basic_record> result{};
+    execute_query(query, result);
+    ASSERT_EQ(1, result.size()) << "Query failed: " << query;
+    accessor::text expected_text(res);
+    EXPECT_EQ(create_nullable_record<kind::character>(expected_text), result[0])
+        << "Failed query: " << query;
+}
+TEST_F(function_encode_test, empty) {
+    std::string input = std::string("");
+    std::string res   = std::string("");
+    execute_statement("create table t (c0 varbinary(20))");
+    std::string insert = "insert into t values ('" + input + "')";
+    execute_statement(insert);
+    std::string query = std::string("SELECT encode(c0,'BAse64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
@@ -200,7 +214,7 @@ TEST_F(function_encode_test, binary) {
     execute_statement("create table t (c0 binary(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'baSE64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
@@ -222,7 +236,7 @@ TEST_F(function_encode_test, null) {
     std::string input = std::string("null");
     execute_statement("create table t (c0 binary(20))");
     std::string insert = "insert into t values ('" + input + "')";
-    std::string query  = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query  = std::string("SELECT encode(c0,'BASe64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(0, result.size()) << "Query failed: " << query;
@@ -234,7 +248,7 @@ TEST_F(function_encode_test, base64varchar) {
     execute_statement("create table t (c0 varbinary(20) ,c1 varchar(20))");
     std::string insert = "insert into t values ('" + input + "' ,'base64' )";
     execute_statement(insert);
-    std::string query = std::string("SELECT encode(c0,'base64') FROM t ");
+    std::string query = std::string("SELECT encode(c0,'bASE64') FROM t ");
     std::vector<mock::basic_record> result{};
     execute_query(query, result);
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;

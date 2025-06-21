@@ -15,7 +15,8 @@
  */
 #include "base64_utils.h"
 #include <array>
-#include <iostream>
+#include <cctype>
+#include <regex>
 namespace jogasaki::utils {
 
 // X'6162'
@@ -88,6 +89,104 @@ namespace jogasaki::utils {
     // padding
     while ((output.size() % 4) != 0) {
         output.push_back('=');
+    }
+    return output;
+}
+
+[[nodiscard]] bool is_base64(std::string_view sv) {
+    // The length of sv must be a multiple of 4
+    if (sv.empty() || sv.size() % 4 != 0) { return false; }
+    for (size_t i = 0; i < sv.size(); ++i) {
+        auto c = static_cast<unsigned char>(sv[i]);
+        // Valid Base64 characters: A-Z, a-z, 0-9, +, /
+        if (static_cast<bool>(std::isalnum(static_cast<unsigned char>(c))) || c == '+' ||
+            c == '/') {
+            continue;
+        }
+        // Padding
+        if (c == '=') {
+            // Padding is allowed only at the end and must be at most 2 characters
+            if (i < sv.size() - 2) return false;
+            if (i == sv.size() - 2 && sv.back() != '=') return false;
+            continue;
+        }
+        // invalid characters
+        return false;
+    }
+
+    return true;
+}
+
+// YUA=
+// Y (24)
+// buffer = 00000000 00000000 00000000 00011000
+// buffered_bits = 6
+// U (20)
+//          00000000 00000000 00000000 00011000 << 6 | 00010100
+// buffer = 00000000 00000000 00000110 00010100
+// buffered_bits = 12
+// buffered_bits = 4
+// 00000000 00000000 00000110 00010100 >> 4) & 0xFF
+// 00000000 00000000 00000000 01100001 & 0xFF
+//                            01100001
+// 0x61
+// A (0)
+//          00000000 00000000 00000110 00010100 << 6 | 00000000
+// buffer = 00000000 00000001 10000101 00000000
+// buffered_bits = 10
+// buffered_bits = 2
+// 00000000 00000001 10000101 00000000 >> 2) & 0xFF
+// 00000000 00000000 01100001 01000000 & 0xFF
+//                            01000000
+// 0x40
+// = ()
+// break
+// ∴ 0x61 0x40
+[[nodiscard]] std::string decode_base64(std::string_view input) {
+    // See ASCII table: https://www.ascii-code.com/
+    constexpr std::array<uint8_t, 123> decode_table = {
+        // ASCII codes 0–42: all invalid (0xFF)
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 0–9
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 10–19
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 20–29
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 30–39
+        0xFF, 0xFF, 0xFF,                                           // 40–42
+        // 43 ('+')～47 ('/')
+        62, 0xFF, 0xFF, 0xFF, 63, // 43–47
+        // 48 ('0')～57 ('9')
+        52, 53, 54, 55, 56, 57, 58, 59, 60, 61, // 48-57
+        // 58～64 (: ; < = > ? @)
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 58–64
+        // 65 ('A')～90 ('Z')
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9,           // 65-74
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, // 75-84
+        20, 21, 22, 23, 24, 25,                 // 85-90
+        // 91～96 ([ \ ] ^ _ )
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 91-96
+        // 97 ('a')～122 ('z')
+        26, 27, 28, 29, 30, 31, 32, 33, 34, 35, // 97-106
+        36, 37, 38, 39, 40, 41, 42, 43, 44, 45, // 107-116
+        46, 47, 48, 49, 50, 51                  // 107-122
+    };
+    std::string output;
+    output.reserve(input.size() * 3 / 4);
+
+    unsigned int buffer = 0;
+    int buffered_bits   = 0;
+
+    for (unsigned char c : input) {
+        if (c == '=') {
+            break; // padding reached, stop decoding
+        }
+        auto val = decode_table.at(static_cast<std::size_t>(static_cast<unsigned char>(c)));
+        buffer   = (buffer << 6) | val; // NOLINT(hicpp-signed-bitwise)
+        buffered_bits += 6;
+        if (buffered_bits >= 8) {
+            buffered_bits -= 8;
+            auto index =
+                static_cast<char>((buffer >> buffered_bits) & 0xFF); // NOLINT(hicpp-signed-bitwise)
+            output.push_back(static_cast<char>(index));
+        }
     }
     return output;
 }

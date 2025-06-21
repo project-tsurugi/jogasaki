@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <boost/algorithm/string.hpp>
 #include <boost/assert.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <tsl/hopscotch_hash.h>
@@ -793,7 +794,7 @@ void add_builtin_scalar_functions(
         auto info = std::make_shared<scalar_function_info>(
             scalar_function_kind::encode,
             builtin::encode,
-            0
+            2
         );
         auto name = "encode";
         auto id = scalar_function_id::id_11058;
@@ -803,6 +804,25 @@ void add_builtin_scalar_functions(
             name,
             t::character(t::varying),
             {t::octet(t::varying),t::character(t::varying)},
+        });
+    }
+    /////////
+    // decode
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::decode,
+            builtin::decode,
+            2
+        );
+        auto name = "decode";
+        auto id = scalar_function_id::id_11059;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::octet(t::varying),
+            {t::character(t::varying),t::character(t::varying)},
         });
     }
 }
@@ -1464,7 +1484,7 @@ data::any encode(evaluator_context& ctx, sequence_view<data::any> args) {
     }
     auto encoding_text = enc_arg.to<runtime_t<kind::character>>();
     auto encoding      = static_cast<std::string_view>(encoding_text);
-    if (encoding != "base64") {
+    if (!boost::iequals(encoding, "base64")) {
         ctx.add_error({error_kind::unsupported, "encode must be base64"});
         return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
     }
@@ -1474,6 +1494,41 @@ data::any encode(evaluator_context& ctx, sequence_view<data::any> args) {
         auto bin_data = static_cast<std::string_view>(bin);
         return data::any{std::in_place_type<runtime_t<kind::character>>,
             runtime_t<kind::character>{ctx.resource(), utils::encode_base64(bin_data)}};
+    }
+    std::abort();
+}
+data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 2); // NOLINT
+    auto& src_arg = static_cast<data::any&>(args[0]);
+    auto& enc_arg = static_cast<data::any&>(args[1]);
+    if (src_arg.empty()) { return {}; }
+    if (enc_arg.empty()) {
+        ctx.add_error({error_kind::unsupported, "encode must be specified"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    if (enc_arg.type_index() != data::any::index<accessor::text>) {
+        ctx.add_error({error_kind::unsupported, "encode must be varchar"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    auto encoding_text = enc_arg.to<runtime_t<kind::character>>();
+    auto encoding      = static_cast<std::string_view>(encoding_text);
+    if (!boost::iequals(encoding, "base64")) {
+        ctx.add_error({error_kind::unsupported, "encode must be base64"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    if (src_arg.type_index() == data::any::index<accessor::text>) {
+        auto ch      = src_arg.to<runtime_t<kind::character>>();
+        auto ch_data = static_cast<std::string_view>(ch);
+        if (ch_data.empty()){
+            return data::any{std::in_place_type<runtime_t<kind::octet>>,
+            runtime_t<kind::octet>{ctx.resource(), ""}};
+        }
+        if (!utils::is_base64(ch_data)) {
+            ctx.add_error({error_kind::unsupported, "invalid base64 characters"});
+            return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+        }
+        return data::any{std::in_place_type<runtime_t<kind::octet>>,
+            runtime_t<kind::octet>{ctx.resource(), utils::decode_base64(ch_data)}};
     }
     std::abort();
 }

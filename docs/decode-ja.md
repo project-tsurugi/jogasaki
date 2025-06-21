@@ -15,7 +15,7 @@
 
 ## 定義
 
-`DECODE` は、指定されたデコード形式に従って文字列をデコードし、その結果をバイナリデータ（オクテット列）として返す関数です。
+`DECODE` は、指定されたデコード形式に従って文字列をデコードし、その結果をオクテット列として返す関数です。
 
 
 ```
@@ -29,7 +29,7 @@ DECODE(string_expression,encode_expression)
 
 - `Tsurugi`では`string_expression` の型として`char`、`varchar`の2つのみ許容されます。
 - `Tsurugi`では`encode_expression` の型として`varchar`のみ許容されます。
-- 現時点で指定可能なデコード方式は `base64` のみです。
+- 現時点で指定可能なデコード方式は `base64` のみです。（大文字・小文字を区別しない）
 - `string_expression` が `NULL` の場合、戻り値も `NULL` となります。
 - `string_expression` が `base64`で指定可能な文字列でない場合エラーを返します。
 - `DECODE`の戻り値の型は`varbinary`になります。

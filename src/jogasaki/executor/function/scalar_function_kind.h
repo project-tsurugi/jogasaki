@@ -42,7 +42,8 @@ enum class scalar_function_kind : std::size_t {
     ceil,
     floor,
     round,
-    encode
+    encode,
+    decode
 };
 
 /**
@@ -73,6 +74,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::floor: return "floor"sv;
         case kind::round: return "round"sv;
         case kind::encode: return "encode"sv;
+        case kind::decode: return "decode"sv;
     }
     std::abort();
 }

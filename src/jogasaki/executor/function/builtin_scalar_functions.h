@@ -120,6 +120,11 @@ data::any encode(
     sequence_view<data::any> args
 );
 
+data::any decode(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

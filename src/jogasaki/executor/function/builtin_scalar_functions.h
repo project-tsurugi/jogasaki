@@ -115,6 +115,16 @@ data::any round(
     sequence_view<data::any> args
 );
 
+data::any encode(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+data::any decode(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

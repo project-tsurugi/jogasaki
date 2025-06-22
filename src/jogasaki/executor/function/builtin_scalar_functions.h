@@ -125,6 +125,16 @@ data::any decode(
     sequence_view<data::any> args
 );
 
+data::any rtrim(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
+data::any ltrim(
+    evaluator_context& ctx,
+    sequence_view<data::any> args
+);
+
 }  // namespace builtin
 
 }  // namespace jogasaki::executor::function

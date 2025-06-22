@@ -1,0 +1,31 @@
+# LTRIM 外部仕様
+
+2025-06-23 nishimura
+
+## この文書について
+
+- この文書では `LTRIM`の外部仕様を示す。
+
+## 目次
+
+1. [定義](#定義)
+2. [外部仕様](#外部仕様)
+
+---
+
+## 定義
+
+`LTRIM` は、指定された文字列の先頭から、`ASCII半角スペース（U+0020）`のみを削除した結果を文字列として返す関数です。
+
+
+```
+LTRIM(string_expression)
+```
+
+- `string_expression`：トリム対象となる文字列
+
+## 外部仕様
+
+- `Tsurugi`では`string_expression` の型として`char`、`varchar`の2つのみ許容されます。
+- `string_expression` が `NULL` の場合、戻り値も `NULL` となります。
+- `LTRIM`の戻り値の型は`varchar`になります。

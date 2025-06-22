@@ -68,7 +68,7 @@
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/round.h>
 #include <jogasaki/utils/base64_utils.h>
-
+#include <jogasaki/utils/string_utils.h>
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
@@ -825,6 +825,44 @@ void add_builtin_scalar_functions(
             {t::character(t::varying),t::character(t::varying)},
         });
     }
+    /////////
+    // rtrim
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::rtrim,
+            builtin::rtrim,
+            1
+        );
+        auto name = "rtrim";
+        auto id = scalar_function_id::id_11060;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying)},
+        });
+    }
+    /////////
+    // ltrim
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::ltrim,
+            builtin::ltrim,
+            1
+        );
+        auto name = "ltrim";
+        auto id = scalar_function_id::id_11061;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying)},
+        });
+    }
 }
 
 namespace builtin {
@@ -1529,6 +1567,31 @@ data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
         }
         return data::any{std::in_place_type<runtime_t<kind::octet>>,
             runtime_t<kind::octet>{ctx.resource(), utils::decode_base64(ch_data)}};
+    }
+    std::abort();
+}
+
+data::any rtrim(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1); // NOLINT
+    auto& src_arg = static_cast<data::any&>(args[0]);
+    if (src_arg.empty()) { return {}; }
+    if (src_arg.type_index() == data::any::index<accessor::text>) {
+        auto ch      = src_arg.to<runtime_t<kind::character>>();
+        auto ch_data = static_cast<std::string_view>(ch);
+        return data::any{std::in_place_type<runtime_t<kind::character>>,
+            runtime_t<kind::character>{ctx.resource(), utils::rtrim(ch_data)}};
+    }
+    std::abort();
+}
+data::any ltrim(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1); // NOLINT
+    auto& src_arg = static_cast<data::any&>(args[0]);
+    if (src_arg.empty()) { return {}; }
+    if (src_arg.type_index() == data::any::index<accessor::text>) {
+        auto ch      = src_arg.to<runtime_t<kind::character>>();
+        auto ch_data = static_cast<std::string_view>(ch);
+        return data::any{std::in_place_type<runtime_t<kind::character>>,
+            runtime_t<kind::character>{ctx.resource(), utils::ltrim(ch_data)}};
     }
     std::abort();
 }

@@ -43,7 +43,9 @@ enum class scalar_function_kind : std::size_t {
     floor,
     round,
     encode,
-    decode
+    decode,
+    rtrim,
+    ltrim
 };
 
 /**
@@ -75,6 +77,8 @@ enum class scalar_function_kind : std::size_t {
         case kind::round: return "round"sv;
         case kind::encode: return "encode"sv;
         case kind::decode: return "decode"sv;
+        case kind::rtrim: return "rtrim"sv;
+        case kind::ltrim: return "ltrim"sv;
     }
     std::abort();
 }

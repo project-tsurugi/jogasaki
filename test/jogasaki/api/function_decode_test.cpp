@@ -239,69 +239,48 @@ TEST_F(function_decode_test, invalidone) {
     execute_statement("create table t (c0 varchar(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    {
-        test_stmt_err(
-            "SELECT decode(c0,'base64') FROM t", error_code::unsupported_runtime_feature_exception);
-    }
+    { test_stmt_err("SELECT decode(c0,'base64') FROM t", error_code::value_evaluation_exception); }
 }
 TEST_F(function_decode_test, invalidtwo) {
     std::string input = std::string("ab");
     execute_statement("create table t (c0 varchar(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    {
-        test_stmt_err(
-            "SELECT decode(c0,'base64') FROM t", error_code::unsupported_runtime_feature_exception);
-    }
+    { test_stmt_err("SELECT decode(c0,'base64') FROM t", error_code::value_evaluation_exception); }
 }
 TEST_F(function_decode_test, invalidthree) {
     std::string input = std::string("abc");
     execute_statement("create table t (c0 varchar(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    {
-        test_stmt_err(
-            "SELECT decode(c0,'base64') FROM t", error_code::unsupported_runtime_feature_exception);
-    }
+    { test_stmt_err("SELECT decode(c0,'base64') FROM t", error_code::value_evaluation_exception); }
 }
 TEST_F(function_decode_test, invalidonepadding) {
     std::string input = std::string("a=");
     execute_statement("create table t (c0 varchar(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    {
-        test_stmt_err(
-            "SELECT decode(c0,'base64') FROM t", error_code::unsupported_runtime_feature_exception);
-    }
+    { test_stmt_err("SELECT decode(c0,'base64') FROM t", error_code::value_evaluation_exception); }
 }
 TEST_F(function_decode_test, invalidonetwopadding) {
     std::string input = std::string("a==");
     execute_statement("create table t (c0 varchar(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    {
-        test_stmt_err(
-            "SELECT decode(c0,'base64') FROM t", error_code::unsupported_runtime_feature_exception);
-    }
+    { test_stmt_err("SELECT decode(c0,'base64') FROM t", error_code::value_evaluation_exception); }
 }
 TEST_F(function_decode_test, invalidonethrepadding) {
     std::string input = std::string("a===");
     execute_statement("create table t (c0 varchar(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    {
-        test_stmt_err(
-            "SELECT decode(c0,'base64') FROM t", error_code::unsupported_runtime_feature_exception);
-    }
+    { test_stmt_err("SELECT decode(c0,'base64') FROM t", error_code::value_evaluation_exception); }
 }
 TEST_F(function_decode_test, allpadding) {
     std::string input = std::string("====");
     execute_statement("create table t (c0 varchar(20))");
     std::string insert = "insert into t values ('" + input + "')";
     execute_statement(insert);
-    {
-        test_stmt_err(
-            "SELECT decode(c0,'base64') FROM t", error_code::unsupported_runtime_feature_exception);
-    }
+    { test_stmt_err("SELECT decode(c0,'base64') FROM t", error_code::value_evaluation_exception); }
 }
 } // namespace jogasaki::testing

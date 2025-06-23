@@ -1562,8 +1562,8 @@ data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
             runtime_t<kind::octet>{ctx.resource(), ""}};
         }
         if (!utils::is_base64(ch_data)) {
-            ctx.add_error({error_kind::unsupported, "invalid base64 characters"});
-            return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+            ctx.add_error({error_kind::invalid_input_value, "invalid base64 characters"});
+            return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
         }
         return data::any{std::in_place_type<runtime_t<kind::octet>>,
             runtime_t<kind::octet>{ctx.resource(), utils::decode_base64(ch_data)}};

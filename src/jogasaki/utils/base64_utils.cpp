@@ -19,8 +19,9 @@
 #include <regex>
 namespace jogasaki::utils {
 
-// X'6162'
-// 01100001 01100010
+// Step-by-Step Eecode Trace of "6162" to "YWI="
+//
+// Step 1: Encode 61(01100001)
 // buffer = (buffer << 8) | c;
 // buffer = 00000000 00000000 00000000 01100001
 // buffered_bits += 8;
@@ -31,6 +32,8 @@ namespace jogasaki::utils {
 //   00000000 00000000 00000000 00011000
 //   table[24] =Y
 // buffered_bits = -4
+//
+// Step 2: Encode 62(01100010)
 // buffer = (buffer << 8) | c;
 // buffer = 00000000 00000000 01100001 01100010
 // buffered_bits += 8;
@@ -47,6 +50,7 @@ namespace jogasaki::utils {
 //   00000000 00000001 10000101 10001000 & 0b0011'1111
 //   00000000 00000000 00000000 00001000
 //   table[8] = I
+//  Step 3: Padding
 //  while (output.size() % 4) {
 //      output.push_back('=');
 //  }
@@ -117,11 +121,12 @@ namespace jogasaki::utils {
     return true;
 }
 
-// YUA=
-// Y (24)
+// Step-by-Step Decode Trace of "YUA=" to "0x61 0x40"
+// input: YUA=
+// Step 1: Decode Y (24)
 // buffer = 00000000 00000000 00000000 00011000
 // buffered_bits = 6
-// U (20)
+// Step 2: Decode U (20)
 //          00000000 00000000 00000000 00011000 << 6 | 00010100
 // buffer = 00000000 00000000 00000110 00010100
 // buffered_bits = 12
@@ -130,7 +135,7 @@ namespace jogasaki::utils {
 // 00000000 00000000 00000000 01100001 & 0xFF
 //                            01100001
 // 0x61
-// A (0)
+// Step 3: Decode U (0)
 //          00000000 00000000 00000110 00010100 << 6 | 00000000
 // buffer = 00000000 00000001 10000101 00000000
 // buffered_bits = 10
@@ -139,7 +144,8 @@ namespace jogasaki::utils {
 // 00000000 00000000 01100001 01000000 & 0xFF
 //                            01000000
 // 0x40
-// = ()
+// Step 4: Decode '='
+// Padding character, decoding stops here
 // break
 // ∴ 0x61 0x40
 [[nodiscard]] std::string decode_base64(std::string_view input) {

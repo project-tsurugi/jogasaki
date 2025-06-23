@@ -29,3 +29,4 @@ LTRIM(string_expression)
 - `Tsurugi`では`string_expression` の型として`char`、`varchar`の2つのみ許容されます。
 - `string_expression` が `NULL` の場合、戻り値も `NULL` となります。
 - `LTRIM`の戻り値の型は`varchar`になります。
+- 不正なUTF-8シーケンスが入力された場合、`不定な値`を返すことがあります。

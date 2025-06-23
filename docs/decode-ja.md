@@ -1,6 +1,6 @@
 # DECODE 外部仕様
 
-2025-06-20 nishimura
+2025-06-23 nishimura
 
 ## この文書について
 

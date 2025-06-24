@@ -17,6 +17,7 @@
 #include <array>
 #include <cctype>
 #include <regex>
+#include <cstdint>
 namespace jogasaki::utils {
 
 // Step-by-Step Eecode Trace of "6162" to "YWI="

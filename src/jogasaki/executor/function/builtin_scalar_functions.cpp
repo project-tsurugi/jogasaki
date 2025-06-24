@@ -50,7 +50,9 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/configuration.h>
+#include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/builtin_scalar_functions_id.h>
@@ -1565,8 +1567,17 @@ data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
             ctx.add_error({error_kind::invalid_input_value, "invalid base64 characters"});
             return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
         }
+        auto decoded_data = utils::decode_base64(ch_data);
+        if (decoded_data.size() > character_type_max_length_for_value) {
+            std::string error_message = std::string("value is too long to decode length:") +
+                                        std::to_string(decoded_data.size()) + " maximum:" +
+                                        std::to_string(character_type_max_length_for_value);
+            ctx.set_error_info(create_error_info(error_code::value_too_long_exception,
+                error_message, status::err_invalid_runtime_value));
+            return data::any{std::in_place_type<error>, error(error_kind::error_info_provided)};
+        }
         return data::any{std::in_place_type<runtime_t<kind::octet>>,
-            runtime_t<kind::octet>{ctx.resource(), utils::decode_base64(ch_data)}};
+            runtime_t<kind::octet>{ctx.resource(), decoded_data}};
     }
     std::abort();
 }

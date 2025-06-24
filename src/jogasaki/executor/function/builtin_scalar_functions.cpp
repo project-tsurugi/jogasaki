@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <boost/algorithm/string.hpp>
 #include <boost/assert.hpp>
 #include <boost/container/pmr/polymorphic_allocator.hpp>
 #include <tsl/hopscotch_hash.h>
@@ -66,7 +67,8 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/round.h>
-
+#include <jogasaki/utils/base64_utils.h>
+#include <jogasaki/utils/string_utils.h>
 namespace jogasaki::executor::function {
 
 using takatori::util::sequence_view;
@@ -785,6 +787,82 @@ void add_builtin_scalar_functions(
             {t::decimal(), t::int8()},
         });
     }
+    /////////
+    // encode
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::encode,
+            builtin::encode,
+            2
+        );
+        auto name = "encode";
+        auto id = scalar_function_id::id_11058;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::octet(t::varying),t::character(t::varying)},
+        });
+    }
+    /////////
+    // decode
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::decode,
+            builtin::decode,
+            2
+        );
+        auto name = "decode";
+        auto id = scalar_function_id::id_11059;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::octet(t::varying),
+            {t::character(t::varying),t::character(t::varying)},
+        });
+    }
+    /////////
+    // rtrim
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::rtrim,
+            builtin::rtrim,
+            1
+        );
+        auto name = "rtrim";
+        auto id = scalar_function_id::id_11060;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying)},
+        });
+    }
+    /////////
+    // ltrim
+    /////////
+    {
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::ltrim,
+            builtin::ltrim,
+            1
+        );
+        auto name = "ltrim";
+        auto id = scalar_function_id::id_11061;
+        repo.add(id, info);
+        functions.add({
+            id,
+            name,
+            t::character(t::varying),
+            {t::character(t::varying)},
+        });
+    }
 }
 
 namespace builtin {
@@ -1427,6 +1505,95 @@ data::any round(evaluator_context& ctx, sequence_view<data::any> args) {
         }
     }
     return impl::round(src, scale_int4, ctx);
+}
+
+data::any encode(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 2); // NOLINT
+    auto& src_arg = static_cast<data::any&>(args[0]);
+    auto& enc_arg = static_cast<data::any&>(args[1]);
+    if (src_arg.empty()) { return {}; }
+    if (enc_arg.empty()) {
+        ctx.add_error({error_kind::unsupported, "encode must be specified"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    if (enc_arg.type_index() != data::any::index<accessor::text>) {
+        ctx.add_error({error_kind::unsupported, "encode must be varchar"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    auto encoding_text = enc_arg.to<runtime_t<kind::character>>();
+    auto encoding      = static_cast<std::string_view>(encoding_text);
+    if (!boost::iequals(encoding, "base64")) {
+        ctx.add_error({error_kind::unsupported, "encode must be base64"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+
+    if (src_arg.type_index() == data::any::index<accessor::binary>) {
+        auto bin      = src_arg.to<runtime_t<kind::octet>>();
+        auto bin_data = static_cast<std::string_view>(bin);
+        return data::any{std::in_place_type<runtime_t<kind::character>>,
+            runtime_t<kind::character>{ctx.resource(), utils::encode_base64(bin_data)}};
+    }
+    std::abort();
+}
+data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 2); // NOLINT
+    auto& src_arg = static_cast<data::any&>(args[0]);
+    auto& enc_arg = static_cast<data::any&>(args[1]);
+    if (src_arg.empty()) { return {}; }
+    if (enc_arg.empty()) {
+        ctx.add_error({error_kind::unsupported, "encode must be specified"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    if (enc_arg.type_index() != data::any::index<accessor::text>) {
+        ctx.add_error({error_kind::unsupported, "encode must be varchar"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    auto encoding_text = enc_arg.to<runtime_t<kind::character>>();
+    auto encoding      = static_cast<std::string_view>(encoding_text);
+    if (!boost::iequals(encoding, "base64")) {
+        ctx.add_error({error_kind::unsupported, "encode must be base64"});
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+    }
+    if (src_arg.type_index() == data::any::index<accessor::text>) {
+        auto ch      = src_arg.to<runtime_t<kind::character>>();
+        auto ch_data = static_cast<std::string_view>(ch);
+        if (ch_data.empty()){
+            return data::any{std::in_place_type<runtime_t<kind::octet>>,
+            runtime_t<kind::octet>{ctx.resource(), ""}};
+        }
+        if (!utils::is_base64(ch_data)) {
+            ctx.add_error({error_kind::invalid_input_value, "invalid base64 characters"});
+            return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+        }
+        return data::any{std::in_place_type<runtime_t<kind::octet>>,
+            runtime_t<kind::octet>{ctx.resource(), utils::decode_base64(ch_data)}};
+    }
+    std::abort();
+}
+
+data::any rtrim(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1); // NOLINT
+    auto& src_arg = static_cast<data::any&>(args[0]);
+    if (src_arg.empty()) { return {}; }
+    if (src_arg.type_index() == data::any::index<accessor::text>) {
+        auto ch      = src_arg.to<runtime_t<kind::character>>();
+        auto ch_data = static_cast<std::string_view>(ch);
+        return data::any{std::in_place_type<runtime_t<kind::character>>,
+            runtime_t<kind::character>{ctx.resource(), utils::rtrim(ch_data)}};
+    }
+    std::abort();
+}
+data::any ltrim(evaluator_context& ctx, sequence_view<data::any> args) {
+    BOOST_ASSERT(args.size() == 1); // NOLINT
+    auto& src_arg = static_cast<data::any&>(args[0]);
+    if (src_arg.empty()) { return {}; }
+    if (src_arg.type_index() == data::any::index<accessor::text>) {
+        auto ch      = src_arg.to<runtime_t<kind::character>>();
+        auto ch_data = static_cast<std::string_view>(ch);
+        return data::any{std::in_place_type<runtime_t<kind::character>>,
+            runtime_t<kind::character>{ctx.resource(), utils::ltrim(ch_data)}};
+    }
+    std::abort();
 }
 
 } // namespace builtin

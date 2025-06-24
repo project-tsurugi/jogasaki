@@ -1532,8 +1532,17 @@ data::any encode(evaluator_context& ctx, sequence_view<data::any> args) {
     if (src_arg.type_index() == data::any::index<accessor::binary>) {
         auto bin      = src_arg.to<runtime_t<kind::octet>>();
         auto bin_data = static_cast<std::string_view>(bin);
+        auto encoded_data = utils::encode_base64(bin_data);
+        if (encoded_data.size() > character_type_max_length_for_value) {
+            std::string error_message = std::string("value is too long to encode length:") +
+                                        std::to_string(encoded_data.size()) + " maximum:" +
+                                        std::to_string(character_type_max_length_for_value);
+            ctx.set_error_info(create_error_info(error_code::value_too_long_exception,
+                error_message, status::err_invalid_runtime_value));
+            return data::any{std::in_place_type<error>, error(error_kind::error_info_provided)};
+        }
         return data::any{std::in_place_type<runtime_t<kind::character>>,
-            runtime_t<kind::character>{ctx.resource(), utils::encode_base64(bin_data)}};
+            runtime_t<kind::character>{ctx.resource(), encoded_data}};
     }
     std::abort();
 }
@@ -1568,10 +1577,10 @@ data::any decode(evaluator_context& ctx, sequence_view<data::any> args) {
             return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
         }
         auto decoded_data = utils::decode_base64(ch_data);
-        if (decoded_data.size() > character_type_max_length_for_value) {
+        if (decoded_data.size() > octet_type_max_length_for_value) {
             std::string error_message = std::string("value is too long to decode length:") +
                                         std::to_string(decoded_data.size()) + " maximum:" +
-                                        std::to_string(character_type_max_length_for_value);
+                                        std::to_string(octet_type_max_length_for_value);
             ctx.set_error_info(create_error_info(error_code::value_too_long_exception,
                 error_message, status::err_invalid_runtime_value));
             return data::any{std::in_place_type<error>, error(error_kind::error_info_provided)};

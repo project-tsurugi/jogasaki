@@ -42,8 +42,7 @@ transaction_context::transaction_context(
     option_(std::move(option))
 {}
 
-transaction_context::~transaction_context(
-) noexcept {
+transaction_context::~transaction_context() noexcept {
     try { // release() should not throw, but just in case
         if (blob_pool_) {
             blob_pool_->release();
@@ -80,6 +79,7 @@ bool transaction_context::commit(transaction_context::commit_callback_type cb) {
 
 status transaction_context::abort_transaction() {
     auto ret = transaction_->abort_transaction();
+    storage_lock_.reset(); // release storage lock as soon as possible
     state_.set(transaction_state_kind::aborted);
     return ret;
 }
@@ -164,6 +164,14 @@ void transaction_context::commit_response(commit_response_kind arg) noexcept {
 
 std::shared_ptr<commit_profile> const& transaction_context::profile() const noexcept {
     return profile_;
+}
+
+std::unique_ptr<storage::unique_lock> const& transaction_context::storage_lock() const noexcept {
+    return storage_lock_;
+}
+
+void transaction_context::storage_lock(std::unique_ptr<storage::unique_lock> arg) noexcept {
+    storage_lock_ = std::move(arg);
 }
 
 std::shared_ptr<api::transaction_option const> const& transaction_context::option() const noexcept {

@@ -117,10 +117,6 @@ public:
         return "application-name";
     }
 
-    std::string_view user_name() const noexcept override {
-        return "user-name";
-    }
-
     time_type start_at() const noexcept override {
         return {};
     }

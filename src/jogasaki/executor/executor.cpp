@@ -83,7 +83,6 @@
 #include <jogasaki/scheduler/statement_scheduler.h>
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/task_scheduler.h>
-#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_error.h>
 #include <jogasaki/utils/assert.h>
@@ -586,20 +585,7 @@ void external_log_stmt_explain(
 #endif
 }
 
-bool acquire_shared_lock(
-    request_context& rctx,  //NOLINT
-    plan::executable_statement const& e
-) {
-    auto& smgr = *global::storage_manager();
-    auto stgs = e.mirrors()->storage_list();
-    if(auto lock = smgr.create_shared_lock(stgs, rctx.transaction()->storage_lock().get())) {
-        rctx.storage_lock(std::move(lock));
-        return true;
-    }
-    return false;
-}
-
-bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexity)
+bool execute_async_on_context(
     api::impl::database& database,
     std::shared_ptr<request_context> rctx,  //NOLINT
     maybe_shared_ptr<api::executable_statement> const& statement,
@@ -619,20 +605,6 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
     external_log_stmt_start(*rctx, req_info, statement);
     external_log_stmt_explain(database, *rctx, req_info, statement);
 
-    // acquire shared lock for DML operations
-    if (e->is_execute() || (!e->is_ddl() && !e->is_empty())) {
-        if (! acquire_shared_lock(*rctx, *e)) {
-            auto res = status::err_illegal_operation;
-            on_completion(res,
-                create_error_info(
-                    error_code::sql_execution_exception,
-                    "DML operation was blocked by DDL operation",
-                    res
-                ), nullptr);
-            return false;
-        }
-    }
-
     if (e->is_execute()) {
         auto* stmt = unsafe_downcast<executor::common::execute>(e->operators().get());
         auto& g = stmt->operators();
@@ -646,7 +618,6 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
                     rctx->stats()->counter(counter_kind::fetched).count(fetched);
                 }
             }
-            rctx->storage_lock(nullptr); // release storage lock as soon as request complete
             external_log_stmt_end(*rctx, req_info, statement);
             on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
         });
@@ -672,7 +643,6 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
         job->callback([statement, on_completion, rctx, req_info](){  // callback is copy-based
             // let lambda own the statement so that they live longer by the end of callback
             (void)statement;
-            rctx->storage_lock(nullptr); // release storage lock as soon as request complete
             external_log_stmt_end(*rctx, req_info, statement);
             on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
         });
@@ -928,10 +898,6 @@ scheduler::job_context::job_id_type commit_async(
             ){
                 rctx->transaction()->profile()->set_precommit_cb_invoked();
                 process_commit_callback(st, ec, marker, jobid, rctx, txid, database, option);
-
-                // release storage lock as soon as commit callback completes
-                // TODO when commit fails for tx with DDL, we need to repair storage metadata and then unlock
-                rctx->transaction()->storage_lock(nullptr);
             });
         return model::task_result::complete;
     }, model::task_transaction_kind::none);

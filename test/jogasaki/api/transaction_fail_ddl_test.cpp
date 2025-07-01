@@ -119,8 +119,8 @@ TEST_F(transaction_fail_ddl_test, create_simple_table) {
         auto tx = utils::create_transaction(*db_, opts);
         execute_statement("CREATE TABLE t (c0 int primary key)", *tx);
         ASSERT_EQ(status::ok, tx->abort());
+        execute_statement("INSERT INTO t VALUES (1)");
     }
-    execute_statement("INSERT INTO t VALUES (1)");
     ASSERT_EQ(0, seq_count());
 
     ASSERT_EQ(status::ok, db_->stop());

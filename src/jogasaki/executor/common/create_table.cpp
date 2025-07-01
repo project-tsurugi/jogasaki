@@ -57,7 +57,6 @@
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
-#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
@@ -169,33 +168,6 @@ bool create_table::operator()(request_context& context) const {
             error_code::target_already_exists_exception,
             string_builder{} << "Storage \"" << c->simple_name() << "\" already exists " << string_builder::to_string,
             status::err_already_exists
-        );
-        return false;
-    }
-    auto tid = storage::table_id_src++;
-    auto& smgr = *global::storage_manager();
-    if(! smgr.add_entry(tid, c->simple_name())) {
-        // should not happen normally
-        set_error(
-            context,
-            error_code::target_already_exists_exception,
-            string_builder{} << "Table id:" << tid << " already exists" << string_builder::to_string,
-            status::err_already_exists
-        );
-        return false;
-    }
-    auto& tx = *context.transaction();
-    if(! tx.storage_lock()) {
-        tx.storage_lock(smgr.create_unique_lock());
-    }
-    storage::storage_list stg{tid};
-    if(! smgr.add_locked_storages(stg, *tx.storage_lock())) {
-        // should not happen normally since this is newly created table
-        set_error(
-            context,
-            error_code::sql_execution_exception,
-            "DDL operation was blocked by other DML operation",
-            status::err_illegal_operation
         );
         return false;
     }

@@ -237,12 +237,4 @@ void request_context::commit_ctx(std::shared_ptr<commit_context> arg) noexcept {
     commit_ctx_ = std::move(arg);
 }
 
-std::unique_ptr<storage::shared_lock> const& request_context::storage_lock() const noexcept {
-    return storage_lock_;
-}
-
-void request_context::storage_lock(std::unique_ptr<storage::shared_lock> arg) noexcept {
-    storage_lock_ = std::move(arg);
-}
-
 }  // namespace jogasaki

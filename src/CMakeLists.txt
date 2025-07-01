@@ -105,7 +105,6 @@ file(GLOB SOURCES
         "jogasaki/scheduler/*.cpp"
         "jogasaki/scheduler/details/*.cpp"
         "jogasaki/serializer/*.cpp"
-        "jogasaki/storage/*.cpp"
         "jogasaki/utils/*.cpp"
         "jogasaki/dist/*.cpp"
 )

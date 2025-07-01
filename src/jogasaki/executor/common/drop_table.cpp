@@ -48,7 +48,6 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
-#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/string_manipulation.h>
@@ -133,33 +132,6 @@ bool drop_table::operator()(request_context& context) const {
             error_code::target_not_found_exception,
             string_builder{} << "Table \"" << c.simple_name() << "\" not found." << string_builder::to_string,
             status::err_not_found
-        );
-        return false;
-    }
-
-    auto& smgr = *global::storage_manager();
-    auto e = smgr.find_by_name(c.simple_name());
-    if(! e.has_value()) {
-        set_error(
-            context,
-            error_code::target_not_found_exception,
-            string_builder{} << "Table \"" << c.simple_name() << "\" not found." << string_builder::to_string,
-            status::err_not_found
-        );
-        return false;
-    }
-    storage::storage_list stg{e.value()};
-    auto& tx = *context.transaction();
-    if (! tx.storage_lock()) {
-        tx.storage_lock(smgr.create_unique_lock());
-    }
-    if(! smgr.add_locked_storages(stg, *tx.storage_lock())) {
-        // table is locked by other operations
-        set_error(
-            context,
-            error_code::sql_execution_exception,
-            "DDL operation was blocked by other DML operation",
-            status::err_illegal_operation
         );
         return false;
     }

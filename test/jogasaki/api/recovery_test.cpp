@@ -785,7 +785,7 @@ TEST_F(recovery_test, recover_user_defined_sequence) {
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
-        auto seq0 = std::make_shared<yugawara::storage::sequence>(
+        auto seq0 = std::make_shared<storage::sequence>(
             1000,
             "seq0"
         );

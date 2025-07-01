@@ -57,10 +57,6 @@ namespace jogasaki {
 class configuration;
 }
 
-namespace jogasaki::storage {
-class storage_manager;
-}
-
 namespace jogasaki::global {
 
 /**
@@ -139,13 +135,5 @@ std::shared_ptr<kvs::database> const& db(std::shared_ptr<kvs::database> arg = nu
  * @return reference to the api::impl::database
  */
 std::shared_ptr<api::impl::database> const& database_impl(std::shared_ptr<api::impl::database> arg = nullptr);
-
-/**
- * @brief thread-safe accessor to the storage manager
- * @details the container will be initialized on the first call and can be shared by multiple threads
- * @param arg new storage manager. Pass nullptr just to refer current one.
- * @return reference to the storage manager
- */
-std::shared_ptr<storage::storage_manager> const& storage_manager(std::shared_ptr<storage::storage_manager> arg = nullptr);
 
 }  // namespace jogasaki::global

@@ -33,7 +33,6 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/status.h>
-#include <jogasaki/storage/unique_lock.h>
 #include <jogasaki/termination_state.h>
 #include <jogasaki/transaction_state.h>
 #include <jogasaki/utils/interference_size.h>
@@ -427,18 +426,6 @@ public:
     void state(transaction_state_kind kind) noexcept {
         state_.set(kind);
     }
-
-    /**
-     * @brief accessor for the table unique lock
-     * @return unique lock for tables held by the transaction
-     */
-    [[nodiscard]] std::unique_ptr<storage::unique_lock> const& storage_lock() const noexcept;
-
-    /**
-     * @brief setter for table unique lock
-     */
-    void storage_lock(std::unique_ptr<storage::unique_lock> arg) noexcept;
-
 private:
     std::shared_ptr<kvs::transaction> transaction_{};
     std::size_t surrogate_id_{};
@@ -455,7 +442,6 @@ private:
     std::shared_ptr<limestone::api::blob_pool> blob_pool_{};
     details::termination_manager term_mgr_{};
     transaction_state state_{};
-    std::unique_ptr<storage::unique_lock> storage_lock_{};
 
     cache_align static inline std::atomic_size_t surrogate_id_source_{};  //NOLINT
 };

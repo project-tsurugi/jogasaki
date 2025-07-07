@@ -87,6 +87,26 @@ TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_ddl_tx) {
     ASSERT_EQ(result.size(), 0);
 }
 
+TEST_F(exclusive_ddl_dml_test, repeat_starting_dml_blocked_by_ddl_tx) {
+    // regression testcase reported in #1230 - on the 2nd trial dml did not get blocked by ddl
+    {
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("CREATE TABLE t (c0 int primary key)", *tx);
+        test_stmt_err("select * from t", error_code::sql_execution_exception);
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("select * from t", result);
+    ASSERT_EQ(result.size(), 0);
+    execute_statement("DROP TABLE t");
+    {
+        auto tx = utils::create_transaction(*db_);
+        execute_statement("CREATE TABLE t (c0 int primary key)", *tx);
+        test_stmt_err("select * from t", error_code::sql_execution_exception);  // this was not blocked somehow
+        ASSERT_EQ(status::ok, tx->commit());
+    }
+}
+
 TEST_F(exclusive_ddl_dml_test, ddl_and_dml_in_same_tx) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     auto tx = utils::create_transaction(*db_);

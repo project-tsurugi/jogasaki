@@ -629,7 +629,7 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
                     "DML operation was blocked by DDL operation",
                     res
                 ), nullptr);
-            return false;
+            return true; // false is for unrecoverable abnormal error. This case is normal error.
         }
     }
 

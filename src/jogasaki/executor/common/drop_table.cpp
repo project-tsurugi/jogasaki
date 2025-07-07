@@ -225,6 +225,10 @@ bool drop_table::operator()(request_context& context) const {
     if(! provider.remove_relation(c.simple_name())) {
         VLOG_LP(log_warning) << "table '" << c.simple_name() << "' not found";
     }
+
+    if(! smgr.remove_entry(e.value())) {
+        VLOG_LP(log_warning) << "failed to remove storage entry:" << e.value();
+    }
     return true;
 }
 }

@@ -50,6 +50,9 @@
 #include <takatori/relation/expression_kind.h>
 #include <takatori/relation/find.h>
 #include <takatori/relation/graph.h>
+#include <takatori/relation/join_find.h>
+#include <takatori/relation/join_scan.h>
+#include <takatori/relation/scan.h>
 #include <takatori/relation/sort_direction.h>
 #include <takatori/relation/write_kind.h>
 #include <takatori/statement/create_index.h>
@@ -133,6 +136,7 @@
 #include <jogasaki/plan/prepared_statement.h>
 #include <jogasaki/plan/statement_work_level.h>
 #include <jogasaki/plan/storage_processor.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 #include <jogasaki/utils/value_to_any.h>
@@ -171,6 +175,18 @@ void set_compile_error_impl(
     ctx.error_info(info);
 }
 
+void add_table_to_storage_list(
+    takatori::descriptor::relation const& relation,
+    std::shared_ptr<mirror_container> const& container
+) {
+    auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(relation);
+    auto& table = secondary_or_primary_index.table();
+    if(auto v = global::storage_manager()->find_by_name(table.simple_name()); v.has_value()) {
+        // TODO preserve() to storage_list
+        container->mutable_storage_list().add(v.value());
+    }
+}
+
 void preprocess(
     takatori::plan::process const& process,
     compiled_info const& info,
@@ -189,8 +205,8 @@ void preprocess(
                 break;
             }
             case takatori::relation::expression_kind::find: {
+                add_table_to_storage_list(unsafe_downcast<takatori::relation::find>(op).source(), container);
                 auto& f = unsafe_downcast<takatori::relation::find>(op);
-
                 auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(f.source());
                 auto& table = secondary_or_primary_index.table();
                 auto primary = table.owner()->find_primary_index(table);
@@ -203,8 +219,11 @@ void preprocess(
                 container->work_level().set_minimum(statement_work_level_kind::simple_crud);
                 break;
             }
-            case takatori::relation::expression_kind::values: //fall-thru
-            case takatori::relation::expression_kind::write: //fall-thru
+            case takatori::relation::expression_kind::values:
+                container->work_level().set_minimum(statement_work_level_kind::key_operation);
+                break;
+            case takatori::relation::expression_kind::write:
+                add_table_to_storage_list(unsafe_downcast<takatori::relation::write>(op).destination(), container);
                 container->work_level().set_minimum(statement_work_level_kind::key_operation);
                 break;
             case takatori::relation::expression_kind::filter: //fall-thru
@@ -225,8 +244,12 @@ void preprocess(
                         status::err_unsupported
                     )));
                 }
+                add_table_to_storage_list(unsafe_downcast<takatori::relation::join_scan>(op).source(), container);
                 break;
-            case takatori::relation::expression_kind::join_find: //fall-thru
+            case takatori::relation::expression_kind::join_find:
+                add_table_to_storage_list(unsafe_downcast<takatori::relation::join_find>(op).source(), container);
+                container->work_level().set_minimum(statement_work_level_kind::join);
+                break;
             case takatori::relation::expression_kind::join_group: //fall-thru
             case takatori::relation::expression_kind::take_group: //fall-thru
             case takatori::relation::expression_kind::take_cogroup: //fall-thru
@@ -237,6 +260,7 @@ void preprocess(
                 container->work_level().set_minimum(statement_work_level_kind::aggregate);
                 break;
             case takatori::relation::expression_kind::scan:
+                add_table_to_storage_list(unsafe_downcast<takatori::relation::scan>(op).source(), container);
                 container->work_level().set_minimum(statement_work_level_kind::infinity);
                 break;
             default:
@@ -282,6 +306,7 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
             );
             break;
         case statement::statement_kind::write:
+            add_table_to_storage_list(unsafe_downcast<takatori::statement::write>(*statement).destination(), container);
             container->work_level().set_minimum(statement_work_level_kind::simple_write);
             break;
         case statement::statement_kind::create_table:

@@ -66,7 +66,7 @@
 #include <jogasaki/api/impl/parameter_set.h>
 #include <jogasaki/api/impl/prepared_statement.h>
 #include <jogasaki/api/statement_handle.h>
-#include "jogasaki/api/statement_handle_internal.h"
+#include <jogasaki/api/statement_handle_internal.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
@@ -117,6 +117,7 @@
 #include <jogasaki/scheduler/task_factory.h>
 #include <jogasaki/scheduler/thread_params.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/cancel_request.h>
@@ -348,6 +349,7 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 database::database() : database(std::make_shared<class configuration>()) {}
 
 void database::init() {
+    global::storage_manager()->clear(); // clean up global objects first
     global::config_pool(cfg_);
     if(initialized_) return;
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
@@ -1054,6 +1056,14 @@ status database::initialize_from_providers() {
     bool success = true;
     tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
         success = success && kvs_db_->get_or_create_storage(id);
+        if(tables_->find_table(id)) {
+            // Assign unique id to each table so that we can manage tables in storage_manager.
+            // Currently, these ids are not durable, so they are not guaranteed to be same across restarts.
+            // That's ok for now because name works as a unique identifier.
+            // That needs to be fixed when we support renaming tables.
+            // TODO make the table id durable
+            success = success && global::storage_manager()->add_entry(storage::table_id_src++, id);
+        }
     });
     if (! success) {
         LOG_LP(ERROR) << "creating table schema entries failed";

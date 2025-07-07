@@ -27,6 +27,7 @@
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/page_pool.h>
+#include <jogasaki/storage/storage_manager.h>
 
 namespace jogasaki::global {
 
@@ -91,6 +92,14 @@ std::shared_ptr<api::impl::database> const& database_impl(std::shared_ptr<api::i
         db = std::move(arg);
     }
     return db;
+}
+
+std::shared_ptr<storage::storage_manager> const& storage_manager(std::shared_ptr<storage::storage_manager> arg) {
+    static std::shared_ptr<storage::storage_manager> mgr = std::make_shared<storage::storage_manager>();
+    if(arg) {
+        mgr = std::move(arg);
+    }
+    return mgr;
 }
 
 }  // namespace jogasaki::global

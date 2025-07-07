@@ -64,7 +64,7 @@ public:
 
 TEST_F(sequence_manager_test, simple) {
     configurable_provider provider{};
-    provider.add_sequence(storage::sequence{0, "SEQ"});
+    provider.add_sequence(yugawara::storage::sequence{0, "SEQ"});
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
@@ -84,7 +84,7 @@ TEST_F(sequence_manager_test, simple) {
 
 TEST_F(sequence_manager_test, initialize) {
     configurable_provider provider{};
-    provider.add_sequence(storage::sequence{1, "SEQ1"});
+    provider.add_sequence(yugawara::storage::sequence{1, "SEQ1"});
     manager mgr{ *db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
@@ -103,7 +103,7 @@ TEST_F(sequence_manager_test, initialize) {
 TEST_F(sequence_manager_test, sequence_spec) {
     configurable_provider provider{};
     provider.add_sequence(
-        storage::sequence{
+        yugawara::storage::sequence{
             111,
             "SEQ1",
             100,
@@ -131,12 +131,12 @@ TEST_F(sequence_manager_test, sequence_spec) {
 
 TEST_F(sequence_manager_test, initialize_with_existing_table_entries) {
     configurable_provider provider{};
-    provider.add_sequence(storage::sequence{1, "SEQ1"});
+    provider.add_sequence(yugawara::storage::sequence{1, "SEQ1"});
     manager mgr{*db_};
     EXPECT_EQ(0, mgr.load_id_map());
     mgr.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);
     wait_epochs(10);
-    provider.add_sequence(storage::sequence{2, "SEQ2"});
+    provider.add_sequence(yugawara::storage::sequence{2, "SEQ2"});
     manager mgr2{*db_};
     EXPECT_EQ(1, mgr2.load_id_map());
     mgr2.register_sequences(nullptr, maybe_shared_ptr{&provider}, true);

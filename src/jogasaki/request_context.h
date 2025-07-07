@@ -40,6 +40,7 @@
 #include <jogasaki/request_statistics.h>
 #include <jogasaki/scheduler/job_context.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/shared_lock.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/interference_size.h>
 
@@ -269,6 +270,17 @@ public:
      */
     void commit_ctx(std::shared_ptr<commit_context> arg) noexcept;
 
+    /**
+     * @brief accessor for the table shared lock
+     * @return shared lock for tables held by the request
+     */
+    [[nodiscard]] std::unique_ptr<storage::shared_lock> const& storage_lock() const noexcept;
+
+    /**
+     * @brief setter for table shared lock
+     */
+    void storage_lock(std::unique_ptr<storage::shared_lock> arg) noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -292,6 +304,7 @@ private:
 
     request_info req_info_{};
     std::shared_ptr<commit_context> commit_ctx_{};
+    std::unique_ptr<storage::shared_lock> storage_lock_{};
 };
 
 /**

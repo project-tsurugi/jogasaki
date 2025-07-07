@@ -228,6 +228,11 @@ public:
      */
     std::unique_ptr<shared_lock> create_shared_lock(storage_list_view storages, unique_lock* parent = nullptr);
 
+    /**
+     * @brief clear all storage entries
+     */
+    void clear();
+
 private:
     tbb::concurrent_hash_map<storage_entry, std::shared_ptr<impl::storage_control>> storages_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_names_{};

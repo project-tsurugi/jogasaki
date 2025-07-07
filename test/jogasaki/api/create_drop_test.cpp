@@ -33,6 +33,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/utils/create_tx.h>
 
 #include "api_test_base.h"
@@ -87,14 +88,29 @@ TEST_F(create_drop_test, create0) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
     }
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("T");
+    ASSERT_TRUE(e.has_value());
+    auto s = smgr.find_entry(e.value());
+    ASSERT_TRUE(s);
 }
 
 TEST_F(create_drop_test, drop0) {
-    utils::set_global_tx_option({false, true}); // to customize
+    utils::set_global_tx_option({true, false}); // to customize
     execute_statement("CREATE TABLE TT (C0 INT NOT NULL PRIMARY KEY)");
     execute_statement("INSERT INTO TT (C0) VALUES(1)");
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name("TT");
+    ASSERT_TRUE(e.has_value());
+    auto s = smgr.find_entry(e.value());
+    ASSERT_TRUE(s);
     execute_statement("DROP TABLE TT");
+    ASSERT_TRUE(! smgr.find_by_name("TT").has_value());
+    ASSERT_TRUE(! smgr.find_entry(e.value()));
     execute_statement("CREATE TABLE TT2 (C0 INT NOT NULL PRIMARY KEY)");
+    auto e2 = smgr.find_by_name("TT2");
+    ASSERT_TRUE(e2.has_value());
+    ASSERT_TRUE(! smgr.find_entry(e.value())); // TT2 id must be different from TT id, should not be recycled
     execute_statement("INSERT INTO TT2 (C0) VALUES(1)");
     {
         std::vector<mock::basic_record> result{};
@@ -102,4 +118,5 @@ TEST_F(create_drop_test, drop0) {
         ASSERT_EQ(1, result.size());
     }
 }
+
 }

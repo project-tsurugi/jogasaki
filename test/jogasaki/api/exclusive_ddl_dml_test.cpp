@@ -77,10 +77,13 @@ using namespace std::string_view_literals;
 
 TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_ddl_tx) {
     {
-        auto tx = utils::create_transaction(*db_);
-        execute_statement("CREATE TABLE t (c0 int primary key)", *tx);
-        test_stmt_err("select * from t", error_code::sql_execution_exception);
-        ASSERT_EQ(status::ok, tx->commit());
+        auto tx0 = utils::create_transaction(*db_);
+        execute_statement("CREATE TABLE t (c0 int primary key)", *tx0);
+        auto tx1 = utils::create_transaction(*db_);
+        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
+        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        ASSERT_EQ(status::ok, tx0->commit());
     }
     std::vector<mock::basic_record> result{};
     execute_query("select * from t", result);
@@ -149,8 +152,26 @@ TEST_F(exclusive_ddl_dml_test, starting_ddl_blocked_by_dml_req) {
         execute_query("select count(*) from t0", result);
     });
     while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
-    test_stmt_err("drop table t0", error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
+        test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception);
+    }
     f.get();
+}
+
+TEST_F(exclusive_ddl_dml_test, dml_error_after_drop) {
+    // verify that dml after drop table does not cause crash
+    // after dropping table, the entry is gone and lock is not held any more, so the error message is different
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    {
+        auto tx0 = utils::create_transaction(*db_);
+        execute_statement("drop table t", *tx0);
+        test_stmt_err("select * from t", error_code::symbol_analyze_exception);
+        ASSERT_EQ(status::ok, tx0->commit());
+    }
+    test_stmt_err("select * from t", error_code::symbol_analyze_exception);
 }
 
 }

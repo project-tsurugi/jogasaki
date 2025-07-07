@@ -185,4 +185,9 @@ void storage_manager::remove_locked_storages(storage_list_view storages, unique_
     lock.set_storage_list(storage_list{utils::subtract_vectors(list, to_remove)});
 }
 
+void storage_manager::clear() {
+    storages_.clear();
+    storage_names_.clear();
+}
+
 }

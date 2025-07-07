@@ -349,6 +349,7 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 database::database() : database(std::make_shared<class configuration>()) {}
 
 void database::init() {
+    global::storage_manager()->clear(); // clean up global objects first
     global::config_pool(cfg_);
     if(initialized_) return;
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();

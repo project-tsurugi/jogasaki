@@ -815,11 +815,12 @@ status database::destroy_transaction(
     }
     decltype(transaction_stores_)::accessor acc{};
     if (transaction_stores_.find(acc, handle.session_id().value())) {
-        if(VLOG_IS_ON(log_trace)) {
-            // log transaction id and use_count for debugging
-            auto tx = acc->second->lookup(handle);
-            if (tx) {
-                VLOG_LP(log_trace) << "requested to dispose transaction:" << tx->transaction_id() << " use_count:" << tx.use_count();
+        // log transaction id and use_count for debugging
+        auto tx = acc->second->lookup(handle);
+        if (tx) {
+            auto tx_use_count = tx.use_count();
+            if (tx_use_count > 2) {
+                VLOG_LP(0) << "requested to dispose transaction:" << tx->transaction_id() << " use_count:" << tx_use_count;
             }
         }
         if (acc->second->remove(handle)) {

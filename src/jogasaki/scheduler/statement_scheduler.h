@@ -71,7 +71,7 @@ public:
     statement_scheduler& operator=(statement_scheduler&& other) noexcept = delete;
 
     /**
-     * @brief creates a new instance with given configuration and task schduler
+     * @brief creates a new instance with given configuration and task scheduler
      */
     statement_scheduler(std::shared_ptr<configuration> cfg, task_scheduler& scheduler);
 

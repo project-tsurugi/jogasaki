@@ -55,7 +55,7 @@ sudo apt install -y -V libparquet-dev=16.1.0-1 libparquet-glib-dev=16.1.0-1 liba
 
 ### Manual install steps for mpdecimal
 
-Ubuntu 22.04 users can safely skip this section since `apt install libmpdec-dev` installs new version enough for Jogasaki. On Ubuntu 24.04 (and later), the apt command won't install mpdecimal package. Follow these steps in order to install mpdecmal in the custom location.
+Ubuntu 22.04 users can safely skip this section since `apt install libmpdec-dev` installs new version enough for Jogasaki. On Ubuntu 24.04 (and later), the apt command won't install mpdecimal package. Follow these steps in order to install mpdecimal in the custom location.
 
 1. Download [mpdecimal-2.5.1.tar.gz](https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz) listed [here](https://www.bytereef.org/mpdecimal/download.html).
 2. Untar the archive and move into the extracted directory.

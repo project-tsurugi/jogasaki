@@ -820,7 +820,7 @@ status database::destroy_transaction(
         if (tx) {
             auto tx_use_count = tx.use_count();
             if (tx_use_count > 2) {
-                VLOG_LP(0) << "requested to dispose transaction:" << tx->transaction_id() << " use_count:" << tx_use_count;
+                VLOG_LP(0) << "requested to dispose transaction:" << tx->transaction_id() << " use_count:" << tx.use_count() << " state:" << tx->state() << " label:" << tx->label();
             }
         }
         if (acc->second->remove(handle)) {

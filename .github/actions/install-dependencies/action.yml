@@ -53,7 +53,7 @@ runs:
 
     - name: Checkout_Yakushima
       uses: actions/checkout@v4
-      if: ${{ inputs.checkout == 'true' }}
+      if: ${{ inputs.checkout == 'true' && inputs.sharksfin_implementation == 'shirakami' }}
       with:
         repository: project-tsurugi/yakushima
         path: ${{ inputs.path }}/yakushima
@@ -61,7 +61,7 @@ runs:
 
     - name: Checkout_Shirakami
       uses: actions/checkout@v4
-      if: ${{ inputs.checkout == 'true' }}
+      if: ${{ inputs.checkout == 'true' && inputs.sharksfin_implementation == 'shirakami' }}
       with:
         repository: project-tsurugi/shirakami
         path: ${{ inputs.path }}/shirakami
@@ -135,6 +135,7 @@ runs:
       shell: bash
 
     - name: Install_Yakushima
+      if: ${{ inputs.sharksfin_implementation == 'shirakami' }}
       run: |
         cd ${{ inputs.path }}/yakushima
         rm -fr build
@@ -145,6 +146,7 @@ runs:
       shell: bash
 
     - name: Install_Shirakami
+      if: ${{ inputs.sharksfin_implementation == 'shirakami' }}
       run: |
         cd ${{ inputs.path }}/shirakami
         rm -fr build
@@ -184,6 +186,6 @@ runs:
         rm -fr build
         mkdir build
         cd build
-        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin_implementation }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${{ inputs.cmake_build_option }} ..
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DSHARKSFIN_IMPLEMENTATION=${{ inputs.sharksfin_implementation }} -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DBUILD_BENCHMARK=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${{ inputs.cmake_build_option }} ..
         cmake --build . --target install --clean-first
       shell: bash

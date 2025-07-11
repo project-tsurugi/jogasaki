@@ -53,6 +53,8 @@
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/string_manipulation.h>
 
+#include "acquire_table_lock.h"
+
 namespace jogasaki::executor::common {
 
 using takatori::util::string_builder;
@@ -137,30 +139,8 @@ bool drop_table::operator()(request_context& context) const {
         return false;
     }
 
-    auto& smgr = *global::storage_manager();
-    auto e = smgr.find_by_name(c.simple_name());
-    if(! e.has_value()) {
-        set_error(
-            context,
-            error_code::target_not_found_exception,
-            string_builder{} << "Table \"" << c.simple_name() << "\" not found." << string_builder::to_string,
-            status::err_not_found
-        );
-        return false;
-    }
-    storage::storage_list stg{e.value()};
-    auto& tx = *context.transaction();
-    if (! tx.storage_lock()) {
-        tx.storage_lock(smgr.create_unique_lock());
-    }
-    if(! smgr.add_locked_storages(stg, *tx.storage_lock())) {
-        // table is locked by other operations
-        set_error(
-            context,
-            error_code::sql_execution_exception,
-            "DDL operation was blocked by other DML operation",
-            status::err_illegal_operation
-        );
+    storage::storage_entry storage_id{};
+    if(! acquire_table_lock(context, c.simple_name(), storage_id)) {
         return false;
     }
 
@@ -226,8 +206,9 @@ bool drop_table::operator()(request_context& context) const {
         VLOG_LP(log_warning) << "table '" << c.simple_name() << "' not found";
     }
 
-    if(! smgr.remove_entry(e.value())) {
-        VLOG_LP(log_warning) << "failed to remove storage entry:" << e.value();
+    auto& smgr = *global::storage_manager();
+    if(! smgr.remove_entry(storage_id)) {
+        VLOG_LP(log_warning) << "failed to remove storage entry:" << storage_id;
     }
     return true;
 }

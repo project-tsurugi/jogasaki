@@ -37,6 +37,8 @@
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 
+#include "acquire_table_lock.h"
+
 namespace jogasaki::executor::common {
 
 using takatori::util::string_builder;
@@ -62,6 +64,11 @@ bool drop_index::operator()(request_context& context) const {
         );
         return false;
     }
+    storage::storage_entry storage_id{};
+    if(! acquire_table_lock(context, i->table().simple_name(), storage_id)) {
+        return false;
+    }
+
     // try to delete stroage on kvs.
 
     auto stg = context.database()->get_storage(name);

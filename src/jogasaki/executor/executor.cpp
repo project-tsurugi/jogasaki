@@ -599,6 +599,27 @@ bool acquire_shared_lock(
     return false;
 }
 
+bool validate_transaction(
+    transaction_context& tx,
+    error_info_stats_callback on_completion //NOLINT(performance-unnecessary-value-param)
+) {
+    // validate active transaction
+    if (tx.state() != transaction_state_kind::init &&
+        tx.state() != transaction_state_kind::active &&
+        tx.state() != transaction_state_kind::unknown // for unknown, let tx engine to check if it's active
+    ) {
+        auto res = status::err_inactive_transaction;
+        on_completion(res,
+            create_error_info(
+                error_code::inactive_transaction_exception,
+                "Current transaction is inactive (maybe aborted already.)",
+                res
+            ), nullptr);
+        return false;
+    }
+    return true;
+}
+
 bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexity)
     api::impl::database& database,
     std::shared_ptr<request_context> rctx,  //NOLINT
@@ -619,9 +640,16 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
     external_log_stmt_start(*rctx, req_info, statement);
     external_log_stmt_explain(database, *rctx, req_info, statement);
 
+    if(rctx->transaction() && ! validate_transaction(*rctx->transaction(), on_completion)) {
+        return true; // inactive tx error - this is normal error so return true
+    }
+
     // acquire shared lock for DML operations
     if (e->is_execute() || (!e->is_ddl() && !e->is_empty())) {
         if (! acquire_shared_lock(*rctx, *e)) {
+            if(rctx->transaction()) {
+                abort_transaction(rctx->transaction(), req_info);
+            }
             auto res = status::err_illegal_operation;
             on_completion(res,
                 create_error_info(
@@ -696,6 +724,9 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
     scheduler::statement_scheduler sched{ database.configuration(), *database.task_scheduler()};
     sched.schedule(*e->operators(), *rctx);
     external_log_stmt_end(*rctx, req_info, statement);
+    if(rctx->transaction() && rctx->status_code() != status::ok) {
+        abort_transaction(rctx->transaction(), req_info);
+    }
     on_completion(rctx->status_code(), rctx->error_info(), rctx->stats());
     if(auto req = job->request()) {
         req->status(scheduler::request_detail_status::finishing);

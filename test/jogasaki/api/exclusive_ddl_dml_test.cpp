@@ -81,8 +81,8 @@ TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_create_table_tx) {
         execute_statement("CREATE TABLE t (c0 int primary key)", *tx0);
         auto tx1 = utils::create_transaction(*db_);
         test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
-        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
-        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("select * from t", *tx1, error_code::inactive_transaction_exception);
         ASSERT_EQ(status::ok, tx0->commit());
     }
     std::vector<mock::basic_record> result{};
@@ -155,8 +155,8 @@ TEST_F(exclusive_ddl_dml_test, starting_create_table_blocked_by_dml_req) {
     {
         auto tx = utils::create_transaction(*db_);
         test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
-        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
-        test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("drop table t0", *tx, error_code::inactive_transaction_exception);
     }
     f.get();
 }
@@ -181,8 +181,8 @@ TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_create_index_tx) {
         execute_statement("CREATE INDEX i on t (c0)", *tx0);
         auto tx1 = utils::create_transaction(*db_);
         test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
-        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
-        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("select * from t", *tx1, error_code::inactive_transaction_exception);
         ASSERT_EQ(status::ok, tx0->commit());
     }
     std::vector<mock::basic_record> result{};
@@ -198,8 +198,8 @@ TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_drop_index_tx) {
         execute_statement("DROP INDEX i", *tx0);
         auto tx1 = utils::create_transaction(*db_);
         test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
-        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
-        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("select * from t", *tx1, error_code::inactive_transaction_exception);
         ASSERT_EQ(status::ok, tx0->commit());
     }
     std::vector<mock::basic_record> result{};
@@ -256,8 +256,8 @@ TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req)
         // drop index is blocked by DML
         auto tx = utils::create_transaction(*db_);
         test_stmt_err("drop index i0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
-        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
-        test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("drop index i0", *tx, error_code::inactive_transaction_exception);
     }
 
     // currently creating index with data is not allowed, so this test cannot be run
@@ -266,7 +266,7 @@ TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req)
         // create index is blocked by DML
         auto tx = utils::create_transaction(*db_);
         test_stmt_err("create index i1 on t0 (c0)", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
-        // do same stmt twice - currently seeing locked storage won't cause abort //TODO
+        // verify tx abort by the error above
         test_stmt_err("create index i1 on t0 (c0)", *tx, error_code::sql_execution_exception);
     }
     */

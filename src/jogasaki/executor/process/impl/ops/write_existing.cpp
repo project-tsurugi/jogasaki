@@ -202,7 +202,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
         return error_abort(ctx, res);
     }
 
-    if(primary_key_updated_ || ! update_skips_deletion(ctx)) {
+    if(primary_key_updated_) {
         // remove and recreate records
         if(auto res = primary_.remove_by_encoded_key(
                 context,
@@ -245,7 +245,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
     }
 
     // encode extracted key/value in primary target and send to kvs
-    kvs::put_option opt = primary_key_updated_ ? kvs::put_option::create : kvs::put_option::create_or_update;
+    kvs::put_option opt = primary_key_updated_ ? kvs::put_option::create : kvs::put_option::update;
     std::string_view encoded_key{};
     if(auto res = primary_.encode_put(
            context,

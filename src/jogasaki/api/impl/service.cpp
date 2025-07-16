@@ -1712,13 +1712,13 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) 
                 break;
             case jogasaki::api::field_type_kind::character:
                 column->set_atom_type(sql::common::AtomType::CHARACTER);
-                if(auto o = fld.character_option()) {
+                if(auto const& o = fld.character_option()) {
                     column->set_varying(o->varying());
                 }
                 break;
             case jogasaki::api::field_type_kind::octet:
                 column->set_atom_type(sql::common::AtomType::OCTET);
-                if(auto o = fld.octet_option()) {
+                if(auto const& o = fld.octet_option()) {
                     column->set_varying(o->varying());
                 }
                 break;

@@ -491,7 +491,7 @@ void service_api_test::test_query(
 
         for(std::size_t i=0, n=cols.size(); i<n; ++i) {
             EXPECT_EQ(column_types[i], cols[i].type_);
-            EXPECT_EQ(nullabilities[i], cols[i].nullable_);
+            EXPECT_TRUE(! cols[i].nullable_.has_value());
             EXPECT_EQ(exp_colnames[i], cols[i].name_);
         }
         {
@@ -633,9 +633,9 @@ TEST_F(service_api_test, execute_prepared_statement_and_query) {
             ASSERT_EQ(2, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::INT8, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_TRUE(! cols[0].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::FLOAT8, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_TRUE(! cols[1].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -747,15 +747,15 @@ TEST_F(service_api_test, data_types) {
             ASSERT_EQ(5, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::INT4, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_TRUE(! cols[0].nullable_.has_value()); //TODO for now no nullable info. is sent
             EXPECT_EQ(sql::common::AtomType::INT8, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_TRUE(! cols[1].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::FLOAT8, cols[2].type_);
-            EXPECT_TRUE(cols[2].nullable_);
+            EXPECT_TRUE(! cols[2].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::FLOAT4, cols[3].type_);
-            EXPECT_TRUE(cols[3].nullable_);
+            EXPECT_TRUE(! cols[3].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::CHARACTER, cols[4].type_);
-            EXPECT_TRUE(cols[4].nullable_);
+            EXPECT_TRUE(! cols[4].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -776,6 +776,42 @@ TEST_F(service_api_test, data_types) {
     test_commit(tx_handle);
     test_dispose_prepare(stmt_handle);
     test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_test, char_varchar) {
+    // verify result set metadata for char and varchar columns - both should be returned as varchar(*)
+    execute_statement("create table t (c0 char(10), c1 varchar(10))");
+    execute_statement("insert into t values ('1234567890', '1234567890')");
+
+    api::transaction_handle tx_handle{};
+
+    test_begin(tx_handle);
+
+    auto varchar_aster = meta::field_type{std::make_shared<meta::character_field_option>()};
+
+    test_query(
+        "select c0, c1 from t",
+        tx_handle,
+        {
+            sql::common::AtomType::CHARACTER,
+            sql::common::AtomType::CHARACTER,
+        },
+        {
+            true,
+            true
+        },
+        {
+                mock::typed_nullable_record<ft::character, ft::character>(
+                std::tuple{
+                    varchar_aster, varchar_aster
+                },
+                { accessor::text{"1234567890"}, accessor::text{"1234567890"},
+                }
+            )
+        },
+        {"c0", "c1"}
+    );
+    test_commit(tx_handle);
 }
 
 TEST_F(service_api_test, decimals) {
@@ -845,17 +881,17 @@ TEST_F(service_api_test, decimals) {
             ASSERT_EQ(6, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_TRUE(! cols[0].nullable_.has_value()); //TODO for now no nullable info. is sent
             EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_TRUE(! cols[1].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[2].type_);
-            EXPECT_TRUE(cols[2].nullable_);
+            EXPECT_TRUE(! cols[2].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[3].type_);
-            EXPECT_TRUE(cols[3].nullable_);
+            EXPECT_TRUE(! cols[3].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[4].type_);
-            EXPECT_TRUE(cols[4].nullable_);
+            EXPECT_TRUE(! cols[4].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::DECIMAL, cols[5].type_);
-            EXPECT_TRUE(cols[5].nullable_);
+            EXPECT_TRUE(! cols[5].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -960,15 +996,15 @@ TEST_F(service_api_test, temporal_types) {
             ASSERT_EQ(10, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::DATE, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_TRUE(! cols[0].nullable_.has_value()); //TODO for now no nullable info. is sent
             EXPECT_EQ(sql::common::AtomType::TIME_OF_DAY, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_TRUE(! cols[1].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE, cols[2].type_);
-            EXPECT_TRUE(cols[2].nullable_);
+            EXPECT_TRUE(! cols[2].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::TIME_POINT, cols[3].type_);
-            EXPECT_TRUE(cols[3].nullable_);
+            EXPECT_TRUE(! cols[3].nullable_.has_value());
             EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, cols[4].type_);
-            EXPECT_TRUE(cols[4].nullable_);
+            EXPECT_TRUE(! cols[4].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1064,7 +1100,7 @@ TEST_F(service_api_test, timestamptz) {
             ASSERT_EQ(1, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_TRUE(! cols[0].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1119,7 +1155,7 @@ TEST_F(service_api_test, timestamptz_with_offset) {
             ASSERT_EQ(1, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_TRUE(! cols[0].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1200,9 +1236,9 @@ TEST_F(service_api_test, binary_type) {
             ASSERT_EQ(2, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::OCTET, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_TRUE(! cols[0].nullable_.has_value()); //TODO for now no nullable info. is sent
             EXPECT_EQ(sql::common::AtomType::OCTET, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_TRUE(! cols[1].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1281,7 +1317,7 @@ TEST_F(service_api_test, long_binary_data) {
             ASSERT_EQ(1, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::OCTET, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_TRUE(! cols[0].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1360,9 +1396,9 @@ TEST_F(service_api_test, boolean_type) {
             ASSERT_EQ(2, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::BOOLEAN, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_TRUE(! cols[0].nullable_.has_value()); //TODO for now no nullable info. is sent
             EXPECT_EQ(sql::common::AtomType::BOOLEAN, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_TRUE(! cols[1].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1469,9 +1505,9 @@ TEST_F(service_api_test, blob_types) {
             ASSERT_EQ(2, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::BLOB, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_TRUE(! cols[0].nullable_.has_value()); //TODO for now no nullable info. is sent
             EXPECT_EQ(sql::common::AtomType::CLOB, cols[1].type_);
-            EXPECT_TRUE(cols[1].nullable_);
+            EXPECT_TRUE(! cols[1].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1594,7 +1630,7 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
             ASSERT_EQ(1, cols.size());
 
             EXPECT_EQ(sql::common::AtomType::BLOB, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_); //TODO for now all nullable
+            EXPECT_TRUE(! cols[0].nullable_.has_value()); //TODO for now no nullable info. is sent
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -1909,9 +1945,9 @@ TEST_F(service_api_test, explain_query) {
         EXPECT_EQ(sql_proto_explain_format_version, version);
         EXPECT_EQ(2, cols.size());
         EXPECT_EQ(sql::common::AtomType::INT8, cols[0].type_);
-        EXPECT_TRUE(cols[0].nullable_);
+        EXPECT_TRUE(! cols[0].nullable_.has_value());
         EXPECT_EQ(sql::common::AtomType::FLOAT8, cols[1].type_);
-        EXPECT_TRUE(cols[1].nullable_);
+        EXPECT_TRUE(! cols[1].nullable_.has_value());
         LOG(INFO) << result;
     }
 }
@@ -2012,9 +2048,9 @@ TEST_F(service_api_test, explain_by_text) {
     EXPECT_EQ(sql_proto_explain_format_version, version);
     EXPECT_EQ(2, cols.size());
     EXPECT_EQ(sql::common::AtomType::INT8, cols[0].type_);
-    EXPECT_TRUE(cols[0].nullable_);
+    EXPECT_TRUE(! cols[0].nullable_.has_value());
     EXPECT_EQ(sql::common::AtomType::FLOAT8, cols[1].type_);
-    EXPECT_TRUE(cols[1].nullable_);
+    EXPECT_TRUE(! cols[1].nullable_.has_value());
     LOG(INFO) << result;
 }
 
@@ -2178,7 +2214,7 @@ void service_api_test::test_dump(std::vector<std::string>& files, std::string_vi
             std::cout << "name : " << name << std::endl;
             ASSERT_EQ(1, cols.size());
             EXPECT_EQ(sql::common::AtomType::CHARACTER, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_TRUE(! cols[0].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;
@@ -2275,7 +2311,7 @@ TEST_F(service_api_test, dump_error_with_query_result) {
             std::cout << "name : " << name << std::endl;
             ASSERT_EQ(1, cols.size());
             EXPECT_EQ(sql::common::AtomType::CHARACTER, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_TRUE(! cols[0].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;

@@ -53,14 +53,44 @@ std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
 struct column_info;
 
+template <class T>
+struct allow_arbitrary {
+    allow_arbitrary() = default;
+
+    allow_arbitrary(T&& t) :
+        entity_(std::forward<T>(t)),
+        arbitrary_(false)
+    {}
+    bool is_arbitrary() const noexcept{
+        return arbitrary_;
+    }
+
+    T value() const noexcept {
+        return entity_;
+    }
+private:
+
+    T entity_{};
+    bool arbitrary_{true};
+};
+
 struct colinfo {
-    colinfo(std::string name, sql::common::AtomType type, bool nullable) :
+    colinfo(
+        std::string name,
+        sql::common::AtomType type,
+        std::optional<bool> nullable
+    ) :
         name_(std::move(name)), type_(type), nullable_(nullable)
     {}
 
     std::string name_{};  //NOLINT
     sql::common::AtomType type_{};  //NOLINT
-    bool nullable_{};  //NOLINT
+    std::optional<bool> nullable_{};  //NOLINT
+    std::optional<bool> varying_{};
+    std::optional<allow_arbitrary<std::uint32_t>> length_{};
+    std::optional<allow_arbitrary<std::uint32_t>> precision_{};
+    std::optional<allow_arbitrary<std::uint32_t>> scale_{};
+
 };
 
 inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const& columns) {
@@ -68,7 +98,7 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
     boost::dynamic_bitset<std::uint64_t> nullities;
     for(std::size_t i=0, n=columns.size(); i<n; ++i) {
         auto& c = columns[i];
-        bool nullable = c.nullable_;
+        bool nullable = ! c.nullable_.has_value() || c.nullable_.value(); // currently assume nullable if no info. provided
         meta::field_type field{};
         nullities.push_back(nullable);
         switch(c.type_) {
@@ -78,9 +108,32 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
             case sql::common::AtomType::INT8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
             case sql::common::AtomType::FLOAT4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
             case sql::common::AtomType::FLOAT8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
-            case sql::common::AtomType::DECIMAL: fields.emplace_back(std::make_shared<meta::decimal_field_option>()); break;
-            case sql::common::AtomType::CHARACTER: fields.emplace_back(std::make_shared<meta::character_field_option>()); break;
-            case sql::common::AtomType::OCTET: fields.emplace_back(std::make_shared<meta::octet_field_option>()); break;
+            case sql::common::AtomType::DECIMAL: {
+                auto p = c.precision_.has_value() ?
+                    (! c.precision_.value().is_arbitrary() ? std::optional<std::size_t>{c.precision_.value().value()} : std::nullopt) :
+                    std::nullopt;
+                auto s = c.scale_.has_value() ?
+                    (! c.scale_.value().is_arbitrary() ? std::optional<std::size_t>{c.scale_.value().value()} : std::nullopt) :
+                    std::nullopt;
+                fields.emplace_back(std::make_shared<meta::decimal_field_option>(p, s));
+                break;
+            }
+            case sql::common::AtomType::CHARACTER: {
+                auto varying = ! c.varying_.has_value() || c.varying_.has_value();  // if varying info is not provided, assume it is varying
+                auto length = c.length_.has_value() ?
+                    (! c.length_.value().is_arbitrary() ? std::optional<std::size_t>{c.length_.value().value()} : std::nullopt) :
+                    std::nullopt;
+                fields.emplace_back(std::make_shared<meta::character_field_option>(varying, length));
+                break;
+            }
+            case sql::common::AtomType::OCTET: {
+                auto varying = ! c.varying_.has_value() || c.varying_.has_value();  // if varying info is not provided, assume it is varying
+                auto length = c.length_.has_value() ?
+                    (! c.length_.value().is_arbitrary() ? std::optional<std::size_t>{c.length_.value().value()} : std::nullopt) :
+                    std::nullopt;
+                fields.emplace_back(std::make_shared<meta::octet_field_option>(varying, length));
+                break;
+            }
             case sql::common::AtomType::DATE: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
             case sql::common::AtomType::TIME_OF_DAY: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>(false)); break;
             case sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>(true)); break;
@@ -349,7 +402,37 @@ std::vector<colinfo> create_colinfo(T& meta) {
     cols.reserve(sz);
     for(std::size_t i=0; i < sz; ++i) {
         auto& c = meta.columns(i);
-        cols.emplace_back(c.name(), c.atom_type(), true);  // all nullable
+        colinfo info{c.name(), c.atom_type(), c.nullable_opt_case() == sql::common::Column::kNullable ? std::optional{c.nullable()} : std::nullopt};
+        switch(c.atom_type()) {
+            case sql::common::AtomType::DECIMAL: {
+                if(c.precision_opt_case() == sql::common::Column::kPrecision) {
+                    info.precision_ = c.precision();
+                } else if (c.precision_opt_case() == sql::common::Column::kArbitraryPrecision) {
+                    info.precision_ = allow_arbitrary<std::uint32_t>{};
+                }
+                if (c.scale_opt_case() == sql::common::Column::kScale) {
+                    info.scale_ = c.scale();
+                } else if (c.scale_opt_case() == sql::common::Column::kArbitraryScale) {
+                    info.scale_ = allow_arbitrary<std::uint32_t>{};
+                }
+                break;
+            }
+            case sql::common::AtomType::CHARACTER: {
+                if (c.varying_opt_case() == sql::common::Column::kVarying) {
+                    info.varying_ = c.varying();
+                }
+                break;
+            }
+            case sql::common::AtomType::OCTET: {
+                if (c.varying_opt_case() == sql::common::Column::kVarying) {
+                    info.varying_ = c.varying();
+                }
+                break;
+            }
+            default:
+                break;
+        }
+        cols.emplace_back(std::move(info));
     }
     return cols;
 }

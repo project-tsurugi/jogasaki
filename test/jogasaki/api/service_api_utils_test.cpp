@@ -379,7 +379,7 @@ void service_api_utils_test::test_query(
 
         for(std::size_t i=0, n=cols.size(); i<n; ++i) {
             EXPECT_EQ(column_types[i], cols[i].type_);
-            EXPECT_EQ(nullabilities[i], cols[i].nullable_);
+            EXPECT_TRUE(! cols[i].nullable_.has_value());
             EXPECT_EQ(exp_colnames[i], cols[i].name_);
         }
         {
@@ -483,7 +483,7 @@ void service_api_utils_test::test_dump(std::vector<std::string>& files, std::str
             std::cout << "name : " << name << std::endl;
             ASSERT_EQ(1, cols.size());
             EXPECT_EQ(sql::common::AtomType::CHARACTER, cols[0].type_);
-            EXPECT_TRUE(cols[0].nullable_);
+            EXPECT_TRUE(! cols[0].nullable_.has_value());
             {
                 ASSERT_TRUE(res->channel_);
                 auto& ch = *res->channel_;

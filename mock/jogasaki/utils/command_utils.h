@@ -119,7 +119,8 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
                 break;
             }
             case sql::common::AtomType::CHARACTER: {
-                auto varying = ! c.varying_.has_value() || c.varying_.has_value();  // if varying info is not provided, assume it is varying
+                // if varying info is not provided, assume it is non varying - this is to test varying=true is passed correctly
+                auto varying = c.varying_.has_value() && c.varying_.has_value();
                 auto length = c.length_.has_value() ?
                     (! c.length_.value().is_arbitrary() ? std::optional<std::size_t>{c.length_.value().value()} : std::nullopt) :
                     std::nullopt;
@@ -127,7 +128,8 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
                 break;
             }
             case sql::common::AtomType::OCTET: {
-                auto varying = ! c.varying_.has_value() || c.varying_.has_value();  // if varying info is not provided, assume it is varying
+                // if varying info is not provided, assume it is non varying - this is to test varying=true is passed correctly
+                auto varying = c.varying_.has_value() && c.varying_.has_value();
                 auto length = c.length_.has_value() ?
                     (! c.length_.value().is_arbitrary() ? std::optional<std::size_t>{c.length_.value().value()} : std::nullopt) :
                     std::nullopt;

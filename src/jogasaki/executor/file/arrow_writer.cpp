@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@
 #include <arrow/type.h>
 #include <arrow/util/basic_decimal.h>
 #include <arrow/util/decimal.h>
-#include <arrow/util/string_builder.h>
 #include <glog/logging.h>
 
 #include <takatori/datetime/time_of_day.h>

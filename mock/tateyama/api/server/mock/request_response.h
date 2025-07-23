@@ -132,6 +132,10 @@ public:
     std::optional<std::string_view> username() const noexcept override {
         return {};
     }
+
+    tateyama::api::server::user_type user_type() const noexcept override {
+        return tateyama::api::server::user_type::administrator;
+    }
 };
 
 class test_blob_info : public blob_info {

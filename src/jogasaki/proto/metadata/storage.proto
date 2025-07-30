@@ -171,6 +171,59 @@ message TableColumn {
     string description = 120;
 }
 
+// kind of actions to be performed on the table.
+enum TableActionKind {
+
+    // action type is not specified.
+    UNSPECIFIED = 0;
+
+    // reserved for OWNER
+    reserved 1;
+
+    // any control of the table.
+    CONTROL = 2;
+
+    // reserved for DESCRIBE
+    reserved 3;
+
+    // action to read entries from the table (`SELECT`).
+    SELECT = 4;
+
+    // action to create entries into the table (`INSERT` and `INSERT OR REPLACE`).
+    INSERT = 5;
+
+    // action to update entries in the table (`UPDATE`).
+    UPDATE = 6;
+
+    // action to delete entries from the table (`DELETE`).
+    DELETE = 7;
+
+    // reserved for CREATE, DROP
+    reserved 8, 9;
+
+    // reserved for ALTER, TRUNCATE
+    reserved 10, 11;
+}
+
+// represents a privilege of an action for the table.
+message TablePrivilegeAction {
+
+    // the action kind of this privilege.
+    TableActionKind action_kind = 1;
+
+    // NOTE: extension point for column-level privileges..
+}
+
+// represents a table authorization of the grantee.
+message TableAuthorizationEntry {
+
+    // the authorization identifier for the table.
+    string identifier = 1;
+
+    // the permitted action list for the table, should not be empty.
+    repeated TablePrivilegeAction privilege_list = 2;
+}
+
 // the definition of tables.
 message TableDefinition {
 
@@ -188,6 +241,12 @@ message TableDefinition {
 
     // optional description
     string description = 30;
+
+    // the permitted action for all users, may be empty.
+    repeated TablePrivilegeAction default_privilege_list = 50;
+
+    // authorization for individual grantees.
+    repeated TableAuthorizationEntry authorization_list = 60;
 
     // TODO: constraints.
 }

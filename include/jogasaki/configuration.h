@@ -637,7 +637,7 @@ private:
     std::size_t worker_try_count_ = 1000;
     std::size_t worker_suspend_timeout_ = 1000000;
     commit_response_kind default_commit_response_{commit_response_kind::stored};
-    bool update_skips_deletion_ = false;
+    bool update_skips_deletion_ = true;
     bool profile_commits_ = false;
     bool skip_smv_check_ = false;
     bool return_os_pages_ = false;

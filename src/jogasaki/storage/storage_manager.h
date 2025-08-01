@@ -15,21 +15,26 @@
  */
 #pragma once
 
+#include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <tbb/concurrent_hash_map.h>
 
 #include <yugawara/storage/configurable_provider.h>
 #include <yugawara/storage/index.h>
 
+#include <jogasaki/auth/action_set.h>
+#include <jogasaki/auth/authorized_users_action_set.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/storage/shared_lock.h>
 #include <jogasaki/storage/storage_list.h>
 #include <jogasaki/storage/unique_lock.h>
-#include <jogasaki/storage/shared_lock.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/hash_combine.h>
-#include "jogasaki/utils/assert.h"
 
 namespace jogasaki::storage {
 
@@ -129,9 +134,27 @@ public:
         } while(! state_.compare_exchange_weak(cur, desired));
     }
 
+    /**
+     * @brief getter for reference to authorized actions
+     * @return reference to authorized users' actions
+     */
+    auth::authorized_users_action_set& authorized_actions() {
+        return authorized_actions_;
+    }
+
+    /**
+     * @brief getter for reference to public actions
+     * @return reference to actions that are allowed for all users
+     */
+    auth::action_set& public_actions() {
+        return public_actions_;
+    }
+
 private:
     std::atomic<lock_state> state_{};
     std::string name_{};
+    auth::authorized_users_action_set authorized_actions_{};
+    auth::action_set public_actions_{};
 };
 
 } // namespace impl

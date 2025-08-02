@@ -32,3 +32,6 @@ HTML/
 
 # WSL related files
 *:Zone.Identifier
+
+## experimental usage for github copilot instructions
+.github/copilot-instructions.md

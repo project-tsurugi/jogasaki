@@ -221,6 +221,16 @@ public:
     }
 
     /**
+     * @brief setter for request info
+     * @param arg request_info used to run the statement
+     * @return *this
+     */
+    runner& req_info(request_info arg) {
+        req_info_ = std::move(arg);
+        return *this;
+    }
+
+    /**
      * @brief report the run() result
      * @return result message to report run
      */
@@ -267,6 +277,7 @@ private:
     bool show_recs_{};
     bool expect_error_{};
     std::string execution_message_{};
+    request_info req_info_{};
 
 };
 

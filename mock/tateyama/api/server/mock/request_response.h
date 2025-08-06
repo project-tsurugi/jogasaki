@@ -130,12 +130,14 @@ public:
     }
 
     std::optional<std::string_view> username() const noexcept override {
-        return {};
+        return username_.empty() ? std::nullopt : std::optional<std::string_view>{username_};
     }
 
     tateyama::api::server::user_type user_type() const noexcept override {
         return {};
     }
+
+    std::string username_{};
 };
 
 class test_blob_info : public blob_info {

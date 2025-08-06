@@ -282,6 +282,21 @@ void api_test_base::execute_statement(
     ASSERT_EQ(expected, result);
 }
 
+void api_test_base::execute_statement(
+    std::string_view stmt,
+    request_info info
+) {
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .text(stmt)
+            .req_info(std::move(info))
+            .run()
+            .report()
+    );
+}
+
+
 void api_test_base::test_stmt_err(
     std::string_view stmt,
     api::transaction_handle& tx,

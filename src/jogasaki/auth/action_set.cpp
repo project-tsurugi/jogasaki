@@ -15,6 +15,8 @@
  */
 #include <jogasaki/auth/action_set.h>
 
+#include <algorithm>
+
 namespace jogasaki::auth {
 
 bool action_set::action_allowed(action_kind arg) const noexcept {
@@ -29,6 +31,10 @@ void action_set::add_action(action_kind arg) {
     if (arg == action_kind::control) {
         actions_.clear();
         actions_.insert(arg);
+        return;
+    }
+    // if control is already in the set, then we do not add other actions
+    if (actions_.contains(action_kind::control)) {
         return;
     }
     actions_.insert(arg);
@@ -57,12 +63,9 @@ bool action_set::has_action(action_kind arg) const noexcept {
 }
 
 bool action_set::allows(action_set const& actions) const noexcept {
-    for (auto const& a : actions.actions_) {
-        if (! action_allowed(a)) {
-            return false;
-        }
-    }
-    return true;
+    return std::all_of(actions.actions_.begin(), actions.actions_.end(), [this](action_kind a) {
+        return action_allowed(a);
+    });
 }
 
 } // namespace jogasaki::auth

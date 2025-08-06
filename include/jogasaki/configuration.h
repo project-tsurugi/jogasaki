@@ -300,14 +300,6 @@ public:
         default_commit_response_ = arg;
     }
 
-    void update_skips_deletion(bool arg) noexcept {
-        update_skips_deletion_ = arg;
-    }
-
-    [[nodiscard]] bool update_skips_deletion() const noexcept {
-        return update_skips_deletion_;
-    }
-
     void profile_commits(bool arg) noexcept {
         profile_commits_ = arg;
     }
@@ -572,7 +564,6 @@ public:
         print_non_default(worker_try_count);
         print_non_default(worker_suspend_timeout);
         print_non_default(default_commit_response);
-        print_non_default(update_skips_deletion);
         print_non_default(profile_commits);
         print_non_default(skip_smv_check);
         print_non_default(return_os_pages);
@@ -637,7 +628,6 @@ private:
     std::size_t worker_try_count_ = 1000;
     std::size_t worker_suspend_timeout_ = 1000000;
     commit_response_kind default_commit_response_{commit_response_kind::stored};
-    bool update_skips_deletion_ = true;
     bool profile_commits_ = false;
     bool skip_smv_check_ = false;
     bool return_os_pages_ = false;

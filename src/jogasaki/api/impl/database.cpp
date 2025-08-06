@@ -169,7 +169,6 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(worker_try_count) " << cfg.worker_try_count() << " : number of polling by worker thread on task queue before suspend";
     LOGCFG << "(worker_suspend_timeout) " << cfg.worker_suspend_timeout() << " : duration(us)  between worker thread suspends and resumes";
     LOGCFG << "(commit_response) " << cfg.default_commit_response() << " : commit notification timing default";
-    LOGCFG << "(dev_update_skips_deletion) " << cfg.update_skips_deletion() << " : whether update statement skips unnecessary deletion when possible";
     LOGCFG << "(dev_profile_commits) " << cfg.profile_commits() << " : whether to profile commit/durability callbacks";
     LOGCFG << "(dev_return_os_pages) " << cfg.return_os_pages() << " : whether to return released memory pages to operating system";
     LOGCFG << "(dev_omit_task_when_idle) " << cfg.omit_task_when_idle() << " : whether to stop scheduling tasks to process durability callback if there is no transaction waiting for durable";

@@ -113,12 +113,6 @@ void abort_transaction(transaction_context& tx) {
     }
 }
 
-bool update_skips_deletion(write_existing_context& ctx) {
-    if(! ctx.req_context()) return false;
-    if(! ctx.req_context()->configuration()) return false;
-    return ctx.req_context()->configuration()->update_skips_deletion();
-}
-
 status update_record(
     std::vector<details::update_field>& fields,
     request_context & ctx,
@@ -215,7 +209,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
+        if(! primary_key_updated_ && ! secondary_key_updated_[i]) {
             continue;
         }
         if(auto res = secondaries_[i].encode_remove(
@@ -267,7 +261,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
     }
 
     for(std::size_t i=0, n=secondaries_.size(); i<n; ++i) {
-        if(! primary_key_updated_ && ! secondary_key_updated_[i] && update_skips_deletion(ctx)) {
+        if(! primary_key_updated_ && ! secondary_key_updated_[i]) {
             continue;
         }
         if(auto res = secondaries_[i].encode_put(

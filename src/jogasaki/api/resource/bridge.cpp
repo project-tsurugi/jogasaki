@@ -228,9 +228,6 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
         ret->default_commit_response(static_cast<commit_response_kind>(idx));
     }
 
-    if (auto v = jogasaki_config->get<bool>("dev_update_skips_deletion")) {
-        ret->update_skips_deletion(v.value());
-    }
     if (auto v = jogasaki_config->get<bool>("dev_profile_commits")) {
         ret->profile_commits(v.value());
     }

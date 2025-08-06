@@ -50,6 +50,7 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/transaction_handle.h>
 #include <jogasaki/api/transaction_option.h>
+#include <jogasaki/auth/authorized_users_action_set.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>

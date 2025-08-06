@@ -17,17 +17,17 @@
 
 namespace jogasaki::auth {
 
-void authorized_users_action_set::add_user_actions(std::string name, action_set actions) {
+void authorized_users_action_set::add_user_actions(std::string_view name, action_set actions) {
     if (actions.empty()) {
         return; // do nothing if no actions are provided
     }
     // merge actions with existing ones
-    auto it = map_.find(name);
+    auto it = map_.find(std::string{name});
     if (it != map_.end()) {
         it->second.add_actions(actions);
         return;
     }
-    map_.emplace(std::move(name), std::move(actions));
+    map_.emplace(name, actions);
 }
 
 void authorized_users_action_set::remove_user_all_actions(std::string_view name) {

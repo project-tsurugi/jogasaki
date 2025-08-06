@@ -31,7 +31,7 @@ public:
      * @param name The user name.
      * @param actions The set of actions to add for the user.
      */
-    void add_user_actions(std::string name, action_set actions);
+    void add_user_actions(std::string_view name, action_set actions);
 
     /**
      * @brief Remove all authorized actions for a user.
@@ -64,6 +64,22 @@ public:
      */
     [[nodiscard]] action_set const& find_user_actions(std::string_view name) const;
 
+
+    /**
+     * @brief Get an iterator to the beginning of the authorized users.
+     * @return An iterator to the beginning of the authorized users.
+     */
+    auto begin() const noexcept {
+        return map_.begin();
+    }
+
+    /**
+     * @brief Get an iterator to the end of the authorized users.
+     * @return An iterator to the end of the authorized users.
+     */
+    auto end() const noexcept {
+        return map_.end();
+    }
 private:
     std::unordered_map<std::string, action_set> map_{};
 };

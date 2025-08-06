@@ -42,7 +42,7 @@ public:
      * @param arg The action to check.
      * @return true if the action is allowed, false otherwise.
      */
-    bool action_allowed(action_kind arg) const noexcept;
+    [[nodiscard]] bool action_allowed(action_kind arg) const noexcept;
 
     /**
      * @brief check if the specified action exists in the set.
@@ -51,7 +51,7 @@ public:
      * @param arg The action to check.
      * @return true if the action exists, false otherwise.
      */
-    bool has_action(action_kind arg) const noexcept;
+    [[nodiscard]] bool has_action(action_kind arg) const noexcept;
 
     /**
      * @brief add the specified action to the set.
@@ -78,7 +78,7 @@ public:
      * @brief check if the set is empty.
      * @return true if there are no actions in the set, false otherwise.
      */
-    bool empty() const noexcept;
+    [[nodiscard]] bool empty() const noexcept;
 
     /**
      * @brief remove all actions from the set.
@@ -88,14 +88,14 @@ public:
     /**
      * @brief return a const iterator to the beginning of the set.
      */
-    auto begin() const noexcept {
+    [[nodiscard]] auto begin() const noexcept {
         return actions_.begin();
     }
 
     /**
      * @brief return a const iterator to the end of the set.
      */
-    auto end() const noexcept {
+    [[nodiscard]] auto end() const noexcept {
         return actions_.end();
     }
 

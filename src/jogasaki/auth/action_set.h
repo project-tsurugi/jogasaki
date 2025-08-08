@@ -106,6 +106,22 @@ public:
      */
     [[nodiscard]] bool allows(action_set const& actions) const noexcept;
 
+    /**
+     * @brief equality operator.
+     * @return true if both sets contain the same actions.
+     */
+    friend bool operator==(action_set const& lhs, action_set const& rhs) noexcept {
+        return lhs.actions_ == rhs.actions_;
+    }
+
+    /**
+     * @brief inequality operator.
+     * @return true if the sets contain different actions.
+     */
+    friend bool operator!=(action_set const& lhs, action_set const& rhs) noexcept {
+        return ! (lhs == rhs);
+    }
+
 private:
     action_kind_set actions_;
 };

@@ -282,7 +282,7 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
 void serialize_table(
     yugawara::storage::table const& t,
     proto::metadata::storage::TableDefinition& tbl,
-    metadata_serializer_option const& option = {}
+    metadata_serializer_option const& option = metadata_serializer_option{}
 ) {
     if(t.definition_id().has_value()) {
         tbl.set_definition_id(*t.definition_id());

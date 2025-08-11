@@ -37,7 +37,7 @@ namespace jogasaki::utils {
  */
 struct metadata_serializer_option {
 
-    metadata_serializer_option(
+    explicit metadata_serializer_option(
         bool synthesized = false,
         auth::authorized_users_action_set* authorized_actions = nullptr
     ) :
@@ -46,10 +46,10 @@ struct metadata_serializer_option {
     {}
 
     // whether the object is synthesized or not
-    bool synthesized_{};
+    bool synthesized_{};  //NOLINT
 
     // authorized users action for the index or table
-    auth::authorized_users_action_set* authorized_actions_{};
+    auth::authorized_users_action_set* authorized_actions_{};  //NOLINT
 };
 
 /**
@@ -82,8 +82,11 @@ public:
      * Known errors:
      * error_code::unsupported_runtime_feature_exception if the default value data type is not supported
      */
-    void
-    serialize(yugawara::storage::index const& idx, std::string& out, metadata_serializer_option const& option = {});
+    void serialize(
+        yugawara::storage::index const& idx,
+        std::string& out,
+        metadata_serializer_option const& option = metadata_serializer_option{}
+    );
 
     /**
      * @brief serialize index as jogasaki::proto::metadata::storage::IndexDefinition
@@ -98,7 +101,7 @@ public:
     void serialize(
         yugawara::storage::index const& idx,
         proto::metadata::storage::IndexDefinition& idef,
-        metadata_serializer_option const& option = {}
+        metadata_serializer_option const& option = metadata_serializer_option{}
     );
 
     /**

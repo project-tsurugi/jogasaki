@@ -60,7 +60,7 @@ public:
             return *this;
         }
 
-        iterator operator++(int) {
+        iterator operator++(int) & {
             iterator tmp = *this;
             ++(*this);
             return tmp;
@@ -108,7 +108,7 @@ public:
             return *this;
         }
 
-        const_iterator operator++(int) {
+        const_iterator operator++(int) & {
             const_iterator tmp = *this;
             ++(*this);
             return tmp;
@@ -134,7 +134,7 @@ public:
     {}
 
     [[nodiscard]] storage_list_view storage() const noexcept {
-        return storage_list_view(storages_);
+        return storage_list_view{storages_};
     }
 
     [[nodiscard]] std::size_t size() const noexcept {
@@ -142,19 +142,19 @@ public:
     }
 
     [[nodiscard]] iterator begin() noexcept {
-        return iterator(storages_.begin(), actions_.begin());
+        return iterator{storages_.begin(), actions_.begin()};
     }
 
     [[nodiscard]] iterator end() noexcept {
-        return iterator(storages_.end(), actions_.end());
+        return iterator{storages_.end(), actions_.end()};
     }
 
     [[nodiscard]] const_iterator begin() const noexcept {
-        return const_iterator(storages_.cbegin(), actions_.cbegin());
+        return const_iterator{storages_.cbegin(), actions_.cbegin()};
     }
 
     [[nodiscard]] const_iterator end() const noexcept {
-        return const_iterator(storages_.cend(), actions_.cend());
+        return const_iterator{storages_.cend(), actions_.cend()};
     }
 
     [[nodiscard]] const_iterator cbegin() const noexcept {
@@ -165,6 +165,17 @@ public:
         return end();
     }
 
+    [[nodiscard]] storage_list& storages() noexcept {
+        return storages_;
+    }
+
+    [[nodiscard]] std::vector<auth::action_set>& actions() noexcept {
+        return actions_;
+    }
+
+    [[nodiscard]] std::vector<auth::action_set> const& actions() const noexcept {
+        return actions_;
+    }
 private:
     storage_list storages_{};
     std::vector<auth::action_set> actions_{};

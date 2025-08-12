@@ -32,7 +32,7 @@ public:
      * @param args action_kind values to add to the set.
      */
     template<typename... Args>
-    explicit action_set(Args... args) {
+    constexpr explicit action_set(Args... args) {
         (add_action(args), ...);
     }
 

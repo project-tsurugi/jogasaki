@@ -25,6 +25,7 @@
 #include <jogasaki/meta/external_record_meta.h>
 #include <jogasaki/plan/statement_work_level.h>
 #include <jogasaki/storage/storage_list.h>
+#include <jogasaki/storage/storage_operation.h>
 
 namespace jogasaki::plan {
 
@@ -110,12 +111,18 @@ public:
      */
     storage::storage_list& mutable_storage_list() noexcept;
 
+    /**
+     * @brief non-const accessor for the storage operation object
+     * @note use this only when constructing the prepared statement
+     */
+    storage::storage_operation& mutable_storage_operation() noexcept;
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
     std::shared_ptr<meta::external_record_meta> external_writer_meta_{};
     statement_work_level work_level_{};
     storage::storage_list storage_list_{};
+    storage::storage_operation storage_operation_{};
 };
 
 } // namespace jogasaki::plan

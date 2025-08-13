@@ -620,6 +620,63 @@ bool validate_transaction(
     return true;
 }
 
+bool validate_authorization(
+    request_context& rctx,
+    plan::executable_statement& e,
+    request_info const& req_info,
+    error_info_stats_callback on_completion //NOLINT(performance-unnecessary-value-param)
+) {
+    if(! rctx.req_info().request_source() || rctx.req_info().request_source()->session_info().user_type() != tateyama::api::server::user_type::standard) {
+        // authorization is checked only for standard user
+        return true;
+    }
+    auto user = rctx.req_info().request_source()->session_info().username();
+    if(! user.has_value()) {
+        // skip check if username is empty
+        return true;
+    }
+    auto& smgr = *global::storage_manager();
+    auto const& required_ops = e.mirrors()->storage_operation();
+    for(auto&& [stg_id, acts] : required_ops) {
+        auto stg = smgr.find_entry(stg_id);
+        if(! stg) {
+            // skip authorization for missing storage
+            // we don't treat this as authorization failure,
+            // but expect subsequent process to fail since operation target is missing
+            continue;
+        }
+        if(stg->public_actions().allows(acts)) {
+            continue;
+        }
+        if(stg->authorized_actions().is_user_authorized(user.value(), acts)) {
+            continue;
+        }
+        // permission error
+        if(rctx.transaction()) {
+            abort_transaction(rctx.transaction(), req_info);
+        }
+        auto res = status::err_illegal_operation;
+        if(VLOG_IS_ON(log_error)) {
+            auto& authorized = stg->authorized_actions().find_user_actions(user.value());
+            VLOG_LP(log_error) << "insufficient authorization user:\"" << user.value() << "\" table:\"" << stg->name()
+                               << "\" requested:" << acts << " public:" << stg->public_actions()
+                               << " authorized:" << authorized;
+        }
+        // TODO investigate what can be notified to clients
+        on_completion(
+            res,
+            create_error_info(
+                error_code::permission_error,
+                "insufficient authorization for the requested operation",
+                res
+            ),
+            nullptr
+        );
+        return false;
+    }
+    return true;
+}
+
 bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexity)
     api::impl::database& database,
     std::shared_ptr<request_context> rctx,  //NOLINT
@@ -639,6 +696,13 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
 
     external_log_stmt_start(*rctx, req_info, statement);
     external_log_stmt_explain(database, *rctx, req_info, statement);
+
+    // currently only DML is checked, but in future, DDL should be checked too.
+    if (e->is_execute() || (!e->is_ddl() && !e->is_empty())) {
+        if(! validate_authorization(*rctx, *e, req_info, on_completion)) {
+            return true; // false is for unrecoverable abnormal error. This case is normal error.
+        }
+    }
 
     if(rctx->transaction() && ! validate_transaction(*rctx->transaction(), on_completion)) {
         return true; // inactive tx error - this is normal error so return true

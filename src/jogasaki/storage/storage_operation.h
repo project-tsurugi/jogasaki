@@ -60,7 +60,7 @@ public:
             return *this;
         }
 
-        iterator operator++(int) & {
+        iterator operator++(int) {  //NOLINT(cert-dcl21-cpp)
             iterator tmp = *this;
             ++(*this);
             return tmp;
@@ -108,7 +108,7 @@ public:
             return *this;
         }
 
-        const_iterator operator++(int) & {
+        const_iterator operator++(int) {  //NOLINT(cert-dcl21-cpp)
             const_iterator tmp = *this;
             ++(*this);
             return tmp;

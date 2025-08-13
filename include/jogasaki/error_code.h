@@ -95,6 +95,7 @@ enum class error_code : std::int64_t {
     lob_file_io_error = 50012,
     lob_reference_invalid = 50013,
     operation_denied = 50014,
+    permission_error = 50015,
 };
 
 /**
@@ -169,6 +170,7 @@ enum class error_code : std::int64_t {
         case code::lob_file_io_error: return "lob_file_io_error"sv;
         case code::lob_reference_invalid: return "lob_reference_invalid"sv;
         case code::operation_denied: return "operation_denied"sv;
+        case code::permission_error: return "permission_error"sv;
     }
     std::abort();
 }

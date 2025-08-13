@@ -63,4 +63,8 @@ storage::storage_list& mirror_container::mutable_storage_list() noexcept {
 storage::storage_operation& mirror_container::mutable_storage_operation() noexcept {
     return storage_operation_;
 }
+storage::storage_operation const& mirror_container::storage_operation() const noexcept {
+    return storage_operation_;
+}
+
 } // namespace jogasaki::plan

@@ -116,6 +116,12 @@ public:
      * @note use this only when constructing the prepared statement
      */
     storage::storage_operation& mutable_storage_operation() noexcept;
+
+    /**
+     * @brief const accessor for the storage operation object
+     */
+    [[nodiscard]] storage::storage_operation const& storage_operation() const noexcept;
+
 private:
     std::unordered_map<step_index, variable_definition> variable_definitions_{};
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};

@@ -21,6 +21,9 @@
 
 namespace jogasaki::utils {
 
-request_info create_req_info(std::string_view username);
+request_info create_req_info(
+    std::string_view username,
+    tateyama::api::server::user_type user_type = tateyama::api::server::user_type::administrator
+);
 
 } // namespace jogasaki::utils

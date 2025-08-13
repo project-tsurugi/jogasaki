@@ -68,4 +68,115 @@ TEST_F(sql_authorization_test, control_privilege_on_create_table) {
     EXPECT_TRUE(actions.has_action(action_kind::control));
 }
 
+void grant(action_set actions, std::string_view table_name, std::string_view user) {
+    auto& smgr = *global::storage_manager();
+    auto entry_opt = smgr.find_by_name(table_name);
+    ASSERT_TRUE(entry_opt.has_value());
+    auto entry = smgr.find_entry(entry_opt.value());
+    ASSERT_TRUE(entry);
+    if (user == "public") {
+        auto& public_actions = entry->public_actions();
+        public_actions.add_actions(std::move(actions));
+        return;
+    }
+    auto& users_actions = entry->authorized_actions();
+    users_actions.add_user_actions(user, std::move(actions));
+}
+
+void revoke(action_set actions, std::string_view table_name, std::string_view user) {
+    auto& smgr = *global::storage_manager();
+    auto entry_opt = smgr.find_by_name(table_name);
+    ASSERT_TRUE(entry_opt.has_value());
+    auto entry = smgr.find_entry(entry_opt.value());
+    ASSERT_TRUE(entry);
+    if (user == "public") {
+        auto& public_actions = entry->public_actions();
+        for(auto&& e : actions) {
+            public_actions.remove_action(e);
+        }
+        return;
+    }
+    auto& users_actions = entry->authorized_actions();
+    for(auto&& e : actions) {
+        users_actions.remove_user_action(user, e);
+    }
+}
+
+TEST_F(sql_authorization_test, select) {
+    execute_statement("create table t (c0 int primary key)");
+    grant(action_set{action_kind::select}, "t", "user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("select * from t", info);
+}
+
+TEST_F(sql_authorization_test, select_fail) {
+    execute_statement("create table t (c0 int primary key)");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("select * from t", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, select_by_public_privilege) {
+    execute_statement("create table t (c0 int primary key)");
+    grant(action_set{action_kind::select}, "t", "public");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("select * from t", info);
+}
+
+TEST_F(sql_authorization_test, insert) {
+    execute_statement("create table t (c0 int primary key)");
+    grant(action_set{action_kind::insert}, "t", "user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("insert into t values (1)", info);
+}
+
+TEST_F(sql_authorization_test, insert_fail) {
+    execute_statement("create table t (c0 int primary key)");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("insert into t values (1)", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, update) {
+    execute_statement("create table t (c0 int primary key)");
+    grant(action_set{action_kind::update, action_kind::select}, "t", "user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("update t set c0=2", info);
+}
+
+TEST_F(sql_authorization_test, update_fail) {
+    execute_statement("create table t (c0 int primary key)");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("update t set c0=2", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, delete) {
+    execute_statement("create table t (c0 int primary key)");
+    grant(action_set{action_kind::delete_, action_kind::select}, "t", "user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("delete from t", info);
+}
+
+TEST_F(sql_authorization_test, delete_fail) {
+    execute_statement("create table t (c0 int primary key)");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("delete from t", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, revoke_control) {
+    auto info = utils::create_req_info("user1");
+    execute_statement("create table t (c0 int primary key)", info);
+    revoke(action_set{action_kind::control}, "t", "user1");
+    // re-define user1 as standard user in order to test auth
+    auto standard_user_info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("select * from t", standard_user_info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, revoke_select) {
+    execute_statement("create table t (c0 int primary key)");
+    grant(action_set{action_kind::select}, "t", "user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("select * from t", info);
+    revoke(action_set{action_kind::select}, "t", "user1");
+    test_stmt_err("select * from t", info, error_code::permission_error);
+}
+
 } // namespace jogasaki::testing

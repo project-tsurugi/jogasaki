@@ -15,9 +15,13 @@
  */
 #include <gtest/gtest.h>
 
+#include <takatori/util/string_builder.h>
+
 #include <jogasaki/auth/action_set.h>
 
 namespace jogasaki::auth {
+
+using takatori::util::string_builder;
 
 class action_set_test : public ::testing::Test {
 
@@ -137,6 +141,22 @@ TEST(action_set_test, allows) {
 
     t.add_action(action_kind::control);
     EXPECT_TRUE(s.allows(t));
+}
+
+TEST(action_set_test, to_string) {
+    action_set s{};
+    {
+        auto str = string_builder{} << s << string_builder::to_string;
+        EXPECT_EQ("action_set[]", str);
+    }
+
+    s.add_action(action_kind::select);
+    s.add_action(action_kind::insert);
+
+    {
+        auto str = string_builder{} << s << string_builder::to_string;
+        EXPECT_EQ("action_set[select,insert]", str);
+    }
 }
 
 }  // namespace jogasaki::auth

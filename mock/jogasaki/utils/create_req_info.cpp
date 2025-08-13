@@ -21,9 +21,13 @@
 
 namespace jogasaki::utils {
 
-request_info create_req_info(std::string_view username) {
+request_info create_req_info(
+    std::string_view username,
+    tateyama::api::server::user_type user_type
+) {
     auto req = std::make_shared<tateyama::api::server::mock::test_request>();
     req->session_info_.username_ = username;
+    req->session_info_.user_type_ = user_type;
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
     auto info = request_info(0, std::move(req), std::move(res));
     return info;

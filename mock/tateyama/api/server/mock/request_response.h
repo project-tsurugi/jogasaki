@@ -134,10 +134,11 @@ public:
     }
 
     tateyama::api::server::user_type user_type() const noexcept override {
-        return {};
+        return user_type_;
     }
 
     std::string username_{};
+    server::user_type user_type_{user_type::administrator};
 };
 
 class test_blob_info : public blob_info {

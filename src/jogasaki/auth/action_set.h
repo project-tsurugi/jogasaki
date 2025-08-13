@@ -122,6 +122,18 @@ public:
         return ! (lhs == rhs);
     }
 
+    friend std::ostream& operator<<(std::ostream& out, action_set const& value) {
+        out << "action_set[";
+        bool first = true;
+        for(auto&& e : value.actions_) {
+            if (! first) {
+                out << ",";
+            }
+            first = false;
+            out << e;
+        }
+        return out << "]";
+    }
 private:
     action_kind_set actions_;
 };

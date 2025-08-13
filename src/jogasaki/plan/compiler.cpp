@@ -183,9 +183,8 @@ void add_table_to_storage_list(
     auto& secondary_or_primary_index = yugawara::binding::extract<yugawara::storage::index>(relation);
     auto& table = secondary_or_primary_index.table();
     if(auto v = global::storage_manager()->find_by_name(table.simple_name()); v.has_value()) {
-        // TODO preserve() to storage_list
-        container->mutable_storage_list().add(v.value());
-
+        // ideally preserve() should be called for the storages/actions list, but currently this function is called from
+        // many places and storage count is not calculated
         auto& stgs = container->mutable_storage_operation().storages();
         auto& acts = container->mutable_storage_operation().actions();
         if(auto r = std::find(stgs.begin(), stgs.end(), v.value()); r != stgs.end()) {

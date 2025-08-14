@@ -63,7 +63,7 @@ using takatori::util::maybe_shared_ptr;
 using kind = meta::field_type_kind;
 
 storage::storage_list_view get_storage_list(api::statement_handle stmt) {
-    return reinterpret_cast<api::impl::prepared_statement *>(stmt.get())->body()->mirrors()->storage_list();
+    return reinterpret_cast<api::impl::prepared_statement *>(stmt.get())->body()->mirrors()->storage_operation().storage();
 }
 
 // TODO do not depends on compiler to create dag

@@ -100,12 +100,6 @@ public:
     [[nodiscard]] statement_work_level& work_level() noexcept;
 
     /**
-     * @brief accessor to the storage list that this statement accesses
-     * @returns storage list
-     */
-    [[nodiscard]] storage::storage_list_view storage_list() const noexcept;
-
-    /**
      * @brief non-const accessor for the storage list
      * @note use this only when constructing the prepared statement
      */
@@ -127,7 +121,6 @@ private:
     std::shared_ptr<executor::process::impl::variable_table_info> host_variable_info_{};
     std::shared_ptr<meta::external_record_meta> external_writer_meta_{};
     statement_work_level work_level_{};
-    storage::storage_list storage_list_{};
     storage::storage_operation storage_operation_{};
 };
 

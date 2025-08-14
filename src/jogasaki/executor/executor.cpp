@@ -591,7 +591,7 @@ bool acquire_shared_lock(
     plan::executable_statement const& e
 ) {
     auto& smgr = *global::storage_manager();
-    auto stgs = e.mirrors()->storage_list();
+    auto stgs = e.mirrors()->storage_operation().storage();
     if(auto lock = smgr.create_shared_lock(stgs, rctx.transaction()->storage_lock().get())) {
         rctx.storage_lock(std::move(lock));
         return true;

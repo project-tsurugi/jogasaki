@@ -81,6 +81,30 @@ public:
     [[nodiscard]] std::size_t size() const noexcept {
         return entries_.size();
     }
+
+    [[nodiscard]] auto begin() noexcept {
+        return entries_.begin();
+    }
+
+    [[nodiscard]] auto end() noexcept {
+        return entries_.end();
+    }
+
+    [[nodiscard]] auto begin() const noexcept {
+        return entries_.begin();
+    }
+
+    [[nodiscard]] auto end() const noexcept {
+        return entries_.end();
+    }
+
+    [[nodiscard]] auto cbegin() const noexcept {
+        return begin();
+    }
+
+    [[nodiscard]] auto cend() const noexcept {
+        return end();
+    }
 private:
     std::vector<storage_entry> entries_{};
 };
@@ -121,6 +145,30 @@ public:
         return std::any_of(entries_.begin(), entries_.end(), [&](auto const& e) {
             return e == arg;
         });
+    }
+
+    [[nodiscard]] auto begin() noexcept {
+        return entries_.begin();
+    }
+
+    [[nodiscard]] auto end() noexcept {
+        return entries_.end();
+    }
+
+    [[nodiscard]] auto begin() const noexcept {
+        return entries_.begin();
+    }
+
+    [[nodiscard]] auto end() const noexcept {
+        return entries_.end();
+    }
+
+    [[nodiscard]] auto cegin() const noexcept {
+        return begin();
+    }
+
+    [[nodiscard]] auto cend() const noexcept {
+        return end();
     }
 
 private:

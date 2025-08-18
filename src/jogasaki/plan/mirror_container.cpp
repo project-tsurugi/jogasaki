@@ -52,12 +52,12 @@ statement_work_level& mirror_container::work_level() noexcept {
     return work_level_;
 }
 
-storage::storage_list_view mirror_container::storage_list() const noexcept {
-    return storage_list_;
+storage::storage_operation& mirror_container::mutable_storage_operation() noexcept {
+    return storage_operation_;
 }
 
-storage::storage_list& mirror_container::mutable_storage_list() noexcept {
-    return storage_list_;
+storage::storage_operation const& mirror_container::storage_operation() const noexcept {
+    return storage_operation_;
 }
 
 } // namespace jogasaki::plan

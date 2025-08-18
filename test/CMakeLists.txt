@@ -57,6 +57,7 @@ endfunction (add_test_executable)
 file(GLOB SRCS
         "jogasaki/*.cpp"
         "jogasaki/accessor/*.cpp"
+        "jogasaki/auth/*.cpp"
         "jogasaki/api/*.cpp"
         "jogasaki/api/kvsservice/*.cpp"
         "jogasaki/data/*.cpp"

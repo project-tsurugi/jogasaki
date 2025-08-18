@@ -72,6 +72,7 @@
 #include <yugawara/variable/criteria.h>
 #include <yugawara/variable/nullity.h>
 
+#include <jogasaki/auth/fill_action_set.h>
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
@@ -278,7 +279,11 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
  * @throws storage_metadata_exception with error_code::unsupported_runtime_feature_exception if the default value
  * data type is not supported
 */
-void serialize_table(yugawara::storage::table const& t, proto::metadata::storage::TableDefinition& tbl) {
+void serialize_table(
+    yugawara::storage::table const& t,
+    proto::metadata::storage::TableDefinition& tbl,
+    metadata_serializer_option const& option = metadata_serializer_option{}
+) {
     if(t.definition_id().has_value()) {
         tbl.set_definition_id(*t.definition_id());
     }
@@ -293,6 +298,11 @@ void serialize_table(yugawara::storage::table const& t, proto::metadata::storage
         set_default(col, c);
         set_column_features(col, c);
         col->mutable_description()->assign(c.description());
+    }
+    if (option.authorized_actions_) {
+        // currently we don't set default actions - pass default actions to here if it's needed
+        auth::action_set default_actions{};
+        auth::from_action_sets(*option.authorized_actions_, default_actions, tbl);
     }
 }
 
@@ -356,7 +366,7 @@ void storage_metadata_serializer::serialize(
     if(is_primary) {
         auto* tdef = idef.mutable_table_definition();
         auto& t = idx.table();
-        details::serialize_table(t, *tdef);
+        details::serialize_table(t, *tdef, option);
         details::serialize_index(idx, idef, option);
     } else {
         details::serialize_index(idx, idef, option);

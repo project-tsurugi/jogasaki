@@ -170,6 +170,9 @@ inline bool promote_error_if_needed(
         case error_code::operation_denied:
             report_error(res, tateyama::proto::diagnostics::Code::OPERATION_DENIED, err_info->message(), req_info.id());
             break;
+        case error_code::permission_error:
+            report_error(res, tateyama::proto::diagnostics::Code::PERMISSION_ERROR, err_info->message(), req_info.id());
+            break;
         default:
             return false;
     }

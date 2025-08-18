@@ -282,6 +282,21 @@ void api_test_base::execute_statement(
     ASSERT_EQ(expected, result);
 }
 
+void api_test_base::execute_statement(
+    std::string_view stmt,
+    request_info info
+) {
+    status result{};
+    ASSERT_EQ("",
+        builder()
+            .text(stmt)
+            .req_info(std::move(info))
+            .run()
+            .report()
+    );
+}
+
+
 void api_test_base::test_stmt_err(
     std::string_view stmt,
     api::transaction_handle& tx,
@@ -307,6 +322,7 @@ void api_test_base::test_stmt_err(
 
 void api_test_base::test_stmt_err(
     std::string_view stmt,
+    request_info info,
     error_code expected,
     std::string_view msg
 ) {
@@ -315,6 +331,7 @@ void api_test_base::test_stmt_err(
         builder()
             .text(stmt)
             .expect_error(true)
+            .req_info(std::move(info))
             .error(result)
             .run()
             .report()
@@ -325,6 +342,14 @@ void api_test_base::test_stmt_err(
     if(! msg.empty()) {
         ASSERT_EQ(msg, result->message());
     }
+}
+
+void api_test_base::test_stmt_err(
+    std::string_view stmt,
+    error_code expected,
+    std::string_view msg
+) {
+    return test_stmt_err(stmt, {}, expected, msg);
 }
 
 void api_test_base::test_stmt_err(

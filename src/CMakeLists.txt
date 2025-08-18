@@ -67,6 +67,7 @@ file(GLOB SOURCES
         "jogasaki/api/kvsservice/impl/*.cpp"
         "jogasaki/api/service/*.cpp"
         "jogasaki/api/resource/*.cpp"
+        "jogasaki/auth/*.cpp"
         "jogasaki/data/*.cpp"
         "jogasaki/datastore/*.cpp"
         "jogasaki/error/*.cpp"

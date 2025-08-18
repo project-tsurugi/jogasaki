@@ -68,6 +68,8 @@
 #include <jogasaki/api/statement_handle.h>
 #include <jogasaki/api/statement_handle_internal.h>
 #include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/auth/authorized_users_action_set.h>
+#include <jogasaki/auth/fill_action_set.h>
 #include <jogasaki/commit_response.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
@@ -1054,15 +1056,8 @@ executor::sequence::manager* database::sequence_manager() const noexcept {
 status database::initialize_from_providers() {
     bool success = true;
     tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
+        // create storage so that subsequent processing can find
         success = success && kvs_db_->get_or_create_storage(id);
-        if(tables_->find_table(id)) {
-            // Assign unique id to each table so that we can manage tables in storage_manager.
-            // Currently, these ids are not durable, so they are not guaranteed to be same across restarts.
-            // That's ok for now because name works as a unique identifier.
-            // That needs to be fixed when we support renaming tables.
-            // TODO make the table id durable
-            success = success && global::storage_manager()->add_entry(storage::table_id_src++, id);
-        }
     });
     if (! success) {
         LOG_LP(ERROR) << "creating table schema entries failed";
@@ -1130,6 +1125,27 @@ status database::recover_index_metadata(
         if(primary_only && ! idef.has_table_definition()) {
             skipped.emplace_back(n);
             continue;
+        }
+        if(primary_only) {
+            // fill auth actions only when processing primary index (table)
+            auto const& name = idef.table_definition().name().element_name();
+            auto id = storage::table_id_src++;
+            // Assign unique id to each table so that we can manage tables in storage_manager.
+            // Currently, these ids are not durable, so they are not guaranteed to be same across restarts.
+            // That's ok for now because name works as a unique identifier.
+            // That needs to be fixed when we support renaming tables.
+            // TODO make the table id durable
+            if(! global::storage_manager()->add_entry(id, name)) {
+                LOG_LP(ERROR) << "Metadata recovery failed. conflicting name:" << name;
+                return status::err_unknown;
+            }
+            auto s = global::storage_manager()->find_entry(id);
+            if(! s) {
+                LOG_LP(ERROR) << "Metadata recovery failed. storage not found id:" << id;
+                return status::err_unknown;
+            }
+            auth::from_authorization_list(idef.table_definition(), s->authorized_actions());
+            auth::from_default_privilege(idef.table_definition(), s->public_actions());
         }
         LOG_LP(INFO) << "Recovering metadata \"" << n << "\" (v=" << v << ") : " << utils::to_debug_string(idef);
         if(auto err = recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {

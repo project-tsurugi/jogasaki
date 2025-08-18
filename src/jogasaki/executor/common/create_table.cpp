@@ -146,9 +146,45 @@ bool create_table::operator()(request_context& context) const {
         }
     }
 
+    auto tid = storage::table_id_src++;
+    auto& smgr = *global::storage_manager();
+    if(! smgr.add_entry(tid, c->simple_name())) {
+        // should not happen normally
+        set_error(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Table id:" << tid << " already exists" << string_builder::to_string,
+            status::err_already_exists
+        );
+        return false;
+    }
+
+    auto se = smgr.find_entry(tid);
+    if(! se) {
+        // should not happen normally
+        set_error(
+            context,
+            error_code::sql_execution_exception,
+            string_builder{} << "Table id:" << tid << " not found" << string_builder::to_string,
+            status::err_unknown
+        );
+        return false;
+    }
+
+    // the creator owns the CONTROL privilege on the newly created table
+    if (context.req_info().request_source()) {
+        if(auto name = context.req_info().request_source()->session_info().username(); name.has_value()) {
+            se->authorized_actions().add_user_actions(name.value(), auth::action_set{auth::action_kind::control});
+        }
+    }
+
     std::string storage{};
     yugawara::storage::configurable_provider target{};
-    if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false})) {
+    if(auto err = recovery::create_storage_option(
+           *i,
+           storage,
+           utils::metadata_serializer_option{false, std::addressof(se->authorized_actions())}
+       )) {
         // error should not happen normally
         set_error_info(context, err);
         return false;
@@ -168,18 +204,6 @@ bool create_table::operator()(request_context& context) const {
             context,
             error_code::target_already_exists_exception,
             string_builder{} << "Storage \"" << c->simple_name() << "\" already exists " << string_builder::to_string,
-            status::err_already_exists
-        );
-        return false;
-    }
-    auto tid = storage::table_id_src++;
-    auto& smgr = *global::storage_manager();
-    if(! smgr.add_entry(tid, c->simple_name())) {
-        // should not happen normally
-        set_error(
-            context,
-            error_code::target_already_exists_exception,
-            string_builder{} << "Table id:" << tid << " already exists" << string_builder::to_string,
             status::err_already_exists
         );
         return false;

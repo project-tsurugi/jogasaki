@@ -166,6 +166,11 @@ public:
         bool no_abort = false
     );
 
+    void execute_statement(
+        std::string_view stmt,
+        request_info info
+    );
+
     void test_stmt_err(
         std::string_view stmt,
         api::transaction_handle& tx,
@@ -179,6 +184,13 @@ public:
 
     void test_stmt_err(
         std::string_view stmt,
+        error_code expected,
+        std::string_view msg = ""
+    );
+
+    void test_stmt_err(
+        std::string_view stmt,
+        request_info info,
         error_code expected,
         std::string_view msg = ""
     );

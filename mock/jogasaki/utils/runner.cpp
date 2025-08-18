@@ -101,7 +101,7 @@ runner& runner::run() {
     if(output_records_) {
         // call api for query
         std::unique_ptr<api::result_set> rs{};
-        if(res = executor::execute(get_impl(*db_), std::move(tc), *stmt, rs, *out, *out_stats); res != status::ok && ! expect_error_) {
+        if(res = executor::execute(get_impl(*db_), std::move(tc), *stmt, rs, *out, *out_stats, req_info_); res != status::ok && ! expect_error_) {
             exec_fail(string_builder{} << "execution failed. executor::execute() - " << (*out)->message() << string_builder::to_string);
         }
         auto it = rs->iterator();
@@ -133,7 +133,7 @@ runner& runner::run() {
                    *out = err;
                    *out_stats = stats;
                },
-               request_info{},
+               req_info_,
                true) ||
              res != status::ok) &&
            ! expect_error_) {

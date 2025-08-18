@@ -21,16 +21,33 @@
 
 namespace jogasaki::auth {
 
+/**
+ * @brief fill target authorized_users_action_set from the authorization list in TableDefinition.
+ * @param tdef the source TableDefinition
+ * @param target the target authorized_users_action_set to populate
+ */
 void from_authorization_list(
     proto::metadata::storage::TableDefinition const& tdef,
     authorized_users_action_set& target
 );
 
+/**
+ * @brief fill target action_set from the default privilege in TableDefinition.
+ * @param tdef the source TableDefinition
+ * @param target the target action_set to populate
+ */
 void from_default_privilege(
     proto::metadata::storage::TableDefinition const& tdef,
     action_set& target
 );
 
+/**
+ * @brief fill target authorization list and default privilege in TableDefinition
+ * from given `users_actions` and `public_actions`.
+ * @param users_actions the source users actions
+ * @param public_actions the source public actions
+ * @param target the target TableDefinition to populate
+ */
 void from_action_sets(
     authorized_users_action_set const& users_actions,
     action_set const& public_actions,

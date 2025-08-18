@@ -23,6 +23,7 @@ namespace jogasaki::auth {
 
 /**
  * @brief represent the set of authorized users and their actions
+ * @note this object is not thread-safe, so only one thread should read/modify non-const object at a time.
  */
 class authorized_users_action_set {
 public:
@@ -80,6 +81,7 @@ public:
     auto end() const noexcept {
         return map_.end();
     }
+
 private:
     std::unordered_map<std::string, action_set> map_{};
 };

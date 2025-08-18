@@ -100,12 +100,6 @@ public:
     [[nodiscard]] statement_work_level& work_level() noexcept;
 
     /**
-     * @brief non-const accessor for the storage list
-     * @note use this only when constructing the prepared statement
-     */
-    storage::storage_list& mutable_storage_list() noexcept;
-
-    /**
      * @brief non-const accessor for the storage operation object
      * @note use this only when constructing the prepared statement
      */

@@ -21,6 +21,7 @@ namespace jogasaki::auth {
 
 /**
  * @brief a set of authorized actions.
+ * @note this object is not thread-safe, so only one thread should read/modify non-const object at a time.
  */
 class action_set {
 public:

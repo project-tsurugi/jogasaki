@@ -78,9 +78,6 @@ void from_action_sets(
     action_set const& public_actions,
     proto::metadata::storage::TableDefinition& target
 ) {
-    target.clear_authorization_list();
-    target.clear_default_privilege_list();
-
     for (auto const& entry : users_actions) {
         auto* auth = target.add_authorization_list();
         auth->set_identifier(entry.first);

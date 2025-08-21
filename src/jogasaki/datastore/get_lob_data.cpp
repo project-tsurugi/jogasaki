@@ -31,7 +31,7 @@
 
 namespace jogasaki::datastore {
 
-std::uint64_t new_lob_id() noexcept {
+static std::uint64_t new_lob_id() noexcept {
     static std::atomic_size_t lob_data_id_src{0};
     return ++lob_data_id_src;
 }

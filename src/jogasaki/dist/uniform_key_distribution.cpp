@@ -45,7 +45,7 @@ std::optional<double> uniform_key_distribution::estimate_value_size(range_type c
     return std::nullopt;
 }
 
-status read_key_entry(
+static status read_key_entry(
     std::unique_ptr<kvs::iterator>& it,
     kvs::transaction& tx,
     std::string& out

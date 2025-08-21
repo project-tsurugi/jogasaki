@@ -57,7 +57,7 @@ std::string_view readable_stream::rest() const noexcept {
 
 constexpr std::size_t max_decimal_coefficient_size = sizeof(std::uint64_t) * 2 + 1;
 
-std::string_view process_order_and_msb(
+static std::string_view process_order_and_msb(
     order odr,
     std::string_view buffer,
     std::size_t sz,
@@ -70,8 +70,7 @@ std::string_view process_order_and_msb(
     return std::string_view{reinterpret_cast<char*>(out.data()), sz};  //NOLINT
 }
 
-
-std::string_view read_decimal_coefficient(
+static std::string_view read_decimal_coefficient(
     order odr,
     std::string_view buffer,
     std::size_t sz,

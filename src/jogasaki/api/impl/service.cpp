@@ -148,14 +148,14 @@ private:
 }  // namespace details
 
 template<class Response, class Request>
-jogasaki::api::transaction_handle validate_transaction_handle(
+static jogasaki::api::transaction_handle validate_transaction_handle(
     Request const& msg,
     api::database* db,
     tateyama::api::server::response& res,
     request_info const& req_info
 );
 
-transaction_type_kind from(sql::request::TransactionType arg) {
+static transaction_type_kind from(sql::request::TransactionType arg) {
     using t = sql::request::TransactionType;
     switch (arg) {
         case t::SHORT: return transaction_type_kind::occ;
@@ -362,7 +362,7 @@ void service::command_dispose_transaction(
 }
 
 template<class Response, class Request>
-jogasaki::api::transaction_handle validate_transaction_handle(
+static jogasaki::api::transaction_handle validate_transaction_handle(
     Request const& msg,
     api::database* db,
     tateyama::api::server::response& res,
@@ -398,7 +398,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
 }
 
 template<class Request>
-std::string extract_transaction(
+static std::string extract_transaction(
     Request const& msg,
     std::shared_ptr<error::error_info>& err_info,
     std::optional<std::size_t> session_id
@@ -425,7 +425,7 @@ std::string extract_transaction(
     return std::string{t->transaction_id()};
 }
 
-void abort_transaction(
+static void abort_transaction(
     jogasaki::api::transaction_handle tx,
     request_info const& req_info,
     std::shared_ptr<error::error_info> const& err_info = {}) {
@@ -502,7 +502,7 @@ void service::command_execute_query(
 }
 
 template<class Response, class Request>
-jogasaki::api::statement_handle validate_statement_handle(
+static jogasaki::api::statement_handle validate_statement_handle(
     Request const& msg,
     tateyama::api::server::response& res,
     request_info const& req_info
@@ -586,7 +586,7 @@ void service::command_execute_prepared_query(
     execute_query(res, details::query_info{handle, std::shared_ptr{std::move(params)}}, tx, req_info);
 }
 
-commit_response_kind from(::jogasaki::proto::sql::request::CommitStatus st) {
+static commit_response_kind from(::jogasaki::proto::sql::request::CommitStatus st) {
     using cs = ::jogasaki::proto::sql::request::CommitStatus;
     switch(st) {
         case cs::ACCEPTED: return commit_response_kind::accepted;
@@ -818,7 +818,7 @@ void service::command_explain_by_text(
 }
 
 template<class Request>
-std::shared_ptr<impl::prepared_statement> extract_statement(
+static std::shared_ptr<impl::prepared_statement> extract_statement(
     Request const& msg,
     std::shared_ptr<error::error_info>& out,
     std::optional<std::size_t> session_id
@@ -948,7 +948,7 @@ void service::command_extract_statement_info(
 //TODO put global constant file
 constexpr static std::size_t max_records_per_file = 10000;
 
-executor::file::time_unit_kind from(::jogasaki::proto::sql::common::TimeUnit kind) {
+static executor::file::time_unit_kind from(::jogasaki::proto::sql::common::TimeUnit kind) {
     using tu = ::jogasaki::proto::sql::common::TimeUnit;
     using k = executor::file::time_unit_kind;
     switch(kind) {
@@ -1167,11 +1167,11 @@ bool service::operator()(
     return true;
 }
 
-std::string version_string(std::size_t major, std::size_t minor) {
+static std::string version_string(std::size_t major, std::size_t minor) {
     return string_builder{} << "sql-" << major << "." << minor << string_builder::to_string;
 }
 
-bool check_message_version(
+static bool check_message_version(
     sql::request::Request const& proto_req,
     tateyama::api::server::response& res,
     std::size_t reqid
@@ -1191,7 +1191,7 @@ bool check_message_version(
     return false;
 }
 
-void show_session_variables(tateyama::api::server::request& req) {
+static void show_session_variables(tateyama::api::server::request& req) {
     // for degub purpose, print session variables to server log
     if(VLOG_IS_ON(log_trace)) {
         std::stringstream ss{};
@@ -1212,7 +1212,7 @@ bool service::process(
     std::size_t reqid = request_id_src_++;
     request_info req_info{reqid, req, res};
     sql::request::Request proto_req{};
-    thread_local std::atomic_size_t cnt = 0;
+    thread_local std::atomic_size_t cnt = 0;  //NOLINT(misc-use-internal-linkage) false positive
     bool enable_performance_counter = false;
     ++cnt;
     if (cnt > 0 && cnt % 1000 == 0) { // measure with performance counter on every 1000 invocations
@@ -1406,7 +1406,7 @@ void service::execute_statement(
     }
 }
 
-takatori::decimal::triple to_triple(::jogasaki::proto::sql::common::Decimal const& arg) {
+static takatori::decimal::triple to_triple(::jogasaki::proto::sql::common::Decimal const& arg) {
     std::string_view buf{arg.unscaled_value()};
     auto exp = arg.exponent();
     return utils::read_decimal(buf, -exp);

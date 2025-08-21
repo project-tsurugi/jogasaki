@@ -79,6 +79,7 @@ std::shared_ptr<executor::process::impl::variable_table_info> create_host_variab
     compiled_info const& info
 );
 
+// public for testing
 std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     parameter_set const* parameters,
     std::shared_ptr<executor::process::impl::variable_table_info> const& info

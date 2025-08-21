@@ -90,7 +90,7 @@ using takatori::util::string_builder;
 
 constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
-status fill_evaluated_value(
+static status fill_evaluated_value(
     wrt::write_field const& f,
     request_context& ctx,
     write_statement::tuple const& t,
@@ -180,7 +180,7 @@ status fill_evaluated_value(
     return status::ok;
 }
 
-status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
+static status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
     write_statement::tuple const& t,
     std::vector<wrt::write_field> const& fields,

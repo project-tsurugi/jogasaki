@@ -34,7 +34,7 @@
 
 namespace jogasaki::kvs {
 
-sharksfin::TransactionOptions::TransactionType type(kvs::transaction_option::transaction_type type) {
+static sharksfin::TransactionOptions::TransactionType type(kvs::transaction_option::transaction_type type) {
     using k = kvs::transaction_option::transaction_type;
     using s = sharksfin::TransactionOptions::TransactionType;
     switch (type) {
@@ -140,7 +140,7 @@ status transaction::create_transaction(
 }
 
 template <class T, class E>
-bool extract_storages(
+static bool extract_storages(
     kvs::database* database,
     std::vector<std::unique_ptr<kvs::storage>>& stgs,
     E const& names,

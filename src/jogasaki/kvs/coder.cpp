@@ -52,7 +52,7 @@ namespace details {
  * @return status returned by `fn`
  * @return status::err_data_corruption if `fn` throws `std::domain_error`
  */
-status catch_domain_error(std::function<status(void)> const& fn) {
+static status catch_domain_error(std::function<status(void)> const& fn) {
     try {
         return fn();
     } catch (std::domain_error const& e) {

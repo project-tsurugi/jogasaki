@@ -78,7 +78,7 @@ insert_new_record::insert_new_record(
     secondaries_(std::move(secondaries))
 {}
 
-std::vector<secondary_context> create_secondary_contexts(
+static std::vector<secondary_context> create_secondary_contexts(
     std::vector<secondary_target> const& targets,
     kvs::database& db,
     request_context& context

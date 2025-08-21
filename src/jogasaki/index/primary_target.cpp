@@ -40,13 +40,13 @@ namespace jogasaki::index {
 
 using takatori::util::maybe_shared_ptr;
 
-status encode_fields(
+static status encode_fields(
     primary_target::field_mapping_type const& fields,
     kvs::writable_stream& target,
     accessor::record_ref source
 );
 
-status do_encode(
+static status do_encode(
     data::aligned_buffer& buf,
     primary_target::field_mapping_type const& info,
     accessor::record_ref source,
@@ -204,7 +204,7 @@ status do_encode(
 }
 
 template<class T>
-status resolve_lob_field(
+static status resolve_lob_field(
     request_context& context,
     accessor::record_ref rec,
     index::field_info const& field,
@@ -228,7 +228,7 @@ status resolve_lob_field(
     return status::ok;
 }
 
-status ensure_lobs_resolved_and_collect_ids(
+static status ensure_lobs_resolved_and_collect_ids(
     request_context& context,
     accessor::record_ref rec,
     std::vector<index::field_info> const& fields,

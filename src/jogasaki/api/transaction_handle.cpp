@@ -60,11 +60,7 @@ transaction_handle::operator bool() const noexcept {
     return surrogate_id_ != 0;
 }
 
-transaction_context* tx(std::uintptr_t arg) {
-    return reinterpret_cast<transaction_context*>(arg);  //NOLINT
-}
-
-std::shared_ptr<transaction_context> lookup(std::size_t surrogate_id, std::optional<std::size_t> session_id) {
+static std::shared_ptr<transaction_context> lookup(std::size_t surrogate_id, std::optional<std::size_t> session_id) {
     return global::database_impl()->find_transaction(transaction_handle{surrogate_id, session_id});
 }
 

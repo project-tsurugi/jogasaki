@@ -661,7 +661,7 @@ void add_builtin_aggregate_functions(
 namespace builtin {
 
 template <class T>
-T plus(T a, T b) {
+static T plus(T a, T b) {
     return a + b;
 }
 
@@ -785,7 +785,7 @@ void count_rows_pre(
 }
 
 template <class T>
-T div_by_count(T a, runtime_t<kind::int8> b) {
+static T div_by_count(T a, runtime_t<kind::int8> b) {
     return a / b;
 }
 
@@ -832,7 +832,7 @@ void avg_post(
 }
 
 template <class T>
-T max_or_min(bool max, T a, T b) {
+static T max_or_min(bool max, T a, T b) {
     if (less(a,b)) {
         return max ? b : a;
     }

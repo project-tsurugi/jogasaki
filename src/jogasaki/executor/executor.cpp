@@ -100,7 +100,7 @@ constexpr static std::string_view log_location_prefix = "/:jogasaki:executor ";
 
 namespace details {
 
-bool execute_internal(
+static bool execute_internal(
     api::impl::database& database,
     std::shared_ptr<transaction_context> tx,
     maybe_shared_ptr<api::executable_statement> const& statement,
@@ -133,7 +133,7 @@ bool execute_internal(
     );
 }
 
-std::shared_ptr<kvs::transaction_option const> from(api::transaction_option const& option) {
+static std::shared_ptr<kvs::transaction_option const> from(api::transaction_option const& option) {
     auto type = kvs::transaction_option::transaction_type::occ;
     if(option.readonly()) {
         type = kvs::transaction_option::transaction_type::read_only;
@@ -148,7 +148,7 @@ std::shared_ptr<kvs::transaction_option const> from(api::transaction_option cons
     );
 }
 
-status init(
+static status init(
     api::impl::database& database,
     std::shared_ptr<api::transaction_option const> options,
     std::shared_ptr<transaction_context>& out
@@ -413,7 +413,7 @@ bool execute_dump(
 }
 
 
-bool validate_statement(
+static bool validate_statement(
     plan::executable_statement const& exec,
     maybe_shared_ptr<executor::io::record_channel> const& ch,
     error_info_stats_callback on_completion //NOLINT(performance-unnecessary-value-param)
@@ -431,7 +431,7 @@ bool validate_statement(
     return true;
 }
 
-void external_log_stmt_start(
+static void external_log_stmt_start(
     request_context& rctx,
     request_info const& req_info,
     maybe_shared_ptr<api::executable_statement> const& statement
@@ -467,7 +467,7 @@ void external_log_stmt_start(
 #endif
 }
 
-void external_log_stmt_end(
+static void external_log_stmt_end(
     request_context& rctx,
     request_info const& req_info,
     maybe_shared_ptr<api::executable_statement> const& statement
@@ -544,7 +544,7 @@ void external_log_stmt_end(
 #endif
 }
 
-void external_log_stmt_explain(
+static void external_log_stmt_explain(
     api::impl::database& database,
     request_context& rctx,
     request_info const& req_info,
@@ -586,7 +586,7 @@ void external_log_stmt_explain(
 #endif
 }
 
-bool acquire_shared_lock(
+static bool acquire_shared_lock(
     request_context& rctx,  //NOLINT
     plan::executable_statement const& e
 ) {
@@ -599,7 +599,7 @@ bool acquire_shared_lock(
     return false;
 }
 
-bool validate_transaction(
+static bool validate_transaction(
     transaction_context& tx,
     error_info_stats_callback on_completion //NOLINT(performance-unnecessary-value-param)
 ) {
@@ -620,7 +620,7 @@ bool validate_transaction(
     return true;
 }
 
-bool validate_authorization(
+static bool validate_authorization(
     request_context& rctx,
     plan::executable_statement& e,
     request_info const& req_info,
@@ -853,7 +853,7 @@ bool execute_load(
     return true;
 }
 
-bool is_last(commit_response_kind_set const& response_kinds, commit_response_kind kind) {
+static bool is_last(commit_response_kind_set const& response_kinds, commit_response_kind kind) {
     auto f = std::find(response_kinds.begin(), response_kinds.end(), kind);
     if(f == response_kinds.end()) {
         return false;
@@ -861,7 +861,7 @@ bool is_last(commit_response_kind_set const& response_kinds, commit_response_kin
     return ++f == response_kinds.end();
 }
 
-void process_commit_callback(
+static void process_commit_callback(
     ::sharksfin::StatusCode st,
     ::sharksfin::ErrorCode ec,
     ::sharksfin::durability_marker_type marker,

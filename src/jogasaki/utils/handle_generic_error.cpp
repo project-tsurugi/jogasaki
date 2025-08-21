@@ -28,7 +28,7 @@ namespace jogasaki::utils {
 
 using takatori::util::string_builder;
 
-void handle_generic_error_impl(
+void handle_generic_error_impl(  //NOLINT(misc-use-internal-linkage) false positive
     request_context& context,
     status res,
     error_code ec,
@@ -46,7 +46,6 @@ void handle_generic_error_impl(
             true
         );
     }
-
-}
 }
 
+}  // namespace jogasaki::utils

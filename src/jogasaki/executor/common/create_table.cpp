@@ -79,7 +79,7 @@ model::statement_kind create_table::kind() const noexcept {
     return model::statement_kind::create_table;
 }
 
-bool create_generated_sequence(
+static bool create_generated_sequence(
     request_context& context,
     yugawara::storage::sequence& p
 ) {

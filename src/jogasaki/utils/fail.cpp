@@ -34,7 +34,7 @@ namespace jogasaki::utils {
 using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
-std::string create_fatal_msg(std::string_view msg, std::string_view filepath, std::string_view position) {
+static std::string create_fatal_msg(std::string_view msg, std::string_view filepath, std::string_view position) {
     string_builder sb{};
     sb << "fatal internal error at " << filepath << ":" << position << " " << msg;
     std::endl(sb.buffer());

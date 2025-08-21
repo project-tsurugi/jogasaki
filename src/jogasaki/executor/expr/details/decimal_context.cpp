@@ -30,7 +30,7 @@ decimal::Context standard_decimal_context() {
 }
 
 void ensure_decimal_context() {
-    thread_local bool initialized = false;
+    thread_local bool initialized = false;  //NOLINT(misc-use-internal-linkage) false positive
     if(initialized) return;
     decimal::context = standard_decimal_context();
     initialized = true;

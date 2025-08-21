@@ -51,7 +51,7 @@ namespace jogasaki::executor::expr {
 
 using any = jogasaki::data::any;
 
-std::shared_ptr<takatori::scalar::expression const>
+static std::shared_ptr<takatori::scalar::expression const>
 create_function_expression(std::size_t function_def_id, yugawara::function::configurable_provider const& functions) {
     auto f = utils::find_function(functions, function_def_id);
     yugawara::binding::factory bindings{};

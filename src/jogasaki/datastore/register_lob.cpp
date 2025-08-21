@@ -22,7 +22,7 @@
 
 namespace jogasaki::datastore {
 
-status register_lob_impl(
+static status register_lob_impl(
     std::optional<std::string_view> path,
     std::optional<std::string_view> data,
     lob::lob_id_type in,

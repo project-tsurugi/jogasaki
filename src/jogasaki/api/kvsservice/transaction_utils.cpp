@@ -42,7 +42,7 @@
 
 namespace jogasaki::api::kvsservice {
 
-bool equal_type(takatori::type::type_kind kind,
+static bool equal_type(takatori::type::type_kind kind,
                        tateyama::proto::kvs::data::Value::ValueCase val_case) {
     switch (kind) {
         case takatori::type::type_kind::boolean:
@@ -189,7 +189,7 @@ status check_put_record(record_columns &rec_cols) {
     return check_valid_values(rec_cols);
 }
 
-void add_key_column(std::string_view col_name,
+static void add_key_column(std::string_view col_name,
                        tateyama::proto::kvs::data::Value const*value,
                        tateyama::proto::kvs::data::Record &record) {
     record.add_names(col_name.data(), col_name.size());
@@ -197,7 +197,7 @@ void add_key_column(std::string_view col_name,
     new_value->CopyFrom(*value);
 }
 
-status add_value_column(yugawara::storage::column const &column,
+static status add_value_column(yugawara::storage::column const &column,
                          jogasaki::kvs::readable_stream &stream,
                          tateyama::proto::kvs::data::Record &record) {
     record.add_names(column.simple_name().data(), column.simple_name().size());

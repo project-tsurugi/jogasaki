@@ -42,7 +42,7 @@ namespace jogasaki::executor::conv {
 
 using namespace jogasaki::executor::process::impl;
 
-std::shared_ptr<::takatori::type::data const> literal_type(::takatori::value::data const& value) {
+static std::shared_ptr<::takatori::type::data const> literal_type(::takatori::value::data const& value) {
     using k = ::takatori::value::value_kind;
     switch (value.kind()) {
         case k::unknown:

@@ -35,7 +35,7 @@ namespace jogasaki::utils {
 using takatori::util::string_builder;
 using takatori::util::unsafe_downcast;
 
-bool validate_type(
+static bool validate_type(
     request_context& context,
     std::string_view colname,
     takatori::type::decimal const& typ
@@ -59,7 +59,7 @@ bool validate_type(
     return false;
 }
 
-bool validate_type(
+static bool validate_type(
     request_context& context,
     std::string_view colname,
     takatori::type::character const& typ
@@ -79,7 +79,7 @@ bool validate_type(
     return false;
 }
 
-bool validate_type(
+static bool validate_type(
     request_context& context,
     std::string_view colname,
     takatori::type::octet const& typ
@@ -99,7 +99,7 @@ bool validate_type(
     return false;
 }
 
-bool validate_default_value(
+static bool validate_default_value(
     request_context& context,
     yugawara::storage::column const& c
 ) {

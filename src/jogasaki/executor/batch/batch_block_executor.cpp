@@ -58,12 +58,12 @@
 
 namespace jogasaki::executor::batch {
 
-meta::field_type_kind host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
+static meta::field_type_kind host_variable_type(executor::process::impl::variable_table_info const& vinfo, std::string_view name) {
     auto idx = vinfo.at(name).index();
     return vinfo.meta()->at(idx).kind();
 }
 
-void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, file::parameter> const& mapping) {
+static void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unordered_map<std::string, file::parameter> const& mapping) {
     auto pset = static_cast<api::impl::parameter_set&>(ps).body();  //NOLINT
     for(auto&& [name, param] : mapping) {
         if(ref.is_null(param.nullity_offset_)) {
@@ -88,7 +88,7 @@ void set_parameter(api::parameter_set& ps, accessor::record_ref ref, std::unorde
     }
 }
 
-file::reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan::parameter_set> const& pset) {
+static file::reader_field_locator create_locator(std::string_view name, std::shared_ptr<plan::parameter_set> const& pset) {
     for(auto&& [n, e] : *pset) {
         if(name != n) continue;
         if(e.type().kind() == meta::field_type_kind::reference_column_position) {
@@ -104,7 +104,7 @@ file::reader_field_locator create_locator(std::string_view name, std::shared_ptr
     return {};
 }
 
-void create_reader_option_and_mapping(
+static void create_reader_option_and_mapping(
     api::parameter_set const& ps,
     api::impl::prepared_statement const& stmt,
     std::unordered_map<std::string, file::parameter>& mapping,

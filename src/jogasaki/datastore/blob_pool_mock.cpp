@@ -28,7 +28,7 @@ void blob_pool_mock::release() {
     released_ = true;
 }
 
-bool contains(std::string_view src, std::string_view element) {
+static bool contains(std::string_view src, std::string_view element) {
     return src.find(element) != std::string_view::npos;  //NOLINT(abseil-string-find-str-contains)
 }
 

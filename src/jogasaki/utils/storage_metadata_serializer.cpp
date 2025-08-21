@@ -93,7 +93,7 @@ storage_metadata_serializer::storage_metadata_serializer() noexcept = default;
 
 namespace details {
 
-proto::metadata::common::AtomType from(takatori::type::data const& t) {
+static proto::metadata::common::AtomType from(takatori::type::data const& t) {
     using proto::metadata::common::AtomType;
     using k = takatori::type::type_kind;
     switch(t.kind()) {
@@ -120,7 +120,7 @@ proto::metadata::common::AtomType from(takatori::type::data const& t) {
     std::abort();
 }
 
-void set_column_features(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
+static void set_column_features(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
     for(auto&& f : c.features()) {
         switch(f) {
             case yugawara::storage::column_feature::synthesized:
@@ -137,7 +137,7 @@ void set_column_features(::jogasaki::proto::metadata::storage::TableColumn* col,
     }
 }
 
-void set_type(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
+static void set_type(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
     auto typ = col->mutable_type();
     typ->set_atom_type(from(c.type()));
     switch(c.type().kind()) {
@@ -191,7 +191,7 @@ void set_type(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::
  * @throws storage_metadata_exception with error_code::unsupported_runtime_feature_exception if the default value
  * data type is not supported
  */
-void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
+static void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawara::storage::column const& c) {
     switch(c.default_value().kind()) {
         case yugawara::storage::column_value_kind::nothing: {
             col->clear_default_value();
@@ -279,7 +279,7 @@ void set_default(::jogasaki::proto::metadata::storage::TableColumn* col, yugawar
  * @throws storage_metadata_exception with error_code::unsupported_runtime_feature_exception if the default value
  * data type is not supported
 */
-void serialize_table(
+static void serialize_table(
     yugawara::storage::table const& t,
     proto::metadata::storage::TableDefinition& tbl,
     metadata_serializer_option const& option = metadata_serializer_option{}
@@ -306,7 +306,7 @@ void serialize_table(
     }
 }
 
-::jogasaki::proto::metadata::storage::Direction from(yugawara::storage::sort_direction direction) {
+static ::jogasaki::proto::metadata::storage::Direction from(yugawara::storage::sort_direction direction) {
     switch(direction) {
         case takatori::relation::sort_direction::ascendant: return ::jogasaki::proto::metadata::storage::Direction::ASCEND;
         case takatori::relation::sort_direction::descendant: return ::jogasaki::proto::metadata::storage::Direction::DESCEND;
@@ -314,7 +314,7 @@ void serialize_table(
     std::abort();
 }
 
-::jogasaki::proto::metadata::storage::IndexFeature from(yugawara::storage::index_feature f) {
+static ::jogasaki::proto::metadata::storage::IndexFeature from(yugawara::storage::index_feature f) {
     switch(f) {
         case yugawara::storage::index_feature::primary: return ::jogasaki::proto::metadata::storage::IndexFeature::PRIMARY;
         case yugawara::storage::index_feature::find: return ::jogasaki::proto::metadata::storage::IndexFeature::FIND;
@@ -325,7 +325,7 @@ void serialize_table(
     std::abort();
 }
 
-void serialize_index(
+static void serialize_index(
     yugawara::storage::index const& idx,
     proto::metadata::storage::IndexDefinition& idef,
     metadata_serializer_option const& option
@@ -393,7 +393,7 @@ void storage_metadata_serializer::serialize(
     out = ss.str();
 }
 
-std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::storage::TableColumn const& column) {
+static std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::storage::TableColumn const& column) {
     std::shared_ptr<takatori::type::data const> type{};
     switch(column.type().atom_type()) {
         case proto::metadata::common::BOOLEAN: type = std::make_shared<takatori::type::boolean>(); break;
@@ -469,13 +469,13 @@ std::shared_ptr<takatori::type::data const> type(::jogasaki::proto::metadata::st
     return type;
 }
 
-takatori::decimal::triple to_triple(::jogasaki::proto::metadata::common::Decimal const& arg) {
+static takatori::decimal::triple to_triple(::jogasaki::proto::metadata::common::Decimal const& arg) {
     std::string_view buf{arg.unscaled_value()};
     auto exp = arg.exponent();
     return utils::read_decimal(buf, -exp);
 }
 
-yugawara::storage::column_value default_value(
+static yugawara::storage::column_value default_value(
     ::jogasaki::proto::metadata::storage::TableColumn const& column,
     yugawara::storage::configurable_provider& provider
 ) {
@@ -551,7 +551,7 @@ yugawara::storage::column_value default_value(
     return {};
 }
 
-yugawara::storage::column::feature_set_type create_column_feature_set(
+static yugawara::storage::column::feature_set_type create_column_feature_set(
     ::jogasaki::proto::metadata::storage::TableColumn const& column
 ) {
     yugawara::storage::column::feature_set_type ret{};
@@ -574,7 +574,7 @@ yugawara::storage::column::feature_set_type create_column_feature_set(
     return ret;
 }
 
-yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column, yugawara::storage::configurable_provider& provider) {
+static yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn const& column, yugawara::storage::configurable_provider& provider) {
     yugawara::variable::criteria criteria{yugawara::variable::nullity{column.nullable()}};
     return yugawara::storage::column{
         column.name(),
@@ -587,7 +587,7 @@ yugawara::storage::column from(::jogasaki::proto::metadata::storage::TableColumn
 }
 
 // deserialize table and add its depending definitions (base table, and sequence) to the provider
-void deserialize_table(
+static void deserialize_table(
     ::jogasaki::proto::metadata::storage::TableDefinition const& tdef,
     std::shared_ptr<yugawara::storage::table>& out,
     yugawara::storage::configurable_provider& provider,
@@ -625,7 +625,7 @@ void deserialize_table(
     }
 }
 
-takatori::relation::sort_direction direction(::jogasaki::proto::metadata::storage::Direction dir) {
+static takatori::relation::sort_direction direction(::jogasaki::proto::metadata::storage::Direction dir) {
     switch(dir) {
         case proto::metadata::storage::ASCEND: return takatori::relation::sort_direction::ascendant;
         case proto::metadata::storage::DESCEND: return takatori::relation::sort_direction::descendant;
@@ -634,7 +634,7 @@ takatori::relation::sort_direction direction(::jogasaki::proto::metadata::storag
     std::abort();
 }
 
-yugawara::storage::column const* find_column(yugawara::storage::table const& tbl, std::string_view name) {
+static yugawara::storage::column const* find_column(yugawara::storage::table const& tbl, std::string_view name) {
     for(auto&& c : tbl.columns()) {
         if(c.simple_name() == name) {
             return std::addressof(c);
@@ -643,7 +643,7 @@ yugawara::storage::column const* find_column(yugawara::storage::table const& tbl
     return nullptr;
 }
 
-yugawara::storage::index_feature_set features(::jogasaki::proto::metadata::storage::IndexDefinition const& idef) {
+static yugawara::storage::index_feature_set features(::jogasaki::proto::metadata::storage::IndexDefinition const& idef) {
     yugawara::storage::index_feature_set ret{};
     for(auto&& f : idef.index_features()) {
         switch(f) {
@@ -658,7 +658,7 @@ yugawara::storage::index_feature_set features(::jogasaki::proto::metadata::stora
     return ret;
 }
 
-void deserialize_index(
+static void deserialize_index(
     ::jogasaki::proto::metadata::storage::IndexDefinition const& idef,
     std::shared_ptr<yugawara::storage::table const> tbl,
     std::shared_ptr<yugawara::storage::index>& out

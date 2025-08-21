@@ -28,7 +28,7 @@
 
 namespace jogasaki::api::impl {
 
-api::field_type_kind from(meta::field_type_kind k) noexcept {
+static api::field_type_kind from(meta::field_type_kind k) noexcept {
     using kind = api::field_type_kind;
     switch(k) {
         case meta::field_type_kind::undefined: return kind::undefined;
@@ -63,7 +63,7 @@ api::field_type_kind from(meta::field_type_kind k) noexcept {
     std::abort();
 }
 
-field_type::option_type create_option(meta::field_type const& type) noexcept {
+static field_type::option_type create_option(meta::field_type const& type) noexcept {
     switch(type.kind()) {
         using t = decltype(type.kind());
         case t::character: {

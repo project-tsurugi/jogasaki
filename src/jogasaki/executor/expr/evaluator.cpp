@@ -90,7 +90,7 @@ engine::engine(
 {}
 
 template <class T, class U = T>
-any add(T const& l, U const& r) {
+static any add(T const& l, U const& r) {
     return any{std::in_place_type<T>, l+r};
 }
 
@@ -109,7 +109,7 @@ double triple_to_double(triple arg) {
     return std::stod(dec.to_eng());
 }
 
-any promote_binary_numeric_left(any const& l, any const& r) {
+static any promote_binary_numeric_left(any const& l, any const& r) {
     switch(l.type_index()) {
         case any::index<std::int32_t>: {
             using L = std::int32_t;
@@ -187,7 +187,7 @@ any promote_binary_numeric_left(any const& l, any const& r) {
     return return_unsupported();
 }
 
-std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
+static std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
     return {
         promote_binary_numeric_left(l,r),
         promote_binary_numeric_left(r,l)
@@ -195,7 +195,7 @@ std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
 }
 
 template <class T, class U = T>
-any subtract(T const& l, U const& r) {
+static any subtract(T const& l, U const& r) {
     return any{std::in_place_type<T>, l-r};
 }
 
@@ -217,7 +217,7 @@ any engine::concat_any(any const& left, any const& right) {
 }
 
 template <class T, class U = T>
-any multiply(T const& l, U const& r) {
+static any multiply(T const& l, U const& r) {
     return any{std::in_place_type<T>, l*r};
 }
 
@@ -227,7 +227,7 @@ any multiply<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_ty
 }
 
 template <class T, class U = T>
-any divide(T const& l, U const& r) {
+static any divide(T const& l, U const& r) {
     if (r == 0) {
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
@@ -244,7 +244,7 @@ any divide<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type
 }
 
 template <class T, class U = T>
-any remainder(T const& l, U const& r) {
+static any remainder(T const& l, U const& r) {
     if (r == 0) {
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
@@ -339,13 +339,13 @@ any engine::operator()(takatori::scalar::binary const& exp) {
 }
 
 template <typename T, typename E = T>
-std::enable_if_t<! (std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>), any>
+static std::enable_if_t<! (std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>), any>
 create_any(accessor::record_ref ref, executor::process::impl::value_info const& info) {
     return {std::in_place_type<T>, ref.get_value<E>(info.value_offset())};
 }
 
 template <typename T, typename E = T>
-std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
+static std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
 create_any(accessor::record_ref ref, executor::process::impl::value_info const& info, evaluator_context& ctx) {
     // evaluating lob value resolves `provided` reference by registering to datastore
 
@@ -396,7 +396,7 @@ any engine::operator()(takatori::scalar::variable_reference const& exp) {
 }
 
 template <class T>
-any sign_inversion(T const& l) {
+static any sign_inversion(T const& l) {
     return any{std::in_place_type<T>, -l};
 }
 
@@ -418,7 +418,7 @@ any engine::sign_inversion_any(any const& exp) {
 }
 
 template <class T>
-any conditional_not(T const& e) {
+static any conditional_not(T const& e) {
     return any{std::in_place_type<T>, ! e};
 }
 
@@ -431,7 +431,7 @@ any engine::conditional_not_any(any const& exp) {
 }
 
 template <class T>
-any length(T const& e) {
+static any length(T const& e) {
     return any{std::in_place_type<std::int32_t>, static_cast<std::string_view>(e).size()};
 }
 
@@ -503,7 +503,7 @@ any engine::operator()(takatori::scalar::unary const& exp) {
 }
 
 template <class T, class U = T>
-any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
+static any compare(takatori::scalar::comparison_operator op, T const& l, U const& r) {
     using optype = takatori::scalar::comparison_operator;
     bool result = false;
     switch(op) {
@@ -523,7 +523,7 @@ any engine::operator()(takatori::scalar::immediate const& exp) {
     return utils::as_any(exp.value(), type, resource_);
 }
 
-loss_precision_policy from(takatori::scalar::cast_loss_policy t) {
+static loss_precision_policy from(takatori::scalar::cast_loss_policy t) {
     switch(t) {
         case takatori::scalar::cast_loss_policy::ignore: return loss_precision_policy::ignore;
         case takatori::scalar::cast_loss_policy::floor: return loss_precision_policy::floor;
@@ -578,13 +578,13 @@ struct token {
     std::string value_{};
 };
 
-bool is_single_utf8_character(std::string_view view) noexcept {
+static bool is_single_utf8_character(std::string_view view) noexcept {
     const std::size_t char_size = utils::get_byte(utils::detect_next_encoding(view, 0));
     return (char_size != 0 && char_size == view.size());
 }
 
 // Check if the escape sequence at the end of the pattern is unescaped
-bool has_unescaped_trailing_escape(std::string_view pattern, std::string_view escape) {
+static bool has_unescaped_trailing_escape(std::string_view pattern, std::string_view escape) {
     // escape must be non-empty and shorter than pattern
     if (escape.empty() || pattern.size() < escape.size()) { return false; }
     // Check if the pattern ends with the escape sequence
@@ -605,12 +605,12 @@ bool has_unescaped_trailing_escape(std::string_view pattern, std::string_view es
     // If the count is even, it means the last escape is escaped
     return (count % 2 == 0);
 }
-inline bool is_escape_sequence(
+static inline bool is_escape_sequence(
     std::string_view pattern, size_t i, std::string_view escape) noexcept {
     return !escape.empty() && i + escape.size() <= pattern.size() &&
            pattern.substr(i, escape.size()) == escape;
 }
-std::vector<token> tokenize_like_pattern(std::string_view pattern, std::string_view escape) {
+static std::vector<token> tokenize_like_pattern(std::string_view pattern, std::string_view escape) {
     std::vector<token> tokens;
     // Reserve space for tokens to avoid multiple reallocations
     tokens.reserve(pattern.size());
@@ -651,11 +651,11 @@ std::vector<token> tokenize_like_pattern(std::string_view pattern, std::string_v
     if (!buffer.empty()) { tokens.emplace_back(token::kind::literal, std::move(buffer)); }
     return tokens;
 }
-bool starts_with(std::string_view str, std::string_view prefix) {
+static bool starts_with(std::string_view str, std::string_view prefix) {
     return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
 }
 
-[[nodiscard]] bool match_literal_token(std::string_view input, std::size_t& input_index,
+[[nodiscard]] static bool match_literal_token(std::string_view input, std::size_t& input_index,
     token const& tok, std::size_t& pattern_index, std::size_t& backtrack_input_index,
     std::size_t& backtrack_pattern_index) {
     if (starts_with(input.substr(input_index), tok.get_value())) {
@@ -671,7 +671,7 @@ bool starts_with(std::string_view str, std::string_view prefix) {
     }
     return false;
 }
-[[nodiscard]] bool match_wildcard_one_token(std::string_view input, std::size_t& input_index,
+[[nodiscard]] static bool match_wildcard_one_token(std::string_view input, std::size_t& input_index,
     std::size_t& pattern_index, std::size_t& backtrack_input_index,
     std::size_t& backtrack_pattern_index) {
     if (input_index < input.size()) {
@@ -691,7 +691,7 @@ bool starts_with(std::string_view str, std::string_view prefix) {
     }
     return false;
 }
-void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_index,
+static void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_index,
     std::size_t& backtrack_pattern_index, std::size_t& backtrack_input_index) {
     backtrack_pattern_index = pattern_index;
     backtrack_input_index   = input_index;
@@ -750,7 +750,7 @@ void match_wildcard_any_token(std::size_t& pattern_index, std::size_t& input_ind
  * @param pattern A sequence of token objects representing the pattern.
  * @return true if the input matches the pattern; false otherwise.
  */
-bool match_like_pattern(std::string_view input, std::vector<token> const& pattern) {
+static bool match_like_pattern(std::string_view input, std::vector<token> const& pattern) {
     std::size_t pattern_index = 0;
     std::size_t input_index   = 0;
 
@@ -843,7 +843,7 @@ any engine::operator()(takatori::scalar::match const& match) {
     return return_unsupported();
 }
 
-any convert_return_type_if_needed(
+static any convert_return_type_if_needed(
     takatori::scalar::expression const& e,
     yugawara::compiled_info const& info,
     takatori::type::data const& dest_type,

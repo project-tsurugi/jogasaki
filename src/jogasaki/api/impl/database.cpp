@@ -155,7 +155,7 @@ std::shared_ptr<yugawara::aggregate::configurable_provider> const& database::agg
 }
 
 #define LOGCFG (LOG(INFO) << lp << std::boolalpha)
-void dump_public_configurations(configuration const& cfg) {
+static void dump_public_configurations(configuration const& cfg) {
     constexpr std::string_view lp = "/:jogasaki:config: ";
     LOGCFG << "(thread_pool_size) " << cfg.thread_pool_size() << " : number of threads used by task scheduler";
     LOGCFG << "(enable_index_join) " << cfg.enable_index_join() << " : whether join tries to use index";
@@ -196,7 +196,7 @@ void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_force_numa_node) " << cfg.force_numa_node() << " : whether to assign the single node to all worker threads";
 }
 
-bool validate_core_assignment_parameters(configuration const& cfg) {
+static bool validate_core_assignment_parameters(configuration const& cfg) {
     if(cfg.core_affinity() && (cfg.assign_numa_nodes_uniformly() || cfg.force_numa_node() != configuration::numa_node_unspecified)) {
         // core assign and node assign cannot be set simultaneously
         return false;
@@ -318,7 +318,7 @@ status database::stop() {
     return status::ok;
 }
 
-void custom_external_log_cfg(std::shared_ptr<class configuration> const& cfg) {
+static void custom_external_log_cfg(std::shared_ptr<class configuration> const& cfg) {
     (void) cfg;
 #ifdef ENABLE_ALTIMETER
     if(cfg) {
@@ -381,7 +381,7 @@ void database::deinit() {
     initialized_ = false;
 }
 
-void add_variable(
+static void add_variable(
     yugawara::variable::configurable_provider& provider,
     std::string_view name,
     field_type_kind kind
@@ -567,13 +567,13 @@ status database::validate_option(transaction_option const& option) {
     return status::ok;
 }
 
-void add_system_tables(
+static void add_system_tables(
     std::vector<std::string>& write_preserves
 ) {
     write_preserves.emplace_back(system_sequences_name);
 }
 
-std::vector<std::string> add_wp_to_read_area_inclusive(
+static std::vector<std::string> add_wp_to_read_area_inclusive(
     std::vector<std::string> const& write_preserves,
     std::vector<std::string> const& read_areas_inclusive
 ) {
@@ -593,7 +593,7 @@ std::vector<std::string> add_wp_to_read_area_inclusive(
     return ret;
 }
 
-std::vector<std::string> add_secondary_indices(
+static std::vector<std::string> add_secondary_indices(
     std::vector<std::string> const& table_areas,
     yugawara::storage::configurable_provider const& tables
 ) {
@@ -611,7 +611,7 @@ std::vector<std::string> add_secondary_indices(
     return ret;
 }
 
-std::shared_ptr<api::transaction_option> modify_ras_wps(transaction_option const& option, yugawara::storage::configurable_provider const& tables) {
+static std::shared_ptr<api::transaction_option> modify_ras_wps(transaction_option const& option, yugawara::storage::configurable_provider const& tables) {
     // add system tables to wp if modifies_definitions=true
     auto* wps = std::addressof(option.write_preserves());
     std::vector<std::string> with_system_tables{};
@@ -895,7 +895,7 @@ status database::do_drop_table(std::string_view name, std::string_view schema) {
     return status::not_found;
 }
 
-bool validate_primary_key_nullability(yugawara::storage::index const& index) {
+static bool validate_primary_key_nullability(yugawara::storage::index const& index) {
     if(index.simple_name() == index.table().simple_name()) {
         // primary index
         for(auto&& c : index.keys()) {

@@ -97,8 +97,8 @@ private:
     any concat(T const& l, U const& r);
 };
 
+// public for testing
 takatori::decimal::triple triple_from_int(std::int64_t arg);
-
 double triple_to_double(takatori::decimal::triple arg);
 
 }  // namespace details

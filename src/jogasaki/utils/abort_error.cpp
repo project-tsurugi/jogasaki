@@ -46,7 +46,7 @@ namespace jogasaki::utils {
 
 using takatori::util::string_builder;
 
-std::pair <maybe_shared_ptr<meta::record_meta>, accessor::record_ref>
+static std::pair <maybe_shared_ptr<meta::record_meta>, accessor::record_ref>
 read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, data::aligned_buffer &buf,
     std::string_view storage_name, std::string_view data, memory::lifo_paged_memory_resource *resource) {
     auto idx = find_storage(tables, storage_name);
@@ -70,7 +70,7 @@ read_key_as_record_ref(const yugawara::storage::configurable_provider &tables, d
     return {std::move(meta), rec};
 }
 
-void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator *locator,
+static void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorLocator *locator,
     const yugawara::storage::configurable_provider &tables, memory::lifo_paged_memory_resource *resource,
     std::ostream &ss) {
     if(locator == nullptr) return;

@@ -235,7 +235,7 @@ double read_float8(buffer_view::const_iterator& position, buffer_view::const_ite
     return result;
 }
 
-const_buffer_view read_decimal_coefficient(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
+static const_buffer_view read_decimal_coefficient(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
     auto size = read_uint(position, end);
     if (size == 0 || size > max_decimal_coefficient_size) {
         throw_decimal_coefficient_out_of_range(size);

@@ -52,7 +52,7 @@ variable_table::operator bool() const noexcept {
     return info_ != nullptr;
 }
 
-void print(
+static void print(
     std::ostream& out,
     bool& is_first,
     std::string_view name,

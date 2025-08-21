@@ -174,7 +174,7 @@ status update_record(
 }
 
 bool updates_key(std::vector<details::update_field> const& updates) noexcept {
-    return std::any_of(updates.begin(), updates.end(), [](auto f) {
+    return std::any_of(updates.begin(), updates.end(), [](auto const& f) {
         return f.key_;
     });
 }

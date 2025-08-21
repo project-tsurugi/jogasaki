@@ -180,7 +180,7 @@ public:
                     *(p + i) = ~(*(base_ + pos + i));  // NOLINT
                 }
             }
-            return accessor::text{p, static_cast<std::size_t>(len)};
+            return accessor::text{p, len};
         }
         return accessor::text{};
     }
@@ -214,7 +214,7 @@ public:
                     *(p + i) = ~(*(base_ + pos + i));  // NOLINT
                 }
             }
-            return accessor::binary{p, static_cast<std::size_t>(len)};
+            return accessor::binary{p, len};
         }
         return accessor::binary{};
     }

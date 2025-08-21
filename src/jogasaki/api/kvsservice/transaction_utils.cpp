@@ -192,7 +192,7 @@ status check_put_record(record_columns &rec_cols) {
 void add_key_column(std::string_view col_name,
                        tateyama::proto::kvs::data::Value const*value,
                        tateyama::proto::kvs::data::Record &record) {
-    record.add_names(col_name.data());
+    record.add_names(col_name.data(), col_name.size());
     auto new_value = record.add_values();
     new_value->CopyFrom(*value);
 }
@@ -200,7 +200,7 @@ void add_key_column(std::string_view col_name,
 status add_value_column(yugawara::storage::column const &column,
                          jogasaki::kvs::readable_stream &stream,
                          tateyama::proto::kvs::data::Record &record) {
-    record.add_names(column.simple_name().data());
+    record.add_names(column.simple_name().data(), column.simple_name().size());
     auto new_value = record.add_values();
     if (auto s = deserialize(spec_value, column, stream, new_value);
             s != status::ok) {

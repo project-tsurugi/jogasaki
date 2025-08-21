@@ -42,7 +42,7 @@ std::string_view if_empty(std::string_view arg) {
 std::string_view trim_string(std::string_view arg) {
     constexpr static std::size_t str_len_request_log = 32;
     if(arg.size() > str_len_request_log) {
-        return {arg.data(), str_len_request_log};
+        return {arg.data(), str_len_request_log};  //NOLINT(bugprone-suspicious-stringview-data-usage)
     }
     return arg;
 }

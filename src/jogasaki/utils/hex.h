@@ -41,7 +41,7 @@ public:
     }
 
 private:
-    T const& value_;
+    T const& value_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     std::size_t width_{};
 };
 

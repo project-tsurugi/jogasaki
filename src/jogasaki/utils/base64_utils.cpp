@@ -104,7 +104,7 @@ namespace jogasaki::utils {
     for (size_t i = 0; i < sv.size(); ++i) {
         auto c = static_cast<unsigned char>(sv[i]);
         // Valid Base64 characters: A-Z, a-z, 0-9, +, /
-        if (static_cast<bool>(std::isalnum(static_cast<unsigned char>(c))) || c == '+' ||
+        if (static_cast<bool>(std::isalnum(c)) || c == '+' ||
             c == '/') {
             continue;
         }
@@ -185,14 +185,14 @@ namespace jogasaki::utils {
         if (c == '=') {
             break; // padding reached, stop decoding
         }
-        auto val = decode_table.at(static_cast<std::size_t>(static_cast<unsigned char>(c)));
+        auto val = decode_table.at(static_cast<std::size_t>(c));
         buffer   = (buffer << 6) | val; // NOLINT(hicpp-signed-bitwise)
         buffered_bits += 6;
         if (buffered_bits >= 8) {
             buffered_bits -= 8;
             auto index =
                 static_cast<char>((buffer >> buffered_bits) & 0xFF); // NOLINT(hicpp-signed-bitwise)
-            output.push_back(static_cast<char>(index));
+            output.push_back(index);
         }
     }
     return output;

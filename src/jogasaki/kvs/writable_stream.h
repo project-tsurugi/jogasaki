@@ -172,7 +172,7 @@ public:
         if(! validate_text(sv)) {
             return status::err_invalid_runtime_value;
         }
-        do_write(sv.data(), sz, odr);
+        do_write(sv.data(), sz, odr);  //NOLINT(bugprone-suspicious-stringview-data-usage)
         if((! context_ || context_->coding_for_write()) && ! option.varying_) {
             // padding chars
             if(sv.size() < max_len) {
@@ -208,7 +208,7 @@ public:
             auto len = static_cast<details::binary_encoding_prefix_type>(sz);
             do_write<details::binary_encoding_prefix_type_bits>(details::key_encode<details::binary_encoding_prefix_type_bits>(len, odr));
         }
-        do_write(sv.data(), sz, odr);
+        do_write(sv.data(), sz, odr);  //NOLINT(bugprone-suspicious-stringview-data-usage)
         if((! context_ || context_->coding_for_write()) && ! option.varying_) {
             // padding
             if(sz < max_len) {

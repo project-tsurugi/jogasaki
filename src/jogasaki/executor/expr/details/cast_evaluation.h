@@ -240,7 +240,7 @@ any truncate_or_pad_if_needed(
         }
         return any{
             std::in_place_type<T>,
-            T{ctx.resource(), std::string_view{src.data(), dlen}}
+            T{ctx.resource(), std::string_view{src.data(), dlen}}  //NOLINT(bugprone-suspicious-stringview-data-usage)
         };
     }
     // dlen > src.length()

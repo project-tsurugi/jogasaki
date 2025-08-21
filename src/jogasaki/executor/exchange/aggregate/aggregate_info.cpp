@@ -139,7 +139,7 @@ std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
     }
     std::size_t record_size = meta::record_meta::npos;
     if (! post) {
-        fields.emplace_back(meta::field_type{meta::field_enum_tag<kind::pointer>});
+        fields.emplace_back(meta::field_enum_tag<kind::pointer>);
         nullables.push_back(true);
     } else {
         // post key doesn't have internal pointer field, but the record length is same as mid

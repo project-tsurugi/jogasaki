@@ -43,8 +43,8 @@ template <kind Int, kind Float>
 constexpr runtime_type<Int> max_integral_float_convertible_to_int_source;
 
 template <kind Int, kind Float>
-constexpr runtime_type<Float> max_integral_float_convertible_to_int =
-    static_cast<runtime_type<Float>>(max_integral_float_convertible_to_int_source<Int, Float>);
+constexpr runtime_type<Float> max_integral_float_convertible_to_int =  //NOLINT(google-readability-casting) false positive
+    static_cast<runtime_type<Float>>(max_integral_float_convertible_to_int_source<Int, Float>);  //NOLINT(google-readability-casting) false positive
 
 // from float4
 template <>
@@ -87,8 +87,8 @@ template <kind Int, kind Float>
 constexpr runtime_type<Int> min_integral_float_convertible_to_int_source;
 
 template <kind Int, kind Float>
-constexpr runtime_type<Float> min_integral_float_convertible_to_int =
-    static_cast<runtime_type<Float>>(min_integral_float_convertible_to_int_source<Int, Float>);
+constexpr runtime_type<Float> min_integral_float_convertible_to_int =  //NOLINT(google-readability-casting) false positive
+    static_cast<runtime_type<Float>>(min_integral_float_convertible_to_int_source<Int, Float>);  //NOLINT(google-readability-casting) false positive
 
 // from float4
 template <>

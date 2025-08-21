@@ -87,9 +87,9 @@ public:
     evaluator_context& context() noexcept;
 
 private:
-    evaluator_context& ctx_;
-    executor::process::impl::variable_table& variables_;
-    yugawara::compiled_info const& info_;
+    evaluator_context& ctx_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    executor::process::impl::variable_table& variables_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    yugawara::compiled_info const& info_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     executor::process::impl::variable_table const* host_variables_{};
     memory_resource* resource_{};
 

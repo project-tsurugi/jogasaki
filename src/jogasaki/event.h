@@ -80,7 +80,7 @@ struct event_enum_tag_t {
     explicit event_enum_tag_t() = default;
 };
 template<auto Kind>
-inline constexpr event_enum_tag_t<Kind> event_enum_tag {};
+inline constexpr event_enum_tag_t<Kind> event_enum_tag {};  //NOLINT(google-readability-casting) false positive
 
 /*
  * @brief detailed information about external event

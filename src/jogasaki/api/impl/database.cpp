@@ -684,7 +684,7 @@ status database::create_transaction_internal(std::shared_ptr<transaction_context
             return res;
         }
         tx->label(option.label());
-        api::transaction_handle t{tx->surrogate_id(), option.session_id().has_value() ? std::optional<std::size_t>{option.session_id().value()} : std::nullopt};
+        api::transaction_handle t{tx->surrogate_id(), option.session_id().has_value() ? option.session_id() : std::nullopt};
         out = std::move(tx);
         if (! option.session_id().has_value()) {
             decltype(transactions_)::accessor acc{};

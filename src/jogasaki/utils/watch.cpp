@@ -37,7 +37,7 @@ bool watch::set_point(watch::point_in_code loc, watch::worker_id worker) {
     }
     std::scoped_lock lk{guard_};
     initialize_worker(worker);
-    auto& time_slot = records_[worker][loc];
+    auto& time_slot = records_[worker][loc];  //NOLINT(cppcoreguidelines-pro-bounds-constant-array-index) this code is for development purpose; ok for now
     if (time_slot == Clock::time_point()) {
         time_slot = Clock::now();
         return true;

@@ -120,7 +120,7 @@ public:
     ) noexcept:
         record_operator(index, info, block_index, input_variable_info, output_variable_info),
         join_kind_(kind),
-        for_join_scan_(false),  //NOLINT(modernize-use-default-member-init)
+        for_join_scan_(false),  //NOLINT(modernize-use-default-member-init,cppcoreguidelines-use-default-member-init) to make things clearer
         use_secondary_(! secondary_storage_name.empty()),
         primary_storage_name_(primary_storage_name),
         secondary_storage_name_(secondary_storage_name),

@@ -367,7 +367,7 @@ public:
 
 private:
     bool use_secondary_{};
-    MatchInfo const& info_;
+    MatchInfo const& info_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     bool for_join_scan_{};
     data::aligned_buffer buf_{};
     data::aligned_buffer buf2_{};

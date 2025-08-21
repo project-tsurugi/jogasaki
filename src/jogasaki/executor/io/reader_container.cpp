@@ -33,7 +33,7 @@ reader_container::reader_container(group_reader* reader) noexcept :
 {}
 
 reader_kind reader_container::kind() const noexcept {
-    switch(reader_.index()) {
+    switch(reader_.index()) {  //NOLINT(bugprone-switch-missing-default-case)
         case index_of<std::monostate>:
             return reader_kind::unknown;
         case index_of<record_reader*>:
@@ -45,7 +45,7 @@ reader_kind reader_container::kind() const noexcept {
 }
 
 reader_container::operator bool() const noexcept {
-    switch(reader_.index()) {
+    switch(reader_.index()) {  //NOLINT(bugprone-switch-missing-default-case)
         case index_of<std::monostate>:
             return false;
         case index_of<record_reader*>:
@@ -58,7 +58,7 @@ reader_container::operator bool() const noexcept {
 
 void reader_container::release() {
     if (!*this) return;
-    switch(reader_.index()) {
+    switch(reader_.index()) {  //NOLINT(bugprone-switch-missing-default-case)
         case index_of<std::monostate>:
             return;
         case index_of<record_reader*>:

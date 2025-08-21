@@ -374,7 +374,7 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
                              << colopt.length_ << string_builder::to_string
         });
     }
-    (void) builder.Append(sv.data());
+    (void) builder.Append(sv);
     return true;
 }
 
@@ -394,7 +394,7 @@ bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::
                              << colopt.length_ << string_builder::to_string
         });
     }
-    (void) builder.Append(sv.data());
+    (void) builder.Append(sv);
     return true;
 }
 

@@ -47,7 +47,7 @@ struct field_enum_tag_t {
     explicit field_enum_tag_t() = default;
 };
 template<auto Kind>
-inline constexpr field_enum_tag_t<Kind> field_enum_tag {};
+inline constexpr field_enum_tag_t<Kind> field_enum_tag {}; //NOLINT(google-readability-casting) false positive
 
 /**
  * @brief type information for a field
@@ -113,10 +113,10 @@ public:
      */
     template <field_type_kind Kind>
     explicit field_type(field_enum_tag_t<Kind>) noexcept :
-        entity_(std::in_place_index<static_cast<std::size_t>(Kind)>)
+        entity_(std::in_place_index<static_cast<std::size_t>(Kind)>)  //NOLINT(google-readability-casting) false positive
     {
         static_assert(std::is_same_v<
-            std::variant_alternative_t<static_cast<std::size_t>(Kind), entity_type>,
+            std::variant_alternative_t<static_cast<std::size_t>(Kind), entity_type>,  //NOLINT(google-readability-casting) false positive
             std::monostate
         >);
     }
@@ -276,8 +276,8 @@ struct eq<
         Kind,
         std::enable_if_t<
                 takatori::util::is_equal_comparable_v<
-                        decltype(*std::declval<field_type::option_type<Kind>>()),
-                        decltype(*std::declval<field_type::option_type<Kind>>())>>> {
+                        decltype(*std::declval<field_type::option_type<Kind>>()), //NOLINT(google-readability-casting) false positive
+                        decltype(*std::declval<field_type::option_type<Kind>>())>>> { //NOLINT(google-readability-casting) false positive
     [[nodiscard]] bool operator()(field_type const& a, field_type const& b) const noexcept {
         auto&& r1 = a.option_unsafe<Kind>();
         auto&& r2 = b.option_unsafe<Kind>();

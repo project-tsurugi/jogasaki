@@ -106,7 +106,7 @@ any supports_lobs(evaluator_context& ctx) {
  * @return error otherwise
  */
 template <class Target, class TargetEffective = Target, class Source>
-any handle_precision_lost(Source src, Target modified, evaluator_context& ctx) {
+any handle_precision_lost(Source const& src, Target const& modified, evaluator_context& ctx) {
     ctx.lost_precision(true);
     switch(ctx.get_loss_precision_policy()) {
         case loss_precision_policy::ignore: break;
@@ -239,8 +239,8 @@ any validate_integer_range_from_float(Source const& src, evaluator_context& ctx)
         e.new_argument() << src;
         return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
     }
-    auto maxTgt = max_integral_float_convertible_to_int<TargetKind, SrcKind>;
-    auto minTgt = min_integral_float_convertible_to_int<TargetKind, SrcKind>;
+    auto maxTgt = max_integral_float_convertible_to_int<TargetKind, SrcKind>;  //NOLINT(google-readability-casting) false positive
+    auto minTgt = min_integral_float_convertible_to_int<TargetKind, SrcKind>;  //NOLINT(google-readability-casting) false positive
     // the float value next larger/smaller than maxTgt/minTgt goes over integer max/min
     if(maxTgt < src) {
         auto m = std::numeric_limits<Target>::max();

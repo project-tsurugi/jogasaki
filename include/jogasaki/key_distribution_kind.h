@@ -25,8 +25,8 @@ namespace jogasaki {
 enum class key_distribution_kind : std::int32_t {
     undefined = -1,
     simple = 0,
-    uniform,
-    sampling,
+    uniform = 1,
+    sampling = 2,
 };
 
 /**

@@ -78,7 +78,7 @@ std::string_view read_decimal_coefficient(
     std::array<std::uint8_t, max_decimal_coefficient_size>& out
 ) {
     auto buf = process_order_and_msb(odr, buffer, sz, out);
-    if(utils::validate_decimal_coefficient({buf.data(), sz})) {
+    if(utils::validate_decimal_coefficient({buf.data(), sz})) {  //NOLINT(bugprone-suspicious-stringview-data-usage)
         return buf;
     }
     throw_exception(std::domain_error{"invalid decimal data"});

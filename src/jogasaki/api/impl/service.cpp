@@ -149,7 +149,7 @@ private:
 
 template<class Response, class Request>
 jogasaki::api::transaction_handle validate_transaction_handle(
-    Request msg,
+    Request const& msg,
     api::database* db,
     tateyama::api::server::response& res,
     request_info const& req_info
@@ -363,7 +363,7 @@ void service::command_dispose_transaction(
 
 template<class Response, class Request>
 jogasaki::api::transaction_handle validate_transaction_handle(
-    Request msg,
+    Request const& msg,
     api::database* db,
     tateyama::api::server::response& res,
     request_info const& req_info
@@ -399,7 +399,7 @@ jogasaki::api::transaction_handle validate_transaction_handle(
 
 template<class Request>
 std::string extract_transaction(
-    Request msg,
+    Request const& msg,
     std::shared_ptr<error::error_info>& err_info,
     std::optional<std::size_t> session_id
 ) {
@@ -503,7 +503,7 @@ void service::command_execute_query(
 
 template<class Response, class Request>
 jogasaki::api::statement_handle validate_statement_handle(
-    Request msg,
+    Request const& msg,
     tateyama::api::server::response& res,
     request_info const& req_info
 ) {
@@ -819,7 +819,7 @@ void service::command_explain_by_text(
 
 template<class Request>
 std::shared_ptr<impl::prepared_statement> extract_statement(
-    Request msg,
+    Request const& msg,
     std::shared_ptr<error::error_info>& out,
     std::optional<std::size_t> session_id
 ) {
@@ -1214,7 +1214,8 @@ bool service::process(
     sql::request::Request proto_req{};
     thread_local std::atomic_size_t cnt = 0;
     bool enable_performance_counter = false;
-    if (++cnt > 0 && cnt % 1000 == 0) { // measure with performance counter on every 1000 invocations
+    ++cnt;
+    if (cnt > 0 && cnt % 1000 == 0) { // measure with performance counter on every 1000 invocations
         enable_performance_counter = true;
         LIKWID_MARKER_START("service");
     }

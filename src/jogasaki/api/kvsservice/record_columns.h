@@ -57,8 +57,8 @@ public:
     [[nodiscard]] bool has_duplicate_column() const noexcept;
 
 private:
-    tateyama::proto::kvs::data::Record const &record_;
-    std::shared_ptr<yugawara::storage::table const> &table_;
+    tateyama::proto::kvs::data::Record const &record_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    std::shared_ptr<yugawara::storage::table const> &table_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     std::vector<column_data> primary_keys_{};
     std::vector<column_data> values_{};
     std::size_t table_keys_size_{};

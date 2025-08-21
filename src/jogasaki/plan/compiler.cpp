@@ -485,7 +485,7 @@ void handle_parse_error(
 
 template <class T>
 void handle_compile_errors(
-    T&& errors,
+    T const& errors,
     status res,
     compiler_context &ctx
 ) {

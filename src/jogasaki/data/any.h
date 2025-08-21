@@ -185,7 +185,7 @@ inline bool operator!=(any const& a, any const& b) noexcept {
  */
 inline std::ostream& operator<<(std::ostream& out, any const& value) {
     out << "any(index:" << value.type_index() <<", ";
-    switch (value.type_index()) {
+    switch (value.type_index()) {  //NOLINT(bugprone-switch-missing-default-case)
         case any::index<std::monostate>: out << "[empty]"; break;
         case any::index<class error>: out << value.to<class error>(); break;
         case any::index<std::int8_t>: out << value.to<std::int8_t>(); break;
@@ -213,7 +213,7 @@ inline std::ostream& operator<<(std::ostream& out, any const& value) {
  * @return the type name
  */
 inline std::string_view type_name(any const& value) {
-    switch (value.type_index()) {
+    switch (value.type_index()) {  //NOLINT(bugprone-switch-missing-default-case)
         case any::index<std::monostate>: return "empty";
         case any::index<class error>: return "error";
         case any::index<std::int8_t>: return "int1";

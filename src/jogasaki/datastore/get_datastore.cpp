@@ -27,7 +27,7 @@
 
 namespace jogasaki::datastore {
 
-datastore* get_datastore(bool reset_cache) {
+datastore* get_datastore(bool reset_cache) {  //NOLINT(misc-use-internal-linkage) false positive
     static std::unique_ptr<datastore> ds = nullptr;
     if (ds && ! reset_cache) {
         return ds.get();

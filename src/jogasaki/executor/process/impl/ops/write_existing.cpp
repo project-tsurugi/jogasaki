@@ -107,7 +107,7 @@ operation_status write_existing::operator()(write_existing_context& ctx) {
     }
 }
 
-void abort_transaction(transaction_context& tx) {
+static void abort_transaction(transaction_context& tx) {
     if (auto res = tx.abort_transaction(); res != status::ok) {
         throw_exception(std::logic_error{"abort failed unexpectedly"});
     }
@@ -173,8 +173,8 @@ status update_record(
     return status::ok;
 }
 
-bool updates_key(std::vector<details::update_field> const& updates) noexcept {
-    return std::any_of(updates.begin(), updates.end(), [](auto f) {
+static bool updates_key(std::vector<details::update_field> const& updates) noexcept {
+    return std::any_of(updates.begin(), updates.end(), [](auto const& f) {
         return f.key_;
     });
 }
@@ -350,7 +350,7 @@ operation_status write_existing::process_record(abstract::task_context* context)
     return (*this)(*p);
 }
 
-std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
+static std::tuple<std::size_t, std::size_t, bool> resolve_variable_offsets(
     variable_table_info const& block_variables,
     variable_table_info const* host_variables,
     variable_table_info::variable const& src
@@ -456,7 +456,7 @@ std::vector<details::update_field> create_update_fields(
     return ret;
 }
 
-bool overwraps(
+static bool overwraps(
     std::vector<yugawara::storage::index::key> const& keys,
     sequence_view<write_existing::column const> columns
 ) {
@@ -472,7 +472,7 @@ bool overwraps(
     return false;
 }
 
-std::pair<std::vector<index::secondary_target>, write_existing::bool_list_type>
+static std::pair<std::vector<index::secondary_target>, write_existing::bool_list_type>
 create_secondary_targets_and_key_update_list(
     yugawara::storage::index const& idx,
     sequence_view<write_existing::column const> columns
@@ -512,7 +512,7 @@ create_secondary_targets_and_key_update_list(
     return {ret_l, ret_r};
 }
 
-std::vector<index::secondary_target> create_secondary_targets(
+static std::vector<index::secondary_target> create_secondary_targets(
     yugawara::storage::index const& idx,
     sequence_view<write_existing::column const> columns
 ) {
@@ -521,7 +521,7 @@ std::vector<index::secondary_target> create_secondary_targets(
     return tgts;
 }
 
-write_existing::bool_list_type create_secondary_key_updated(
+static write_existing::bool_list_type create_secondary_key_updated(
     yugawara::storage::index const& idx,
     sequence_view<write_existing::column const> columns
 ) {

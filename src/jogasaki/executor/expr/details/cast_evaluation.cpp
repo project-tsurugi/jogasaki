@@ -71,7 +71,7 @@ using takatori::util::string_builder;
 using takatori::util::unsafe_downcast;
 using takatori::util::throw_exception;
 
-any supports_small_integers(evaluator_context& ctx) {
+static any supports_small_integers(evaluator_context& ctx) {
     if(global::config_pool()->support_smallint()) {
         return {};
     }
@@ -79,7 +79,7 @@ any supports_small_integers(evaluator_context& ctx) {
     return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
-any supports_boolean(evaluator_context& ctx) {
+static any supports_boolean(evaluator_context& ctx) {
     if(global::config_pool()->support_boolean()) {
         return {};
     }
@@ -87,7 +87,7 @@ any supports_boolean(evaluator_context& ctx) {
     return {std::in_place_type<error>, error(error_kind::unsupported)};
 }
 
-any supports_lobs(evaluator_context& ctx) {
+static any supports_lobs(evaluator_context& ctx) {
     if(global::config_pool()->enable_blob_cast()) {
         return {};
     }
@@ -106,7 +106,7 @@ any supports_lobs(evaluator_context& ctx) {
  * @return error otherwise
  */
 template <class Target, class TargetEffective = Target, class Source>
-any handle_precision_lost(Source src, Target modified, evaluator_context& ctx) {
+static any handle_precision_lost(Source const& src, Target const& modified, evaluator_context& ctx) {
     ctx.lost_precision(true);
     switch(ctx.get_loss_precision_policy()) {
         case loss_precision_policy::ignore: break;
@@ -146,7 +146,7 @@ any handle_precision_lost(Source src, Target modified, evaluator_context& ctx) {
  * @return validated integer or error in any
  */
 template <class Target, class TargetEffective = Target, class Source>
-any validate_integer_range_from_integer(Source src, evaluator_context& ctx) {
+static any validate_integer_range_from_integer(Source src, evaluator_context& ctx) {
     static const Source maxTgt{std::numeric_limits<Target>::max()};
     static const Source minTgt{std::numeric_limits<Target>::min()};
     if(maxTgt < src) {
@@ -167,7 +167,7 @@ any validate_integer_range_from_integer(Source src, evaluator_context& ctx) {
 }
 
 // fwd decl
-any handle_inexact_conversion(
+static any handle_inexact_conversion(
     evaluator_context& ctx,
     decimal::Decimal const& d,
     decimal::Decimal const& dd
@@ -176,7 +176,7 @@ any handle_inexact_conversion(
 // fwd decl
 namespace from_decimal {
 template <class T>
-T to(decimal::Decimal const& d);
+static T to(decimal::Decimal const& d);
 }
 
 /**
@@ -189,7 +189,7 @@ T to(decimal::Decimal const& d);
  * @return validated integer or error in any
  */
 template <class Target, class TargetEffective = Target>
-any validate_integer_range_from_decimal(decimal::Decimal const& src, evaluator_context& ctx) {
+static any validate_integer_range_from_decimal(decimal::Decimal const& src, evaluator_context& ctx) {
     if(src.isnan()) {
         auto& e = ctx.add_error({error_kind::arithmetic_error, "NaN is not supported for integer conversion"});
         e.new_argument() << src;
@@ -233,14 +233,14 @@ any validate_integer_range_from_decimal(decimal::Decimal const& src, evaluator_c
 }
 
 template <kind SrcKind, kind TargetKind, class Target, class TargetEffective = Target, class Source>
-any validate_integer_range_from_float(Source const& src, evaluator_context& ctx) {
+static any validate_integer_range_from_float(Source const& src, evaluator_context& ctx) {
     if(std::isnan(src)) {
         auto& e = ctx.add_error({error_kind::arithmetic_error, "NaN is not supported for integer conversion"});
         e.new_argument() << src;
         return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
     }
-    auto maxTgt = max_integral_float_convertible_to_int<TargetKind, SrcKind>;
-    auto minTgt = min_integral_float_convertible_to_int<TargetKind, SrcKind>;
+    auto maxTgt = max_integral_float_convertible_to_int<TargetKind, SrcKind>;  //NOLINT(google-readability-casting) false positive
+    auto minTgt = min_integral_float_convertible_to_int<TargetKind, SrcKind>;  //NOLINT(google-readability-casting) false positive
     // the float value next larger/smaller than maxTgt/minTgt goes over integer max/min
     if(maxTgt < src) {
         auto m = std::numeric_limits<Target>::max();
@@ -267,7 +267,7 @@ any validate_integer_range_from_float(Source const& src, evaluator_context& ctx)
     return any{std::in_place_type<TargetEffective>, static_cast<TargetEffective>(src)};
 }
 
-any handle_inexact_conversion(
+static any handle_inexact_conversion(
     evaluator_context& ctx,
     decimal::Decimal const& d,
     decimal::Decimal const& dd
@@ -281,7 +281,7 @@ any handle_inexact_conversion(
     return {};
 }
 
-any create_max_decimal(evaluator_context& ctx, std::size_t precision, std::size_t scale, decimal::Decimal& out) {
+static any create_max_decimal(evaluator_context& ctx, std::size_t precision, std::size_t scale, decimal::Decimal& out) {
     decimal::context.clear_status();
     decimal::Decimal dec{triple{1, 0, 1, static_cast<std::int32_t>(precision)}};
     dec = dec - 1;
@@ -298,7 +298,7 @@ any create_max_decimal(evaluator_context& ctx, std::size_t precision, std::size_
     return {};
 }
 
-any reduce_decimal(decimal::Decimal const& value, decimal::Decimal& out, evaluator_context& ctx) {
+static any reduce_decimal(decimal::Decimal const& value, decimal::Decimal& out, evaluator_context& ctx) {
     decimal::context.clear_status();
     auto d = value.reduce();
     if((decimal::context.status() & MPD_IEEE_Invalid_operation) != 0) {
@@ -410,7 +410,7 @@ template <class T>
 inline const decimal::Decimal int_min{std::numeric_limits<T>::min()};
 
 template <class T>
-any handle_length(
+static any handle_length(
     std::string_view src,
     evaluator_context& ctx,
     std::optional<std::size_t> len,
@@ -434,7 +434,7 @@ any as_triple(
 namespace from_decimal {
 
 template <class T>
-T to(decimal::Decimal const& d) {
+static T to(decimal::Decimal const& d) {
     if constexpr (std::is_same_v<T, std::int32_t>) {
         return d.i32();
     } else if constexpr (std::is_same_v<T, std::int64_t>) {
@@ -484,7 +484,7 @@ any to_int8(triple src, evaluator_context& ctx) {
     return validate_integer_range_from_decimal<std::int64_t, std::int64_t>(value, ctx);
 }
 
-any decimal_to_float4(decimal::Decimal const& d, evaluator_context& ctx) {
+static any decimal_to_float4(decimal::Decimal const& d, evaluator_context& ctx) {
     (void) ctx;
     float value{};
     try {
@@ -524,7 +524,7 @@ any to_float4(triple src, evaluator_context& ctx) {
     return decimal_to_float4(value, ctx);
 }
 
-any decimal_to_float8(decimal::Decimal const& d, evaluator_context& ctx) {
+static any decimal_to_float8(decimal::Decimal const& d, evaluator_context& ctx) {
     (void) ctx;
     double value{};
     try {
@@ -567,7 +567,7 @@ any to_float8(triple src, evaluator_context& ctx) {
 }  // namespace from_decimal
 
 template <class LobReference>
-any string_to_lob(
+static any string_to_lob(
     std::string_view s,
     evaluator_context& ctx
 ) {
@@ -582,7 +582,7 @@ any string_to_lob(
 
 namespace from_character {
 
-bool is_valid_nan(std::string_view s) {
+static bool is_valid_nan(std::string_view s) {
     // sign for nan is not meaningful, but we accept it for usability
     return
         equals_case_insensitive(s, "NaN") ||
@@ -596,7 +596,7 @@ bool is_valid_nan(std::string_view s) {
  * @return error if the string is not a valid decimal
  * @return empty any if the conversion is successful (converted values is available in `out`, and `out` can be a special value)
 */
-any to_decimal_internal(
+static any to_decimal_internal(
     std::string_view s,
     evaluator_context& ctx,
     decimal::Decimal& out
@@ -669,7 +669,7 @@ any to_decimal_internal(
  * @tparam E type used to store in any
  */
 template <class T, class E = T>
-any to_int(std::string_view s, evaluator_context& ctx) {
+static any to_int(std::string_view s, evaluator_context& ctx) {
     decimal::Decimal d{};
     auto a = to_decimal_internal(s, ctx, d);
     if(a.error()) {
@@ -805,7 +805,7 @@ any to_clob(
 
 }  // namespace from_character
 
-any cast_from_character(evaluator_context& ctx,
+static any cast_from_character(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a,
     bool src_padded // whether src is char column
@@ -854,7 +854,7 @@ any cast_from_character(evaluator_context& ctx,
     return return_unsupported();
 }
 
-any cast_from_decimal(evaluator_context& ctx,
+static any cast_from_decimal(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -896,7 +896,7 @@ any cast_from_decimal(evaluator_context& ctx,
 }
 
 template <class T>
-any handle_length(
+static any handle_length(
     std::string_view src,
     evaluator_context& ctx,
     std::optional<std::size_t> len,
@@ -948,7 +948,7 @@ any handle_length(
 }
 
 template<class T>
-any int_to_decimal(
+static any int_to_decimal(
     T src,
     evaluator_context& ctx,
     std::optional<std::size_t> precision,
@@ -971,7 +971,7 @@ any int_to_decimal(
 }
 
 template<class T>
-any float_to_decimal(
+static any float_to_decimal(
     T src,
     evaluator_context& ctx,
     std::optional<std::size_t> precision,
@@ -1046,7 +1046,7 @@ any to_decimal(
 
 }  // namespace from_int4
 
-any cast_from_int4(evaluator_context& ctx,
+static any cast_from_int4(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -1129,7 +1129,7 @@ any to_decimal(
 
 }  // namespace from_int8
 
-any cast_from_int8(evaluator_context& ctx,
+static any cast_from_int8(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -1186,7 +1186,7 @@ any to_character(std::int8_t src, evaluator_context& ctx, std::optional<std::siz
 
 }  // namespace from_boolean
 
-any cast_from_boolean(evaluator_context& ctx,
+static any cast_from_boolean(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -1257,7 +1257,7 @@ any to_int8(float src, evaluator_context& ctx) {
     return validate_integer_range_from_float<kind::float4, kind::int8, std::int64_t, std::int64_t>(src, ctx);
 }
 
-any to_float4(float src, evaluator_context& ctx) {
+static any to_float4(float src, evaluator_context& ctx) {
     // this function almost does nothing, but to standardize nan
     (void) ctx;
     if(std::isnan(src)) {
@@ -1285,7 +1285,7 @@ any to_decimal(
 
 }  // namespace from_float4
 
-any cast_from_float4(evaluator_context& ctx,
+static any cast_from_float4(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -1389,7 +1389,7 @@ any to_float4(double src, evaluator_context& ctx) {
     return any{std::in_place_type<float>, static_cast<float>(src)};
 }
 
-any to_float8(double src, evaluator_context& ctx) {
+static any to_float8(double src, evaluator_context& ctx) {
     (void) ctx;
     // this function almost does nothing, but to standardize nan
     if(std::isnan(src)) {
@@ -1409,7 +1409,7 @@ any to_decimal(
 
 }  // namespace from_float8
 
-any cast_from_float8(evaluator_context& ctx,
+static any cast_from_float8(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -1485,7 +1485,7 @@ any to_blob(
 
 }  // namespace from_octet
 
-any cast_from_octet(evaluator_context& ctx,
+static any cast_from_octet(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a,
     bool src_padded // whether src is binary column
@@ -1528,17 +1528,8 @@ any cast_from_octet(evaluator_context& ctx,
     return return_unsupported();
 }
 
-error_kind map_lob_error_code(error_code code) {
-    switch (code) {
-        case error_code::lob_file_io_error: return error_kind::lob_file_io_error;
-        case error_code::lob_reference_invalid: return error_kind::lob_reference_invalid;
-        default: break;
-    }
-    return error_kind::undefined;
-}
-
 template<class String>
-constexpr std::size_t calc_string_max_length_for_value() {
+static constexpr std::size_t calc_string_max_length_for_value() {
     if constexpr (std::is_same_v<String, accessor::text>) {
         return character_type_max_length_for_value;
     } else if constexpr (std::is_same_v<String, accessor::binary>) {
@@ -1551,7 +1542,7 @@ template<class String>
 constexpr std::size_t string_max_length_for_value = calc_string_max_length_for_value<String>();
 
 template<class String, class Ref>
-any lob_to_string(
+static any lob_to_string(
     Ref const& src,
     evaluator_context& ctx,
     std::optional<std::size_t> len,
@@ -1581,7 +1572,7 @@ any lob_to_string(
 
 namespace from_blob {
 
-any to_octet(
+static any to_octet(
     lob::blob_reference const& src,
     evaluator_context& ctx,
     std::optional<std::size_t> len,
@@ -1592,7 +1583,7 @@ any to_octet(
 
 }  // namespace from_blob
 
-any cast_from_blob(evaluator_context& ctx,
+static any cast_from_blob(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {
@@ -1632,7 +1623,7 @@ any cast_from_blob(evaluator_context& ctx,
 
 namespace from_clob {
 
-any to_character(
+static any to_character(
     lob::clob_reference const& src,
     evaluator_context& ctx,
     std::optional<std::size_t> len,
@@ -1643,7 +1634,7 @@ any to_character(
 
 }  // namespace from_clob
 
-any cast_from_clob(evaluator_context& ctx,
+static any cast_from_clob(evaluator_context& ctx,
     ::takatori::type::data const& tgt,
     any const& a
 ) {

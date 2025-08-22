@@ -29,7 +29,6 @@
 #include <jogasaki/transaction_context.h>
 
 #include "context_base.h"
-#include "index_matcher.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -37,6 +36,8 @@ namespace details {
 
 template<class MatchInfo>
 class matcher;
+
+class match_info_find;
 
 }  // namespace details
 

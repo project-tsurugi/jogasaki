@@ -33,7 +33,7 @@
 
 namespace jogasaki::external_log::details {
 
-void fill_common_properties(
+static void fill_common_properties(
     request_info const& req_info,
     ::altimeter::log_item& item
 ) {

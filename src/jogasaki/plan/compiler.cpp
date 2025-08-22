@@ -162,7 +162,7 @@ namespace relation = takatori::relation;
  * @param ctx compiler context to set error
  * @param info error info to be set
  */
-void set_compile_error_impl(
+static void set_compile_error_impl(
     compiler_context& ctx,
     jogasaki::error_code code,
     std::string_view message,
@@ -175,7 +175,7 @@ void set_compile_error_impl(
     ctx.error_info(info);
 }
 
-void add_table_to_storage_list(
+static void add_table_to_storage_list(
     takatori::descriptor::relation const& relation,
     std::shared_ptr<mirror_container> const& container,
     auth::action_set const& actions
@@ -198,7 +198,7 @@ void add_table_to_storage_list(
     }
 }
 
-auth::action_set from(takatori::relation::write_kind kind) {
+static auth::action_set from(takatori::relation::write_kind kind) {
     switch(kind) {
         case takatori::relation::write_kind::insert: return auth::action_set{auth::action_kind::insert};
         case takatori::relation::write_kind::insert_skip: return auth::action_set{auth::action_kind::insert};
@@ -381,14 +381,14 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
 }
 
 template <mizugaki::analyzer::sql_analyzer_result_kind Kind>
-yugawara::compiler_result compile_internal(
+static yugawara::compiler_result compile_internal(
     mizugaki::analyzer::sql_analyzer_result r,
     yugawara::compiler_options& c_options) {
     auto ptr = r.release<Kind>();
     return yugawara::compiler()(c_options, std::move(*ptr));
 }
 
-error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
+static error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
     using sac = mizugaki::analyzer::sql_analyzer_code;
     using ec = error_code;
     switch(code) {
@@ -457,7 +457,7 @@ error_code map_compiler_error(mizugaki::analyzer::sql_analyzer_code code) {
     return ec::compile_exception;
 }
 
-error_code map_compiler_error(yugawara::compiler_code code) {
+static error_code map_compiler_error(yugawara::compiler_code code) {
     using ycc = yugawara::compiler_code;
     using ec = error_code;
     switch(code) {
@@ -471,7 +471,7 @@ error_code map_compiler_error(yugawara::compiler_code code) {
     std::abort();
 }
 
-void handle_parse_error(
+static void handle_parse_error(
     mizugaki::parser::sql_parser_diagnostic const& error,
     compiler_context &ctx
 ) {
@@ -484,8 +484,8 @@ void handle_parse_error(
 }
 
 template <class T>
-void handle_compile_errors(
-    T&& errors,
+static void handle_compile_errors(
+    T const& errors,
     status res,
     compiler_context &ctx
 ) {
@@ -517,7 +517,7 @@ void handle_compile_errors(
     set_compile_error(ctx, code, msg, res);
 }
 
-status create_prepared_statement(
+static status create_prepared_statement(
     yugawara::compiler_result result,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     std::shared_ptr<storage_processor> const& sp,
@@ -544,7 +544,7 @@ status create_prepared_statement(
     return status::ok;
 }
 
-status create_prepared_statement(
+static status create_prepared_statement(
     mizugaki::analyzer::sql_analyzer_result r,
     std::shared_ptr<::yugawara::variable::configurable_provider> const& provider,
     yugawara::compiler_options& c_options,
@@ -569,7 +569,7 @@ status create_prepared_statement(
     return create_prepared_statement(std::move(result), provider, sp, ctx, out);
 }
 
-status prepare(
+static status prepare(
     std::string_view sql,
     compiler_context &ctx,
     std::shared_ptr<plan::prepared_statement>& out
@@ -916,7 +916,7 @@ std::shared_ptr<executor::process::impl::variable_table_info> create_host_variab
     );
 }
 
-status validate_host_variables(
+static status validate_host_variables(
     compiler_context& ctx,
     parameter_set const* parameters,
     std::shared_ptr<executor::process::impl::variable_table_info> const& info
@@ -1000,7 +1000,7 @@ std::shared_ptr<executor::process::impl::variable_table> create_host_variables(
     return vars;
 }
 
-void create_mirror_for_write(
+static void create_mirror_for_write(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     compiled_info info,
@@ -1035,7 +1035,7 @@ void create_mirror_for_write(
         )
     );
 }
-void create_mirror_for_empty_statement(
+static void create_mirror_for_empty_statement(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     compiled_info info,
@@ -1057,7 +1057,7 @@ auto ops = std::make_shared<executor::common::empty>();
     );
 }
 
-void create_mirror_for_ddl(
+static void create_mirror_for_ddl(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     compiled_info info,
@@ -1103,7 +1103,7 @@ void create_mirror_for_ddl(
     );
 }
 
-void create_mirror_for_execute(
+static void create_mirror_for_execute(
     compiler_context& ctx,
     maybe_shared_ptr<statement::statement> statement,
     compiled_info info,
@@ -1201,7 +1201,7 @@ void create_mirror_for_execute(
  * @brief compile prepared statement, resolve parameters, and generate executable statement
  * @pre storage provider exists and populated in the compiler context
  */
-status create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
+static status create_executable_statement(compiler_context& ctx, parameter_set const* parameters) {
     using takatori::statement::statement_kind;
     auto p = ctx.prepared_statement();
     BOOST_ASSERT(p != nullptr); //NOLINT

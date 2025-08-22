@@ -45,7 +45,7 @@ void statement_scheduler::schedule(
     model::statement const& s,
     request_context& context
 ) {
-    return impl_->schedule(s, context);
+    impl_->schedule(s, context);
 }
 
 task_scheduler& statement_scheduler::get_task_scheduler() noexcept {

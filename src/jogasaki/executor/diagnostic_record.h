@@ -43,7 +43,7 @@ private:
 
 template <class T>
 inline diagnostic_argument& operator<<(diagnostic_argument& out, T&& value) {
-    out.entity() << value;
+    out.entity() << std::forward<T>(value);
     return out;
 }
 

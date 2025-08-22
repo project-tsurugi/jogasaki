@@ -80,7 +80,7 @@ status encode_any(  //NOLINT(readability-function-cognitive-complexity)
 
 constexpr std::size_t max_decimal_digits = 38;
 
-auto init_digits_map() {
+static auto init_digits_map() {
     std::array<std::size_t, max_decimal_digits+2> ret{};
     std::map<std::size_t, std::size_t> digits_to_bytes{};
     auto log2 = std::log10(2.0);

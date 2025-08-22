@@ -125,7 +125,7 @@ bool parquet_writer::write(accessor::record_ref ref) {
 }
 
 template <class T>
-bool write_null(T* writer) {
+static bool write_null(T* writer) {
     int16_t definition_level = 0;
     writer->WriteBatch(1, &definition_level, nullptr, nullptr);
     return true;
@@ -265,7 +265,7 @@ parquet_writer::open(maybe_shared_ptr<meta::external_record_meta> meta, std::str
     return {};
 }
 
-parquet::LogicalType::TimeUnit::unit parquet_time_unit_from(time_unit_kind kind) {
+static parquet::LogicalType::TimeUnit::unit parquet_time_unit_from(time_unit_kind kind) {
     using k = time_unit_kind;
     using tu = parquet::LogicalType::TimeUnit;
     switch(kind) {

@@ -183,7 +183,7 @@ accessor::record_ref result_store::iterator::ref() const noexcept {
 }
 
 
-data::iterable_record_store::iterator empty_iterator() {
+static data::iterable_record_store::iterator empty_iterator() {
     static data::iterable_record_store empty_store{}; // dummy store to provide empty iterator
     return empty_store.begin();
 }

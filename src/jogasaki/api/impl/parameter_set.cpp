@@ -90,11 +90,11 @@ void parameter_set::set_null(std::string_view name) {
 }
 
 parameter_set* parameter_set::clone() const& {
-    return new parameter_set(std::make_shared<plan::parameter_set>(*body_));
+    return new parameter_set(std::make_shared<plan::parameter_set>(*body_));  //NOLINT(cppcoreguidelines-owning-memory)
 }
 
 parameter_set* parameter_set::clone() && {
-    return new parameter_set(std::make_shared<plan::parameter_set>(std::move(*body_)));
+    return new parameter_set(std::make_shared<plan::parameter_set>(std::move(*body_)));  //NOLINT(cppcoreguidelines-owning-memory)
 }
 
 std::shared_ptr<plan::parameter_set> const& parameter_set::body() const noexcept {

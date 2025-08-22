@@ -48,7 +48,7 @@ using ::yugawara::storage::table;
 namespace schema = ::yugawara::schema;
 using ::takatori::util::unsafe_downcast;
 
-bool contains(std::vector<index::key>& keys, yugawara::storage::column& c) {
+static bool contains(std::vector<index::key>& keys, yugawara::storage::column& c) {
     bool contained = false;
     for(auto&& tc : keys) {
         if(tc == c) {
@@ -59,7 +59,7 @@ bool contains(std::vector<index::key>& keys, yugawara::storage::column& c) {
     return contained;
 }
 
-void fill_generated_sequence(
+static void fill_generated_sequence(
     yugawara::storage::column& cc,
     storage_processor::generated_sequences_type& generated_sequences,
     std::string_view location_name,

@@ -52,7 +52,7 @@ dag_controller::dag_controller(std::shared_ptr<configuration> cfg) :
 dag_controller::~dag_controller() = default;
 
 void dag_controller::schedule(model::graph &g, request_context& rctx) {
-    return impl_->schedule(g, rctx);
+    impl_->schedule(g, rctx);
 }
 
 task_scheduler& dag_controller::get_task_scheduler() noexcept {

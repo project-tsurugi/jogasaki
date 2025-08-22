@@ -66,13 +66,13 @@ void add_name_value_to_string(
     Head&& head,
     Tails&&... args
 ) {
-    builder << names[N] << ":" << head << " ";
+    builder << names[N] << ":" << std::forward<Head>(head) << " ";
     add_name_value_to_string<N+1>(builder, names, std::forward<Tails>(args)...);
 }
 
 template <class ... Args>
 void add_var_name_value(string_builder& builder, std::vector<char const*> const& names, Args&& ...args) {
-    add_name_value_to_string<0>(builder, names, args...);
+    add_name_value_to_string<0>(builder, names, std::forward<Args>(args)...);
 }
 
 }  // namespace details
@@ -84,7 +84,7 @@ void assert_with_exception_impl(char const* str, bool cond, std::initializer_lis
         auto builder = string_builder{}
             << base_filename()
             << " condition \'" << str << "\' failed ";
-        details::add_var_name_value(builder, names, args...);
+        details::add_var_name_value(builder, names, std::forward<Args>(args)...);
         throw_exception(std::logic_error{builder << string_builder::to_string});
 
     }

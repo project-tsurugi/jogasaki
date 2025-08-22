@@ -31,7 +31,7 @@ constexpr static std::size_t npos = static_cast<std::size_t>(-1);
  * @return the byte offset (ranging from 0 to 7) of the most significant non-zero byte in `v`
  * and the flag to indicate if the most significant bit is "non-zero"
  */
-std::pair<std::size_t, bool> most_significant_non_zero_byte_offset(std::uint64_t v, std::uint64_t zero) {
+static std::pair<std::size_t, bool> most_significant_non_zero_byte_offset(std::uint64_t v, std::uint64_t zero) {
     for (std::size_t offset = 0; offset < sizeof(std::uint64_t); ++offset) {
         std::uint64_t octet = (v >> ((sizeof(std::uint64_t) - offset - 1U) * 8U)) & 0xffU;
         if (octet != zero) {

@@ -48,7 +48,7 @@ namespace jogasaki::executor::sequence {
 using takatori::util::throw_exception;
 using kind = meta::field_type_kind;
 
-manager::sequences_type create_sequences(manager::id_map_type const& id_map) {
+static manager::sequences_type create_sequences(manager::id_map_type const& id_map) {
     manager::sequences_type ret{};
     for(auto& [def_id, id] : id_map) {
         auto [it, success] = ret.try_emplace(def_id, id);

@@ -74,7 +74,7 @@ void metadata_store::put(std::size_t def_id, std::size_t id) {
     }
 }
 
-std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
+static std::tuple<sequence_definition_id, sequence_id, bool> read_entry(
     std::unique_ptr<kvs::iterator>& it,
     kvs::transaction& tx
 ) {

@@ -71,7 +71,7 @@ arrow_writer::arrow_writer(maybe_shared_ptr<meta::external_record_meta> meta, ar
     option_(std::move(opt))
 {}
 
-std::shared_ptr<arrow::ArrayBuilder> create_array_builder(
+static std::shared_ptr<arrow::ArrayBuilder> create_array_builder(
     meta::field_type const& type,
     std::shared_ptr<arrow::DataType> const& arrow_type,
     arrow_writer_option const& opts
@@ -145,7 +145,7 @@ void arrow_writer::new_row_group() {
     row_group_write_count_ = 0;
 }
 
-arrow::ipc::IpcWriteOptions create_options(arrow_writer_option const& in) {
+static arrow::ipc::IpcWriteOptions create_options(arrow_writer_option const& in) {
     arrow::ipc::IpcWriteOptions options = arrow::ipc::IpcWriteOptions::Defaults();
 
     if(in.metadata_version() == "V1") {
@@ -316,7 +316,7 @@ bool arrow_writer::write(accessor::record_ref ref) {
 }
 
 template <class T>
-bool write_null(T* writer) {
+static bool write_null(T* writer) {
     int16_t definition_level = 0;
     writer->WriteBatch(1, &definition_level, nullptr, nullptr);
     return true;
@@ -374,7 +374,7 @@ bool arrow_writer::write_character(std::size_t colidx, accessor::text v, details
                              << colopt.length_ << string_builder::to_string
         });
     }
-    (void) builder.Append(sv.data());
+    (void) builder.Append(sv);
     return true;
 }
 
@@ -394,7 +394,7 @@ bool arrow_writer::write_octet(std::size_t colidx, accessor::binary v, details::
                              << colopt.length_ << string_builder::to_string
         });
     }
-    (void) builder.Append(sv.data());
+    (void) builder.Append(sv);
     return true;
 }
 
@@ -467,7 +467,7 @@ std::shared_ptr<arrow_writer> arrow_writer::open(
     return {};
 }
 
-arrow::TimeUnit::type arrow_time_unit_from(time_unit_kind kind) {
+static arrow::TimeUnit::type arrow_time_unit_from(time_unit_kind kind) {
     using k = time_unit_kind;
     using t = arrow::TimeUnit::type;
     switch(kind) {

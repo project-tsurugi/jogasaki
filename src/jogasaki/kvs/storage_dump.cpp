@@ -106,7 +106,7 @@ public:
     }
 
 private:
-    std::ostream& stream_;
+    std::ostream& stream_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     std::string_view storage_key_{};
     std::size_t batch_size_{};
 
@@ -152,7 +152,7 @@ public:
     }
 
 private:
-    std::istream& stream_;
+    std::istream& stream_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     std::string_view storage_key_{};
     std::size_t batch_size_{};
 

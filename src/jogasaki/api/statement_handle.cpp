@@ -46,7 +46,7 @@ statement_handle::operator bool() const noexcept {
     return body_ != 0;
 }
 
-std::shared_ptr<impl::prepared_statement> get_statement(statement_handle arg) {
+std::shared_ptr<impl::prepared_statement> get_statement(statement_handle arg) {  //NOLINT(misc-use-internal-linkage) false positive
     return global::database_impl()->find_statement(arg);
 }
 

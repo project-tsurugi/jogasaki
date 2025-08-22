@@ -63,7 +63,7 @@ using takatori::util::string_builder;
 using takatori::util::unsafe_downcast;
 
 template <class T, class Reader>
-std::enable_if_t<! std::is_same_v<T, std::int8_t>, T>
+static std::enable_if_t<! std::is_same_v<T, std::int8_t>, T>
 read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
     int64_t values_read = 0;
     int64_t rows_read = 0;
@@ -90,7 +90,7 @@ read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool&
 }
 
 template <class T, class Reader>
-std::enable_if_t<std::is_same_v<T, std::int8_t>, T>
+static std::enable_if_t<std::is_same_v<T, std::int8_t>, T>
 read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
     int64_t values_read = 0;
     int64_t rows_read = 0;
@@ -118,7 +118,7 @@ read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool&
 }
 
 template <class T>
-std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, T>
+static std::enable_if_t<std::is_same_v<T, accessor::text> || std::is_same_v<T, accessor::binary>, T>
 read_data(parquet::ColumnReader& reader, parquet::ColumnDescriptor const&, bool& null, bool& nodata) {
     int64_t values_read = 0;
     int64_t rows_read = 0;
@@ -289,7 +289,7 @@ maybe_shared_ptr<meta::external_record_meta> const& parquet_reader::meta() {
     return meta_;
 }
 
-reader_option create_default(meta::record_meta const& meta) {
+static reader_option create_default(meta::record_meta const& meta) {
     std::vector<reader_field_locator> locs{};
     locs.reserve(meta.field_count());
     for(std::size_t i=0, n=meta.field_count(); i < n; ++i) {
@@ -310,7 +310,7 @@ std::shared_ptr<parquet_reader> parquet_reader::open(
     return {};
 }
 
-inline constexpr std::string_view to_string_view(parquet::Type::type value) {
+static inline constexpr std::string_view to_string_view(parquet::Type::type value) {
     switch (value) {
         case parquet::Type::type::BOOLEAN: return "BOOLEAN";
         case parquet::Type::type::INT32: return "INT32";
@@ -325,11 +325,11 @@ inline constexpr std::string_view to_string_view(parquet::Type::type value) {
     std::abort();
 }
 
-inline std::ostream& operator<<(std::ostream& out, parquet::Type::type value) {
+inline std::ostream& operator<<(std::ostream& out, parquet::Type::type value) {  //NOLINT(misc-use-internal-linkage)
     return out << to_string_view(value);
 }
 
-meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* parameter_type) { //NOLINT(readability-function-cognitive-complexity)
+static meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* parameter_type) { //NOLINT(readability-function-cognitive-complexity)
     switch(c->logical_type()->type()) {
         case parquet::LogicalType::Type::STRING:
             if (c->physical_type() == parquet::Type::type::BYTE_ARRAY) {
@@ -418,7 +418,7 @@ meta::field_type type(parquet::ColumnDescriptor const* c, meta::field_type* para
     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::undefined>};
 }
 
-std::vector<parquet::ColumnDescriptor const*> create_columns_meta(parquet::FileMetaData& pmeta) {
+static std::vector<parquet::ColumnDescriptor const*> create_columns_meta(parquet::FileMetaData& pmeta) {
     std::vector<parquet::ColumnDescriptor const*> ret{};
     auto sz = static_cast<std::size_t>(pmeta.schema()->num_columns());
     ret.reserve(sz);
@@ -428,7 +428,7 @@ std::vector<parquet::ColumnDescriptor const*> create_columns_meta(parquet::FileM
     return ret;
 }
 
-meta::field_type parameter_type(
+static meta::field_type parameter_type(
     std::size_t idx,
     meta::record_meta const& parameter_meta,
     std::vector<std::size_t> const& parameter_to_field
@@ -441,7 +441,7 @@ meta::field_type parameter_type(
     return meta::field_type{meta::field_enum_tag<meta::field_type_kind::undefined>};
 }
 
-std::shared_ptr<meta::external_record_meta> create_meta(
+static std::shared_ptr<meta::external_record_meta> create_meta(
     parquet::FileMetaData& pmeta,
     meta::record_meta const* parameter_meta,
     std::vector<std::size_t> const* parameter_to_field
@@ -473,7 +473,7 @@ std::shared_ptr<meta::external_record_meta> create_meta(
     );
 }
 
-bool validate_option(reader_option const& opt, parquet::FileMetaData& pmeta) {
+static bool validate_option(reader_option const& opt, parquet::FileMetaData& pmeta) {
     for(auto&& l : opt.loc_) {
         if(! l.empty_ && l.index_ != npos && static_cast<std::size_t>(pmeta.schema()->num_columns()) <= l.index_) {
             auto msg = string_builder{} <<
@@ -500,14 +500,14 @@ bool validate_option(reader_option const& opt, parquet::FileMetaData& pmeta) {
     return true;
 }
 
-std::size_t index_in(std::vector<std::string>::value_type const& e, std::vector<std::string>& container) {
+static std::size_t index_in(std::vector<std::string>::value_type const& e, std::vector<std::string>& container) {
     if(auto it = std::find(container.begin(), container.end(), e); it != container.end()) {
         return std::distance(container.begin(), it);
     }
     return npos;
 }
 
-std::vector<std::size_t>
+static std::vector<std::size_t>
 create_parameter_to_parquet_field(reader_option const& opt, parquet::FileMetaData& pmeta) {
     std::vector<std::size_t> ret{};
     auto sz = opt.meta_->field_count();
@@ -537,7 +537,7 @@ create_parameter_to_parquet_field(reader_option const& opt, parquet::FileMetaDat
     return ret;
 }
 
-bool validate_parameter_mapping(
+static bool validate_parameter_mapping(
     std::vector<std::size_t> const& param_map,
     meta::record_meta const& parameter_meta,
     meta::external_record_meta const& parquet_meta
@@ -564,7 +564,7 @@ bool validate_parameter_mapping(
     return true;
 }
 
-void dump_file_metadata(parquet::FileMetaData& pmeta) {
+static void dump_file_metadata(parquet::FileMetaData& pmeta) {
     VLOG_LP(log_debug) << "*** begin dump metadata for parquet file ***";
     VLOG_LP(log_debug) << "size:" << pmeta.size();
     VLOG_LP(log_debug) << "num_rows:" << pmeta.num_rows();

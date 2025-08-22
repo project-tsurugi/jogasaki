@@ -146,7 +146,7 @@ public:
 private:
     constexpr record_printer(std::ostream& stream, record_ref record) noexcept : stream_(stream), record_(record) {}
 
-    std::ostream& stream_;
+    std::ostream& stream_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     record_ref record_;
 
     friend constexpr record_printer operator<<(std::ostream& os, record_ref rec) noexcept;

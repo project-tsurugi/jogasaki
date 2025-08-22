@@ -375,7 +375,7 @@ bool write_bit(
     if (number_of_bits > blocks.size() * 8) {
         throw_exception(std::out_of_range("too large number of bits"));
     }
-    const_bitset_view bits { blocks.data(), number_of_bits };
+    const_bitset_view bits { blocks.data(), number_of_bits };  //NOLINT(bugprone-suspicious-stringview-data-usage)
     BOOST_ASSERT(bits.block_size() <= blocks.size()); // NOLINT
     return write_bit(bits, position, end);
 }

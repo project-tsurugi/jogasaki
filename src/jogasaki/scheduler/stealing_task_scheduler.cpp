@@ -181,7 +181,7 @@ void stealing_task_scheduler::print_diagnostic(std::ostream &os) {
     // Iterating tbb hash map is not thread-safe, and this is not complete solution,
     // but we are doing our best for safety as much as possible.
     std::unordered_map<std::size_t, std::shared_ptr<job_context>> copied{};
-    for(auto [k, c] : job_contexts_) {
+    for(auto [k, c] : job_contexts_) {  //NOLINT(performance-for-range-copy) using copy to keep shared_ptr ownership
         (void) c;
         {
             decltype(job_contexts_)::accessor acc{};

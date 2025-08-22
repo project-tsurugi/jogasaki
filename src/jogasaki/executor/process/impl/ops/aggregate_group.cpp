@@ -125,7 +125,7 @@ operation_status aggregate_group::process_group(abstract::task_context* context,
     return (*this)(*p, last_member, context);
 }
 
-void copy_value(
+static void copy_value(
     accessor::record_ref src,
     std::size_t offset,
     std::size_t nullity_offset,

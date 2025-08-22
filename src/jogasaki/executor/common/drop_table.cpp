@@ -67,7 +67,7 @@ model::statement_kind drop_table::kind() const noexcept {
     return model::statement_kind::drop_table;
 }
 
-bool remove_generated_sequences(
+static bool remove_generated_sequences(
     request_context& context,
     std::vector<std::string>& generated_sequences,
     std::string_view sequence_name
@@ -98,7 +98,7 @@ bool remove_generated_sequences(
     return true;
 }
 
-bool drop_auto_generated_sequences(
+static bool drop_auto_generated_sequences(
     request_context& context,
     yugawara::storage::table const& t,
     std::vector<std::string>& generated_sequences

@@ -87,9 +87,9 @@ public:
     evaluator_context& context() noexcept;
 
 private:
-    evaluator_context& ctx_;
-    executor::process::impl::variable_table& variables_;
-    yugawara::compiled_info const& info_;
+    evaluator_context& ctx_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    executor::process::impl::variable_table& variables_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+    yugawara::compiled_info const& info_;  //NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     executor::process::impl::variable_table const* host_variables_{};
     memory_resource* resource_{};
 
@@ -97,8 +97,8 @@ private:
     any concat(T const& l, U const& r);
 };
 
+// public for testing
 takatori::decimal::triple triple_from_int(std::int64_t arg);
-
 double triple_to_double(takatori::decimal::triple arg);
 
 }  // namespace details

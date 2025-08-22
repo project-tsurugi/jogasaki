@@ -62,7 +62,7 @@ variable_table_info::variable_table_info(
     utils::assert_all_fields_nullable(*meta_);
 }
 
-variable_table_info::entity_type from_indices(
+static variable_table_info::entity_type from_indices(
     variable_table_info::variable_indices const& indices,
     maybe_shared_ptr<meta::record_meta> const& meta
 ) {

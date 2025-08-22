@@ -70,14 +70,14 @@ using takatori::util::string_builder;
 using takatori::util::throw_exception;
 
 template <class T, arrow::Type::type Typeid>
-void validate_ctype() {
+static void validate_ctype() {
     using c_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::CType;
     static_assert(std::is_same_v<c_type, T>);
 }
 
 // INT8, INT16, INT32, INT64, FLOAT, DOUBLE
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<
+static std::enable_if_t<
 std::is_same_v<T, std::int32_t> ||
 std::is_same_v<T, std::int64_t> ||
 std::is_same_v<T, float> ||
@@ -92,7 +92,7 @@ read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_
 }
 
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<std::is_same_v<T, accessor::text>, T>
+static std::enable_if_t<std::is_same_v<T, accessor::text>, T>
 read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
     (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
@@ -101,7 +101,7 @@ read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_
 }
 
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<std::is_same_v<T, accessor::binary>, T>
+static std::enable_if_t<std::is_same_v<T, accessor::binary>, T>
 read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
     (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
@@ -110,7 +110,7 @@ read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_
 }
 
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>> && Typeid == arrow::Type::DECIMAL, T>
+static std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>> && Typeid == arrow::Type::DECIMAL, T>
 read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
     (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
@@ -138,7 +138,7 @@ read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_
 }
 
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::date>> && Typeid == arrow::Type::DATE32, T>
+static std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::date>> && Typeid == arrow::Type::DATE32, T>
 read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
     (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
@@ -148,7 +148,7 @@ read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_
 }
 
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_of_day>> && Typeid == arrow::Type::TIME64, T>
+static std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_of_day>> && Typeid == arrow::Type::TIME64, T>
 read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
     (void) column_option;
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
@@ -158,7 +158,7 @@ read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_
 }
 
 template <class T, arrow::Type::type Typeid>
-std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_point>> && Typeid == arrow::Type::TIMESTAMP, T>
+static std::enable_if_t<std::is_same_v<T, runtime_t<meta::field_type_kind::time_point>> && Typeid == arrow::Type::TIMESTAMP, T>
 read_data(arrow::Array& array, std::size_t offset, details::arrow_reader_column_option const& column_option) {
     using array_type = typename arrow::TypeTraits<typename arrow::TypeIdTraits<Typeid>::Type>::ArrayType;
     auto& r = static_cast<array_type&>(array);
@@ -269,7 +269,7 @@ std::shared_ptr<arrow_reader> arrow_reader::open(
     return {};
 }
 
-time_unit_kind time_unit_from(arrow::TimeUnit::type arg) {
+static time_unit_kind time_unit_from(arrow::TimeUnit::type arg) {
     using t = arrow::TimeUnit::type;
     using k = time_unit_kind;
     switch(arg) {

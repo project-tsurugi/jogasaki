@@ -101,7 +101,7 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
     return status::ok;
 }
 
-status assign_value_to_field(
+static status assign_value_to_field(
     wrt::write_field const& f,
     data::any src,
     request_context& ctx,

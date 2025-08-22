@@ -34,15 +34,15 @@ static constexpr std::string_view timing_job_submitting = "/:jogasaki:timing:job
 static constexpr std::string_view timing_job_started = "/:jogasaki:timing:job_started";
 static constexpr std::string_view timing_job_finishing = "/:jogasaki:timing:job_finishing";
 
-std::string_view if_empty(std::string_view arg) {
+static std::string_view if_empty(std::string_view arg) {
     if(arg.empty()) return "<empty>";
     return arg;
 }
 
-std::string_view trim_string(std::string_view arg) {
+static std::string_view trim_string(std::string_view arg) {
     constexpr static std::size_t str_len_request_log = 32;
     if(arg.size() > str_len_request_log) {
-        return {arg.data(), str_len_request_log};
+        return {arg.data(), str_len_request_log};  //NOLINT(bugprone-suspicious-stringview-data-usage)
     }
     return arg;
 }

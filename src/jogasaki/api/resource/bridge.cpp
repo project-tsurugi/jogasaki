@@ -110,14 +110,14 @@ std::string_view bridge::label() const noexcept {
     return component_label;
 }
 
-std::string toupper(std::string_view src) {
+static std::string toupper(std::string_view src) {
     std::string ret(src.size(), '\0');
     std::transform(src.cbegin(), src.cend(), ret.begin(), ::toupper);
     return ret;
 }
 
 template <class ...Args>
-bool validate_enum_strings(std::string_view name, std::string_view value, std::int32_t& out, Args...args) {
+static bool validate_enum_strings(std::string_view name, std::string_view value, std::int32_t& out, Args...args) {
     std::vector<std::string> allowed{args...};
     std::int32_t idx = 0;
     auto v = toupper(value);
@@ -137,7 +137,7 @@ bool validate_enum_strings(std::string_view name, std::string_view value, std::i
     return false;
 }
 
-bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     // sql section
     auto jogasaki_config = cfg.get_section("sql");
     if (jogasaki_config == nullptr) {
@@ -313,7 +313,7 @@ bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama:
     return true;
 }
 
-bool process_session_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+static bool process_session_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     // session section
     auto session_config = cfg.get_section("session");
     if (session_config == nullptr) {
@@ -331,7 +331,7 @@ bool process_session_config(std::shared_ptr<jogasaki::configuration>& ret, tatey
     return true;
 }
 
-std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     auto ret = std::make_shared<jogasaki::configuration>();
     if(! process_sql_config(ret, cfg)) {
         return {};

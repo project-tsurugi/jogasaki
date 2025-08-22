@@ -27,9 +27,9 @@ namespace jogasaki {
 enum class commit_response_kind : std::int32_t {
     undefined = -1,
     accepted = 0,
-    available,
-    stored,
-    propagated
+    available = 1,
+    stored = 2,
+    propagated = 3
 };
 
 /**

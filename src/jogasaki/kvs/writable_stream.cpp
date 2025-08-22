@@ -156,7 +156,7 @@ void writable_stream::write_decimal(std::int8_t sign, std::uint64_t lo, std::uin
     pos_ += sz;
 }
 
-void decimal_error_logging(std::string_view operation, runtime_t<meta::field_type_kind::decimal> data, std::size_t precision, std::size_t scale, std::size_t digits) {
+static void decimal_error_logging(std::string_view operation, runtime_t<meta::field_type_kind::decimal> data, std::size_t precision, std::size_t scale, std::size_t digits) {
     VLOG_LP(log_error) << "decimal operation (" << operation << ") failed. src=" << data << " precision= " << precision << " scale=" << scale << " digits=" << digits;
 }
 

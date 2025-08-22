@@ -23,7 +23,7 @@ namespace jogasaki::utils {
 
 constexpr std::uint32_t invalid_hex_digit = static_cast<std::uint32_t>(-1);
 
-std::uint32_t hex_digit_to_uint(char c) {
+static std::uint32_t hex_digit_to_uint(char c) {
     if(c >= '0' && c <= '9') {
         return c - '0';
     }

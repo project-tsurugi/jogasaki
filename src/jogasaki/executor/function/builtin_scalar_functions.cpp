@@ -892,7 +892,7 @@ data::any octet_length(
     std::abort();
 }
 
-data::any tx_ts_is_available(evaluator_context& ctx) {
+static data::any tx_ts_is_available(evaluator_context& ctx) {
     if(! ctx.transaction()) {
         // programming error
         ctx.add_error({error_kind::unknown, "missing transaction context"});
@@ -982,8 +982,8 @@ enum class encoding_type { ASCII_1BYTE, UTF8_2BYTE, UTF8_3BYTE, UTF8_4BYTE, INVA
 //  U       [\x80-\xbf]
 //
 
-bool is_continuation_byte(unsigned char c) { return (c & 0xC0U) == 0x80U; }
-encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
+static bool is_continuation_byte(unsigned char c) { return (c & 0xC0U) == 0x80U; }
+static encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
     if (view.empty()) return encoding_type::INVALID;
     if (offset >= view.size()) return encoding_type::INVALID;
     const auto offset_2nd = offset + 1;
@@ -1010,7 +1010,7 @@ encoding_type detect_next_encoding(std::string_view view, const size_t offset) {
     }
     return encoding_type::INVALID;
 }
-size_t get_byte(encoding_type e) {
+static size_t get_byte(encoding_type e) {
     switch (e) {
         case encoding_type::ASCII_1BYTE: return 1;
         case encoding_type::UTF8_2BYTE: return 2;
@@ -1020,7 +1020,7 @@ size_t get_byte(encoding_type e) {
     }
     return 0;
 }
-size_t get_start_index_byte(
+static size_t get_start_index_byte(
     std::string_view view, const int64_t zero_based_start, bool is_character_type) {
     if (!is_character_type) { return zero_based_start; }
     size_t tmp_byte = 0;
@@ -1032,7 +1032,7 @@ size_t get_start_index_byte(
     // offset is sum of tmp_bytes
     return offset;
 }
-size_t get_size_byte(std::string_view view, const size_t start_byte, const size_t letter_count,
+static size_t get_size_byte(std::string_view view, const size_t start_byte, const size_t letter_count,
     bool is_character_type) {
     if (!is_character_type) { return letter_count; }
     size_t tmp_byte = 0;
@@ -1044,7 +1044,7 @@ size_t get_size_byte(std::string_view view, const size_t start_byte, const size_
     // offset is sum of tmp_bytes
     return offset - start_byte;
 }
-bool is_valid_utf8(std::string_view view) {
+static bool is_valid_utf8(std::string_view view) {
     size_t offset = 0;
     while (offset < view.size()) {
         size_t char_size = get_byte(detect_next_encoding(view, offset));
@@ -1054,7 +1054,7 @@ bool is_valid_utf8(std::string_view view) {
     return true;
 }
 
-std::optional<size_t> get_utf8_length(std::string_view view) {
+static std::optional<size_t> get_utf8_length(std::string_view view) {
     size_t offset = 0;
     size_t count  = 0;
     while (offset < view.size()) {
@@ -1067,7 +1067,7 @@ std::optional<size_t> get_utf8_length(std::string_view view) {
 }
 
 template <typename TypeTag>
-data::any extract_substring(std::string_view view, TypeTag type_tag, int64_t zero_based_start,
+static data::any extract_substring(std::string_view view, TypeTag type_tag, int64_t zero_based_start,
     std::optional<runtime_t<kind::int8>> casted_length) {
     constexpr bool is_character_type =
         std::is_same_v<std::decay_t<TypeTag>, std::in_place_type_t<runtime_t<kind::character>>>;
@@ -1099,7 +1099,7 @@ data::any extract_substring(std::string_view view, TypeTag type_tag, int64_t zer
     return data::any{type_tag, sub_view};
 }
 template <typename T, typename Func>
-data::any convert_case(evaluator_context& ctx, const data::any& src, Func case_converter) {
+static data::any convert_case(evaluator_context& ctx, const data::any& src, Func case_converter) {
     auto text = src.to<T>();
     T v{ctx.resource(), text};
     auto str = static_cast<std::string_view>(v);
@@ -1112,17 +1112,17 @@ data::any convert_case(evaluator_context& ctx, const data::any& src, Func case_c
     return data::any{std::in_place_type<T>, v};
 }
 
-int32_t abs_val(int32_t x) {
+static int32_t abs_val(int32_t x) {
     int32_t mask = x >> 31;   // NOLINT(hicpp-signed-bitwise)
     return (x + mask) ^ mask; // NOLINT(hicpp-signed-bitwise)
 }
 
-int64_t abs_val(int64_t x) {
+static int64_t abs_val(int64_t x) {
     int64_t mask = x >> 63;   // NOLINT(hicpp-signed-bitwise)
     return (x + mask) ^ mask; // NOLINT(hicpp-signed-bitwise)
 }
 
-size_t count_utf8_chars(std::string_view str, size_t i) {
+static size_t count_utf8_chars(std::string_view str, size_t i) {
     size_t offset     = 0;
     size_t char_count = 1;
     while (offset < i) {
@@ -1133,7 +1133,7 @@ size_t count_utf8_chars(std::string_view str, size_t i) {
     }
     return char_count;
 }
-data::any extract_position(std::string_view substr, std::string_view str) {
+static data::any extract_position(std::string_view substr, std::string_view str) {
     const std::size_t str_size    = str.size();
     const std::size_t substr_size = substr.size();
     std::size_t pos               = std::string_view::npos;
@@ -1150,7 +1150,7 @@ data::any extract_position(std::string_view substr, std::string_view str) {
     return data::any{std::in_place_type<runtime_t<kind::int8>>, char_count};
 }
 
-data::any round_decimal(data::any src, int32_t precision, evaluator_context& ctx,
+static data::any round_decimal(data::any src, int32_t precision, evaluator_context& ctx,
     int32_t min_precision, int32_t max_precision) {
     if (precision < min_precision || precision > max_precision) {
         ctx.add_error({error_kind::unsupported, "scale out of range: must be between -38 and 38"});
@@ -1185,7 +1185,7 @@ data::any round_decimal(data::any src, int32_t precision, evaluator_context& ctx
 }
 
 template <jogasaki::meta::field_type_kind Kind>
-data::any round_integral(data::any src, int32_t precision, evaluator_context& ctx,
+static data::any round_integral(data::any src, int32_t precision, evaluator_context& ctx,
     int32_t min_precision, const char* type_name) {
     using T = runtime_t<Kind>;
 
@@ -1215,7 +1215,7 @@ data::any round_integral(data::any src, int32_t precision, evaluator_context& ct
 }
 
 template <jogasaki::meta::field_type_kind Kind>
-data::any round_floating_point(data::any src, int32_t precision, evaluator_context& ctx,
+static data::any round_floating_point(data::any src, int32_t precision, evaluator_context& ctx,
     int32_t min_precision, int32_t max_precision, const char* type_name) {
     using T          = runtime_t<Kind>;
     using FactorType = std::conditional_t<std::is_same_v<T, float>, float, double>;
@@ -1233,7 +1233,7 @@ data::any round_floating_point(data::any src, int32_t precision, evaluator_conte
 
     return data::any{std::in_place_type<T>, result};
 }
-data::any round(data::any src, int32_t precision, evaluator_context& ctx) {
+static data::any round(data::any src, int32_t precision, evaluator_context& ctx) {
     switch (src.type_index()) {
         case data::any::index<runtime_t<kind::int4>>:
             return round_integral<kind::int4>(src, precision, ctx, -9, "INT");

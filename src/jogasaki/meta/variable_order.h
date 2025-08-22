@@ -49,7 +49,7 @@ struct variable_ordering_enum_tag_t {
 };
 
 template<auto Kind>
-inline constexpr variable_ordering_enum_tag_t<Kind> variable_ordering_enum_tag{};
+inline constexpr variable_ordering_enum_tag_t<Kind> variable_ordering_enum_tag{}; //NOLINT(google-readability-casting) false positive
 
 /**
  * @brief represents variables order in a relation (e.g. exchange, index, or table)

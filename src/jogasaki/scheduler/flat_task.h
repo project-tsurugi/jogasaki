@@ -102,7 +102,7 @@ struct task_enum_tag_t {
 };
 
 template<auto Kind>
-inline constexpr task_enum_tag_t<Kind> task_enum_tag {};
+inline constexpr task_enum_tag_t<Kind> task_enum_tag {};  //NOLINT(google-readability-casting) false positive
 
 using callback = api::transaction_handle::callback;
 

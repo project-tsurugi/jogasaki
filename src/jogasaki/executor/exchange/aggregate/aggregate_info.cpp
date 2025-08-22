@@ -139,7 +139,7 @@ std::shared_ptr<meta::record_meta> aggregate_info::output_info::create_key_meta(
     }
     std::size_t record_size = meta::record_meta::npos;
     if (! post) {
-        fields.emplace_back(meta::field_type{meta::field_enum_tag<kind::pointer>});
+        fields.emplace_back(meta::field_enum_tag<kind::pointer>);
         nullables.push_back(true);
     } else {
         // post key doesn't have internal pointer field, but the record length is same as mid
@@ -265,7 +265,7 @@ accessor::record_ref aggregate_info::output_key(accessor::record_ref mid) const 
     return {mid.data(), post_.group_meta()->key().record_size()};
 }
 
-std::vector<meta::field_type> types(meta::record_meta const& meta, std::vector<std::size_t> const& indices) {
+static std::vector<meta::field_type> types(meta::record_meta const& meta, std::vector<std::size_t> const& indices) {
     std::vector<meta::field_type> ret{};
     ret.reserve(indices.size());
     for(auto i : indices) {

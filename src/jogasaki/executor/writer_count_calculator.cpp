@@ -38,13 +38,6 @@ using takatori::util::unsafe_downcast;
 namespace statement = ::takatori::statement;
 namespace impl {
 
-const api::impl::executable_statement& get_impl(const api::executable_statement& stmt) {
-    return unsafe_downcast<const api::impl::executable_statement>(stmt);
-}
-inline api::impl::database& get_impl(api::database& db) {
-    return unsafe_downcast<api::impl::database>(db);
-}
-
 bool has_emit_operator(takatori::plan::step const& s) noexcept {
     bool has_emit = false;
     auto& process = unsafe_downcast<takatori::plan::process const>(s);
@@ -122,7 +115,7 @@ size_t calculate_partition(
     return partition;
 }
 
-size_t get_partitions(maybe_shared_ptr<statement::statement> const& statement,
+static size_t get_partitions(maybe_shared_ptr<statement::statement> const& statement,
     const std::size_t partitions, bool is_rtx) {
     if (!statement || statement->kind() != statement::statement_kind::execute) { return 0; }
     std::size_t result = 0;

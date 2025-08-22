@@ -78,17 +78,7 @@ using variable = takatori::descriptor::variable;
 using takatori::util::throw_exception;
 namespace details {
 
-std::vector<index::secondary_target> create_secondary_targets(
-    yugawara::storage::index const& idx
-) {
-    auto& table = idx.table();
-    auto& primary = *table.owner()->find_primary_index(table);
-    auto key_meta = index::create_meta(primary, true);
-    auto value_meta = index::create_meta(primary, false);
-    return wrt::create_secondary_targets(idx, std::move(key_meta), std::move(value_meta));
-}
-
-void abort_transaction(transaction_context& tx) {
+static void abort_transaction(transaction_context& tx) {
     if (auto res = tx.abort_transaction(); res != status::ok) {
         throw_exception(std::logic_error{"abort failed unexpectedly"});
     }
@@ -113,7 +103,7 @@ operator_kind write_create::kind() const noexcept {
 }
 
 
-status fill_default_value_for_fields(
+static status fill_default_value_for_fields(
     write_create_context& ctx,
     std::vector<wrt::write_field> const& fields,
     memory::lifo_paged_memory_resource& resource,

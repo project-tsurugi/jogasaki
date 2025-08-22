@@ -45,6 +45,12 @@ void authorized_users_action_set::remove_user_action(std::string_view name, acti
     }
 }
 
+void authorized_users_action_set::remove_user_actions(std::string_view name, action_set actions) {
+    for(auto const& action : actions) {
+        remove_user_action(name, action);
+    }
+}
+
 bool authorized_users_action_set::is_user_authorized(std::string_view name, action_set const& actions) const {
     auto it = map_.find(std::string{name});
     if (it == map_.end()) {

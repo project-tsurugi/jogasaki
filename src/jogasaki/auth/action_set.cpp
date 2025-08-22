@@ -50,6 +50,12 @@ void action_set::remove_action(action_kind arg) {
     actions_.erase(arg);
 }
 
+void action_set::remove_actions(action_set const& set) {
+    for(auto &&s : set.actions_) {
+        remove_action(s);
+    }
+}
+
 bool action_set::empty() const noexcept {
     return actions_.empty();
 }

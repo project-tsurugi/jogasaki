@@ -26,8 +26,10 @@
 #include <jogasaki/executor/common/create_table.h>
 #include <jogasaki/executor/common/drop_index.h>
 #include <jogasaki/executor/common/drop_table.h>
+#include <jogasaki/executor/common/grant_table.h>
 #include <jogasaki/executor/common/execute.h>
 #include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/revoke_table.h>
 #include <jogasaki/model/statement_kind.h>
 #include <jogasaki/scheduler/dag_controller.h>
 
@@ -81,6 +83,16 @@ void statement_scheduler::impl::schedule(model::statement const& s, request_cont
             break;
         }
         case kind::empty: {
+            break;
+        }
+        case kind::grant_table: {
+            auto& gt = unsafe_downcast<executor::common::grant_table>(s);
+            gt(context);
+            break;
+        }
+        case kind::revoke_table: {
+            auto& rt = unsafe_downcast<executor::common::revoke_table>(s);
+            rt(context);
             break;
         }
     }

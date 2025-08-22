@@ -76,6 +76,13 @@ public:
     void remove_action(action_kind arg);
 
     /**
+     * @brief remove the specified actions from the set.
+     * @details If the set contains `control`, trying to remove individual actions does nothing.
+     * @param set The actions to remove.
+     */
+    void remove_actions(action_set const& set);
+
+    /**
      * @brief check if the set is empty.
      * @return true if there are no actions in the set, false otherwise.
      */

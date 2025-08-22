@@ -126,7 +126,7 @@ TEST_F(exclusive_ddl_dml_test, ddl_and_dml_in_same_tx) {
     ASSERT_EQ(status::ok, tx->commit());
 }
 
-TEST_F(exclusive_ddl_dml_test, starting_create_table_blocked_by_dml_req) {
+TEST_F(exclusive_ddl_dml_test, starting_ddls_blocked_by_dml_req) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     execute_statement("CREATE TABLE t0 (c0 int primary key)");
     execute_statement("CREATE TABLE t1 (c0 int primary key)");
@@ -157,6 +157,18 @@ TEST_F(exclusive_ddl_dml_test, starting_create_table_blocked_by_dml_req) {
         test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
         // verify tx abort by the error above
         test_stmt_err("drop table t0", *tx, error_code::inactive_transaction_exception);
+    }
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("grant select on table t0 to public", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        // verify tx abort by the error above
+        test_stmt_err("grant select on table t0 to public", *tx, error_code::inactive_transaction_exception);
+    }
+    {
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err("revoke select on table t0 from public", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        // verify tx abort by the error above
+        test_stmt_err("revoke select on table t0 from public", *tx, error_code::inactive_transaction_exception);
     }
     f.get();
 }
@@ -211,6 +223,8 @@ TEST_F(exclusive_ddl_dml_test, create_table_and_create_index_in_same_tx) {
     utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
     auto tx = utils::create_transaction(*db_);
     execute_statement("CREATE TABLE t (c0 int)", *tx);
+    execute_statement("grant select,insert on table t to public", *tx);
+    execute_statement("revoke insert on table t from public", *tx);
     execute_statement("CREATE INDEX i on t (c0)", *tx);
     execute_statement("insert into t values (0)", *tx);
     execute_statement("insert into t values (1)", *tx);
@@ -272,5 +286,65 @@ TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req)
     */
     f.get();
 }
+
+TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_grant_table_tx) {
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    {
+        auto tx0 = utils::create_transaction(*db_);
+        execute_statement("grant select on table t to public", *tx0);
+        auto tx1 = utils::create_transaction(*db_);
+        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("select * from t", *tx1, error_code::inactive_transaction_exception);
+        ASSERT_EQ(status::ok, tx0->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("select * from t", result);
+    ASSERT_EQ(result.size(), 0);
+}
+
+TEST_F(exclusive_ddl_dml_test, starting_dml_blocked_by_revoke_table_tx) {
+    execute_statement("CREATE TABLE t (c0 int primary key)");
+    {
+        auto tx0 = utils::create_transaction(*db_);
+        execute_statement("revoke select on table t from public", *tx0);
+        auto tx1 = utils::create_transaction(*db_);
+        test_stmt_err("select * from t", *tx1, error_code::sql_execution_exception);
+        // verify tx abort by the error above
+        test_stmt_err("select * from t", *tx1, error_code::inactive_transaction_exception);
+        ASSERT_EQ(status::ok, tx0->commit());
+    }
+    std::vector<mock::basic_record> result{};
+    execute_query("select * from t", result);
+    ASSERT_EQ(result.size(), 0);
+}
+
+TEST_F(exclusive_ddl_dml_test, non_overwrapping_grant_and_dml) {
+    // two dml operations before/after grant in the same dml tx whicle ddl tx instantly completes
+    // TODO currently there is no error on this case, but DDL must have changed the metadata, so DML touching the updated table should fail
+    utils::set_global_tx_option(utils::create_tx_option{false, true});  // use occ for simplicity
+    execute_statement("CREATE TABLE t0 (c0 int primary key)");
+    execute_statement("INSERT INTO t0 values (1)");
+    auto tx0 = utils::create_transaction(*db_);
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select count(*) from t0", *tx0, result);
+        EXPECT_EQ(1, result.size());
+    }
+    {
+        auto tx1 = utils::create_transaction(*db_);
+        execute_statement("grant select on table t0 to public", *tx1);
+        execute_statement("revoke select on table t0 from public", *tx1);
+        EXPECT_EQ(status::ok, tx1->commit());
+    }
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("select count(*) from t0", *tx0, result);
+        EXPECT_EQ(1, result.size());
+    }
+    EXPECT_EQ(status::ok, tx0->commit());
+}
+
+
 
 }

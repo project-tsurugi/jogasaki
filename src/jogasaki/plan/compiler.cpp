@@ -60,6 +60,8 @@
 #include <takatori/statement/drop_index.h>
 #include <takatori/statement/drop_table.h>
 #include <takatori/statement/execute.h>
+#include <takatori/statement/grant_table.h>
+#include <takatori/statement/revoke_table.h>
 #include <takatori/statement/statement_kind.h>
 #include <takatori/statement/write.h>
 #include <takatori/util/downcast.h>
@@ -105,7 +107,9 @@
 #include <jogasaki/executor/common/drop_table.h>
 #include <jogasaki/executor/common/empty.h>
 #include <jogasaki/executor/common/execute.h>
+#include <jogasaki/executor/common/grant_table.h>
 #include <jogasaki/executor/common/graph.h>
+#include <jogasaki/executor/common/revoke_table.h>
 #include <jogasaki/executor/common/step.h>
 #include <jogasaki/executor/common/write_statement.h>
 #include <jogasaki/executor/compare_info.h>
@@ -372,6 +376,12 @@ std::pair<status, std::shared_ptr<mirror_container>> preprocess_mirror(
             container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         case statement::statement_kind::empty:
+            break;
+        case statement::statement_kind::grant_table:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
+            break;
+        case statement::statement_kind::revoke_table:
+            container->work_level().set_minimum(statement_work_level_kind::infinity);
             break;
         default:
             throw_exception(std::logic_error{""});
@@ -1086,6 +1096,16 @@ static void create_mirror_for_ddl(
             ops = std::make_shared<executor::common::drop_index>(node);
             break;
         }
+        case statement::statement_kind::grant_table: {
+            auto& node = unsafe_downcast<statement::grant_table>(*statement);
+            ops = std::make_shared<executor::common::grant_table>(node);
+            break;
+        }
+        case statement::statement_kind::revoke_table: {
+            auto& node = unsafe_downcast<statement::revoke_table>(*statement);
+            ops = std::make_shared<executor::common::revoke_table>(node);
+            break;
+        }
         default:
             throw_exception(std::logic_error{""});
     }
@@ -1230,6 +1250,12 @@ static status create_executable_statement(compiler_context& ctx, parameter_set c
             break;
         case statement_kind::empty:
             create_mirror_for_empty_statement(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::grant_table:
+            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
+            break;
+        case statement_kind::revoke_table:
+            create_mirror_for_ddl(ctx, p->statement(), p->compiled_info(), p->mirrors(), parameters);
             break;
         default:
             throw_exception(std::logic_error{""});

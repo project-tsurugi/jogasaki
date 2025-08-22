@@ -51,6 +51,13 @@ public:
     void remove_user_action(std::string_view name, action_kind action);
 
     /**
+     * @brief remove authorized actions for a user.
+     * @param name The user name.
+     * @param actions The set of actions to remove from the user.
+     */
+    void remove_user_actions(std::string_view name, action_set actions);
+
+    /**
      * @brief Check if a user is authorized for specific actions.
      * @param name The user name to check.
      * @param actions The set of actions to check against the user's authorized actions.

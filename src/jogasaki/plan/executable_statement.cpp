@@ -85,7 +85,9 @@ bool executable_statement::is_ddl() const noexcept {
         k == statement_kind::create_table ||
         k == statement_kind::drop_table ||
         k == statement_kind::create_index ||
-        k == statement_kind::drop_index;
+        k == statement_kind::drop_index ||
+        k == statement_kind::grant_table ||
+        k == statement_kind::revoke_table;
 }
 
 std::string_view executable_statement::sql_text() const noexcept {

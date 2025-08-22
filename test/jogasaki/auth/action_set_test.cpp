@@ -159,4 +159,17 @@ TEST(action_set_test, to_string) {
     }
 }
 
+TEST(action_set_test, remove_actions) {
+    action_set s{};
+    s.add_action(action_kind::select);
+    s.add_action(action_kind::insert);
+    EXPECT_TRUE(s.action_allowed(action_kind::select));
+    EXPECT_TRUE(s.action_allowed(action_kind::insert));
+    s.remove_actions(action_set{action_kind::select, action_kind::insert});
+    EXPECT_TRUE(! s.has_action(action_kind::select));
+    EXPECT_TRUE(! s.action_allowed(action_kind::select));
+    EXPECT_TRUE(! s.has_action(action_kind::insert));
+    EXPECT_TRUE(! s.action_allowed(action_kind::insert));
+}
+
 }  // namespace jogasaki::auth

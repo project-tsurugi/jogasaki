@@ -299,11 +299,13 @@ static void serialize_table(
         set_column_features(col, c);
         col->mutable_description()->assign(c.description());
     }
-    if (option.authorized_actions_) {
-        // currently we don't set default actions - pass default actions to here if it's needed
-        auth::action_set default_actions{};
-        auth::from_action_sets(*option.authorized_actions_, default_actions, tbl);
-    }
+    static auth::authorized_users_action_set empty_user_actions{};
+    static constexpr auth::action_set empty_actions{};
+    auth::from_action_sets(
+        option.authorized_actions_ ? *option.authorized_actions_ : empty_user_actions,
+        option.public_actions_ ? *option.public_actions_ : empty_actions,
+        tbl
+    );
 }
 
 static ::jogasaki::proto::metadata::storage::Direction from(yugawara::storage::sort_direction direction) {

@@ -62,6 +62,21 @@ TEST_F(authorized_users_action_set_test, remove_user_action) {
     EXPECT_TRUE(found2.empty());
 }
 
+TEST_F(authorized_users_action_set_test, remove_user_actions) {
+    actions_.add_user_actions("user4", action_set{action_kind::select, action_kind::insert});
+    {
+        auto const& found = actions_.find_user_actions("user4");
+        EXPECT_TRUE(found.has_action(action_kind::select));
+        EXPECT_TRUE(found.has_action(action_kind::insert));
+    }
+    actions_.remove_user_actions("user4", action_set{action_kind::select, action_kind::insert});
+    {
+        auto const& found = actions_.find_user_actions("user4");
+        EXPECT_TRUE(! found.has_action(action_kind::select));
+        EXPECT_TRUE(! found.has_action(action_kind::insert));
+    }
+}
+
 TEST_F(authorized_users_action_set_test, is_user_authorized) {
     actions_.add_user_actions("user5", action_set{action_kind::select, action_kind::insert});
 

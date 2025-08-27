@@ -150,6 +150,18 @@ public:
         return public_actions_;
     }
 
+    /**
+     * @brief check whether the given user is allowed to perform the given actions on this storage
+     * @details check both authorized_actions and public_actions and
+     * return whether the given user is allowed to perform the given actions
+     */
+    [[nodiscard]] bool allows_user_actions(std::string_view user, auth::action_set const& actions) const {
+        if(public_actions_.allows(actions)) {
+            return true;
+        }
+        return authorized_actions_.is_user_authorized(user, actions);
+    }
+
 private:
     std::atomic<lock_state> state_{};
     std::string name_{};

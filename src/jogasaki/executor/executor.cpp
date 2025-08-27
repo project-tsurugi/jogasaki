@@ -645,10 +645,7 @@ static bool validate_authorization(
             // but expect subsequent process to fail since operation target is missing
             continue;
         }
-        if(stg->public_actions().allows(acts)) {
-            continue;
-        }
-        if(stg->authorized_actions().is_user_authorized(user.value(), acts)) {
+        if(stg->allows_user_actions(user.value(), acts)) {
             continue;
         }
         // permission error

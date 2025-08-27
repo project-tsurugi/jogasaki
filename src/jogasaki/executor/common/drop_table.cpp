@@ -139,6 +139,8 @@ bool drop_table::operator()(request_context& context) const {
         return false;
     }
 
+    // check premission
+
     storage::storage_entry storage_id{};
     if(! acquire_table_lock(context, c.simple_name(), storage_id)) {
         return false;

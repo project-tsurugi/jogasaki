@@ -262,12 +262,53 @@ TEST_F(sql_grant_revoke_test, public_and_user_revoked_separately) {
     test_stmt_err("select * from t", info1, error_code::permission_error);
 }
 
-TEST_F(sql_grant_revoke_test, insufficient_privilege_to_grant) {
-    // grant/revoke are allowed only for admins
+TEST_F(sql_grant_revoke_test, insufficient_privilege) {
+    // grant/revoke fails due to lack of privileges
     execute_statement("create table t (c0 int primary key)");
     auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
     test_stmt_err("grant select on table t to public", info, error_code::permission_error);
     test_stmt_err("revoke select on table t from public", info, error_code::permission_error);
+}
+
+TEST_F(sql_grant_revoke_test, grant_revoke_by_control) {
+    // grant/revoke allowed by control since it contains ALTER privilege
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant all privileges on table t to user1");
+    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("grant all privileges on table t to user2", info1);
+    execute_statement("grant select on table t to user3", info1);
+
+    auto& smgr = *global::storage_manager();
+    auto entry_opt = smgr.find_by_name("t");
+    ASSERT_TRUE(entry_opt.has_value());
+    auto entry = smgr.find_entry(entry_opt.value());
+    ASSERT_TRUE(entry);
+    auto& users_actions = entry->authorized_actions();
+    auto& public_actions = entry->public_actions();
+    EXPECT_TRUE(users_actions.find_user_actions("user2").has_action(action_kind::control));
+    EXPECT_TRUE(users_actions.find_user_actions("user3").has_action(action_kind::select));
+
+    execute_statement("revoke all privileges on table t from user2", info1);
+    execute_statement("revoke select on table t from user3", info1);
+    EXPECT_TRUE(! users_actions.find_user_actions("user2").has_action(action_kind::control));
+    EXPECT_TRUE(! users_actions.find_user_actions("user3").has_action(action_kind::select));
+}
+
+TEST_F(sql_grant_revoke_test, revoke_self) {
+    // revoke allowed by control and it revoke itself
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant all privileges on table t to user1");
+    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("revoke all privileges on table t from user1", info1);
+
+    auto& smgr = *global::storage_manager();
+    auto entry_opt = smgr.find_by_name("t");
+    ASSERT_TRUE(entry_opt.has_value());
+    auto entry = smgr.find_entry(entry_opt.value());
+    ASSERT_TRUE(entry);
+    auto& users_actions = entry->authorized_actions();
+    auto& public_actions = entry->public_actions();
+    EXPECT_TRUE(! users_actions.find_user_actions("user1").has_action(action_kind::control));
 }
 
 TEST_F(sql_grant_revoke_test, missing_table) {

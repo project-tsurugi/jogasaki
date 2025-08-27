@@ -36,6 +36,9 @@ using namespace std::literals::string_literals;
 using namespace jogasaki;
 using namespace jogasaki::auth;
 
+/**
+ * @brief authorization testing not limited to GRANT/REVOKE statements
+ */
 class sql_authorization_test :
     public ::testing::Test,
     public api_test_base {
@@ -177,6 +180,37 @@ TEST_F(sql_authorization_test, revoke_select) {
     execute_statement("select * from t", info);
     revoke(action_set{action_kind::select}, "t", "user1");
     test_stmt_err("select * from t", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, create_table_fail) {
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("create table t (c0 int primary key)", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, drop_table_fail) {
+    execute_statement("create table t (c0 int primary key)");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("drop table t", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, drop_table_success_by_control) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("grant all privileges on table t to user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("drop table t", info);
+}
+
+TEST_F(sql_authorization_test, create_index_fail) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    test_stmt_err("create index i on t (c1)", info, error_code::permission_error);
+}
+
+TEST_F(sql_authorization_test, create_index_success_by_control) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("grant all privileges on table t to user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("create index i on t (c1)", info);
 }
 
 } // namespace jogasaki::testing

@@ -77,6 +77,7 @@ bool process_grant_revoke(  //NOLINT(readability-function-cognitive-complexity)
 
     // pre-condition check: verify that all target tables exist and acquire locks successfully
 
+    auto& smgr = *global::storage_manager();
     auto& provider = *context.storage_provider();
     for(auto&& e : elements) {
         auto c = yugawara::binding::extract_shared<yugawara::storage::table>(e.table());
@@ -105,28 +106,51 @@ bool process_grant_revoke(  //NOLINT(readability-function-cognitive-complexity)
         if(! acquire_table_lock(context, c->simple_name(), tid)) {
             return false;
         }
-    }
 
-    // currently ALTER privilege is not supported and only admin users can execute GRANT
-    if (context.req_info().request_source()) {
-        auto name = context.req_info().request_source()->session_info().username();
-        if(auto type = context.req_info().request_source()->session_info().user_type(); type != tateyama::api::server::user_type::administrator) {
-            VLOG_LP(log_error) << "insufficient authorization user:\"" << (name.has_value() ? name.value() : "")
-                               << "\" user_type:" << to_string_view(type);
-            set_error(
-                context,
-                error_code::permission_error,
-                "insufficient authorization for the requested operation",
-                status::err_illegal_operation
-            );
-            return false;
+        // check permission
+        // only the following users can grant/revoke privileges
+        // - admin users
+        // - user with control privilege
+        // - user with alter privilege (not supported yet)
+        if (context.req_info().request_source()) {
+            auto name = context.req_info().request_source()->session_info().username();
+            if(auto type = context.req_info().request_source()->session_info().user_type();
+               type != tateyama::api::server::user_type::administrator) {
+                auto sc = smgr.find_entry(tid);
+                assert_with_exception(sc != nullptr, c->simple_name());  // must exist as we locked successfully above
+
+                // TODO change to alter when supported
+                if (name.has_value() && sc->allows_user_actions(name.value(), auth::action_set{auth::action_kind::control})) {
+                    if (grant) {
+                        // if grant, the privileges must be subset of user's own privileges
+                        // TODO uncomment below to enable check when alter is supported
+                        // if(! sc->allows(name.value(), from(e.default_privileges()))) {
+                        //     return false;
+                        // }
+                        // for(auto&& tae : e.authorization_entries()) {
+                        //     if(! sc->allows(name.value(), from(tae.privileges()))) {
+                        //         return false;
+                        //     }
+                        // }
+                    }
+                    continue;
+                }
+
+                VLOG_LP(log_error) << "insufficient authorization user:\"" << (name.has_value() ? name.value() : "")
+                                   << "\" user_type:" << to_string_view(type);
+                set_error(
+                    context,
+                    error_code::permission_error,
+                    "insufficient authorization for the requested operation",
+                    status::err_illegal_operation
+                );
+                return false;
+            }
         }
     }
 
     // pre-condition checked, let's make changes
     // after this point, we expect no error occurs normally; if any error occurs, that is unexpected internal error
-
-    auto& smgr = *global::storage_manager();
 
     for(auto&& tpe : elements) {
         auto& c = *yugawara::binding::extract_shared<yugawara::storage::table>(tpe.table());

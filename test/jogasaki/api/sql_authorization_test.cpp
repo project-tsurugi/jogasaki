@@ -200,6 +200,13 @@ TEST_F(sql_authorization_test, drop_table_success_by_control) {
     execute_statement("drop table t", info);
 }
 
+TEST_F(sql_authorization_test, drop_table_success_by_public_control) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("grant all privileges on table t to public");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("drop table t", info);
+}
+
 TEST_F(sql_authorization_test, create_index_fail) {
     execute_statement("create table t (c0 int primary key, c1 int)");
     auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
@@ -209,6 +216,13 @@ TEST_F(sql_authorization_test, create_index_fail) {
 TEST_F(sql_authorization_test, create_index_success_by_control) {
     execute_statement("create table t (c0 int primary key, c1 int)");
     execute_statement("grant all privileges on table t to user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("create index i on t (c1)", info);
+}
+
+TEST_F(sql_authorization_test, create_index_success_by_public_control) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("grant all privileges on table t to public");
     auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
     execute_statement("create index i on t (c1)", info);
 }

@@ -38,6 +38,7 @@
 #include <jogasaki/status.h>
 
 #include "acquire_table_lock.h"
+#include "validate_alter_table_auth.h"
 
 namespace jogasaki::executor::common {
 
@@ -66,6 +67,9 @@ bool drop_index::operator()(request_context& context) const {
     }
     storage::storage_entry storage_id{};
     if(! acquire_table_lock(context, i->table().simple_name(), storage_id)) {
+        return false;
+    }
+    if(! validate_alter_table_auth(context, storage_id)) {
         return false;
     }
 

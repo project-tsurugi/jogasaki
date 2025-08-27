@@ -122,6 +122,24 @@ bool create_table::operator()(request_context& context) const {
         );
         return false;
     }
+
+    // currently no schema is supported, so only admin can create table
+    if (auto& s = context.req_info().request_source()) {
+        if(s->session_info().user_type() != tateyama::api::server::user_type::administrator) {
+            auto username = s->session_info().username();
+            VLOG_LP(log_error) << "insufficient authorization user:\""
+                               << (username.has_value() ? username.value() : "")
+                               << "\"";
+            set_error(
+                context,
+                error_code::permission_error,
+                "insufficient authorization for the requested operation",
+                status::err_illegal_operation
+            );
+            return false;
+        }
+    }
+
     if(! utils::validate_table_definition(context, *c)) {
         return false;
     }

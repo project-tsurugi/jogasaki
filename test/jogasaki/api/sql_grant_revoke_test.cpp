@@ -59,9 +59,62 @@ public:
     void TearDown() override {
         db_teardown();
     }
+
+    std::pair<auth::authorized_users_action_set&, auth::action_set&> actions(std::string_view storage) {
+        using ret_type = decltype( actions(std::declval<std::string_view>()) );
+
+        static auth::authorized_users_action_set empty_users_actions{};
+        static auth::action_set empty_actions{};
+
+        auto& smgr = *global::storage_manager();
+        auto entry_opt = smgr.find_by_name(storage);
+        if(! entry_opt.has_value()) {
+            ADD_FAILURE();
+            return ret_type{empty_users_actions, empty_actions};
+        }
+        auto entry = smgr.find_entry(entry_opt.value());
+        if(! entry) {
+            ADD_FAILURE();
+            return ret_type{empty_users_actions, empty_actions};
+        }
+        auto& users_actions = entry->authorized_actions();
+        auto& public_actions = entry->public_actions();
+        return ret_type{entry->authorized_actions(), entry->public_actions()};
+    }
+
+    void test_set(std::string priv, action_kind kind);
+    void test_set_public(std::string priv, action_kind kind);
 };
 
+TEST_F(sql_grant_revoke_test, verify_by_action_set) {
+    // make sure the logic to verify via action_set members works correctly
+    execute_statement("create table t (c0 int primary key)");
+
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+    execute_statement("grant select on table t to user1");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
+    execute_statement("grant insert on table t to user2");
+    EXPECT_EQ((action_set{action_kind::insert}), users_actions.find_user_actions("user2"));
+    execute_statement("grant delete on table t to user1");
+    EXPECT_EQ((action_set{action_kind::select, action_kind::delete_}), users_actions.find_user_actions("user1"));
+    EXPECT_TRUE(! public_actions.has_action(action_kind::update));
+    EXPECT_EQ((action_set{}), public_actions);
+    execute_statement("grant update on table t to public");
+    EXPECT_EQ((action_set{action_kind::update}), public_actions);
+
+    execute_statement("revoke select on table t from user1");
+    EXPECT_EQ((action_set{action_kind::delete_}), users_actions.find_user_actions("user1"));
+    execute_statement("revoke insert on table t from user2");
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    execute_statement("revoke delete on table t from user1");
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+    execute_statement("revoke update on table t from public");
+    EXPECT_EQ((action_set{}), public_actions);
+}
+
 TEST_F(sql_grant_revoke_test, control_privilege_on_create_table) {
+    // create table implicitly grants CONTROL to the creator
     auto info = utils::create_req_info("user1");
     execute_statement("create table t (c0 int primary key)", info);
     auto& smgr = *global::storage_manager();
@@ -70,196 +123,136 @@ TEST_F(sql_grant_revoke_test, control_privilege_on_create_table) {
     auto entry = smgr.find_entry(entry_opt.value());
     ASSERT_TRUE(entry);
     auto& users_actions = entry->authorized_actions();
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(actions.has_action(action_kind::control));
-    }
+    EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
     execute_statement("revoke all privileges on table t from user1");
-    // re-define user1 as standard user in order to test auth
-    auto standard_user_info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    test_stmt_err("select * from t", standard_user_info, error_code::permission_error);
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(! actions.has_action(action_kind::control));
-    }
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
     execute_statement("grant all privileges on table t to user1");
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(actions.has_action(action_kind::control));
-    }
+    EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
 }
 
-TEST_F(sql_grant_revoke_test, check_action_set) {
-    // directly check the action_set with grant/revoke
+void sql_grant_revoke_test::test_set(std::string priv, action_kind kind) {
     execute_statement("create table t (c0 int primary key)");
-
-    auto& smgr = *global::storage_manager();
-    auto entry_opt = smgr.find_by_name("t");
-    ASSERT_TRUE(entry_opt.has_value());
-    auto entry = smgr.find_entry(entry_opt.value());
-    ASSERT_TRUE(entry);
-    auto& users_actions = entry->authorized_actions();
-    auto& public_actions = entry->public_actions();
-
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(! actions.has_action(action_kind::select));
-    }
-    execute_statement("grant select on table t to user1");
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(actions.has_action(action_kind::select));
-    }
-    execute_statement("grant insert on table t to user2");
-    {
-        auto actions = users_actions.find_user_actions("user2");
-        EXPECT_TRUE(! actions.has_action(action_kind::select));
-        EXPECT_TRUE(actions.has_action(action_kind::insert));
-    }
-    execute_statement("grant delete on table t to user1");
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(actions.has_action(action_kind::select));
-        EXPECT_TRUE(! actions.has_action(action_kind::insert));
-        EXPECT_TRUE(actions.has_action(action_kind::delete_));
-    }
-    EXPECT_TRUE(! public_actions.has_action(action_kind::update));
-    execute_statement("grant update on table t to public");
-    EXPECT_TRUE(public_actions.has_action(action_kind::update));
-
-    execute_statement("revoke select on table t from user1");
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(! actions.has_action(action_kind::select));
-    }
-    execute_statement("revoke insert on table t from user2");
-    {
-        auto actions = users_actions.find_user_actions("user2");
-        EXPECT_TRUE(! actions.has_action(action_kind::select));
-        EXPECT_TRUE(! actions.has_action(action_kind::insert));
-    }
-    execute_statement("revoke delete on table t from user1");
-    {
-        auto actions = users_actions.find_user_actions("user1");
-        EXPECT_TRUE(! actions.has_action(action_kind::select));
-        EXPECT_TRUE(! actions.has_action(action_kind::insert));
-        EXPECT_TRUE(! actions.has_action(action_kind::delete_));
-    }
-    execute_statement("revoke update on table t from public");
-    EXPECT_TRUE(! public_actions.has_action(action_kind::update));
+    execute_statement("grant "+priv+" on table t to user1");
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{kind}), users_actions.find_user_actions("user1"));
+    execute_statement("revoke "+priv+" on table t from user1");
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+}
+void sql_grant_revoke_test::test_set_public(std::string priv, action_kind kind) {
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant "+priv+" on table t to public");
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{kind}), public_actions);
+    execute_statement("revoke "+priv+" on table t from public");
+    EXPECT_EQ((action_set{}), public_actions);
 }
 
 TEST_F(sql_grant_revoke_test, select) {
-    execute_statement("create table t (c0 int primary key)");
-    execute_statement("grant select on table t to user1");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info);
-    execute_statement("revoke select on table t from user1");
-    test_stmt_err("select * from t", info, error_code::permission_error);
+    test_set("select", action_kind::select);
 }
 
 TEST_F(sql_grant_revoke_test, select_by_public_privilege) {
-    execute_statement("create table t (c0 int primary key)");
-    execute_statement("grant select on table t to public");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info);
-    execute_statement("revoke select on table t from public");
-    test_stmt_err("select * from t", info, error_code::permission_error);
+    test_set_public("select", action_kind::select);
 }
 
 TEST_F(sql_grant_revoke_test, insert) {
-    execute_statement("create table t (c0 int primary key)");
-    execute_statement("grant insert on table t to user1");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("insert into t values (1)", info);
-    execute_statement("revoke insert on table t from user1");
-    test_stmt_err("insert into t values (2)", info, error_code::permission_error);
+    test_set("insert", action_kind::insert);
+}
+
+TEST_F(sql_grant_revoke_test, insert_by_public_privilege) {
+    test_set_public("insert", action_kind::insert);
+}
+
+TEST_F(sql_grant_revoke_test, update) {
+    test_set("update", action_kind::update);
+}
+
+TEST_F(sql_grant_revoke_test, update_by_public_privilege) {
+    test_set_public("update", action_kind::update);
+}
+
+TEST_F(sql_grant_revoke_test, delete) {
+    test_set("delete", action_kind::delete_);
+}
+
+TEST_F(sql_grant_revoke_test, delete_by_public_privilege) {
+    test_set_public("delete", action_kind::delete_);
 }
 
 TEST_F(sql_grant_revoke_test, multiple_users) {
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select on table t to user1, user2");
-    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    auto info2 = utils::create_req_info("user2", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info1);
-    execute_statement("select * from t", info2);
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user2"));
     execute_statement("revoke select on table t from user1, user2");
-    test_stmt_err("select * from t", info1, error_code::permission_error);
-    test_stmt_err("select * from t", info2, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
 }
 
 TEST_F(sql_grant_revoke_test, multiple_privileges) {
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select, insert on table t to user1");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("insert into t values (1)", info);
-    execute_statement("select * from t", info);
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user1"));
     execute_statement("revoke select, insert on table t from user1");
-    test_stmt_err("select * from t", info, error_code::permission_error);
-    test_stmt_err("insert into t values (2)", info, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
 }
 
 TEST_F(sql_grant_revoke_test, multiple_tables) {
     execute_statement("create table t0 (c0 int primary key)");
     execute_statement("create table t1 (c0 int primary key)");
     execute_statement("grant select on table t0, t1 to user1");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t0", info);
-    execute_statement("select * from t1", info);
+    auto [users_actions0, public_actions0] = actions("t0");
+    auto [users_actions1, public_actions1] = actions("t1");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions0.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::select}), users_actions1.find_user_actions("user1"));
     execute_statement("revoke select on table t0, t1 from user1");
-    test_stmt_err("select * from t0", info, error_code::permission_error);
-    test_stmt_err("select * from t1", info, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions0.find_user_actions("user1"));
+    EXPECT_EQ((action_set{}), users_actions1.find_user_actions("user1"));
 }
 
 TEST_F(sql_grant_revoke_test, multiple_users_tables_privileges) {
     execute_statement("create table t0 (c0 int primary key)");
     execute_statement("create table t1 (c0 int primary key)");
     execute_statement("grant select,insert on table t0,t1 to user1, user2");
-    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    auto info2 = utils::create_req_info("user2", tateyama::api::server::user_type::standard);
-    execute_statement("insert into t0 values (10)", info1);
-    execute_statement("insert into t0 values (20)", info2);
-    execute_statement("insert into t1 values (10)", info1);
-    execute_statement("insert into t1 values (20)", info1);
-    execute_statement("select * from t0", info1);
-    execute_statement("select * from t1", info1);
-    execute_statement("select * from t0", info2);
-    execute_statement("select * from t1", info2);
+    auto [users_actions0, public_actions0] = actions("t0");
+    auto [users_actions1, public_actions1] = actions("t1");
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions0.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions1.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions0.find_user_actions("user2"));
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions1.find_user_actions("user2"));
+
     execute_statement("revoke select,insert on table t0,t1 from user1, user2");
-    test_stmt_err("insert into t0 values (100)", info1, error_code::permission_error);
-    test_stmt_err("insert into t0 values (200)", info2, error_code::permission_error);
-    test_stmt_err("insert into t1 values (100)", info1, error_code::permission_error);
-    test_stmt_err("insert into t1 values (200)", info2, error_code::permission_error);
-    test_stmt_err("select * from t0", info1, error_code::permission_error);
-    test_stmt_err("select * from t1", info1, error_code::permission_error);
-    test_stmt_err("select * from t0", info2, error_code::permission_error);
-    test_stmt_err("select * from t1", info2, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions0.find_user_actions("user1"));
+    EXPECT_EQ((action_set{}), users_actions1.find_user_actions("user1"));
+    EXPECT_EQ((action_set{}), users_actions0.find_user_actions("user2"));
+    EXPECT_EQ((action_set{}), users_actions1.find_user_actions("user2"));
 }
 
 TEST_F(sql_grant_revoke_test, public_and_user) {
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select on table t to user1, public");
-    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    auto info2 = utils::create_req_info("user2", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info1);
-    execute_statement("select * from t", info2);
+
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::select}), public_actions);
+
     execute_statement("revoke select on table t from user1, public");
-    test_stmt_err("select * from t", info1, error_code::permission_error);
-    test_stmt_err("select * from t", info2, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{}), public_actions);
 }
 
 TEST_F(sql_grant_revoke_test, public_and_user_revoked_separately) {
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select on table t to user1, public");
-    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    auto info2 = utils::create_req_info("user2", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info1);
-    execute_statement("select * from t", info2);
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::select}), public_actions);
     execute_statement("revoke select on table t from public");
-    execute_statement("select * from t", info1);
-    test_stmt_err("select * from t", info2, error_code::permission_error);
+    EXPECT_EQ((action_set{}), public_actions);
     execute_statement("revoke select on table t from user1");
-    test_stmt_err("select * from t", info1, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
 }
 
 TEST_F(sql_grant_revoke_test, insufficient_privilege) {
@@ -278,61 +271,46 @@ TEST_F(sql_grant_revoke_test, grant_revoke_by_control) {
     execute_statement("grant all privileges on table t to user2", info1);
     execute_statement("grant select on table t to user3", info1);
 
-    auto& smgr = *global::storage_manager();
-    auto entry_opt = smgr.find_by_name("t");
-    ASSERT_TRUE(entry_opt.has_value());
-    auto entry = smgr.find_entry(entry_opt.value());
-    ASSERT_TRUE(entry);
-    auto& users_actions = entry->authorized_actions();
-    auto& public_actions = entry->public_actions();
-    EXPECT_TRUE(users_actions.find_user_actions("user2").has_action(action_kind::control));
-    EXPECT_TRUE(users_actions.find_user_actions("user3").has_action(action_kind::select));
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user2"));
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user3"));
 
     execute_statement("revoke all privileges on table t from user2", info1);
     execute_statement("revoke select on table t from user3", info1);
-    EXPECT_TRUE(! users_actions.find_user_actions("user2").has_action(action_kind::control));
-    EXPECT_TRUE(! users_actions.find_user_actions("user3").has_action(action_kind::select));
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user3"));
 }
 
 TEST_F(sql_grant_revoke_test, grant_revoke_by_public_control) {
     // similar to grant_revoke_by_public_control, but with public privilege
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant all privileges on table t to public");
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::control}), public_actions);
+
     auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
     execute_statement("grant all privileges on table t to user2", info1);
     execute_statement("grant select on table t to user3", info1);
 
-    auto& smgr = *global::storage_manager();
-    auto entry_opt = smgr.find_by_name("t");
-    ASSERT_TRUE(entry_opt.has_value());
-    auto entry = smgr.find_entry(entry_opt.value());
-    ASSERT_TRUE(entry);
-    auto& users_actions = entry->authorized_actions();
-    auto& public_actions = entry->public_actions();
-    EXPECT_TRUE(users_actions.find_user_actions("user2").has_action(action_kind::control));
-    EXPECT_TRUE(users_actions.find_user_actions("user3").has_action(action_kind::select));
+    EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user2"));
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user3"));
 
     execute_statement("revoke all privileges on table t from user2", info1);
     execute_statement("revoke select on table t from user3", info1);
-    EXPECT_TRUE(! users_actions.find_user_actions("user2").has_action(action_kind::control));
-    EXPECT_TRUE(! users_actions.find_user_actions("user3").has_action(action_kind::select));
+
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user3"));
 }
 
 TEST_F(sql_grant_revoke_test, revoke_self) {
     // revoke allowed by control and it revoke itself
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant all privileges on table t to user1");
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
     auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
     execute_statement("revoke all privileges on table t from user1", info1);
-
-    auto& smgr = *global::storage_manager();
-    auto entry_opt = smgr.find_by_name("t");
-    ASSERT_TRUE(entry_opt.has_value());
-    auto entry = smgr.find_entry(entry_opt.value());
-    ASSERT_TRUE(entry);
-    auto& users_actions = entry->authorized_actions();
-    auto& public_actions = entry->public_actions();
-    EXPECT_TRUE(! users_actions.find_user_actions("user1").has_action(action_kind::control));
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
 }
 
 TEST_F(sql_grant_revoke_test, missing_table) {
@@ -350,40 +328,42 @@ TEST_F(sql_grant_revoke_test, grant_duplicate_privileges) {
     // verify no error in granting same privilege mutiple times
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select,select,select on table t to user1");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info);
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
     execute_statement("revoke select,select,select on table t from user1");
-    test_stmt_err("select * from t", info, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
 }
 
 TEST_F(sql_grant_revoke_test, grant_duplicate_users) {
     // verify no error in granting to same user multiple times
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select on table t to user1,user1");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info);
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
     execute_statement("revoke select on table t from user1,user1");
-    test_stmt_err("select * from t", info, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
 }
 
 TEST_F(sql_grant_revoke_test, grant_duplicate_tables) {
     // verify no error in granting privileges on the same table multiple times
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select on table t, t to user1");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info);
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
     execute_statement("revoke select on table t, t from user1");
-    test_stmt_err("select * from t", info, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
 }
 
 TEST_F(sql_grant_revoke_test, grant_many_duplicates) {
     // verify no error in granting with many duplicates
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant select,select,select on table t, t, t to user1, user1, user1, public, public");
-    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
-    execute_statement("select * from t", info);
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{action_kind::select}), public_actions);
     execute_statement("revoke select,select,select on table t, t, t from user1, user1, user1, public, public");
-    test_stmt_err("select * from t", info, error_code::permission_error);
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+    EXPECT_EQ((action_set{}), public_actions);
 }
 
 TEST_F(sql_grant_revoke_test, storage_lock_released_after_grant_fails) {

@@ -310,6 +310,12 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<bool>("dev_enable_session_store")) {
         ret->enable_session_store(v.value());
     }
+    if (auto v = jogasaki_config->get<std::string>("loader_path")) {
+        ret->loader_path(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::string>("grpc_url")) {
+        ret->grpc_url(v.value());
+    }
     return true;
 }
 

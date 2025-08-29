@@ -538,6 +538,21 @@ public:
     void enable_storage_key(bool arg) noexcept {
         enable_storage_key_ = arg;
     }
+    [[nodiscard]] std::string_view loader_path() const noexcept {
+        return loader_path_;
+    }
+
+    void loader_path(std::string_view arg) noexcept {
+        loader_path_ = arg;
+    }
+
+    [[nodiscard]] std::string_view grpc_url() const noexcept {
+        return grpc_url_;
+    }
+
+    void grpc_url(std::string_view arg) noexcept {
+        grpc_url_ = arg;
+    }
 
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
@@ -601,6 +616,8 @@ public:
         print_non_default(max_result_set_writers);
         print_non_default(enable_session_store);
         print_non_default(enable_storage_key);
+        print_non_default(loader_path);
+        print_non_default(grpc_url);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -667,6 +684,8 @@ private:
     std::size_t max_result_set_writers_ = 64;
     bool enable_session_store_ = true;
     bool enable_storage_key_ = true;
+    std::string loader_path_{};
+    std::string grpc_url_{};
 };
 
 }  // namespace jogasaki

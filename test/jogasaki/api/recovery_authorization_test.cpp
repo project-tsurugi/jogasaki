@@ -93,9 +93,9 @@ TEST_F(recovery_authorization_test, owner_control_persists_after_recovery) {
 }
 
 TEST_F(recovery_authorization_test, multi_privs_persist_after_recovery) {
-    // granted select/insert privs. persist
+    // granted select/insert/update/delete privs. persist
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
-    execute_statement("grant select, insert on table t to user1, user2");
+    execute_statement("grant select, insert, update, delete on table t to user1, user2");
     auto info = utils::create_req_info("user1");
 
     // shutdown and restart database
@@ -104,11 +104,11 @@ TEST_F(recovery_authorization_test, multi_privs_persist_after_recovery) {
 
     {
         auto [users_actions, public_actions] = actions("t");
-        EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user1"));
-        EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user2"));
+        EXPECT_EQ((action_set{action_kind::select, action_kind::insert, action_kind::update, action_kind::delete_}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{action_kind::select, action_kind::insert, action_kind::update, action_kind::delete_}), users_actions.find_user_actions("user2"));
 
-        execute_statement("revoke select, insert on table t from user1");
-        execute_statement("grant select, insert on table t to public");
+        execute_statement("revoke select, insert, update, delete on table t from user1");
+        execute_statement("grant select, insert, update, delete on table t to public");
     }
     // shutdown and restart database
     ASSERT_EQ(status::ok, db_->stop());
@@ -116,8 +116,8 @@ TEST_F(recovery_authorization_test, multi_privs_persist_after_recovery) {
     {
         auto [users_actions, public_actions] = actions("t");
         EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
-        EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user2"));
-        EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), public_actions);
+        EXPECT_EQ((action_set{action_kind::select, action_kind::insert, action_kind::update, action_kind::delete_}), users_actions.find_user_actions("user2"));
+        EXPECT_EQ((action_set{action_kind::select, action_kind::insert, action_kind::update, action_kind::delete_}), public_actions);
     }
 }
 
@@ -131,40 +131,19 @@ TEST_F(recovery_authorization_test, granted_control_persists_after_recovery) {
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
-        auto entry = global::storage_manager()->find_by_name("t");
-        ASSERT_TRUE(entry.has_value());
-
-        auto sc = global::storage_manager()->find_entry(*entry);
-        ASSERT_TRUE(sc);
-
-        {
-            auto const& user1_actions = sc->authorized_actions().find_user_actions("user1");
-            EXPECT_TRUE(user1_actions.action_allowed(auth::action_kind::select));
-            EXPECT_TRUE(user1_actions.action_allowed(auth::action_kind::insert));
-            auto const& user2_actions = sc->authorized_actions().find_user_actions("user2");
-            EXPECT_TRUE(user2_actions.action_allowed(auth::action_kind::select));
-            EXPECT_TRUE(user2_actions.action_allowed(auth::action_kind::insert));
-        }
-        execute_statement("revoke all privileges on table t from user1, user2");
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user2"));
     }
+    execute_statement("revoke all privileges on table t from user1, user2");
     // shutdown and restart database
     ASSERT_EQ(status::ok, db_->stop());
     ASSERT_EQ(status::ok, db_->start());
     {
-        auto entry = global::storage_manager()->find_by_name("t");
-        ASSERT_TRUE(entry.has_value());
-
-        auto sc = global::storage_manager()->find_entry(*entry);
-        ASSERT_TRUE(sc);
-        auto const& user1_actions = sc->authorized_actions().find_user_actions("user1");
-        EXPECT_TRUE(! user1_actions.action_allowed(auth::action_kind::select));
-        EXPECT_TRUE(! user1_actions.action_allowed(auth::action_kind::insert));
-        auto const& user2_actions = sc->authorized_actions().find_user_actions("user2");
-        EXPECT_TRUE(! user2_actions.action_allowed(auth::action_kind::select));
-        EXPECT_TRUE(! user2_actions.action_allowed(auth::action_kind::insert));
-        auto const& public_actions = sc->public_actions();
-        EXPECT_TRUE(! public_actions.action_allowed(auth::action_kind::select));
-        EXPECT_TRUE(! public_actions.action_allowed(auth::action_kind::insert));
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+        EXPECT_EQ((action_set{}), public_actions);
     }
 }
 

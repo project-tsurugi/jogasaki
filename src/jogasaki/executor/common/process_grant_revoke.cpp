@@ -29,6 +29,7 @@
 #include <yugawara/storage/table.h>
 #include <sharksfin/StorageOptions.h>
 
+#include <jogasaki/auth/fill_action_set.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
@@ -160,15 +161,22 @@ bool process_grant_revoke(  //NOLINT(readability-function-cognitive-complexity)
         auto sc = smgr.find_entry(se.value());
         assert_with_exception(sc != nullptr, c.simple_name());
 
+        // to avoid discrepancies between in-memory auth. metadata (in storage entry) and
+        // durable one (in storage option), we first copy the in-memory metadata, serialize to create storage option,
+        // and deserialize into the in-memory one again
+
+        auth::action_set public_actions = sc->public_actions();
+        auth::authorized_users_action_set authorized_actions = sc->authorized_actions();
+
         if (grant) {
-            sc->public_actions().add_actions(from(tpe.default_privileges()));
+            public_actions.add_actions(from(tpe.default_privileges()));
             for(auto&& tae : tpe.authorization_entries()) {
-                sc->authorized_actions().add_user_actions(tae.authorization_identifier(), from(tae.privileges()));
+                authorized_actions.add_user_actions(tae.authorization_identifier(), from(tae.privileges()));
             }
         } else {
-            sc->public_actions().remove_actions(from(tpe.default_privileges()));
+            public_actions.remove_actions(from(tpe.default_privileges()));
             for(auto&& tae : tpe.authorization_entries()) {
-                sc->authorized_actions().remove_user_actions(tae.authorization_identifier(), from(tae.privileges()));
+                authorized_actions.remove_user_actions(tae.authorization_identifier(), from(tae.privileges()));
             }
         }
 
@@ -180,8 +188,8 @@ bool process_grant_revoke(  //NOLINT(readability-function-cognitive-complexity)
                storage,
                utils::metadata_serializer_option{
                    false,
-                   std::addressof(sc->authorized_actions()),
-                   std::addressof(sc->public_actions())
+                   std::addressof(authorized_actions),
+                   std::addressof(public_actions)
                }
            )) {
             // error should not happen normally
@@ -189,7 +197,18 @@ bool process_grant_revoke(  //NOLINT(readability-function-cognitive-complexity)
             return false;
         }
 
-        // create_table calls recovery::deserialize_storage_option_into_provider here, but grant does not affect storage provider, so skip here
+        proto::metadata::storage::IndexDefinition idef{};
+        std::uint64_t v{};
+        if(auto err = recovery::validate_extract(storage, idef, v)) {
+            // should not happen normally
+            // we just created the option above
+            set_error_info(context, err);
+            return false;
+        }
+        sc->authorized_actions().clear();
+        from_authorization_list(idef.table_definition(), sc->authorized_actions());
+        sc->public_actions().clear();
+        auth::from_default_privilege(idef.table_definition(), sc->public_actions());
 
         sharksfin::StorageOptions options{};
         options.payload(std::move(storage));

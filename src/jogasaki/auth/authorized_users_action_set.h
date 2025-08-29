@@ -89,6 +89,12 @@ public:
         return map_.end();
     }
 
+    /**
+     * @brief clear all authorized users and their actions.
+     */
+    void clear() noexcept {
+        map_.clear();
+    }
 private:
     std::unordered_map<std::string, action_set> map_{};
 };

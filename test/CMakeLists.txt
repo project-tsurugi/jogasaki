@@ -10,6 +10,7 @@ file(GLOB TEST_COMMON_SRCS
 
 add_library(test_common OBJECT ${TEST_COMMON_SRCS})
 target_link_libraries(test_common
+        PRIVATE wrap_memcpy
         PUBLIC gtest
         PRIVATE jogasaki-impl
         PRIVATE common
@@ -45,6 +46,7 @@ function (add_test_executable source_file)
             PRIVATE atomic
             PRIVATE protobuf::libprotobuf
             PRIVATE mpdecpp
+            PRIVATE wrap_memcpy
             )
 
     target_sources(${test_target}

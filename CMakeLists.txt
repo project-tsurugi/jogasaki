@@ -89,6 +89,7 @@ if(ENABLE_ALTIMETER)
 find_package(fmt REQUIRED)
 find_package(altimeter REQUIRED)
 endif()
+find_package(gRPC REQUIRED)
 
 # to suppress not-found warnings
 set(re2Alt_FIND_QUIETLY TRUE)

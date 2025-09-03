@@ -75,13 +75,15 @@ TEST_F(sql_authorization_test, control_privilege_on_create_table) {
 TEST_F(sql_authorization_test, fails_by_no_privilege) {
     // verify various statements fail when standard user has no privilege
     execute_statement("create table t (c0 int primary key)");
+    execute_statement("create index i on t (c0)");
     auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
     test_stmt_err("select * from t", info, error_code::permission_error);
     test_stmt_err("insert into t values (1)", info, error_code::permission_error);
     test_stmt_err("update t set c0=2", info, error_code::permission_error);
     test_stmt_err("delete from t", info, error_code::permission_error);
 
-    test_stmt_err("drop table t", info, error_code::permission_error);
+    test_stmt_err("create index i2 on t (c0)", info, error_code::permission_error);
+    test_stmt_err("drop index i", info, error_code::permission_error);
 }
 
 TEST_F(sql_authorization_test, create_table_fail) {
@@ -197,6 +199,22 @@ TEST_F(sql_authorization_test, create_index_success_by_public_control) {
     execute_statement("grant all privileges on table t to public");
     auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
     execute_statement("create index i on t (c1)", info);
+}
+
+TEST_F(sql_authorization_test, drop_index_success_by_control) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("create index i on t (c1)");
+    execute_statement("grant all privileges on table t to user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("drop index i", info);
+}
+
+TEST_F(sql_authorization_test, drop_index_success_by_public_control) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("create index i on t (c1)");
+    execute_statement("grant all privileges on table t to public");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("drop index i", info);
 }
 
 } // namespace jogasaki::testing

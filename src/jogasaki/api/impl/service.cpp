@@ -1129,9 +1129,8 @@ void service::command_describe_table(
 
     auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::describe_table);
     req->status(scheduler::request_detail_status::accepted);
-
     log_request(*req);
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
+
     auto table = db_->find_table(dt.name());
     if(! table || utils::is_prefix(dt.name(), system_identifier_prefix)) {
         VLOG(log_error) << log_location_prefix << "table not found : " << dt.name();

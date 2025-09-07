@@ -33,5 +33,10 @@ HTML/
 # WSL related files
 *:Zone.Identifier
 
+# ctest
+Testing/
+
+
 ## experimental usage for github copilot instructions
 .github/copilot-instructions.md
+

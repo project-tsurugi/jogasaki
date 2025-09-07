@@ -64,6 +64,9 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/dto/common_column.h>
+#include <jogasaki/executor/dto/common_column_utils.h>
+#include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/proto/sql/common.pb.h>
@@ -263,84 +266,30 @@ inline void success<sql::response::Prepare>(
     reply(res, r, req_info);
 }
 
-inline void set_column_type(
-    takatori::type::data const& type,
-    ::jogasaki::proto::sql::common::Column& c
+static void set_column_from_dto(
+    executor::dto::common_column const& col,
+    sql::common::Column& c
 ) {
-    using k = takatori::type::type_kind;
-    using AtomType = ::jogasaki::proto::sql::common::AtomType;
-    AtomType typ = AtomType::UNKNOWN;
-    switch(type.kind()) {
-        case k::boolean: typ = AtomType::BOOLEAN; break;
-        case k::int4: typ = AtomType::INT4; break;
-        case k::int8: typ = AtomType::INT8; break;
-        case k::float4: typ = AtomType::FLOAT4; break;
-        case k::float8: typ = AtomType::FLOAT8; break;
-        case k::decimal: {
-            typ = AtomType::DECIMAL;
-            auto prec = static_cast<takatori::type::decimal const&>(type).precision(); //NOLINT
-            auto scale = static_cast<takatori::type::decimal const&>(type).scale(); //NOLINT
-            if (prec.has_value()) {
-                c.set_precision(prec.value());
-            } else {
-                c.mutable_arbitrary_precision();
-            }
-            if (scale.has_value()) {
-                c.set_scale(scale.value());
-            } else {
-                c.mutable_arbitrary_scale();
-            }
-            break;
-        }
-        case k::character: {
-            typ = AtomType::CHARACTER;
-            auto len = static_cast<takatori::type::character const&>(type).length(); //NOLINT
-            auto varying = static_cast<takatori::type::character const&>(type).varying(); //NOLINT
-            if (len.has_value()) {
-                c.set_length(len.value());
-            } else {
+    c.set_name(col.name_);
+    auto fill_len = [](auto&& c, auto&& len_or_bool) {
+        if(len_or_bool) {
+            if(std::holds_alternative<std::uint32_t>(*len_or_bool)) {
+                c.set_length(std::get<std::uint32_t>(*len_or_bool));
+            } else if(std::holds_alternative<bool>(*len_or_bool)) {
                 c.mutable_arbitrary_length();
             }
-            c.set_varying(varying);
-            break;
         }
-        case k::octet: {
-            typ = AtomType::OCTET;
-            auto len = static_cast<takatori::type::octet const&>(type).length(); //NOLINT
-            auto varying = static_cast<takatori::type::octet const&>(type).varying(); //NOLINT
-            if (len.has_value()) {
-                c.set_length(len.value());
-            } else {
-                c.mutable_arbitrary_length();
-            }
-            c.set_varying(varying);
-            break;
-        }
-        case k::bit: typ = AtomType::BIT; break;
-        case k::date: typ = AtomType::DATE; break;
-        case k::time_of_day: {
-            if(static_cast<takatori::type::time_of_day const&>(type).with_time_zone()) { //NOLINT
-                typ = AtomType::TIME_OF_DAY_WITH_TIME_ZONE;
-                break;
-            }
-            typ = AtomType::TIME_OF_DAY;
-            break;
-        }
-        case k::time_point: {
-            if(static_cast<takatori::type::time_point const&>(type).with_time_zone()) { //NOLINT
-                typ = AtomType::TIME_POINT_WITH_TIME_ZONE;
-                break;
-            }
-            typ = AtomType::TIME_POINT;
-            break;
-        }
-        case k::blob: typ = AtomType::BLOB; break;
-        case k::clob: typ = AtomType::CLOB; break;
-        case k::datetime_interval: typ = AtomType::DATETIME_INTERVAL; break;
-        default:
-            break;
+    };
+    fill_len(c, col.length_);
+    fill_len(c, col.precision_);
+    fill_len(c, col.scale_);
+    c.set_atom_type(from(col.atom_type_));
+    if(col.nullable_) {
+        c.set_nullable(*col.nullable_);
     }
-    c.set_atom_type(typ);
+    if(col.description_) {
+        c.set_description(*col.description_);
+    }
 }
 
 template<>
@@ -364,40 +313,26 @@ inline void success<sql::response::Explain>(
 template<>
 inline void success<sql::response::DescribeTable>(
     tateyama::api::server::response& res,
-    yugawara::storage::table const* tbl,
-    request_info req_info,  //NOLINT(performance-unnecessary-value-param)
-    std::shared_ptr<yugawara::storage::configurable_provider> provider  //NOLINT(performance-unnecessary-value-param)
+    executor::dto::describe_table* result,
+    request_info req_info  //NOLINT(performance-unnecessary-value-param)
 ) {
-    BOOST_ASSERT(tbl != nullptr); //NOLINT
+    BOOST_ASSERT(result != nullptr); //NOLINT
     sql::response::Response r{};
     auto* dt = r.mutable_describe_table();
     auto* success = dt->mutable_success();
-    success->set_table_name(std::string{tbl->simple_name()});
-    success->set_schema_name("");  //FIXME schema resolution
-    success->set_database_name("");  //FIXME database name resolution
-    if (! tbl->description().empty()) {
-        success->set_description(tbl->description());
+    success->set_table_name(result->table_name_);
+    success->set_schema_name(result->schema_name_);
+    success->set_database_name(result->database_name_);
+    if (result->description_) {
+        success->set_description(*result->description_);
     }
     auto* cols = success->mutable_columns();
-    for(auto&& col : tbl->columns()) {
-        if(utils::is_prefix(col.simple_name(), generated_pkey_column_prefix)) {
-            continue;
-        }
+    for(auto&& col : result->columns_) {
         auto* c = cols->Add();
-        c->set_name(std::string{col.simple_name()});
-        set_column_type(col.type(), *c);
-        c->set_nullable(col.criteria().nullity().nullable());
-        if (! col.description().empty()) {
-            c->set_description(col.description());
-        }
+        set_column_from_dto(col, *c);
     }
-    auto pi = provider->find_primary_index(*tbl);
-    if(pi) {
-        for(auto&& k : pi->keys()) {
-            if(! utils::is_prefix(k.column().simple_name(), generated_pkey_column_prefix)) {
-                success->mutable_primary_key()->Add(std::string{k.column().simple_name()});
-            }
-        }
+    for(auto&& pi : result->primary_key_) {
+        success->mutable_primary_key()->Add()->assign(pi);
     }
     reply(res, r, req_info);
 }

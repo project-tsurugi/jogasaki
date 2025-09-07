@@ -19,14 +19,15 @@
 #include <takatori/type/octet.h>
 #include <takatori/util/string_builder.h>
 
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/global.h>
-#include <jogasaki/scheduler/request_detail.h>
-#include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/request_logging.h>
+#include <jogasaki/scheduler/request_detail.h>
+#include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/string_manipulation.h>
 
 namespace jogasaki::executor {
 
@@ -148,17 +149,51 @@ static void fill_from_provider(
     }
 }
 
-status describe(
+bool validate_describe_table_auth(
+    storage::storage_entry storage_id,
+    request_info const& req_info,
+    std::shared_ptr<error::error_info>& error
+) {
+    auto& smgr = *global::storage_manager();
+    auto stg = smgr.find_entry(storage_id); // must be not nullptr because caller already found storage_id
+    if (auto& s = req_info.request_source()) {
+        if(s->session_info().user_type() != tateyama::api::server::user_type::administrator) {
+            auto username = s->session_info().username();
+            if(username.has_value()) {
+                if(stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::select}) ||
+                   stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::insert}) ||
+                   stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::update}) ||
+                   stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::delete_})) {
+                    return true;
+                }
+                if(VLOG_IS_ON(log_error)) {
+                    auto& authorized = stg->authorized_actions().find_user_actions(username.value());
+                    VLOG_LP(log_error) << "insufficient authorization for describe table user:\"" << username.value()
+                                       << "\" table:\"" << stg->name() << "\" public:" << stg->public_actions()
+                                       << " authorized:" << authorized;
+                }
+            } else {
+                VLOG_LP(log_error) << "no user name is provided";
+            }
+
+            // TODO consider add more info.
+            error = create_error_info(
+                error_code::permission_error,
+                "insufficient authorization for the requested operation",
+                status::err_illegal_operation
+            );
+            return false;
+        }
+    }
+    return true;
+}
+
+static status describe_internal(
     std::string_view table_name,
     dto::describe_table& out,
     std::shared_ptr<error::error_info>& error,
     request_info const& req_info
 ) {
-    (void) req_info;
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::describe_table);
-    req->status(scheduler::request_detail_status::accepted);
-    log_request(*req);
-
     auto table = global::database_impl()->find_table(table_name);
     if(! table || utils::is_prefix(table_name, system_identifier_prefix)) {
         VLOG_LP(log_error) << "table not found : " << table_name;
@@ -168,14 +203,40 @@ status describe(
             string_builder{} << "Target table \"" << table_name << "\" is not found." << string_builder::to_string,
             st
         );
-        req->status(scheduler::request_detail_status::finishing);
-        log_request(*req, false);
         return st;
     }
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name(table_name);
+    if(! e.has_value()) {
+        VLOG_LP(log_error) << "table not found : " << table_name;
+        auto st = status::err_not_found;
+        error = create_error_info(
+            error_code::target_not_found_exception,
+            string_builder{} << "Target table \"" << table_name << "\" is not found." << string_builder::to_string,
+            st
+        );
+        return st;
+    }
+    if (! validate_describe_table_auth(*e, req_info, error)) {
+        return error->status();
+    }
     fill_from_provider(table.get(), global::database_impl()->tables(), out);
-    req->status(scheduler::request_detail_status::finishing);
-    log_request(*req);
     return status::ok;
+}
+
+status describe(
+    std::string_view table_name,
+    dto::describe_table& out,
+    std::shared_ptr<error::error_info>& error,
+    request_info const& req_info
+) {
+    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::describe_table);
+    req->status(scheduler::request_detail_status::accepted);
+    log_request(*req);
+    auto st = describe_internal(table_name, out, error, req_info);
+    req->status(scheduler::request_detail_status::finishing);
+    log_request(*req, st == status::ok);
+    return st;
 }
 
 }

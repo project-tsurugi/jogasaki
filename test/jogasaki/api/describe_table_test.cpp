@@ -57,6 +57,7 @@
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
 #include <jogasaki/test_utils/secondary_index.h>
+#include <jogasaki/utils/create_req_info.h>
 
 #include "api_test_base.h"
 
@@ -108,15 +109,16 @@ TEST_F(describe_table_test, simple) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
-                {"c0", atom_type::int4, false},
-                {"c1", atom_type::int8, true},
-                {"c2", atom_type::float4, true},
-                {"c3", atom_type::float8, true},
-            },
-            {"c0"},
-        };
+            {"c0", atom_type::int4, false},
+            {"c1", atom_type::int8, true},
+            {"c2", atom_type::float4, true},
+            {"c3", atom_type::float8, true},
+        },
+        {"c0"},
+    };
     EXPECT_EQ(exp, dt);
 }
 
@@ -127,7 +129,8 @@ TEST_F(describe_table_test, compound_pk) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
             {"c0", atom_type::int4, false},
             {"c1", atom_type::int4, false},
@@ -155,18 +158,19 @@ TEST_F(describe_table_test, length_and_varying) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
-                {"c0", atom_type::int4, true},
-                {"c1", atom_type::character, true, 1u},
-                {"c2", atom_type::character, true, 2u},
-                {"c3", atom_type::character, true, true},
-                {"c4", atom_type::octet, true, 4u},
-                {"c5", atom_type::octet, true, 5u},
-                {"c6", atom_type::octet, true, true},
-            },
-            {},
-        };
+            {"c0", atom_type::int4, true},
+            {"c1", atom_type::character, true, 1u},
+            {"c2", atom_type::character, true, 2u},
+            {"c3", atom_type::character, true, true},
+            {"c4", atom_type::octet, true, 4u},
+            {"c5", atom_type::octet, true, 5u},
+            {"c6", atom_type::octet, true, true},
+        },
+        {},
+    };
     // c0 int4 should not have varying info.
     exp.columns_[1].varying_ = false;
     exp.columns_[2].varying_ = true;
@@ -184,15 +188,16 @@ TEST_F(describe_table_test, precision_and_scale) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
-                    {"c0", atom_type::int4, true},
-                    {"c1", atom_type::decimal, true, std::nullopt, 5u, 3u},
-                    {"c2", atom_type::decimal, true, std::nullopt, 5u, 0u},
-                    {"c3", atom_type::decimal, true, std::nullopt, 38u, 3u},
-                },
-                {},
-            };
+            {"c0", atom_type::int4, true},
+            {"c1", atom_type::decimal, true, std::nullopt, 5u, 3u},
+            {"c2", atom_type::decimal, true, std::nullopt, 5u, 0u},
+            {"c3", atom_type::decimal, true, std::nullopt, 38u, 3u},
+        },
+        {},
+    };
     EXPECT_EQ(exp, dt);
 }
 
@@ -204,16 +209,17 @@ TEST_F(describe_table_test, temporal_types) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
-                {"c0", atom_type::date, true},
-                {"c1", atom_type::time_of_day, true},
-                {"c2", atom_type::time_point, true},
-                {"c3", atom_type::time_of_day_with_time_zone, true},
-                {"c4", atom_type::time_point_with_time_zone, true},
-            },
-            {},
-        };
+            {"c0", atom_type::date, true},
+            {"c1", atom_type::time_of_day, true},
+            {"c2", atom_type::time_point, true},
+            {"c3", atom_type::time_of_day_with_time_zone, true},
+            {"c4", atom_type::time_point_with_time_zone, true},
+        },
+        {},
+    };
     EXPECT_EQ(exp, dt);
 }
 
@@ -225,13 +231,14 @@ TEST_F(describe_table_test, blob_types) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
-                    {"c0", atom_type::blob, true},
-                    {"c1", atom_type::clob, true},
-                },
-                {},
-            };
+            {"c0", atom_type::blob, true},
+            {"c1", atom_type::clob, true},
+        },
+        {},
+    };
     EXPECT_EQ(exp, dt);
 }
 TEST_F(describe_table_test, pkless_table) {
@@ -242,12 +249,13 @@ TEST_F(describe_table_test, pkless_table) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
-                        {"c0", atom_type::int4, true},
-                    },
-                    {},
-                };
+            {"c0", atom_type::int4, true},
+        },
+        {},
+    };
     EXPECT_EQ(exp, dt);
 }
 
@@ -276,17 +284,68 @@ TEST_F(describe_table_test, description) {
     auto st = describe("t", dt, err, {});
     ASSERT_EQ(status::ok, st);
 
-    dto::describe_table exp{"t",
+    dto::describe_table exp{
+        "t",
         {
-                            {"k", atom_type::int4, false},
-                            {"v", atom_type::int4, true},
-                        },
-                        {"k"},
-                    };
+            {"k", atom_type::int4, false},
+            {"v", atom_type::int4, true},
+        },
+        {"k"},
+    };
     exp.description_ = "Example table t.\nThis is a test table.";
     exp.columns_[0].description_ = "The key column.";
     exp.columns_[1].description_ = "The value column.\ncolumn for value.";
     EXPECT_EQ(exp, dt);
+}
+
+TEST_F(describe_table_test, not_authorized) {
+    // verify standard user cannot describe table without privilege
+    execute_statement("create table t (c0 INT)");
+    dto::describe_table dt{};
+    std::shared_ptr<error::error_info> err{};
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    auto st = describe("t", dt, err, info);
+    ASSERT_EQ(status::err_illegal_operation, st);
+    ASSERT_TRUE(err);
+    EXPECT_EQ(error_code::permission_error, err->code());
+}
+
+TEST_F(describe_table_test, authorized) {
+    // verify standard user can describe table when privilege is granted
+    execute_statement("create table t (c0 INT)");
+
+    // privileges that implies DESCRIBE authorization
+    std::vector<std::string> privs = {
+        "all privileges",
+        "select",
+        "insert",
+        "update",
+        "delete"
+    };
+
+    std::vector<std::string> grantee_types = {
+        "public",
+        "user1",
+    };
+    for(auto&& grantee : grantee_types) {
+        for(auto&& priv : privs) {
+            execute_statement("grant "+priv+" on t to "+grantee);
+            dto::describe_table dt{};
+            std::shared_ptr<error::error_info> err{};
+            auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+            auto st = describe("t", dt, err, info);
+            ASSERT_EQ(status::ok, st);
+            dto::describe_table exp{
+                "t",
+                {
+                    {"c0", atom_type::int4, true},
+                },
+                {},
+            };
+            EXPECT_EQ(exp, dt);
+            execute_statement("revoke "+priv+" on t from "+grantee);
+        }
+    }
 }
 
 }

@@ -2456,7 +2456,8 @@ void service_api_test::test_load(bool transactional, std::uint64_t& stmt_handle,
 }
 
 TEST_F(service_api_test, describe_table) {
-    auto s = encode_describe_table("T0");
+    execute_statement("create table t (c0 bigint primary key, c1 double)");
+    auto s = encode_describe_table("t");
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
@@ -2466,16 +2467,16 @@ TEST_F(service_api_test, describe_table) {
     ASSERT_TRUE(st);
 
     auto [result, error] = decode_describe_table(res->body_);
-    ASSERT_EQ("T0", result.table_name_);
+    ASSERT_EQ("t", result.table_name_);
     ASSERT_EQ("", result.schema_name_);
     ASSERT_EQ("", result.database_name_);
     ASSERT_EQ(2, result.columns_.size());
-    EXPECT_EQ("C0", result.columns_[0].name_);
+    EXPECT_EQ("c0", result.columns_[0].name_);
     EXPECT_EQ(sql::common::AtomType::INT8, result.columns_[0].atom_type_);
-    EXPECT_EQ("C1", result.columns_[1].name_);
+    EXPECT_EQ("c1", result.columns_[1].name_);
     EXPECT_EQ(sql::common::AtomType::FLOAT8, result.columns_[1].atom_type_);
     ASSERT_EQ(1, result.primary_key_columns_.size());
-    EXPECT_EQ("C0", result.primary_key_columns_[0]);
+    EXPECT_EQ("c0", result.primary_key_columns_[0]);
 }
 
 TEST_F(service_api_test, describe_table_not_found) {

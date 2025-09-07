@@ -149,7 +149,7 @@ static void fill_from_provider(
     }
 }
 
-bool validate_describe_table_auth(
+static bool validate_describe_table_auth(
     storage::storage_entry storage_id,
     request_info const& req_info,
     std::shared_ptr<error::error_info>& error

@@ -20,6 +20,7 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include <type_traits>
 #include <vector>
 
 namespace jogasaki::executor {
@@ -91,7 +92,7 @@ struct common_column {
 
     std::string name_{};
     atom_type atom_type_{atom_type::type_unspecified};
-    std::uint32_t dimension_{};
+    std::uint32_t dimension_{}; // unused
 
     // optional length/precision/scale information (bool=true means arbitrary)
     std::optional<std::variant<std::uint32_t, bool>> length_{};
@@ -123,6 +124,46 @@ struct common_column {
     friend bool operator!=(common_column const& a, common_column const& b) {
         return !(a == b);
     }
+
+    /**
+     * @brief stream operator for common_column
+     */
+    friend inline std::ostream& operator<<(std::ostream& out, common_column const& v) {
+        out << "common_column{name:\"" << v.name_ << "\"";
+        out << " type:" << v.atom_type_;
+
+        auto print_opt_variant = [](std::ostream& out, auto const& opt, std::string_view name) {
+            if (opt) {
+                out << ' ' << name << ':';
+                std::visit([&out](auto const& val) {
+                    using T = std::decay_t<decltype(val)>;
+                    if constexpr (std::is_same_v<T, bool>) {
+                        // bool==true indicates arbitrary (print as "*")
+                        out << (val ? "*" : "false");
+                    } else {
+                        out << val;
+                    }
+                }, *opt);
+            }
+        };
+
+        print_opt_variant(out, v.length_, "length");
+        print_opt_variant(out, v.precision_, "precision");
+        print_opt_variant(out, v.scale_, "scale");
+
+        if (v.nullable_) {
+            out << " nullable:" << (*v.nullable_ ? "true" : "false");
+        }
+        if (v.varying_) {
+            out << " varying:" << (*v.varying_ ? "true" : "false");
+        }
+        if (v.description_) {
+            out << " desc:\"" << *v.description_ << "\"";
+        }
+        out << "}";
+        return out;
+    }
+
 };
 
 } // namespace jogasaki::executor

@@ -17,6 +17,8 @@
 
 #include <gtest/gtest.h>
 
+#include <takatori/util/string_builder.h>
+
 #include <jogasaki/proto/sql/common.pb.h>
 
 using jogasaki::proto::sql::common::Column;
@@ -105,6 +107,44 @@ TEST(common_column_utils_test, common_default_roundtrip) {
     auto round = jogasaki::executor::from_proto(proto);
 
     EXPECT_EQ(round, c);
+}
+
+TEST(common_column_utils_test, to_string) {
+    {
+        common_column c{};
+        auto str = takatori::util::string_builder{} << c << takatori::util::string_builder::to_string;
+        EXPECT_EQ("common_column{name:\"\" type:type_unspecified}", str);
+    }
+    {
+        // varchar(255)
+        common_column c{};
+        c.name_ = "c0";
+        c.atom_type_ = common_column::atom_type::character;
+        c.length_ = std::variant<std::uint32_t, bool>{static_cast<std::uint32_t>(255)};
+        c.nullable_ = true;
+        c.varying_ = true;
+        c.description_ = std::string("c0 desc");
+
+        auto str = takatori::util::string_builder{} << c << takatori::util::string_builder::to_string;
+
+        // expected format matches operator<< in common_column
+        EXPECT_EQ("common_column{name:\"c0\" type:character length:255 nullable:true varying:true desc:\"c0 desc\"}", str);
+    }
+    {
+        // decimal(*, 5)
+        common_column c{};
+        c.name_ = "c0";
+        c.atom_type_ = common_column::atom_type::decimal;
+        c.precision_ = std::variant<std::uint32_t, bool>{true}; // arbitrary precision
+        c.scale_ = std::variant<std::uint32_t, bool>{static_cast<std::uint32_t>(5)};
+        c.nullable_ = true;
+        c.description_ = std::string("c0 desc");
+
+        auto str = takatori::util::string_builder{} << c << takatori::util::string_builder::to_string;
+
+        // expected format matches operator<< in common_column
+        EXPECT_EQ("common_column{name:\"c0\" type:decimal precision:* scale:5 nullable:true desc:\"c0 desc\"}", str);
+    }
 }
 
 } // namespace jogasaki::executor

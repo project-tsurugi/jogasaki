@@ -27,6 +27,28 @@ namespace jogasaki::executor::dto {
  * @brief lightweight representation of protocol buffer DescribeTable.Success
  */
 struct describe_table {
+
+    /**
+     * @brief constructs empty object
+     */
+    describe_table() = default;
+
+    /**
+     * @brief constructs a new object (for testing)
+     * @param table_name the target table name
+     * @param columns the list of columns
+     * @param primary_key the list of primary key column names
+     */
+    describe_table(
+        std::string table_name,
+        std::vector<common_column> columns,
+        std::vector<std::string> primary_key
+    ) :
+        table_name_(std::move(table_name)),
+        columns_(std::move(columns)),
+        primary_key_(std::move(primary_key))
+    {}
+
     std::string database_name_{}; // currently unused, always empty
     std::string schema_name_{}; // currently unused, always empty
     std::string table_name_{};

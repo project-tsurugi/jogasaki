@@ -16,12 +16,11 @@
 #pragma once
 
 #include <cstdint>
-#include <ostream>
 #include <optional>
+#include <ostream>
 #include <string>
-#include <variant>
 #include <type_traits>
-#include <vector>
+#include <variant>
 
 namespace jogasaki::executor::dto {
 
@@ -89,6 +88,30 @@ struct common_column {
     friend inline std::ostream& operator<<(std::ostream& out, atom_type value) {
         return out << to_string_view(value);
     }
+
+    /**
+     * @brief construct empty object
+     */
+    common_column() = default;
+
+    /**
+     * @brief construct new object (for testing)
+     */
+    common_column(
+        std::string name,
+        atom_type type,
+        bool nullable,
+        std::optional<std::variant<std::uint32_t, bool>> length = std::nullopt,
+        std::optional<std::variant<std::uint32_t, bool>> precision = std::nullopt,
+        std::optional<std::variant<std::uint32_t, bool>> scale = std::nullopt
+    ) :
+        name_(std::move(name)),
+        atom_type_(type),
+        length_(length),
+        precision_(precision),
+        scale_(scale),
+        nullable_(nullable)
+    {}
 
     std::string name_{};
     atom_type atom_type_{atom_type::type_unspecified};

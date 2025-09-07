@@ -32,4 +32,13 @@ describe_table from_proto(proto::sql::response::DescribeTable::Success const& sr
  */
 proto::sql::response::DescribeTable::Success to_proto(describe_table const& src);
 
+/**
+ * @brief oneof presence helper for DescribeTable::Success message.
+ *
+ * This wrapper checks the generated <oneof>_case() accessor instead of
+ * relying on generated has_description() which may be missing in older
+ * protobuf versions.
+ */
+bool has_description(proto::sql::response::DescribeTable::Success const& msg) noexcept;
+
 } // namespace jogasaki::executor

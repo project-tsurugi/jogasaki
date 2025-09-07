@@ -49,12 +49,12 @@ struct describe_table {
         primary_key_(std::move(primary_key))
     {}
 
-    std::string database_name_{}; // currently unused, always empty
-    std::string schema_name_{}; // currently unused, always empty
-    std::string table_name_{};
-    std::vector<common_column> columns_{};
-    std::vector<std::string> primary_key_{};
-    std::optional<std::string> description_{};
+    std::string database_name_{}; // currently unused, always empty  //NOLINT
+    std::string schema_name_{}; // currently unused, always empty  //NOLINT
+    std::string table_name_{};  //NOLINT
+    std::vector<common_column> columns_{};  //NOLINT
+    std::vector<std::string> primary_key_{};  //NOLINT
+    std::optional<std::string> description_{};  //NOLINT
 
     /**
      * @brief equality comparison.

@@ -113,18 +113,18 @@ struct common_column {
         nullable_(nullable)
     {}
 
-    std::string name_{};
-    atom_type atom_type_{atom_type::type_unspecified};
-    std::uint32_t dimension_{}; // unused
+    std::string name_{};  //NOLINT
+    atom_type atom_type_{atom_type::type_unspecified};  //NOLINT
+    std::uint32_t dimension_{}; // unused  //NOLINT
 
     // optional length/precision/scale information (bool=true means arbitrary)
-    std::optional<std::variant<std::uint32_t, bool>> length_{};
-    std::optional<std::variant<std::uint32_t, bool>> precision_{};
-    std::optional<std::variant<std::uint32_t, bool>> scale_{};
+    std::optional<std::variant<std::uint32_t, bool>> length_{};  //NOLINT
+    std::optional<std::variant<std::uint32_t, bool>> precision_{};  //NOLINT
+    std::optional<std::variant<std::uint32_t, bool>> scale_{};  //NOLINT
 
-    std::optional<bool> nullable_{};
-    std::optional<bool> varying_{};
-    std::optional<std::string> description_{};
+    std::optional<bool> nullable_{};  //NOLINT
+    std::optional<bool> varying_{};  //NOLINT
+    std::optional<std::string> description_{};  //NOLINT
 
     /**
      * @brief equality comparison.

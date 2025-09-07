@@ -76,6 +76,7 @@ file(GLOB SOURCES
         "jogasaki/executor/batch/*.cpp"
         "jogasaki/executor/common/*.cpp"
         "jogasaki/executor/conv/*.cpp"
+        "jogasaki/executor/dto/*.cpp"
         "jogasaki/executor/file/*.cpp"
         "jogasaki/executor/io/*.cpp"
         "jogasaki/executor/process/*.cpp"

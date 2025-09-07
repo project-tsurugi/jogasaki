@@ -66,6 +66,8 @@
 #include <jogasaki/datastore/get_lob_data.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/executor/describe.h>
+#include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
@@ -1126,31 +1128,16 @@ void service::command_describe_table(
     request_info const& req_info
 ) {
     auto& dt = proto_req.describe_table();
-
-    auto req = std::make_shared<scheduler::request_detail>(scheduler::request_detail_kind::describe_table);
-    req->status(scheduler::request_detail_status::accepted);
-
-    log_request(*req);
-    std::unique_ptr<jogasaki::api::executable_statement> e{};
-    auto table = db_->find_table(dt.name());
-    if(! table || utils::is_prefix(dt.name(), system_identifier_prefix)) {
-        VLOG(log_error) << log_location_prefix << "table not found : " << dt.name();
-        auto st = status::err_not_found;
-        auto err_info = create_error_info(
-            error_code::target_not_found_exception,
-            string_builder{} << "Target table \"" << dt.name() << "\" is not found." << string_builder::to_string,
-            st
-        );
-        details::error<sql::response::DescribeTable>(*res, err_info.get(), req_info);
-        req->status(scheduler::request_detail_status::finishing);
-        log_request(*req, false);
+    executor::dto::describe_table out{};
+    std::shared_ptr<error::error_info> error{};
+    auto st = executor::describe(dt.name(), out, error, req_info);
+    if (st != status::ok) {
+        details::error<sql::response::DescribeTable>(*res, error.get(), req_info);
         return;
     }
-    details::success<sql::response::DescribeTable>(*res, table.get(), req_info, get_impl(*db_).tables());
-
-    req->status(scheduler::request_detail_status::finishing);
-    log_request(*req);
+    details::success<sql::response::DescribeTable>(*res, std::addressof(out), req_info);
 }
+
 
 bool service::operator()(
     std::shared_ptr<tateyama::api::server::request> req,  //NOLINT(performance-unnecessary-value-param)

@@ -32,9 +32,11 @@ describe_table from_proto(proto::sql::response::DescribeTable::Success const& sr
     if (! src.table_name().empty()) {
         out.table_name_ = src.table_name();
     }
+    out.columns_.reserve(src.columns().size());
     for (auto const& c : src.columns()) {
         out.columns_.emplace_back(from_proto(c));
     }
+    out.primary_key_.reserve(src.primary_key_size());
     for (auto const& pk : src.primary_key()) {
         out.primary_key_.emplace_back(pk);
     }
@@ -68,7 +70,7 @@ proto::sql::response::DescribeTable::Success to_proto(describe_table const& src)
 }
 
 bool has_description(proto::sql::response::DescribeTable::Success const& msg) noexcept {
-    return msg.description_opt_case() != proto::sql::response::DescribeTable::Success::DESCRIPTION_OPT_NOT_SET;
+    return msg.description_opt_case() == proto::sql::response::DescribeTable::Success::kDescription;
 }
 
 } // namespace jogasaki::executor

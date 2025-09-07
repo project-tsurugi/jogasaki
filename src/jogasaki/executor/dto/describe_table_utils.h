@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <jogasaki/executor/describe_table.h>
+#include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/proto/sql/response.pb.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::dto {
 
 namespace proto = jogasaki::proto;
 

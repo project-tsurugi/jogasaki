@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/describe_table_utils.h>
+#include "describe_table_utils.h"
 
-#include <jogasaki/executor/common_column_utils.h>
+#include <jogasaki/executor/dto/common_column_utils.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::dto {
 
 namespace proto = jogasaki::proto;
 

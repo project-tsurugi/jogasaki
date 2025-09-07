@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <jogasaki/executor/dto/describe_table_utils.h>
+
 #include <gtest/gtest.h>
 
 #include <takatori/util/string_builder.h>
 
-#include <jogasaki/executor/describe_table_utils.h>
 #include <jogasaki/proto/sql/response.pb.h>
 
 using jogasaki::proto::sql::response::DescribeTable;
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::dto {
 
 class describe_table_utils_test : public ::testing::Test {
 protected:

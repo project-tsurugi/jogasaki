@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <jogasaki/executor/common_column.h>
+#include <jogasaki/executor/dto/common_column.h>
 #include <jogasaki/proto/sql/common.pb.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::dto {
 
 namespace proto = jogasaki::proto;
 

@@ -23,7 +23,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::dto {
 
 /**
  * @brief lightweight representation of protocol buffer common.Column message.

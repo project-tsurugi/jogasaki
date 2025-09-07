@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <jogasaki/executor/common_column_utils.h>
+#include <jogasaki/executor/dto/common_column_utils.h>
 
 #include <gtest/gtest.h>
 
@@ -23,7 +23,7 @@
 
 using jogasaki::proto::sql::common::Column;
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::dto {
 
 namespace proto = jogasaki::proto;
 
@@ -103,8 +103,8 @@ TEST(common_column_utils_test, proto_default_roundtrip) {
 TEST(common_column_utils_test, common_default_roundtrip) {
     common_column c{};
 
-    auto proto = jogasaki::executor::to_proto(c);
-    auto round = jogasaki::executor::from_proto(proto);
+    auto proto = to_proto(c);
+    auto round = from_proto(proto);
 
     EXPECT_EQ(round, c);
 }

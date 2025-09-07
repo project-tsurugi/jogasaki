@@ -19,9 +19,9 @@
 #include <string>
 #include <vector>
 
-#include <jogasaki/executor/common_column.h>
+#include <jogasaki/executor/dto/common_column.h>
 
-namespace jogasaki::executor {
+namespace jogasaki::executor::dto {
 
 /**
  * @brief lightweight representation of protocol buffer DescribeTable.Success

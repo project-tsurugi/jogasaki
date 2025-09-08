@@ -2455,6 +2455,8 @@ void service_api_test::test_load(bool transactional, std::uint64_t& stmt_handle,
     }
 }
 
+using atom_type = dto::common_column::atom_type;
+
 TEST_F(service_api_test, describe_table) {
     execute_statement("create table t (c0 bigint primary key, c1 double)");
     auto s = encode_describe_table("t");
@@ -2472,11 +2474,24 @@ TEST_F(service_api_test, describe_table) {
     ASSERT_EQ("", result.database_name_);
     ASSERT_EQ(2, result.columns_.size());
     EXPECT_EQ("c0", result.columns_[0].name_);
-    EXPECT_EQ(sql::common::AtomType::INT8, result.columns_[0].atom_type_);
+    EXPECT_EQ(atom_type::int8, result.columns_[0].atom_type_);
+    ASSERT_TRUE(result.columns_[0].nullable_.has_value());
+    EXPECT_TRUE(! result.columns_[0].nullable_.value()); // pk
+    EXPECT_TRUE(! result.columns_[0].length_.has_value());
+    EXPECT_TRUE(! result.columns_[0].precision_.has_value());
+    EXPECT_TRUE(! result.columns_[0].scale_.has_value());
+    EXPECT_TRUE(! result.columns_[0].varying_.has_value());
+
     EXPECT_EQ("c1", result.columns_[1].name_);
-    EXPECT_EQ(sql::common::AtomType::FLOAT8, result.columns_[1].atom_type_);
-    ASSERT_EQ(1, result.primary_key_columns_.size());
-    EXPECT_EQ("c0", result.primary_key_columns_[0]);
+    EXPECT_EQ(atom_type::float8, result.columns_[1].atom_type_);
+    ASSERT_TRUE(result.columns_[1].nullable_.has_value());
+    EXPECT_TRUE(result.columns_[1].nullable_.value());
+    EXPECT_TRUE(! result.columns_[1].length_.has_value());
+    EXPECT_TRUE(! result.columns_[1].precision_.has_value());
+    EXPECT_TRUE(! result.columns_[1].scale_.has_value());
+    EXPECT_TRUE(! result.columns_[1].varying_.has_value());
+    ASSERT_EQ(1, result.primary_key_.size());
+    EXPECT_EQ("c0", result.primary_key_[0]);
 }
 
 TEST_F(service_api_test, describe_table_not_found) {
@@ -2492,6 +2507,73 @@ TEST_F(service_api_test, describe_table_not_found) {
     auto [result, error] = decode_describe_table(res->body_);
     ASSERT_EQ(error_code::target_not_found_exception, error.code_);
     LOG(INFO) << "error: " << error.message_;
+}
+
+TEST_F(service_api_test, describe_table_length_ps) {
+    execute_statement("create table t (c0 varchar(*) primary key, c1 char(10), c2 decimal(5,3), c3 decimal(*,3))");
+    auto s = encode_describe_table("t");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+
+    auto [result, error] = decode_describe_table(res->body_);
+    ASSERT_EQ("t", result.table_name_);
+    ASSERT_EQ("", result.schema_name_);
+    ASSERT_EQ("", result.database_name_);
+    ASSERT_EQ(4, result.columns_.size());
+    EXPECT_EQ("c0", result.columns_[0].name_);
+    EXPECT_EQ(atom_type::character, result.columns_[0].atom_type_);
+    ASSERT_TRUE(result.columns_[0].varying_.has_value());
+    EXPECT_TRUE(result.columns_[0].varying_.value());
+
+    ASSERT_TRUE(result.columns_[0].nullable_.has_value());
+    EXPECT_TRUE(! result.columns_[0].nullable_.value()); // pk
+    ASSERT_TRUE(result.columns_[0].length_.has_value());
+    EXPECT_TRUE(std::get<bool>(result.columns_[0].length_.value())); // arbitrary len
+    EXPECT_TRUE(! result.columns_[0].precision_.has_value());
+    EXPECT_TRUE(! result.columns_[0].scale_.has_value());
+    ASSERT_TRUE(result.columns_[0].varying_.has_value());
+    EXPECT_TRUE(result.columns_[0].varying_.value());
+
+    EXPECT_EQ("c1", result.columns_[1].name_);
+    EXPECT_EQ(atom_type::character, result.columns_[1].atom_type_);
+    ASSERT_TRUE(result.columns_[1].nullable_.has_value());
+    EXPECT_TRUE(result.columns_[1].nullable_.value());
+    ASSERT_TRUE(result.columns_[1].length_.has_value());
+    EXPECT_EQ(10, std::get<std::uint32_t>(result.columns_[1].length_.value()));
+    EXPECT_TRUE(! result.columns_[1].precision_.has_value());
+    EXPECT_TRUE(! result.columns_[1].scale_.has_value());
+    ASSERT_TRUE(result.columns_[1].varying_.has_value());
+    EXPECT_TRUE(! result.columns_[1].varying_.value()); // char(10)
+
+    EXPECT_EQ("c2", result.columns_[2].name_);
+    EXPECT_EQ(atom_type::decimal, result.columns_[2].atom_type_);
+    ASSERT_TRUE(result.columns_[2].nullable_.has_value());
+    EXPECT_TRUE(result.columns_[2].nullable_.value());
+    EXPECT_TRUE(! result.columns_[2].length_.has_value());
+    ASSERT_TRUE(result.columns_[2].precision_.has_value());
+    EXPECT_EQ(5, std::get<std::uint32_t>(result.columns_[2].precision_.value()));
+    ASSERT_TRUE(result.columns_[2].scale_.has_value());
+    EXPECT_EQ(3, std::get<std::uint32_t>(result.columns_[2].scale_.value()));
+    EXPECT_TRUE(! result.columns_[2].varying_.has_value());
+
+    EXPECT_EQ("c3", result.columns_[3].name_);
+    EXPECT_EQ(atom_type::decimal, result.columns_[3].atom_type_);
+    ASSERT_TRUE(result.columns_[3].nullable_.has_value());
+    EXPECT_TRUE(result.columns_[3].nullable_.value());
+    EXPECT_TRUE(! result.columns_[3].length_.has_value());
+    ASSERT_TRUE(result.columns_[3].precision_.has_value());
+    EXPECT_EQ(38, std::get<std::uint32_t>(result.columns_[3].precision_.value()));
+    ASSERT_TRUE(result.columns_[3].scale_.has_value());
+    EXPECT_EQ(3, std::get<std::uint32_t>(result.columns_[3].scale_.value()));
+    EXPECT_TRUE(! result.columns_[3].varying_.has_value());
+
+    ASSERT_EQ(1, result.primary_key_.size());
+    EXPECT_EQ("c0", result.primary_key_[0]);
 }
 
 TEST_F(service_api_test, empty_result_set) {

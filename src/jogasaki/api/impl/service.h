@@ -271,19 +271,31 @@ static void set_column_from_dto(
     sql::common::Column& c
 ) {
     c.set_name(col.name_);
-    auto fill_len = [](auto&& c, auto&& len_or_bool) {
-        if(len_or_bool) {
-            if(std::holds_alternative<std::uint32_t>(*len_or_bool)) {
-                c.set_length(std::get<std::uint32_t>(*len_or_bool));
-            } else if(std::holds_alternative<bool>(*len_or_bool)) {
-                c.mutable_arbitrary_length();
-            }
+    if(col.length_) {
+        if(std::holds_alternative<std::uint32_t>(*col.length_)) {
+            c.set_length(std::get<std::uint32_t>(*col.length_));
+        } else if(std::holds_alternative<bool>(*col.length_)) {
+            c.mutable_arbitrary_length();
         }
-    };
-    fill_len(c, col.length_);
-    fill_len(c, col.precision_);
-    fill_len(c, col.scale_);
+    }
+    if(col.precision_) {
+        if(std::holds_alternative<std::uint32_t>(*col.precision_)) {
+            c.set_precision(std::get<std::uint32_t>(*col.precision_));
+        } else if(std::holds_alternative<bool>(*col.precision_)) {
+            c.mutable_arbitrary_precision();
+        }
+    }
+    if(col.scale_) {
+        if(std::holds_alternative<std::uint32_t>(*col.scale_)) {
+            c.set_scale(std::get<std::uint32_t>(*col.scale_));
+        } else if(std::holds_alternative<bool>(*col.scale_)) {
+            c.mutable_arbitrary_scale();
+        }
+    }
     c.set_atom_type(from(col.atom_type_));
+    if(col.varying_) {
+        c.set_varying(*col.varying_);
+    }
     if(col.nullable_) {
         c.set_nullable(*col.nullable_);
     }

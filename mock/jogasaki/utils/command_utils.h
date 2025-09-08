@@ -28,6 +28,8 @@
 #include "jogasaki/proto/sql/response.pb.h"
 #include <jogasaki/api.h>
 #include <jogasaki/api/impl/map_error_code.h>
+#include <jogasaki/executor/dto/describe_table.h>
+#include <jogasaki/executor/dto/describe_table_utils.h>
 #include <jogasaki/lob/blob_locator.h>
 #include <jogasaki/lob/clob_locator.h>
 #include <jogasaki/meta/field_type.h>
@@ -51,7 +53,6 @@ using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;
 std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
-struct column_info;
 
 template <class T>
 struct allow_arbitrary {
@@ -727,31 +728,7 @@ inline std::string encode_dispose_transaction(api::transaction_handle tx_handle)
     return serialize(r);
 }
 
-struct column_info {
-    column_info(
-        std::string_view name,
-        sql::common::AtomType atom_type,
-        std::string_view description = {}
-    ) :
-        name_(name),
-        atom_type_(atom_type),
-        description_(description)
-    {}
-    std::string name_{};
-    sql::common::AtomType atom_type_{};
-    std::string description_{};
-};
-
-struct table_info {
-    std::string database_name_{};
-    std::string schema_name_{};
-    std::string table_name_{};
-    std::vector<column_info> columns_{};
-    std::string description_{};
-    std::vector<std::string> primary_key_columns_{};
-};
-
-inline std::pair<table_info, error> decode_describe_table(std::string_view res) {
+inline std::pair<executor::dto::describe_table, error> decode_describe_table(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
     if (! resp.has_describe_table())  {
@@ -764,27 +741,7 @@ inline std::pair<table_info, error> decode_describe_table(std::string_view res) 
         auto& er = dt.error();
         return {{}, {api::impl::map_error(er.code()), er.detail()}};
     }
-
-    std::vector<column_info> cols{};
-    for(auto&& c : dt.success().columns()) {
-        cols.emplace_back(c.name(), c.atom_type(), c.description());
-    }
-
-    std::vector<std::string> primary_key_columns{};
-    primary_key_columns.reserve(dt.success().primary_key_size());
-    for(auto&& p : dt.success().primary_key()) {
-        primary_key_columns.emplace_back(p);
-    }
-
-    table_info info{
-        dt.success().database_name(),
-        dt.success().schema_name(),
-        dt.success().table_name(),
-        std::move(cols),
-        dt.success().description(),
-        std::move(primary_key_columns)
-    };
-    return {info, {}};
+    return {executor::dto::from_proto(dt.success()), {}};
 }
 
 inline std::vector<std::string> decode_list_tables(std::string_view res) {

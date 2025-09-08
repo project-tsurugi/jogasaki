@@ -2469,29 +2469,15 @@ TEST_F(service_api_test, describe_table) {
     ASSERT_TRUE(st);
 
     auto [result, error] = decode_describe_table(res->body_);
-    ASSERT_EQ("t", result.table_name_);
-    ASSERT_EQ("", result.schema_name_);
-    ASSERT_EQ("", result.database_name_);
-    ASSERT_EQ(2, result.columns_.size());
-    EXPECT_EQ("c0", result.columns_[0].name_);
-    EXPECT_EQ(atom_type::int8, result.columns_[0].atom_type_);
-    ASSERT_TRUE(result.columns_[0].nullable_.has_value());
-    EXPECT_TRUE(! result.columns_[0].nullable_.value()); // pk
-    EXPECT_TRUE(! result.columns_[0].length_.has_value());
-    EXPECT_TRUE(! result.columns_[0].precision_.has_value());
-    EXPECT_TRUE(! result.columns_[0].scale_.has_value());
-    EXPECT_TRUE(! result.columns_[0].varying_.has_value());
-
-    EXPECT_EQ("c1", result.columns_[1].name_);
-    EXPECT_EQ(atom_type::float8, result.columns_[1].atom_type_);
-    ASSERT_TRUE(result.columns_[1].nullable_.has_value());
-    EXPECT_TRUE(result.columns_[1].nullable_.value());
-    EXPECT_TRUE(! result.columns_[1].length_.has_value());
-    EXPECT_TRUE(! result.columns_[1].precision_.has_value());
-    EXPECT_TRUE(! result.columns_[1].scale_.has_value());
-    EXPECT_TRUE(! result.columns_[1].varying_.has_value());
-    ASSERT_EQ(1, result.primary_key_.size());
-    EXPECT_EQ("c0", result.primary_key_[0]);
+    dto::describe_table exp{
+        "t",
+        {
+            {"c0", atom_type::int8, false},
+            {"c1", atom_type::float8, true},
+        },
+        {"c0"},
+    };
+    EXPECT_EQ(exp, result);
 }
 
 TEST_F(service_api_test, describe_table_not_found) {
@@ -2521,59 +2507,47 @@ TEST_F(service_api_test, describe_table_length_ps) {
     ASSERT_TRUE(st);
 
     auto [result, error] = decode_describe_table(res->body_);
-    ASSERT_EQ("t", result.table_name_);
-    ASSERT_EQ("", result.schema_name_);
-    ASSERT_EQ("", result.database_name_);
-    ASSERT_EQ(4, result.columns_.size());
-    EXPECT_EQ("c0", result.columns_[0].name_);
-    EXPECT_EQ(atom_type::character, result.columns_[0].atom_type_);
-    ASSERT_TRUE(result.columns_[0].varying_.has_value());
-    EXPECT_TRUE(result.columns_[0].varying_.value());
 
-    ASSERT_TRUE(result.columns_[0].nullable_.has_value());
-    EXPECT_TRUE(! result.columns_[0].nullable_.value()); // pk
-    ASSERT_TRUE(result.columns_[0].length_.has_value());
-    EXPECT_TRUE(std::get<bool>(result.columns_[0].length_.value())); // arbitrary len
-    EXPECT_TRUE(! result.columns_[0].precision_.has_value());
-    EXPECT_TRUE(! result.columns_[0].scale_.has_value());
-    ASSERT_TRUE(result.columns_[0].varying_.has_value());
-    EXPECT_TRUE(result.columns_[0].varying_.value());
+    dto::describe_table exp{
+        "t",
+        {
+            {"c0", atom_type::character, false, true},
+            {"c1", atom_type::character, true, 10u},
+            {"c2", atom_type::decimal, true, std::nullopt, 5u, 3u},
+            {"c3", atom_type::decimal, true, std::nullopt, 38u, 3u},
+        },
+        {"c0"},
+    };
+    exp.columns_[0].varying_ = true;
+    exp.columns_[1].varying_ = false;
+    EXPECT_EQ(exp, result);
+}
 
-    EXPECT_EQ("c1", result.columns_[1].name_);
-    EXPECT_EQ(atom_type::character, result.columns_[1].atom_type_);
-    ASSERT_TRUE(result.columns_[1].nullable_.has_value());
-    EXPECT_TRUE(result.columns_[1].nullable_.value());
-    ASSERT_TRUE(result.columns_[1].length_.has_value());
-    EXPECT_EQ(10, std::get<std::uint32_t>(result.columns_[1].length_.value()));
-    EXPECT_TRUE(! result.columns_[1].precision_.has_value());
-    EXPECT_TRUE(! result.columns_[1].scale_.has_value());
-    ASSERT_TRUE(result.columns_[1].varying_.has_value());
-    EXPECT_TRUE(! result.columns_[1].varying_.value()); // char(10)
+TEST_F(service_api_test, describe_table_temporal_types) {
+    // verify with_offset is correctly reflected on the output schema
+    execute_statement("create table t (c0 DATE, c1 TIME, c2 TIMESTAMP, c3 TIME WITH TIME ZONE, c4 TIMESTAMP WITH TIME ZONE)");
+    auto s = encode_describe_table("t");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
 
-    EXPECT_EQ("c2", result.columns_[2].name_);
-    EXPECT_EQ(atom_type::decimal, result.columns_[2].atom_type_);
-    ASSERT_TRUE(result.columns_[2].nullable_.has_value());
-    EXPECT_TRUE(result.columns_[2].nullable_.value());
-    EXPECT_TRUE(! result.columns_[2].length_.has_value());
-    ASSERT_TRUE(result.columns_[2].precision_.has_value());
-    EXPECT_EQ(5, std::get<std::uint32_t>(result.columns_[2].precision_.value()));
-    ASSERT_TRUE(result.columns_[2].scale_.has_value());
-    EXPECT_EQ(3, std::get<std::uint32_t>(result.columns_[2].scale_.value()));
-    EXPECT_TRUE(! result.columns_[2].varying_.has_value());
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
 
-    EXPECT_EQ("c3", result.columns_[3].name_);
-    EXPECT_EQ(atom_type::decimal, result.columns_[3].atom_type_);
-    ASSERT_TRUE(result.columns_[3].nullable_.has_value());
-    EXPECT_TRUE(result.columns_[3].nullable_.value());
-    EXPECT_TRUE(! result.columns_[3].length_.has_value());
-    ASSERT_TRUE(result.columns_[3].precision_.has_value());
-    EXPECT_EQ(38, std::get<std::uint32_t>(result.columns_[3].precision_.value()));
-    ASSERT_TRUE(result.columns_[3].scale_.has_value());
-    EXPECT_EQ(3, std::get<std::uint32_t>(result.columns_[3].scale_.value()));
-    EXPECT_TRUE(! result.columns_[3].varying_.has_value());
-
-    ASSERT_EQ(1, result.primary_key_.size());
-    EXPECT_EQ("c0", result.primary_key_[0]);
+    auto [result, error] = decode_describe_table(res->body_);
+    dto::describe_table exp{
+        "t",
+        {
+            {"c0", atom_type::date, true},
+            {"c1", atom_type::time_of_day, true},
+            {"c2", atom_type::time_point, true},
+            {"c3", atom_type::time_of_day_with_time_zone, true},
+            {"c4", atom_type::time_point_with_time_zone, true},
+        },
+        {},
+    };
+    EXPECT_EQ(exp, result);
 }
 
 TEST_F(service_api_test, empty_result_set) {

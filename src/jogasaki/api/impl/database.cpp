@@ -824,6 +824,69 @@ status database::destroy_transaction(
 }
 
 status database::explain(api::executable_statement const& executable, std::ostream& out) {
+    std::shared_ptr<error::error_info> err_info{};
+    return explain(executable, out, err_info, {});
+}
+
+static bool validate_explain_auth(
+    api::executable_statement const& executable,
+    request_info const& req_info
+) {
+    auto& s = req_info.request_source();
+    if(! s) {
+        // for testcase, skip auth. check
+        return true;
+    }
+    if(s->session_info().user_type() == tateyama::api::server::user_type::administrator) {
+        return true;
+    }
+    auto username = s->session_info().username();
+    if(! username.has_value()) {
+        VLOG_LP(log_error) << "no user name is provided";
+        return false;
+    }
+    auto& e = *get_impl(executable).body();
+    auto& smgr = *global::storage_manager();
+    for(auto&& storage_id : e.mirrors()->storage_operation().storage()) {
+        auto stg = smgr.find_entry(storage_id);
+        if (! stg) {
+            // normally should not happen
+            VLOG_LP(log_error) << "no such storage id:" << storage_id;
+            return false;
+        }
+
+        if(stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::select}) ||
+           stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::insert}) ||
+           stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::update}) ||
+           stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::delete_})) {
+            continue;
+        }
+        if(VLOG_IS_ON(log_error)) {
+            auto& authorized = stg->authorized_actions().find_user_actions(username.value());
+            VLOG_LP(log_error) << "insufficient authorization for explain user:\"" << username.value()
+                               << "\" table:\"" << stg->name() << "\" public:" << stg->public_actions()
+                               << " authorized:" << authorized;
+        }
+        return false;
+    }
+    return true;
+}
+
+status database::explain(
+    api::executable_statement const& executable,
+    std::ostream& out,
+    std::shared_ptr<error::error_info>& err_info,
+    request_info const& req_info
+) {
+    if(! validate_explain_auth(executable, req_info)) {
+        // TODO consider add more info.
+        err_info = create_error_info(
+            error_code::permission_error,
+            "insufficient authorization for the requested operation",
+            status::err_illegal_operation
+        );
+        return status::err_illegal_operation;
+    }
     auto r = unsafe_downcast<impl::executable_statement>(executable).body();
     r->compiled_info().object_scanner()(
         *r->statement(),

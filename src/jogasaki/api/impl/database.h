@@ -179,6 +179,13 @@ public:
 
     [[nodiscard]] status explain(api::executable_statement const& executable, std::ostream& out) override;
 
+    [[nodiscard]] status explain(
+        api::executable_statement const& executable,
+        std::ostream& out,
+        std::shared_ptr<error::error_info>& err_info,
+        request_info const& req_info
+    );
+
     status dump(std::ostream& output, std::string_view index_name, std::size_t batch_size) override;
 
     status load(std::istream& input, std::string_view index_name, std::size_t batch_size) override;

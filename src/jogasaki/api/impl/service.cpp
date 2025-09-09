@@ -747,10 +747,13 @@ void service::command_explain(
         return;
     }
     std::stringstream ss{};
-    if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
+    if (auto st = get_impl(*db_).explain(*e, ss, err_info, req_info); st == jogasaki::status::ok) {
         details::success<sql::response::Explain>(*res, ss.str(), e->meta(), req_info);
     } else {
-        throw_exception(std::logic_error{"explain failed"});
+        details::error<sql::response::Explain>(*res, err_info.get(), req_info);
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
+        return;
     }
 
     req->status(scheduler::request_detail_status::finishing);
@@ -806,10 +809,13 @@ void service::command_explain_by_text(
         return;
     }
     std::stringstream ss{};
-    if (auto st = db_->explain(*e, ss); st == jogasaki::status::ok) {
+    if (auto st = get_impl(*db_).explain(*e, ss, err_info, req_info); st == jogasaki::status::ok) {
         details::success<sql::response::Explain>(*res, ss.str(), e->meta(), req_info);
     } else {
-        throw_exception(std::logic_error{"explain failed"});
+        details::error<sql::response::Explain>(*res, err_info.get(), req_info);
+        req->status(scheduler::request_detail_status::finishing);
+        log_request(*req, false);
+        return;
     }
     if(auto rc = get_impl(*db_).destroy_statement_internal(statement); rc != jogasaki::status::ok) {
         // normally this should not happen

@@ -681,6 +681,50 @@ TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
     }
 }
 
+TEST_F(service_api_test, query_unauthorized) {
+    execute_statement("create table t (c0 int primary key)");
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+
+    auto s = encode_execute_query(tx_handle, "select * from t");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    req->session_info_.user_type_ = user_type::standard;
+    req->session_info_.username_ = "user1";
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_TRUE(res->all_released());
+    EXPECT_EQ(tateyama::proto::diagnostics::Code::PERMISSION_ERROR, res->error_.code());
+
+    // verify inactive
+    test_commit(tx_handle, true, error_code::inactive_transaction_exception); // verify tx already aborted
+}
+
+TEST_F(service_api_test, statement_unauthorized) {
+    execute_statement("create table t (c0 int primary key)");
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+
+    auto s = encode_execute_statement(tx_handle, "insert into t values (1)");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    req->session_info_.user_type_ = user_type::standard;
+    req->session_info_.username_ = "user1";
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_TRUE(res->all_released());
+    EXPECT_EQ(tateyama::proto::diagnostics::Code::PERMISSION_ERROR, res->error_.code());
+
+    // verify inactive
+    test_commit(tx_handle, true, error_code::inactive_transaction_exception); // verify tx already aborted
+}
+
 TEST_F(service_api_test, data_types) {
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
@@ -2032,6 +2076,29 @@ TEST_F(service_api_test, explain_error_missing_parameter) {
     }
 }
 
+TEST_F(service_api_test, explain_unauthorized) {
+    // verify the error code correctly returned
+    execute_statement("create table t (c0 bigint primary key)");
+    std::uint64_t stmt_handle{};
+    test_prepare(
+        stmt_handle,
+        "select * from t"
+    );
+    std::vector<parameter> parameters{};
+    auto s = encode_explain(stmt_handle, parameters);
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    req->session_info_.user_type_ = user_type::standard;
+    req->session_info_.username_ = "user1";
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_EQ(tateyama::proto::diagnostics::Code::PERMISSION_ERROR, res->error_.code());
+}
+
+
 TEST_F(service_api_test, explain_by_text) {
     auto s = encode_explain_by_text("select C0, C1 from T0 where C0 = 1 and C1 = 1.0");
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
@@ -2086,6 +2153,23 @@ TEST_F(service_api_test, explain_by_text_bypass_restriction) {
     auto [result, id, version, cols, error] = decode_explain(res->body_);
     ASSERT_FALSE(result.empty());
     LOG(INFO) << result;
+}
+
+TEST_F(service_api_test, explain_by_text_unauthorized) {
+    // verify the error code correctly returned
+    execute_statement("create table t (c0 bigint primary key)");
+    std::vector<parameter> parameters{};
+    auto s = encode_explain_by_text("select * from t");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    req->session_info_.user_type_ = user_type::standard;
+    req->session_info_.username_ = "user1";
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_EQ(tateyama::proto::diagnostics::Code::PERMISSION_ERROR, res->error_.code());
 }
 
 TEST_F(service_api_test, null_host_variable) {
@@ -2493,6 +2577,22 @@ TEST_F(service_api_test, describe_table_not_found) {
     auto [result, error] = decode_describe_table(res->body_);
     ASSERT_EQ(error_code::target_not_found_exception, error.code_);
     LOG(INFO) << "error: " << error.message_;
+}
+
+TEST_F(service_api_test, describe_table_unauthorized) {
+    // verify the error code correctly returned
+    execute_statement("create table t (c0 bigint primary key)");
+    auto s = encode_describe_table("t");
+    auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+    auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+    req->session_info_.user_type_ = user_type::standard;
+    req->session_info_.username_ = "user1";
+    auto st = (*service_)(req, res);
+    EXPECT_TRUE(res->wait_completion());
+    EXPECT_TRUE(res->completed());
+    ASSERT_TRUE(st);
+    EXPECT_EQ(tateyama::proto::diagnostics::Code::PERMISSION_ERROR, res->error_.code());
 }
 
 TEST_F(service_api_test, describe_table_length_ps) {

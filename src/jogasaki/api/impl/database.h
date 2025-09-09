@@ -236,7 +236,8 @@ public:
 
     status list_tables(
         std::vector<std::string>& out,
-        std::shared_ptr<error::error_info>& err_info
+        std::shared_ptr<error::error_info>& err_info,
+        request_info const& req_info
     );
 
     bool execute_load(

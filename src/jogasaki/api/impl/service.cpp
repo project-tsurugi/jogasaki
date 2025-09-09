@@ -297,7 +297,7 @@ void service::command_list_tables(
     (void) proto_req;
     std::vector<std::string> simple_names{};
     std::shared_ptr<error::error_info> err_info{};
-    if(auto rc = get_impl(*db_).list_tables(simple_names, err_info); rc == jogasaki::status::ok) {
+    if(auto rc = get_impl(*db_).list_tables(simple_names, err_info, req_info); rc == jogasaki::status::ok) {
         details::success<sql::response::ListTables>(*res, simple_names, req_info);
     } else {
         details::error<sql::response::ListTables>(*res, err_info.get(), req_info);
@@ -1137,7 +1137,6 @@ void service::command_describe_table(
     }
     details::success<sql::response::DescribeTable>(*res, std::addressof(out), req_info);
 }
-
 
 bool service::operator()(
     std::shared_ptr<tateyama::api::server::request> req,  //NOLINT(performance-unnecessary-value-param)

@@ -1380,20 +1380,61 @@ std::string database::diagnostic_string() {
     return ss.str();
 }
 
-jogasaki::status jogasaki::api::impl::database::list_tables(
+status database::list_tables(
     std::vector<std::string>& out
 ) {
     std::shared_ptr<error::error_info> err_info{};
-    return list_tables(out, err_info);
+    return list_tables(out, err_info, {});
 }
 
-jogasaki::status jogasaki::api::impl::database::list_tables(
+static bool is_authorized_table(
+    std::string_view table_name,
+    request_info const& req_info
+) {
+    auto& s = req_info.request_source();
+    if(! s) {
+        // if there is no req., this is testing, and skip auth. check
+        return true;
+    }
+    if(s->session_info().user_type() == tateyama::api::server::user_type::administrator) {
+        return true;
+    }
+    auto username = s->session_info().username();
+    if(! username.has_value()) {
+        // no name is given to standard user, permission error
+        return false;
+    }
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name(table_name);
+    if (! e.has_value()) {
+        // normally should not happen, debug log and skip anyway
+        VLOG_LP(log_debug) << "missing table entry name:\"" << table_name << "\"";
+        return false;
+    }
+    auto stg = smgr.find_entry(e.value());
+    if (! stg) {
+        // normally should not happen, debug log and skip anyway
+        VLOG_LP(log_debug) << "missing table entry name:\"" << table_name << "\" storage_id:" << e.value();
+        return false;
+    }
+    return
+       stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::select}) ||
+       stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::insert}) ||
+       stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::update}) ||
+       stg->allows_user_actions(username.value(), auth::action_set{auth::action_kind::delete_});
+}
+
+status database::list_tables(
     std::vector<std::string>& out,
-    std::shared_ptr<error::error_info>& err_info
+    std::shared_ptr<error::error_info>& err_info,
+    request_info const& req_info
 ) {
     err_info = {};
     tables_->each_relation([&](std::string_view, std::shared_ptr<yugawara::storage::relation const> const& t) {
         if(utils::is_prefix(t->simple_name(), system_identifier_prefix)) {
+            return;
+        }
+        if(! is_authorized_table(t->simple_name(), req_info)) {
             return;
         }
         out.emplace_back(t->simple_name());

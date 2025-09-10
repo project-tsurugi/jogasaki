@@ -214,5 +214,14 @@ TEST_F(basic_record_test, compare_decimal) {
     EXPECT_GT(r3, r1);
 }
 
+TEST_F(basic_record_test, compare_different_scale_decimal) {
+    // verify basic_record compares decimal values correctly even if the scale is different
+    auto fm0 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+    auto fm1 = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
+    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm0}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0)});
+    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm1}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0)});
+    EXPECT_NE(r1, r2);
+}
+
 
 }

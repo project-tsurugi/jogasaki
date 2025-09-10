@@ -28,6 +28,8 @@
 #include "jogasaki/proto/sql/response.pb.h"
 #include <jogasaki/api.h>
 #include <jogasaki/api/impl/map_error_code.h>
+#include <jogasaki/executor/dto/common_column.h>
+#include <jogasaki/executor/dto/common_column_utils.h>
 #include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/executor/dto/describe_table_utils.h>
 #include <jogasaki/lob/blob_locator.h>
@@ -94,6 +96,7 @@ struct colinfo {
 
 };
 
+// deprecated
 inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const& columns) {
     std::vector<meta::field_type> fields{};
     boost::dynamic_bitset<std::uint64_t> nullities;
@@ -144,6 +147,64 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<colinfo> const
             case sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: fields.emplace_back(std::make_shared<meta::time_point_field_option>(true)); break;
             case sql::common::AtomType::BLOB: fields.emplace_back(meta::field_enum_tag<kind::blob>); break;
             case sql::common::AtomType::CLOB: fields.emplace_back(meta::field_enum_tag<kind::clob>); break;
+            default: std::abort();
+        }
+    }
+    jogasaki::meta::record_meta meta{std::move(fields), std::move(nullities)};
+    return meta;
+}
+
+inline jogasaki::meta::record_meta create_record_meta(std::vector<executor::dto::common_column> const& columns) {
+    std::vector<meta::field_type> fields{};
+    boost::dynamic_bitset<std::uint64_t> nullities;
+    for(std::size_t i=0, n=columns.size(); i<n; ++i) {
+        auto& c = columns[i];
+        bool nullable = ! c.nullable_.has_value() || c.nullable_.value(); // currently assume nullable if no info. provided
+        meta::field_type field{};
+        nullities.push_back(nullable);
+        switch(c.atom_type_) {
+            using kind = meta::field_type_kind;
+            using atom_type = executor::dto::common_column::atom_type;
+            case atom_type::boolean: fields.emplace_back(meta::field_enum_tag<kind::boolean>); break;
+            case atom_type::int4: fields.emplace_back(meta::field_enum_tag<kind::int4>); break;
+            case atom_type::int8: fields.emplace_back(meta::field_enum_tag<kind::int8>); break;
+            case atom_type::float4: fields.emplace_back(meta::field_enum_tag<kind::float4>); break;
+            case atom_type::float8: fields.emplace_back(meta::field_enum_tag<kind::float8>); break;
+            case atom_type::decimal: {
+                auto p = c.precision_.has_value() ?
+                    (! executor::dto::is_arbitrary(c.precision_.value()) ? std::optional<std::size_t>{std::get<std::uint32_t>(c.precision_.value())} : std::nullopt) :
+                    std::nullopt;
+                auto s = c.scale_.has_value() ?
+                    (! executor::dto::is_arbitrary(c.scale_.value()) ? std::optional<std::size_t>{std::get<std::uint32_t>(c.scale_.value())} : std::nullopt) :
+                    std::nullopt;
+                fields.emplace_back(std::make_shared<meta::decimal_field_option>(p, s));
+                break;
+            }
+            case atom_type::character: {
+                // if varying info is not provided, assume it is non varying - this is to test varying=true is passed correctly
+                auto varying = c.varying_.has_value() && c.varying_.has_value();
+                auto length = c.length_.has_value() ?
+                    (! executor::dto::is_arbitrary(c.length_.value()) ? std::optional<std::size_t>{std::get<std::uint32_t>(c.length_.value())} : std::nullopt) :
+                    std::nullopt;
+                fields.emplace_back(std::make_shared<meta::character_field_option>(varying, length));
+                break;
+            }
+            case atom_type::octet: {
+                // if varying info is not provided, assume it is non varying - this is to test varying=true is passed correctly
+                auto varying = c.varying_.has_value() && c.varying_.has_value();
+                auto length = c.length_.has_value() ?
+                    (! executor::dto::is_arbitrary(c.length_.value()) ? std::optional<std::size_t>{std::get<std::uint32_t>(c.length_.value())} : std::nullopt) :
+                    std::nullopt;
+                fields.emplace_back(std::make_shared<meta::octet_field_option>(varying, length));
+                break;
+            }
+            case atom_type::date: fields.emplace_back(meta::field_enum_tag<kind::date>); break;
+            case atom_type::time_of_day: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>(false)); break;
+            case atom_type::time_of_day_with_time_zone: fields.emplace_back(std::make_shared<meta::time_of_day_field_option>(true)); break;
+            case atom_type::time_point: fields.emplace_back(std::make_shared<meta::time_point_field_option>(false)); break;
+            case atom_type::time_point_with_time_zone: fields.emplace_back(std::make_shared<meta::time_point_field_option>(true)); break;
+            case atom_type::blob: fields.emplace_back(meta::field_enum_tag<kind::blob>); break;
+            case atom_type::clob: fields.emplace_back(meta::field_enum_tag<kind::clob>); break;
             default: std::abort();
         }
     }
@@ -398,6 +459,7 @@ inline std::string encode_execute_query(api::transaction_handle tx_handle, std::
     return encode_execute_statement_or_query<sql::request::ExecuteQuery>(tx_handle, sql);
 }
 
+// deprecated
 template <class T>
 std::vector<colinfo> create_colinfo(T& meta) {
     std::vector<colinfo> cols{};
@@ -440,6 +502,18 @@ std::vector<colinfo> create_colinfo(T& meta) {
     return cols;
 }
 
+template <class T>
+std::vector<executor::dto::common_column> create_common_column(T& meta) {
+    std::vector<executor::dto::common_column> cols{};
+    std::size_t sz = meta.columns_size();
+    cols.reserve(sz);
+    for(auto&& c: meta.columns()) {
+        cols.emplace_back(executor::dto::from_proto(c));
+    }
+    return cols;
+}
+
+// deprecated
 inline std::pair<std::string, std::vector<colinfo>> decode_execute_query(std::string_view res) {
     sql::response::Response resp{};
     deserialize(res, resp);
@@ -455,6 +529,24 @@ inline std::pair<std::string, std::vector<colinfo>> decode_execute_query(std::st
     }
     auto meta = eq.record_meta();
     auto cols = create_colinfo(meta);
+    return {name, std::move(cols)};
+}
+
+inline std::pair<std::string, std::vector<executor::dto::common_column>> decode_execute_query2(std::string_view res) {
+    sql::response::Response resp{};
+    deserialize(res, resp);
+    if (! resp.has_execute_query())  {
+        LOG(ERROR) << "**** missing result_only **** ";
+        if (utils_raise_exception_on_error) std::abort();
+    }
+    auto& eq = resp.execute_query();
+    auto name = eq.name();
+    if (! eq.has_record_meta())  {
+        LOG(ERROR) << "**** missing record_meta **** ";
+        if (utils_raise_exception_on_error) std::abort();
+    }
+    auto meta = eq.record_meta();
+    auto cols = create_common_column(meta);
     return {name, std::move(cols)};
 }
 

@@ -68,6 +68,7 @@ using namespace jogasaki;
 using namespace jogasaki::utils;
 using namespace jogasaki::model;
 using namespace jogasaki::executor;
+using namespace jogasaki::executor::dto;
 using namespace jogasaki::scheduler;
 using namespace tateyama::api::server;
 namespace sql = jogasaki::proto::sql;
@@ -159,7 +160,7 @@ public:
     void test_query(
         std::string_view sql,
         api::transaction_handle tx_handle,
-        std::vector<sql::common::AtomType> const& column_types,
+        std::vector<dto::common_column> const& column_types,
         std::vector<bool> const& nullabilities,
         std::vector<mock::basic_record> const& expected,
         std::vector<std::string> const& exp_colnames
@@ -470,7 +471,7 @@ void service_api_test::test_statement(std::string_view sql, std::shared_ptr<requ
 void service_api_test::test_query(
     std::string_view sql,
     api::transaction_handle tx_handle,
-    std::vector<sql::common::AtomType> const& column_types,
+    std::vector<dto::common_column> const& column_types,
     std::vector<bool> const& nullabilities,
     std::vector<mock::basic_record> const& expected,
     std::vector<std::string> const& exp_colnames
@@ -485,15 +486,9 @@ void service_api_test::test_query(
     EXPECT_TRUE(res->all_released());
 
     {
-        auto [name, cols] = decode_execute_query(res->body_head_);
+        auto [name, cols] = decode_execute_query2(res->body_head_);
         std::cout << "name : " << name << std::endl;
-        ASSERT_EQ(column_types.size(), cols.size());
-
-        for(std::size_t i=0, n=cols.size(); i<n; ++i) {
-            EXPECT_EQ(column_types[i], cols[i].type_);
-            EXPECT_TRUE(! cols[i].nullable_.has_value());
-            EXPECT_EQ(exp_colnames[i], cols[i].name_);
-        }
+        ASSERT_EQ(column_types, cols);
         {
             ASSERT_TRUE(res->channel_);
             auto& ch = *res->channel_;
@@ -519,8 +514,8 @@ void service_api_test::test_query(std::string_view query) {
         query,
         tx_handle,
         {
-            sql::common::AtomType::INT8,
-            sql::common::AtomType::FLOAT8
+            {"C0", common_column::atom_type::int8},    // nullable is not sent now
+            {"C1", common_column::atom_type::float8},   // nullable is not sent now
         },
         {
             true,
@@ -833,13 +828,16 @@ TEST_F(service_api_test, char_varchar) {
 
     auto varchar_aster = meta::field_type{std::make_shared<meta::character_field_option>()};
 
+    std::vector<common_column> exp{
+        common_column{"c0", common_column::atom_type::character},  // nullable is not sent now
+        common_column{"c1", common_column::atom_type::character},  // nullable is not sent now
+    };
+    exp[0].varying_ = false;
+    exp[1].varying_ = true;
     test_query(
         "select c0, c1 from t",
         tx_handle,
-        {
-            sql::common::AtomType::CHARACTER,
-            sql::common::AtomType::CHARACTER,
-        },
+        exp,
         {
             true,
             true
@@ -2233,8 +2231,8 @@ TEST_F(service_api_test, long_tx_simple) {
             "select * from T0 where C0=1",
             tx_handle,
             {
-                sql::common::AtomType::INT8,
-                sql::common::AtomType::FLOAT8
+                {"C0", common_column::atom_type::int8},  // nullable is not sent now
+                {"C1", common_column::atom_type::float8},  // nullable is not sent now
             },
             {
                 true,
@@ -2657,8 +2655,8 @@ TEST_F(service_api_test, empty_result_set) {
         "select * from T0",
         tx_handle,
         {
-            sql::common::AtomType::INT8,
-            sql::common::AtomType::FLOAT8
+            {"C0", common_column::atom_type::int8},    // nullable is not sent now
+            {"C1", common_column::atom_type::float8},   // nullable is not sent now
         },
         {
             true,

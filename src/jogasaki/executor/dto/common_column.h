@@ -100,7 +100,7 @@ struct common_column {
     common_column(
         std::string name,
         atom_type type,
-        bool nullable,
+        std::optional<bool> nullable = std::nullopt,
         std::optional<std::variant<std::uint32_t, bool>> length = std::nullopt,
         std::optional<std::variant<std::uint32_t, bool>> precision = std::nullopt,
         std::optional<std::variant<std::uint32_t, bool>> scale = std::nullopt
@@ -188,5 +188,10 @@ struct common_column {
     }
 
 };
+
+inline bool is_arbitrary(std::optional<std::variant<std::uint32_t, bool>> const& opt) noexcept {
+    // use this function for opt with has_value()=true
+    return std::holds_alternative<bool>(*opt) && std::get<bool>(*opt);
+}
 
 } // namespace jogasaki::executor

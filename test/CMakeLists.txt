@@ -1,6 +1,7 @@
 file(GLOB TEST_COMMON_SRCS
         "main.cpp"
         "jogasaki/api/api_test_base.cpp"
+        "jogasaki/api/service_api_common.cpp"
         "jogasaki/mock/mock_task.cpp"
         "jogasaki/kvs_test_utils.cpp"
         "jogasaki/kvs/kvs_test_base.cpp"
@@ -13,6 +14,7 @@ target_link_libraries(test_common
         PRIVATE jogasaki-impl
         PRIVATE common
         PRIVATE common-impl
+        PRIVATE limestone
         )
 target_include_directories(test_common
         PRIVATE .

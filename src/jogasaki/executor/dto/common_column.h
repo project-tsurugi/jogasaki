@@ -189,7 +189,7 @@ struct common_column {
 
 };
 
-inline bool is_arbitrary(std::optional<std::variant<std::uint32_t, bool>> const& opt) noexcept {
+inline bool is_arbitrary(std::optional<std::variant<std::uint32_t, bool>> const& opt) {
     // use this function for opt with has_value()=true
     return std::holds_alternative<bool>(*opt) && std::get<bool>(*opt);
 }

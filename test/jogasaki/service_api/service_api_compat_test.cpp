@@ -48,7 +48,7 @@
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/command_utils.h>
 
-#include "api_test_base.h"
+#include "../api/api_test_base.h"
 
 namespace jogasaki::api {
 

@@ -1,7 +1,7 @@
 file(GLOB TEST_COMMON_SRCS
         "main.cpp"
         "jogasaki/api/api_test_base.cpp"
-        "jogasaki/api/service_api_common.cpp"
+        "jogasaki/service_api/service_api_common.cpp"
         "jogasaki/mock/mock_task.cpp"
         "jogasaki/kvs_test_utils.cpp"
         "jogasaki/kvs/kvs_test_base.cpp"
@@ -82,6 +82,7 @@ file(GLOB SRCS
         "jogasaki/plan/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/serializer/*.cpp"
+        "jogasaki/service_api/*.cpp"
         "jogasaki/storage/*.cpp"
         "jogasaki/kvs/*.cpp"
         "jogasaki/utils/*.cpp"

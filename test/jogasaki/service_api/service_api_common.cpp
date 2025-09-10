@@ -57,7 +57,7 @@
 #include "jogasaki/proto/sql/request.pb.h"
 #include "jogasaki/proto/sql/response.pb.h"
 
-#include "api_test_base.h"
+#include "../api/api_test_base.h"
 
 namespace jogasaki::api {
 

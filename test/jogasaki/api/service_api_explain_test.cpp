@@ -93,6 +93,7 @@ std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
 
 TEST_F(service_api_test, explain_insert) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
@@ -125,6 +126,7 @@ TEST_F(service_api_test, explain_insert) {
 }
 
 TEST_F(service_api_test, explain_query) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::uint64_t stmt_handle{};
 
     test_prepare(
@@ -185,6 +187,7 @@ TEST_F(service_api_test, explain_error_invalid_handle) {
 
 TEST_F(service_api_test, explain_error_invalid_handle_non_zero_handle) {
     // same as explain_error_invalid_handle, but with non-zero handle
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,
@@ -214,6 +217,7 @@ TEST_F(service_api_test, explain_error_invalid_handle_non_zero_handle) {
 }
 
 TEST_F(service_api_test, explain_error_missing_parameter) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::uint64_t stmt_handle{};
 
     test_prepare(
@@ -264,6 +268,7 @@ TEST_F(service_api_test, explain_unauthorized) {
 
 
 TEST_F(service_api_test, explain_by_text) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     auto s = encode_explain_by_text("select C0, C1 from T0 where C0 = 1 and C1 = 1.0");
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -305,6 +310,7 @@ TEST_F(service_api_test, explain_by_text_error_on_prepare) {
 
 TEST_F(service_api_test, explain_by_text_bypass_restriction) {
     // verify explain by text does not return on restricted features
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     auto s = encode_explain_by_text("select * from T0 union all select * from T0");
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();

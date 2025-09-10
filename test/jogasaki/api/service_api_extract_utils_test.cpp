@@ -89,6 +89,8 @@ std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
 
 TEST_F(service_api_test, extract_sql) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
+    execute_statement("create table T1 (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     {
         // non-prepared statement
         auto text = "insert into T0 values (1,1)"s;
@@ -135,6 +137,8 @@ TEST_F(service_api_test, extract_sql) {
 }
 
 TEST_F(service_api_test, extract_prepared_sql) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
+    execute_statement("create table T1 (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     {
         // prepared statement
         statement_handle stmt_handle{};
@@ -205,6 +209,7 @@ TEST_F(service_api_test, extract_sql_error) {
 
 TEST_F(service_api_test, extract_sql_failing_to_fetch_tx_id) {
     // depending on timing, transaction_context already disposed and empty tx_id is returned
+    execute_statement("create table T1 (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
 
     std::uint64_t stmt_handle{};
     auto text = "select * from T1"s;
@@ -233,6 +238,7 @@ TEST_F(service_api_test, extract_sql_failing_to_fetch_tx_id) {
 
 TEST_F(service_api_test, fail_to_extract_sql_on_different_session) {
     // statement prepared on session 100, transaction began on session 1000, extract requested on 1000
+    execute_statement("create table T1 (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
 
     session_id_ = 100;
     std::uint64_t stmt_handle{};
@@ -264,6 +270,7 @@ TEST_F(service_api_test, fail_to_extract_sql_on_different_session) {
 TEST_F(service_api_test, fail_to_extract_tx_on_different_session) {
     // tx began on session 100 but statement prepared on session 1000, extract requested on 1000
     // contrary to statement, this is not an error because depending on timing tx has been disposed and empty tx_id is returned
+    execute_statement("create table T1 (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     session_id_ = 100;
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);

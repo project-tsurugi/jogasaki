@@ -93,6 +93,7 @@ std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
 
 TEST_F(service_api_test, execute_dump_load) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_dump(files);
     test_statement("delete from T0");
@@ -114,6 +115,7 @@ TEST_F(service_api_test, execute_dump_load) {
 }
 
 TEST_F(service_api_test, execute_dump_load_non_tx) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_dump(files);
     test_statement("delete from T0");
@@ -136,11 +138,13 @@ TEST_F(service_api_test, execute_dump_load_non_tx) {
 
 TEST_F(service_api_test, dump_bad_path) {
     // check if error code is returned correctly
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_dump(files, "/dummy_path", error_code::sql_execution_exception);
 }
 
 TEST_F(service_api_test, dump_error_with_query_result) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     // test if error in the middle of query processing is handled correctly
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
     test_statement("insert into T0(C0, C1) values (2, 0.0)");
@@ -195,12 +199,14 @@ TEST_F(service_api_test, dump_error_with_query_result) {
 
 TEST_F(service_api_test, load_no_file) {
     // no file is specified - success
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_load(true, error_code::none);
 }
 
 TEST_F(service_api_test, DISABLED_load_no_file_non_tx) {
     // no file is specified - success
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_load(false, error_code::none);
 }
@@ -209,6 +215,7 @@ TEST_F(service_api_test, load_empty_file_name) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_load(true, error_code::sql_execution_exception, "");
 }
@@ -217,6 +224,7 @@ TEST_F(service_api_test, load_empty_file_name_non_tx) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_load(false, error_code::load_file_exception, "");
 }
@@ -225,6 +233,7 @@ TEST_F(service_api_test, load_missing_files) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_load(true, error_code::sql_execution_exception, "dummy1.parquet", "dummy2.parquet");
 }
@@ -232,12 +241,14 @@ TEST_F(service_api_test, load_missing_files_non_tx) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory has problem aborting tx from different threads";
     }
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     test_load(true, error_code::sql_execution_exception, "dummy1.parquet", "dummy2.parquet");
 }
 
 TEST_F(service_api_test, tx_load_invalid_handle) {
     // verify error returned from transactional load for invalid statement handle
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     std::uint64_t stmt_handle{};
     test_prepare(
@@ -252,6 +263,7 @@ TEST_F(service_api_test, tx_load_invalid_handle) {
 
 TEST_F(service_api_test, non_tx_load_invalid_handle) {
     // verify error returned from non-transactional load for invalid statement handle
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::vector<std::string> files{};
     std::uint64_t stmt_handle{};
     test_prepare(

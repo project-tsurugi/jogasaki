@@ -144,8 +144,9 @@ TEST_F(service_api_test, error_on_rollback) {
 }
 
 TEST_F(service_api_test, prepare_and_dispose) {
+    execute_statement("create table t (c0 int primary key)");
     std::uint64_t handle{};
-    test_prepare(handle, "select * from T1");
+    test_prepare(handle, "select * from t");
     test_dispose_prepare(handle);
 }
 
@@ -191,11 +192,13 @@ TEST_F(service_api_test, error_on_dispose) {
 }
 
 TEST_F(service_api_test, execute_statement_and_query) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
     test_query();
 }
 
 TEST_F(service_api_test, execute_prepared_statement_and_query) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
@@ -278,6 +281,7 @@ TEST_F(service_api_test, execute_statement_and_query_multi_thread) {
     if (jogasaki::kvs::implementation_id() == "memory") {
         GTEST_SKIP() << "jogasaki-memory causes problem accessing from multiple threads";
     }
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::shared_ptr<error::error_info> p{};
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
 
@@ -344,6 +348,7 @@ TEST_F(service_api_test, statement_unauthorized) {
 }
 
 TEST_F(service_api_test, data_types) {
+    execute_statement("create table T1 (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
@@ -476,6 +481,7 @@ TEST_F(service_api_test, char_varchar) {
 }
 
 TEST_F(service_api_test, decimals) {
+    execute_statement("create table TDECIMALS (K0 decimal(3,0), K1 decimal(5,3), K2 decimal(10,1), C0 decimal(3,0), C1 decimal(5,3), C2 decimal(10,1), primary key(K0, K1, K2))");
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
@@ -588,6 +594,7 @@ TEST_F(service_api_test, decimals) {
 }
 
 TEST_F(service_api_test, temporal_types) {
+    execute_statement("create table TTEMPORALS (K0 date, K1 time, K2 time with time zone, K3 timestamp, K4 timestamp with time zone, C0 date, C1 time, C2 time with time zone, C3 timestamp, C4 timestamp with time zone, primary key(K0, K1, K2, K3, K4))");
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
@@ -1252,11 +1259,13 @@ TEST_F(service_api_test, invalid_stmt_on_execute_prepared_statement_or_query) {
 }
 
 TEST_F(service_api_test, execute_statement_as_query) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     execute_statement_as_query("insert into T0(C0, C1) values (1, 10.0)");
     execute_statement_as_query("update T0 set C1=20.0 where C0=1");
 }
 
 TEST_F(service_api_test, execute_query_as_statement) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     test_statement("insert into T0(C0, C1) values (1, 10.0)");
     test_statement("insert into T0(C0, C1) values (2, 20.0)");
     test_statement("insert into T0(C0, C1) values (3, 30.0)");
@@ -1264,6 +1273,7 @@ TEST_F(service_api_test, execute_query_as_statement) {
 }
 
 TEST_F(service_api_test, null_host_variable) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     std::uint64_t stmt_handle{};
@@ -1304,6 +1314,8 @@ TEST_F(service_api_test, null_host_variable) {
 }
 
 TEST_F(service_api_test, begin_long_tx) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
+    execute_statement("create table T1 (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     api::transaction_handle tx_handle{};
     {
         test_begin(tx_handle, false, true, {"T0", "T1"}, "mylabel");
@@ -1316,6 +1328,7 @@ TEST_F(service_api_test, begin_long_tx) {
 }
 
 TEST_F(service_api_test, long_tx_simple) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     api::transaction_handle tx_handle{};
     {
         test_begin(tx_handle, false, true, {"T0"});
@@ -1345,6 +1358,7 @@ TEST_F(service_api_test, execute_ddl) {
 }
 
 TEST_F(service_api_test, empty_result_set) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     test_query(
@@ -1616,6 +1630,7 @@ TEST_F(service_api_test, error_with_unsupported_query) {
 }
 
 TEST_F(service_api_test, extract_sql_info) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     global::config_pool()->enable_session_store(true);
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
@@ -1638,6 +1653,7 @@ TEST_F(service_api_test, extract_sql_info) {
 }
 
 TEST_F(service_api_test, extract_sql_info_missing_statement) {
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     api::transaction_handle tx_handle{};
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
 
@@ -1661,6 +1677,7 @@ TEST_F(service_api_test, extract_sql_info_missing_statement) {
 
 TEST_F(service_api_test, extract_sql_prepared_on_different_session) {
     // verify prepared statement and tx that are associated on session 1000 can be extracted on session 2000
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     global::config_pool()->enable_session_store(true);
     auto text = "select C0, C1 from T0 where C0 = 1 and C1 = 1.0"s;
     session_id_ = 1000;
@@ -1714,6 +1731,7 @@ TEST_F(service_api_test, use_tx_on_different_session) {
 
 TEST_F(service_api_test, statement_on_different_session) {
     // verify handle is not usable on different session
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     global::config_pool()->enable_session_store(true);
     session_id_ = 1000;
     std::uint64_t stmt_handle{};
@@ -1744,6 +1762,7 @@ TEST_F(service_api_test, statement_on_different_session) {
 
 TEST_F(service_api_test, disposing_statement_twice) {
     // verify there is no error returned when diposing the invalid statement handle
+    execute_statement("create table T0 (C0 bigint primary key, C1 double)");
     std::uint64_t stmt_handle{};
     test_prepare(
         stmt_handle,

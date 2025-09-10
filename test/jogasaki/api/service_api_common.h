@@ -112,10 +112,6 @@ public:
         service_ = std::make_shared<jogasaki::api::impl::service>(c, db_.get());
         db_->start();
 
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
-
         utils::utils_raise_exception_on_error = true;
         temporary_.prepare();
         datastore::get_datastore(true); // in case mixing mock/prod datastore

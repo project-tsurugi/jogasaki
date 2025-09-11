@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "plugin_api.h"
+#include "enum_types.h"
 #include "generic_record.h"
 #include "generic_record_impl.h"
 #include <iostream>
@@ -115,24 +116,30 @@ void fetch_and_emplace(std::vector<plugin::udf::NativeValue>& result, FetchFunc&
 
 } // anonymous namespace
 
+// @ see  https://protobuf.dev/programming-guides/proto3/#scalar
 std::vector<plugin::udf::NativeValue> cursor_to_native_values(
     plugin::udf::generic_record_impl& response,
     const std::vector<plugin::udf::column_descriptor*>& cols) {
-
     std::vector<plugin::udf::NativeValue> result;
     if (auto cursor = response.cursor()) {
         for (const auto* col : cols) {
             switch (col->type_kind()) {
+                case type_kind_type::SFIXED4:
                 case type_kind_type::INT4:
+                case type_kind_type::SINT4:
                     fetch_and_emplace(result, [&] { return cursor->fetch_int4(); });
                     break;
+                case type_kind_type::SFIXED8:
                 case type_kind_type::INT8:
+                case type_kind_type::SINT8:
                     fetch_and_emplace(result, [&] { return cursor->fetch_int8(); });
                     break;
                 case type_kind_type::UINT4:
+                case type_kind_type::FIXED4:
                     fetch_and_emplace(result, [&] { return cursor->fetch_uint4(); });
                     break;
                 case type_kind_type::UINT8:
+                case type_kind_type::FIXED8:
                     fetch_and_emplace(result, [&] { return cursor->fetch_uint8(); });
                     break;
                 case type_kind_type::FLOAT4:

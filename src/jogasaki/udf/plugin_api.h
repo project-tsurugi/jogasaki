@@ -16,40 +16,14 @@
 #pragma once
 #include "generic_record.h"
 #include "generic_record_impl.h"
+#include "enum_types.h"
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
+
 namespace plugin::udf {
-enum class function_kind_type {
-    Unary,
-    ClientStreaming,
-    ServerStreaming,
-    BidirectionalStreaming,
-};
-// @see
-// https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto#L243
-enum class type_kind_type {
-    FLOAT8,
-    FLOAT4,
-    INT8,
-    UINT8,
-    INT4,
-    FIXED8,
-    FIXED4,
-    BOOL,
-    STRING,
-    GROUP,
-    MESSAGE,
-    BYTES,
-    UINT4,
-    ENUM,
-    SFIXED4,
-    SFIXED8,
-    SINT4,
-    SINT8,
-};
 
 [[nodiscard]] std::string to_string(function_kind_type kind);
 [[nodiscard]] std::string to_string(type_kind_type kind);

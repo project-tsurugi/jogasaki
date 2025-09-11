@@ -147,29 +147,30 @@ void fill_request_with_args(plugin::udf::generic_record_impl& request,
     sequence_view<data::any> args, const std::vector<plugin::udf::column_descriptor*>& columns) {
 
     for (std::size_t i = 0; i < columns.size(); ++i) {
-        const auto& src = args[i];
+        const auto& type = columns[i]->type_kind();
+        const auto& src  = args[i];
         plugin::udf::NativeValue val;
         switch (src.type_index()) {
             case data::any::index<runtime_t<kind::int4>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::int4>>()};
+                val = plugin::udf::NativeValue{src.to<runtime_t<kind::int4>>(), type};
                 break;
             case data::any::index<runtime_t<kind::int8>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::int8>>()};
+                val = plugin::udf::NativeValue{src.to<runtime_t<kind::int8>>(), type};
                 break;
             case data::any::index<runtime_t<kind::float4>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::float4>>()};
+                val = plugin::udf::NativeValue{src.to<runtime_t<kind::float4>>(), type};
                 break;
             case data::any::index<runtime_t<kind::float8>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::float8>>()};
+                val = plugin::udf::NativeValue{src.to<runtime_t<kind::float8>>(), type};
                 break;
             case data::any::index<accessor::binary>: {
                 auto bin = src.to<runtime_t<kind::octet>>();
-                val      = plugin::udf::NativeValue{static_cast<std::string>(bin)};
+                val      = plugin::udf::NativeValue{static_cast<std::string>(bin), type};
                 break;
             }
             case data::any::index<accessor::text>: {
                 auto ch = src.to<runtime_t<kind::character>>();
-                val     = plugin::udf::NativeValue{static_cast<std::string>(ch)};
+                val     = plugin::udf::NativeValue{static_cast<std::string>(ch), type};
                 break;
             }
             default:

@@ -110,16 +110,25 @@ void add_arg_value(generic_record_impl& rec, const NativeValue& v) {
         rec.add_string_null();
         return;
     }
-
     std::visit(
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, bool>) {
                 rec.add_bool(arg);
             } else if constexpr (std::is_same_v<T, std::int32_t>) {
-                rec.add_int4(arg);
+                if (v.kind() == type_kind_type::INT4 || v.kind() == type_kind_type::SFIXED4 ||
+                    v.kind() == type_kind_type::SINT4) {
+                    rec.add_int4(arg);
+                } else {
+                    rec.add_uint4(arg);
+                }
             } else if constexpr (std::is_same_v<T, std::int64_t>) {
-                rec.add_int8(arg);
+                if (v.kind() == type_kind_type::INT8 || v.kind() == type_kind_type::SFIXED8 ||
+                    v.kind() == type_kind_type::SINT8) {
+                    rec.add_int8(arg);
+                } else {
+                    rec.add_uint8(arg);
+                }
             } else if constexpr (std::is_same_v<T, std::uint32_t>) {
                 rec.add_uint4(arg);
             } else if constexpr (std::is_same_v<T, std::uint64_t>) {

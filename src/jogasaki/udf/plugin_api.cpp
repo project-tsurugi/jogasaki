@@ -106,9 +106,10 @@ std::vector<NativeValue> column_to_native_values(const std::vector<column_descri
 namespace {
 
 template <typename FetchFunc>
-void fetch_and_emplace(std::vector<plugin::udf::NativeValue>& result, FetchFunc&& fetch) {
+void fetch_and_emplace(
+    std::vector<plugin::udf::NativeValue>& result, type_kind_type kind, FetchFunc&& fetch) {
     if (auto val = std::forward<FetchFunc>(fetch)()) {
-        result.emplace_back(*val);
+        result.emplace_back(*val, kind);
     } else {
         result.emplace_back();
     }
@@ -123,37 +124,38 @@ std::vector<plugin::udf::NativeValue> cursor_to_native_values(
     std::vector<plugin::udf::NativeValue> result;
     if (auto cursor = response.cursor()) {
         for (const auto* col : cols) {
-            switch (col->type_kind()) {
+            auto type_kind = col->type_kind();
+            switch (type_kind) {
                 case type_kind_type::SFIXED4:
                 case type_kind_type::INT4:
                 case type_kind_type::SINT4:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_int4(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_int4(); });
                     break;
                 case type_kind_type::SFIXED8:
                 case type_kind_type::INT8:
                 case type_kind_type::SINT8:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_int8(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_int8(); });
                     break;
                 case type_kind_type::UINT4:
                 case type_kind_type::FIXED4:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_uint4(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_uint4(); });
                     break;
                 case type_kind_type::UINT8:
                 case type_kind_type::FIXED8:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_uint8(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_uint8(); });
                     break;
                 case type_kind_type::FLOAT4:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_float(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_float(); });
                     break;
                 case type_kind_type::FLOAT8:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_double(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_double(); });
                     break;
                 case type_kind_type::BOOL:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_bool(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_bool(); });
                     break;
                 case type_kind_type::STRING:
                 case type_kind_type::BYTES:
-                    fetch_and_emplace(result, [&] { return cursor->fetch_string(); });
+                    fetch_and_emplace(result, type_kind, [&] { return cursor->fetch_string(); });
                     break;
 
                 case type_kind_type::GROUP:

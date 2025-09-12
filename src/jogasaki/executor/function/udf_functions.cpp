@@ -112,6 +112,7 @@ std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind_type
 }
 data::any native_to_any(const plugin::udf::NativeValue& nv, evaluator_context& ctx) {
     if (auto opt = nv.value(); opt) {
+
         return std::visit(
             [&](auto&& val) -> data::any {
                 using T = std::decay_t<decltype(val)>;
@@ -132,6 +133,10 @@ data::any native_to_any(const plugin::udf::NativeValue& nv, evaluator_context& c
                 } else if constexpr (std::is_same_v<T, double>) {
                     return data::any{std::in_place_type<runtime_t<kind::float8>>, val};
                 } else if constexpr (std::is_same_v<T, std::string>) {
+                    if (nv.kind() == plugin::udf::type_kind_type::BYTES) {
+                        return data::any{std::in_place_type<runtime_t<kind::octet>>,
+                            runtime_t<kind::octet>{ctx.resource(), val}};
+                    }
                     return data::any{std::in_place_type<runtime_t<kind::character>>,
                         runtime_t<kind::character>{ctx.resource(), val}};
                 } else {

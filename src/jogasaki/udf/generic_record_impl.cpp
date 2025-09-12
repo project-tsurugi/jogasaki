@@ -114,10 +114,13 @@ void add_arg_value(generic_record_impl& rec, const NativeValue& v) {
         [&](auto&& arg) {
             using T = std::decay_t<decltype(arg)>;
             if constexpr (std::is_same_v<T, bool>) {
-                rec.add_bool(arg);
+                rec.add_bool(arg != 0);
             } else if constexpr (std::is_same_v<T, std::int32_t>) {
-                if (v.kind() == type_kind_type::INT4 || v.kind() == type_kind_type::SFIXED4 ||
-                    v.kind() == type_kind_type::SINT4) {
+                if (v.kind() == type_kind_type::BOOL) {
+                    rec.add_bool(arg != 0);
+                } else if (v.kind() == type_kind_type::INT4 ||
+                           v.kind() == type_kind_type::SFIXED4 ||
+                           v.kind() == type_kind_type::SINT4) {
                     rec.add_int4(arg);
                 } else {
                     rec.add_uint4(arg);

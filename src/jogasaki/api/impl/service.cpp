@@ -1678,7 +1678,7 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, sql::resp
 template <class T>
 void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) {
     if(metadata == nullptr) return;
-    auto const& external_meta = static_cast<api::impl::record_meta const*>(metadata)->external_meta();
+    auto const& external_meta = static_cast<api::impl::record_meta const*>(metadata)->external_meta(); //NOLINT
     auto columns = executor::to_common_columns(*external_meta);
     for (auto&& c : columns) {
         *meta.add_columns() = executor::dto::to_proto(c);

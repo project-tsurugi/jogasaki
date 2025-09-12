@@ -151,6 +151,10 @@ void fill_request_with_args(plugin::udf::generic_record_impl& request,
         const auto& src  = args[i];
         plugin::udf::NativeValue val;
         switch (src.type_index()) {
+            case data::any::index<runtime_t<kind::boolean>>: {
+                val = plugin::udf::NativeValue{src.to<runtime_t<kind::boolean>>(), type};
+                break;
+            }
             case data::any::index<runtime_t<kind::int4>>:
                 val = plugin::udf::NativeValue{src.to<runtime_t<kind::int4>>(), type};
                 break;

@@ -160,7 +160,7 @@ TEST_F(service_api_test, data_types) {
                 {"C1", common_column::atom_type::int8},  // nullable is not sent now
                 {"C2", common_column::atom_type::float8},  // nullable is not sent now
                 {"C3", common_column::atom_type::float4},  // nullable is not sent now
-                {"C4", common_column::atom_type::character},  // nullable is not sent now
+                {"C4", common_column::atom_type::character, std::nullopt, 100u},  // nullable is not sent now
             };
             exp[4].varying_ = true;
             ASSERT_EQ(exp, cols);
@@ -170,8 +170,8 @@ TEST_F(service_api_test, data_types) {
                 auto m = create_record_meta(cols);
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(2, v.size());
-                auto exp1 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(1, 1, 1.0, 1.0, accessor::text{"1"sv});
-                auto exp2 = mock::create_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(2, 2, 2.0, 2.0, accessor::text{"2"sv});
+                auto exp1 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, std::forward_as_tuple(1, 1, 1.0, 1.0, accessor::text{"1"sv}));
+                auto exp2 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, std::forward_as_tuple(2, 2, 2.0, 2.0, accessor::text{"2"sv}));
                 EXPECT_EQ(exp1, v[0]);
                 EXPECT_EQ(exp2, v[1]);
             }
@@ -195,11 +195,9 @@ TEST_F(service_api_test, char_varchar) {
 
     test_begin(tx_handle);
 
-    auto varchar_aster = meta::field_type{std::make_shared<meta::character_field_option>()};
-
     std::vector<common_column> exp{
-        common_column{"c0", common_column::atom_type::character},  // nullable is not sent now
-        common_column{"c1", common_column::atom_type::character},  // nullable is not sent now
+        common_column{"c0", common_column::atom_type::character, std::nullopt, 10u},  // nullable is not sent now
+        common_column{"c1", common_column::atom_type::character, std::nullopt, 10u},  // nullable is not sent now
     };
     exp[0].varying_ = false;
     exp[1].varying_ = true;
@@ -214,7 +212,8 @@ TEST_F(service_api_test, char_varchar) {
         {
                 mock::typed_nullable_record<ft::character, ft::character>(
                 std::tuple{
-                    varchar_aster, varchar_aster
+                    meta::character_type(false, 10),
+                    meta::character_type(true, 10),
                 },
                 { accessor::text{"1234567890"}, accessor::text{"1234567890"},
                 }
@@ -291,12 +290,12 @@ TEST_F(service_api_test, decimals) {
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::vector<common_column> exp{
-                {"K0", common_column::atom_type::decimal},  // nullable is not sent now // no ps
-                {"K1", common_column::atom_type::decimal},  // nullable is not sent now // no ps
-                {"K2", common_column::atom_type::decimal},  // nullable is not sent now // no ps
-                {"C0", common_column::atom_type::decimal},  // nullable is not sent now // no ps
-                {"C1", common_column::atom_type::decimal},  // nullable is not sent now // no ps
-                {"C2", common_column::atom_type::decimal},  // nullable is not sent now // no ps
+                {"K0", common_column::atom_type::decimal, std::nullopt, std::nullopt, 3u, 0u},  // nullable is not sent now
+                {"K1", common_column::atom_type::decimal, std::nullopt, std::nullopt, 5u, 3u},  // nullable is not sent now
+                {"K2", common_column::atom_type::decimal, std::nullopt, std::nullopt, 10u, 1u},  // nullable is not sent now
+                {"C0", common_column::atom_type::decimal, std::nullopt, std::nullopt, 3u, 0u},  // nullable is not sent now
+                {"C1", common_column::atom_type::decimal, std::nullopt, std::nullopt, 5u, 3u},  // nullable is not sent now
+                {"C2", common_column::atom_type::decimal, std::nullopt, std::nullopt, 10u, 1u},  // nullable is not sent now
             };
             ASSERT_EQ(exp, cols);
             {
@@ -306,13 +305,9 @@ TEST_F(service_api_test, decimals) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                // currently result type of decimal has no precision/scale info.
-//                auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
-//                auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-//                auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
-                auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>()};
-                auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>()};
-                auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>()};
+                auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
+                auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
+                auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
                 EXPECT_EQ((mock::typed_nullable_record<
                     ft::decimal, ft::decimal, ft::decimal,
                     ft::decimal, ft::decimal, ft::decimal
@@ -645,8 +640,8 @@ TEST_F(service_api_test, binary_type) {
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::vector<common_column> exp{
-                {"C0", common_column::atom_type::octet},  // nullable is not sent now
-                {"C1", common_column::atom_type::octet},  // nullable is not sent now
+                {"C0", common_column::atom_type::octet, std::nullopt, 5u},  // nullable is not sent now
+                {"C1", common_column::atom_type::octet, std::nullopt, 5u},  // nullable is not sent now
             };
             exp[0].varying_ = true;
             exp[1].varying_ = false;
@@ -659,7 +654,7 @@ TEST_F(service_api_test, binary_type) {
                 ASSERT_EQ(1, v.size());
 
                 EXPECT_EQ((mock::typed_nullable_record<ft::octet, ft::octet>(
-                    std::tuple{meta::octet_type(true), meta::octet_type(true)}, // currently service.cpp layer does not handle varying=true/false and all octet columns are varying
+                    std::tuple{meta::octet_type(true, 5), meta::octet_type(false, 5)},
                     {accessor::binary{"\x01\x02\x03"}, accessor::binary{"\x04\x05\x06\x00\x00"}}
                 )), v[0]);
             }
@@ -727,7 +722,7 @@ TEST_F(service_api_test, long_binary_data) {
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::vector<common_column> exp{
-                {"C1", common_column::atom_type::octet},  // nullable is not sent now
+                {"C1", common_column::atom_type::octet, std::nullopt, true},  // nullable is not sent now
             };
             exp[0].varying_ = true;
             ASSERT_EQ(exp, cols);
@@ -739,7 +734,7 @@ TEST_F(service_api_test, long_binary_data) {
                 ASSERT_EQ(1, v.size());
 
                 EXPECT_EQ((mock::typed_nullable_record<ft::octet>(
-                    std::tuple{meta::octet_type(true)}, // currently service.cpp layer does not handle varying=true/false and all octet columns are varying
+                    std::tuple{meta::octet_type(true)},
                     {accessor::binary{long_str}}
                 )), v[0]);
             }

@@ -69,6 +69,7 @@
 #include <jogasaki/executor/describe.h>
 #include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/to_common_columns.h>
 #include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
 #include <jogasaki/executor/io/dump_config.h>
@@ -1677,83 +1678,10 @@ void details::set_metadata(jogasaki::api::record_meta const* metadata, sql::resp
 template <class T>
 void details::set_metadata(jogasaki::api::record_meta const* metadata, T& meta) {
     if(metadata == nullptr) return;
-    std::size_t n = metadata->field_count();
-    for (std::size_t i = 0; i < n; i++) {
-        auto column = meta.add_columns();
-        if(auto name = metadata->field_name(i); name.has_value()) {
-            column->set_name(std::string{*name});
-        }
-        auto& fld = metadata->at(i);
-        switch(fld.kind()) {
-            case jogasaki::api::field_type_kind::boolean:
-                column->set_atom_type(sql::common::AtomType::BOOLEAN);
-                break;
-            case jogasaki::api::field_type_kind::int4:
-                column->set_atom_type(sql::common::AtomType::INT4);
-                break;
-            case jogasaki::api::field_type_kind::int8:
-                column->set_atom_type(sql::common::AtomType::INT8);
-                break;
-            case jogasaki::api::field_type_kind::float4:
-                column->set_atom_type(sql::common::AtomType::FLOAT4);
-                break;
-            case jogasaki::api::field_type_kind::float8:
-                column->set_atom_type(sql::common::AtomType::FLOAT8);
-                break;
-            case jogasaki::api::field_type_kind::decimal:
-                column->set_atom_type(sql::common::AtomType::DECIMAL);
-                break;
-            case jogasaki::api::field_type_kind::character:
-                column->set_atom_type(sql::common::AtomType::CHARACTER);
-                if(auto const& o = fld.character_option()) {
-                    column->set_varying(o->varying());
-                }
-                break;
-            case jogasaki::api::field_type_kind::octet:
-                column->set_atom_type(sql::common::AtomType::OCTET);
-                if(auto const& o = fld.octet_option()) {
-                    column->set_varying(o->varying());
-                }
-                break;
-            case jogasaki::api::field_type_kind::date:
-                column->set_atom_type(sql::common::AtomType::DATE);
-                break;
-            case jogasaki::api::field_type_kind::time_of_day:
-                BOOST_ASSERT(fld.time_of_day_option() != nullptr);  //NOLINT
-                if(fld.time_of_day_option()->with_offset()) {
-                    column->set_atom_type(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE);
-                    break;
-                }
-                column->set_atom_type(sql::common::AtomType::TIME_OF_DAY);
-                break;
-            case jogasaki::api::field_type_kind::time_of_day_with_time_zone:
-                column->set_atom_type(sql::common::AtomType::TIME_OF_DAY_WITH_TIME_ZONE);
-                break;
-            case jogasaki::api::field_type_kind::time_point:
-                BOOST_ASSERT(fld.time_point_option() != nullptr);  //NOLINT
-                if(fld.time_point_option()->with_offset()) {
-                    column->set_atom_type(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE);
-                    break;
-                }
-                column->set_atom_type(sql::common::AtomType::TIME_POINT);
-                break;
-            case jogasaki::api::field_type_kind::time_point_with_time_zone:
-                column->set_atom_type(sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE);
-                break;
-            case jogasaki::api::field_type_kind::blob:
-                column->set_atom_type(sql::common::AtomType::BLOB);
-                break;
-            case jogasaki::api::field_type_kind::clob:
-                column->set_atom_type(sql::common::AtomType::CLOB);
-                break;
-            case jogasaki::api::field_type_kind::unknown:
-                column->set_atom_type(sql::common::AtomType::UNKNOWN);
-                break;
-            default:
-                LOG(ERROR) << log_location_prefix << "unsupported data type at field (" << i
-                           << "): " << metadata->at(i).kind();
-                break;
-        }
+    auto const& external_meta = static_cast<api::impl::record_meta const*>(metadata)->external_meta();
+    auto columns = executor::to_common_columns(*external_meta);
+    for (auto&& c : columns) {
+        *meta.add_columns() = executor::dto::to_proto(c);
     }
 }
 

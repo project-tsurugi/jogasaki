@@ -84,7 +84,7 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<executor::dto:
             }
             case atom_type::character: {
                 // if varying info is not provided, assume it is non varying - this is to test varying=true is passed correctly
-                auto varying = c.varying_.has_value() && c.varying_.has_value();
+                auto varying = c.varying_.has_value() && c.varying_.value();
                 auto length = c.length_.has_value() ?
                     (! executor::dto::is_arbitrary(c.length_.value()) ? std::optional<std::size_t>{std::get<std::uint32_t>(c.length_.value())} : std::nullopt) :
                     std::nullopt;
@@ -93,7 +93,7 @@ inline jogasaki::meta::record_meta create_record_meta(std::vector<executor::dto:
             }
             case atom_type::octet: {
                 // if varying info is not provided, assume it is non varying - this is to test varying=true is passed correctly
-                auto varying = c.varying_.has_value() && c.varying_.has_value();
+                auto varying = c.varying_.has_value() && c.varying_.value();
                 auto length = c.length_.has_value() ?
                     (! executor::dto::is_arbitrary(c.length_.value()) ? std::optional<std::size_t>{std::get<std::uint32_t>(c.length_.value())} : std::nullopt) :
                     std::nullopt;

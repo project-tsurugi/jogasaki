@@ -416,7 +416,7 @@ void service_api_test::test_dump(std::vector<std::string>& files, std::string_vi
         {
             auto [name, cols] = decode_execute_query(res->body_head_);
             std::vector<common_column> exp{
-                {"file_name", common_column::atom_type::character},  // nullable is not sent now
+                {"file_name", common_column::atom_type::character, std::nullopt, true},  // nullable is not sent now
             };
             exp[0].varying_ = true;
             ASSERT_EQ(exp, cols);

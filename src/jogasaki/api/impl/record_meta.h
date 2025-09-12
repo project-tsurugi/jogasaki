@@ -86,6 +86,12 @@ public:
      */
     [[nodiscard]] std::optional<std::string_view> field_name(field_index_type index) const noexcept override;
 
+    /**
+     * @brief accessor to the original external meta
+     * @return the external record meta
+     */
+    [[nodiscard]] maybe_shared_ptr<meta::external_record_meta> const& external_meta() const noexcept;
+
 private:
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     std::vector<impl::field_type> fields_{};

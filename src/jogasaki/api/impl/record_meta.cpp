@@ -57,5 +57,10 @@ maybe_shared_ptr<meta::record_meta> const& record_meta::meta() const noexcept {
 std::optional<std::string_view> record_meta::field_name(record_meta::field_index_type index) const noexcept {
     return meta_->field_name(index);
 }
+
+maybe_shared_ptr<meta::external_record_meta> const& record_meta::external_meta() const noexcept {
+    return meta_;
+}
+
 } // namespace
 

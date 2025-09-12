@@ -26,7 +26,7 @@
 
 namespace jogasaki::executor {
 
-std::vector<dto::common_column> to_common_columns(meta::external_record_meta const& meta) {
+std::vector<dto::common_column> to_common_columns(meta::external_record_meta const& meta) {  //NOLINT(readability-function-cognitive-complexity)
     using t = meta::field_type_kind;
     using atom_type = dto::common_column::atom_type;
     std::vector<dto::common_column> ret{};

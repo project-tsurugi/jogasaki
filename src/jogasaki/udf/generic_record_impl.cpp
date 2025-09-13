@@ -23,7 +23,16 @@
 #include <vector>
 namespace plugin::udf {
 
-void generic_record_impl::reset() { values_.clear(); }
+std::optional<error_info>& generic_record_impl::error() noexcept { return err_; }
+const std::optional<error_info>& generic_record_impl::error() const noexcept { return err_; }
+
+void generic_record_impl::reset() {
+    values_.clear();
+    err_ = std::nullopt;
+}
+void generic_record_impl::set_error(const error_info& status) {
+    err_ = error_info(status.code(), std::string(status.message()));
+}
 
 void generic_record_impl::add_bool(bool v) { values_.emplace_back(v); }
 void generic_record_impl::add_bool_null() { values_.emplace_back(std::monostate{}); }

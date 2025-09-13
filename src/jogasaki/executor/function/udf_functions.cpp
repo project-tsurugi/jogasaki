@@ -82,6 +82,8 @@ namespace jogasaki::executor::function {
 using executor::expr::evaluator_context;
 using takatori::util::sequence_view;
 using kind = meta::field_type_kind;
+using jogasaki::executor::expr::error;
+using jogasaki::executor::expr::error_kind;
 
 namespace {
 
@@ -218,6 +220,14 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
                         fill_request_with_args(request, args, input.columns());
                         grpc::ClientContext context;
                         client->call(context, {0, fn->function_index()}, request, response);
+                        // @see
+                        // https://github.com/grpc/grpc/blob/master/include/grpcpp/support/status_code_enum.h
+                        if (response.error()) {
+                            ctx.add_error({error_kind::unknown,
+                                "RPC failed: code=" + std::to_string(response.error()->code()) +
+                                    ", message=" + std::string(response.error()->message())});
+                            return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+                        }
                         std::vector<plugin::udf::NativeValue> output_values =
                             cursor_to_native_values(response, output.columns());
                         //  print_native_values(output_values);

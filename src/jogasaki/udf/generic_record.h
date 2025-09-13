@@ -19,10 +19,30 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <variant>
 
 namespace plugin::udf {
+
 // @see https://protobuf.dev/programming-guides/proto3/
+
+class error_info {
+  public:
+    using error_code_type = std::size_t;
+    ~error_info()         = default;
+    explicit error_info(error_code_type code, std::string msg)
+        : code_(code), message_(std::move(msg)) {}
+    error_info(const error_info&)                = default;
+    error_info(error_info&&) noexcept            = default;
+    error_info& operator=(const error_info&)     = default;
+    error_info& operator=(error_info&&) noexcept = default;
+    [[nodiscard]] error_code_type code() const noexcept { return code_; }
+    [[nodiscard]] std::string_view message() const noexcept { return message_; }
+
+  private:
+    error_code_type code_;
+    std::string message_;
+};
 class generic_record_cursor {
   public:
     generic_record_cursor()                                        = default;
@@ -77,6 +97,10 @@ class generic_record {
 
     virtual void add_string(std::string value) = 0;
     virtual void add_string_null()             = 0;
+
+    virtual void set_error(const error_info& status)                              = 0;
+    [[nodiscard]] virtual std::optional<error_info>& error() noexcept             = 0;
+    [[nodiscard]] virtual const std::optional<error_info>& error() const noexcept = 0;
 
     [[nodiscard]] virtual std::unique_ptr<generic_record_cursor> cursor() const = 0;
 };

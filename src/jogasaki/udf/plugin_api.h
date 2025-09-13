@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 #pragma once
+#include "enum_types.h"
 #include "generic_record.h"
 #include "generic_record_impl.h"
-#include "enum_types.h"
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
-
 
 namespace plugin::udf {
 
@@ -32,6 +31,7 @@ class column_descriptor {
   public:
     using index_type                                                    = std::size_t;
     virtual ~column_descriptor()                                        = default;
+    column_descriptor()                                                 = default;
     column_descriptor(const column_descriptor&)                         = delete;
     column_descriptor& operator=(const column_descriptor&)              = delete;
     column_descriptor(column_descriptor&&)                              = delete;
@@ -44,6 +44,7 @@ class column_descriptor {
 
 class record_descriptor {
   public:
+    record_descriptor()                                                                   = default;
     virtual ~record_descriptor()                                                          = default;
     record_descriptor(const record_descriptor&)                                           = delete;
     record_descriptor& operator=(const record_descriptor&)                                = delete;
@@ -55,6 +56,7 @@ class record_descriptor {
 
 class function_descriptor {
   public:
+    function_descriptor()                                      = default;
     using index_type                                           = std::size_t;
     virtual ~function_descriptor()                             = default;
     function_descriptor(const function_descriptor&)            = delete;
@@ -71,6 +73,7 @@ class function_descriptor {
 
 class service_descriptor {
   public:
+    service_descriptor()                                                 = default;
     using index_type                                                     = std::size_t;
     virtual ~service_descriptor()                                        = default;
     service_descriptor(const service_descriptor&)                        = delete;
@@ -84,6 +87,7 @@ class service_descriptor {
 
 class package_descriptor {
   public:
+    package_descriptor()                                                 = default;
     virtual ~package_descriptor()                                        = default;
     package_descriptor(const package_descriptor&)                        = delete;
     package_descriptor& operator=(const package_descriptor&)             = delete;

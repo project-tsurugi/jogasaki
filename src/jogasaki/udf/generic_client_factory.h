@@ -22,6 +22,7 @@
 namespace plugin::udf {
 class generic_client_factory {
   public:
+    generic_client_factory()                                         = default;
     virtual ~generic_client_factory()                                = default;
     generic_client_factory(const generic_client_factory&)            = delete;
     generic_client_factory& operator=(const generic_client_factory&) = delete;

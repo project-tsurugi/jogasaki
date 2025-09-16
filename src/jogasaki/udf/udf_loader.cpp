@@ -14,22 +14,23 @@
  * limitations under the License.
  */
 #include "udf_loader.h"
+#include "enum_types.h"
+#include "error_info.h"
 #include "generic_client_factory.h"
-
 #include "generic_record_impl.h"
 #include <dlfcn.h>
 #include <filesystem>
 #include <grpcpp/grpcpp.h>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
 namespace fs = std::filesystem;
 using namespace plugin::udf;
-void udf_loader::load(std::string_view dir_path) {
+load_result udf_loader::load(std::string_view dir_path) {
     fs::path path(dir_path);
-
     std::vector<fs::path> files_to_load;
     if (fs::is_regular_file(path) && path.extension() == ".so") {
         files_to_load.push_back(path);
@@ -40,8 +41,11 @@ void udf_loader::load(std::string_view dir_path) {
             }
         }
     } else {
-        std::cerr << "Plugin path is not valid or not a .so file: " << path << std::endl;
-        return;
+        return {load_status::NotRegularFileOrDir, std::string(dir_path),
+            "Path is neither a .so file nor a directory"};
+    }
+    if (files_to_load.empty()) {
+        return {load_status::NoSharedObjectsFound, std::string(dir_path), "No .so files found"};
     }
 
     for (const auto& file : files_to_load) {
@@ -50,13 +54,17 @@ void udf_loader::load(std::string_view dir_path) {
         void* handle    = dlopen(full_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
         const char* err = dlerror();
         if (!handle || err) {
-            std::cerr << "Failed to load " << full_path << ": " << (err ? err : "unknown error")
-                      << std::endl;
-            continue;
+            return {load_status::DLOpenFailed, full_path,
+                err ? err : "dlopen failed with unknown error"};
         }
         handles_.emplace_back(handle);
-        create_api_from_handle(handle);
+        auto res = create_api_from_handle(handle);
+        if (res.status() != load_status::OK) {
+            res.set_file(full_path);
+            return res;
+        }
     }
+    return {load_status::OK, "", ""};
 }
 
 void udf_loader::unload_all() {
@@ -66,8 +74,8 @@ void udf_loader::unload_all() {
     }
     handles_.clear();
 }
-void udf_loader::create_api_from_handle(void* handle) {
-    if (!handle) return;
+load_result udf_loader::create_api_from_handle(void* handle) {
+    if (!handle) { return {load_status::DLOpenFailed, "", "Invalid handle (nullptr)"}; }
 
     using create_api_func     = plugin_api* (*)();
     using create_factory_func = generic_client_factory* (*)(const char*);
@@ -75,30 +83,26 @@ void udf_loader::create_api_from_handle(void* handle) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* api_func = reinterpret_cast<create_api_func>(dlsym(handle, "create_plugin_api"));
     if (!api_func) {
-        std::cerr << "Failed to find symbol create_plugin_api\n";
-        return;
+        return {load_status::ApiSymbolMissing, "", "Symbol 'create_plugin_api' not found"};
     }
 
     auto api_ptr = std::unique_ptr<plugin_api>(api_func());
-    if (!api_ptr) {
-        std::cerr << "create_plugin_api returned nullptr\n";
-        return;
-    }
+    if (!api_ptr) { return {load_status::ApiInitFailed, "", "Failed to initialize plugin API"}; }
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(
         dlsym(handle, "tsurugi_create_generic_client_factory"));
     if (!factory_func) {
-        std::cerr << "Failed to find symbol tsurugi_create_generic_client_factory\n";
-        return;
+        return {load_status::FactorySymbolMissing, "",
+            "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
 
     auto factory_ptr = std::unique_ptr<generic_client_factory>(factory_func("Greeter"));
     if (!factory_ptr) {
-        std::cerr << "tsurugi_create_generic_client_factory returned nullptr\n";
-        return;
+        return {load_status::FactorySymbolMissing, "",
+            "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
-
     plugins_.emplace_back(api_ptr.release(), factory_ptr.release());
+    return {load_status::OK, "", ""};
 }
 
 const std::vector<std::tuple<plugin_api*, generic_client_factory*>>&

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include "error_info.h"
 #include "generic_client_factory.h"
 #include "plugin_api.h"
 #include "plugin_loader.h"
@@ -60,7 +61,7 @@ class udf_loader : public plugin_loader {
      *
      * @param dir_path Path to a plugin file or a directory containing plugins.
      */
-    void load(std::string_view dir_path) override;
+    [[nodiscard]] load_result load(std::string_view dir_path) override;
     /**
      * @brief Unloads all currently loaded plugins.
      *
@@ -80,7 +81,7 @@ class udf_loader : public plugin_loader {
   private:
     std::vector<void*> handles_;
     /** List of raw `dlopen()` handles for loaded plugins. */
-    void create_api_from_handle(void* handle);
+    [[nodiscard]] load_result create_api_from_handle(void* handle);
     /** List of loaded plugin API/factory pairs. */
     std::vector<std::tuple<plugin_api*, generic_client_factory*>> plugins_;
 };

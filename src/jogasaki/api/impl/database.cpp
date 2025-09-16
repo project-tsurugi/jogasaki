@@ -126,8 +126,10 @@
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/udf/generic_client.h>
+#include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/udf/plugin_loader.h>
+#include <jogasaki/udf/error_info.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/cancel_request.h>
@@ -394,27 +396,30 @@ void database::init() {
         *scalar_functions_,
         global::scalar_function_repository()
     );
-    loader_ = std::make_unique<plugin::udf::udf_loader>();
-    loader_->load(std::string(cfg_->loader_path()));
+    loader_     = std::make_unique<plugin::udf::udf_loader>();
+    auto result = loader_->load(std::string(cfg_->loader_path()));
+    if (result.status() == plugin::udf::load_status::OK) {
+        VLOG_LP(log_info) << "[gRPC] " << result.status_string()
+                          << " file: " << std::string(cfg_->loader_path()) << std::endl;
+    } else {
+        VLOG_LP(log_warning) << "[gRPC] " << result.status_string() << " file: " << result.file()
+                             << " defail: " << result.detail() << std::endl;
+    }
     auto plugins = (loader_)->get_plugins();
     for (const auto& plugin : plugins) {
         auto factory = std::get<1>(plugin);
-        if (!factory) {
-            VLOG_LP(log_info) << "[gRPC] Factory creation failed" << std::endl;
-        }
-        auto channel = grpc::CreateChannel(std::string(cfg_->grpc_url()), grpc::InsecureChannelCredentials());
+        if (!factory) { VLOG_LP(log_warning) << "[gRPC] Factory creation failed" << std::endl; }
+        auto channel =
+            grpc::CreateChannel(std::string(cfg_->grpc_url()), grpc::InsecureChannelCredentials());
         auto raw_client = factory->create(channel);
         if (!raw_client) {
-            VLOG_LP(log_info) << "[gRPC] generic_client creation failed" << std::endl;
+            VLOG_LP(log_warning) << "[gRPC] generic_client creation failed" << std::endl;
         }
         plugins_.emplace_back(std::shared_ptr<plugin::udf::plugin_api>(std::get<0>(plugin)),
             std::shared_ptr<plugin::udf::generic_client>(raw_client));
     }
     executor::function::add_udf_functions(
-        *scalar_functions_,
-        global::scalar_function_repository(),
-	    plugins_
-    );
+        *scalar_functions_, global::scalar_function_repository(), plugins_);
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,

@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include "enum_types.h"
 #include <cstdint>
 #include <grpcpp/support/status_code_enum.h>
 #include <string>
@@ -39,6 +40,29 @@ class error_info {
   private:
     error_code_type code_{grpc::StatusCode::OK};
     std::string message_{};
+};
+class load_result {
+  public:
+    load_result(load_status s, std::string f, std::string d) noexcept
+        : status_(s), file_(std::move(f)), detail_(std::move(d)) {}
+    load_result()                                  = delete;
+    ~load_result()                                 = default;
+    load_result(const load_result&)                = default;
+    load_result(load_result&&) noexcept            = default;
+    load_result& operator=(const load_result&)     = default;
+    load_result& operator=(load_result&&) noexcept = default;
+    [[nodiscard]] load_status status() const noexcept;
+    [[nodiscard]] std::string file() const noexcept;
+    [[nodiscard]] std::string detail() const noexcept;
+    void set_status(load_status s) noexcept;
+    void set_file(std::string f) noexcept;
+    void set_detail(std::string d) noexcept;
+    [[nodiscard]] std::string status_string() const noexcept;
+
+  private:
+    load_status status_{load_status::OK};
+    std::string file_{};
+    std::string detail_{};
 };
 
 } // namespace plugin::udf

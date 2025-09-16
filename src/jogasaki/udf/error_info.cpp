@@ -46,4 +46,25 @@ std::string error_info::code_string() const noexcept {
     }
 }
 
+[[nodiscard]] load_status load_result::status() const noexcept { return status_; }
+[[nodiscard]] std::string load_result::file() const noexcept { return file_; }
+[[nodiscard]] std::string load_result::detail() const noexcept { return detail_; }
+void load_result::set_status(load_status s) noexcept { status_ = s; }
+void load_result::set_file(std::string f) noexcept { file_ = std::move(f); }
+void load_result::set_detail(std::string d) noexcept { detail_ = std::move(d); }
+
+[[nodiscard]] std::string load_result::status_string() const noexcept {
+    switch (status_) {
+        case load_status::OK: return "OK";
+        case load_status::PathNotFound: return "PathNotFound";
+        case load_status::NotRegularFileOrDir: return "NotRegularFileOrDir";
+        case load_status::NoSharedObjectsFound: return "NoSharedObjectsFound";
+        case load_status::DLOpenFailed: return "DLOpenFailed";
+        case load_status::ApiSymbolMissing: return "ApiSymbolMissing";
+        case load_status::ApiInitFailed: return "ApiInitFailed";
+        case load_status::FactorySymbolMissing: return "FactorySymbolMissing";
+        case load_status::FactoryCreationFailed: return "FactoryCreationFailed";
+        default: return "UnknownStatus";
+    }
+}
 } // namespace plugin::udf

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include "error_info.h"
 #include "generic_client_factory.h"
 #include "plugin_api.h"
 #include <string_view>
@@ -22,14 +23,14 @@
 namespace plugin::udf {
 class plugin_loader {
   public:
-    plugin_loader()                                = default;
-    plugin_loader(const plugin_loader&)            = delete;
-    plugin_loader& operator=(const plugin_loader&) = delete;
-    plugin_loader(plugin_loader&&)                 = delete;
-    plugin_loader& operator=(plugin_loader&&)      = delete;
-    virtual ~plugin_loader()                       = default;
-    virtual void load(std::string_view dir_path)   = 0;
-    virtual void unload_all()                      = 0;
+    plugin_loader()                                                   = default;
+    plugin_loader(const plugin_loader&)                               = delete;
+    plugin_loader& operator=(const plugin_loader&)                    = delete;
+    plugin_loader(plugin_loader&&)                                    = delete;
+    plugin_loader& operator=(plugin_loader&&)                         = delete;
+    virtual ~plugin_loader()                                          = default;
+    [[nodiscard]] virtual load_result load(std::string_view dir_path) = 0;
+    virtual void unload_all()                                         = 0;
     [[nodiscard]] virtual const std::vector<std::tuple<plugin_api*, generic_client_factory*>>&
     get_plugins() const noexcept = 0;
 };

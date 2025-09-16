@@ -44,4 +44,16 @@ enum class type_kind_type {
     SINT4,
     SINT8,
 };
+
+enum class load_status {
+    OK,
+    PathNotFound,
+    NotRegularFileOrDir,
+    NoSharedObjectsFound,
+    DLOpenFailed,
+    ApiSymbolMissing,
+    ApiInitFailed,
+    FactorySymbolMissing,
+    FactoryCreationFailed
+};
 } // namespace plugin::udf

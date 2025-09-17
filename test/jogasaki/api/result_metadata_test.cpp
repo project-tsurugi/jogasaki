@@ -40,12 +40,13 @@
 #include "api_test_base.h"
 
 namespace jogasaki::api {
+
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 using namespace std::chrono_literals;
 
 /**
- * @brief test database api
+ * @brief test result set metadata returned for query/explain
  */
 class result_metadata_test :
     public ::testing::Test,
@@ -222,7 +223,7 @@ TEST_F(result_metadata_test, octets) {
 }
 
 TEST_F(result_metadata_test, concat_octets) {
-    // same as concat_chars except uisng octets
+    // same as concat_chars except using octets
     execute_statement("create table t (c0 binary(5), c1 binary(3), c2 varbinary(5), c3 varbinary(3), c4 varbinary(*))");
     {
         // concat sums lengths and becomes varying
@@ -340,6 +341,28 @@ TEST_F(result_metadata_test, calculate_decimals) {
         };
         ASSERT_EQ(exp, columns);
     }
+}
+
+TEST_F(result_metadata_test, no_description_in_result_metadata) {
+    // verify no description in column
+    auto table_ddl = R"(
+        /**
+        * Example table t.
+        * This is a test table.
+        */
+        CREATE TABLE t (
+        /** c0 key column */
+        c0 INT PRIMARY KEY
+        )
+    )";
+    execute_statement(table_ddl);
+    auto meta = get_result_meta("select c0 from t");
+    ASSERT_TRUE(meta);
+    auto columns = executor::to_common_columns(*meta);
+    std::vector<executor::dto::common_column> exp{
+            {"c0", atom_type::int4, std::nullopt}
+    };
+    ASSERT_EQ(exp, columns);
 }
 
 }

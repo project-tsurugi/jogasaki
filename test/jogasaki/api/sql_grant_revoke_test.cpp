@@ -313,6 +313,26 @@ TEST_F(sql_grant_revoke_test, revoke_self) {
     EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
 }
 
+TEST_F(sql_grant_revoke_test, revoke_all) {
+    // revoke all privileges remove not only control but also any other privileges
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant select, insert, update, delete on table t to user1");
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert, action_kind::update, action_kind::delete_}), users_actions.find_user_actions("user1"));
+    execute_statement("revoke all privileges on table t from user1");
+    EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+}
+
+TEST_F(sql_grant_revoke_test, revoke_all_public) {
+    // revoke all privileges remove not only control but also any other privileges
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant select, insert, update, delete on table t to public");
+    auto [users_actions, public_actions] = actions("t");
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert, action_kind::update, action_kind::delete_}), public_actions);
+    execute_statement("revoke all privileges on table t from public");
+    EXPECT_EQ((action_set{}), public_actions);
+}
+
 TEST_F(sql_grant_revoke_test, missing_table) {
     test_stmt_err("grant select on table t to user1", error_code::symbol_analyze_exception);
     test_stmt_err("revoke select on table t from user1", error_code::symbol_analyze_exception);

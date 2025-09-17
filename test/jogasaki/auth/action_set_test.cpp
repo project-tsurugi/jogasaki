@@ -80,8 +80,8 @@ TEST(action_set_test, remove) {
     EXPECT_TRUE(! s.action_allowed(action_kind::select));
 }
 
-TEST(action_set_test, control) {
-    // control is special case in that
+TEST(action_set_test, add_control) {
+    // adding control is special case in that
     // - control implies all actions and adding it deletes any others
     // - adding other actions where control is present does nothing
     action_set s{};
@@ -119,6 +119,21 @@ TEST(action_set_test, control) {
     EXPECT_TRUE(! s.action_allowed(action_kind::insert));
     EXPECT_TRUE(! s.action_allowed(action_kind::update));
     EXPECT_TRUE(! s.action_allowed(action_kind::delete_));
+}
+
+TEST(action_set_test, remove_control) {
+    // removing control is special case in that
+    // - removing control implies deleting any others
+    action_set s{};
+    s.add_action(action_kind::select);
+    s.add_action(action_kind::insert);
+    s.add_action(action_kind::update);
+    s.add_action(action_kind::delete_);
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert, action_kind::update, action_kind::delete_}), s);
+
+    ASSERT_NO_THROW(s.remove_action(action_kind::control)); // removing control also remove select
+    EXPECT_EQ(action_set{}, s);
+    EXPECT_TRUE(s.empty());
 }
 
 TEST(action_set_test, allows) {

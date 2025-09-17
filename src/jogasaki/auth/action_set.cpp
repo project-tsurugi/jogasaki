@@ -47,6 +47,10 @@ void action_set::add_actions(action_set const& set) {
 }
 
 void action_set::remove_action(action_kind arg) {
+    if (arg == action_kind::control) {
+        actions_.clear();
+        return;
+    }
     actions_.erase(arg);
 }
 

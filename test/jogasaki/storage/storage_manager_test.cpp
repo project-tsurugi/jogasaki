@@ -50,6 +50,8 @@ using namespace testing;
 using namespace ::yugawara::variable;
 using namespace ::yugawara;
 
+using namespace jogasaki::auth;
+
 /**
  * @brief test storage manager
  */
@@ -313,6 +315,49 @@ TEST_F(storage_manager_test, err_locked_entry_suddenly_disappears) {
         ASSERT_TRUE(mgr.add_locked_storages(stg, *ul));
         ASSERT_TRUE(mgr.remove_entry(1));
     }
+}
+
+TEST_F(storage_manager_test, allows_user_actions) {
+    // verify allows_user_actions that checks users existence and privileges
+    storage_manager mgr{};
+    mgr.add_entry(1, "T1");
+    auto stg = mgr.find_entry(1);
+    ASSERT_TRUE(stg);
+
+    stg->authorized_actions().add_user_actions("user5", action_set{action_kind::select, action_kind::insert});
+
+    EXPECT_TRUE(stg->allows_user_actions("user5",action_set{action_kind::select}));
+    EXPECT_TRUE(stg->allows_user_actions("user5",action_set{action_kind::select, action_kind::insert}));
+    EXPECT_TRUE(! stg->allows_user_actions("user5",action_set{action_kind::select, action_kind::insert, action_kind::control}));
+}
+
+TEST_F(storage_manager_test, allows_user_actions_by_users_and_public_privs) {
+    // verify allows_user_actions that checks both users and public privileges
+    storage_manager mgr{};
+    mgr.add_entry(1, "T1");
+    auto stg = mgr.find_entry(1);
+    ASSERT_TRUE(stg);
+
+    stg->authorized_actions().add_user_actions("user5", action_set{action_kind::select});
+    stg->public_actions().add_action(action_kind::update);
+
+    EXPECT_TRUE(stg->allows_user_actions("user5",action_set{action_kind::select}));
+    EXPECT_TRUE(stg->allows_user_actions("user5",action_set{action_kind::select, action_kind::update}));
+    EXPECT_TRUE(! stg->allows_user_actions("user5",action_set{action_kind::select, action_kind::update, action_kind::control}));
+}
+
+TEST_F(storage_manager_test, allows_user_actions_find_no_user) {
+    // verify allows_user_actions returns false if user not found
+    storage_manager mgr{};
+    mgr.add_entry(1, "T1");
+    auto stg = mgr.find_entry(1);
+    ASSERT_TRUE(stg);
+    stg->public_actions().add_action(action_kind::update);
+
+    EXPECT_TRUE(! stg->allows_user_actions("dummy",action_set{action_kind::select}));
+    EXPECT_TRUE(stg->allows_user_actions("dummy",action_set{action_kind::update}));  // public privilege applies even for non-existing user
+    EXPECT_TRUE(! stg->allows_user_actions("dummy",action_set{action_kind::select, action_kind::update}));
+    EXPECT_TRUE(! stg->allows_user_actions("dummy",action_set{action_kind::select, action_kind::update, action_kind::control}));
 }
 
 } // namespace jogasaki::plan

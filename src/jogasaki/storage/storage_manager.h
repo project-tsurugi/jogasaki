@@ -151,15 +151,17 @@ public:
     }
 
     /**
-     * @brief check whether the given user is allowed to perform the given actions on this storage
+     * @brief check whether the given user is allowed to perform all the given actions on this storage
+     * @param user the user to check
+     * @param actions the actions to check
      * @details check both authorized_actions and public_actions and
-     * return whether the given user is allowed to perform the given actions
+     * return whether the given user is allowed to perform all the actions given in `actions`.
      */
     [[nodiscard]] bool allows_user_actions(std::string_view user, auth::action_set const& actions) const {
-        if(public_actions_.allows(actions)) {
-            return true;
-        }
-        return authorized_actions_.is_user_authorized(user, actions);
+        auto& user_actions = authorized_actions_.find_user_actions(user);
+        return std::all_of(actions.begin(), actions.end(), [&](auto&& a) {
+            return public_actions_.action_allowed(a) || user_actions.action_allowed(a);
+        });
     }
 
 private:

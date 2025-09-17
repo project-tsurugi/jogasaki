@@ -77,26 +77,6 @@ TEST_F(authorized_users_action_set_test, remove_user_actions) {
     }
 }
 
-TEST_F(authorized_users_action_set_test, is_user_authorized) {
-    actions_.add_user_actions("user5", action_set{action_kind::select, action_kind::insert});
-
-    action_set check{};
-    check.add_action(action_kind::select);
-    EXPECT_TRUE(actions_.is_user_authorized("user5", check));
-
-    check.add_action(action_kind::insert);
-    EXPECT_TRUE(actions_.is_user_authorized("user5", check));
-
-    check.add_action(action_kind::control);
-    EXPECT_TRUE(! actions_.is_user_authorized("user5", check));
-}
-
-TEST_F(authorized_users_action_set_test, is_user_authorized_user_not_found) {
-    action_set check{};
-    check.add_action(action_kind::select);
-    EXPECT_TRUE(! actions_.is_user_authorized("notfound", check));
-}
-
 TEST_F(authorized_users_action_set_test, remove_user_action_user_not_found) {
     actions_.remove_user_action("ghost", action_kind::select);
     // Should not throw or crash

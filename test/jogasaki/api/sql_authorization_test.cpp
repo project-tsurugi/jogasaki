@@ -133,6 +133,15 @@ TEST_F(sql_authorization_test, update_public_privilege) {
     execute_statement("update t set c0=2", info);
 }
 
+TEST_F(sql_authorization_test, update_by_user_and_public_privilege) {
+    // update privilege is given to public, and select privilege is given to user1 only.
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant update on table t to public");
+    execute_statement("grant select on table t to user1");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("update t set c0=2", info);
+}
+
 TEST_F(sql_authorization_test, delete) {
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant delete,select on table t to user1");
@@ -143,6 +152,15 @@ TEST_F(sql_authorization_test, delete) {
 TEST_F(sql_authorization_test, delete_by_public_privilege) {
     execute_statement("create table t (c0 int primary key)");
     execute_statement("grant delete,select on table t to public");
+    auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("delete from t", info);
+}
+
+TEST_F(sql_authorization_test, delete_by_user_and_public_privilege) {
+    // select privilege is given to public, and delete privilege is given to user1 only.
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant select on table t to public");
+    execute_statement("grant delete on table t to user1");
     auto info = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
     execute_statement("delete from t", info);
 }

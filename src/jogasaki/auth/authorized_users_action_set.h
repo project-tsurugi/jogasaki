@@ -58,20 +58,11 @@ public:
     void remove_user_actions(std::string_view name, action_set actions);
 
     /**
-     * @brief Check if a user is authorized for specific actions.
-     * @param name The user name to check.
-     * @param actions The set of actions to check against the user's authorized actions.
-     * @return true if the user is authorized for the actions, false otherwise.
-     */
-    [[nodiscard]] bool is_user_authorized(std::string_view name, action_set const& actions) const;
-
-    /**
      * @brief Find the authorized actions for a user.
      * @param name The user name to find.
      * @return The action set for the user, or an empty set if the user entry is not found.
      */
     [[nodiscard]] action_set const& find_user_actions(std::string_view name) const;
-
 
     /**
      * @brief Get an iterator to the beginning of the authorized users.

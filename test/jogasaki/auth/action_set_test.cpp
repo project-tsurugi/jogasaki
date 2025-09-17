@@ -51,6 +51,7 @@ TEST(action_set_test, has_action) {
     EXPECT_TRUE(! s.has_action(action_kind::control));
 
     s.add_action(action_kind::select);
+    EXPECT_EQ((action_set{action_kind::select}), s);
     EXPECT_TRUE(s.has_action(action_kind::select));
     EXPECT_TRUE(! s.has_action(action_kind::insert));
     EXPECT_TRUE(! s.has_action(action_kind::update));
@@ -61,6 +62,7 @@ TEST(action_set_test, has_action) {
 TEST(action_set_test, add) {
     action_set s{};
     s.add_action(action_kind::select);
+    EXPECT_EQ((action_set{action_kind::select}), s);
     EXPECT_TRUE(s.action_allowed(action_kind::select));
     EXPECT_TRUE(s.has_action(action_kind::select));
     EXPECT_TRUE(! s.action_allowed(action_kind::insert));
@@ -73,6 +75,7 @@ TEST(action_set_test, remove) {
     s.add_action(action_kind::select);
     EXPECT_TRUE(s.action_allowed(action_kind::select));
     s.remove_action(action_kind::select);
+    EXPECT_EQ((action_set{}), s);
     EXPECT_TRUE(! s.has_action(action_kind::select));
     EXPECT_TRUE(! s.action_allowed(action_kind::select));
     ASSERT_NO_THROW(s.remove_action(action_kind::select));
@@ -86,13 +89,7 @@ TEST(action_set_test, add_control) {
     // - adding other actions where control is present does nothing
     action_set s{};
     s.add_action(action_kind::control);
-    EXPECT_TRUE(! s.empty());
-    EXPECT_TRUE(s.has_action(action_kind::control));
-    EXPECT_TRUE(! s.has_action(action_kind::select));
-    EXPECT_TRUE(! s.has_action(action_kind::insert));
-    EXPECT_TRUE(! s.has_action(action_kind::update));
-    EXPECT_TRUE(! s.has_action(action_kind::delete_));
-
+    EXPECT_EQ((action_set{action_kind::control}), s);
     EXPECT_TRUE(s.action_allowed(action_kind::control));
     EXPECT_TRUE(s.action_allowed(action_kind::select));
     EXPECT_TRUE(s.action_allowed(action_kind::insert));
@@ -100,20 +97,13 @@ TEST(action_set_test, add_control) {
     EXPECT_TRUE(s.action_allowed(action_kind::delete_));
 
     s.add_action(action_kind::select); // adding select does nothing
-    EXPECT_TRUE(s.has_action(action_kind::control));
-    EXPECT_TRUE(! s.has_action(action_kind::select));
-    EXPECT_TRUE(s.action_allowed(action_kind::select));
+    EXPECT_EQ((action_set{action_kind::control}), s);
 
     ASSERT_NO_THROW(s.remove_action(action_kind::select)); // removing select does nothing
-    EXPECT_TRUE(s.action_allowed(action_kind::select));
-    EXPECT_TRUE(! s.has_action(action_kind::select));
+    EXPECT_EQ((action_set{action_kind::control}), s);
 
     s.remove_action(action_kind::control);
-    EXPECT_TRUE(! s.has_action(action_kind::control));
-    EXPECT_TRUE(! s.has_action(action_kind::select));
-    EXPECT_TRUE(! s.has_action(action_kind::insert));
-    EXPECT_TRUE(! s.has_action(action_kind::update));
-    EXPECT_TRUE(! s.has_action(action_kind::delete_));
+    EXPECT_EQ((action_set{}), s);
     EXPECT_TRUE(! s.action_allowed(action_kind::control));
     EXPECT_TRUE(! s.action_allowed(action_kind::select));
     EXPECT_TRUE(! s.action_allowed(action_kind::insert));
@@ -178,12 +168,12 @@ TEST(action_set_test, remove_actions) {
     action_set s{};
     s.add_action(action_kind::select);
     s.add_action(action_kind::insert);
+    EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), s);
     EXPECT_TRUE(s.action_allowed(action_kind::select));
     EXPECT_TRUE(s.action_allowed(action_kind::insert));
     s.remove_actions(action_set{action_kind::select, action_kind::insert});
-    EXPECT_TRUE(! s.has_action(action_kind::select));
+    EXPECT_EQ((action_set{}), s);
     EXPECT_TRUE(! s.action_allowed(action_kind::select));
-    EXPECT_TRUE(! s.has_action(action_kind::insert));
     EXPECT_TRUE(! s.action_allowed(action_kind::insert));
 }
 

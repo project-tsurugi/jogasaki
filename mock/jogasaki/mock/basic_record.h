@@ -55,6 +55,8 @@
 #include <jogasaki/meta/type_helper.h>
 #include <jogasaki/utils/interference_size.h>
 
+#include "custom_less.h"
+
 namespace jogasaki::mock {
 
 using kind = meta::field_type_kind;
@@ -235,6 +237,14 @@ public:
     constexpr static std::size_t buffer_size = basic_record_buffer_size;
 
     using entity_type = basic_record_entity_type ;
+
+    /**
+     * @brief global flag to custom comparison of decimal values
+     * @details set true to compare decimal field values as triple, i.e. 1 * 10 ^ 2 != 100 * 10 ^ 0
+     * Otherwise, compare as decimal::Decimal values.
+     */
+    static inline bool compare_decimals_as_triple_ = false;
+
     /**
      * @brief create empty object
      */
@@ -396,6 +406,11 @@ public:
             }
         }
         executor::compare_info cm{*a.meta_, *b.meta_};
+
+        if(compare_decimals_as_triple_) {
+            executor::basic_comparator<custom_less> comp{cm};
+            return comp(a.ref(), b.ref()) == 0;
+        }
         executor::comparator comp{cm};
         return comp(a.ref(), b.ref()) == 0;
     }

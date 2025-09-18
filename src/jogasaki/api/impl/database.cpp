@@ -405,18 +405,8 @@ void database::init() {
         VLOG_LP(log_warning) << "[gRPC] " << result.status_string() << " file: " << result.file()
                              << " defail: " << result.detail() << std::endl;
     }
-    auto plugins = (loader_)->get_plugins();
-    for (const auto& plugin : plugins) {
-        auto factory = std::get<1>(plugin);
-        if (!factory) { VLOG_LP(log_warning) << "[gRPC] Factory creation failed" << std::endl; }
-        auto channel =
-            grpc::CreateChannel(std::string(cfg_->grpc_url()), grpc::InsecureChannelCredentials());
-        auto raw_client = factory->create(channel);
-        if (!raw_client) {
-            VLOG_LP(log_warning) << "[gRPC] generic_client creation failed" << std::endl;
-        }
-        plugins_.emplace_back(std::shared_ptr<plugin::udf::plugin_api>(std::get<0>(plugin)),
-            std::shared_ptr<plugin::udf::generic_client>(raw_client));
+    for (auto& plugin : loader_->get_plugins()) {
+        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));
     }
     executor::function::add_udf_functions(
         *scalar_functions_, global::scalar_function_repository(), plugins_);

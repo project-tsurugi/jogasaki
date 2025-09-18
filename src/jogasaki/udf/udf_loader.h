@@ -15,7 +15,7 @@
  */
 #pragma once
 #include "error_info.h"
-#include "generic_client_factory.h"
+#include "generic_client.h"
 #include "plugin_api.h"
 #include "plugin_loader.h"
 #include <string_view>
@@ -45,6 +45,24 @@ namespace plugin::udf {
  *
  * @see plugin_loader
  */
+class client_info {
+  public:
+    client_info()                                  = default;
+    ~client_info()                                 = default;
+    client_info(const client_info&)                = default;
+    client_info& operator=(const client_info&)     = default;
+    client_info(client_info&&) noexcept            = default;
+    client_info& operator=(client_info&&) noexcept = default;
+    [[nodiscard]] const std::string& default_url() const noexcept;
+    [[nodiscard]] const std::string& default_auth() const noexcept;
+    void set_default_url(std::string url);
+    void set_default_auth(std::string auth);
+
+  private:
+    std::string default_url_{"localhost:50051"};
+    std::string default_auth_{"insecure"};
+};
+
 class udf_loader : public plugin_loader {
   public:
     udf_loader()                             = default;
@@ -75,14 +93,16 @@ class udf_loader : public plugin_loader {
      * @return Vector of tuples containing (`plugin_api*`, `generic_client_factory*`).
      *         The pointers remain valid until `unload_all()` is called.
      */
-    [[nodiscard]] const std::vector<std::tuple<plugin_api*, generic_client_factory*>>&
-    get_plugins() const noexcept override;
+    [[nodiscard]] std::vector<
+        std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
+    get_plugins() noexcept override;
 
   private:
     std::vector<void*> handles_;
+    client_info client_info_;
     /** List of raw `dlopen()` handles for loaded plugins. */
-    [[nodiscard]] load_result create_api_from_handle(void* handle);
-    /** List of loaded plugin API/factory pairs. */
-    std::vector<std::tuple<plugin_api*, generic_client_factory*>> plugins_;
+    [[nodiscard]] load_result create_api_from_handle(void* handle, const std::string& full_path);
+    /** List of loaded plugin API/client pairs. */
+    std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>> plugins_;
 };
 } // namespace plugin::udf

@@ -18,6 +18,8 @@
 #include "error_info.h"
 #include "generic_client_factory.h"
 #include "generic_record_impl.h"
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <dlfcn.h>
 #include <filesystem>
 #include <grpcpp/grpcpp.h>
@@ -29,25 +31,25 @@
 #include <vector>
 namespace fs = std::filesystem;
 using namespace plugin::udf;
+
+[[nodiscard]] const std::string& client_info::default_url() const noexcept { return default_url_; }
+[[nodiscard]] const std::string& client_info::default_auth() const noexcept {
+    return default_auth_;
+}
+void client_info::set_default_url(std::string url) { default_url_ = std::move(url); }
+void client_info::set_default_auth(std::string auth) { default_auth_ = std::move(auth); }
 load_result udf_loader::load(std::string_view dir_path) {
     fs::path path(dir_path);
     std::vector<fs::path> files_to_load;
-    if (fs::is_regular_file(path) && path.extension() == ".so") {
-        files_to_load.push_back(path);
-    } else if (fs::is_directory(path)) {
+    if (fs::is_directory(path)) {
         for (const auto& entry : fs::directory_iterator(path)) {
             if (entry.is_regular_file() && entry.path().extension() == ".so") {
                 files_to_load.push_back(entry.path());
             }
         }
     } else {
-        return {load_status::NotRegularFileOrDir, std::string(dir_path),
-            "Path is neither a .so file nor a directory"};
+        return {load_status::NotRegularFileOrDir, std::string(dir_path), "Path is not a directory"};
     }
-    if (files_to_load.empty()) {
-        return {load_status::NoSharedObjectsFound, std::string(dir_path), "No .so files found"};
-    }
-
     for (const auto& file : files_to_load) {
         std::string full_path = file.string();
         dlerror();
@@ -58,7 +60,7 @@ load_result udf_loader::load(std::string_view dir_path) {
                 err ? err : "dlopen failed with unknown error"};
         }
         handles_.emplace_back(handle);
-        auto res = create_api_from_handle(handle);
+        auto res = create_api_from_handle(handle, full_path);
         if (res.status() != load_status::OK) {
             res.set_file(full_path);
             return res;
@@ -74,7 +76,7 @@ void udf_loader::unload_all() {
     }
     handles_.clear();
 }
-load_result udf_loader::create_api_from_handle(void* handle) {
+load_result udf_loader::create_api_from_handle(void* handle, const std::string& full_path) {
     if (!handle) { return {load_status::DLOpenFailed, "", "Invalid handle (nullptr)"}; }
 
     using create_api_func     = plugin_api* (*)();
@@ -101,12 +103,31 @@ load_result udf_loader::create_api_from_handle(void* handle) {
         return {load_status::FactorySymbolMissing, "",
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
-    plugins_.emplace_back(api_ptr.release(), factory_ptr.release());
+    client_info info;
+    std::filesystem::path ini_path = full_path;
+    ini_path.replace_extension(".ini");
+    if (std::filesystem::exists(ini_path)) {
+        boost::property_tree::ptree pt;
+        boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
+
+        if (auto opt = pt.get_optional<std::string>("grpc.url")) { info.set_default_url(*opt); }
+        if (auto opt = pt.get_optional<std::string>("grpc.credentials")) {
+            info.set_default_auth(*opt);
+        }
+    }
+    auto channel =
+        grpc::CreateChannel(std::string("localhost:50051"), grpc::InsecureChannelCredentials());
+    auto raw_client = factory_ptr->create(channel);
+    if (!raw_client) {
+        return {
+            load_status::FactoryCreationFailed, "", "Failed to create generic client from factory"};
+    }
+    plugins_.emplace_back(api_ptr.release(), std::shared_ptr<generic_client>(raw_client));
     return {load_status::OK, "", ""};
 }
 
-const std::vector<std::tuple<plugin_api*, generic_client_factory*>>&
-udf_loader::get_plugins() const noexcept {
+std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
+udf_loader::get_plugins() noexcept {
     return plugins_;
 }
 udf_loader::~udf_loader() { unload_all(); }

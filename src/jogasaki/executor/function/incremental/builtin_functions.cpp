@@ -833,7 +833,7 @@ void avg_post(
 
 template <class T>
 static T max_or_min(bool max, T a, T b) {
-    if (less(a,b)) {
+    if (less{}(a,b)) {
         return max ? b : a;
     }
     return max ? a : b;

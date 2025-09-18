@@ -509,10 +509,10 @@ static any compare(takatori::scalar::comparison_operator op, T const& l, U const
     switch(op) {
         case optype::equal: result = equal_to(l, r); break;
         case optype::not_equal: result = ! equal_to(l, r); break;
-        case optype::greater: result = less(r, l); break;
-        case optype::greater_equal: result = ! less(l, r); break;
-        case optype::less: result = less(l, r); break;
-        case optype::less_equal: result = ! less(r, l); break;
+        case optype::greater: result = less{}(r, l); break;
+        case optype::greater_equal: result = ! less{}(l, r); break;
+        case optype::less: result = less{}(l, r); break;
+        case optype::less_equal: result = ! less{}(r, l); break;
         default: return return_unsupported();
     }
     return any{std::in_place_type<bool>, result};

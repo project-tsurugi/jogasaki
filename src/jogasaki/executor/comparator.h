@@ -18,29 +18,53 @@
 #include <cstddef>
 #include <functional>
 
+#include <jogasaki/accessor/binary.h>
 #include <jogasaki/accessor/record_ref.h>
+#include <jogasaki/accessor/text.h>
+#include <jogasaki/executor/compare_info.h>
+#include <jogasaki/executor/less.h>
+#include <jogasaki/meta/field_type.h>
+#include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/meta/record_meta.h>
 
-#include "compare_info.h"
-
 namespace jogasaki::executor {
+
+namespace impl {
+
+template <meta::field_type_kind K, class Less>
+struct field_comparator {
+    int operator()(accessor::record_ref const& a, accessor::record_ref const& b, std::size_t l_offset, std::size_t r_offset) {
+        using rtype = runtime_t<K>;
+        auto l = a.get_value<rtype>(l_offset);
+        auto r = b.get_value<rtype>(r_offset);
+        if (Less{}(l, r)) return -1;
+        if (Less{}(r, l)) return 1;
+        return 0;
+    }
+};
+
+}  // namespace impl
 
 /**
  * @brief record comparator
  */
-class comparator {
+template<class Less>
+class basic_comparator {
 public:
     /**
      * @brief construct empty object
      */
-    comparator() = default;
+    basic_comparator() = default;
 
     /**
      * @brief construct new object
      * @param info comparison information and metadata for the records to be compared.
-     * @attention info is kept and used by the comparator. The caller must ensure it outlives this object.
+     * @attention info is kept and used by the basic_comparator. The caller must ensure it outlives this object.
      */
-    explicit comparator(compare_info const& info) noexcept;
+    explicit basic_comparator(compare_info const& info) noexcept :
+        meta_(std::addressof(info))
+    {}
 
     /**
      * @brief compare function
@@ -50,7 +74,15 @@ public:
      * @return positive if a > b
      * @return zero if a is equivalent to b
      */
-    [[nodiscard]] int operator()(accessor::record_ref const& a, accessor::record_ref const& b) const noexcept;
+    [[nodiscard]] int operator()(accessor::record_ref const& a, accessor::record_ref const& b) const noexcept {
+        for(std::size_t i = 0, n = meta_->left().field_count(); i < n; ++i) {
+            auto res = compare_field(a, b, i);
+            if (res != 0) {
+                return res;
+            }
+        }
+        return 0;
+    }
 
 private:
     compare_info const* meta_{};
@@ -59,8 +91,53 @@ private:
         accessor::record_ref const& a,
         accessor::record_ref const& b,
         std::size_t field_index
-    ) const;
-    [[nodiscard]] int negate_if(int ret, std::size_t field_index) const noexcept;
+    ) const {
+        auto& l = meta_->left();
+        auto& r = meta_->right();
+        auto& type = l.at(field_index);
+        if(type.kind() == meta::field_type_kind::pointer) return 0; // ignore internal fields
+        auto l_nullable = l.nullable(field_index);
+        auto r_nullable = r.nullable(field_index);
+        if(l_nullable || r_nullable) {
+            bool a_null = l_nullable && a.is_null(l.nullity_offset(field_index));
+            bool b_null = r_nullable && b.is_null(r.nullity_offset(field_index));
+            if (a_null != b_null) {
+                return negate_if(a_null ? -1 : 1, field_index);
+            }
+            if (a_null) {
+                return 0;
+            }
+        }
+        auto l_offset = l.value_offset(field_index);
+        auto r_offset = r.value_offset(field_index);
+        switch(type.kind()) {
+            case meta::field_type_kind::boolean: return negate_if(impl::field_comparator<kind::boolean, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::int1: return negate_if(impl::field_comparator<kind::int1, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::int2: return negate_if(impl::field_comparator<kind::int2, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::int4: return negate_if(impl::field_comparator<kind::int4, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::int8: return negate_if(impl::field_comparator<kind::int8, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::float4: return negate_if(impl::field_comparator<kind::float4, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::float8: return negate_if(impl::field_comparator<kind::float8, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::decimal: return negate_if(impl::field_comparator<kind::decimal, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::character: return negate_if(impl::field_comparator<kind::character, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::octet: return negate_if(impl::field_comparator<kind::octet, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::date: return negate_if(impl::field_comparator<kind::date, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::time_of_day: return negate_if(impl::field_comparator<kind::time_of_day, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::time_point: return negate_if(impl::field_comparator<kind::time_point, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::blob: return negate_if(impl::field_comparator<kind::blob, Less>{}(a, b, l_offset, r_offset), field_index);
+            case meta::field_type_kind::clob: return negate_if(impl::field_comparator<kind::clob, Less>{}(a, b, l_offset, r_offset), field_index);
+            default:
+                // TODO implement other types
+                std::abort();
+        }
+        std::abort();
+    }
+
+    [[nodiscard]] int negate_if(int ret, std::size_t field_index) const noexcept {
+        return meta_->opposite(field_index) ? -ret : ret;
+    }
 };
+
+using comparator = basic_comparator<less>;
 
 }

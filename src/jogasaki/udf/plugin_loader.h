@@ -15,7 +15,7 @@
  */
 #pragma once
 #include "error_info.h"
-#include "generic_client_factory.h"
+#include "generic_client.h"
 #include "plugin_api.h"
 #include <string_view>
 #include <tuple>
@@ -31,7 +31,8 @@ class plugin_loader {
     virtual ~plugin_loader()                                          = default;
     [[nodiscard]] virtual load_result load(std::string_view dir_path) = 0;
     virtual void unload_all()                                         = 0;
-    [[nodiscard]] virtual const std::vector<std::tuple<plugin_api*, generic_client_factory*>>&
-    get_plugins() const noexcept = 0;
+    [[nodiscard]] virtual std::vector<
+        std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
+    get_plugins() noexcept = 0;
 };
 } // namespace plugin::udf

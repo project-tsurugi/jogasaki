@@ -685,4 +685,62 @@ TEST_F(decimal_test, string_representation_special_values_stdlib) {
     }
 }
 
+TEST_F(decimal_test, add_sub_preserves_scales) {
+    // verify 1.00 + 2.00000 = 3.00000 by mpdecimal library
+    // verify 1.00 - 2.00000 = -1.00000 by mpdecimal library
+    // (decimal specification seem to require preserving effective digits)
+    // SQL compiler calculates DECIMAL(p,s) + DECIMAL(q,t) = DECIMAL(*, max(s,t))
+    // so we don't need to reduce/rescale after the operation
+    decimal::context = standard_decimal_context();
+    auto tri1 = triple{1, 0, 100, -2};
+    auto dec1 = static_cast<::decimal::Decimal>(tri1);
+    auto tri2 = triple{1, 0, 200000, -5};
+    auto dec2 = static_cast<::decimal::Decimal>(tri2);
+    {
+        auto result = dec1 + dec2;
+        EXPECT_EQ(3, result);
+        triple r{result};
+        EXPECT_EQ((triple{1, 0, 300000, -5}), r);
+    }
+    {
+        auto result = dec1 - dec2;
+        EXPECT_EQ(-1, result);
+        triple r{result};
+        EXPECT_EQ((triple{-1, 0, 100000, -5}), r);
+    }
+}
+
+TEST_F(decimal_test, scale_multiply_divide_remainder) {
+    // testcase to check mpdecimal behavior
+    // scale behavior with multiply/divide/remainder are complex, for example,
+    // 2.00 * 3.00000 = 6.0000000
+    // 3.00000 / 2.00 = 1.500
+    // 3.00000 % 2.00 = 1.00000
+    // so SQL compiler calculates DECIMAL(p,s) op DECIMAL(q,t) = DECIMAL(*, *)
+    // we reduce/rescale after the operation
+    decimal::context = standard_decimal_context();
+    auto tri2 = triple{1, 0, 200, -2};
+    auto dec2 = static_cast<::decimal::Decimal>(tri2);
+    auto tri3 = triple{1, 0, 300000, -5};
+    auto dec3 = static_cast<::decimal::Decimal>(tri3);
+    {
+        auto result = dec2 * dec3;
+        EXPECT_EQ(6, result);
+        triple r{result};
+        EXPECT_EQ((triple{1, 0, 60000000, -7}), r);
+    }
+    {
+        auto result = dec3 / dec2;
+        EXPECT_EQ(decimal::Decimal{"1.5"}, result);
+        triple r{result};
+        EXPECT_EQ((triple{1, 0, 1500, -3}), r);
+    }
+    {
+        auto result = dec3 % dec2;
+        EXPECT_EQ(decimal::Decimal{"1.0"}, result);
+        triple r{result};
+        EXPECT_EQ((triple{1, 0, 100000, -5}), r);
+    }
+}
+
 }  // namespace jogasaki::testing

@@ -52,19 +52,18 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using takatori::decimal::triple;
 using takatori::datetime::date;
 using takatori::datetime::time_of_day;
 using takatori::datetime::time_point;
+using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 
 using kind = meta::field_type_kind;
 
-class sql_decimal_types_test :
-    public ::testing::Test,
-    public api_test_base {
+class sql_decimal_types_test : public ::testing::Test, public api_test_base {
 
 public:
+
     // change this flag to debug with explain
     bool to_explain() override {
         return false;
@@ -77,6 +76,7 @@ public:
 
     void TearDown() override {
         db_teardown();
+        mock::basic_record::compare_decimals_as_triple_ = false;
     }
 };
 
@@ -91,15 +91,19 @@ TEST_F(sql_decimal_types_test, insert_by_literal_cast_on_context) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
-            std::tuple{
-                meta::decimal_type(3, 0),
-                meta::decimal_type(5, 3),
-            }, {
-                triple{1, 0, 1, 0},
-                triple{1, 0, 1, 0},
-            }
-        )), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal, kind::decimal>(
+                std::tuple{
+                    meta::decimal_type(3, 0),
+                    meta::decimal_type(5, 3),
+                },
+                {
+                    triple{1, 0, 1, 0},
+                    triple{1, 0, 1, 0},
+                }
+            )),
+            result[0]
+        );
     }
 }
 
@@ -110,13 +114,17 @@ TEST_F(sql_decimal_types_test, length_unspecified_for_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-            std::tuple{
-                meta::decimal_type(38, 0),
-            }, {
-                triple{1, 0, 123, 0},
-            }
-        )), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal>(
+                std::tuple{
+                    meta::decimal_type(38, 0),
+                },
+                {
+                    triple{1, 0, 123, 0},
+                }
+            )),
+            result[0]
+        );
     }
 }
 
@@ -128,7 +136,7 @@ TEST_F(sql_decimal_types_test, decimals_indefinitive_precscale) {
         {"p1", api::field_type_kind::decimal}
     };
     auto ps = api::create_parameter_set();
-    auto v1 = triple{1, 0, 1, 0}; // 1
+    auto v1 = triple{1, 0, 1, 0};  // 1
     ps->set_decimal("p0", v1);
     execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps);
     std::vector<mock::basic_record> result{};
@@ -193,6 +201,49 @@ TEST_F(sql_decimal_types_test, DISABLED_find_by_longer_data) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C0 = 1234.56", result);
         ASSERT_EQ(0, result.size());
+    }
+}
+
+TEST_F(sql_decimal_types_test, scale_preserved_by_add_sub) {
+    // verify the scale is preserved with add/sub, that is decimal(5,2)+decimal(5,3)=decimal(*,3)
+    mock::basic_record::compare_decimals_as_triple_ = true;
+    execute_statement("create table t (c0 decimal(5,2), c1 decimal(5,3))");
+    execute_statement("INSERT INTO t VALUES (1.00, 1.000)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0+c1, c0-c1 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        auto fm = meta::decimal_type(std::nullopt, 3);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal, kind::decimal>(
+                std::tuple{fm, fm},
+                std::forward_as_tuple(triple{1, 0, 2000, -3}, triple{1, 0, 0, -3})
+            )),
+            result[0]
+        );
+    }
+}
+
+TEST_F(sql_decimal_types_test, scale_omitted_by_mul_div_rem) {
+    // verify the result is decimal(*,*) when decimals are multiplied/divided/remainder
+
+    // the result scale is arbitrary, so triple representation should not be compared
+    // mock::basic_record::compare_decimals_as_triple_ = false;
+
+    execute_statement("create table t (c0 decimal(5,2), c1 decimal(5,3))");
+    execute_statement("INSERT INTO t VALUES (1.00, 1.000)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0*c1, c0/c1, c0%c1 FROM t", result);
+        ASSERT_EQ(1, result.size());
+        auto fm = meta::decimal_type();
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
+                std::tuple{fm, fm, fm},
+                std::forward_as_tuple(triple{1, 0, 1, 0}, triple{1, 0, 1, 0}, triple{1, 0, 0, 0})
+            )),
+            result[0]
+        );
     }
 }
 

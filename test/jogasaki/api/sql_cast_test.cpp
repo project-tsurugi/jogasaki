@@ -77,6 +77,7 @@ public:
 
     void TearDown() override {
         db_teardown();
+        mock::basic_record::compare_decimals_as_triple_ = false;
     }
 };
 
@@ -197,6 +198,28 @@ TEST_F(sql_cast_test, cast_decimal) {
         ASSERT_EQ(1, result.size());
         auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(38, 0)};
         EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, triple{1, 0, 123, 0})), result[0]);
+    }
+}
+
+TEST_F(sql_cast_test, cast_decimal_normalize) {
+    // verify the decimal values normalized when casted
+    mock::basic_record::compare_decimals_as_triple_ = true;
+    execute_statement("create table TT (C0 decimal(5,2) primary key)");
+    execute_statement("INSERT INTO TT VALUES (1.00)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT C0, CAST(C0 AS DECIMAL(5,2)) FROM TT", result);
+        ASSERT_EQ(1, result.size());
+        auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 2)};
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal, kind::decimal>(
+                std::tuple{fm, fm},
+                std::forward_as_tuple(
+                    triple{1, 0, 100, -2},
+                    triple{1, 0, 100, -2})
+            )),
+            result[0]
+        );
     }
 }
 

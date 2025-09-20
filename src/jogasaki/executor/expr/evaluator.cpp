@@ -96,6 +96,8 @@ static any add(T const& l, U const& r) {
 
 template <>
 any add<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    // SQL compiler keeps scale, i.e. calculates result type as decimal(p1, s1) + decimal(p2, s2) = decimal(*, max(s1,s2))
+    // and mpdecimal does the same, (e.g. 1.0 + 2.00 = 3.00), so we don't need to reduce or rescale here.
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)+static_cast<decimal::Decimal>(r)};
 }
 
@@ -201,6 +203,8 @@ static any subtract(T const& l, U const& r) {
 
 template <>
 any subtract<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    // SQL compiler keeps scale, i.e. calculates result type as decimal(p1, s1) - decimal(p2, s2) = decimal(*, max(s1,s2))
+    // and mpdecimal does the same, (e.g. 1.0 - 2.00 = -1.00), so we don't need to reduce or rescale here.
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)-static_cast<decimal::Decimal>(r)};
 }
 
@@ -223,6 +227,8 @@ static any multiply(T const& l, U const& r) {
 
 template <>
 any multiply<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+    // SQL compiler does not keep scale, i.e. calculates result type as decimal(*, *)
+    // so we don't need to reduce or rescale here.
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)*static_cast<decimal::Decimal>(r)};
 }
 
@@ -237,6 +243,8 @@ static any divide(T const& l, U const& r) {
 template <>
 any divide<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
     // TODO check context status
+    // SQL compiler does not keep scale, i.e. calculates result type as decimal(*, *)
+    // so we don't need to reduce or rescale here.
     if (r == 0) {
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
@@ -254,13 +262,13 @@ static any remainder(T const& l, U const& r) {
 template <>
 any remainder<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
     // TODO check context status
+    // SQL compiler does not keep scale, i.e. calculates result type as decimal(*, *)
+    // so we don't need to reduce or rescale here.
     if (r == 0) {
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
     return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)%static_cast<decimal::Decimal>(r)};
 }
-
-
 
 any engine::conditional_and_any(any const& left, any const& right) {
     // first, check if either of operands is false because then

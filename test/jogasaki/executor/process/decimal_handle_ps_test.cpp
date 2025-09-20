@@ -96,11 +96,11 @@ TEST_F(decimal_handle_ps_test, simple) {
     EXPECT_EQ((any{std::in_place_type<error>, error_kind::unsupported}), handle_ps(decimal::Decimal{100}, ctx, 2, std::nullopt));
 
     // only scale is provided
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, 2}}), handle_ps(decimal::Decimal{triple{1, 0, 100, 0}}, ctx, std::nullopt, 1)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, 2}}), handle_ps(decimal::Decimal{triple{1, 0, 10, 1}}, ctx, std::nullopt, 1)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, 2}}), handle_ps(decimal::Decimal{triple{1, 0, 1000, -1}}, ctx, std::nullopt, 1)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123, 0}}), handle_ps(decimal::Decimal{123}, ctx, std::nullopt, 1)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123, -1}}), handle_ps(decimal::Decimal{triple{1, 0, 123, -1}}, ctx, std::nullopt, 2)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1000, -1}}), handle_ps(decimal::Decimal{triple{1, 0, 100, 0}}, ctx, std::nullopt, 1)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1000, -1}}), handle_ps(decimal::Decimal{triple{1, 0, 10, 1}}, ctx, std::nullopt, 1)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1000, -1}}), handle_ps(decimal::Decimal{triple{1, 0, 1000, -1}}, ctx, std::nullopt, 1)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1230, -1}}), handle_ps(decimal::Decimal{123}, ctx, std::nullopt, 1)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1230, -2}}), handle_ps(decimal::Decimal{triple{1, 0, 123, -1}}, ctx, std::nullopt, 2)); lost_precision(false);
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1234, -2}}), handle_ps(decimal::Decimal{triple{1, 0, 1234, -2}}, ctx, std::nullopt, 2)); lost_precision(false);
 
     //   truncate fraction part
@@ -111,14 +111,14 @@ TEST_F(decimal_handle_ps_test, simple) {
 
 TEST_F(decimal_handle_ps_test, same_ps) {
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{0, 0, 0, 0}}), handle_ps(decimal::Decimal{0}, ctx, 3, 3)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{0, 0, 0, 0}}), handle_ps(decimal::Decimal{"0.000"}, ctx, 3, 3)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{0, 0, 0, -3}}), handle_ps(decimal::Decimal{0}, ctx, 3, 3)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{0, 0, 0, -3}}), handle_ps(decimal::Decimal{"0.000"}, ctx, 3, 3)); lost_precision(false);
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 999, -3}}), handle_ps(decimal::Decimal{"0.999"}, ctx, 3, 3)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 99, -2}}), handle_ps(decimal::Decimal{"0.990"}, ctx, 3, 3)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 9, -1}}), handle_ps(decimal::Decimal{"0.900"}, ctx, 3, 3)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 990, -3}}), handle_ps(decimal::Decimal{"0.990"}, ctx, 3, 3)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 900, -3}}), handle_ps(decimal::Decimal{"0.900"}, ctx, 3, 3)); lost_precision(false);
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, -3}}), handle_ps(decimal::Decimal{"0.001"}, ctx, 3, 3)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, -2}}), handle_ps(decimal::Decimal{"0.010"}, ctx, 3, 3)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1, -1}}), handle_ps(decimal::Decimal{"0.100"}, ctx, 3, 3)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 10, -3}}), handle_ps(decimal::Decimal{"0.010"}, ctx, 3, 3)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 100, -3}}), handle_ps(decimal::Decimal{"0.100"}, ctx, 3, 3)); lost_precision(false);
 }
 
 }

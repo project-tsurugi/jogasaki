@@ -138,14 +138,14 @@ template <class Source, class RangeTarget, class RangeTargetUnsigned>
 void cast_between_numerics_test::test_int_to_decimal(std::function<any(Source, evaluator_context&, std::optional<std::size_t>, std::optional<std::size_t>)> fn) {
     evaluator_context ctx{&resource_};
     EXPECT_EQ(any_triple(1), fn(1, ctx, std::nullopt, std::nullopt));
-    EXPECT_EQ(any_triple(1, 0, 123, 0), fn(123, ctx, 6, 3));
-    EXPECT_EQ(any_triple(0, 0, 0, 0), fn(0, ctx, 5, 3));
-    EXPECT_EQ(any_triple(1, 0, 1, 1), fn(10, ctx, 5, 0));
+    EXPECT_EQ(any_triple(1, 0, 123000, -3), fn(123, ctx, 6, 3));
+    EXPECT_EQ(any_triple(0, 0, 0, -3), fn(0, ctx, 5, 3));
+    EXPECT_EQ(any_triple(1, 0, 10, 0), fn(10, ctx, 5, 0));
 
     EXPECT_EQ(any_triple(1, 0, 99, 0), fn(100, ctx, 2, 0));
     EXPECT_EQ(any_error(error_kind::unsupported), fn(10, ctx, 1, std::nullopt));
     EXPECT_EQ(any_triple(1, 0, 99999, -3), fn(123, ctx, 5, 3));
-    EXPECT_EQ(any_triple(1, 0, 123, 0), fn(123, ctx, std::nullopt, 3));
+    EXPECT_EQ(any_triple(1, 0, 123000, -3), fn(123, ctx, std::nullopt, 3));
     EXPECT_EQ(any_triple(1, 0, int_max<RangeTarget, Source>(), 0), fn(int_max<RangeTarget, Source>(), ctx, std::nullopt, std::nullopt));
     EXPECT_EQ(any_triple(-1, 0, int_min_positive<RangeTarget, RangeTargetUnsigned>(), 0), fn(int_min<RangeTarget, Source>(), ctx, std::nullopt, std::nullopt));
 }
@@ -388,12 +388,12 @@ TEST_F(cast_between_numerics_test, decimal_to_float8) {
 TEST_F(cast_between_numerics_test, float4_to_decimal) {
     // note: testing lost precision here is a little vague. See the comment for float8_to_decimal
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any_triple(1, 0, 1, 0)), from_float4::to_decimal(1.0f, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(0.0f, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float4::to_decimal(-0.0f, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(-1, 0, 1, 0)), from_float4::to_decimal(-1.0f, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(1, 0, 1, 1)), from_float4::to_decimal(10.0f, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float4::to_decimal(1.23f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 1000, -3)), from_float4::to_decimal(1.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, -3)), from_float4::to_decimal(0.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, -3)), from_float4::to_decimal(-0.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(-1, 0, 1000, -3)), from_float4::to_decimal(-1.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 10000, -3)), from_float4::to_decimal(10.0f, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 1230, -3)), from_float4::to_decimal(1.23f, ctx, 5, 3)); lost_precision(false);
     EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float4::to_decimal(1.23f, ctx, 5, 2)); lost_precision(false);
 
     // verify on float min/max
@@ -431,12 +431,12 @@ TEST_F(cast_between_numerics_test, float8_to_decimal) {
     // To avoid the confusion, we block the implicit conversion from approx. to exact.
     // Lost precision here means only the case going over max/min boundery and saturated to max/min.
     evaluator_context ctx{&resource_};
-    EXPECT_EQ((any_triple(1, 0, 1, 0)), from_float8::to_decimal(1, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(0.0, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(0, 0, 0, 0)), from_float8::to_decimal(-0.0, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(-1, 0, 1, 0)), from_float8::to_decimal(-1, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(1, 0, 1, 1)), from_float8::to_decimal(10, ctx, 5, 3)); lost_precision(false);
-    EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float8::to_decimal(1.23, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 1000, -3)), from_float8::to_decimal(1, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, -3)), from_float8::to_decimal(0.0, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(0, 0, 0, -3)), from_float8::to_decimal(-0.0, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(-1, 0, 1000, -3)), from_float8::to_decimal(-1, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 10000, -3)), from_float8::to_decimal(10, ctx, 5, 3)); lost_precision(false);
+    EXPECT_EQ((any_triple(1, 0, 1230, -3)), from_float8::to_decimal(1.23, ctx, 5, 3)); lost_precision(false);
     EXPECT_EQ((any_triple(1, 0, 123, -2)), from_float8::to_decimal(1.23, ctx, 5, 2)); lost_precision(false);
 
     // verify on double min/max
@@ -782,8 +782,8 @@ TEST_F(cast_between_numerics_test, decimal_to_decimal) {
     EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, {})); lost_precision(false);
 
     EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 5, 2)); lost_precision(false);
-    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 6, 3)); lost_precision(false);
-    EXPECT_EQ(any_triple(1, 0, 12345, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, 3)); lost_precision(false);
+    EXPECT_EQ(any_triple(1, 0, 123450, -3), from_decimal::to_decimal(make_triple("123.45"), ctx, 6, 3)); lost_precision(false);
+    EXPECT_EQ(any_triple(1, 0, 123450, -3), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, 3)); lost_precision(false);
     EXPECT_EQ(any_triple(1, 0, 9999, -2), from_decimal::to_decimal(make_triple("123.45"), ctx, 4, 2)); lost_precision(true);
     EXPECT_EQ(any_error(error_kind::unsupported), from_decimal::to_decimal(make_triple("123.45"), ctx, 4, {}));
     EXPECT_EQ(any_triple(1, 0, 123, 0), from_decimal::to_decimal(make_triple("123.45"), ctx, {}, 0)); lost_precision(true);

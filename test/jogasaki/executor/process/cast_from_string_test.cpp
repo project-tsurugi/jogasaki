@@ -306,7 +306,7 @@ TEST_F(cast_from_string_test, to_decimal_with_ps) {
     EXPECT_EQ((any{std::in_place_type<triple>, 0}), to_decimal("+0", ctx, 1, 0)); lost_precision(false);
     EXPECT_EQ((any{std::in_place_type<triple>, 0}), to_decimal("-0", ctx, 1, 0)); lost_precision(false);
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123, -2}}), to_decimal("1.23", ctx, 3, 2)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 123456789, -4}}), to_decimal("-12345.67890", ctx, 10, 5)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{-1, 0, 1234567890, -5}}), to_decimal("-12345.67890", ctx, 10, 5)); lost_precision(false);
 
     // truncate with scale 1
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 12, -1}}), to_decimal("1.23", ctx, 2, 1)); lost_precision(true);
@@ -314,12 +314,12 @@ TEST_F(cast_from_string_test, to_decimal_with_ps) {
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 12, -1}}), to_decimal("1.26", ctx, 2, 1)); lost_precision(true);
 
     // extend scale to 5
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123, -2}}), to_decimal("1.23", ctx, 10, 5)); lost_precision(false);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123, -2}}), to_decimal("1.23", ctx, std::nullopt, 5)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123000, -5}}), to_decimal("1.23", ctx, 10, 5)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 123000, -5}}), to_decimal("1.23", ctx, std::nullopt, 5)); lost_precision(false);
 
     // precision overflow by extending scale
     EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 999999, -5}}), to_decimal("12.34", ctx, 6, 5)); lost_precision(true);
-    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1234, -2}}), to_decimal("12.34", ctx, std::nullopt, 5)); lost_precision(false);
+    EXPECT_EQ((any{std::in_place_type<triple>, triple{1, 0, 1234000, -5}}), to_decimal("12.34", ctx, std::nullopt, 5)); lost_precision(false);
     EXPECT_EQ((to_decimal("123456789012345678901234567890123456.78", ctx, std::nullopt, std::nullopt)), to_decimal("123456789012345678901234567890123456.78", ctx, std::nullopt, 2)); lost_precision(false);
     EXPECT_EQ((to_decimal("99999999999999999999999999999999999.999", ctx, std::nullopt, std::nullopt)), to_decimal("123456789012345678901234567890123456.78", ctx, std::nullopt, 3)); lost_precision(true);
 }

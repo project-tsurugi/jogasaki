@@ -332,8 +332,16 @@ any handle_ps(
         );
         return any{std::in_place_type<error>, error(error_kind::unsupported)};
     }
+    // let's first reduce to calculate the effective digits
+    // the scale will be recovered after that
+    // 1.000 -> 1 -> 1.00
+    // 1.200 -> 1.2 -> 1.20
+    decimal::Decimal d{};
+    if(auto a = reduce_decimal(src, d, ctx); a.error()) {
+        return a;
+    }
     if(! precision.has_value() && ! scale.has_value()) {
-        return as_triple(src, ctx);
+        return as_triple(d, ctx);
     }
     // scale has_value
     if(! precision.has_value()) {
@@ -343,10 +351,6 @@ any handle_ps(
     // handle precision
     if(*precision < *scale) {
         throw_exception(std::logic_error{"precision must be greater than or equal to scale"});
-    }
-    decimal::Decimal d{};
-    if(auto a = reduce_decimal(src, d, ctx); a.error()) {
-        return a;
     }
     if(d.exponent() > 0) {
         // extend integral part to full digits
@@ -422,13 +426,9 @@ any as_triple(
     decimal::Decimal const& d,
     evaluator_context& ctx
 ) {
-    decimal::context.clear_status();
-    decimal::Decimal r{};
-    if(auto a = reduce_decimal(d, r, ctx); a.error()) {
-        return a;
-    }
+    (void) ctx;
     // TODO validate r is in the valid range
-    return any{std::in_place_type<triple>, static_cast<triple>(r)};
+    return any{std::in_place_type<triple>, static_cast<triple>(d)};
 }
 
 namespace from_decimal {

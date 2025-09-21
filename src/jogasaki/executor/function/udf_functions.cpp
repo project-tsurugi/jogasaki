@@ -200,6 +200,10 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
     const std::vector<std::tuple<std::shared_ptr<plugin::udf::plugin_api>,
         std::shared_ptr<plugin::udf::generic_client>>>& plugins) {
     using namespace ::yugawara;
+    // @see
+    // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
+    yugawara::function::declaration::definition_id_type current_id   = 20000;
+    yugawara::function::declaration::definition_id_type udf_start_id = 20000;
     for (const auto& tup : plugins) {
         auto client = std::get<1>(tup);
         auto plugin = std::get<0>(tup);
@@ -238,10 +242,8 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
                     auto info =
                         std::make_shared<scalar_function_info>(scalar_function_kind::user_defined,
                             lambda_func, fn->input_record().columns().size());
-                    // @see
-                    // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
-                    auto id = 20000 + fn->function_index();
-                    repo.add(id, info);
+                    current_id = udf_start_id + fn->function_index();
+                    repo.add(current_id, info);
                     auto return_type = map_type(fn->output_record().columns()[0]->type_kind());
                     std::vector<std::shared_ptr<takatori::type::data const>> param_types;
                     param_types.reserve(fn->input_record().columns().size());
@@ -249,8 +251,9 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
                         param_types.emplace_back(map_type(col->type_kind()));
                     }
                     functions.add(yugawara::function::declaration{
-                        id, fn_name, return_type, std::move(param_types)});
+                        current_id, fn_name, return_type, std::move(param_types)});
                 }
+                udf_start_id = current_id + 1;
             }
         }
     }

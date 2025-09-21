@@ -53,7 +53,7 @@ load_result udf_loader::load(std::string_view dir_path) {
     for (const auto& file : files_to_load) {
         std::string full_path = file.string();
         dlerror();
-        void* handle    = dlopen(full_path.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        void* handle    = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
         const char* err = dlerror();
         if (!handle || err) {
             return {load_status::DLOpenFailed, full_path,
@@ -115,8 +115,7 @@ load_result udf_loader::create_api_from_handle(void* handle, const std::string& 
             info.set_default_auth(*opt);
         }
     }
-    auto channel =
-        grpc::CreateChannel(std::string("localhost:50051"), grpc::InsecureChannelCredentials());
+    auto channel    = grpc::CreateChannel(info.default_url(), grpc::InsecureChannelCredentials());
     auto raw_client = factory_ptr->create(channel);
     if (!raw_client) {
         return {

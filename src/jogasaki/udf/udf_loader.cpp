@@ -38,8 +38,9 @@ using namespace plugin::udf;
 }
 void client_info::set_default_url(std::string url) { default_url_ = std::move(url); }
 void client_info::set_default_auth(std::string auth) { default_auth_ = std::move(auth); }
-load_result udf_loader::load(std::string_view dir_path) {
+std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     fs::path path(dir_path);
+    std::vector<load_result> results;
     std::vector<fs::path> files_to_load;
     if (fs::is_directory(path)) {
         for (const auto& entry : fs::directory_iterator(path)) {
@@ -47,8 +48,12 @@ load_result udf_loader::load(std::string_view dir_path) {
                 files_to_load.push_back(entry.path());
             }
         }
+    } else if (fs::is_regular_file(path) && path.extension() == ".so") {
+        files_to_load.push_back(path);
     } else {
-        return {load_status::NotRegularFileOrDir, std::string(dir_path), "Path is not a directory"};
+        results.emplace_back(load_status::NotRegularFileOrDir, std::string(dir_path),
+            "Path is not a directory or .so file");
+        return results;
     }
     for (const auto& file : files_to_load) {
         std::string full_path = file.string();
@@ -56,16 +61,14 @@ load_result udf_loader::load(std::string_view dir_path) {
         void* handle    = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
         const char* err = dlerror();
         if (!handle || err) {
-            return {load_status::DLOpenFailed, full_path,
-                err ? err : "dlopen failed with unknown error"};
+            results.emplace_back(load_status::DLOpenFailed, full_path,
+                err ? err : "dlopen failed with unknown error");
+            continue;
         }
         auto res = create_api_from_handle(handle, full_path);
-        if (res.status() != load_status::OK) {
-            res.set_file(full_path);
-            return res;
-        }
+        results.push_back(std::move(res));
     }
-    return {load_status::OK, "", ""};
+    return results;
 }
 
 void udf_loader::unload_all() {}
@@ -78,44 +81,61 @@ load_result udf_loader::create_api_from_handle(void* handle, const std::string& 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* api_func = reinterpret_cast<create_api_func>(dlsym(handle, "create_plugin_api"));
     if (!api_func) {
-        return {load_status::ApiSymbolMissing, "", "Symbol 'create_plugin_api' not found"};
+        return {load_status::ApiSymbolMissing, full_path, "Symbol 'create_plugin_api' not found"};
     }
 
     auto api_ptr = std::unique_ptr<plugin_api>(api_func());
-    if (!api_ptr) { return {load_status::ApiInitFailed, "", "Failed to initialize plugin API"}; }
+    if (!api_ptr) {
+        return {load_status::ApiInitFailed, full_path, "Failed to initialize plugin API"};
+    }
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(
         dlsym(handle, "tsurugi_create_generic_client_factory"));
     if (!factory_func) {
-        return {load_status::FactorySymbolMissing, "",
+        return {load_status::FactorySymbolMissing, full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
 
     auto factory_ptr = std::unique_ptr<generic_client_factory>(factory_func("Greeter"));
     if (!factory_ptr) {
-        return {load_status::FactorySymbolMissing, "",
+        return {load_status::FactorySymbolMissing, full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
     client_info info;
     std::filesystem::path ini_path = full_path;
     ini_path.replace_extension(".ini");
+    std::string ini_info{};
     if (std::filesystem::exists(ini_path)) {
         boost::property_tree::ptree pt;
         boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
 
-        if (auto opt = pt.get_optional<std::string>("grpc.url")) { info.set_default_url(*opt); }
+        if (auto opt = pt.get_optional<std::string>("grpc.url")) {
+            ini_info = ini_path.string() + " exists.\n" + "set " + *opt + " to grpc.url\n";
+            info.set_default_url(*opt);
+        } else {
+            ini_info = ini_path.string() + " exists.\n" +
+                       "but grpc.url not found, Use default value:" + info.default_url() + "\n";
+        }
         if (auto opt = pt.get_optional<std::string>("grpc.credentials")) {
             info.set_default_auth(*opt);
+            ini_info = ini_info + "set: " + *opt + " to grpc.credentials\n";
+        } else {
+            ini_info = ini_info +
+                       "grpc.credentials not found, Use default value:" + info.default_auth() +
+                       "\n";
         }
+    } else {
+        ini_info =
+            ini_path.string() + " does not exist. Use default value:" + info.default_url() + "\n";
     }
     auto channel    = grpc::CreateChannel(info.default_url(), grpc::InsecureChannelCredentials());
     auto raw_client = factory_ptr->create(channel);
     if (!raw_client) {
-        return {
-            load_status::FactoryCreationFailed, "", "Failed to create generic client from factory"};
+        return {load_status::FactoryCreationFailed, full_path,
+            "Failed to create generic client from factory"};
     }
     plugins_.emplace_back(api_ptr.release(), std::shared_ptr<generic_client>(raw_client));
-    return {load_status::OK, "", ""};
+    return {load_status::OK, full_path, ini_info};
 }
 
 std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&

@@ -59,7 +59,6 @@ load_result udf_loader::load(std::string_view dir_path) {
             return {load_status::DLOpenFailed, full_path,
                 err ? err : "dlopen failed with unknown error"};
         }
-        handles_.emplace_back(handle);
         auto res = create_api_from_handle(handle, full_path);
         if (res.status() != load_status::OK) {
             res.set_file(full_path);
@@ -69,13 +68,7 @@ load_result udf_loader::load(std::string_view dir_path) {
     return {load_status::OK, "", ""};
 }
 
-void udf_loader::unload_all() {
-    plugins_.clear();
-    for (void* handle : handles_) {
-        if (handle) dlclose(handle);
-    }
-    handles_.clear();
-}
+void udf_loader::unload_all() {}
 load_result udf_loader::create_api_from_handle(void* handle, const std::string& full_path) {
     if (!handle) { return {load_status::DLOpenFailed, "", "Invalid handle (nullptr)"}; }
 

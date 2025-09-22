@@ -694,7 +694,8 @@ void service::command_dispose_prepared_statement(
     request_info const& req_info
 ) {
     auto& ds = proto_req.dispose_prepared_statement();
-
+    LOG(INFO) << "receive : " << static_cast<void*>(res.get());
+ 
     auto handle = validate_statement_handle<sql::response::ResultOnly>(ds, *res, req_info);
     if(! handle) {
         return;
@@ -710,6 +711,7 @@ void service::command_dispose_prepared_statement(
         details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
         return;
     }
+    LOG(INFO) << "reply   : " << static_cast<void*>(res.get());
     details::success<sql::response::ResultOnly>(*res, req_info);
 }
 void service::command_explain(

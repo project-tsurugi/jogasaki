@@ -190,21 +190,21 @@ static bool check_grant_revoke_preconditions(  //NOLINT(readability-function-cog
     return true;
 }
 
-static std::string_view get_grantee(
+static std::string get_grantee(
     takatori::statement::details::table_authorization_entry const& tae,
     std::optional<std::string_view> const& current_user
 ) {
-    std::string_view ret{};
+    std::string ret{};
     switch(tae.user_kind()) {
         case takatori::statement::authorization_user_kind::specified:
             ret = tae.authorization_identifier() ;
             break;
         case takatori::statement::authorization_user_kind::current_user:
-            assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked above //NOLINT
+            assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked in check_grant_revoke_preconditions //NOLINT
             ret = current_user.value();
             break;
         case takatori::statement::authorization_user_kind::all_users:
-            // for grant, all_users will not come here
+            // no-op here. `*` is allowed only for revoke. There is no single grantee for this case and it is separately handled.
             break;
     }
     return ret;
@@ -225,25 +225,27 @@ static std::pair<auth::action_set, auth::authorized_users_action_set> calculate_
             auto grantee = get_grantee(tae, current_user);
             authorized_actions.add_user_actions(grantee, from(tae.privileges()));
         }
-    } else {
-        public_actions.remove_actions(from(tpe.default_privileges()));
-        for(auto&& tae : tpe.authorization_entries()) {
-            if(tae.user_kind() == takatori::statement::authorization_user_kind::all_users) {
-                assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked above //NOLINT
-                public_actions.clear();
-                for(auto it = authorized_actions.begin(), end = authorized_actions.end(); it != end; ) {
-                    if (it->first != current_user.value()) {
-                        it = authorized_actions.erase(it);
-                        continue;
-                    }
-                    ++it;
+        return {public_actions, authorized_actions};
+    }
+
+    // revoke
+    public_actions.remove_actions(from(tpe.default_privileges()));
+    for(auto&& tae : tpe.authorization_entries()) {
+        if(tae.user_kind() == takatori::statement::authorization_user_kind::all_users) {
+            assert_with_exception(current_user.has_value(), tae.authorization_identifier());  // already checked in check_grant_revoke_preconditions //NOLINT
+            public_actions.clear();
+            for(auto it = authorized_actions.begin(), end = authorized_actions.end(); it != end; ) {
+                if (it->first != current_user.value()) {
+                    it = authorized_actions.erase(it);
+                    continue;
                 }
-                continue;
+                ++it;
             }
-            // for specified or current_user
-            auto grantee = get_grantee(tae, current_user);
-            authorized_actions.remove_user_actions(grantee, from(tae.privileges()));
+            continue;
         }
+        // for specified or current_user
+        auto grantee = get_grantee(tae, current_user);
+        authorized_actions.remove_user_actions(grantee, from(tae.privileges()));
     }
     return {public_actions, authorized_actions};
 }
@@ -332,7 +334,8 @@ static bool reflect_grant_revoke(
         // durable one (in storage option), we first copy the in-memory metadata, serialize to create storage option,
         // and deserialize into the in-memory one again
 
-        auto [public_actions, authorized_actions] = calculate_public_and_authorized_actions(tpe, *sc, grant, current_user);
+        auto [public_actions, authorized_actions] =
+            calculate_public_and_authorized_actions(tpe, *sc, grant, current_user);
         if(! serialize_and_save(context, c.simple_name(), *sc, public_actions, authorized_actions)) {
             return false;
         }

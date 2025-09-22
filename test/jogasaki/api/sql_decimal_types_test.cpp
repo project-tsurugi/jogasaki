@@ -76,7 +76,7 @@ public:
 
     void TearDown() override {
         db_teardown();
-        mock::basic_record::compare_decimals_as_triple_ = false;
+        mock::basic_record::compare_decimals_as_triple_ = false;  // reset global flag
     }
 };
 

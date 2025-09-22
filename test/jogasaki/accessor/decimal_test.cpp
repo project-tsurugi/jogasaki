@@ -717,7 +717,8 @@ TEST_F(decimal_test, scale_multiply_divide_remainder) {
     // 3.00000 / 2.00 = 1.500
     // 3.00000 % 2.00 = 1.00000
     // so SQL compiler calculates DECIMAL(p,s) op DECIMAL(q,t) = DECIMAL(*, *)
-    // we reduce/rescale after the operation
+    // and no reduce/rescale are conducted
+    // (the exponent of the result value is not defined by design, and mpdecimal chooses arbitrarily)
     decimal::context = standard_decimal_context();
     auto tri2 = triple{1, 0, 200, -2};
     auto dec2 = static_cast<::decimal::Decimal>(tri2);

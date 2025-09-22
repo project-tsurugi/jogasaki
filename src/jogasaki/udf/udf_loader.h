@@ -79,7 +79,7 @@ class udf_loader : public plugin_loader {
      *
      * @param dir_path Path to a plugin file or a directory containing plugins.
      */
-    [[nodiscard]] load_result load(std::string_view dir_path) override;
+    [[nodiscard]] std::vector<load_result> load(std::string_view dir_path) override;
     /**
      * @brief Unloads all currently loaded plugins.
      *

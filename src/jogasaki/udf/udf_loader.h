@@ -98,8 +98,6 @@ class udf_loader : public plugin_loader {
     get_plugins() noexcept override;
 
   private:
-    std::vector<void*> handles_;
-    client_info client_info_;
     /** List of raw `dlopen()` handles for loaded plugins. */
     [[nodiscard]] load_result create_api_from_handle(void* handle, const std::string& full_path);
     /** List of loaded plugin API/client pairs. */

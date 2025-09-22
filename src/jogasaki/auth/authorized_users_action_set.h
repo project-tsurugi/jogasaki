@@ -27,6 +27,8 @@ namespace jogasaki::auth {
  */
 class authorized_users_action_set {
 public:
+    using entity_type = std::unordered_map<std::string, action_set>;
+
     /**
      * @brief Add authorized actions for a user.
      * @param name The user name.
@@ -73,10 +75,26 @@ public:
     }
 
     /**
+     * @brief Get an iterator to the beginning of the authorized users.
+     * @return An iterator to the beginning of the authorized users.
+     */
+    auto begin() noexcept {
+        return map_.begin();
+    }
+
+    /**
      * @brief Get an iterator to the end of the authorized users.
      * @return An iterator to the end of the authorized users.
      */
     auto end() const noexcept {
+        return map_.end();
+    }
+
+    /**
+     * @brief Get an iterator to the end of the authorized users.
+     * @return An iterator to the end of the authorized users.
+     */
+    auto end() noexcept {
         return map_.end();
     }
 
@@ -86,8 +104,24 @@ public:
     void clear() noexcept {
         map_.clear();
     }
+
+    /**
+     * @brief erase the element at the iterator position
+     * @returns interator at the next position
+     */
+    auto erase(entity_type::iterator it) noexcept {
+        return map_.erase(it);
+    }
+
+    /**
+     * @brief return the number of authorized users.
+     */
+    [[nodiscard]] std::size_t user_count() const noexcept {
+        return map_.size();
+    }
+
 private:
-    std::unordered_map<std::string, action_set> map_{};
+    entity_type map_{};
 };
 
 }  // namespace jogasaki::auth

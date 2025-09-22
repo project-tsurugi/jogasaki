@@ -407,4 +407,137 @@ TEST_F(sql_grant_revoke_test, storage_lock_released_after_grant_fails) {
     execute_statement("select * from t0"); // to verify there is no lock left on t0
 }
 
+TEST_F(sql_grant_revoke_test, grant_revoke_current_user) {
+    // verify use of CURRENT_USER
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("grant all privileges on table t to user1");
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+    }
+    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+
+    // as user1 already has control, so this is actually no-op
+    execute_statement("grant all privileges on table t to current_user", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+    }
+    // as user1 already has control, so this is actually no-op
+    execute_statement("grant select on table t to current_user", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+    }
+
+    // current_user is available only when authentication is enabled
+    test_stmt_err("grant all privileges on table t to current_user", error_code::value_evaluation_exception);
+    test_stmt_err("revoke all privileges on table t from current_user", error_code::value_evaluation_exception);
+
+    execute_statement("revoke select on table t from current_user", info1);  // revoking select is no-op as user1 has control
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+    }
+
+    execute_statement("revoke all privileges on table t from current_user", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+    }
+
+    // now user1 has no privilege, so this fails
+    test_stmt_err("revoke select on table t from current_user", info1, error_code::permission_error);
+}
+
+TEST_F(sql_grant_revoke_test, grant_revoke_all_users) {
+    // verify use of `*` (meaning all users except current user)
+    execute_statement("create table t (c0 int primary key)");
+
+    // grant ... to * is compile error (never supported)
+    test_stmt_err("grant all privileges on table t to *", error_code::syntax_exception);
+
+    execute_statement("grant all privileges on table t to public");
+    execute_statement("grant all privileges on table t to user1");
+    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("grant all privileges on table t to user2", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{action_kind::control}), public_actions);
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user2"));
+    }
+
+    // revoke from * is supported only for "all privileges". Revoking any other single privilege is not supported
+    test_stmt_err("revoke select on table t from *", info1, error_code::unsupported_runtime_feature_exception);
+
+    // `*` is available only when authentication is enabled
+    test_stmt_err("revoke all privileges on table t from *", error_code::value_evaluation_exception);
+
+    execute_statement("revoke all privileges on table t from *", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    }
+    execute_statement("revoke all privileges on table t from current_user", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    }
+}
+
+TEST_F(sql_grant_revoke_test, grant_revoke_all_and_current_users) {
+    // verify use of `*` together with "CURRENT_USER"
+    execute_statement("create table t (c0 int primary key)");
+
+    execute_statement("grant all privileges on table t to public");
+    execute_statement("grant all privileges on table t to user1");
+    execute_statement("grant select, insert on table t to user2");
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{action_kind::control}), public_actions);
+        EXPECT_EQ((action_set{action_kind::control}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{action_kind::select, action_kind::insert}), users_actions.find_user_actions("user2"));
+    }
+
+    auto info1 = utils::create_req_info("user1", tateyama::api::server::user_type::standard);
+    execute_statement("revoke all privileges on table t from *, user1", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    }
+    execute_statement("grant all privileges on table t to public");
+    execute_statement("grant all privileges on table t to user1");
+    execute_statement("grant select, insert on table t to user2");
+    execute_statement("revoke all privileges on table t from current_user, *", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    }
+    execute_statement("grant all privileges on table t to public");
+    execute_statement("grant all privileges on table t to user1");
+    execute_statement("grant select, insert on table t to user2");
+    execute_statement("revoke all privileges on table t from current_user, *, *, current_user", info1);
+    {
+        auto [users_actions, public_actions] = actions("t");
+        EXPECT_EQ((action_set{}), public_actions);
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user1"));
+        EXPECT_EQ((action_set{}), users_actions.find_user_actions("user2"));
+    }
+}
+
+
 }  // namespace jogasaki::testing

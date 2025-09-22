@@ -39,8 +39,8 @@ struct metadata_serializer_option {
 
     explicit metadata_serializer_option(
         bool synthesized = false,
-        auth::authorized_users_action_set* authorized_actions = nullptr,
-        auth::action_set* public_actions = nullptr
+        auth::authorized_users_action_set const* authorized_actions = nullptr,
+        auth::action_set const* public_actions = nullptr
     ) :
         synthesized_(synthesized),
         authorized_actions_(authorized_actions),
@@ -51,10 +51,10 @@ struct metadata_serializer_option {
     bool synthesized_{};  //NOLINT
 
     // authorized users action for the index or table
-    auth::authorized_users_action_set* authorized_actions_{};  //NOLINT
+    auth::authorized_users_action_set const* authorized_actions_{};  //NOLINT
 
     // publicly allowed action for the index or table
-    auth::action_set* public_actions_{};  //NOLINT
+    auth::action_set const* public_actions_{};  //NOLINT
 };
 
 /**

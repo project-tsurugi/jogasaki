@@ -397,13 +397,16 @@ void database::init() {
         global::scalar_function_repository()
     );
     loader_     = std::make_unique<plugin::udf::udf_loader>();
-    auto result = loader_->load(std::string(cfg_->loader_path()));
-    if (result.status() == plugin::udf::load_status::OK) {
-        VLOG_LP(log_info) << "[gRPC] " << result.status_string()
-                          << " file: " << std::string(cfg_->loader_path()) << std::endl;
-    } else {
-        VLOG_LP(log_warning) << "[gRPC] " << result.status_string() << " file: " << result.file()
-                             << " defail: " << result.detail() << std::endl;
+    auto results = loader_->load(std::string(cfg_->loader_path()));
+    for (const auto& result : results) {
+        if (result.status() == plugin::udf::load_status::OK) {
+            VLOG_LP(log_info) << "[gRPC] " << result.status_string() << " file: " << result.file()
+                              << " detail: " << result.detail() << std::endl;
+        } else {
+            VLOG_LP(log_warning) << "[gRPC] " << result.status_string()
+                                 << " file: " << result.file() << " detail: " << result.detail()
+                                 << std::endl;
+        }
     }
     for (auto& plugin : loader_->get_plugins()) {
         plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));

@@ -45,7 +45,8 @@ enum class scalar_function_kind : std::size_t {
     encode,
     decode,
     rtrim,
-    ltrim
+    ltrim,
+    user_defined
 };
 
 /**
@@ -79,6 +80,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::decode: return "decode"sv;
         case kind::rtrim: return "rtrim"sv;
         case kind::ltrim: return "ltrim"sv;
+        case kind::user_defined: return "user_defined"sv;
     }
     std::abort();
 }

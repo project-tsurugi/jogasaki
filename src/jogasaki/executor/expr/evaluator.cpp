@@ -40,6 +40,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/accessor/text.h>
+#include <jogasaki/api.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/datastore/assign_lob_id.h>
@@ -89,16 +90,87 @@ engine::engine(
     resource_(resource)
 {}
 
-template <class T, class U = T>
-static any add(T const& l, U const& r) {
+template <class T>
+static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
+add(T const& l, T const& r) {
     return any{std::in_place_type<T>, l+r};
 }
 
-template <>
-any add<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+namespace {
+
+enum class decimal_binary_operation_kind {
+    add,
+    subtract,
+    multiply,
+    divide,
+    remainder,
+};
+
+[[nodiscard]] constexpr inline std::string_view to_string_view(decimal_binary_operation_kind kind) noexcept {
+    using namespace std::string_view_literals;
+    switch (kind) {
+        case decimal_binary_operation_kind::add: return "add"sv;
+        case decimal_binary_operation_kind::subtract: return "subtract"sv;
+        case decimal_binary_operation_kind::multiply: return "multiply"sv;
+        case decimal_binary_operation_kind::divide: return "divide"sv;
+        case decimal_binary_operation_kind::remainder: return "remainder"sv;
+    }
+    std::abort();
+}
+
+inline std::ostream& operator<<(std::ostream& out, decimal_binary_operation_kind kind) {
+    return out << to_string_view(kind);
+}
+
+template <decimal_binary_operation_kind kind>
+decimal::Decimal do_binary_operation(decimal::Decimal const& l, decimal::Decimal const& r) {
+    if constexpr(kind == decimal_binary_operation_kind::add) {
+        return l + r;
+    } else if constexpr(kind == decimal_binary_operation_kind::subtract) {
+        return l - r;
+    } else if constexpr(kind == decimal_binary_operation_kind::multiply) {
+        return l * r;
+    } else if constexpr(kind == decimal_binary_operation_kind::divide) {
+        return l / r;
+    } else if constexpr(kind == decimal_binary_operation_kind::remainder) {
+        return l % r;
+    } else {
+        std::abort();
+    }
+}
+
+template <decimal_binary_operation_kind kind>
+any decimal_binary_operation(
+    runtime_t<meta::field_type_kind::decimal> const& l,
+    runtime_t<meta::field_type_kind::decimal> const& r,
+    evaluator_context& ctx
+) {
+    decimal::context.clear_status();
+    auto d = do_binary_operation<kind>(static_cast<decimal::Decimal>(l), static_cast<decimal::Decimal>(r));
+    if((decimal::context.status() & (MPD_IEEE_Invalid_operation | MPD_Overflow | MPD_Division_by_zero)) != 0) {
+        auto& e = ctx.add_error(
+            {error_kind::arithmetic_error,
+             "decimal value arithmetic error while performing operation:" + std::string{to_string_view(kind)}}
+        );
+        e.new_argument() << l;
+        e.new_argument() << r;
+        e.new_argument() << decimal::context.repr();
+        e.new_argument() << decimal::context.status();
+        return any{std::in_place_type<error>, error(error_kind::arithmetic_error)};
+    }
+    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, d};
+}
+
+}
+
+static any add(
+    runtime_t<meta::field_type_kind::decimal> const& l,
+    runtime_t<meta::field_type_kind::decimal> const& r,
+    evaluator_context& ctx
+) {
     // SQL compiler keeps scale, i.e. calculates result type as decimal(p1, s1) + decimal(p2, s2) = decimal(*, max(s1,s2))
     // and mpdecimal does the same, (e.g. 1.0 + 2.00 = 3.00), so we don't need to reduce or rescale here.
-    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)+static_cast<decimal::Decimal>(r)};
+    return decimal_binary_operation<decimal_binary_operation_kind::add>(l, r, ctx);
 }
 
 triple triple_from_int(std::int64_t arg) {
@@ -196,16 +268,20 @@ static std::pair<any, any> promote_binary_numeric(any const& l, any const& r) {
     };
 }
 
-template <class T, class U = T>
-static any subtract(T const& l, U const& r) {
+template <class T>
+static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
+subtract(T const& l, T const& r) {
     return any{std::in_place_type<T>, l-r};
 }
 
-template <>
-any subtract<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+static any subtract(
+    runtime_t<meta::field_type_kind::decimal> const& l,
+    runtime_t<meta::field_type_kind::decimal> const& r,
+    evaluator_context& ctx
+) {
     // SQL compiler keeps scale, i.e. calculates result type as decimal(p1, s1) - decimal(p2, s2) = decimal(*, max(s1,s2))
     // and mpdecimal does the same, (e.g. 1.0 - 2.00 = -1.00), so we don't need to reduce or rescale here.
-    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)-static_cast<decimal::Decimal>(r)};
+    return decimal_binary_operation<decimal_binary_operation_kind::subtract>(l, r, ctx);
 }
 
 template <class T, class U>
@@ -220,54 +296,70 @@ any engine::concat_any(any const& left, any const& right) {
     }
 }
 
-template <class T, class U = T>
-static any multiply(T const& l, U const& r) {
+template <class T>
+static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
+multiply(T const& l, T const& r) {
     return any{std::in_place_type<T>, l*r};
 }
 
-template <>
-any multiply<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
+static any multiply(
+    runtime_t<meta::field_type_kind::decimal> const& l,
+    runtime_t<meta::field_type_kind::decimal> const& r,
+    evaluator_context& ctx
+) {
     // SQL compiler does not keep scale, i.e. calculates result type as decimal(*, *)
     // so we don't need to reduce or rescale here.
-    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)*static_cast<decimal::Decimal>(r)};
+    return decimal_binary_operation<decimal_binary_operation_kind::multiply>(l, r, ctx);
 }
 
-template <class T, class U = T>
-static any divide(T const& l, U const& r) {
+template <class T>
+static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
+divide(T const& l, T const& r, evaluator_context& ctx) {
     if (r == 0) {
+        auto& e = ctx.add_error(
+            {error_kind::arithmetic_error,
+             "arithmetic error while performing division"}
+        );
+        e.new_argument() << l;
+        e.new_argument() << r;
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
     return any{std::in_place_type<T>, l/r};
 }
 
-template <>
-any divide<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
-    // TODO check context status
+static any divide(
+    runtime_t<meta::field_type_kind::decimal> const& l,
+    runtime_t<meta::field_type_kind::decimal> const& r,
+    evaluator_context& ctx
+) {
     // SQL compiler does not keep scale, i.e. calculates result type as decimal(*, *)
     // so we don't need to reduce or rescale here.
-    if (r == 0) {
-        return any{std::in_place_type<class error>, error_kind::arithmetic_error};
-    }
-    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)/static_cast<decimal::Decimal>(r)};
+    return decimal_binary_operation<decimal_binary_operation_kind::divide>(l, r, ctx);
 }
 
-template <class T, class U = T>
-static any remainder(T const& l, U const& r) {
+template <class T>
+static std::enable_if_t<! std::is_same_v<T, runtime_t<meta::field_type_kind::decimal>>, any>
+remainder(T const& l, T const& r, evaluator_context& ctx) {
     if (r == 0) {
+        auto& e = ctx.add_error(
+            {error_kind::arithmetic_error,
+             "arithmetic error while calculating remainder"}
+        );
+        e.new_argument() << l;
+        e.new_argument() << r;
         return any{std::in_place_type<class error>, error_kind::arithmetic_error};
     }
     return any{std::in_place_type<T>, l%r};
 }
 
-template <>
-any remainder<runtime_t<meta::field_type_kind::decimal>>(runtime_t<meta::field_type_kind::decimal> const& l, runtime_t<meta::field_type_kind::decimal> const& r) {
-    // TODO check context status
+static any remainder(
+    runtime_t<meta::field_type_kind::decimal> const& l,
+    runtime_t<meta::field_type_kind::decimal> const& r,
+    evaluator_context& ctx
+) {
     // SQL compiler does not keep scale, i.e. calculates result type as decimal(*, *)
     // so we don't need to reduce or rescale here.
-    if (r == 0) {
-        return any{std::in_place_type<class error>, error_kind::arithmetic_error};
-    }
-    return any{std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, static_cast<decimal::Decimal>(l)%static_cast<decimal::Decimal>(r)};
+    return decimal_binary_operation<decimal_binary_operation_kind::remainder>(l, r, ctx);
 }
 
 any engine::conditional_and_any(any const& left, any const& right) {
@@ -334,12 +426,12 @@ any engine::operator()(takatori::scalar::binary const& exp) {
         if (! r) return r;
     }
     switch(exp.operator_kind()) {
-        case optype::add: return add_any(l, r);
+        case optype::add: return add_any(l, r, ctx_);
         case optype::concat: return concat_any(l, r);
-        case optype::subtract: return subtract_any(l, r);
-        case optype::divide: return divide_any(l, r);
-        case optype::multiply: return multiply_any(l, r);
-        case optype::remainder: return remainder_any(l, r);
+        case optype::subtract: return subtract_any(l, r, ctx_);
+        case optype::divide: return divide_any(l, r, ctx_);
+        case optype::multiply: return multiply_any(l, r, ctx_);
+        case optype::remainder: return remainder_any(l, r, ctx_);
         case optype::conditional_and: return conditional_and_any(l, r);
         case optype::conditional_or: return conditional_or_any(l, r);
         default: return return_unsupported();
@@ -986,23 +1078,23 @@ any evaluate_bool(
     return any{std::in_place_type<bool>, a && a.to<bool>()};
 }
 
-any remainder_any(any const& left, any const& right) {
+any remainder_any(any const& left, any const& right, evaluator_context& ctx) {
     BOOST_ASSERT(left && right); // NOLINT
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch (l.type_index()) {
         case any::index<runtime_t<meta::field_type_kind::int4>>:
             return details::remainder(l.to<runtime_t<meta::field_type_kind::int4>>(),
-                r.to<runtime_t<meta::field_type_kind::int4>>());
+                r.to<runtime_t<meta::field_type_kind::int4>>(), ctx);
         case any::index<runtime_t<meta::field_type_kind::int8>>:
             return details::remainder(l.to<runtime_t<meta::field_type_kind::int8>>(),
-                r.to<runtime_t<meta::field_type_kind::int8>>());
+                r.to<runtime_t<meta::field_type_kind::int8>>(), ctx);
         case any::index<runtime_t<meta::field_type_kind::decimal>>:
             return details::remainder(l.to<runtime_t<meta::field_type_kind::decimal>>(),
-                r.to<runtime_t<meta::field_type_kind::decimal>>());
+                r.to<runtime_t<meta::field_type_kind::decimal>>(), ctx);
         default: return details::return_unsupported();
     }
 }
-any add_any(any const& left, any const& right) {
+any add_any(any const& left, any const& right, evaluator_context& ctx) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l,r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
@@ -1010,12 +1102,12 @@ any add_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::int8>>: return details::add(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
         case any::index<runtime_t<meta::field_type_kind::float4>>: return details::add(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return details::add(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::add(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::add(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>(), ctx);
         default: return details::return_unsupported();
     }
 }
 
-any subtract_any(any const& left, any const& right) {
+any subtract_any(any const& left, any const& right, evaluator_context& ctx) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
@@ -1023,7 +1115,7 @@ any subtract_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::int8>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
         case any::index<runtime_t<meta::field_type_kind::float4>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::subtract(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>(), ctx);
         default: return details::return_unsupported();
     }
 }
@@ -1045,7 +1137,7 @@ any compare_any(takatori::scalar::comparison_operator optype, any const& left, a
         default: return details::return_unsupported();
     }
 }
-any multiply_any(any const& left, any const& right) {
+any multiply_any(any const& left, any const& right, evaluator_context& ctx) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
@@ -1053,19 +1145,19 @@ any multiply_any(any const& left, any const& right) {
         case any::index<runtime_t<meta::field_type_kind::int8>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
         case any::index<runtime_t<meta::field_type_kind::float4>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
         case any::index<runtime_t<meta::field_type_kind::float8>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::multiply(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>(), ctx);
         default: return details::return_unsupported();
     }
 }
-any divide_any(any const& left, any const& right) {
+any divide_any(any const& left, any const& right, evaluator_context& ctx) {
     BOOST_ASSERT(left && right);  //NOLINT
     auto [l, r] = details::promote_binary_numeric(left, right);
     switch(l.type_index()) {
-        case any::index<runtime_t<meta::field_type_kind::int4>>: return details::divide(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>());
-        case any::index<runtime_t<meta::field_type_kind::int8>>: return details::divide(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>());
-        case any::index<runtime_t<meta::field_type_kind::float4>>: return details::divide(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>());
-        case any::index<runtime_t<meta::field_type_kind::float8>>: return details::divide(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>());
-        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::divide(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>());
+        case any::index<runtime_t<meta::field_type_kind::int4>>: return details::divide(l.to<runtime_t<meta::field_type_kind::int4>>(), r.to<runtime_t<meta::field_type_kind::int4>>(), ctx);
+        case any::index<runtime_t<meta::field_type_kind::int8>>: return details::divide(l.to<runtime_t<meta::field_type_kind::int8>>(), r.to<runtime_t<meta::field_type_kind::int8>>(), ctx);
+        case any::index<runtime_t<meta::field_type_kind::float4>>: return details::divide(l.to<runtime_t<meta::field_type_kind::float4>>(), r.to<runtime_t<meta::field_type_kind::float4>>(), ctx);
+        case any::index<runtime_t<meta::field_type_kind::float8>>: return details::divide(l.to<runtime_t<meta::field_type_kind::float8>>(), r.to<runtime_t<meta::field_type_kind::float8>>(), ctx);
+        case any::index<runtime_t<meta::field_type_kind::decimal>>: return details::divide(l.to<runtime_t<meta::field_type_kind::decimal>>(), r.to<runtime_t<meta::field_type_kind::decimal>>(), ctx);
         default: return details::return_unsupported();
     }
 }

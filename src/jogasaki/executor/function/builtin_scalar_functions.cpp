@@ -1159,27 +1159,27 @@ static data::any round_decimal(data::any src, int32_t precision, evaluator_conte
     auto value  = src.to<runtime_t<kind::decimal>>();
     auto type   = std::in_place_type<runtime_t<kind::decimal>>;
     auto one    = data::any{type, takatori::decimal::triple{+1, 0, 1, -precision}};
-    auto remain = expr::remainder_any(src, one);
+    auto remain = expr::remainder_any(src, one, ctx);
     auto check  = remain.to<runtime_t<kind::decimal>>();
     if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return src; }
     if (value.sign() > 0) {
         auto half_value = takatori::decimal::triple{+1, 0, 5, -precision - 1};
         auto half       = data::any{type, half_value};
-        auto res        = expr::subtract_any(src, remain);
+        auto res        = expr::subtract_any(src, remain, ctx);
         auto com =
             expr::compare_any(takatori::scalar::comparison_operator::greater_equal, remain, half);
         if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {
-            return expr::add_any(res, one);
+            return expr::add_any(res, one, ctx);
         }
         return res;
     }
     auto minus_half_value = takatori::decimal::triple{-1, 0, 5, -precision - 1};
     auto minus_half       = data::any{type, minus_half_value};
-    auto res              = expr::subtract_any(src, remain);
+    auto res              = expr::subtract_any(src, remain, ctx);
     auto com =
         expr::compare_any(takatori::scalar::comparison_operator::less_equal, remain, minus_half);
     if (static_cast<bool>(com.to<runtime_t<kind::boolean>>())) {
-        return expr::subtract_any(res, one);
+        return expr::subtract_any(res, one, ctx);
     }
     return res;
 }
@@ -1385,16 +1385,16 @@ data::any position(evaluator_context&, sequence_view<data::any> args) {
     std::abort();
 }
 
-data::any mod(evaluator_context&, sequence_view<data::any> args) {
+data::any mod(evaluator_context& ctx, sequence_view<data::any> args) {
     BOOST_ASSERT(args.size() == 2); // NOLINT
     auto& first = static_cast<data::any&>(args[0]);
     if (first.empty()) { return {}; }
     auto& second = static_cast<data::any&>(args[1]);
     if (second.empty()) { return {}; }
-    return expr::remainder_any(first, second);
+    return expr::remainder_any(first, second, ctx);
 }
 
-data::any ceil(evaluator_context&, sequence_view<data::any> args) {
+data::any ceil(evaluator_context& ctx, sequence_view<data::any> args) {
     BOOST_ASSERT(args.size() == 1); // NOLINT
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
@@ -1421,12 +1421,12 @@ data::any ceil(evaluator_context&, sequence_view<data::any> args) {
             if (sign == 0 || exp >= 0) { return src; }
             constexpr auto one_value = takatori::decimal::triple{+1, 0, 1, 0};
             auto one                 = data::any{type, one_value};
-            auto remain              = expr::remainder_any(src, one);
-            auto res                 = expr::subtract_any(src, remain);
+            auto remain              = expr::remainder_any(src, one, ctx);
+            auto res                 = expr::subtract_any(src, remain, ctx);
             if (sign == 1) {
                 auto check = remain.to<runtime_t<kind::decimal>>();
                 if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return res; }
-                return expr::add_any(res, one);
+                return expr::add_any(res, one, ctx);
             }
             return res;
         }
@@ -1434,7 +1434,7 @@ data::any ceil(evaluator_context&, sequence_view<data::any> args) {
     }
     std::abort();
 }
-data::any floor(evaluator_context&, sequence_view<data::any> args) {
+data::any floor(evaluator_context& ctx, sequence_view<data::any> args) {
     BOOST_ASSERT(args.size() == 1); // NOLINT
     auto& src = static_cast<data::any&>(args[0]);
     if (src.empty()) { return {}; }
@@ -1461,12 +1461,12 @@ data::any floor(evaluator_context&, sequence_view<data::any> args) {
             if (sign == 0 || exp >= 0) { return src; }
             constexpr auto one_value = takatori::decimal::triple{+1, 0, 1, 0};
             auto one                 = data::any{type, one_value};
-            auto remain              = expr::remainder_any(src, one);
-            auto res                 = expr::subtract_any(src, remain);
+            auto remain              = expr::remainder_any(src, one, ctx);
+            auto res                 = expr::subtract_any(src, remain, ctx);
             if (sign == -1) {
                 auto check = remain.to<runtime_t<kind::decimal>>();
                 if (check.coefficient_high() == 0 && check.coefficient_low() == 0) { return res; }
-                return expr::subtract_any(res, one);
+                return expr::subtract_any(res, one, ctx);
             }
             return res;
         }

@@ -172,10 +172,10 @@ private:
     memory::lifo_paged_memory_resource* resource = nullptr
 );
 
-[[nodiscard]] any divide_any(any const& left, any const& right);
-[[nodiscard]] any multiply_any(any const& left, any const& right);
-[[nodiscard]] any remainder_any(any const& left, any const& right);
-[[nodiscard]] any add_any(any const& left, any const& right);
-[[nodiscard]] any subtract_any(any const& left, any const& right);
+[[nodiscard]] any divide_any(any const& left, any const& right, evaluator_context& ctx);
+[[nodiscard]] any multiply_any(any const& left, any const& right, evaluator_context& ctx);
+[[nodiscard]] any remainder_any(any const& left, any const& right, evaluator_context& ctx);
+[[nodiscard]] any add_any(any const& left, any const& right, evaluator_context& ctx);
+[[nodiscard]] any subtract_any(any const& left, any const& right, evaluator_context& ctx);
 [[nodiscard]] any compare_any(takatori::scalar::comparison_operator optype, any const& left, any const& right);
 }  // namespace jogasaki::executor::expr

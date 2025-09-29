@@ -97,7 +97,7 @@ void add_builtin_scalar_functions(
             1
         );
         auto name = "octet_length";
-        auto id = scalar_function_id::id_11001;
+        auto id = scalar_function_id::id_11000;
         repo.add(id, info);
         functions.add({
             id,

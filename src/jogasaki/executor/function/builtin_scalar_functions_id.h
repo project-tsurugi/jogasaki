@@ -24,7 +24,7 @@ namespace jogasaki::executor::function {
 constexpr static std::size_t minimum_scalar_function_id = 1000;
 
 /**
- * @brief the sequential number pool for the build-in aggregate functions
+ * @brief the sequential number pool for the build-in scalar functions
  * @details this is to avoid the collision of the function ids and to clarify the function id range in use.
  * @warning it's possible the function ids are made durable (e.g. scalar function in the CREATE TABLE DEFAULT clause)
  * so do not change the existing entries or re-use the numbers that are already used.

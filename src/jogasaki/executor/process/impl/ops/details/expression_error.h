@@ -42,7 +42,7 @@ using takatori::util::string_builder;
 //NOLINTEND
 
 template<class Context>
-operation_status handle_expression_error_impl(
+operation_status handle_expression_error_impl(  //NOLINT(readability-function-cognitive-complexity)
     Context& ctx,
     data::any res,
     jogasaki::executor::expr::evaluator_context const& ectx,
@@ -112,6 +112,41 @@ operation_status handle_expression_error_impl(
             *ctx.req_context(),
             error_code::value_evaluation_exception,
             string_builder{} << "invalid input value is used" << string_builder::to_string,
+            filepath,
+            position,
+            rc,
+            false);
+        ctx.abort();
+        return {operation_status_kind::aborted};
+    }
+    if (err.kind() == expr::error_kind::arithmetic_error) {
+        std::string_view msg = "arithmetic error occurred";  // generic message - use more specific one if available
+        if(! ectx.errors().empty()) {
+            // when error is provided, use the first one
+            auto& error = ectx.errors().front();
+            msg = error.message();
+
+            if(global::config_pool()->log_msg_user_data()) {
+                std::stringstream ss{};
+                if(! error.arguments().empty()) {
+                    auto sz = error.arguments().size();
+                    ss << "args:{";
+                    for(std::size_t i=0; i < sz; ++i) {
+                        if(i != 0) {
+                            ss << ",";
+                        }
+                        ss << error.arguments().at(i).str();
+                    }
+                    ss << "}";
+                }
+                VLOG_LP(log_error) << msg << " " << ss.str();
+            }
+        }
+        auto rc = status::err_expression_evaluation_failure;
+        error::set_error_impl(
+            *ctx.req_context(),
+            error_code::value_evaluation_exception,
+            msg,
             filepath,
             position,
             rc,

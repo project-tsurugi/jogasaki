@@ -144,9 +144,9 @@ TEST_F(decimal_test, max_context) {
 
 TEST_F(decimal_test, standard_context) {
     decimal::context = standard_decimal_context();
-    EXPECT_EQ(24576, decimal::context.emax());
-    EXPECT_EQ(-24575, decimal::context.emin());
-    EXPECT_EQ(-24612, decimal::context.etiny());
+    EXPECT_EQ(executor::expr::details::decimal_context_emax, decimal::context.emax());
+    EXPECT_EQ(executor::expr::details::decimal_context_emin, decimal::context.emin());
+    EXPECT_EQ(executor::expr::details::decimal_context_etiny, decimal::context.etiny());
     EXPECT_EQ(38, decimal::context.prec());
     EXPECT_EQ(0, decimal::context.traps());
     EXPECT_EQ(MPD_ROUND_HALF_EVEN, decimal::context.round());

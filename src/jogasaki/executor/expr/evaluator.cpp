@@ -118,10 +118,6 @@ enum class decimal_binary_operation_kind {
     std::abort();
 }
 
-inline std::ostream& operator<<(std::ostream& out, decimal_binary_operation_kind kind) {
-    return out << to_string_view(kind);
-}
-
 template <decimal_binary_operation_kind kind>
 decimal::Decimal do_binary_operation(decimal::Decimal const& l, decimal::Decimal const& r) {
     if constexpr(kind == decimal_binary_operation_kind::add) {

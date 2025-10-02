@@ -25,7 +25,8 @@ namespace jogasaki::datastore {
 
 /**
 * @brief get mock or production datastore instance
-* @param reset_cache indicates whether to clear and reset the cached object. Use for testing.
+* @param reset_cache indicates whether to clear and reset the cached object. If reset_cache=true,
+* this function is not thread-safe. Use only for testing.
 * @return the datastore instance
 */
 datastore* get_datastore(bool reset_cache = false);

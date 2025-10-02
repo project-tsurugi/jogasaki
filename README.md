@@ -17,9 +17,9 @@ git submodule update --init --recursive
 ```dockerfile
 FROM ubuntu:22.04
 
-RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libmpdec-dev nlohmann-json3-dev libparquet-dev=16.1.0-1 libparquet-glib-dev=16.1.0-1 libarrow-dev=16.1.0-1 libarrow-glib-dev=16.1.0-1
+RUN apt update -y && apt install -y git build-essential cmake ninja-build libboost-filesystem-dev libboost-system-dev libboost-container-dev libboost-thread-dev libboost-stacktrace-dev libgoogle-glog-dev libgflags-dev doxygen libtbb-dev libnuma-dev protobuf-compiler protobuf-c-compiler libprotobuf-dev libmsgpack-dev uuid-dev libicu-dev pkg-config flex bison libmpdec-dev nlohmann-json3-dev libparquet-dev=21.0.0-1 libparquet2100=21.0.0-1 libarrow-dev=21.0.0-1 libarrow2100=21.0.0-1
 ```
-(see "Additional file installation for Apache Parquet" below if installing `libparquet-dev`, `libparquet-glib-dev` fails)
+(see "Additional file installation for Apache Arrow/Parquet" below if installing `libparquet-dev`, `libarrow-dev` fails)
 
 optional packages:
 
@@ -38,9 +38,9 @@ This requires below [tsurugidb](https://github.com/project-tsurugi/tsurugidb) mo
 
 ### Additional file installation for Apache Arrow/Parquet
 
-Jogasaki requires Apache Arrow and Parquet package versioned as `16.1.0-1` (Official release stays to this version for stability. Jogasaki may be built and run with later versions, but it's for development/testing purpose only, not for production.)
+Jogasaki requires Apache Arrow and Parquet package versioned as `21.0.0-1` (Official release stays to this version for stability. Jogasaki may be built and run with later or older versions, but it's for development/testing purpose only, not for production.)
 
-Installing Apache Arrow/Paquet packages `libarrow-dev`, `libarrow-glib-dev`, `libparquet-dev`, `libparquet-glib-dev` requires additional files installation.
+Installing Apache Arrow/Parquet packages `libarrow-dev`, `libarrow2100`, `libparquet-dev`, `libparquet2100` requires additional files installation.
 If installing these packages from `apt install` command fails, issue below commands to install required files.
 
 ```
@@ -48,7 +48,7 @@ sudo apt install -y -V lsb-release
 wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
 sudo apt update
-sudo apt install -y -V libparquet-dev=16.1.0-1 libparquet-glib-dev=16.1.0-1 libarrow-dev=16.1.0-1 libarrow-glib-dev=16.1.0-1 gir1.2-parquet-1.0=16.1.0-1 gir1.2-arrow-1.0=16.1.0-1 libarrow-acero-dev=16.1.0-1
+sudo apt install -y -V libparquet-dev=21.0.0-1 libparquet2100=21.0.0-1 libarrow-dev=21.0.0-1 libarrow2100=21.0.0-1
 ```
 
 (You can see [here](https://arrow.apache.org/install/) for full instruction. )

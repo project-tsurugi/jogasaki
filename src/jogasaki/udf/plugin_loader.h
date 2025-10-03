@@ -14,25 +14,26 @@
  * limitations under the License.
  */
 #pragma once
-#include "error_info.h"
-#include "generic_client.h"
-#include "plugin_api.h"
 #include <string_view>
 #include <tuple>
 #include <vector>
+
+#include "error_info.h"
+#include "generic_client.h"
+#include "plugin_api.h"
 namespace plugin::udf {
 class plugin_loader {
-  public:
-    plugin_loader()                                                                = default;
-    plugin_loader(const plugin_loader&)                                            = delete;
-    plugin_loader& operator=(const plugin_loader&)                                 = delete;
-    plugin_loader(plugin_loader&&)                                                 = delete;
-    plugin_loader& operator=(plugin_loader&&)                                      = delete;
-    virtual ~plugin_loader()                                                       = default;
+public:
+
+    plugin_loader() = default;
+    plugin_loader(const plugin_loader&) = delete;
+    plugin_loader& operator=(const plugin_loader&) = delete;
+    plugin_loader(plugin_loader&&) = delete;
+    plugin_loader& operator=(plugin_loader&&) = delete;
+    virtual ~plugin_loader() = default;
     [[nodiscard]] virtual std::vector<load_result> load(std::string_view dir_path) = 0;
-    virtual void unload_all()                                                      = 0;
-    [[nodiscard]] virtual std::vector<
-        std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
+    virtual void unload_all() = 0;
+    [[nodiscard]] virtual std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
     get_plugins() noexcept = 0;
 };
-} // namespace plugin::udf
+}  // namespace plugin::udf

@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 #pragma once
+
+#include <optional>
 #include <string_view>
 #include <vector>
 
 #include "plugin_api.h"
+
 namespace plugin::udf {
+
 class column_descriptor_impl : public column_descriptor {
 public:
 
@@ -29,21 +33,15 @@ public:
         record_descriptor* nested = nullptr,
         std::optional<oneof_index_type> oneof = std::nullopt,
         std::optional<std::string_view> oneof_name_val = std::nullopt
-    ) :
-        _idx(i),
-        _name(n),
-        _kind(k),
-        _nested_record(nested),
-        _oneof_idx(oneof),
-        _oneof_name(oneof_name_val) {}
+    );
 
-    index_type index() const noexcept override { return _idx; }
-    std::string_view column_name() const noexcept override { return _name; }
-    type_kind_type type_kind() const noexcept override { return _kind; }
-    record_descriptor* nested() const noexcept override { return _nested_record; }
-    std::optional<oneof_index_type> oneof_index() const noexcept override { return _oneof_idx; }
-    [[nodiscard]] bool has_oneof() const noexcept override { return _oneof_idx.has_value(); }
-    std::optional<std::string_view> oneof_name() const noexcept override { return _oneof_name; }
+    [[nodiscard]] index_type index() const noexcept override;
+    [[nodiscard]] std::string_view column_name() const noexcept override;
+    [[nodiscard]] type_kind_type type_kind() const noexcept override;
+    [[nodiscard]] record_descriptor* nested() const noexcept override;
+    [[nodiscard]] std::optional<oneof_index_type> oneof_index() const noexcept override;
+    [[nodiscard]] bool has_oneof() const noexcept override;
+    [[nodiscard]] std::optional<std::string_view> oneof_name() const noexcept override;
 
 private:
 
@@ -58,14 +56,19 @@ private:
 class record_descriptor_impl : public record_descriptor {
 public:
 
-    record_descriptor_impl(std::string_view n, std::vector<column_descriptor*> c) : name(n), cols(std::move(c)) {}
-    const std::vector<column_descriptor*>& columns() const noexcept override { return cols; }
-    std::string_view record_name() const noexcept override { return name; }
+    record_descriptor_impl(std::string_view n, std::vector<column_descriptor*> c);
+
+    [[nodiscard]] const std::vector<column_descriptor*>& columns() const noexcept override;
+    [[nodiscard]] std::string_view record_name() const noexcept override;
+    [[nodiscard]] const std::vector<std::vector<column_descriptor*>>& argument_patterns() const noexcept override;
 
 private:
 
-    std::string_view name;
-    std::vector<column_descriptor*> cols;
+    std::string_view _name;
+    std::vector<column_descriptor*> _cols;
+    std::vector<std::vector<column_descriptor*>> _argument_patterns;
+    [[nodiscard]] std::vector<std::vector<column_descriptor*>>
+    build_argument_patterns(const std::vector<column_descriptor*>& cols) noexcept;
 };
 
 class function_descriptor_impl : public function_descriptor {
@@ -77,56 +80,51 @@ public:
         function_kind_type k,
         record_descriptor_impl* in,
         record_descriptor_impl* out
-    ) :
-        idx(i),
-        name(n),
-        kind(k),
-        input(in),
-        output(out) {}
-    index_type function_index() const noexcept override { return idx; }
-    std::string_view function_name() const noexcept override { return name; }
-    function_kind_type function_kind() const noexcept override { return kind; }
-    const record_descriptor& input_record() const noexcept override { return *input; }
-    const record_descriptor& output_record() const noexcept override { return *output; }
+    );
+
+    [[nodiscard]] index_type function_index() const noexcept override;
+    [[nodiscard]] std::string_view function_name() const noexcept override;
+    [[nodiscard]] function_kind_type function_kind() const noexcept override;
+    [[nodiscard]] const record_descriptor& input_record() const noexcept override;
+    [[nodiscard]] const record_descriptor& output_record() const noexcept override;
 
 private:
 
-    index_type idx;
-    std::string_view name;
-    function_kind_type kind;
-    record_descriptor_impl* input;
-    record_descriptor_impl* output;
+    index_type _idx;
+    std::string_view _name;
+    function_kind_type _kind;
+    record_descriptor_impl* _input;
+    record_descriptor_impl* _output;
 };
 
 class service_descriptor_impl : public service_descriptor {
 public:
 
-    service_descriptor_impl(index_type i, std::string_view n, std::vector<function_descriptor*> f) :
-        idx(i),
-        name(n),
-        funcs(std::move(f)) {}
-    index_type service_index() const noexcept override { return idx; }
-    std::string_view service_name() const noexcept override { return name; }
-    const std::vector<function_descriptor*>& functions() const noexcept override { return funcs; }
+    service_descriptor_impl(index_type i, std::string_view n, std::vector<function_descriptor*> f);
+
+    [[nodiscard]] index_type service_index() const noexcept override;
+    [[nodiscard]] std::string_view service_name() const noexcept override;
+    [[nodiscard]] const std::vector<function_descriptor*>& functions() const noexcept override;
 
 private:
 
-    index_type idx;
-    std::string_view name;
-    std::vector<function_descriptor*> funcs;
+    index_type _idx;
+    std::string_view _name;
+    std::vector<function_descriptor*> _funcs;
 };
 
 class package_descriptor_impl : public package_descriptor {
 public:
 
-    package_descriptor_impl(std::string_view n, std::vector<service_descriptor*> s) : name(n), svcs(std::move(s)) {}
-    std::string_view package_name() const noexcept override { return name; }
-    const std::vector<service_descriptor*>& services() const noexcept override { return svcs; }
+    package_descriptor_impl(std::string_view n, std::vector<service_descriptor*> s);
+
+    [[nodiscard]] std::string_view package_name() const noexcept override;
+    [[nodiscard]] const std::vector<service_descriptor*>& services() const noexcept override;
 
 private:
 
-    std::string_view name;
-    std::vector<service_descriptor*> svcs;
+    std::string_view _name;
+    std::vector<service_descriptor*> _svcs;
 };
 
 }  // namespace plugin::udf

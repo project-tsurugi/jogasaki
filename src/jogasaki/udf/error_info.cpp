@@ -15,16 +15,18 @@
  */
 
 #include "error_info.h"
-#include <grpcpp/support/status_code_enum.h>
+
 #include <string>
 #include <string_view>
+
+#include <grpcpp/support/status_code_enum.h>
 namespace plugin::udf {
 using error_code_type = grpc::StatusCode;
 error_code_type error_info::code() const noexcept { return code_; }
 std::string_view error_info::message() const noexcept { return message_; }
 // @see https://github.com/grpc/grpc/blob/master/include/grpcpp/support/status_code_enum.h#L43
 std::string error_info::code_string() const noexcept {
-    switch (code_) {
+    switch(code_) {
         case grpc::StatusCode::OK: return "OK";
         case grpc::StatusCode::CANCELLED: return "CANCELLED";
         case grpc::StatusCode::UNKNOWN: return "UNKNOWN";
@@ -54,7 +56,7 @@ void load_result::set_file(std::string f) noexcept { file_ = std::move(f); }
 void load_result::set_detail(std::string d) noexcept { detail_ = std::move(d); }
 
 [[nodiscard]] std::string load_result::status_string() const noexcept {
-    switch (status_) {
+    switch(status_) {
         case load_status::OK: return "OK";
         case load_status::PathNotFound: return "PathNotFound";
         case load_status::NotRegularFileOrDir: return "NotRegularFileOrDir";
@@ -67,4 +69,4 @@ void load_result::set_detail(std::string d) noexcept { detail_ = std::move(d); }
         default: return "UnknownStatus";
     }
 }
-} // namespace plugin::udf
+}  // namespace plugin::udf

@@ -56,4 +56,4 @@ enum class load_status {
     FactorySymbolMissing,
     FactoryCreationFailed
 };
-} // namespace plugin::udf
+}  // namespace plugin::udf

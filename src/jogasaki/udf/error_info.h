@@ -15,41 +15,47 @@
  */
 #pragma once
 
-#include "enum_types.h"
 #include <cstdint>
-#include <grpcpp/support/status_code_enum.h>
 #include <string>
 #include <string_view>
+
+#include "enum_types.h"
+
+#include <grpcpp/support/status_code_enum.h>
 namespace plugin::udf {
 
 // @see https://protobuf.dev/programming-guides/proto3/
 class error_info {
-  public:
+public:
+
     using error_code_type = grpc::StatusCode;
-    ~error_info()         = default;
-    explicit error_info(error_code_type code, std::string msg)
-        : code_(code), message_(std::move(msg)) {}
-    error_info(const error_info&)                = default;
-    error_info(error_info&&) noexcept            = default;
-    error_info& operator=(const error_info&)     = default;
+    ~error_info() = default;
+    explicit error_info(error_code_type code, std::string msg) : code_(code), message_(std::move(msg)) {}
+    error_info(const error_info&) = default;
+    error_info(error_info&&) noexcept = default;
+    error_info& operator=(const error_info&) = default;
     error_info& operator=(error_info&&) noexcept = default;
     [[nodiscard]] error_code_type code() const noexcept;
     [[nodiscard]] std::string_view message() const noexcept;
     [[nodiscard]] std::string code_string() const noexcept;
 
-  private:
+private:
+
     error_code_type code_{grpc::StatusCode::OK};
     std::string message_{};
 };
 class load_result {
-  public:
-    load_result(load_status s, std::string f, std::string d) noexcept
-        : status_(s), file_(std::move(f)), detail_(std::move(d)) {}
-    load_result()                                  = delete;
-    ~load_result()                                 = default;
-    load_result(const load_result&)                = default;
-    load_result(load_result&&) noexcept            = default;
-    load_result& operator=(const load_result&)     = default;
+public:
+
+    load_result(load_status s, std::string f, std::string d) noexcept :
+        status_(s),
+        file_(std::move(f)),
+        detail_(std::move(d)) {}
+    load_result() = delete;
+    ~load_result() = default;
+    load_result(const load_result&) = default;
+    load_result(load_result&&) noexcept = default;
+    load_result& operator=(const load_result&) = default;
     load_result& operator=(load_result&&) noexcept = default;
     [[nodiscard]] load_status status() const noexcept;
     [[nodiscard]] std::string file() const noexcept;
@@ -59,10 +65,11 @@ class load_result {
     void set_detail(std::string d) noexcept;
     [[nodiscard]] std::string status_string() const noexcept;
 
-  private:
+private:
+
     load_status status_{load_status::OK};
     std::string file_{};
     std::string detail_{};
 };
 
-} // namespace plugin::udf
+}  // namespace plugin::udf

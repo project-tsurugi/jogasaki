@@ -194,6 +194,27 @@ void fill_request_with_args(plugin::udf::generic_record_impl& request,
     }
 }
 
+void register_udf_function_patterns(yugawara::function::configurable_provider& functions,
+    executor::function::scalar_function_repository& repo, const std::string& fn_name,
+    yugawara::function::declaration::definition_id_type& current_id,
+    const std::shared_ptr<takatori::type::data const>& return_type,
+    const std::function<data::any(evaluator_context&, sequence_view<data::any>)>& lambda_func,
+    const plugin::udf::record_descriptor& input_record) {
+    for (auto const& pattern : input_record.argument_patterns()) {
+        std::vector<std::shared_ptr<takatori::type::data const>> param_types;
+        param_types.reserve(pattern.size());
+        for (auto col : pattern) {
+            param_types.emplace_back(map_type(col->type_kind()));
+        }
+        auto info = std::make_shared<scalar_function_info>(
+            scalar_function_kind::user_defined, lambda_func, pattern.size());
+        repo.add(current_id, info);
+        functions.add(yugawara::function::declaration{
+            current_id, fn_name, return_type, std::move(param_types)});
+        current_id++;
+    }
+}
+
 } // anonymous namespace
 void add_udf_functions(::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
@@ -217,7 +238,6 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
                         [](unsigned char c) { return std::tolower(c); });
                     auto lambda_func = [client, fn](evaluator_context& ctx,
                                            sequence_view<data::any> args) -> data::any {
-                        BOOST_ASSERT(args.size() == fn->input_record().columns().size()); // NOLINT
                         plugin::udf::generic_record_impl request;
                         plugin::udf::generic_record_impl response;
                         const auto& input  = fn->input_record();
@@ -239,19 +259,10 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
                         const auto& output_value = output_values.front();
                         return native_to_any(output_value, ctx);
                     };
-                    auto info =
-                        std::make_shared<scalar_function_info>(scalar_function_kind::user_defined,
-                            lambda_func, fn->input_record().columns().size());
-                    current_id = udf_start_id + fn->function_index();
-                    repo.add(current_id, info);
                     auto return_type = map_type(fn->output_record().columns()[0]->type_kind());
-                    std::vector<std::shared_ptr<takatori::type::data const>> param_types;
-                    param_types.reserve(fn->input_record().columns().size());
-                    for (auto col : fn->input_record().columns()) {
-                        param_types.emplace_back(map_type(col->type_kind()));
-                    }
-                    functions.add(yugawara::function::declaration{
-                        current_id, fn_name, return_type, std::move(param_types)});
+                    current_id       = udf_start_id + fn->function_index();
+                    register_udf_function_patterns(functions, repo, fn_name, current_id,
+                        return_type, lambda_func, fn->input_record());
                 }
                 udf_start_id = current_id + 1;
             }

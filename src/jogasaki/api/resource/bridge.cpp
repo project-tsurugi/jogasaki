@@ -298,6 +298,7 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     }
     if (auto v = jogasaki_config->get<bool>("dev_log_msg_user_data")) {
         ret->log_msg_user_data(v.value());
+    }
     if (auto v = jogasaki_config->get<std::string>("loader_path")) {
         ret->loader_path(v.value());
     }

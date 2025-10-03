@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 #include "plugin_api.h"
-#include "enum_types.h"
-#include "generic_record.h"
-#include "generic_record_impl.h"
+
 #include <iostream>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "enum_types.h"
+#include "generic_record.h"
+#include "generic_record_impl.h"
+
 namespace plugin::udf {
 std::string to_string(function_kind_type kind) {
-    switch (kind) {
+    switch(kind) {
         case function_kind_type::Unary: return "Unary";
         case function_kind_type::ClientStreaming: return "ClientStreaming";
         case function_kind_type::ServerStreaming: return "ServerStreaming";
@@ -35,7 +37,7 @@ std::string to_string(function_kind_type kind) {
 }
 
 std::string to_string(type_kind_type kind) {
-    switch (kind) {
+    switch(kind) {
         case type_kind_type::FLOAT8: return "FLOAT8";
         case type_kind_type::FLOAT4: return "FLOAT4";
         case type_kind_type::INT8: return "INT8";
@@ -59,11 +61,11 @@ std::string to_string(type_kind_type kind) {
 }
 namespace {
 void add_column(const std::vector<column_descriptor*>& cols) {
-    for (const auto* col : cols) {
+    for(const auto* col: cols) {
         std::cout << "- column_name: " << col->column_name() << std::endl;
         std::cout << "  type_kind: " << plugin::udf::to_string(col->type_kind()) << std::endl;
 
-        if (auto nested = col->nested()) {
+        if(auto nested = col->nested()) {
             std::cout << "  nested_record:" << std::endl;
             std::cout << "    record_name: " << nested->record_name() << std::endl;
             std::cout << "    columns:" << std::endl;
@@ -71,12 +73,12 @@ void add_column(const std::vector<column_descriptor*>& cols) {
         }
     }
 }
-} // anonymous namespace
+}  // anonymous namespace
 std::vector<NativeValue> column_to_native_values(const std::vector<column_descriptor*>& cols) {
     std::vector<NativeValue> result;
 
-    for (const auto* col : cols) {
-        switch (col->type_kind()) {
+    for(const auto* col: cols) {
+        switch(col->type_kind()) {
             case type_kind_type::FLOAT8: result.emplace_back(2.2); break;
             case type_kind_type::FLOAT4: result.emplace_back(1.1F); break;
             case type_kind_type::INT8: result.emplace_back(static_cast<int64_t>(64)); break;
@@ -88,7 +90,7 @@ std::vector<NativeValue> column_to_native_values(const std::vector<column_descri
             case type_kind_type::BYTES: result.emplace_back(std::string{"bytes data"}); break;
             case type_kind_type::GROUP:
             case type_kind_type::MESSAGE: {
-                if (auto nested_cols = col->nested()) {
+                if(auto nested_cols = col->nested()) {
                     auto nested_values = column_to_native_values(nested_cols->columns());
                     result.insert(result.end(), nested_values.begin(), nested_values.end());
                 } else {
@@ -105,27 +107,27 @@ std::vector<NativeValue> column_to_native_values(const std::vector<column_descri
 }
 namespace {
 
-template <typename FetchFunc>
-void fetch_and_emplace(
-    std::vector<plugin::udf::NativeValue>& result, type_kind_type kind, FetchFunc&& fetch) {
-    if (auto val = std::forward<FetchFunc>(fetch)()) {
+template<typename FetchFunc>
+void fetch_and_emplace(std::vector<plugin::udf::NativeValue>& result, type_kind_type kind, FetchFunc&& fetch) {
+    if(auto val = std::forward<FetchFunc>(fetch)()) {
         result.emplace_back(*val, kind);
     } else {
         result.emplace_back();
     }
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 // @ see  https://protobuf.dev/programming-guides/proto3/#scalar
 std::vector<plugin::udf::NativeValue> cursor_to_native_values(
     plugin::udf::generic_record_impl& response,
-    const std::vector<plugin::udf::column_descriptor*>& cols) {
+    const std::vector<plugin::udf::column_descriptor*>& cols
+) {
     std::vector<plugin::udf::NativeValue> result;
-    if (auto cursor = response.cursor()) {
-        for (const auto* col : cols) {
+    if(auto cursor = response.cursor()) {
+        for(const auto* col: cols) {
             auto type_kind = col->type_kind();
-            switch (type_kind) {
+            switch(type_kind) {
                 case type_kind_type::SFIXED4:
                 case type_kind_type::INT4:
                 case type_kind_type::SINT4:
@@ -160,9 +162,8 @@ std::vector<plugin::udf::NativeValue> cursor_to_native_values(
 
                 case type_kind_type::GROUP:
                 case type_kind_type::MESSAGE: {
-                    if (auto nested_cols = col->nested()) {
-                        auto nested_values =
-                            cursor_to_native_values(response, nested_cols->columns());
+                    if(auto nested_cols = col->nested()) {
+                        auto nested_values = cursor_to_native_values(response, nested_cols->columns());
                         result.insert(result.end(), nested_values.begin(), nested_values.end());
                     } else {
                         result.emplace_back();
@@ -178,22 +179,23 @@ std::vector<plugin::udf::NativeValue> cursor_to_native_values(
 }
 
 void print_native_values(const std::vector<NativeValue>& values) {
-    for (const auto& nv : values) {
-        if (!nv.value()) {
+    for(const auto& nv: values) {
+        if(! nv.value()) {
             std::cout << "null";
         } else {
             std::visit(
                 [](auto&& arg) {
                     using T = std::decay_t<decltype(arg)>;
-                    if constexpr (std::is_same_v<T, std::monostate>) {
+                    if constexpr(std::is_same_v<T, std::monostate>) {
                         std::cout << "null";
-                    } else if constexpr (std::is_same_v<T, bool>) {
+                    } else if constexpr(std::is_same_v<T, bool>) {
                         std::cout << (arg ? "true" : "false");
                     } else {
                         std::cout << arg;
                     }
                 },
-                *nv.value());
+                *nv.value()
+            );
         }
         std::cout << " ";
     }
@@ -202,12 +204,11 @@ void print_native_values(const std::vector<NativeValue>& values) {
 void print_columns(const std::vector<column_descriptor*>& cols, int indent = 0) {
     std::string indent_str(indent, ' ');
 
-    for (const auto* col : cols) {
+    for(const auto* col: cols) {
         std::cout << indent_str << "- column_name: " << col->column_name() << std::endl;
-        std::cout << indent_str << "  type_kind: " << plugin::udf::to_string(col->type_kind())
-                  << std::endl;
+        std::cout << indent_str << "  type_kind: " << plugin::udf::to_string(col->type_kind()) << std::endl;
 
-        if (auto nested = col->nested()) {
+        if(auto nested = col->nested()) {
             std::cout << indent_str << "  nested_record:" << std::endl;
             std::cout << indent_str << "    record_name: " << nested->record_name() << std::endl;
             std::cout << indent_str << "    columns:" << std::endl;
@@ -218,19 +219,18 @@ void print_columns(const std::vector<column_descriptor*>& cols, int indent = 0) 
 
 void print_plugin_info(const std::shared_ptr<plugin_api>& api) {
     const auto& pkgs = api->packages();
-    for (const auto* pkg : pkgs) {
+    for(const auto* pkg: pkgs) {
         std::cout << "  - package_name: " << pkg->package_name() << std::endl;
         std::cout << "    services:" << std::endl;
-        for (const auto* svc : pkg->services()) {
+        for(const auto* svc: pkg->services()) {
             std::cout << "      - service_name: " << svc->service_name() << std::endl;
             std::cout << "        service_index: " << svc->service_index() << std::endl;
             std::cout << "        functions:" << std::endl;
 
-            for (const auto* fn : svc->functions()) {
+            for(const auto* fn: svc->functions()) {
                 std::cout << "          - function_name: " << fn->function_name() << std::endl;
                 std::cout << "            function_index: " << fn->function_index() << std::endl;
-                std::cout << "            function_kind: "
-                          << plugin::udf::to_string(fn->function_kind()) << std::endl;
+                std::cout << "            function_kind: " << plugin::udf::to_string(fn->function_kind()) << std::endl;
 
                 const auto& input = fn->input_record();
                 std::cout << "            input_record:" << std::endl;
@@ -247,4 +247,4 @@ void print_plugin_info(const std::shared_ptr<plugin_api>& api) {
         }
     }
 }
-} // namespace plugin::udf
+}  // namespace plugin::udf

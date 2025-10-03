@@ -58,6 +58,7 @@ public:
     record_descriptor& operator=(record_descriptor&&) = delete;
     [[nodiscard]] virtual std::string_view record_name() const noexcept = 0;
     [[nodiscard]] virtual const std::vector<column_descriptor*>& columns() const noexcept = 0;
+    [[nodiscard]] virtual const std::vector<std::vector<column_descriptor*>>& argument_patterns() const noexcept = 0;
 };
 
 class function_descriptor {

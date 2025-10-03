@@ -14,37 +14,40 @@
  * limitations under the License.
  */
 #pragma once
-#include "enum_types.h"
-#include "generic_record.h"
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
+
+#include "enum_types.h"
+#include "generic_record.h"
 namespace plugin::udf {
 
-using value_type = std::variant<std::monostate, bool, std::int32_t, std::int64_t, std::uint32_t,
-    std::uint64_t, float, double, std::string>;
+using value_type = std::
+    variant<std::monostate, bool, std::int32_t, std::int64_t, std::uint32_t, std::uint64_t, float, double, std::string>;
 
 struct NativeValue {
-  private:
+private:
+
     std::optional<value_type> value_{std::monostate{}};
     type_kind_type type_kind_{type_kind_type::MESSAGE};
 
-  public:
+public:
+
     NativeValue() = default;
-    template <typename T>
-    explicit NativeValue(T v, type_kind_type tk = type_kind_type::MESSAGE)
-        : value_(v), type_kind_(tk) {}
+    template<typename T>
+    explicit NativeValue(T v, type_kind_type tk = type_kind_type::MESSAGE) : value_(v), type_kind_(tk) {}
     [[nodiscard]] const std::optional<value_type>& value() const { return value_; }
     [[nodiscard]] bool is_null() const {
-        return !value_.has_value() || std::holds_alternative<std::monostate>(*value_);
+        return ! value_.has_value() || std::holds_alternative<std::monostate>(*value_);
     }
     [[nodiscard]] type_kind_type kind() const noexcept { return type_kind_; }
 };
 class generic_record_impl : public generic_record {
-  public:
+public:
+
     void reset() override;
     void add_bool(bool value) override;
     void add_bool_null() override;
@@ -67,13 +70,15 @@ class generic_record_impl : public generic_record {
     [[nodiscard]] const std::optional<error_info>& error() const noexcept override;
     void set_error(const error_info& status) override;
 
-  private:
+private:
+
     std::vector<value_type> values_;
     std::optional<error_info> err_;
 };
 
 class generic_record_cursor_impl : public generic_record_cursor {
-  public:
+public:
+
     explicit generic_record_cursor_impl(const std::vector<value_type>& values);
 
     [[nodiscard]] std::optional<bool> fetch_bool() override;
@@ -86,12 +91,14 @@ class generic_record_cursor_impl : public generic_record_cursor {
     [[nodiscard]] std::optional<std::string> fetch_string() override;
     [[nodiscard]] bool has_next() override;
 
-  private:
+private:
+
     const std::vector<value_type>& values_;
     std::size_t index_ = 0;
 };
 
 void add_arg_value(generic_record_impl& rec, const NativeValue& v);
 
-template <class> struct always_false : std::false_type {};
-} // namespace plugin::udf
+template<class>
+struct always_false : std::false_type {};
+}  // namespace plugin::udf

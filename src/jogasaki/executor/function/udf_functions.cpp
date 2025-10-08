@@ -195,12 +195,19 @@ void fill_request_with_args(plugin::udf::generic_record_impl& request,
 }
 
 void register_udf_function_patterns(yugawara::function::configurable_provider& functions,
-    executor::function::scalar_function_repository& repo, const std::string& fn_name,
+    executor::function::scalar_function_repository& repo,
     yugawara::function::declaration::definition_id_type& current_id,
-    const std::shared_ptr<takatori::type::data const>& return_type,
     const std::function<data::any(evaluator_context&, sequence_view<data::any>)>& lambda_func,
-    const plugin::udf::record_descriptor& input_record) {
+    const plugin::udf::function_descriptor* fn) {
+    std::string fn_name(fn->function_name());
+    std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(),
+        [](unsigned char c) { return std::tolower(c); });
+
+    const auto& input_record = fn->input_record();
+    const auto& return_type  = map_type(fn->output_record().columns()[0]->type_kind());
+
     for (auto const& pattern : input_record.argument_patterns()) {
+        current_id++;
         std::vector<std::shared_ptr<takatori::type::data const>> param_types;
         param_types.reserve(pattern.size());
         for (auto col : pattern) {
@@ -211,8 +218,101 @@ void register_udf_function_patterns(yugawara::function::configurable_provider& f
         repo.add(current_id, info);
         functions.add(yugawara::function::declaration{
             current_id, fn_name, return_type, std::move(param_types)});
-        current_id++;
     }
+}
+const std::vector<plugin::udf::column_descriptor*>* find_matched_pattern(
+    const plugin::udf::function_descriptor* fn, const sequence_view<data::any>& args) {
+    const auto& input = fn->input_record();
+
+    for (auto const& pattern : input.argument_patterns()) {
+        if (pattern.size() != args.size()) continue;
+
+        bool match = true;
+        for (std::size_t i = 0; i < args.size(); ++i) {
+            const auto& arg = args[i];
+            const auto& col = pattern[i];
+            auto kind       = col->type_kind();
+
+            switch (kind) {
+                case plugin::udf::type_kind_type::FLOAT8:
+                    match &= (arg.type_index() == data::any::index<runtime_t<kind::float8>>);
+                    break;
+                case plugin::udf::type_kind_type::FLOAT4:
+                    match &= (arg.type_index() == data::any::index<runtime_t<kind::float4>>);
+                    break;
+
+                case plugin::udf::type_kind_type::INT8:
+                case plugin::udf::type_kind_type::SINT8:
+                case plugin::udf::type_kind_type::SFIXED8:
+                case plugin::udf::type_kind_type::UINT8:
+                case plugin::udf::type_kind_type::FIXED8:
+                    match &= (arg.type_index() == data::any::index<runtime_t<kind::int8>>);
+                    break;
+
+                case plugin::udf::type_kind_type::INT4:
+                case plugin::udf::type_kind_type::SINT4:
+                case plugin::udf::type_kind_type::SFIXED4:
+                case plugin::udf::type_kind_type::UINT4:
+                case plugin::udf::type_kind_type::FIXED4:
+                    match &= (arg.type_index() == data::any::index<runtime_t<kind::int4>>);
+                    break;
+
+                case plugin::udf::type_kind_type::BOOL:
+                    match &= (arg.type_index() == data::any::index<runtime_t<kind::boolean>>);
+                    break;
+
+                case plugin::udf::type_kind_type::STRING:
+                case plugin::udf::type_kind_type::MESSAGE:
+                case plugin::udf::type_kind_type::GROUP:
+                    match &= (arg.type_index() == data::any::index<accessor::text>);
+                    break;
+
+                case plugin::udf::type_kind_type::BYTES:
+                    match &= (arg.type_index() == data::any::index<accessor::binary>);
+                    break;
+
+                default: match = false; break;
+            }
+
+            if (!match) break;
+        }
+
+        if (match) { return &pattern; }
+    }
+
+    return nullptr;
+}
+std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_lambda(
+    const std::shared_ptr<plugin::udf::generic_client>& client,
+    const plugin::udf::function_descriptor* fn) {
+    return [client, fn](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
+        plugin::udf::generic_record_impl request;
+        plugin::udf::generic_record_impl response;
+        const auto& output = fn->output_record();
+        const auto* matched_pattern = find_matched_pattern(fn, args);
+        if (!matched_pattern) {
+            ctx.add_error({error_kind::invalid_input_value,
+                "No matching argument pattern found for given arguments"});
+            return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+        }
+
+        fill_request_with_args(request, args, *matched_pattern);
+
+        grpc::ClientContext context;
+        client->call(context, {0, fn->function_index()}, request, response);
+
+        if (response.error()) {
+            ctx.add_error(
+                {error_kind::unknown, "RPC failed: code=" + response.error()->code_string() +
+                                          ", message=" + std::string(response.error()->message())});
+            return data::any{std::in_place_type<error>, error(error_kind::unknown)};
+        }
+
+        std::vector<plugin::udf::NativeValue> output_values =
+            cursor_to_native_values(response, output.columns());
+        const auto& output_value = output_values.front();
+        return native_to_any(output_value, ctx);
+    };
 }
 
 } // anonymous namespace
@@ -223,8 +323,7 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
     using namespace ::yugawara;
     // @see
     // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
-    yugawara::function::declaration::definition_id_type current_id   = 20000;
-    yugawara::function::declaration::definition_id_type udf_start_id = 20000;
+    yugawara::function::declaration::definition_id_type current_id = 19999;
     for (const auto& tup : plugins) {
         auto client = std::get<1>(tup);
         auto plugin = std::get<0>(tup);
@@ -233,38 +332,9 @@ void add_udf_functions(::yugawara::function::configurable_provider& functions,
         for (const auto* pkg : packages) {
             for (const auto* svc : pkg->services()) {
                 for (const auto* fn : svc->functions()) {
-                    std::string fn_name(fn->function_name());
-                    std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(),
-                        [](unsigned char c) { return std::tolower(c); });
-                    auto lambda_func = [client, fn](evaluator_context& ctx,
-                                           sequence_view<data::any> args) -> data::any {
-                        plugin::udf::generic_record_impl request;
-                        plugin::udf::generic_record_impl response;
-                        const auto& input  = fn->input_record();
-                        const auto& output = fn->output_record();
-                        fill_request_with_args(request, args, input.columns());
-                        grpc::ClientContext context;
-                        client->call(context, {0, fn->function_index()}, request, response);
-                        // @see
-                        // https://github.com/grpc/grpc/blob/master/include/grpcpp/support/status_code_enum.h
-                        if (response.error()) {
-                            ctx.add_error({error_kind::unknown,
-                                "RPC failed: code=" + response.error()->code_string() +
-                                    ", message=" + std::string(response.error()->message())});
-                            return data::any{std::in_place_type<error>, error(error_kind::unknown)};
-                        }
-                        std::vector<plugin::udf::NativeValue> output_values =
-                            cursor_to_native_values(response, output.columns());
-                        //  print_native_values(output_values);
-                        const auto& output_value = output_values.front();
-                        return native_to_any(output_value, ctx);
-                    };
-                    auto return_type = map_type(fn->output_record().columns()[0]->type_kind());
-                    current_id       = udf_start_id + fn->function_index();
-                    register_udf_function_patterns(functions, repo, fn_name, current_id,
-                        return_type, lambda_func, fn->input_record());
+                    auto lambda_func = make_udf_lambda(client, fn);
+                    register_udf_function_patterns(functions, repo, current_id, lambda_func, fn);
                 }
-                udf_start_id = current_id + 1;
             }
         }
     }

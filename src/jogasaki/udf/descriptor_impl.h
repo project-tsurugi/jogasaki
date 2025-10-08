@@ -56,7 +56,7 @@ private:
 class record_descriptor_impl : public record_descriptor {
 public:
 
-    record_descriptor_impl(std::string_view n, std::vector<column_descriptor*> c);
+    record_descriptor_impl(std::string_view n, const std::vector<column_descriptor*>& c);
 
     [[nodiscard]] const std::vector<column_descriptor*>& columns() const noexcept override;
     [[nodiscard]] std::string_view record_name() const noexcept override;

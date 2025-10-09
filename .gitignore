@@ -1,3 +1,6 @@
+# temporarly ignore third_party for arrow changes
+third_party
+
 # CMake
 /build*
 

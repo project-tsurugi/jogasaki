@@ -116,15 +116,23 @@ private:
 class package_descriptor_impl : public package_descriptor {
 public:
 
-    package_descriptor_impl(std::string_view n, std::vector<service_descriptor*> s);
+    package_descriptor_impl(
+        std::string_view name,
+        std::string_view file_name,
+        package_version version,
+        std::vector<service_descriptor*> services
+    );
 
     [[nodiscard]] std::string_view package_name() const noexcept override;
     [[nodiscard]] const std::vector<service_descriptor*>& services() const noexcept override;
+    [[nodiscard]] std::string_view file_name() const noexcept override;
+    [[nodiscard]] package_version version() const noexcept override;
 
 private:
 
     std::string_view _name;
+    std::string_view _file_name;
+    package_version _version;
     std::vector<service_descriptor*> _svcs;
 };
-
 }  // namespace plugin::udf

@@ -128,12 +128,18 @@ set_source_files_properties(
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
 )
 
-add_library(${ENGINE}
+add_library(${ENGINE} SHARED
         ${SOURCES}
         ${GENERATED_SQL_PROTO_SRCS}
         ${GENERATED_METADATA_PROTO_SRCS}
         ${GENERATED_KVSSERVICE_PROTO_SRCS}
 )
+
+# Ensure shared library is compiled with position independent code so it can
+# be linked against static archives (for example, vendored static Arrow
+# libraries). This explicitly sets PIC for the target independent of the
+# global BUILD_SHARED_LIBS value.
+set_target_properties(${ENGINE} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_dependencies(${ENGINE}
         build_protos
@@ -150,11 +156,62 @@ target_include_directories(${ENGINE}
         PRIVATE .
 )
 
+# Prefer target-based Arrow usage when possible. If the Arrow CMake
+# project (vendored or system) provides a proper `Arrow::arrow` target
+# then link the engine against it so include directories and link
+# dependencies are propagated via target properties. Otherwise fall back
+# to the legacy `ARROW_INCLUDE_DIRS` cache variable which publishes
+# Arrow's include directories when Arrow is vendored via add_subdirectory.
+if(TARGET Arrow::arrow)
+    target_link_libraries(${ENGINE}
+            PRIVATE Arrow::arrow
+    )
+        # Some Arrow builds may not populate target INTERFACE_INCLUDE_DIRECTORIES
+        # reliably when used as a subproject. If a fallback ARROW_INCLUDE_DIRS
+        # cache variable was published (see top-level CMakeLists), also add
+        # those directories as SYSTEM include paths so headers like
+        # <arrow/io/file.h> are found during compilation.
+        if(DEFINED ARROW_INCLUDE_DIRS)
+                target_include_directories(${ENGINE}
+                                SYSTEM PRIVATE ${ARROW_INCLUDE_DIRS}
+                )
+        endif()
+else()
+    if(DEFINED ARROW_INCLUDE_DIRS)
+        # Treat Arrow include directories as system headers to avoid
+        # promoting warnings from vendored Arrow headers into -Werror
+        # failures for our project sources. The SYSTEM keyword must appear
+        # before the scope (PRIVATE) per CMake's signature.
+        target_include_directories(${ENGINE}
+                SYSTEM PRIVATE ${ARROW_INCLUDE_DIRS}
+        )
+    endif()
+endif()
+
 # The following workaround is no longer necessary for cmake in 3.18 and later versions
 if(PARQUET_VERSION VERSION_LESS 10.0.0)
   set(PARQUET_PREFIX "")
 else()
   set(PARQUET_PREFIX "Parquet::")
+endif()
+
+# Determine a safe, linkable parquet target. Prefer the canonical Parquet::parquet
+# alias if available (it maps to parquet_static or parquet_shared). Otherwise
+# fall back to explicit static/shared targets created by the Arrow build.
+if(TARGET Parquet::parquet)
+        set(_parquet_link_target Parquet::parquet)
+elseif(TARGET parquet_static)
+        set(_parquet_link_target parquet_static)
+elseif(TARGET parquet_shared)
+        set(_parquet_link_target parquet_shared)
+elseif(TARGET parquet)
+        # Some Arrow versions define a 'parquet' utility target; avoid linking to
+        # utility targets if possible, but fall back to it as a last resort.
+        set(_parquet_link_target parquet)
+else()
+        # Use the prefix expansion as a final fallback. This may resolve to
+        # Parquet::parquet when find_package(Parquet) was used instead of vendoring.
+        set(_parquet_link_target "${PARQUET_PREFIX}parquet")
 endif()
 
 target_link_libraries(${ENGINE}
@@ -175,7 +232,12 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
-        PRIVATE ${PARQUET_PREFIX}parquet_shared
+        # Link against the canonical Parquet target. The top-level CMakeLists
+        # creates `Parquet::parquet` as an alias to either the static or
+        # shared parquet target depending on how Arrow was configured. Using
+        # the alias lets us avoid hard-coding target names and ensures the
+        # static variant is used when available.
+        PRIVATE ${_parquet_link_target}
         PRIVATE mpdecpp
         )
 
@@ -234,9 +296,21 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::container
         INTERFACE glog::glog
         INTERFACE protobuf::libprotobuf
-        INTERFACE ${PARQUET_PREFIX}parquet_shared
+        # Use the same parquet link target resolution as the engine target so
+        # tests and consumers don't hard-code parquet_shared which may not be
+        # available when Arrow is vendored and built static. The variable
+        # `_parquet_link_target` is resolved earlier in this file.
+        INTERFACE ${_parquet_link_target}
         INTERFACE mpdecpp
         )
+
+if(TARGET Arrow::arrow)
+    # Export Arrow target transitively through the test/impl interface so
+    # consumers (tests, examples) don't need to manually add include dirs.
+    target_link_libraries(jogasaki-impl
+            INTERFACE Arrow::arrow
+    )
+endif()
 
 if(MC_QUEUE)
     target_compile_definitions(jogasaki-impl INTERFACE MC_QUEUE)

@@ -20,6 +20,30 @@ target_include_directories(test_common
         PRIVATE .
         )
 
+# If Arrow was vendored, the top-level CMake publishes `ARROW_INCLUDE_DIRS`
+# into the cache. Tests need to see Arrow headers as well (for example
+# headers such as <arrow/ipc/api.h> used by some unit tests). Add the
+# include directories as SYSTEM so warnings in Arrow headers do not
+# promote into -Werror failures for our test sources.
+if(TARGET Arrow::arrow)
+        # If Arrow exports a proper target, prefer that so include directories
+        # and other usage requirements are propagated automatically.
+        target_link_libraries(test_common
+                        PRIVATE Arrow::arrow
+        )
+        if(DEFINED ARROW_INCLUDE_DIRS)
+                target_include_directories(test_common
+                                SYSTEM PRIVATE ${ARROW_INCLUDE_DIRS}
+                )
+        endif()
+else()
+        if(DEFINED ARROW_INCLUDE_DIRS)
+                target_include_directories(test_common
+                                SYSTEM PRIVATE ${ARROW_INCLUDE_DIRS}
+                )
+        endif()
+endif()
+
 function (add_test_executable source_file)
     get_filename_component(test_name "${source_file}" NAME_WE)
     set(test_target ${test_name})
@@ -31,6 +55,30 @@ function (add_test_executable source_file)
     target_include_directories(${test_target}
             PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
             )
+
+        if(TARGET Arrow::arrow)
+                target_link_libraries(${test_target}
+                        PRIVATE Arrow::arrow
+                )
+                if(DEFINED ARROW_INCLUDE_DIRS)
+                        # Some Arrow subproject configurations do not propagate
+                        # INTERFACE_INCLUDE_DIRECTORIES through the Arrow target.
+                        # As a defensive measure, add ARROW include dirs as SYSTEM
+                        # includes so test sources that directly include Arrow headers
+                        # compile even when linking Arrow::arrow.
+                        target_include_directories(${test_target}
+                                        SYSTEM PRIVATE ${ARROW_INCLUDE_DIRS}
+                        )
+                endif()
+        else()
+                if(DEFINED ARROW_INCLUDE_DIRS)
+                        # Also add Arrow includes to the individual test executable so
+                        # test source files that directly include Arrow headers compile.
+                        target_include_directories(${test_target}
+                                        SYSTEM PRIVATE ${ARROW_INCLUDE_DIRS}
+                        )
+                endif()
+        endif()
 
     target_link_libraries(${test_target}
             PRIVATE test_common

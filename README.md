@@ -9,6 +9,7 @@
 
 ```sh
 # retrieve third party modules
+# (Some third-party components are stored as submodules. Initialize those you need.)
 git submodule update --init --recursive
 ```
 
@@ -52,6 +53,42 @@ sudo apt install -y -V libparquet-dev=21.0.0-1 libparquet2100=21.0.0-1 libarrow-
 ```
 
 (You can see [here](https://arrow.apache.org/install/) for full instruction. )
+
+### Vendored Arrow/Parquet (third_party/arrow)
+
+Jogasaki supports using a vendored copy of Apache Arrow/Parquet located in the repository under `third_party/arrow`.
+This is useful when system packages for Arrow/Parquet are unavailable, or when a reproducible Arrow build is required.
+
+How to enable vendored Arrow
+
+1. Ensure the Arrow sources are present at `third_party/arrow` (the vendored Arrow tree must contain `cpp/CMakeLists.txt`).
+  The repository does not require Arrow to be a submodule; any mechanism that places the Arrow sources at `third_party/arrow` is acceptable.
+2. Configure CMake with the vendored option and (optionally) explicitly set the Arrow dependency source:
+  ```sh
+  cmake -S . -B build-vendored -DUSE_VENDORED_ARROW=ON -DARROW_DEPENDENCY_SOURCE=BUNDLED -G Ninja
+  ```
+
+What the vendored mode does (defaults)
+
+- The vendored Arrow sources are added via `add_subdirectory(third_party/arrow/cpp ...)` so Arrow is built as part of the top-level build.
+- By default, vendored mode sets `ARROW_DEPENDENCY_SOURCE` to `BUNDLED` (unless you explicitly provide a different value on the CMake command line).
+- `ARROW_PARQUET` is enabled for vendored builds so Parquet libraries are built.
+- The build defaults favor static libraries to avoid runtime .so dependencies:
+  - `ARROW_BUILD_STATIC=ON` and `ARROW_BUILD_SHARED=OFF` (Arrow static libs are preferred)
+  - `ARROW_DEPENDENCY_USE_SHARED=OFF` (prefer static third-party deps)
+  - Snappy for Parquet is enabled by default (`ARROW_WITH_SNAPPY=ON`) and set to static (`ARROW_SNAPPY_USE_SHARED=OFF`).
+- The top-level CMake creates convenient alias targets such as `Arrow::arrow` and `Parquet::parquet` when Arrow/Parquet library targets are available, and publishes an `ARROW_INCLUDE_DIRS` internal cache variable so downstream targets can find Arrow headers during compile.
+
+System Boost interaction
+
+- When vendoring Arrow and `ARROW_DEPENDENCY_SOURCE` is `BUNDLED`, the top-level build will quietly check whether a usable system Boost is present. If a complete system Boost is detected, the build will instruct Arrow to use the system Boost to avoid duplicate Boost targets (this is implemented by setting `Boost_SOURCE=SYSTEM` and `ARROW_BOOST_USE_SHARED=ON` in the cache).
+- If you prefer to force Arrow to use system dependencies, set `-DARROW_DEPENDENCY_SOURCE=SYSTEM` on the CMake command line. If the system Arrow headers are not found in that mode, the top-level CMake may fall back to `BUNDLED` automatically so the vendored Arrow can build its dependencies.
+
+Notes and troubleshooting
+
+- Vendored builds can be heavier (longer) because Arrow and many of its third-party dependencies are built from source. Use `ccache` to speed repeated builds.
+- If you see target-aliasing warnings about Arrow/Parquet targets, inspect the produced targets in the Arrow build subtree (`build-vendored/third_party_arrow_build/...`) and adjust `ARROW_*` options if necessary.
+
 
 ### Manual install steps for mpdecimal
 

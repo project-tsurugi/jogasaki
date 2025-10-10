@@ -136,11 +136,19 @@ std::string_view service_descriptor_impl::service_name() const noexcept { return
 const std::vector<function_descriptor*>& service_descriptor_impl::functions() const noexcept { return _funcs; }
 
 // package_descriptor_impl
-package_descriptor_impl::package_descriptor_impl(std::string_view n, std::vector<service_descriptor*> s) :
-    _name(n),
-    _svcs(std::move(s)) {}
+package_descriptor_impl::package_descriptor_impl(
+    std::string_view name,
+    std::string_view file_name,
+    package_version version,
+    std::vector<service_descriptor*> services
+) :
+    _name(name),
+    _file_name(file_name),
+    _version(version),
+    _svcs(std::move(services)) {}
 
 std::string_view package_descriptor_impl::package_name() const noexcept { return _name; }
 const std::vector<service_descriptor*>& package_descriptor_impl::services() const noexcept { return _svcs; }
-
+std::string_view package_descriptor_impl::file_name() const noexcept { return _file_name; }
+package_version package_descriptor_impl::version() const noexcept { return _version; }
 }  // namespace plugin::udf

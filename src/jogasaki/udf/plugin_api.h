@@ -27,6 +27,35 @@ namespace plugin::udf {
 
 [[nodiscard]] std::string to_string(function_kind_type kind);
 [[nodiscard]] std::string to_string(type_kind_type kind);
+class package_version final {
+public:
+
+    package_version() = default;
+    package_version(std::size_t maj, std::size_t min, std::size_t pat) noexcept :
+        major_(maj),
+        minor_(min),
+        patch_(pat) {}
+
+    [[nodiscard]] std::size_t major() const noexcept { return major_; }
+    [[nodiscard]] std::size_t minor() const noexcept { return minor_; }
+    [[nodiscard]] std::size_t patch() const noexcept { return patch_; }
+    bool operator==(const package_version& other) const noexcept {
+        return major_ == other.major_ && minor_ == other.minor_ && patch_ == other.patch_;
+    }
+
+    bool operator<(const package_version& other) const noexcept {
+        if(major_ != other.major_) return major_ < other.major_;
+        if(minor_ != other.minor_) return minor_ < other.minor_;
+        return patch_ < other.patch_;
+    }
+
+private:
+
+    std::size_t major_{0};
+    std::size_t minor_{0};
+    std::size_t patch_{0};
+};
+
 class record_descriptor;
 class column_descriptor {
 public:
@@ -104,6 +133,8 @@ public:
     package_descriptor(package_descriptor&&) = delete;
     package_descriptor& operator=(package_descriptor&&) = delete;
     [[nodiscard]] virtual std::string_view package_name() const noexcept = 0;
+    [[nodiscard]] virtual std::string_view file_name() const noexcept = 0;
+    [[nodiscard]] virtual package_version version() const noexcept = 0;
     [[nodiscard]] virtual const std::vector<service_descriptor*>& services() const noexcept = 0;
 };
 

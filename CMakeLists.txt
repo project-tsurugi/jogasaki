@@ -131,7 +131,7 @@ set(zstdAlt_FIND_QUIETLY TRUE)
 # Arrow/Parquet dependencies
 
 # Option to use vendored Arrow/Parquet under third_party (add_subdirectory)
-option(USE_VENDORED_ARROW "Use Arrow/Parquet under third_party instead of system-installed packages" OFF)
+option(USE_VENDORED_ARROW "Use Arrow/Parquet under third_party instead of system-installed packages" ON)
 
 if(USE_VENDORED_ARROW)
     set(ARROW_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/arrow")

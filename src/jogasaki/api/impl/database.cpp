@@ -407,6 +407,7 @@ static void add_variable(
         case field_type_kind::time_point_with_time_zone: provider.add({name, takatori::type::time_point{takatori::type::with_time_zone}}, true); break;
         case field_type_kind::blob: provider.add({name, takatori::type::blob{}}, true); break;
         case field_type_kind::clob: provider.add({name, takatori::type::clob{}}, true); break;
+        case field_type_kind::unknown: provider.add({name, takatori::type::unknown{}}, true); break;
         default:
             throw_exception(std::logic_error{""});
     }

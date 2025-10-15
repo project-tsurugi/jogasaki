@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <variant>
 #include <boost/algorithm/string.hpp>
 #include <boost/assert.hpp>
@@ -87,7 +88,77 @@ using kind = meta::field_type_kind;
 using jogasaki::executor::expr::error;
 using jogasaki::executor::expr::error_kind;
 
+constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.value.Decimal";
+constexpr std::string_view DATE_RECORD = "tsurugidb.udf.value.Date";
+constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.value.LocalTime";
+constexpr std::string_view LOCALDATETIME_RECORD = "tsurugidb.udf.value.LocalDatetime";
+constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.value.OffsetDatetime";
+constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.value.BlobReference";
+constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.value.ClobReference";
 namespace {
+
+const std::unordered_map<plugin::udf::type_kind_type, std::size_t>& type_index_map() {
+    using K = plugin::udf::type_kind_type;
+    static const std::unordered_map<K, std::size_t> map = {
+        {K::FLOAT8, data::any::index<runtime_t<kind::float8>>},
+        {K::FLOAT4, data::any::index<runtime_t<kind::float4>>},
+        {K::INT8, data::any::index<runtime_t<kind::int8>>},
+        {K::SINT8, data::any::index<runtime_t<kind::int8>>},
+        {K::SFIXED8, data::any::index<runtime_t<kind::int8>>},
+        {K::UINT8, data::any::index<runtime_t<kind::int8>>},
+        {K::FIXED8, data::any::index<runtime_t<kind::int8>>},
+        {K::INT4, data::any::index<runtime_t<kind::int4>>},
+        {K::SINT4, data::any::index<runtime_t<kind::int4>>},
+        {K::SFIXED4, data::any::index<runtime_t<kind::int4>>},
+        {K::UINT4, data::any::index<runtime_t<kind::int4>>},
+        {K::FIXED4, data::any::index<runtime_t<kind::int4>>},
+        {K::BOOL, data::any::index<runtime_t<kind::boolean>>},
+        {K::GROUP, data::any::index<accessor::text>},
+        {K::BYTES, data::any::index<accessor::binary>},
+    };
+    return map;
+}
+
+const std::unordered_map<std::string_view, std::size_t>& nested_type_map() {
+    static const std::unordered_map<std::string_view, std::size_t> map{
+        {DECIMAL_RECORD, data::any::index<runtime_t<kind::decimal>>},
+        {DATE_RECORD, data::any::index<runtime_t<kind::date>>},
+        {LOCALTIME_RECORD, data::any::index<runtime_t<kind::time_of_day>>},
+        {LOCALDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
+        {OFFSETDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
+        {BLOB_RECORD, data::any::index<runtime_t<kind::blob>>},
+        {CLOB_RECORD, data::any::index<runtime_t<kind::clob>>},
+    };
+    return map;
+}
+const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>&
+get_output_type_map() {
+    static const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>
+        map = {
+            {DECIMAL_RECORD, [] { return std::make_shared<takatori::type::decimal>(); }},
+            {DATE_RECORD, [] { return std::make_shared<takatori::type::date>(); }},
+            {LOCALTIME_RECORD, [] { return std::make_shared<takatori::type::time_of_day>(); }},
+            {LOCALDATETIME_RECORD, [] { return std::make_shared<takatori::type::time_point>(); }},
+            {OFFSETDATETIME_RECORD, [] { return std::make_shared<takatori::type::datetime_interval>(); }},
+            {BLOB_RECORD,
+             [] {
+                 return nullptr; /* blob未対応 */
+             }},
+            {CLOB_RECORD,
+             [] {
+                 return nullptr; /* clob未対応 */
+             }},
+        };
+    return map;
+}
+
+std::string int128_to_bytes(__int128 coeff) {
+    std::string bytes(16, '\0');
+    auto u = static_cast<unsigned __int128>(coeff);
+    // NOLINTNEXTLINE(hicpp-signed-bitwise)
+    for(int i = 0; i < 16; ++i) { bytes[15 - i] = static_cast<char>((u >> (i * 8)) & 0xFFU); }
+    return bytes;
+}
 
 std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind_type kind) {
     namespace t = takatori::type;
@@ -205,14 +276,11 @@ void fill_request_with_args(
                 std::uint64_t hi = value.coefficient_high();
                 std::uint64_t lo = value.coefficient_low();
                 std::int32_t exp = value.exponent();
-
+                // NOLINTNEXTLINE(hicpp-signed-bitwise)
                 unsigned __int128 ucoeff = (static_cast<unsigned __int128>(hi) << 64) | lo;
-
                 __int128 coeff = (sign < 0) ? -static_cast<__int128>(ucoeff) : static_cast<__int128>(ucoeff);
-
-                std::string bytes(16, '\0');
-                for(int i = 0; i < 16; ++i) { bytes[15 - i] = static_cast<char>((coeff >> (i * 8)) & 0xFF); }
-                auto val1 = plugin::udf::NativeValue{bytes, plugin::udf::type_kind_type::BYTES};
+                std::string coeff_bytes = int128_to_bytes(coeff);
+                auto val1 = plugin::udf::NativeValue{coeff_bytes, plugin::udf::type_kind_type::BYTES};
                 auto val2 = plugin::udf::NativeValue{exp, plugin::udf::type_kind_type::INT4};
                 add_arg_value(request, val1);
                 add_arg_value(request, val2);
@@ -276,181 +344,75 @@ void register_udf_function_patterns(
     std::shared_ptr<const takatori::type::data> return_type;
     // @see
     // https://github.com/project-tsurugi/takatori/blob/master/include/takatori/type/type_kind.h
-    if(fn->output_record().record_name() == "tsurugidb.udf.value.Decimal") {
-        return_type = std::make_shared<takatori::type::decimal>();
-    } else if(fn->output_record().record_name() == "tsurugidb.udf.value.Date") {
-        return_type = std::make_shared<takatori::type::date>();
-    } else if(fn->output_record().record_name() == "tsurugidb.udf.value.LocalTime") {
-        return_type = std::make_shared<takatori::type::time_of_day>();
-    } else if(fn->output_record().record_name() == "tsurugidb.udf.value.LocalDatetime") {
-        return_type = std::make_shared<takatori::type::time_point>();
-    } else if(fn->output_record().record_name() == "tsurugidb.udf.value.OffsetDatetime") {
-        return_type = std::make_shared<takatori::type::time_point>();
-    } else if(fn->output_record().record_name() == "tsurugidb.udf.value.BlobReference") {
-        // return_type = std::make_shared<takatori::type::blob>();
-    } else if(fn->output_record().record_name() == "tsurugidb.udf.value.ClobReference") {
-        // return_type = std::make_shared<takatori::type::clob>();
+    auto& output_type_map = get_output_type_map();
+    auto it = output_type_map.find(fn->output_record().record_name());
+    if(it != output_type_map.end()) {
+        return_type = it->second();
     } else {
         return_type = map_type(fn->output_record().columns()[0]->type_kind());
     }
-    std::string input_record_name = std::string(input_record.record_name());
-    if(input_record_name == "tsurugidb.udf.value.Decimal") {
+    // input_record_name Decimal Date LocalTime LocalDatetime OffsetDatetime BlobReference
+    if(auto it = output_type_map.find(input_record.record_name()); it != output_type_map.end()) {
+        auto param_type = it->second();
+        if(! param_type) return;  // not yet BLOB / CLOB
         current_id++;
-        std::vector<std::shared_ptr<takatori::type::data const>> param_types;
-        param_types.emplace_back(std::make_shared<takatori::type::decimal>());
+        std::vector<std::shared_ptr<const takatori::type::data>> param_types{param_type};
         auto info = std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, 1);
         repo.add(current_id, info);
+        functions.add(yugawara::function::declaration(current_id, fn_name, return_type, std::move(param_types)));
+        return;
+    }
+    // input_record_name it not Decimal Date LocalTime LocalDatetime OffsetDatetime BlobReference
+    for(const auto& pattern: input_record.argument_patterns()) {
+        current_id++;
+        std::vector<std::shared_ptr<const takatori::type::data>> param_types;
+        param_types.reserve(pattern.size());
 
-        functions.add(yugawara::function::declaration{current_id, fn_name, return_type, std::move(param_types)});
-    } else if(input_record_name == "tsurugidb.udf.value.Date") {
-        current_id++;
-        std::vector<std::shared_ptr<takatori::type::data const>> param_types;
-        param_types.emplace_back(std::make_shared<takatori::type::date>());
-        auto info = std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, 1);
-        repo.add(current_id, info);
-        functions.add(yugawara::function::declaration{current_id, fn_name, return_type, std::move(param_types)});
-    } else if(input_record_name == "tsurugidb.udf.value.LocalTime") {
-        current_id++;
-        std::vector<std::shared_ptr<takatori::type::data const>> param_types;
-        param_types.emplace_back(std::make_shared<takatori::type::time_of_day>());
-        auto info = std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, 1);
-        repo.add(current_id, info);
-        functions.add(yugawara::function::declaration{current_id, fn_name, return_type, std::move(param_types)});
-    } else if(input_record_name == "tsurugidb.udf.value.LocalDatetime") {
-        current_id++;
-        std::vector<std::shared_ptr<takatori::type::data const>> param_types;
-        param_types.emplace_back(std::make_shared<takatori::type::time_point>());
-        auto info = std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, 1);
-        repo.add(current_id, info);
-        functions.add(yugawara::function::declaration{current_id, fn_name, return_type, std::move(param_types)});
-    } else if(input_record_name == "tsurugidb.udf.value.OffsetDatetime") {
-        current_id++;
-        std::vector<std::shared_ptr<takatori::type::data const>> param_types;
-        param_types.emplace_back(std::make_shared<takatori::type::datetime_interval>());
-        auto info = std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, 1);
-        repo.add(current_id, info);
-        functions.add(yugawara::function::declaration{current_id, fn_name, return_type, std::move(param_types)});
-    } else if(input_record.record_name() == "tsurugidb.udf.value.BlobReference") {
-        // Not yet
-    } else if(input_record.record_name() == "tsurugidb.udf.value.ClobReference") {
-        // Not yet
-    } else {
-        for(auto const& pattern: input_record.argument_patterns()) {
-            current_id++;
-            std::vector<std::shared_ptr<takatori::type::data const>> param_types;
-            param_types.reserve(pattern.size());
-            for(auto col: pattern) {
-                if(col->type_kind() == plugin::udf::type_kind_type::MESSAGE) {
-                    auto nested = col->nested();
-                    if(nested) {
-                        std::string nested_name = std::string(nested->record_name());
-                        if(nested_name == "tsurugidb.udf.value.Decimal") {
-                            param_types.emplace_back(std::make_shared<takatori::type::decimal>());
-                        } else if(nested_name == "tsurugidb.udf.value.Date") {
-                            param_types.emplace_back(std::make_shared<takatori::type::date>());
-                        } else if(nested_name == "tsurugidb.udf.value.LocalTime") {
-                            param_types.emplace_back(std::make_shared<takatori::type::time_of_day>());
-                        } else if(nested_name == "tsurugidb.udf.value.LocalDatetime") {
-                            param_types.emplace_back(std::make_shared<takatori::type::time_point>());
-                        } else if(nested_name == "tsurugidb.udf.value.OffsetDatetime") {
-                            param_types.emplace_back(std::make_shared<takatori::type::datetime_interval>());
-                        } else if(nested_name == "tsurugidb.udf.value.BlobReference") {
-                            // param_types.emplace_back(std::make_shared<takatori::type::blob>());
-                        } else if(nested_name == "tsurugidb.udf.value.ClobReference") {
-                            // param_types.emplace_back(std::make_shared<takatori::type::clob>());
-                        }
+        for(auto col: pattern) {
+            if(col->type_kind() == plugin::udf::type_kind_type::MESSAGE) {
+                if(auto nested = col->nested()) {
+                    if(auto nested_it = output_type_map.find(nested->record_name());
+                       nested_it != output_type_map.end()) {
+                        if(auto ptr = nested_it->second()) param_types.emplace_back(ptr);
                     }
-                } else {
-                    param_types.emplace_back(map_type(col->type_kind()));
                 }
+            } else {
+                param_types.emplace_back(map_type(col->type_kind()));
             }
-            auto info =
-                std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, pattern.size());
-            repo.add(current_id, info);
-            functions.add(yugawara::function::declaration{current_id, fn_name, return_type, std::move(param_types)});
         }
+
+        auto info =
+            std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, pattern.size());
+        repo.add(current_id, info);
+        functions.add(yugawara::function::declaration(current_id, fn_name, return_type, std::move(param_types)));
     }
 }
 const std::vector<plugin::udf::column_descriptor*>*
 find_matched_pattern(const plugin::udf::function_descriptor* fn, const sequence_view<data::any>& args) {
     const auto& input = fn->input_record();
-
-    for(auto const& pattern: input.argument_patterns()) {
+    const auto& type_map = type_index_map();
+    const auto& nested_map = nested_type_map();
+    for(const auto& pattern: input.argument_patterns()) {
         if(pattern.size() != args.size()) continue;
-
         bool match = true;
         for(std::size_t i = 0; i < args.size(); ++i) {
             const auto& arg = args[i];
             const auto& col = pattern[i];
             auto kind = col->type_kind();
-            switch(kind) {
-                case plugin::udf::type_kind_type::FLOAT8:
-                    match &= (arg.type_index() == data::any::index<runtime_t<kind::float8>>);
-                    break;
-                case plugin::udf::type_kind_type::FLOAT4:
-                    match &= (arg.type_index() == data::any::index<runtime_t<kind::float4>>);
-                    break;
-
-                case plugin::udf::type_kind_type::INT8:
-                case plugin::udf::type_kind_type::SINT8:
-                case plugin::udf::type_kind_type::SFIXED8:
-                case plugin::udf::type_kind_type::UINT8:
-                case plugin::udf::type_kind_type::FIXED8:
-                    match &= (arg.type_index() == data::any::index<runtime_t<kind::int8>>);
-                    break;
-
-                case plugin::udf::type_kind_type::INT4:
-                case plugin::udf::type_kind_type::SINT4:
-                case plugin::udf::type_kind_type::SFIXED4:
-                case plugin::udf::type_kind_type::UINT4:
-                case plugin::udf::type_kind_type::FIXED4:
-                    match &= (arg.type_index() == data::any::index<runtime_t<kind::int4>>);
-                    break;
-
-                case plugin::udf::type_kind_type::BOOL:
-                    match &= (arg.type_index() == data::any::index<runtime_t<kind::boolean>>);
-                    break;
-
-                case plugin::udf::type_kind_type::STRING:
-                case plugin::udf::type_kind_type::MESSAGE: {
-                    auto nested = col->nested();
-                    if(nested) {
-                        std::string nested_name = std::string(nested->record_name());
-                        if(nested_name == "tsurugidb.udf.value.Decimal") {
-                            match &= (arg.type_index() == data::any::index<runtime_t<kind::decimal>>);
-                        } else if(nested_name == "tsurugidb.udf.value.Date") {
-                            match &= (arg.type_index() == data::any::index<runtime_t<kind::date>>);
-                        } else if(nested_name == "tsurugidb.udf.value.LocalTime") {
-                            match &= (arg.type_index() == data::any::index<runtime_t<kind::time_of_day>>);
-                        } else if(nested_name == "tsurugidb.udf.value.LocalDatetime") {
-                            match &= (arg.type_index() == data::any::index<runtime_t<kind::time_point>>);
-                        } else if(nested_name == "tsurugidb.udf.value.OffsetDatetime") {
-                            match &= (arg.type_index() == data::any::index<runtime_t<kind::time_point>>);
-                        } else if(nested_name == "tsurugidb.udf.value.BlobReference") {
-                            // match &= (arg.type_index() ==
-                            // data::any::index<runtime_t<kind::blob>>);
-                        } else if(nested_name == "tsurugidb.udf.value.ClobReference") {
-                            // match &= (arg.type_index() ==
-                            // data::any::index<runtime_t<kind::clob>>);
-                        }
-                    }
-                    break;
+            if(kind == plugin::udf::type_kind_type::STRING || kind == plugin::udf::type_kind_type::MESSAGE) {
+                if(auto nested = col->nested()) {
+                    auto nested_it = nested_map.find(nested->record_name());
+                    match &= (nested_it != nested_map.end() && arg.type_index() == nested_it->second);
                 }
-                case plugin::udf::type_kind_type::GROUP:
-                    match &= (arg.type_index() == data::any::index<accessor::text>);
-                    break;
-
-                case plugin::udf::type_kind_type::BYTES:
-                    match &= (arg.type_index() == data::any::index<accessor::binary>);
-                    break;
-
-                default: match = false; break;
+            } else {
+                auto it = type_map.find(kind);
+                match &= (it != type_map.end() && arg.type_index() == it->second);
             }
 
             if(! match) break;
         }
 
-        if(match) { return &pattern; }
+        if(match) return &pattern;
     }
 
     return nullptr;
@@ -461,36 +423,37 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
 ) {
     return [client, fn](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
         plugin::udf::generic_record_impl request;
-        if(fn->input_record().record_name() == "tsurugidb.udf.value.Decimal") {
+        if(fn->input_record().record_name() == DECIMAL_RECORD) {
             auto value = args[0].to<runtime_t<kind::decimal>>();
             std::int8_t sign = value.sign();
             std::uint64_t hi = value.coefficient_high();
             std::uint64_t lo = value.coefficient_low();
             std::int32_t exp = value.exponent();
-
-            __int128 coeff = (static_cast<__int128>(hi) << 64) | lo;
-            if(sign < 0) coeff = -coeff;
+            // NOLINTNEXTLINE(hicpp-signed-bitwise)
+            unsigned __int128 ucoeff = (static_cast<unsigned __int128>(hi) << 64) | lo;
+            if(sign < 0) ucoeff = -ucoeff;
 
             std::string bytes(16, '\0');
-            for(int i = 0; i < 16; ++i) { bytes[15 - i] = static_cast<char>((coeff >> (i * 8)) & 0xFF); }
+            // NOLINTNEXTLINE(hicpp-signed-bitwise)
+            for(int i = 0; i < 16; ++i) { bytes[15 - i] = static_cast<char>((ucoeff >> (i * 8)) & 0xFFU); }
             request.add_string(bytes);
             request.add_int4(exp);
-        } else if(fn->input_record().record_name() == "tsurugidb.udf.value.Date") {
+        } else if(fn->input_record().record_name() == DATE_RECORD) {
             auto value = args[0].to<runtime_t<kind::date>>();
             auto days = static_cast<int32_t>(value.days_since_epoch());
             request.add_int4(days);
-        } else if(fn->input_record().record_name() == "tsurugidb.udf.value.LocalTime") {
+        } else if(fn->input_record().record_name() == LOCALTIME_RECORD) {
             auto value = args[0].to<runtime_t<kind::time_of_day>>();
             auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
             request.add_int8(nanos);
-        } else if(fn->input_record().record_name() == "tsurugidb.udf.value.LocalDatetime") {
+        } else if(fn->input_record().record_name() == LOCALDATETIME_RECORD) {
             auto value = args[0].to<runtime_t<kind::time_point>>();
             auto offset_seconds = static_cast<int64_t>(value.seconds_since_epoch().count());
             auto nano_adjustment = static_cast<uint32_t>(value.subsecond().count());
 
             request.add_int8(offset_seconds);
             request.add_uint4(nano_adjustment);
-        } else if(fn->input_record().record_name() == "tsurugidb.udf.value.OffsetDatetime") {
+        } else if(fn->input_record().record_name() == OFFSETDATETIME_RECORD) {
             auto value = args[0].to<runtime_t<kind::time_point>>();
             auto offset_seconds = static_cast<int64_t>(value.seconds_since_epoch().count());
             auto nano_adjustment = static_cast<uint32_t>(value.subsecond().count());
@@ -505,9 +468,9 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
               sint32 time_zone_offset = 3; // minutes from UTC
             }
             */
-        } else if(fn->input_record().record_name() == "tsurugidb.udf.value.BlobReference") {
+        } else if(fn->input_record().record_name() == BLOB_RECORD) {
             // Not yet
-        } else if(fn->input_record().record_name() == "tsurugidb.udf.value.ClobReference") {
+        } else if(fn->input_record().record_name() == CLOB_RECORD) {
             // Not yet
         } else {
             const auto* matched_pattern = find_matched_pattern(fn, args);
@@ -533,36 +496,33 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         }
 
         const auto& output = fn->output_record();
-        if(output.record_name() == "tsurugidb.udf.value.Decimal") {
+        if(output.record_name() == DECIMAL_RECORD) {
             if(auto cursor = response.cursor()) {
-                std::optional<std::string> unscaled_opt;
-                std::optional<std::int32_t> exponent_opt;
-
-                if(auto result = cursor->fetch_string()) { unscaled_opt = *result; }
-                if(auto result = cursor->fetch_int4()) { exponent_opt = *result; }
+                std::optional<std::string> unscaled_opt = cursor->fetch_string();
+                std::optional<std::int32_t> exponent_opt = cursor->fetch_int4();
                 if(unscaled_opt && exponent_opt) {
                     const std::string& unscaled = *unscaled_opt;
                     std::int32_t exponent = *exponent_opt;
 
-                    unsigned __int128 coefficient = 0;
                     bool negative = false;
+                    unsigned __int128 ucoeff = 0;
 
-                    if(! unscaled.empty() && (static_cast<unsigned char>(unscaled[0]) & 0x80u)) {
+                    if(! unscaled.empty() && (static_cast<unsigned char>(unscaled[0]) & 0x80U)) {
                         negative = true;
                         std::vector<uint8_t> bytes(unscaled.begin(), unscaled.end());
                         for(auto& b: bytes) b = ~b;
                         for(int i = static_cast<int>(bytes.size()) - 1; i >= 0; --i) {
                             if(++bytes[i] != 0) break;
                         }
-                        for(uint8_t b: bytes) { coefficient = (coefficient << 8) | b; }
+                        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+                        for(uint8_t b: bytes) ucoeff = (ucoeff << 8) | b;
                     } else {
-                        for(uint8_t b: unscaled) { coefficient = (coefficient << 8) | b; }
+                        // NOLINTNEXTLINE(hicpp-signed-bitwise)
+                        for(uint8_t b: unscaled) ucoeff = (ucoeff << 8) | b;
                     }
-
-                    // make an unsigned local alias (optional, clearer intent)
-                    unsigned __int128 ucoeff = coefficient;
-
+                    // NOLINTNEXTLINE(hicpp-signed-bitwise)
                     auto coeff_high = static_cast<std::uint64_t>((ucoeff >> 64) & 0xFFFFFFFFFFFFFFFFULL);
+                    // NOLINTNEXTLINE(hicpp-signed-bitwise)
                     auto coeff_low = static_cast<std::uint64_t>(ucoeff & 0xFFFFFFFFFFFFFFFFULL);
                     std::int64_t sign = negative ? -1 : (ucoeff == 0 ? 0 : +1);
 
@@ -570,7 +530,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
                     return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple_value};
                 }
             }
-        } else if(output.record_name() == "tsurugidb.udf.value.Date") {
+        } else if(output.record_name() == DATE_RECORD) {
             takatori::datetime::date tp{};
             if(auto cursor = response.cursor()) {
                 if(auto result = cursor->fetch_int4()) {
@@ -578,7 +538,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
                 }
             }
             return data::any{std::in_place_type<runtime_t<kind::date>>, tp};
-        } else if(output.record_name() == "tsurugidb.udf.value.LocalTime") {
+        } else if(output.record_name() == LOCALTIME_RECORD) {
             takatori::datetime::time_of_day tp{};
             if(auto cursor = response.cursor()) {
                 if(auto result = cursor->fetch_int8()) {
@@ -587,7 +547,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
                 }
             }
             return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp};
-        } else if(output.record_name() == "tsurugidb.udf.value.LocalDatetime") {
+        } else if(output.record_name() == LOCALDATETIME_RECORD) {
             int64_t offset_seconds{0};
             uint32_t nano_adjustment{0};
             if(auto cursor = response.cursor()) {
@@ -598,10 +558,10 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
                 takatori::datetime::time_point::offset_type(offset_seconds),
                 std::chrono::nanoseconds(nano_adjustment)};
             return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
-        } else if(output.record_name() == "tsurugidb.udf.value.OffsetDatetime") {
-        } else if(output.record_name() == "tsurugidb.udf.value.BlobReference") {
+        } else if(output.record_name() == OFFSETDATETIME_RECORD) {
+        } else if(output.record_name() == BLOB_RECORD) {
             // Not yet
-        } else if(output.record_name() == "tsurugidb.udf.value.ClobReference") {
+        } else if(output.record_name() == CLOB_RECORD) {
             // Not yet
         } else {
             std::vector<plugin::udf::NativeValue> output_values = cursor_to_native_values(response, output.columns());

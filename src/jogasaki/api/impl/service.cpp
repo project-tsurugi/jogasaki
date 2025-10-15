@@ -1503,6 +1503,8 @@ void service::set_params(
                 params->set_reference_column(p.name(), p.reference_column_name());
                 break;
             default:
+                // NULLs or unsupported type values (fallen back to null)
+                // values for UNKNOWN type parameter is also handled here
                 params->set_null(p.name());
                 break;
         }

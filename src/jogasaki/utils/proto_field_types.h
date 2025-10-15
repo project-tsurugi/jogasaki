@@ -40,6 +40,7 @@ namespace sql = proto::sql;
         case sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE: return jogasaki::api::field_type_kind::time_point_with_time_zone;
         case sql::common::AtomType::BLOB: return jogasaki::api::field_type_kind::blob;
         case sql::common::AtomType::CLOB: return jogasaki::api::field_type_kind::clob;
+        case sql::common::AtomType::UNKNOWN: return jogasaki::api::field_type_kind::unknown;
         default: return jogasaki::api::field_type_kind::undefined;
     }
 }

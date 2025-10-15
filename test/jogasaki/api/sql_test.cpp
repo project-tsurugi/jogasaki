@@ -117,17 +117,6 @@ TEST_F(sql_test, update_primary_key) {
     EXPECT_DOUBLE_EQ(30.0, result[1].get_value<double>(1));
 }
 
-TEST_F(sql_test, read_null) {
-    execute_statement("CREATE TABLE T0 (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
-    execute_statement("INSERT INTO T0(C0) VALUES (0)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, C1 FROM T0", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>({0, 0.0}, {false, true})), result[0]);
-    }
-}
-
 TEST_F(sql_test, literal_true_false) {
     execute_statement("CREATE TABLE T0 (C0 BIGINT PRIMARY KEY, C1 DOUBLE)");
     execute_statement("INSERT INTO T0(C0) VALUES (0)");
@@ -416,18 +405,6 @@ TEST_F(sql_test, update_string_with_invalid_char) {
     ps->set_character("p0", str);
 
     test_stmt_err("UPDATE T SET C0 = :p0", variables, *ps, error_code::invalid_runtime_value_exception);
-}
-
-TEST_F(sql_test, select_null) {
-    utils::set_global_tx_option(utils::create_tx_option{false, false});
-    execute_statement("create table T (C0 int primary key)");
-    execute_statement("INSERT INTO T VALUES (1)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT C0, NULL FROM T", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(std::tuple{1, '\0'}, {false, true})), result[0]);
-    }
 }
 
 TEST_F(sql_test, unsupported_features) {

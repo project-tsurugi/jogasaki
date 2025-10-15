@@ -365,4 +365,15 @@ TEST_F(result_metadata_test, no_description_in_result_metadata) {
     ASSERT_EQ(exp, columns);
 }
 
+TEST_F(result_metadata_test, unknown_type) {
+    execute_statement("create table t (c0 int primary key)");
+    auto meta = get_result_meta("select null from t");
+    ASSERT_TRUE(meta);
+    auto columns = executor::to_common_columns(*meta);
+    std::vector<executor::dto::common_column> exp{
+            {"", atom_type::unknown, std::nullopt}
+    };
+    ASSERT_EQ(exp, columns);
+}
+
 }

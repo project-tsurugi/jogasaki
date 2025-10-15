@@ -87,9 +87,6 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
@@ -104,6 +101,7 @@ using namespace std::string_view_literals;
 using kind = meta::field_type_kind;
 
 TEST_F(host_variables_test, insert_basic) {
+    execute_statement("create table t (C0 bigint primary key, C1 double)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
         {"p1", api::field_type_kind::float8},
@@ -111,31 +109,32 @@ TEST_F(host_variables_test, insert_basic) {
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
     ps->set_float8("p1", 10.0);
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", variables, *ps);
+    execute_statement( "INSERT INTO t (C0, C1) VALUES (:p0, :p1)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0", result);
+    execute_query("SELECT * FROM t", result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
     EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
 }
 
 TEST_F(host_variables_test, update_basic) {
+    execute_statement("create table t (C0 bigint primary key, C1 double)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
         {"p1", api::field_type_kind::float8},
         {"i0", api::field_type_kind::int8},
         {"i1", api::field_type_kind::int8},
     };
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (1, 10.0)");
+    execute_statement( "INSERT INTO t (C0, C1) VALUES (1, 10.0)");
 
     {
         auto ps = api::create_parameter_set();
         ps->set_int8("p0", 1);
         ps->set_float8("p1", 20.0);
-        execute_statement( "UPDATE T0 SET C1 = :p1 WHERE C0 = :p0", variables, *ps);
+        execute_statement( "UPDATE t SET C1 = :p1 WHERE C0 = :p0", variables, *ps);
 
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
         EXPECT_DOUBLE_EQ(20.0, result[0].get_value<double>(1));
@@ -144,11 +143,11 @@ TEST_F(host_variables_test, update_basic) {
         auto ps = api::create_parameter_set();
         ps->set_int8("i0", 1);
         ps->set_int8("i1", 2);
-        execute_statement( "UPDATE T0 SET C0 = :i1 WHERE C0 = :i0", variables, *ps);
+        execute_statement( "UPDATE t SET C0 = :i1 WHERE C0 = :i0", variables, *ps);
         wait_epochs(2);
 
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T0", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ(2, result[0].get_value<std::int64_t>(0));
         EXPECT_DOUBLE_EQ(20.0, result[0].get_value<double>(1));
@@ -156,6 +155,7 @@ TEST_F(host_variables_test, update_basic) {
 }
 
 TEST_F(host_variables_test, query_basic) {
+    execute_statement("create table t (C0 bigint primary key, C1 double)");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int8},
         {"p1", api::field_type_kind::float8},
@@ -163,9 +163,9 @@ TEST_F(host_variables_test, query_basic) {
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
     ps->set_float8("p1", 10.0);
-    execute_statement( "INSERT INTO T0 (C0, C1) VALUES (:p0, :p1)", variables, *ps);
+    execute_statement( "INSERT INTO t (C0, C1) VALUES (:p0, :p1)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T0 WHERE C0 = :p0 AND C1 = :p1", variables, *ps, result);
+    execute_query("SELECT * FROM t WHERE C0 = :p0 AND C1 = :p1", variables, *ps, result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(1, result[0].get_value<std::int64_t>(0));
     EXPECT_DOUBLE_EQ(10.0, result[0].get_value<double>(1));
@@ -188,6 +188,7 @@ TEST_F(host_variables_test, range_scan_with_host_variables) {
 }
 
 TEST_F(host_variables_test, insert_varieties_of_types) {
+    execute_statement("create table t (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},
         {"p1", api::field_type_kind::int8},
@@ -201,9 +202,9 @@ TEST_F(host_variables_test, insert_varieties_of_types) {
     ps->set_float8("p2", 100.0);
     ps->set_float4("p3", 1000.0);
     ps->set_character("p4", "10000");
-    execute_statement( "INSERT INTO T1 (C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4)", variables, *ps);
+    execute_statement( "INSERT INTO t (C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM T1", result);
+    execute_query("SELECT * FROM t", result);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
         std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
@@ -211,6 +212,7 @@ TEST_F(host_variables_test, insert_varieties_of_types) {
 }
 
 TEST_F(host_variables_test, update_varieties_of_types) {
+    execute_statement("create table t (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},
         {"p1", api::field_type_kind::int8},
@@ -218,7 +220,7 @@ TEST_F(host_variables_test, update_varieties_of_types) {
         {"p3", api::field_type_kind::float4},
         {"p4", api::field_type_kind::character},
     };
-    execute_statement( "INSERT INTO T1 (C0, C1, C2, C3, C4) VALUES (1, 10, 100.0, 1000.0, '10000')");
+    execute_statement( "INSERT INTO t (C0, C1, C2, C3, C4) VALUES (1, 10, 100.0, 1000.0, '10000')");
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 2);
@@ -226,17 +228,17 @@ TEST_F(host_variables_test, update_varieties_of_types) {
         ps->set_float8("p2", 200.0);
         ps->set_float4("p3", 2000.0);
         ps->set_character("p4", "20000");
-        execute_statement( "UPDATE T1 SET C0 = :p0, C1 = :p1, C2 = :p2, C3 = :p3, C4 = :p4 WHERE C0 = 1", variables, *ps);
+        execute_statement( "UPDATE t SET C0 = :p0, C1 = :p1, C2 = :p2, C3 = :p3, C4 = :p4 WHERE C0 = 1", variables, *ps);
 
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T1", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
             std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
             std::forward_as_tuple(2, 20, 200.0, 2000.0, accessor::text{"20000"}))), result[0]);
     }
-    execute_statement( "DELETE FROM T1");
-    execute_statement( "INSERT INTO T1 (C0, C1, C2, C3, C4) VALUES (1, 10, 100.0, 1000.0, '10000')");
+    execute_statement( "DELETE FROM t");
+    execute_statement( "INSERT INTO t (C0, C1, C2, C3, C4) VALUES (1, 10, 100.0, 1000.0, '10000')");
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
@@ -244,10 +246,10 @@ TEST_F(host_variables_test, update_varieties_of_types) {
         ps->set_float8("p2", 100.0);
         ps->set_float4("p3", 1000.0);
         ps->set_character("p4", "10000");
-        execute_statement( "UPDATE T1 SET C0 = 2 WHERE C0 = :p0 AND C1 = :p1 AND C2 = :p2 AND C3 = :p3 AND C4 = :p4", variables, *ps);
+        execute_statement( "UPDATE t SET C0 = 2 WHERE C0 = :p0 AND C1 = :p1 AND C2 = :p2 AND C3 = :p3 AND C4 = :p4", variables, *ps);
 
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T1", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
             std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
@@ -256,6 +258,7 @@ TEST_F(host_variables_test, update_varieties_of_types) {
 }
 
 TEST_F(host_variables_test, query_varieties_of_types) {
+    execute_statement("create table t (C0 int, C1 bigint, C2 double, C3 real, C4 varchar(100), primary key(C0, C1))");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::int4},
         {"p1", api::field_type_kind::int8},
@@ -263,7 +266,7 @@ TEST_F(host_variables_test, query_varieties_of_types) {
         {"p3", api::field_type_kind::float4},
         {"p4", api::field_type_kind::character},
     };
-    execute_statement( "INSERT INTO T1 (C0, C1, C2, C3, C4) VALUES (1, 10, 100.0, 1000.0, '10000')");
+    execute_statement( "INSERT INTO t (C0, C1, C2, C3, C4) VALUES (1, 10, 100.0, 1000.0, '10000')");
     {
         auto ps = api::create_parameter_set();
         ps->set_int4("p0", 1);
@@ -272,7 +275,7 @@ TEST_F(host_variables_test, query_varieties_of_types) {
         ps->set_float4("p3", 1000.0);
         ps->set_character("p4", "10000");
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM T1 WHERE C0 = :p0 AND C1 = :p1 AND C2 = :p2 AND C3 = :p3 AND C4 = :p4", variables, *ps, result);
+        execute_query("SELECT * FROM t WHERE C0 = :p0 AND C1 = :p1 AND C2 = :p2 AND C3 = :p3 AND C4 = :p4", variables, *ps, result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float8, kind::float4, kind::character>(
             std::tuple{int4_type(), int8_type(), float8_type(), float4_type(), character_type(true, 100)},
@@ -281,6 +284,9 @@ TEST_F(host_variables_test, query_varieties_of_types) {
 }
 
 TEST_F(host_variables_test, insert_temporal_types) {
+    execute_statement("create table t (K0 date, K1 time, K2 time with time zone, K3 timestamp, K4 timestamp with time zone, "
+                      "C0 date, C1 time, C2 time with time zone, C3 timestamp, C4 timestamp with time zone, "
+                      "primary key(K0, K1, K2, K3, K4))");
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::date},
         {"p1", api::field_type_kind::time_of_day},
@@ -297,9 +303,9 @@ TEST_F(host_variables_test, insert_temporal_types) {
     ps->set_time_of_day("p2", t12_0_0);
     ps->set_time_point("p3", tp2000_1_1_12_0_0);
     ps->set_time_point("p4", tp2000_1_1_12_0_0);
-    execute_statement( "INSERT INTO TTEMPORALS (K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)", variables, *ps);
+    execute_statement( "INSERT INTO t (K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM TTEMPORALS", result);
+    execute_query("SELECT * FROM t", result);
     ASSERT_EQ(1, result.size());
 
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
@@ -323,6 +329,9 @@ TEST_F(host_variables_test, insert_temporal_types) {
 }
 
 TEST_F(host_variables_test, update_temporal_types) {
+    execute_statement("create table t (K0 date, K1 time, K2 time with time zone, K3 timestamp, K4 timestamp with time zone, "
+                      "C0 date, C1 time, C2 time with time zone, C3 timestamp, C4 timestamp with time zone, "
+                      "primary key(K0, K1, K2, K3, K4))");
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
     auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
     auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
@@ -355,9 +364,9 @@ TEST_F(host_variables_test, update_temporal_types) {
         ps->set_time_of_day("p2", t12_0_0);
         ps->set_time_point("p3", tp2000_1_1_12_0_0);
         ps->set_time_point("p4", tp2000_1_1_12_0_0);
-        execute_statement( "INSERT INTO TTEMPORALS (K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)", variables, *ps);
+        execute_statement( "INSERT INTO t (K0, K1, K2, K3, K4, C0, C1, C2, C3, C4) VALUES (:p0, :p1, :p2, :p3, :p4, :p0, :p1, :p2, :p3, :p4)", variables, *ps);
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TTEMPORALS", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
     }
     {
@@ -373,10 +382,10 @@ TEST_F(host_variables_test, update_temporal_types) {
         ps->set_time_of_day("n2", t12_2_2);
         ps->set_time_point("n3", tp2000_2_2_12_2_2);
         ps->set_time_point("n4", tp2000_2_2_12_2_2);
-        execute_statement( "UPDATE TTEMPORALS SET C0 = :n0, C1 = :n1, C2 = :n2, C3 = :n3, C4 = :n4 WHERE K0 = :p0 AND K1 = :p1 AND K2 = :p2 AND K3 = :p3 AND K4 = :p4", variables, *ps);
+        execute_statement( "UPDATE t SET C0 = :n0, C1 = :n1, C2 = :n2, C3 = :n3, C4 = :n4 WHERE K0 = :p0 AND K1 = :p1 AND K2 = :p2 AND K3 = :p3 AND K4 = :p4", variables, *ps);
 
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TTEMPORALS", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
 
         EXPECT_EQ((mock::typed_nullable_record<
@@ -396,6 +405,8 @@ TEST_F(host_variables_test, update_temporal_types) {
 }
 
 TEST_F(host_variables_test, insert_decimal_types) {
+    execute_statement("create table t (K0 decimal(3,0), K1 decimal(5,3), K2 decimal(10,1), C0 decimal(3,0), C1 decimal(5,3), C2 decimal(10,1), primary key(K0, K1, K2))");
+
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"p0", api::field_type_kind::decimal},
         {"p1", api::field_type_kind::decimal},
@@ -409,9 +420,9 @@ TEST_F(host_variables_test, insert_decimal_types) {
     ps->set_decimal("p0", v111);
     ps->set_decimal("p1", v11_111);
     ps->set_decimal("p2", v11111_1);
-    execute_statement( "INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
+    execute_statement( "INSERT INTO t (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
     std::vector<mock::basic_record> result{};
-    execute_query("SELECT * FROM TDECIMALS", result);
+    execute_query("SELECT * FROM t", result);
     ASSERT_EQ(1, result.size());
 
     auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
@@ -433,6 +444,7 @@ TEST_F(host_variables_test, insert_decimal_types) {
 }
 
 TEST_F(host_variables_test, update_decimal_types) {
+    execute_statement("create table t (K0 decimal(3,0), K1 decimal(5,3), K2 decimal(10,1), C0 decimal(3,0), C1 decimal(5,3), C2 decimal(10,1), primary key(K0, K1, K2))");
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
     auto tod = meta::field_type{std::make_shared<meta::time_of_day_field_option>(false)};
     auto tp = meta::field_type{std::make_shared<meta::time_point_field_option>(false)};
@@ -456,9 +468,9 @@ TEST_F(host_variables_test, update_decimal_types) {
         ps->set_decimal("p0", v111);
         ps->set_decimal("p1", v11_111);
         ps->set_decimal("p2", v11111_1);
-        execute_statement( "INSERT INTO TDECIMALS (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
+        execute_statement( "INSERT INTO t (K0, K1, K2, C0, C1, C2) VALUES (:p0, :p1, :p2, :p0, :p1, :p2)", variables, *ps);
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TDECIMALS", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
     }
     {
@@ -470,10 +482,10 @@ TEST_F(host_variables_test, update_decimal_types) {
         ps->set_decimal("n0", v222);
         ps->set_decimal("n1", v22_222);
         ps->set_decimal("n2", v22222_2);
-        execute_statement( "UPDATE TDECIMALS SET C0 = :n0, C1 = :n1, C2 = :n2 WHERE K0 = :p0 AND K1 = :p1 AND K2 = :p2", variables, *ps);
+        execute_statement( "UPDATE t SET C0 = :n0, C1 = :n1, C2 = :n2 WHERE K0 = :p0 AND K1 = :p1 AND K2 = :p2", variables, *ps);
 
         std::vector<mock::basic_record> result{};
-        execute_query("SELECT * FROM TDECIMALS", result);
+        execute_query("SELECT * FROM t", result);
         ASSERT_EQ(1, result.size());
 
         auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
@@ -492,6 +504,51 @@ TEST_F(host_variables_test, update_decimal_types) {
                 v222, v22_222, v22222_2,
             }
         )), result[0]);
+    }
+}
+
+TEST_F(host_variables_test, insert_unknown_types) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::unknown},
+    };
+    auto ps = api::create_parameter_set();
+    ps->set_null("p0");
+    execute_statement( "INSERT INTO t VALUES (0, :p0)", variables, *ps);
+    std::vector<mock::basic_record> result{};
+    execute_query("SELECT * FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(std::tuple{0, -1}, {false, true})), result[0]);
+}
+
+TEST_F(host_variables_test, update_unknown_types) {
+    execute_statement("create table t (c0 int primary key, c1 int)");
+    execute_statement("insert into t values (0, 0)");
+    std::unordered_map<std::string, api::field_type_kind> variables{
+        {"p0", api::field_type_kind::unknown},
+    };
+    {
+        // assign null using unknown type parameter
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        execute_statement("UPDATE t SET c1 = :p0 WHERE c0 = 0", variables, *ps);
+
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(std::tuple{0, -1}, {false, true})), result[0]);
+    }
+    {
+        // compare int with unknown type parameter - nothing should match
+        auto ps = api::create_parameter_set();
+        ps->set_null("p0");
+        execute_statement("UPDATE t SET c1 = 1 WHERE c0 = :p0", variables, *ps);
+        execute_statement("UPDATE t SET c1 = 2 WHERE c0 <> :p0", variables, *ps);
+
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT * FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(std::tuple{0, -1}, {false, true})), result[0]);
     }
 }
 
@@ -577,6 +634,7 @@ TEST_F(host_variables_test, cast_inexact_decimals) {
 TEST_F(host_variables_test, missing_colon) {
     // before moving to new sql compiler, jogasaki wrongly passed host variables definition also as user/system
     // variables. So host variables worked even without colon. This test is to check that it is fixed.
+    execute_statement("create table t (C0 bigint primary key, C1 double)");
     std::unordered_map<std::string, api::field_type_kind> variables{
             {"p0", api::field_type_kind::int8},
             {"p1", api::field_type_kind::float8},
@@ -584,7 +642,7 @@ TEST_F(host_variables_test, missing_colon) {
     auto ps = api::create_parameter_set();
     ps->set_int8("p0", 1);
     ps->set_float8("p1", 10.0);
-    test_stmt_err( "INSERT INTO T0 (C0, C1) VALUES (p0, p1)", variables, *ps, error_code::symbol_analyze_exception);
+    test_stmt_err( "INSERT INTO t (C0, C1) VALUES (p0, p1)", variables, *ps, error_code::symbol_analyze_exception);
 }
 
 TEST_F(host_variables_test, missing_parameter) {

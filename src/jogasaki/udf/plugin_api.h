@@ -151,9 +151,5 @@ public:
 };
 void print_columns(const std::vector<column_descriptor*>& cols, int indent);
 void print_plugin_info(const std::shared_ptr<plugin_api>& api);
-[[nodiscard]] std::vector<NativeValue> column_to_native_values(const std::vector<column_descriptor*>& cols);
-[[nodiscard]] std::vector<NativeValue>
-cursor_to_native_values(generic_record_impl& response, const std::vector<column_descriptor*>& cols);
-void print_native_values(const std::vector<NativeValue>& values);
 extern "C" plugin_api* create_plugin_api();
 }  // namespace plugin::udf

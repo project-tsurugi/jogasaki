@@ -27,24 +27,6 @@ namespace plugin::udf {
 
 using value_type = std::
     variant<std::monostate, bool, std::int32_t, std::int64_t, std::uint32_t, std::uint64_t, float, double, std::string>;
-
-struct NativeValue {
-private:
-
-    std::optional<value_type> value_{std::monostate{}};
-    type_kind_type type_kind_{type_kind_type::MESSAGE};
-
-public:
-
-    NativeValue() = default;
-    template<typename T>
-    explicit NativeValue(T v, type_kind_type tk = type_kind_type::MESSAGE) : value_(v), type_kind_(tk) {}
-    [[nodiscard]] const std::optional<value_type>& value() const { return value_; }
-    [[nodiscard]] bool is_null() const {
-        return ! value_.has_value() || std::holds_alternative<std::monostate>(*value_);
-    }
-    [[nodiscard]] type_kind_type kind() const noexcept { return type_kind_; }
-};
 class generic_record_impl : public generic_record {
 public:
 
@@ -96,9 +78,6 @@ private:
     const std::vector<value_type>& values_;
     std::size_t index_ = 0;
 };
-
-void add_arg_value(generic_record_impl& rec, const NativeValue& v);
-
 template<class>
 struct always_false : std::false_type {};
 }  // namespace plugin::udf

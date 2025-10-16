@@ -131,49 +131,4 @@ std::optional<std::string> generic_record_cursor_impl::fetch_string() {
     return value;
 }
 
-void add_arg_value(generic_record_impl& rec, const NativeValue& v) {
-    if(v.is_null()) {
-        rec.add_string_null();
-        return;
-    }
-    std::visit(
-        [&](auto&& arg) {
-            using T = std::decay_t<decltype(arg)>;
-            if constexpr(std::is_same_v<T, bool>) {
-                rec.add_bool(arg != 0);
-            } else if constexpr(std::is_same_v<T, std::int32_t>) {
-                if(v.kind() == type_kind_type::BOOL) {
-                    rec.add_bool(arg != 0);
-                } else if(v.kind() == type_kind_type::INT4 || v.kind() == type_kind_type::SFIXED4 || v.kind() == type_kind_type::SINT4) {
-                    rec.add_int4(arg);
-                } else {
-                    rec.add_uint4(arg);
-                }
-            } else if constexpr(std::is_same_v<T, std::int64_t>) {
-                if(v.kind() == type_kind_type::INT8 || v.kind() == type_kind_type::SFIXED8 ||
-                   v.kind() == type_kind_type::SINT8) {
-                    rec.add_int8(arg);
-                } else {
-                    rec.add_uint8(arg);
-                }
-            } else if constexpr(std::is_same_v<T, std::uint32_t>) {
-                rec.add_uint4(arg);
-            } else if constexpr(std::is_same_v<T, std::uint64_t>) {
-                rec.add_uint8(arg);
-            } else if constexpr(std::is_same_v<T, float>) {
-                rec.add_float(arg);
-            } else if constexpr(std::is_same_v<T, double>) {
-                rec.add_double(arg);
-            } else if constexpr(std::is_same_v<T, std::string>) {
-                rec.add_string(arg);
-            } else if constexpr(std::is_same_v<T, std::monostate>) {
-                rec.add_string_null();
-            } else {
-                static_assert(always_false<T>::value, "Unsupported type");
-            }
-        },
-        *v.value()
-    );
-}
-
 }  // namespace plugin::udf

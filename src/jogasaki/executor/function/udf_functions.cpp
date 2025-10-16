@@ -71,6 +71,7 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/error_info.h>
 #include <jogasaki/udf/generic_record_impl.h>
 #include <jogasaki/udf/plugin_loader.h>
@@ -185,46 +186,6 @@ std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind_type
         default: return std::make_shared<t::character>(t::varying);
     }
 }
-data::any native_to_any(const plugin::udf::NativeValue& nv, evaluator_context& ctx) {
-    if(auto opt = nv.value(); opt) {
-
-        return std::visit(
-            [&](auto&& val) -> data::any {
-                using T = std::decay_t<decltype(val)>;
-                if constexpr(std::is_same_v<T, std::monostate>) {
-                    return {};
-                } else if constexpr(std::is_same_v<T, bool>) {
-                    return data::any{std::in_place_type<runtime_t<kind::boolean>>, val};
-                } else if constexpr(std::is_same_v<T, std::int32_t>) {
-                    return data::any{std::in_place_type<runtime_t<kind::int4>>, val};
-                } else if constexpr(std::is_same_v<T, std::int64_t>) {
-                    return data::any{std::in_place_type<runtime_t<kind::int8>>, val};
-                } else if constexpr(std::is_same_v<T, std::uint32_t>) {
-                    return data::any{std::in_place_type<runtime_t<kind::int4>>, val};
-                } else if constexpr(std::is_same_v<T, std::uint64_t>) {
-                    return data::any{std::in_place_type<runtime_t<kind::int8>>, val};
-                } else if constexpr(std::is_same_v<T, float>) {
-                    return data::any{std::in_place_type<runtime_t<kind::float4>>, val};
-                } else if constexpr(std::is_same_v<T, double>) {
-                    return data::any{std::in_place_type<runtime_t<kind::float8>>, val};
-                } else if constexpr(std::is_same_v<T, std::string>) {
-                    if(nv.kind() == plugin::udf::type_kind_type::BYTES) {
-                        return data::any{
-                            std::in_place_type<runtime_t<kind::octet>>,
-                            runtime_t<kind::octet>{ctx.resource(), val}};
-                    }
-                    return data::any{
-                        std::in_place_type<runtime_t<kind::character>>,
-                        runtime_t<kind::character>{ctx.resource(), val}};
-                } else {
-                    return {};
-                }
-            },
-            *opt
-        );
-    }
-    return {};
-}
 
 void register_function(
     yugawara::function::configurable_provider& functions,
@@ -251,39 +212,43 @@ void fill_request_with_args(
     for(std::size_t i = 0; i < columns.size(); ++i) {
         const auto& type = columns[i]->type_kind();
         const auto& src = args[i];
-        plugin::udf::NativeValue val;
         switch(src.type_index()) {
             case data::any::index<runtime_t<kind::boolean>>: {
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::boolean>>(), type};
-                add_arg_value(request, val);
+                request.add_bool(static_cast<bool>(src.to<runtime_t<kind::boolean>>()));
                 break;
             }
-            case data::any::index<runtime_t<kind::int4>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::int4>>(), type};
-                add_arg_value(request, val);
+            case data::any::index<runtime_t<kind::int4>>: {
+                auto result = src.to<runtime_t<kind::int4>>();
+                if(type == plugin::udf::type_kind_type::INT4 || type == plugin::udf::type_kind_type::SFIXED4 ||
+                   type == plugin::udf::type_kind_type::SINT4) {
+                    request.add_int4(result);
+                } else {
+                    request.add_uint4(result);
+                }
                 break;
-            case data::any::index<runtime_t<kind::int8>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::int8>>(), type};
-                add_arg_value(request, val);
+            }
+            case data::any::index<runtime_t<kind::int8>>: {
+                auto result = src.to<runtime_t<kind::int8>>();
+                if(type == plugin::udf::type_kind_type::INT8 || type == plugin::udf::type_kind_type::SFIXED8 ||
+                   type == plugin::udf::type_kind_type::SINT8) {
+                    request.add_int8(result);
+                } else {
+                    request.add_uint8(result);
+                }
                 break;
-            case data::any::index<runtime_t<kind::float4>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::float4>>(), type};
-                add_arg_value(request, val);
-                break;
+            }
+            case data::any::index<runtime_t<kind::float4>>: request.add_float(src.to<runtime_t<kind::float4>>()); break;
             case data::any::index<runtime_t<kind::float8>>:
-                val = plugin::udf::NativeValue{src.to<runtime_t<kind::float8>>(), type};
-                add_arg_value(request, val);
+                request.add_double(src.to<runtime_t<kind::float8>>());
                 break;
             case data::any::index<accessor::binary>: {
-                auto bin = src.to<runtime_t<kind::octet>>();
-                val = plugin::udf::NativeValue{static_cast<std::string>(bin), type};
-                add_arg_value(request, val);
+                auto bin = static_cast<std::string>(src.to<runtime_t<kind::octet>>());
+                request.add_string(bin);
                 break;
             }
             case data::any::index<accessor::text>: {
-                auto ch = src.to<runtime_t<kind::character>>();
-                val = plugin::udf::NativeValue{static_cast<std::string>(ch), type};
-                add_arg_value(request, val);
+                auto ch = static_cast<std::string>(src.to<runtime_t<kind::character>>());
+                request.add_string(ch);
                 break;
             }
             case data::any::index<runtime_t<kind::decimal>>: {
@@ -296,51 +261,40 @@ void fill_request_with_args(
                 unsigned __int128 ucoeff = (static_cast<unsigned __int128>(hi) << 64) | lo;
                 __int128 coeff = (sign < 0) ? -static_cast<__int128>(ucoeff) : static_cast<__int128>(ucoeff);
                 std::string coeff_bytes = int128_to_bytes(coeff);
-                auto val1 = plugin::udf::NativeValue{coeff_bytes, plugin::udf::type_kind_type::BYTES};
-                auto val2 = plugin::udf::NativeValue{exp, plugin::udf::type_kind_type::INT4};
-                add_arg_value(request, val1);
-                add_arg_value(request, val2);
+                request.add_string(coeff_bytes);
+                request.add_int4(exp);
                 break;
             }
             case data::any::index<runtime_t<kind::date>>: {
                 auto value = src.to<runtime_t<kind::date>>();
                 auto days = static_cast<int32_t>(value.days_since_epoch());
-                auto val1 = plugin::udf::NativeValue{days, plugin::udf::type_kind_type::INT4};
-                add_arg_value(request, val1);
+                request.add_int4(days);
                 break;
             }
             case data::any::index<runtime_t<kind::time_of_day>>: {
                 auto value = src.to<runtime_t<kind::time_of_day>>();
                 auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
-                auto val1 = plugin::udf::NativeValue{nanos, plugin::udf::type_kind_type::INT8};
-                add_arg_value(request, val1);
+                request.add_int8(nanos);
                 break;
             }
             case data::any::index<runtime_t<kind::time_point>>: {
                 auto value = src.to<runtime_t<kind::time_point>>();
                 auto offset_seconds = static_cast<int64_t>(value.seconds_since_epoch().count());
                 uint32_t nano_adjustment = static_cast<uint32_t>(value.subsecond().count());
-                auto val1 = plugin::udf::NativeValue{offset_seconds, plugin::udf::type_kind_type::INT8};
-                auto val2 = plugin::udf::NativeValue{nano_adjustment, plugin::udf::type_kind_type::UINT4};
-                add_arg_value(request, val1);
-                add_arg_value(request, val2);
+                request.add_int8(offset_seconds);
+                request.add_uint4(nano_adjustment);
                 break;
             }
             case data::any::index<runtime_t<kind::blob>>: {
                 // auto b = src.to<runtime_t<kind::blob>>();
-                // val    = plugin::udf::NativeValue{static_cast<takatori::lob::blob_reference>(b),
-                // type};
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
                 // auto c = src.to<runtime_t<kind::clob>>();
-                // val    = plugin::udf::NativeValue{static_cast<takatori::lob::clob_reference>(c),
-                // type};
                 break;
             }
             default:
-                val = plugin::udf::NativeValue{};  // null
-                add_arg_value(request, val);
+                // do nothing for unhandled type
                 break;
         }
     }
@@ -530,6 +484,118 @@ data::any build_decimal_data(const std::string& unscaled, std::int32_t exponent)
     return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple_value};
 }
 
+template<typename RuntimeT, typename FetchFn>
+void fetch_and_emplace(std::vector<data::any>& result, FetchFn fetch_fn) {
+    if(auto v = fetch_fn()) {
+        result.emplace_back(std::in_place_type<RuntimeT>, *v);
+    } else {
+        result.emplace_back();
+    }
+}
+
+template<typename RuntimeT, typename FetchFn, typename CastFn>
+void fetch_and_emplace_cast(std::vector<data::any>& result, FetchFn fetch_fn, CastFn cast_fn) {
+    if(auto v = fetch_fn()) {
+        result.emplace_back(std::in_place_type<RuntimeT>, cast_fn(*v));
+    } else {
+        result.emplace_back();
+    }
+}
+
+std::vector<data::any> cursor_to_any_values(
+    plugin::udf::generic_record_impl& response,
+    const std::vector<plugin::udf::column_descriptor*>& cols,
+    evaluator_context& ctx
+) {
+    std::vector<data::any> result;
+
+    if(auto cursor = response.cursor()) {
+        for(const auto* col: cols) {
+            auto type_kind = col->type_kind();
+
+            switch(type_kind) {
+                case plugin::udf::type_kind_type::SFIXED4:
+                case plugin::udf::type_kind_type::INT4:
+                case plugin::udf::type_kind_type::SINT4:
+                    fetch_and_emplace<runtime_t<kind::int4>>(result, [&] { return cursor->fetch_int4(); });
+                    break;
+
+                case plugin::udf::type_kind_type::SFIXED8:
+                case plugin::udf::type_kind_type::INT8:
+                case plugin::udf::type_kind_type::SINT8:
+                    fetch_and_emplace<runtime_t<kind::int8>>(result, [&] { return cursor->fetch_int8(); });
+                    break;
+
+                case plugin::udf::type_kind_type::UINT4:
+                case plugin::udf::type_kind_type::FIXED4:
+                    fetch_and_emplace_cast<runtime_t<kind::int4>>(
+                        result,
+                        [&] { return cursor->fetch_uint4(); },
+                        [](auto x) { return static_cast<std::int32_t>(x); }
+                    );
+                    break;
+
+                case plugin::udf::type_kind_type::UINT8:
+                case plugin::udf::type_kind_type::FIXED8:
+                    fetch_and_emplace_cast<runtime_t<kind::int8>>(
+                        result,
+                        [&] { return cursor->fetch_uint8(); },
+                        [](auto x) { return static_cast<std::int64_t>(x); }
+                    );
+                    break;
+
+                case plugin::udf::type_kind_type::FLOAT4:
+                    fetch_and_emplace<runtime_t<kind::float4>>(result, [&] { return cursor->fetch_float(); });
+                    break;
+
+                case plugin::udf::type_kind_type::FLOAT8:
+                    fetch_and_emplace<runtime_t<kind::float8>>(result, [&] { return cursor->fetch_double(); });
+                    break;
+
+                case plugin::udf::type_kind_type::BOOL:
+                    fetch_and_emplace<runtime_t<kind::boolean>>(result, [&] { return cursor->fetch_bool(); });
+                    break;
+
+                case plugin::udf::type_kind_type::STRING:
+                    if(auto v = cursor->fetch_string()) {
+                        result.emplace_back(
+                            std::in_place_type<runtime_t<kind::character>>,
+                            runtime_t<kind::character>{ctx.resource(), *v}
+                        );
+                    } else {
+                        result.emplace_back();
+                    }
+                    break;
+
+                case plugin::udf::type_kind_type::BYTES:
+                    if(auto v = cursor->fetch_string()) {
+                        result.emplace_back(
+                            std::in_place_type<runtime_t<kind::octet>>,
+                            runtime_t<kind::octet>{ctx.resource(), *v}
+                        );
+                    } else {
+                        result.emplace_back();
+                    }
+                    break;
+
+                case plugin::udf::type_kind_type::GROUP:
+                case plugin::udf::type_kind_type::MESSAGE: {
+                    if(auto nested_cols = col->nested()) {
+                        auto nested_values = cursor_to_any_values(response, nested_cols->columns(), ctx);
+                        result.insert(result.end(), nested_values.begin(), nested_values.end());
+                    } else {
+                        result.emplace_back();
+                    }
+                    break;
+                }
+
+                default: result.emplace_back(); break;
+            }
+        }
+    }
+
+    return result;
+}
 data::any build_udf_response(
     plugin::udf::generic_record_impl& response,
     evaluator_context& ctx,
@@ -578,9 +644,9 @@ data::any build_udf_response(
         return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
 
     } else {
-        std::vector<plugin::udf::NativeValue> output_values = cursor_to_native_values(response, output.columns());
-        const auto& output_value = output_values.front();
-        return native_to_any(output_value, ctx);
+        auto output_values = cursor_to_any_values(response, output.columns(), ctx);
+
+        if(! output_values.empty()) { return output_values.front(); }
     }
 
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});

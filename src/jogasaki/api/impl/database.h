@@ -66,8 +66,8 @@
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/udf/generic_client.h>
-#include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/udf/plugin_api.h>
+#include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/utils/use_counter.h>
 #include "commit_stats.h"
 

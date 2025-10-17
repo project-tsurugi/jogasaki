@@ -679,7 +679,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
 }
 
 }  // anonymous namespace
-void add_udf_functions(
+void add_udf_scalar_functions(
     ::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     const std::vector<

@@ -30,7 +30,6 @@
 #include <utility>
 #include <boost/assert.hpp>
 #include <glog/logging.h>
-#include <grpcpp/grpcpp.h>
 
 #include <takatori/serializer/json_printer.h>
 #include <takatori/serializer/object_scanner.h>
@@ -401,7 +400,7 @@ void database::init() {
     for (const auto& result : results) {
         if (result.status() == plugin::udf::load_status::OK) {
             VLOG_LP(log_info) << "[gRPC] " << result.status_string() << " file: " << result.file()
-                              << " detail: " << result.detail() << std::endl;
+                              << " detail: " << result.detail();
         } else {
             VLOG_LP(log_warning) << "[gRPC] " << result.status_string()
                                  << " file: " << result.file() << " detail: " << result.detail()

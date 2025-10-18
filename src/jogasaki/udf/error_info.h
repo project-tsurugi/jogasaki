@@ -67,7 +67,7 @@ public:
 
 private:
 
-    load_status status_{load_status::OK};
+    load_status status_{load_status::ok};
     std::string file_{};
     std::string detail_{};
 };

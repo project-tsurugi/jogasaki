@@ -17,43 +17,43 @@
 #pragma once
 namespace plugin::udf {
 enum class function_kind_type {
-    Unary,
-    ClientStreaming,
-    ServerStreaming,
-    BidirectionalStreaming,
+    unary,
+    client_streaming,
+    server_streaming,
+    bidirectional_streaming,
 };
 // @see
 // https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto#L243
 enum class type_kind_type {
-    FLOAT8,
-    FLOAT4,
-    INT8,
-    UINT8,
-    INT4,
-    FIXED8,
-    FIXED4,
-    BOOL,
-    STRING,
-    GROUP,
-    MESSAGE,
-    BYTES,
-    UINT4,
-    ENUM,
-    SFIXED4,
-    SFIXED8,
-    SINT4,
-    SINT8,
+    float8,
+    float4,
+    int8,
+    uint8,
+    int4,
+    fixed8,
+    fixed4,
+    boolean,
+    string,
+    group,
+    message,
+    bytes,
+    uint4,
+    grpc_enum,
+    sfixed4,
+    sfixed8,
+    sint4,
+    sint8,
 };
 
 enum class load_status {
-    OK,
-    PathNotFound,
-    NotRegularFileOrDir,
-    NoSharedObjectsFound,
-    DLOpenFailed,
-    ApiSymbolMissing,
-    ApiInitFailed,
-    FactorySymbolMissing,
-    FactoryCreationFailed
+    ok,
+    path_not_found,
+    not_regular_file_or_dir,
+    no_shared_objects_found,
+    dlopen_failed,
+    api_symbol_missing,
+    api_init_failed,
+    factory_symbol_missing,
+    factory_creation_failed
 };
 }  // namespace plugin::udf

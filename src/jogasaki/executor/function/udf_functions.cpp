@@ -101,21 +101,21 @@ namespace {
 const std::unordered_map<plugin::udf::type_kind_type, std::size_t>& type_index_map() {
     using K = plugin::udf::type_kind_type;
     static const std::unordered_map<K, std::size_t> map = {
-        {K::FLOAT8, data::any::index<runtime_t<kind::float8>>},
-        {K::FLOAT4, data::any::index<runtime_t<kind::float4>>},
-        {K::INT8, data::any::index<runtime_t<kind::int8>>},
-        {K::SINT8, data::any::index<runtime_t<kind::int8>>},
-        {K::SFIXED8, data::any::index<runtime_t<kind::int8>>},
-        {K::UINT8, data::any::index<runtime_t<kind::int8>>},
-        {K::FIXED8, data::any::index<runtime_t<kind::int8>>},
-        {K::INT4, data::any::index<runtime_t<kind::int4>>},
-        {K::SINT4, data::any::index<runtime_t<kind::int4>>},
-        {K::SFIXED4, data::any::index<runtime_t<kind::int4>>},
-        {K::UINT4, data::any::index<runtime_t<kind::int4>>},
-        {K::FIXED4, data::any::index<runtime_t<kind::int4>>},
-        {K::BOOL, data::any::index<runtime_t<kind::boolean>>},
-        {K::GROUP, data::any::index<accessor::text>},
-        {K::BYTES, data::any::index<accessor::binary>},
+        {K::float8, data::any::index<runtime_t<kind::float8>>},
+        {K::float4, data::any::index<runtime_t<kind::float4>>},
+        {K::int8, data::any::index<runtime_t<kind::int8>>},
+        {K::sint8, data::any::index<runtime_t<kind::int8>>},
+        {K::sfixed8, data::any::index<runtime_t<kind::int8>>},
+        {K::uint8, data::any::index<runtime_t<kind::int8>>},
+        {K::fixed8, data::any::index<runtime_t<kind::int8>>},
+        {K::int4, data::any::index<runtime_t<kind::int4>>},
+        {K::sint4, data::any::index<runtime_t<kind::int4>>},
+        {K::sfixed4, data::any::index<runtime_t<kind::int4>>},
+        {K::uint4, data::any::index<runtime_t<kind::int4>>},
+        {K::fixed4, data::any::index<runtime_t<kind::int4>>},
+        {K::boolean, data::any::index<runtime_t<kind::boolean>>},
+        {K::group, data::any::index<accessor::text>},
+        {K::bytes, data::any::index<accessor::binary>},
     };
     return map;
 }
@@ -165,24 +165,24 @@ std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind_type
     namespace t = takatori::type;
     using K = plugin::udf::type_kind_type;
     switch(kind) {
-        case K::FLOAT8: return std::make_shared<t::simple_type<t::type_kind::float8>>();
-        case K::FLOAT4: return std::make_shared<t::simple_type<t::type_kind::float4>>();
-        case K::INT8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::UINT8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::INT4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::FIXED8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::FIXED4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::BOOL: return std::make_shared<t::simple_type<t::type_kind::boolean>>();
-        case K::STRING: return std::make_shared<t::character>(t::varying);
-        case K::GROUP: return std::make_shared<t::character>(t::varying);
-        case K::MESSAGE: return std::make_shared<t::character>(t::varying);
-        case K::BYTES: return std::make_shared<t::octet>(t::varying);
-        case K::UINT4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::ENUM: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::SFIXED4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::SFIXED8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::SINT4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::SINT8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
+        case K::float8: return std::make_shared<t::simple_type<t::type_kind::float8>>();
+        case K::float4: return std::make_shared<t::simple_type<t::type_kind::float4>>();
+        case K::int8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
+        case K::uint8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
+        case K::int4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
+        case K::fixed8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
+        case K::fixed4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
+        case K::boolean: return std::make_shared<t::simple_type<t::type_kind::boolean>>();
+        case K::string: return std::make_shared<t::character>(t::varying);
+        case K::group: return std::make_shared<t::character>(t::varying);
+        case K::message: return std::make_shared<t::character>(t::varying);
+        case K::bytes: return std::make_shared<t::octet>(t::varying);
+        case K::uint4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
+        case K::grpc_enum: return std::make_shared<t::simple_type<t::type_kind::int4>>();
+        case K::sfixed4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
+        case K::sfixed8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
+        case K::sint4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
+        case K::sint8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
         default: return std::make_shared<t::character>(t::varying);
     }
 }
@@ -219,8 +219,8 @@ void fill_request_with_args(
             }
             case data::any::index<runtime_t<kind::int4>>: {
                 auto result = src.to<runtime_t<kind::int4>>();
-                if(type == plugin::udf::type_kind_type::INT4 || type == plugin::udf::type_kind_type::SFIXED4 ||
-                   type == plugin::udf::type_kind_type::SINT4) {
+                if(type == plugin::udf::type_kind_type::int4 || type == plugin::udf::type_kind_type::sfixed4 ||
+                   type == plugin::udf::type_kind_type::sint4) {
                     request.add_int4(result);
                 } else {
                     request.add_uint4(result);
@@ -229,8 +229,8 @@ void fill_request_with_args(
             }
             case data::any::index<runtime_t<kind::int8>>: {
                 auto result = src.to<runtime_t<kind::int8>>();
-                if(type == plugin::udf::type_kind_type::INT8 || type == plugin::udf::type_kind_type::SFIXED8 ||
-                   type == plugin::udf::type_kind_type::SINT8) {
+                if(type == plugin::udf::type_kind_type::int8 || type == plugin::udf::type_kind_type::sfixed8 ||
+                   type == plugin::udf::type_kind_type::sint8) {
                     request.add_int8(result);
                 } else {
                     request.add_uint8(result);
@@ -317,7 +317,7 @@ std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
     for(auto* col: pattern) {
         if(! col) continue;
 
-        if(col->type_kind() == plugin::udf::type_kind_type::MESSAGE) {
+        if(col->type_kind() == plugin::udf::type_kind_type::message) {
             if(auto nested = col->nested()) {
                 if(auto it = type_map.find(nested->record_name()); it != type_map.end()) {
                     if(auto ptr = it->second()) { param_types.emplace_back(ptr); }
@@ -374,7 +374,7 @@ find_matched_pattern(const plugin::udf::function_descriptor* fn, const sequence_
             const auto& arg = args[i];
             const auto& col = pattern[i];
             auto kind = col->type_kind();
-            if(kind == plugin::udf::type_kind_type::STRING || kind == plugin::udf::type_kind_type::MESSAGE) {
+            if(kind == plugin::udf::type_kind_type::string || kind == plugin::udf::type_kind_type::message) {
                 if(auto nested = col->nested()) {
                     auto nested_it = nested_map.find(nested->record_name());
                     match &= (nested_it != nested_map.end() && arg.type_index() == nested_it->second);
@@ -514,20 +514,20 @@ std::vector<data::any> cursor_to_any_values(
             auto type_kind = col->type_kind();
 
             switch(type_kind) {
-                case plugin::udf::type_kind_type::SFIXED4:
-                case plugin::udf::type_kind_type::INT4:
-                case plugin::udf::type_kind_type::SINT4:
+                case plugin::udf::type_kind_type::sfixed4:
+                case plugin::udf::type_kind_type::int4:
+                case plugin::udf::type_kind_type::sint4:
                     fetch_and_emplace<runtime_t<kind::int4>>(result, [&] { return cursor->fetch_int4(); });
                     break;
 
-                case plugin::udf::type_kind_type::SFIXED8:
-                case plugin::udf::type_kind_type::INT8:
-                case plugin::udf::type_kind_type::SINT8:
+                case plugin::udf::type_kind_type::sfixed8:
+                case plugin::udf::type_kind_type::int8:
+                case plugin::udf::type_kind_type::sint8:
                     fetch_and_emplace<runtime_t<kind::int8>>(result, [&] { return cursor->fetch_int8(); });
                     break;
 
-                case plugin::udf::type_kind_type::UINT4:
-                case plugin::udf::type_kind_type::FIXED4:
+                case plugin::udf::type_kind_type::uint4:
+                case plugin::udf::type_kind_type::fixed4:
                     fetch_and_emplace_cast<runtime_t<kind::int4>>(
                         result,
                         [&] { return cursor->fetch_uint4(); },
@@ -535,8 +535,8 @@ std::vector<data::any> cursor_to_any_values(
                     );
                     break;
 
-                case plugin::udf::type_kind_type::UINT8:
-                case plugin::udf::type_kind_type::FIXED8:
+                case plugin::udf::type_kind_type::uint8:
+                case plugin::udf::type_kind_type::fixed8:
                     fetch_and_emplace_cast<runtime_t<kind::int8>>(
                         result,
                         [&] { return cursor->fetch_uint8(); },
@@ -544,19 +544,19 @@ std::vector<data::any> cursor_to_any_values(
                     );
                     break;
 
-                case plugin::udf::type_kind_type::FLOAT4:
+                case plugin::udf::type_kind_type::float4:
                     fetch_and_emplace<runtime_t<kind::float4>>(result, [&] { return cursor->fetch_float(); });
                     break;
 
-                case plugin::udf::type_kind_type::FLOAT8:
+                case plugin::udf::type_kind_type::float8:
                     fetch_and_emplace<runtime_t<kind::float8>>(result, [&] { return cursor->fetch_double(); });
                     break;
 
-                case plugin::udf::type_kind_type::BOOL:
+                case plugin::udf::type_kind_type::boolean:
                     fetch_and_emplace<runtime_t<kind::boolean>>(result, [&] { return cursor->fetch_bool(); });
                     break;
 
-                case plugin::udf::type_kind_type::STRING:
+                case plugin::udf::type_kind_type::string:
                     if(auto v = cursor->fetch_string()) {
                         result.emplace_back(
                             std::in_place_type<runtime_t<kind::character>>,
@@ -567,7 +567,7 @@ std::vector<data::any> cursor_to_any_values(
                     }
                     break;
 
-                case plugin::udf::type_kind_type::BYTES:
+                case plugin::udf::type_kind_type::bytes:
                     if(auto v = cursor->fetch_string()) {
                         result.emplace_back(
                             std::in_place_type<runtime_t<kind::octet>>,
@@ -578,8 +578,8 @@ std::vector<data::any> cursor_to_any_values(
                     }
                     break;
 
-                case plugin::udf::type_kind_type::GROUP:
-                case plugin::udf::type_kind_type::MESSAGE: {
+                case plugin::udf::type_kind_type::group:
+                case plugin::udf::type_kind_type::message: {
                     if(auto nested_cols = col->nested()) {
                         auto nested_values = cursor_to_any_values(response, nested_cols->columns(), ctx);
                         result.insert(result.end(), nested_values.begin(), nested_values.end());

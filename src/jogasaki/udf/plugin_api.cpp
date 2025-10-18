@@ -30,35 +30,35 @@ namespace {
 std::string_view to_string_view(function_kind_type kind) {
     using namespace std::literals;
     switch(kind) {
-        case function_kind_type::Unary: return "Unary"sv;
-        case function_kind_type::ClientStreaming: return "ClientStreaming"sv;
-        case function_kind_type::ServerStreaming: return "ServerStreaming"sv;
-        case function_kind_type::BidirectionalStreaming: return "BidirectionalStreaming"sv;
-        default: return "UnknownFunctionKind"sv;
+        case function_kind_type::unary: return "unary"sv;
+        case function_kind_type::client_streaming: return "client_streaming"sv;
+        case function_kind_type::server_streaming: return "server_streaming"sv;
+        case function_kind_type::bidirectional_streaming: return "bidirectional_streaming"sv;
+        default: return "unknown_function_kind"sv;
     }
 }
 
 std::string_view to_string_view(type_kind_type kind) {
     using namespace std::literals;
     switch(kind) {
-        case type_kind_type::FLOAT8: return "FLOAT8"sv;
-        case type_kind_type::FLOAT4: return "FLOAT4"sv;
-        case type_kind_type::INT8: return "INT8"sv;
-        case type_kind_type::UINT8: return "UINT8"sv;
-        case type_kind_type::INT4: return "INT4"sv;
-        case type_kind_type::FIXED8: return "FIXED8"sv;
-        case type_kind_type::FIXED4: return "FIXED4"sv;
-        case type_kind_type::BOOL: return "BOOL"sv;
-        case type_kind_type::STRING: return "STRING"sv;
-        case type_kind_type::GROUP: return "GROUP"sv;
-        case type_kind_type::MESSAGE: return "MESSAGE"sv;
-        case type_kind_type::BYTES: return "BYTES"sv;
-        case type_kind_type::UINT4: return "UINT4"sv;
-        case type_kind_type::ENUM: return "ENUM"sv;
-        case type_kind_type::SINT4: return "SINT4"sv;
-        case type_kind_type::SINT8: return "SINT8"sv;
-        case type_kind_type::SFIXED8: return "SFIXED8"sv;
-        case type_kind_type::SFIXED4: return "SFIXED4"sv;
+        case type_kind_type::float8: return "float8"sv;
+        case type_kind_type::float4: return "float4"sv;
+        case type_kind_type::int8: return "int8"sv;
+        case type_kind_type::uint8: return "uint8"sv;
+        case type_kind_type::int4: return "int4"sv;
+        case type_kind_type::fixed8: return "fixed8"sv;
+        case type_kind_type::fixed4: return "fixed4"sv;
+        case type_kind_type::boolean: return "bool"sv;
+        case type_kind_type::string: return "string"sv;
+        case type_kind_type::group: return "group"sv;
+        case type_kind_type::message: return "message"sv;
+        case type_kind_type::bytes: return "bytes"sv;
+        case type_kind_type::uint4: return "uint4"sv;
+        case type_kind_type::grpc_enum: return "enum"sv;
+        case type_kind_type::sint4: return "sint4"sv;
+        case type_kind_type::sint8: return "sint8"sv;
+        case type_kind_type::sfixed8: return "sfixed8"sv;
+        case type_kind_type::sfixed4: return "sfixed4"sv;
         default: return "UnknownTypeKind"sv;
     }
 }

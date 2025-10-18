@@ -51,7 +51,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         files_to_load.push_back(path);
     } else {
         results.emplace_back(
-            load_status::NotRegularFileOrDir,
+            load_status::not_regular_file_or_dir,
             std::string(dir_path),
             "Path is not a directory or .so file"
         );
@@ -63,7 +63,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
         const char* err = dlerror();
         if(! handle || err) {
-            results.emplace_back(load_status::DLOpenFailed, full_path, err ? err : "dlopen failed with unknown error");
+            results.emplace_back(load_status::dlopen_failed, full_path, err ? err : "dlopen failed with unknown error");
             continue;
         }
         auto res = create_api_from_handle(handle, full_path);
@@ -74,22 +74,22 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
 
 void udf_loader::unload_all() {}
 load_result udf_loader::create_api_from_handle(void* handle, const std::string& full_path) {
-    if(! handle) { return {load_status::DLOpenFailed, "", "Invalid handle (nullptr)"}; }
+    if(! handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
     using create_api_func = plugin_api* (*) ();
     using create_factory_func = generic_client_factory* (*) (const char*);
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* api_func = reinterpret_cast<create_api_func>(dlsym(handle, "create_plugin_api"));
-    if(! api_func) { return {load_status::ApiSymbolMissing, full_path, "Symbol 'create_plugin_api' not found"}; }
+    if(! api_func) { return {load_status::api_symbol_missing, full_path, "Symbol 'create_plugin_api' not found"}; }
 
     auto api_ptr = std::unique_ptr<plugin_api>(api_func());
-    if(! api_ptr) { return {load_status::ApiInitFailed, full_path, "Failed to initialize plugin API"}; }
+    if(! api_ptr) { return {load_status::api_init_failed, full_path, "Failed to initialize plugin API"}; }
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(dlsym(handle, "tsurugi_create_generic_client_factory"));
     if(! factory_func) {
         return {
-            load_status::FactorySymbolMissing,
+            load_status::factory_symbol_missing,
             full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
@@ -97,7 +97,7 @@ load_result udf_loader::create_api_from_handle(void* handle, const std::string& 
     auto factory_ptr = std::unique_ptr<generic_client_factory>(factory_func("Greeter"));
     if(! factory_ptr) {
         return {
-            load_status::FactorySymbolMissing,
+            load_status::factory_symbol_missing,
             full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
@@ -128,10 +128,10 @@ load_result udf_loader::create_api_from_handle(void* handle, const std::string& 
     auto channel = grpc::CreateChannel(info.default_url(), grpc::InsecureChannelCredentials());
     auto raw_client = factory_ptr->create(channel);
     if(! raw_client) {
-        return {load_status::FactoryCreationFailed, full_path, "Failed to create generic client from factory"};
+        return {load_status::factory_creation_failed, full_path, "Failed to create generic client from factory"};
     }
     plugins_.emplace_back(api_ptr.release(), std::shared_ptr<generic_client>(raw_client));
-    return {load_status::OK, full_path, ini_info};
+    return {load_status::ok, full_path, ini_info};
 }
 
 std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&

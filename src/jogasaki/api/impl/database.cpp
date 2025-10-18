@@ -398,7 +398,7 @@ void database::init() {
     loader_     = std::make_unique<plugin::udf::udf_loader>();
     auto results = loader_->load(std::string(cfg_->loader_path()));
     for (const auto& result : results) {
-        if (result.status() == plugin::udf::load_status::OK) {
+        if (result.status() == plugin::udf::load_status::ok) {
             VLOG_LP(log_info) << "[gRPC] " << result.status_string() << " file: " << result.file()
                               << " detail: " << result.detail();
         } else {

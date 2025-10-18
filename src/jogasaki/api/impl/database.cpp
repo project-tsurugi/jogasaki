@@ -81,6 +81,7 @@
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
@@ -121,6 +122,11 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/udf/enum_types.h>
+#include <jogasaki/udf/error_info.h>
+#include <jogasaki/udf/generic_client.h>
+#include <jogasaki/udf/plugin_loader.h>
+#include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/create_statement_handle_error.h>
@@ -359,6 +365,23 @@ void database::init() {
         *scalar_functions_,
         global::scalar_function_repository()
     );
+    loader_     = std::make_unique<plugin::udf::udf_loader>();
+    auto results = loader_->load(std::string(cfg_->loader_path()));
+    for (const auto& result : results) {
+        if (result.status() == plugin::udf::load_status::ok) {
+            VLOG_LP(log_info) << "[gRPC] " << result.status_string() << " file: " << result.file()
+                              << " detail: " << result.detail();
+        } else {
+            VLOG_LP(log_warning) << "[gRPC] " << result.status_string()
+                                 << " file: " << result.file() << " detail: " << result.detail()
+                                 << std::endl;
+        }
+    }
+    for (auto& plugin : loader_->get_plugins()) {
+        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));
+    }
+    executor::function::add_udf_scalar_functions(
+        *scalar_functions_, global::scalar_function_repository(), plugins_);
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,

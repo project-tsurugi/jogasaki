@@ -25,6 +25,10 @@ namespace jogasaki::executor::function {
  */
 enum class scalar_function_kind : std::size_t {
     undefined = 0,
+
+    // for user defined functions, for example, UDFs
+    user_defined,
+
     octet_length,
     current_date,
     localtime,
@@ -45,7 +49,7 @@ enum class scalar_function_kind : std::size_t {
     encode,
     decode,
     rtrim,
-    ltrim
+    ltrim,
 };
 
 /**
@@ -79,6 +83,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::decode: return "decode"sv;
         case kind::rtrim: return "rtrim"sv;
         case kind::ltrim: return "ltrim"sv;
+        case kind::user_defined: return "user_defined"sv;
     }
     std::abort();
 }

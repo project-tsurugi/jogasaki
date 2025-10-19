@@ -26,12 +26,12 @@
 #include "error_info.h"
 namespace plugin::udf {
 std::optional<error_info>& generic_record_impl::error() noexcept { return err_; }
-const std::optional<error_info>& generic_record_impl::error() const noexcept { return err_; }
+std::optional<error_info> const& generic_record_impl::error() const noexcept { return err_; }
 void generic_record_impl::reset() {
     values_.clear();
     err_ = std::nullopt;
 }
-void generic_record_impl::set_error(const error_info& status) {
+void generic_record_impl::set_error(error_info const& status) {
     err_ = error_info(status.code(), std::string(status.message()));
 }
 
@@ -63,13 +63,13 @@ std::unique_ptr<generic_record_cursor> generic_record_impl::cursor() const {
     return std::make_unique<generic_record_cursor_impl>(values_);
 }
 
-generic_record_cursor_impl::generic_record_cursor_impl(const std::vector<value_type>& values) : values_(values) {}
+generic_record_cursor_impl::generic_record_cursor_impl(std::vector<value_type> const& values) : values_(values) {}
 
 bool generic_record_cursor_impl::has_next() { return index_ < values_.size(); }
 
 namespace {
 template<typename T>
-std::optional<T> fetch_value_as(const value_type& v) {
+std::optional<T> fetch_value_as(value_type const& v) {
     if(std::holds_alternative<std::monostate>(v)) { return std::nullopt; }
     if(auto p = std::get_if<T>(&v)) { return *p; }
     return std::nullopt;

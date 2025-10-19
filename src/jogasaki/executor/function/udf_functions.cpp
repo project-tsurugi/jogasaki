@@ -120,7 +120,7 @@ const std::unordered_map<plugin::udf::type_kind_type, std::size_t>& type_index_m
     return map;
 }
 
-const std::unordered_map<std::string_view, std::size_t>& nested_type_map() {
+std::unordered_map<std::string_view, std::size_t> const& nested_type_map() {
     static const std::unordered_map<std::string_view, std::size_t> map{
         {DECIMAL_RECORD, data::any::index<runtime_t<kind::decimal>>},
         {DATE_RECORD, data::any::index<runtime_t<kind::date>>},
@@ -132,7 +132,7 @@ const std::unordered_map<std::string_view, std::size_t>& nested_type_map() {
     };
     return map;
 }
-const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>&
+std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>> const&
 get_type_map() {
     static const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>
         map = {
@@ -191,10 +191,10 @@ void register_function(
     yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     yugawara::function::declaration::definition_id_type& current_id,
-    const std::string& fn_name,
-    const std::shared_ptr<const takatori::type::data>& return_type,
-    const std::vector<std::shared_ptr<const takatori::type::data>>& param_types,
-    const std::function<data::any(evaluator_context&, sequence_view<data::any>)>& lambda_func
+    std::string const& fn_name,
+    std::shared_ptr<const takatori::type::data> const& return_type,
+    std::vector<std::shared_ptr<const takatori::type::data>> const& param_types,
+    std::function<data::any(evaluator_context&, sequence_view<data::any>)> const& lambda_func
 ) {
     current_id++;
     auto info =
@@ -206,12 +206,12 @@ void register_function(
 void fill_request_with_args(
     plugin::udf::generic_record_impl& request,
     sequence_view<data::any> args,
-    const std::vector<plugin::udf::column_descriptor*>& columns
+    std::vector<plugin::udf::column_descriptor*> const& columns
 ) {
 
     for(std::size_t i = 0; i < columns.size(); ++i) {
-        const auto& type = columns[i]->type_kind();
-        const auto& src = args[i];
+        auto const& type = columns[i]->type_kind();
+        auto const& src = args[i];
         switch(src.type_index()) {
             case data::any::index<runtime_t<kind::boolean>>: {
                 request.add_bool(static_cast<bool>(src.to<runtime_t<kind::boolean>>()));
@@ -300,16 +300,16 @@ void fill_request_with_args(
     }
 }
 std::shared_ptr<const takatori::type::data> determine_return_type(
-    const plugin::udf::record_descriptor& output_record,
-    const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>& type_map
+    plugin::udf::record_descriptor const& output_record,
+    std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>> const& type_map
 ) {
     if(auto it = type_map.find(output_record.record_name()); it != type_map.end()) { return it->second(); }
     if(! output_record.columns().empty()) { return map_type(output_record.columns()[0]->type_kind()); }
     return nullptr;
 }
 std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
-    const std::vector<plugin::udf::column_descriptor*>& pattern,
-    const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>& type_map
+    std::vector<plugin::udf::column_descriptor*> const& pattern,
+    std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>> const& type_map
 ) {
     std::vector<std::shared_ptr<const takatori::type::data>> param_types;
     param_types.reserve(pattern.size());
@@ -333,15 +333,15 @@ void register_udf_function_patterns(
     yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     yugawara::function::declaration::definition_id_type& current_id,
-    const std::function<data::any(evaluator_context&, sequence_view<data::any>)>& lambda_func,
-    const plugin::udf::function_descriptor* fn
+    std::function<data::any(evaluator_context&, sequence_view<data::any>)> const& lambda_func,
+    plugin::udf::function_descriptor const* fn
 ) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), [](unsigned char c) { return std::tolower(c); });
 
-    const auto& input_record = fn->input_record();
-    const auto& output_record = fn->output_record();
-    const auto& type_map = get_type_map();
+    auto const& input_record = fn->input_record();
+    auto const& output_record = fn->output_record();
+    auto const& type_map = get_type_map();
 
     auto return_type = determine_return_type(output_record, type_map);
     if(! return_type) return;
@@ -355,24 +355,24 @@ void register_udf_function_patterns(
     }
 
     // (argument_patterns)
-    for(const auto& pattern: input_record.argument_patterns()) {
+    for(auto const& pattern: input_record.argument_patterns()) {
         auto param_types = build_param_types(pattern, type_map);
         if(! param_types.empty()) {
             register_function(functions, repo, current_id, fn_name, return_type, param_types, lambda_func);
         }
     }
 }
-const std::vector<plugin::udf::column_descriptor*>*
-find_matched_pattern(const plugin::udf::function_descriptor* fn, const sequence_view<data::any>& args) {
-    const auto& input = fn->input_record();
-    const auto& type_map = type_index_map();
-    const auto& nested_map = nested_type_map();
-    for(const auto& pattern: input.argument_patterns()) {
+std::vector<plugin::udf::column_descriptor*> const*
+find_matched_pattern(plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
+    auto const& input = fn->input_record();
+    auto const& type_map = type_index_map();
+    auto const& nested_map = nested_type_map();
+    for(auto const& pattern: input.argument_patterns()) {
         if(pattern.size() != args.size()) continue;
         bool match = true;
         for(std::size_t i = 0; i < args.size(); ++i) {
-            const auto& arg = args[i];
-            const auto& col = pattern[i];
+            auto const& arg = args[i];
+            auto const& col = pattern[i];
             auto kind = col->type_kind();
             if(kind == plugin::udf::type_kind_type::string || kind == plugin::udf::type_kind_type::message) {
                 if(auto nested = col->nested()) {
@@ -396,10 +396,10 @@ find_matched_pattern(const plugin::udf::function_descriptor* fn, const sequence_
 bool build_udf_request(
     plugin::udf::generic_record_impl& request,
     evaluator_context& ctx,
-    const plugin::udf::function_descriptor* fn,
+    plugin::udf::function_descriptor const* fn,
     sequence_view<data::any> args
 ) {
-    const auto& record_name = fn->input_record().record_name();
+    auto const& record_name = fn->input_record().record_name();
 
     if(record_name == DECIMAL_RECORD) {
         auto value = args[0].to<runtime_t<kind::decimal>>();
@@ -447,7 +447,7 @@ bool build_udf_request(
         // Not yet implemented
         return true;
     }
-    const auto* matched_pattern = find_matched_pattern(fn, args);
+    auto const* matched_pattern = find_matched_pattern(fn, args);
     if(! matched_pattern) {
         ctx.add_error({error_kind::invalid_input_value, "No matching argument pattern found for given arguments"});
         return false;
@@ -456,7 +456,7 @@ bool build_udf_request(
     return true;
 }
 
-data::any build_decimal_data(const std::string& unscaled, std::int32_t exponent) {
+data::any build_decimal_data(std::string const& unscaled, std::int32_t exponent) {
     bool negative = false;
     unsigned __int128 ucoeff = 0;
 
@@ -504,13 +504,13 @@ void fetch_and_emplace_cast(std::vector<data::any>& result, FetchFn fetch_fn, Ca
 
 std::vector<data::any> cursor_to_any_values(
     plugin::udf::generic_record_impl& response,
-    const std::vector<plugin::udf::column_descriptor*>& cols,
+    std::vector<plugin::udf::column_descriptor*> const& cols,
     evaluator_context& ctx
 ) {
     std::vector<data::any> result;
 
     if(auto cursor = response.cursor()) {
-        for(const auto* col: cols) {
+        for(auto const* col: cols) {
             auto type_kind = col->type_kind();
 
             switch(type_kind) {
@@ -599,16 +599,16 @@ std::vector<data::any> cursor_to_any_values(
 data::any build_udf_response(
     plugin::udf::generic_record_impl& response,
     evaluator_context& ctx,
-    const plugin::udf::function_descriptor* fn
+    plugin::udf::function_descriptor const* fn
 ) {
-    const auto& output = fn->output_record();
+    auto const& output = fn->output_record();
     auto cursor = response.cursor();
     if(! cursor) {
         ctx.add_error({error_kind::unknown, "Response has no cursor"});
         return data::any{std::in_place_type<error>, error(error_kind::unknown)};
     }
 
-    const auto& record_name = output.record_name();
+    auto const& record_name = output.record_name();
 
     if(record_name == DECIMAL_RECORD) {
         auto unscaled_opt = cursor->fetch_string();
@@ -654,8 +654,8 @@ data::any build_udf_response(
 }
 
 std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_lambda(
-    const std::shared_ptr<plugin::udf::generic_client>& client,
-    const plugin::udf::function_descriptor* fn
+    std::shared_ptr<plugin::udf::generic_client> const& client,
+    plugin::udf::function_descriptor const* fn
 ) {
     return [client, fn](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
         plugin::udf::generic_record_impl request;
@@ -689,14 +689,14 @@ void add_udf_scalar_functions(
     // @see
     // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
     yugawara::function::declaration::definition_id_type current_id = 19999;
-    for(const auto& tup: plugins) {
+    for(auto const& tup: plugins) {
         auto client = std::get<1>(tup);
         auto plugin = std::get<0>(tup);
         // plugin::udf::print_plugin_info(plugin);
         auto packages = plugin->packages();
-        for(const auto* pkg: packages) {
-            for(const auto* svc: pkg->services()) {
-                for(const auto* fn: svc->functions()) {
+        for(auto const* pkg: packages) {
+            for(auto const* svc: pkg->services()) {
+                for(auto const* fn: svc->functions()) {
                     auto lambda_func = make_udf_lambda(client, fn);
                     register_udf_function_patterns(functions, repo, current_id, lambda_func, fn);
                 }

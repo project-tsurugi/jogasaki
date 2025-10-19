@@ -58,9 +58,9 @@ public:
 
     record_descriptor_impl(std::string_view n, const std::vector<column_descriptor*>& c);
 
-    [[nodiscard]] const std::vector<column_descriptor*>& columns() const noexcept override;
+    [[nodiscard]] std::vector<column_descriptor*> const& columns() const noexcept override;
     [[nodiscard]] std::string_view record_name() const noexcept override;
-    [[nodiscard]] const std::vector<std::vector<column_descriptor*>>& argument_patterns() const noexcept override;
+    [[nodiscard]] std::vector<std::vector<column_descriptor*>> const& argument_patterns() const noexcept override;
 
 private:
 
@@ -68,7 +68,7 @@ private:
     std::vector<column_descriptor*> _cols;
     std::vector<std::vector<column_descriptor*>> _argument_patterns;
     [[nodiscard]] std::vector<std::vector<column_descriptor*>>
-    build_argument_patterns(const std::vector<column_descriptor*>& cols) noexcept;
+    build_argument_patterns(std::vector<column_descriptor*> const& cols) noexcept;
 };
 
 class function_descriptor_impl : public function_descriptor {
@@ -85,8 +85,8 @@ public:
     [[nodiscard]] index_type function_index() const noexcept override;
     [[nodiscard]] std::string_view function_name() const noexcept override;
     [[nodiscard]] function_kind_type function_kind() const noexcept override;
-    [[nodiscard]] const record_descriptor& input_record() const noexcept override;
-    [[nodiscard]] const record_descriptor& output_record() const noexcept override;
+    [[nodiscard]] record_descriptor const& input_record() const noexcept override;
+    [[nodiscard]] record_descriptor const& output_record() const noexcept override;
 
 private:
 
@@ -104,7 +104,7 @@ public:
 
     [[nodiscard]] index_type service_index() const noexcept override;
     [[nodiscard]] std::string_view service_name() const noexcept override;
-    [[nodiscard]] const std::vector<function_descriptor*>& functions() const noexcept override;
+    [[nodiscard]] std::vector<function_descriptor*> const& functions() const noexcept override;
 
 private:
 
@@ -124,7 +124,7 @@ public:
     );
 
     [[nodiscard]] std::string_view package_name() const noexcept override;
-    [[nodiscard]] const std::vector<service_descriptor*>& services() const noexcept override;
+    [[nodiscard]] std::vector<service_descriptor*> const& services() const noexcept override;
     [[nodiscard]] std::string_view file_name() const noexcept override;
     [[nodiscard]] package_version version() const noexcept override;
 

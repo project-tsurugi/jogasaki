@@ -31,9 +31,9 @@ public:
     using error_code_type = grpc::StatusCode;
     ~error_info() = default;
     explicit error_info(error_code_type code, std::string msg) : code_(code), message_(std::move(msg)) {}
-    error_info(const error_info&) = default;
+    error_info(error_info const&) = default;
     error_info(error_info&&) noexcept = default;
-    error_info& operator=(const error_info&) = default;
+    error_info& operator=(error_info const&) = default;
     error_info& operator=(error_info&&) noexcept = default;
     [[nodiscard]] error_code_type code() const noexcept;
     [[nodiscard]] std::string_view message() const noexcept;
@@ -53,9 +53,9 @@ public:
         detail_(std::move(d)) {}
     load_result() = delete;
     ~load_result() = default;
-    load_result(const load_result&) = default;
+    load_result(load_result const&) = default;
     load_result(load_result&&) noexcept = default;
-    load_result& operator=(const load_result&) = default;
+    load_result& operator=(load_result const&) = default;
     load_result& operator=(load_result&&) noexcept = default;
     [[nodiscard]] load_status status() const noexcept;
     [[nodiscard]] std::string file() const noexcept;

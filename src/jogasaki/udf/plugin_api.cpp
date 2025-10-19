@@ -63,8 +63,8 @@ std::string_view to_string_view(type_kind_type kind) {
     }
 }
 
-void add_column(const std::vector<column_descriptor*>& cols) {
-    for(const auto* col: cols) {
+void add_column(std::vector<column_descriptor*> const& cols) {
+    for(auto const* col: cols) {
         std::cout << "- column_name: " << col->column_name() << std::endl;
         std::cout << "  type_kind: " << plugin::udf::to_string_view(col->type_kind()) << std::endl;
 
@@ -78,10 +78,10 @@ void add_column(const std::vector<column_descriptor*>& cols) {
 }
 }  // anonymous namespace
 
-void print_columns(const std::vector<column_descriptor*>& cols, int indent = 0) {
+void print_columns(std::vector<column_descriptor*> const& cols, int indent = 0) {
     std::string indent_str(indent, ' ');
 
-    for(const auto* col: cols) {
+    for(auto const* col: cols) {
         std::cout << indent_str << "- column_name: " << col->column_name() << std::endl;
         std::cout << indent_str << "  type_kind: " << plugin::udf::to_string_view(col->type_kind()) << std::endl;
 
@@ -94,29 +94,29 @@ void print_columns(const std::vector<column_descriptor*>& cols, int indent = 0) 
     }
 }
 
-void print_plugin_info(const std::shared_ptr<plugin_api>& api) {
-    const auto& pkgs = api->packages();
-    for(const auto* pkg: pkgs) {
+void print_plugin_info(std::shared_ptr<plugin_api> const& api) {
+    auto const& pkgs = api->packages();
+    for(auto const* pkg: pkgs) {
         std::cout << "  - package_name: " << pkg->package_name() << std::endl;
         std::cout << "    services:" << std::endl;
-        for(const auto* svc: pkg->services()) {
+        for(auto const* svc: pkg->services()) {
             std::cout << "      - service_name: " << svc->service_name() << std::endl;
             std::cout << "        service_index: " << svc->service_index() << std::endl;
             std::cout << "        functions:" << std::endl;
 
-            for(const auto* fn: svc->functions()) {
+            for(auto const* fn: svc->functions()) {
                 std::cout << "          - function_name: " << fn->function_name() << std::endl;
                 std::cout << "            function_index: " << fn->function_index() << std::endl;
                 std::cout << "            function_kind: " << plugin::udf::to_string_view(fn->function_kind())
                           << std::endl;
 
-                const auto& input = fn->input_record();
+                auto const& input = fn->input_record();
                 std::cout << "            input_record:" << std::endl;
                 std::cout << "              record_name: " << input.record_name() << std::endl;
                 std::cout << "              columns:" << std::endl;
                 print_columns(input.columns(), 16);
 
-                const auto& output = fn->output_record();
+                auto const& output = fn->output_record();
                 std::cout << "            output_record:" << std::endl;
                 std::cout << "              record_name: " << output.record_name() << std::endl;
                 std::cout << "              columns:" << std::endl;

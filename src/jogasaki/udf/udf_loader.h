@@ -51,12 +51,12 @@ public:
 
     client_info() = default;
     ~client_info() = default;
-    client_info(const client_info&) = default;
-    client_info& operator=(const client_info&) = default;
+    client_info(client_info const&) = default;
+    client_info& operator=(client_info const&) = default;
     client_info(client_info&&) noexcept = default;
     client_info& operator=(client_info&&) noexcept = default;
-    [[nodiscard]] const std::string& default_url() const noexcept;
-    [[nodiscard]] const std::string& default_auth() const noexcept;
+    [[nodiscard]] std::string const& default_url() const noexcept;
+    [[nodiscard]] std::string const& default_auth() const noexcept;
     void set_default_url(std::string url);
     void set_default_auth(std::string auth);
 
@@ -70,8 +70,8 @@ class udf_loader : public plugin_loader {
 public:
 
     udf_loader() = default;
-    udf_loader(const udf_loader&) = delete;
-    udf_loader& operator=(const udf_loader&) = delete;
+    udf_loader(udf_loader const&) = delete;
+    udf_loader& operator=(udf_loader const&) = delete;
     udf_loader(udf_loader&&) = delete;
     udf_loader& operator=(udf_loader&&) = delete;
     ~udf_loader() override;
@@ -103,7 +103,7 @@ public:
 private:
 
     /** List of raw `dlopen()` handles for loaded plugins. */
-    [[nodiscard]] load_result create_api_from_handle(void* handle, const std::string& full_path);
+    [[nodiscard]] load_result create_api_from_handle(void* handle, std::string const& full_path);
     /** List of loaded plugin API/client pairs. */
     std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>> plugins_;
 };

@@ -35,8 +35,8 @@
 namespace fs = std::filesystem;
 using namespace plugin::udf;
 
-[[nodiscard]] const std::string& client_info::default_url() const noexcept { return default_url_; }
-[[nodiscard]] const std::string& client_info::default_auth() const noexcept { return default_auth_; }
+[[nodiscard]] std::string const& client_info::default_url() const noexcept { return default_url_; }
+[[nodiscard]] std::string const& client_info::default_auth() const noexcept { return default_auth_; }
 void client_info::set_default_url(std::string url) { default_url_ = std::move(url); }
 void client_info::set_default_auth(std::string auth) { default_auth_ = std::move(auth); }
 std::vector<load_result> udf_loader::load(std::string_view dir_path) {
@@ -44,7 +44,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     std::vector<load_result> results;
     std::vector<fs::path> files_to_load;
     if(fs::is_directory(path)) {
-        for(const auto& entry: fs::directory_iterator(path)) {
+        for(auto const& entry: fs::directory_iterator(path)) {
             if(entry.is_regular_file() && entry.path().extension() == ".so") { files_to_load.push_back(entry.path()); }
         }
     } else if(fs::is_regular_file(path) && path.extension() == ".so") {
@@ -57,11 +57,11 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         );
         return results;
     }
-    for(const auto& file: files_to_load) {
+    for(auto const& file: files_to_load) {
         std::string full_path = file.string();
         dlerror();
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
-        const char* err = dlerror();
+        char const* err = dlerror();
         if(! handle || err) {
             results.emplace_back(load_status::dlopen_failed, full_path, err ? err : "dlopen failed with unknown error");
             continue;
@@ -73,11 +73,11 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
 }
 
 void udf_loader::unload_all() {}
-load_result udf_loader::create_api_from_handle(void* handle, const std::string& full_path) {
+load_result udf_loader::create_api_from_handle(void* handle, std::string const& full_path) {
     if(! handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
     using create_api_func = plugin_api* (*) ();
-    using create_factory_func = generic_client_factory* (*) (const char*);
+    using create_factory_func = generic_client_factory* (*) (char const*);
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* api_func = reinterpret_cast<create_api_func>(dlsym(handle, "create_plugin_api"));

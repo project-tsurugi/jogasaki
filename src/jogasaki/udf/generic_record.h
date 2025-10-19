@@ -28,8 +28,8 @@ class generic_record_cursor {
 public:
 
     generic_record_cursor() = default;
-    generic_record_cursor(const generic_record_cursor&) = delete;
-    generic_record_cursor& operator=(const generic_record_cursor&) = delete;
+    generic_record_cursor(generic_record_cursor const&) = delete;
+    generic_record_cursor& operator=(generic_record_cursor const&) = delete;
     generic_record_cursor(generic_record_cursor&&) = delete;
     generic_record_cursor& operator=(generic_record_cursor&&) = delete;
     virtual ~generic_record_cursor() = default;
@@ -49,8 +49,8 @@ class generic_record {
 public:
 
     generic_record() = default;
-    generic_record(const generic_record&) = delete;
-    generic_record& operator=(const generic_record&) = delete;
+    generic_record(generic_record const&) = delete;
+    generic_record& operator=(generic_record const&) = delete;
     generic_record(generic_record&&) = delete;
     generic_record& operator=(generic_record&&) = delete;
     virtual ~generic_record() = default;
@@ -81,9 +81,9 @@ public:
     virtual void add_string(std::string value) = 0;
     virtual void add_string_null() = 0;
 
-    virtual void set_error(const error_info& status) = 0;
+    virtual void set_error(error_info const& status) = 0;
     [[nodiscard]] virtual std::optional<error_info>& error() noexcept = 0;
-    [[nodiscard]] virtual const std::optional<error_info>& error() const noexcept = 0;
+    [[nodiscard]] virtual std::optional<error_info> const& error() const noexcept = 0;
 
     [[nodiscard]] virtual std::unique_ptr<generic_record_cursor> cursor() const = 0;
 };

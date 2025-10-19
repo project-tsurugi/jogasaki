@@ -16,6 +16,7 @@
 #pragma once
 
 #include <functional>
+#include <vector>
 
 #include <takatori/util/sequence_view.h>
 #include <yugawara/function/configurable_provider.h>
@@ -25,10 +26,11 @@
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/udf/udf_loader.h>
-#include <vector>
 namespace jogasaki::executor::function {
-void add_udf_scalar_functions(::yugawara::function::configurable_provider& functions,
+void add_udf_scalar_functions(
+    ::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
-    const std::vector<std::tuple<std::shared_ptr<plugin::udf::plugin_api>,
-        std::shared_ptr<plugin::udf::generic_client>>>& plugins);
-} // namespace jogasaki::executor::function
+    const std::vector<
+        std::tuple<std::shared_ptr<plugin::udf::plugin_api>, std::shared_ptr<plugin::udf::generic_client>>>& plugins
+);
+}  // namespace jogasaki::executor::function

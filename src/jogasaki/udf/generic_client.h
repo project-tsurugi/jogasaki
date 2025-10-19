@@ -28,8 +28,8 @@ public:
     using function_index_type = std::pair<int, int>;
     generic_client() = default;
     virtual ~generic_client() = default;
-    generic_client(const generic_client&) = delete;
-    generic_client& operator=(const generic_client&) = delete;
+    generic_client(generic_client const&) = delete;
+    generic_client& operator=(generic_client const&) = delete;
     generic_client(generic_client&&) = delete;
     generic_client& operator=(generic_client&&) = delete;
 

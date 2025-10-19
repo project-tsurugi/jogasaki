@@ -39,11 +39,11 @@ public:
     [[nodiscard]] std::size_t major() const noexcept { return major_; }
     [[nodiscard]] std::size_t minor() const noexcept { return minor_; }
     [[nodiscard]] std::size_t patch() const noexcept { return patch_; }
-    bool operator==(const package_version& other) const noexcept {
+    bool operator==(package_version const& other) const noexcept {
         return major_ == other.major_ && minor_ == other.minor_ && patch_ == other.patch_;
     }
 
-    bool operator<(const package_version& other) const noexcept {
+    bool operator<(package_version const& other) const noexcept {
         if(major_ != other.major_) return major_ < other.major_;
         if(minor_ != other.minor_) return minor_ < other.minor_;
         return patch_ < other.patch_;
@@ -64,8 +64,8 @@ public:
     using oneof_index_type = std::size_t;
     virtual ~column_descriptor() = default;
     column_descriptor() = default;
-    column_descriptor(const column_descriptor&) = delete;
-    column_descriptor& operator=(const column_descriptor&) = delete;
+    column_descriptor(column_descriptor const&) = delete;
+    column_descriptor& operator=(column_descriptor const&) = delete;
     column_descriptor(column_descriptor&&) = delete;
     column_descriptor& operator=(column_descriptor&&) = delete;
     [[nodiscard]] virtual index_type index() const noexcept = 0;
@@ -81,8 +81,8 @@ public:
 
     record_descriptor() = default;
     virtual ~record_descriptor() = default;
-    record_descriptor(const record_descriptor&) = delete;
-    record_descriptor& operator=(const record_descriptor&) = delete;
+    record_descriptor(record_descriptor const&) = delete;
+    record_descriptor& operator=(record_descriptor const&) = delete;
     record_descriptor(record_descriptor&&) = delete;
     record_descriptor& operator=(record_descriptor&&) = delete;
     [[nodiscard]] virtual std::string_view record_name() const noexcept = 0;
@@ -96,16 +96,16 @@ public:
     function_descriptor() = default;
     using index_type = std::size_t;
     virtual ~function_descriptor() = default;
-    function_descriptor(const function_descriptor&) = delete;
-    function_descriptor& operator=(const function_descriptor&) = delete;
+    function_descriptor(function_descriptor const&) = delete;
+    function_descriptor& operator=(function_descriptor const&) = delete;
     function_descriptor(function_descriptor&&) = delete;
     function_descriptor& operator=(function_descriptor&&) = delete;
 
     [[nodiscard]] virtual index_type function_index() const noexcept = 0;
     [[nodiscard]] virtual std::string_view function_name() const noexcept = 0;
     [[nodiscard]] virtual function_kind_type function_kind() const noexcept = 0;
-    [[nodiscard]] virtual const record_descriptor& input_record() const noexcept = 0;
-    [[nodiscard]] virtual const record_descriptor& output_record() const noexcept = 0;
+    [[nodiscard]] virtual record_descriptor const& input_record() const noexcept = 0;
+    [[nodiscard]] virtual record_descriptor const& output_record() const noexcept = 0;
 };
 
 class service_descriptor {
@@ -114,13 +114,13 @@ public:
     service_descriptor() = default;
     using index_type = std::size_t;
     virtual ~service_descriptor() = default;
-    service_descriptor(const service_descriptor&) = delete;
-    service_descriptor& operator=(const service_descriptor&) = delete;
+    service_descriptor(service_descriptor const&) = delete;
+    service_descriptor& operator=(service_descriptor const&) = delete;
     service_descriptor(service_descriptor&&) = delete;
     service_descriptor& operator=(service_descriptor&&) = delete;
     [[nodiscard]] virtual index_type service_index() const noexcept = 0;
     [[nodiscard]] virtual std::string_view service_name() const noexcept = 0;
-    [[nodiscard]] virtual const std::vector<function_descriptor*>& functions() const noexcept = 0;
+    [[nodiscard]] virtual std::vector<function_descriptor*> const& functions() const noexcept = 0;
 };
 
 class package_descriptor {
@@ -128,14 +128,14 @@ public:
 
     package_descriptor() = default;
     virtual ~package_descriptor() = default;
-    package_descriptor(const package_descriptor&) = delete;
-    package_descriptor& operator=(const package_descriptor&) = delete;
+    package_descriptor(package_descriptor const&) = delete;
+    package_descriptor& operator=(package_descriptor const&) = delete;
     package_descriptor(package_descriptor&&) = delete;
     package_descriptor& operator=(package_descriptor&&) = delete;
     [[nodiscard]] virtual std::string_view package_name() const noexcept = 0;
     [[nodiscard]] virtual std::string_view file_name() const noexcept = 0;
     [[nodiscard]] virtual package_version version() const noexcept = 0;
-    [[nodiscard]] virtual const std::vector<service_descriptor*>& services() const noexcept = 0;
+    [[nodiscard]] virtual std::vector<service_descriptor*> const& services() const noexcept = 0;
 };
 
 class plugin_api {
@@ -143,13 +143,13 @@ public:
 
     plugin_api() = default;
     virtual ~plugin_api() = default;
-    plugin_api(const plugin_api&) = delete;
-    plugin_api& operator=(const plugin_api&) = delete;
+    plugin_api(plugin_api const&) = delete;
+    plugin_api& operator=(plugin_api const&) = delete;
     plugin_api(plugin_api&&) = delete;
     plugin_api& operator=(plugin_api&&) = delete;
-    [[nodiscard]] virtual const std::vector<package_descriptor*>& packages() const noexcept = 0;
+    [[nodiscard]] virtual std::vector<package_descriptor*> const& packages() const noexcept = 0;
 };
-void print_columns(const std::vector<column_descriptor*>& cols, int indent);
-void print_plugin_info(const std::shared_ptr<plugin_api>& api);
+void print_columns(std::vector<column_descriptor*> const& cols, int indent);
+void print_plugin_info(std::shared_ptr<plugin_api> const& api);
 extern "C" plugin_api* create_plugin_api();
 }  // namespace plugin::udf

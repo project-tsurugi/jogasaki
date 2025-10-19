@@ -27,15 +27,15 @@ public:
 
     generic_client_factory() = default;
     virtual ~generic_client_factory() = default;
-    generic_client_factory(const generic_client_factory&) = delete;
-    generic_client_factory& operator=(const generic_client_factory&) = delete;
+    generic_client_factory(generic_client_factory const&) = delete;
+    generic_client_factory& operator=(generic_client_factory const&) = delete;
     generic_client_factory(generic_client_factory&&) = delete;
     generic_client_factory& operator=(generic_client_factory&&) = delete;
     [[nodiscard]] virtual generic_client* create(std::shared_ptr<grpc::Channel> channel) const = 0;
 };
 
 extern "C" {
-[[nodiscard]] generic_client_factory* tsurugi_create_generic_client_factory(const char* service_name);
+[[nodiscard]] generic_client_factory* tsurugi_create_generic_client_factory(char const* service_name);
 void tsurugi_destroy_generic_client_factory(generic_client_factory* ptr);
 void tsurugi_destroy_generic_client(generic_client* ptr);
 }

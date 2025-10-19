@@ -58,14 +58,14 @@ record_descriptor_impl::record_descriptor_impl(std::string_view n, const std::ve
     _cols(c),
     _argument_patterns(build_argument_patterns(_cols)) {}
 
-const std::vector<column_descriptor*>& record_descriptor_impl::columns() const noexcept { return _cols; }
+std::vector<column_descriptor*> const& record_descriptor_impl::columns() const noexcept { return _cols; }
 std::string_view record_descriptor_impl::record_name() const noexcept { return _name; }
-const std::vector<std::vector<column_descriptor*>>& record_descriptor_impl::argument_patterns() const noexcept {
+std::vector<std::vector<column_descriptor*>> const& record_descriptor_impl::argument_patterns() const noexcept {
     return _argument_patterns;
 }
 
 std::vector<std::vector<column_descriptor*>>
-record_descriptor_impl::build_argument_patterns(const std::vector<column_descriptor*>& cols) noexcept {
+record_descriptor_impl::build_argument_patterns(std::vector<column_descriptor*> const& cols) noexcept {
     std::vector<std::vector<column_descriptor*>> patterns(1);
     std::unordered_map<column_descriptor::oneof_index_type, std::vector<column_descriptor*>> oneof_groups;
 
@@ -118,8 +118,8 @@ function_descriptor_impl::function_descriptor_impl(
 function_descriptor::index_type function_descriptor_impl::function_index() const noexcept { return _idx; }
 std::string_view function_descriptor_impl::function_name() const noexcept { return _name; }
 function_kind_type function_descriptor_impl::function_kind() const noexcept { return _kind; }
-const record_descriptor& function_descriptor_impl::input_record() const noexcept { return *_input; }
-const record_descriptor& function_descriptor_impl::output_record() const noexcept { return *_output; }
+record_descriptor const& function_descriptor_impl::input_record() const noexcept { return *_input; }
+record_descriptor const& function_descriptor_impl::output_record() const noexcept { return *_output; }
 
 // service_descriptor_impl
 service_descriptor_impl::service_descriptor_impl(
@@ -133,7 +133,7 @@ service_descriptor_impl::service_descriptor_impl(
 
 service_descriptor::index_type service_descriptor_impl::service_index() const noexcept { return _idx; }
 std::string_view service_descriptor_impl::service_name() const noexcept { return _name; }
-const std::vector<function_descriptor*>& service_descriptor_impl::functions() const noexcept { return _funcs; }
+std::vector<function_descriptor*> const& service_descriptor_impl::functions() const noexcept { return _funcs; }
 
 // package_descriptor_impl
 package_descriptor_impl::package_descriptor_impl(
@@ -148,7 +148,7 @@ package_descriptor_impl::package_descriptor_impl(
     _svcs(std::move(services)) {}
 
 std::string_view package_descriptor_impl::package_name() const noexcept { return _name; }
-const std::vector<service_descriptor*>& package_descriptor_impl::services() const noexcept { return _svcs; }
+std::vector<service_descriptor*> const& package_descriptor_impl::services() const noexcept { return _svcs; }
 std::string_view package_descriptor_impl::file_name() const noexcept { return _file_name; }
 package_version package_descriptor_impl::version() const noexcept { return _version; }
 }  // namespace plugin::udf

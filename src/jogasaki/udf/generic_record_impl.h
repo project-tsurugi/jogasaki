@@ -49,8 +49,8 @@ public:
     void add_string_null() override;
     [[nodiscard]] std::unique_ptr<generic_record_cursor> cursor() const override;
     [[nodiscard]] std::optional<error_info>& error() noexcept override;
-    [[nodiscard]] const std::optional<error_info>& error() const noexcept override;
-    void set_error(const error_info& status) override;
+    [[nodiscard]] std::optional<error_info> const& error() const noexcept override;
+    void set_error(error_info const& status) override;
 
 private:
 
@@ -61,7 +61,7 @@ private:
 class generic_record_cursor_impl : public generic_record_cursor {
 public:
 
-    explicit generic_record_cursor_impl(const std::vector<value_type>& values);
+    explicit generic_record_cursor_impl(std::vector<value_type> const& values);
 
     [[nodiscard]] std::optional<bool> fetch_bool() override;
     [[nodiscard]] std::optional<std::int32_t> fetch_int4() override;
@@ -75,7 +75,7 @@ public:
 
 private:
 
-    const std::vector<value_type>& values_;
+    std::vector<value_type> const& values_;
     std::size_t index_ = 0;
 };
 template<class>

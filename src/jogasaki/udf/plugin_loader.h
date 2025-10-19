@@ -26,8 +26,8 @@ class plugin_loader {
 public:
 
     plugin_loader() = default;
-    plugin_loader(const plugin_loader&) = delete;
-    plugin_loader& operator=(const plugin_loader&) = delete;
+    plugin_loader(plugin_loader const&) = delete;
+    plugin_loader& operator=(plugin_loader const&) = delete;
     plugin_loader(plugin_loader&&) = delete;
     plugin_loader& operator=(plugin_loader&&) = delete;
     virtual ~plugin_loader() = default;

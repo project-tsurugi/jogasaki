@@ -140,7 +140,8 @@ get_type_map() {
             {DATE_RECORD, [] { return std::make_shared<takatori::type::date>(); }},
             {LOCALTIME_RECORD, [] { return std::make_shared<takatori::type::time_of_day>(); }},
             {LOCALDATETIME_RECORD, [] { return std::make_shared<takatori::type::time_point>(); }},
-            {OFFSETDATETIME_RECORD, [] { return std::make_shared<takatori::type::datetime_interval>(); }},
+            {OFFSETDATETIME_RECORD,
+             [] { return std::make_shared<takatori::type::time_point>(takatori::type::with_time_zone); }},
             {BLOB_RECORD,
              [] {
                  return nullptr; /* blob未対応 */
@@ -338,7 +339,6 @@ void register_udf_function_patterns(
 ) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), [](unsigned char c) { return std::tolower(c); });
-
     auto const& input_record = fn->input_record();
     auto const& output_record = fn->output_record();
     auto const& type_map = get_type_map();
@@ -440,7 +440,7 @@ bool build_udf_request(
         auto value = args[0].to<runtime_t<kind::time_point>>();
         request.add_int8(static_cast<int64_t>(value.seconds_since_epoch().count()));
         request.add_uint4(static_cast<uint32_t>(value.subsecond().count()));
-        // request.add_int4(33); // time_zone_offset placeholder
+        request.add_int4(static_cast<int32_t>(global::config_pool()->zone_offset()));
         return true;
     }
     if(record_name == BLOB_RECORD || record_name == CLOB_RECORD) {
@@ -637,7 +637,14 @@ data::any build_udf_response(
         }
     } else if(record_name == OFFSETDATETIME_RECORD) {
         // Not yet implemented
-        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
+        auto offset_seconds = cursor->fetch_int8();
+        auto nano_adjustment = cursor->fetch_uint4();
+        if(offset_seconds && nano_adjustment) {
+            takatori::datetime::time_point value{
+                takatori::datetime::time_point::offset_type(*offset_seconds),
+                std::chrono::nanoseconds(*nano_adjustment)};
+            return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
+        }
 
     } else if(record_name == BLOB_RECORD || record_name == CLOB_RECORD) {
         // Not yet implemented

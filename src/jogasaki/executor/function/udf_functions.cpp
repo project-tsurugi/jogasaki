@@ -34,7 +34,9 @@
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
+#include <takatori/type/blob.h>
 #include <takatori/type/character.h>
+#include <takatori/type/clob.h>
 #include <takatori/type/date.h>
 #include <takatori/type/datetime_interval.h>
 #include <takatori/type/decimal.h>
@@ -142,14 +144,8 @@ get_type_map() {
             {LOCALDATETIME_RECORD, [] { return std::make_shared<takatori::type::time_point>(); }},
             {OFFSETDATETIME_RECORD,
              [] { return std::make_shared<takatori::type::time_point>(takatori::type::with_time_zone); }},
-            {BLOB_RECORD,
-             [] {
-                 return nullptr; /* blob未対応 */
-             }},
-            {CLOB_RECORD,
-             [] {
-                 return nullptr; /* clob未対応 */
-             }},
+            {BLOB_RECORD, [] { return std::make_shared<takatori::type::blob>(); }},
+            {CLOB_RECORD, [] { return std::make_shared<takatori::type::clob>(); }},
         };
     return map;
 }
@@ -443,8 +439,32 @@ bool build_udf_request(
         request.add_int4(static_cast<int32_t>(global::config_pool()->zone_offset()));
         return true;
     }
-    if(record_name == BLOB_RECORD || record_name == CLOB_RECORD) {
-        // Not yet implemented
+    // @see include/jogasaki/lob/blob_reference.h
+    if(record_name == BLOB_RECORD) {
+        auto value = args[0].to<runtime_t<kind::blob>>();
+        request.add_uint8(value.object_id());
+        request.add_uint8(value.object_id());
+        request.add_uint8(value.object_id());
+        // the ID of the storage where the BLOB data is stored.
+        // uint64 storage_id = 1;
+        // the ID of the element within the BLOB storage.
+        // uint64 element_id = 2;
+        // a tag for additional access control.
+        // uint64 tag = 3;
+        return true;
+    }
+    // @see include/jogasaki/lob/clob_reference.h
+    if(record_name == CLOB_RECORD) {
+        auto value = args[0].to<runtime_t<kind::clob>>();
+        request.add_uint8(value.object_id());
+        request.add_uint8(value.object_id());
+        request.add_uint8(value.object_id());
+        // the ID of the storage where the BLOB data is stored.
+        // uint64 storage_id = 1;
+        // the ID of the element within the BLOB storage.
+        // uint64 element_id = 2;
+        // a tag for additional access control.
+        // uint64 tag = 3;
         return true;
     }
     auto const* matched_pattern = find_matched_pattern(fn, args);
@@ -646,10 +666,17 @@ data::any build_udf_response(
             return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
         }
 
-    } else if(record_name == BLOB_RECORD || record_name == CLOB_RECORD) {
+    } else if(record_name == BLOB_RECORD) {
         // Not yet implemented
+        //takatori::type::blob value{};
+        //value.set_data(cursor->fetch_bytes());
+        //return data::any{std::in_place_type<runtime_t<kind::blob>>, value};
         return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-
+    } else if(record_name == CLOB_RECORD) {
+        //takatori::type::clob value{};
+        //value.set_data(cursor->fetch_string());
+        //return data::any{std::in_place_type<runtime_t<kind::clob>>, value};
+        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
     } else {
         auto output_values = cursor_to_any_values(response, output.columns(), ctx);
 

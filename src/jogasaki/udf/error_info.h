@@ -37,7 +37,6 @@ public:
     error_info& operator=(error_info&&) noexcept = default;
     [[nodiscard]] error_code_type code() const noexcept;
     [[nodiscard]] std::string_view message() const noexcept;
-    [[nodiscard]] std::string code_string() const noexcept;
 
 private:
 
@@ -63,7 +62,6 @@ public:
     void set_status(load_status s) noexcept;
     void set_file(std::string f) noexcept;
     void set_detail(std::string d) noexcept;
-    [[nodiscard]] std::string status_string() const noexcept;
 
 private:
 
@@ -72,4 +70,8 @@ private:
     std::string detail_{};
 };
 
+[[nodiscard]] std::string_view to_string_view(grpc::StatusCode code) noexcept;
+[[nodiscard]] std::string_view to_string_view(load_status status) noexcept;
+std::ostream& operator<<(std::ostream& out, grpc::StatusCode const& code);
+std::ostream& operator<<(std::ostream& out, load_status const& status);
 }  // namespace plugin::udf

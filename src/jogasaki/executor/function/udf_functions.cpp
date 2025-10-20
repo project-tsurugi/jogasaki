@@ -669,7 +669,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         if(response.error()) {
             ctx.add_error(
                 {error_kind::unknown,
-                 "RPC failed: code=" + response.error()->code_string() +
+                 "RPC failed: code=" + std::string(plugin::udf::to_string_view(response.error()->code())) +
                      ", message=" + std::string(response.error()->message())}
             );
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};

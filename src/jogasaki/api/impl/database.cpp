@@ -399,12 +399,11 @@ void database::init() {
     auto results = loader_->load(std::string(cfg_->loader_path()));
     for (const auto& result : results) {
         if (result.status() == plugin::udf::load_status::ok) {
-            VLOG_LP(log_info) << "[gRPC] " << result.status() << " file: " << result.file()
+            LOG_LP(INFO) << "[gRPC] " << result.status() << " file: " << result.file()
                               << " detail: " << result.detail();
         } else {
-            VLOG_LP(log_warning) << "[gRPC] " << result.status()
-                                 << " file: " << result.file() << " detail: " << result.detail()
-                                 << std::endl;
+            LOG_LP(WARNING) << "[gRPC] " << result.status()
+                                 << " file: " << result.file() << " detail: " << result.detail();
         }
     }
     for (auto& plugin : loader_->get_plugins()) {

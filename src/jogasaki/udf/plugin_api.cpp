@@ -62,11 +62,13 @@ std::string_view to_string_view(type_kind_type kind) {
         default: return "UnknownTypeKind"sv;
     }
 }
+std::ostream& operator<<(std::ostream& out, function_kind_type const& kind) { return out << to_string_view(kind); }
+std::ostream& operator<<(std::ostream& out, type_kind_type const& kind) { return out << to_string_view(kind); }
 
 void add_column(std::vector<column_descriptor*> const& cols) {
     for(auto const* col: cols) {
         std::cout << "- column_name: " << col->column_name() << std::endl;
-        std::cout << "  type_kind: " << plugin::udf::to_string_view(col->type_kind()) << std::endl;
+        std::cout << "  type_kind: " << col->type_kind() << std::endl;
 
         if(auto nested = col->nested()) {
             std::cout << "  nested_record:" << std::endl;
@@ -83,7 +85,7 @@ void print_columns(std::vector<column_descriptor*> const& cols, int indent = 0) 
 
     for(auto const* col: cols) {
         std::cout << indent_str << "- column_name: " << col->column_name() << std::endl;
-        std::cout << indent_str << "  type_kind: " << plugin::udf::to_string_view(col->type_kind()) << std::endl;
+        std::cout << indent_str << "  type_kind: " << col->type_kind() << std::endl;
 
         if(auto nested = col->nested()) {
             std::cout << indent_str << "  nested_record:" << std::endl;
@@ -107,8 +109,7 @@ void print_plugin_info(std::shared_ptr<plugin_api> const& api) {
             for(auto const* fn: svc->functions()) {
                 std::cout << "          - function_name: " << fn->function_name() << std::endl;
                 std::cout << "            function_index: " << fn->function_index() << std::endl;
-                std::cout << "            function_kind: " << plugin::udf::to_string_view(fn->function_kind())
-                          << std::endl;
+                std::cout << "            function_kind: " << fn->function_kind() << std::endl;
 
                 auto const& input = fn->input_record();
                 std::cout << "            input_record:" << std::endl;

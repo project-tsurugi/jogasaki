@@ -210,7 +210,7 @@ static any promote_binary_numeric_left(any const& l, any const& r) {
             switch(r.type_index()) {
                 case any::index<std::int32_t>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<std::int64_t>: return any{std::in_place_type<double>, l.to<L>()};
-                case any::index<float>: return any{std::in_place_type<double>, l.to<L>()}; // float v.s. float becomes double
+                case any::index<float>: return any{std::in_place_type<float>, l.to<L>()};
                 case any::index<double>: return any{std::in_place_type<double>, l.to<L>()};
                 case any::index<triple>: return any{std::in_place_type<double>, l.to<L>()};
                 default: return return_unsupported();

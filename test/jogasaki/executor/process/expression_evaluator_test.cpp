@@ -267,7 +267,7 @@ public:
 TEST_F(expression_evaluator_test, add_numeric) {
     test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::add, 10, 20, 30);
-    test_two_arity_exp<t::float4, t::float4, t::float8>(binary_operator::add, 10, 20, 30);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::add, 10, 20, 30);
     test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::add, 10, 20, 30);
 }
@@ -291,7 +291,7 @@ TEST_F(expression_evaluator_test, add_different_types) {
 TEST_F(expression_evaluator_test, subtract_numeric) {
     test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::subtract, 20, 5, 15);
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::subtract, 20, 5, 15);
-    test_two_arity_exp<t::float4, t::float4, t::float8>(binary_operator::subtract, 20, 5, 15);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::subtract, 20, 5, 15);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::subtract, 20, 5, 15);
     test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::subtract, 20, 5, 15);
 }
@@ -299,7 +299,7 @@ TEST_F(expression_evaluator_test, subtract_numeric) {
 TEST_F(expression_evaluator_test, multiply_numeric) {
     test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::multiply, 2, 3, 6);
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::multiply, 2, 3, 6);
-    test_two_arity_exp<t::float4, t::float4, t::float8>(binary_operator::multiply, 2, 3, 6);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::multiply, 2, 3, 6);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::multiply, 2, 3, 6);
     test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::multiply, 2, 3, 6);
 }
@@ -307,7 +307,7 @@ TEST_F(expression_evaluator_test, multiply_numeric) {
 TEST_F(expression_evaluator_test, divide_numeric) {
     test_two_arity_exp<t::int8, t::int8, t::int8>(binary_operator::divide, 6, 3, 2);
     test_two_arity_exp<t::int4, t::int4, t::int4>(binary_operator::divide, 6, 3, 2);
-    test_two_arity_exp<t::float4, t::float4, t::float8>(binary_operator::divide, 6, 3, 2);
+    test_two_arity_exp<t::float4, t::float4, t::float4>(binary_operator::divide, 6, 3, 2);
     test_two_arity_exp<t::float8, t::float8, t::float8>(binary_operator::divide, 6, 3, 2);
     test_two_arity_exp<t::decimal, t::decimal, t::decimal>(binary_operator::divide, 6, 3, 2);
 }

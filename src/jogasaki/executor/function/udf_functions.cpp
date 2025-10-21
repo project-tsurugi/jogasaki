@@ -442,13 +442,13 @@ bool build_udf_request(
     // @see include/jogasaki/lob/blob_reference.h
     if(record_name == BLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::blob>>();
+        request.add_uint8(1);
         request.add_uint8(value.object_id());
-        request.add_uint8(value.object_id());
-        request.add_uint8(value.object_id());
+        request.add_uint8(0);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
-        // uint64 element_id = 2;
+        // uint64 object_id = 2;
         // a tag for additional access control.
         // uint64 tag = 3;
         return true;
@@ -456,13 +456,13 @@ bool build_udf_request(
     // @see include/jogasaki/lob/clob_reference.h
     if(record_name == CLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::clob>>();
+        request.add_uint8(1);
         request.add_uint8(value.object_id());
-        request.add_uint8(value.object_id());
-        request.add_uint8(value.object_id());
+        request.add_uint8(0);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
-        // uint64 element_id = 2;
+        // uint64 object_id = 2;
         // a tag for additional access control.
         // uint64 tag = 3;
         return true;
@@ -616,6 +616,69 @@ std::vector<data::any> cursor_to_any_values(
 
     return result;
 }
+data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
+    auto unscaled_opt = cursor.fetch_string();
+    auto exponent_opt = cursor.fetch_int4();
+    if(unscaled_opt && exponent_opt) { return build_decimal_data(*unscaled_opt, *exponent_opt); }
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
+data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
+    if(auto result = cursor.fetch_int4()) {
+        takatori::datetime::date tp(static_cast<takatori::datetime::date::difference_type>(*result));
+        return data::any{std::in_place_type<runtime_t<kind::date>>, tp};
+    }
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
+data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
+    if(auto result = cursor.fetch_int8()) {
+        takatori::datetime::time_of_day tp(static_cast<takatori::datetime::time_of_day::time_unit>(*result));
+        return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp};
+    }
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
+data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
+    auto offset_seconds = cursor.fetch_int8();
+    auto nano_adjustment = cursor.fetch_uint4();
+    if(offset_seconds && nano_adjustment) {
+        takatori::datetime::time_point value{
+            takatori::datetime::time_point::offset_type(*offset_seconds),
+            std::chrono::nanoseconds(*nano_adjustment)};
+        return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
+    }
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
+data::any build_blob_response(plugin::udf::generic_record_cursor& cursor) {
+    auto storage_id = cursor.fetch_uint8();
+    auto object_id = cursor.fetch_uint8();
+    auto tag = cursor.fetch_uint8();
+    if(object_id && storage_id && tag) {
+        jogasaki::lob::blob_reference blob_ref(object_id.value());
+        return data::any{std::in_place_type<runtime_t<kind::blob>>, blob_ref};
+    }
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
+data::any build_clob_response(plugin::udf::generic_record_cursor& cursor) {
+    auto storage_id = cursor.fetch_uint8();
+    auto object_id = cursor.fetch_uint8();
+    auto tag = cursor.fetch_uint8();
+    if(object_id && storage_id && tag) {
+        jogasaki::lob::clob_reference clob_ref(object_id.value());
+        return data::any{std::in_place_type<runtime_t<kind::clob>>, clob_ref};
+    }
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
+std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> const& response_builder_map() {
+    static const std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> map{
+        {DECIMAL_RECORD, &build_decimal_response},
+        {DATE_RECORD, &build_date_response},
+        {LOCALTIME_RECORD, &build_localtime_response},
+        {LOCALDATETIME_RECORD, &build_localdatetime_response},
+        {OFFSETDATETIME_RECORD, &build_localdatetime_response},
+        {BLOB_RECORD, &build_blob_response},
+        {CLOB_RECORD, &build_clob_response},
+    };
+    return map;
+}
 data::any build_udf_response(
     plugin::udf::generic_record_impl& response,
     evaluator_context& ctx,
@@ -629,60 +692,11 @@ data::any build_udf_response(
     }
 
     auto const& record_name = output.record_name();
+    auto const& map = response_builder_map();
 
-    if(record_name == DECIMAL_RECORD) {
-        auto unscaled_opt = cursor->fetch_string();
-        auto exponent_opt = cursor->fetch_int4();
-        if(unscaled_opt && exponent_opt) { return build_decimal_data(*unscaled_opt, *exponent_opt); }
-    } else if(record_name == DATE_RECORD) {
-        if(auto result = cursor->fetch_int4()) {
-            takatori::datetime::date tp(static_cast<takatori::datetime::date::difference_type>(*result));
-            return data::any{std::in_place_type<runtime_t<kind::date>>, tp};
-        }
-
-    } else if(record_name == LOCALTIME_RECORD) {
-        if(auto result = cursor->fetch_int8()) {
-            takatori::datetime::time_of_day tp(static_cast<takatori::datetime::time_of_day::time_unit>(*result));
-            return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp};
-        }
-
-    } else if(record_name == LOCALDATETIME_RECORD) {
-        auto offset_seconds = cursor->fetch_int8();
-        auto nano_adjustment = cursor->fetch_uint4();
-        if(offset_seconds && nano_adjustment) {
-            takatori::datetime::time_point value{
-                takatori::datetime::time_point::offset_type(*offset_seconds),
-                std::chrono::nanoseconds(*nano_adjustment)};
-            return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
-        }
-    } else if(record_name == OFFSETDATETIME_RECORD) {
-        // Not yet implemented
-        auto offset_seconds = cursor->fetch_int8();
-        auto nano_adjustment = cursor->fetch_uint4();
-        if(offset_seconds && nano_adjustment) {
-            takatori::datetime::time_point value{
-                takatori::datetime::time_point::offset_type(*offset_seconds),
-                std::chrono::nanoseconds(*nano_adjustment)};
-            return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
-        }
-
-    } else if(record_name == BLOB_RECORD) {
-        // Not yet implemented
-        //takatori::type::blob value{};
-        //value.set_data(cursor->fetch_bytes());
-        //return data::any{std::in_place_type<runtime_t<kind::blob>>, value};
-        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-    } else if(record_name == CLOB_RECORD) {
-        //takatori::type::clob value{};
-        //value.set_data(cursor->fetch_string());
-        //return data::any{std::in_place_type<runtime_t<kind::clob>>, value};
-        return data::any{std::in_place_type<error>, error(error_kind::unsupported)};
-    } else {
-        auto output_values = cursor_to_any_values(response, output.columns(), ctx);
-
-        if(! output_values.empty()) { return output_values.front(); }
-    }
-
+    if(auto it = map.find(record_name); it != map.end()) { return it->second(*cursor); }
+    auto output_values = cursor_to_any_values(response, output.columns(), ctx);
+    if(! output_values.empty()) { return output_values.front(); }
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }

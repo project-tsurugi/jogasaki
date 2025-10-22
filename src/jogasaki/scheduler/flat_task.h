@@ -320,6 +320,7 @@ private:
     bool load();
     bool execute_wrapped();
     void resubmit(request_context& req_context);
+    bool execute_with_catch(tateyama::task_scheduler::context& ctx);
 
     std::ostream& write_to(std::ostream& out) const {
         using namespace std::string_view_literals;

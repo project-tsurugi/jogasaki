@@ -304,6 +304,45 @@ void finish_job(request_context& req_context) {
     // here job context is released and objects held by job callback such as request_context are also released
 }
 
+bool flat_task::execute_with_catch(tateyama::task_scheduler::context& ctx) {
+    // use try-catch to avoid server crash even on fatal internal error
+    // even on internal error, try to complete job as much as possible
+    bool job_completes{};
+    bool internal_error = false;
+    std::string message{};
+    try {
+        job_completes = execute(ctx);
+    } catch (boost::exception& e) {
+        // currently find_trace() after catching std::exception doesn't work properly. So catch as boost exception. TODO
+        internal_error = true;
+        std::stringstream ss{};
+        ss << "Unhandled boost exception caught. ";
+        ss << boost::diagnostic_information(e);
+        message = ss.str();;
+    } catch (std::exception& e) {
+        internal_error = true;
+        std::stringstream ss{};
+        ss << "Unhandled exception caught:" << e.what();
+        ss << " ";
+        if(auto* tr = takatori::util::find_trace(e); tr != nullptr) {
+            ss << *tr;
+        }
+        message = ss.str();;
+    }
+    if (internal_error) {
+        // this case should never happen unless we hit a programming error (bug)
+        // log server messages as much as possible and send msg back to client
+        LOG_LP(ERROR) << message;
+
+        // try to complete the current job in order to reply back to client.
+        // Otherwise, the request appears to remain running and shutdown of session or database is hindered.
+        job_completes = true;
+        set_error(*req_context_, error_code::unknown_internal_error, "unexpected internal error occurred "+message, status::err_unknown);
+    }
+    return job_completes;
+
+}
+
 void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
     auto started = job()->started().load();
     if(! started) {
@@ -320,7 +359,7 @@ void flat_task::operator()(tateyama::task_scheduler::context& ctx) {
         auto lk = (tctx && sticky_) ?
             std::unique_lock{tctx->mutex()} :
             std::unique_lock<transaction_context::mutex_type>{};
-        job_completes = execute(ctx) || job()->going_teardown();
+        job_completes = execute_with_catch(ctx) || job()->going_teardown();
         if (tctx && sticky_) {
             tctx->decrement_worker_count();
         }

@@ -48,7 +48,7 @@ TEST_F(sql_binary_operation_type_matrix_test, rem_int4_int8) {
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_int4_dec5) {
-    test_binary_operation_with_type<kind::decimal>("c0%c1", "INT", "DECIMAL(5)", "(3,2)", 1, decimal_type(10, 0));  //TODO check
+    test_binary_operation_with_type<kind::decimal>("c0%c1", "INT", "DECIMAL(5)", "(3,2)", 1, decimal_type(std::nullopt, std::nullopt));
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_int4_dec5_2) {
@@ -70,7 +70,7 @@ TEST_F(sql_binary_operation_type_matrix_test, rem_int8_int8) {
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_int8_dec5) {
-    test_binary_operation_with_type<kind::decimal>("c0%c1", "BIGINT", "DECIMAL(5)", "(3,2)", 1, decimal_type(19, 0));  //TODO check
+    test_binary_operation_with_type<kind::decimal>("c0%c1", "BIGINT", "DECIMAL(5)", "(3,2)", 1, decimal_type(std::nullopt, std::nullopt));
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_int8_dec5_2) {
@@ -88,6 +88,8 @@ TEST_F(sql_binary_operation_type_matrix_test, rem_int8_unknown) {
 
 // for mul/div/rem
 // DECIMAL(p,s) v.s. DECIMAL(q,r) -> DECIMAL(*, *)
+
+// UNKNOWN behaves as DECIMAL(1)
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_decimal_int4) {
     // DECIMAL(4,1) v.s. INT = DECIMAL(4,1) v.s. DECIMAL(10) -> DECIMAL(*, *)
@@ -110,8 +112,8 @@ TEST_F(sql_binary_operation_type_matrix_test, rem_decimal_dec5_2) {
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_decimal_unknown) {
-    // DECIMAL(4,1) v.s. UNKNOWN -> DECIMAL(4,1) : type is preserved as is
-    test_binary_operation_with_type<kind::decimal>("c0%null", "DECIMAL(4,1)", "INT", "(3,2)", {}, decimal_type(4, 1));  // c1 is created as INT, but not used
+    // DECIMAL(4,1) v.s. UNKNOWN -> DECIMAL(4,1) v.s. DECIMAL(1,0) -> DECIMAL(*,*)
+    test_binary_operation_with_type<kind::decimal>("c0%null", "DECIMAL(4,1)", "INT", "(3,2)", {}, decimal_type(std::nullopt, std::nullopt));  // c1 is created as INT, but not used
 }
 
 // unknown op ...
@@ -125,11 +127,13 @@ TEST_F(sql_binary_operation_type_matrix_test, rem_unknown_int8) {
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_unknown_dec5) {
-    test_binary_operation_with_type<kind::decimal>("null%c1", "INT", "DECIMAL(5)", "(3,2)", {}, decimal_type(5, 0));
+    // UNKNOWN v.s. DECIMAL(5) -> DECIMAL(1,0) v.s. DECIMAL(5,0) -> DECIMAL(*,*)
+    test_binary_operation_with_type<kind::decimal>("null%c1", "INT", "DECIMAL(5)", "(3,2)", {}, decimal_type(std::nullopt, std::nullopt));
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_unknown_dec5_2) {
-    test_binary_operation_with_type<kind::decimal>("null%c1", "INT", "DECIMAL(5,2)", "(3,2)", {}, decimal_type(5, 2));
+    // UNKNOWN v.s. DECIMAL(5,2) -> DECIMAL(1,0) v.s. DECIMAL(5,2) -> DECIMAL(*,*)
+    test_binary_operation_with_type<kind::decimal>("null%c1", "INT", "DECIMAL(5,2)", "(3,2)", {}, decimal_type(std::nullopt, std::nullopt));
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, rem_unknown_float4) {

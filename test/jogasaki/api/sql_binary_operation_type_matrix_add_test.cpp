@@ -103,6 +103,8 @@ TEST_F(sql_binary_operation_type_matrix_test, add_int8_unknown) {
 // for mul/div/rem
 // DECIMAL(p,s) v.s. DECIMAL(q,r) -> DECIMAL(*, *)
 
+// UNKNOWN behaves as DECIMAL(1)
+
 TEST_F(sql_binary_operation_type_matrix_test, add_decimal_int4) {
     // DECIMAL(4,1) v.s. INT = DECIMAL(4,1) v.s. DECIMAL(10) -> DECIMAL(*, 1)
     test_binary_operation_with_type<kind::decimal>("c0+c1", "DECIMAL(4,1)", "INT", "(3,2)", 5, decimal_type(std::nullopt, 1));
@@ -134,8 +136,8 @@ TEST_F(sql_binary_operation_type_matrix_test, add_decimal_float8) {
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, add_decimal_unknown) {
-    // DECIMAL(4,1) v.s. UNKNOWN -> DECIMAL(4,1) : type is preserved as is
-    test_binary_operation_with_type<kind::decimal>("c0+null", "DECIMAL(4,1)", "INT", "(3,2)", {}, decimal_type(4, 1));  // c1 is created as INT, but not used
+    // DECIMAL(4,1) v.s. UNKNOWN -> DECIMAL(4,1) v.s. DECIMAL(1,0) -> DECIMAL(*,1)
+    test_binary_operation_with_type<kind::decimal>("c0+null", "DECIMAL(4,1)", "INT", "(3,2)", {}, decimal_type(std::nullopt, 1));  // c1 is created as INT, but not used
 }
 
 // float4 op ...
@@ -209,11 +211,13 @@ TEST_F(sql_binary_operation_type_matrix_test, add_unknown_int8) {
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, add_unknown_dec5) {
-    test_binary_operation_with_type<kind::decimal>("null+c1", "INT", "DECIMAL(5)", "(3,2)", {}, decimal_type(5, 0));
+    // UNKNOWN v.s. DECIMAL(5) -> DECIMAL(1,0) v.s. DECIMAL(5,0) -> DECIMAL(*,0)
+    test_binary_operation_with_type<kind::decimal>("null+c1", "INT", "DECIMAL(5)", "(3,2)", {}, decimal_type(std::nullopt, 0));
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, add_unknown_dec5_2) {
-    test_binary_operation_with_type<kind::decimal>("null+c1", "INT", "DECIMAL(5,2)", "(3,2)", {}, decimal_type(5, 2));
+    // UNKNOWN v.s. DECIMAL(5,2) -> DECIMAL(1,0) v.s. DECIMAL(5,2) -> DECIMAL(*,2)
+    test_binary_operation_with_type<kind::decimal>("null+c1", "INT", "DECIMAL(5,2)", "(3,2)", {}, decimal_type(std::nullopt, 2));
 }
 
 TEST_F(sql_binary_operation_type_matrix_test, add_unknown_float4) {

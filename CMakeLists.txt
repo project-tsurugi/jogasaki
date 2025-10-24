@@ -41,6 +41,15 @@ option(TRACY_ENABLE "enable tracy profiler" OFF)
 option(INSTALL_API_ONLY "configure cmake build dir. just to install public api files. No build runs. This is used to provide api files to components outside jogasaki" OFF)
 option(LIKWID_ENABLE "enable likwid hardware counter profiling" OFF)
 option(ENABLE_ALTIMETER "enable altimeter integration" OFF)
+set(ARROW_LINK_MODE "shared" CACHE STRING "Link mode for Apache Arrow and Parquet")
+string(TOLOWER $CACHE{ARROW_LINK_MODE} ARROW_LINK_MODE_LOWERCASE)
+
+if(NOT (ARROW_LINK_MODE_LOWERCASE STREQUAL "shared"
+        OR ARROW_LINK_MODE_LOWERCASE STREQUAL "static"
+        #OR ARROW_LINK_MODE_LOWERCASE STREQUAL "vendored"
+        ))
+    message(FATAL_ERROR "unsupported ARROW_LINK_MODE value: $CACHE{ARROW_LINK_MODE}")
+endif()
 
 if (ENABLE_GOOGLE_PERFTOOLS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_GOOGLE_PERFTOOLS")

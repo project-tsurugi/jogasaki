@@ -150,6 +150,14 @@ target_include_directories(${ENGINE}
         PRIVATE .
 )
 
+if(ARROW_LINK_MODE_LOWERCASE STREQUAL "shared")
+    set(arrow_libs Arrow::arrow_shared Parquet::parquet_shared)
+elseif(ARROW_LINK_MODE_LOWERCASE STREQUAL "static")
+    set(arrow_libs Arrow::arrow_static Parquet::parquet_static)
+#elseif(ARROW_LINK_MODE_LOWERCASE STREQUAL "vendored")
+# TODO
+endif()
+
 target_link_libraries(${ENGINE}
         PUBLIC api
         PUBLIC ${tateyama_engine}
@@ -168,7 +176,7 @@ target_link_libraries(${ENGINE}
         PRIVATE glog::glog
         PRIVATE atomic
         PRIVATE protobuf::libprotobuf
-        PRIVATE Parquet::parquet_shared
+        PRIVATE ${arrow_libs}
         PRIVATE mpdecpp
         )
 
@@ -227,7 +235,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE Boost::container
         INTERFACE glog::glog
         INTERFACE protobuf::libprotobuf
-        INTERFACE Parquet::parquet_shared
+        INTERFACE ${arrow_libs}
         INTERFACE mpdecpp
         )
 

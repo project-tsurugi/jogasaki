@@ -21,6 +21,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <boost/property_tree/ini_parser.hpp>
@@ -35,45 +36,132 @@
 namespace fs = std::filesystem;
 using namespace plugin::udf;
 
+udf_config::udf_config(bool enabled, std::string url, std::string credentials) :
+    _enabled(enabled),
+    _url(std::move(url)),
+    _credentials(std::move(credentials)) {}
+
+bool udf_config::enabled() const noexcept { return _enabled; }
+std::string const& udf_config::url() const noexcept { return _url; }
+std::string const& udf_config::credentials() const noexcept { return _credentials; }
+
 [[nodiscard]] std::string const& client_info::default_url() const noexcept { return default_url_; }
 [[nodiscard]] std::string const& client_info::default_auth() const noexcept { return default_auth_; }
 void client_info::set_default_url(std::string url) { default_url_ = std::move(url); }
 void client_info::set_default_auth(std::string auth) { default_auth_ = std::move(auth); }
+
+std::optional<udf_config>
+udf_loader::parse_ini(fs::path const& ini_path, std::vector<load_result>& results, std::string const& name) {
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
+
+        bool enabled = true;
+        std::string url;
+        std::string credentials;
+
+        if(auto opt = pt.get_optional<std::string>("udf.enabled")) {
+            std::string val = *opt;
+            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+            if(val == "false") {
+                enabled = false;
+            } else if(val != "true") {
+                results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.enabled must be true or false");
+                return std::nullopt;
+            }
+        }
+        if(auto opt = pt.get_optional<std::string>("udf.url")) {
+            url = *opt;
+        } else {
+            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.url must be set");
+            return std::nullopt;
+        }
+        if(auto opt = pt.get_optional<std::string>("udf.credentials")) {
+            credentials = *opt;
+        } else {
+            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.credentials must be set");
+            return std::nullopt;
+        }
+        return udf_config(enabled, std::move(url), std::move(credentials));
+
+    } catch(std::exception const& e) {
+        results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());
+        return std::nullopt;
+    }
+}
+
 std::vector<load_result> udf_loader::load(std::string_view dir_path) {
+
     fs::path path(dir_path);
     std::vector<load_result> results;
-    std::vector<fs::path> files_to_load;
-    if(fs::is_directory(path)) {
-        for(auto const& entry: fs::directory_iterator(path)) {
-            if(entry.is_regular_file() && entry.path().extension() == ".so") { files_to_load.push_back(entry.path()); }
+
+    if(! fs::exists(path)) {
+        results.emplace_back(load_status::path_not_found, std::string(dir_path), "Directory not found");
+        return results;
+    }
+    if(! fs::is_directory(path)) {
+        results.emplace_back(load_status::path_not_found, std::string(dir_path), "Path is not a directory");
+        return results;
+    }
+
+    std::unordered_map<std::string, std::pair<fs::path, fs::path>> pairs;
+    for(auto const& entry: fs::directory_iterator(path)) {
+        if(! entry.is_regular_file()) continue;
+
+        auto ext = entry.path().extension();
+        auto stem = entry.path().stem().string();
+        auto& p = pairs[stem];
+
+        if(ext == ".ini") {
+            p.first = entry.path();
+        } else if(ext == ".so") {
+            p.second = entry.path();
         }
-    } else if(fs::is_regular_file(path) && path.extension() == ".so") {
-        files_to_load.push_back(path);
-    } else {
+    }
+
+    if(pairs.empty()) {
         results.emplace_back(
-            load_status::not_regular_file_or_dir,
+            load_status::no_ini_and_so_files,
             std::string(dir_path),
-            "Path is not a directory or .so file"
+            "No .ini or .so files found (UDF disabled)"
         );
         return results;
     }
-    for(auto const& file: files_to_load) {
-        std::string full_path = file.string();
-        dlerror();
-        void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
-        char const* err = dlerror();
-        if(! handle || err) {
-            results.emplace_back(load_status::dlopen_failed, full_path, err ? err : "dlopen failed with unknown error");
+    for(auto const& [name, paths]: pairs) {
+        const auto& ini_path = paths.first;
+        const auto& so_path = paths.second;
+
+        if(ini_path.empty() || so_path.empty()) {
+            results.emplace_back(load_status::ini_so_pair_mismatch, name, "Missing paired .ini or .so file");
+            return results;
+        }
+        auto udf_config_value = parse_ini(ini_path, results, name);
+        if(! udf_config_value.has_value()) { return results; }
+        if(! udf_config_value->enabled()) {
+            results.emplace_back(load_status::udf_disabled, name, "UDF disabled in configuration");
             continue;
         }
-        auto res = create_api_from_handle(handle, full_path);
+        std::string full_path = so_path.string();
+        dlerror();
+        void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
+        const char* err = dlerror();
+        if(! handle || err) {
+            results.emplace_back(load_status::dlopen_failed, full_path, err ? err : "dlopen failed with unknown error");
+            return results;
+        }
+        auto res = create_api_from_handle(handle, full_path, udf_config_value->url(), udf_config_value->credentials());
         results.push_back(std::move(res));
     }
     return results;
 }
 
 void udf_loader::unload_all() {}
-load_result udf_loader::create_api_from_handle(void* handle, std::string const& full_path) {
+load_result udf_loader::create_api_from_handle(
+    void* handle,
+    std::string const& full_path,
+    std::string const& url,
+    std::string const& credentials
+) {
     if(! handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
     using create_api_func = plugin_api* (*) ();
@@ -101,37 +189,16 @@ load_result udf_loader::create_api_from_handle(void* handle, std::string const& 
             full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
-    client_info info;
-    std::filesystem::path ini_path = full_path;
-    ini_path.replace_extension(".ini");
-    std::string ini_info{};
-    if(std::filesystem::exists(ini_path)) {
-        boost::property_tree::ptree pt;
-        boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
-
-        if(auto opt = pt.get_optional<std::string>("grpc.url")) {
-            ini_info = ini_path.string() + " exists.\n" + "set " + *opt + " to grpc.url\n";
-            info.set_default_url(*opt);
-        } else {
-            ini_info = ini_path.string() + " exists.\n" +
-                "but grpc.url not found, Use default value:" + info.default_url() + "\n";
-        }
-        if(auto opt = pt.get_optional<std::string>("grpc.credentials")) {
-            info.set_default_auth(*opt);
-            ini_info = ini_info + "set: " + *opt + " to grpc.credentials\n";
-        } else {
-            ini_info = ini_info + "grpc.credentials not found, Use default value:" + info.default_auth() + "\n";
-        }
-    } else {
-        ini_info = ini_path.string() + " does not exist. Use default value:" + info.default_url() + "\n";
+    if(credentials != "insecure") {
+        return {load_status::ini_invalid, full_path, "Currently, only 'insecure' credentials are supported"};
     }
-    auto channel = grpc::CreateChannel(info.default_url(), grpc::InsecureChannelCredentials());
+    auto channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
     auto raw_client = factory_ptr->create(channel);
     if(! raw_client) {
         return {load_status::factory_creation_failed, full_path, "Failed to create generic client from factory"};
     }
     plugins_.emplace_back(api_ptr.release(), std::shared_ptr<generic_client>(raw_client));
-    return {load_status::ok, full_path, ini_info};
+    return {load_status::ok, full_path, "Loaded successfully"};
 }
 
 std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&

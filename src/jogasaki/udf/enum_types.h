@@ -48,7 +48,11 @@ enum class type_kind_type {
 enum class load_status {
     ok,
     path_not_found,
+    no_ini_and_so_files,
+    ini_so_pair_mismatch,
+    ini_invalid,
     not_regular_file_or_dir,
+    udf_disabled,
     no_shared_objects_found,
     dlopen_failed,
     api_symbol_missing,

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #pragma once
+#include <filesystem>
 #include <string_view>
 #include <tuple>
 #include <vector>
@@ -46,6 +47,29 @@ namespace plugin::udf {
  *
  * @see plugin_loader
  */
+
+class udf_config {
+public:
+
+    udf_config() = default;
+    udf_config(udf_config const&) = default;
+    udf_config(udf_config&&) noexcept = default;
+    udf_config(bool enabled, std::string url, std::string credentials);
+    udf_config& operator=(udf_config const&) = default;
+    udf_config& operator=(udf_config&&) noexcept = default;
+    ~udf_config() = default;
+
+    // Accessors
+    [[nodiscard]] bool enabled() const noexcept;
+    [[nodiscard]] std::string const& url() const noexcept;
+    [[nodiscard]] std::string const& credentials() const noexcept;
+
+private:
+
+    bool _enabled{true};
+    std::string _url{};
+    std::string _credentials{};
+};
 class client_info {
 public:
 
@@ -103,7 +127,14 @@ public:
 private:
 
     /** List of raw `dlopen()` handles for loaded plugins. */
-    [[nodiscard]] load_result create_api_from_handle(void* handle, std::string const& full_path);
+    [[nodiscard]] load_result create_api_from_handle(
+        void* handle,
+        std::string const& full_path,
+        std::string const& url,
+        std::string const& credentials
+    );
+    [[nodiscard]] std::optional<udf_config>
+    parse_ini(std::filesystem::path const& ini_path, std::vector<load_result>& results, std::string const&);
     /** List of loaded plugin API/client pairs. */
     std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>> plugins_;
 };

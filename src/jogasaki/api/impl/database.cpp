@@ -396,7 +396,7 @@ void database::init() {
         global::scalar_function_repository()
     );
     loader_     = std::make_unique<plugin::udf::udf_loader>();
-    auto results = loader_->load(std::string(cfg_->loader_path()));
+    auto results = loader_->load(std::string(cfg_->plugin_directory()));
     for (const auto& result : results) {
         if (result.status() == plugin::udf::load_status::ok) {
             LOG_LP(INFO) << "[gRPC] " << result.status() << " file: " << result.file()

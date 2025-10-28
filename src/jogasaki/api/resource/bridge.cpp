@@ -299,12 +299,6 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (auto v = jogasaki_config->get<bool>("dev_log_msg_user_data")) {
         ret->log_msg_user_data(v.value());
     }
-    if (auto v = jogasaki_config->get<std::string>("loader_path")) {
-        ret->loader_path(v.value());
-    }
-    if (auto v = jogasaki_config->get<std::string>("grpc_url")) {
-        ret->grpc_url(v.value());
-    }
     return true;
 }
 
@@ -326,12 +320,33 @@ static bool process_session_config(std::shared_ptr<jogasaki::configuration>& ret
     return true;
 }
 
+static bool process_udf_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+    // udf section
+    auto jogasaki_config = cfg.get_section("udf");
+    if (jogasaki_config == nullptr) {
+        return true;
+    }
+    if (auto v = jogasaki_config->get<std::string>("plugin_directory")) {
+        ret->plugin_directory(v.value());
+    }
+    if (auto v = jogasaki_config->get<std::string>("endpoint")) {
+        ret->endpoint(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("secure")) {
+        ret->secure(v.value());
+    }
+    return true;
+}
+
 static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     auto ret = std::make_shared<jogasaki::configuration>();
     if(! process_sql_config(ret, cfg)) {
         return {};
     };
     if(! process_session_config(ret, cfg)) {
+        return {};
+    }
+    if(! process_udf_config(ret, cfg)) {
         return {};
     }
     return ret;

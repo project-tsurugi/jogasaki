@@ -684,6 +684,7 @@ private:
     bool enable_blob_cast_ = true;
     std::size_t max_result_set_writers_ = 64;
     bool enable_session_store_ = true;
+    std::string loader_path_{};
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"localhost:50051"};
     bool secure_ = false;

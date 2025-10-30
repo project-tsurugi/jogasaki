@@ -54,21 +54,21 @@ public:
     udf_config() = default;
     udf_config(udf_config const&) = default;
     udf_config(udf_config&&) noexcept = default;
-    udf_config(bool enabled, std::string url, std::string credentials);
+    udf_config(bool enabled, std::string endpoint, std::string secure);
     udf_config& operator=(udf_config const&) = default;
     udf_config& operator=(udf_config&&) noexcept = default;
     ~udf_config() = default;
 
     // Accessors
     [[nodiscard]] bool enabled() const noexcept;
-    [[nodiscard]] std::string const& url() const noexcept;
-    [[nodiscard]] std::string const& credentials() const noexcept;
+    [[nodiscard]] std::string const& endpoint() const noexcept;
+    [[nodiscard]] std::string const& secure() const noexcept;
 
 private:
 
     bool _enabled{true};
-    std::string _url{};
-    std::string _credentials{};
+    std::string _endpoint{};
+    std::string _secure{};
 };
 class client_info {
 public:
@@ -79,15 +79,15 @@ public:
     client_info& operator=(client_info const&) = default;
     client_info(client_info&&) noexcept = default;
     client_info& operator=(client_info&&) noexcept = default;
-    [[nodiscard]] std::string const& default_url() const noexcept;
-    [[nodiscard]] std::string const& default_auth() const noexcept;
-    void set_default_url(std::string url);
-    void set_default_auth(std::string auth);
+    [[nodiscard]] std::string const& default_endpoint() const noexcept;
+    [[nodiscard]] std::string const& default_secure() const noexcept;
+    void set_default_endpoint(std::string endpoint);
+    void set_default_secure(std::string secure);
 
 private:
 
-    std::string default_url_{"localhost:50051"};
-    std::string default_auth_{"insecure"};
+    std::string default_endpoint_{"localhost:50051"};
+    std::string default_secure_{"false"};
 };
 
 class udf_loader : public plugin_loader {
@@ -130,8 +130,8 @@ private:
     [[nodiscard]] load_result create_api_from_handle(
         void* handle,
         std::string const& full_path,
-        std::string const& url,
-        std::string const& credentials
+        std::string const& endpoint,
+        std::string const& secure
     );
     [[nodiscard]] std::optional<udf_config>
     parse_ini(std::filesystem::path const& ini_path, std::vector<load_result>& results, std::string const&);

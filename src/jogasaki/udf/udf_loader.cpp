@@ -36,19 +36,19 @@
 namespace fs = std::filesystem;
 using namespace plugin::udf;
 
-udf_config::udf_config(bool enabled, std::string url, std::string credentials) :
+udf_config::udf_config(bool enabled, std::string endpoint, std::string secure) :
     _enabled(enabled),
-    _url(std::move(url)),
-    _credentials(std::move(credentials)) {}
+    _endpoint(std::move(endpoint)),
+    _secure(std::move(secure)) {}
 
 bool udf_config::enabled() const noexcept { return _enabled; }
-std::string const& udf_config::url() const noexcept { return _url; }
-std::string const& udf_config::credentials() const noexcept { return _credentials; }
+std::string const& udf_config::endpoint() const noexcept { return _endpoint; }
+std::string const& udf_config::secure() const noexcept { return _secure; }
 
-[[nodiscard]] std::string const& client_info::default_url() const noexcept { return default_url_; }
-[[nodiscard]] std::string const& client_info::default_auth() const noexcept { return default_auth_; }
-void client_info::set_default_url(std::string url) { default_url_ = std::move(url); }
-void client_info::set_default_auth(std::string auth) { default_auth_ = std::move(auth); }
+[[nodiscard]] std::string const& client_info::default_endpoint() const noexcept { return default_endpoint_; }
+[[nodiscard]] std::string const& client_info::default_secure() const noexcept { return default_secure_; }
+void client_info::set_default_endpoint(std::string endpoint) { default_endpoint_ = std::move(endpoint); }
+void client_info::set_default_secure(std::string secure) { default_secure_ = std::move(secure); }
 
 std::optional<udf_config>
 udf_loader::parse_ini(fs::path const& ini_path, std::vector<load_result>& results, std::string const& name) {
@@ -57,8 +57,8 @@ udf_loader::parse_ini(fs::path const& ini_path, std::vector<load_result>& result
         boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
 
         bool enabled = true;
-        std::string url;
-        std::string credentials;
+        std::string endpoint;
+        std::string secure;
 
         if(auto opt = pt.get_optional<std::string>("udf.enabled")) {
             std::string val = *opt;
@@ -70,19 +70,19 @@ udf_loader::parse_ini(fs::path const& ini_path, std::vector<load_result>& result
                 return std::nullopt;
             }
         }
-        if(auto opt = pt.get_optional<std::string>("udf.url")) {
-            url = *opt;
+        if(auto opt = pt.get_optional<std::string>("udf.endpoint")) {
+            endpoint = *opt;
         } else {
-            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.url must be set");
+            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.endpoint must be set");
             return std::nullopt;
         }
-        if(auto opt = pt.get_optional<std::string>("udf.credentials")) {
-            credentials = *opt;
+        if(auto opt = pt.get_optional<std::string>("udf.secure")) {
+            secure = *opt;
         } else {
-            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.credentials must be set");
+            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.secure must be set");
             return std::nullopt;
         }
-        return udf_config(enabled, std::move(url), std::move(credentials));
+        return udf_config(enabled, std::move(endpoint), std::move(secure));
 
     } catch(std::exception const& e) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());
@@ -149,7 +149,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
             results.emplace_back(load_status::dlopen_failed, full_path, err ? err : "dlopen failed with unknown error");
             return results;
         }
-        auto res = create_api_from_handle(handle, full_path, udf_config_value->url(), udf_config_value->credentials());
+        auto res = create_api_from_handle(handle, full_path, udf_config_value->endpoint(), udf_config_value->secure());
         results.push_back(std::move(res));
     }
     return results;
@@ -159,8 +159,8 @@ void udf_loader::unload_all() {}
 load_result udf_loader::create_api_from_handle(
     void* handle,
     std::string const& full_path,
-    std::string const& url,
-    std::string const& credentials
+    std::string const& endpoint,
+    std::string const& secure
 ) {
     if(! handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
@@ -189,10 +189,10 @@ load_result udf_loader::create_api_from_handle(
             full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
-    if(credentials != "insecure") {
-        return {load_status::ini_invalid, full_path, "Currently, only 'insecure' credentials are supported"};
+    if(secure != "false") {
+        return {load_status::ini_invalid, full_path, "Currently, only 'false' secure are supported"};
     }
-    auto channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
+    auto channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
     auto raw_client = factory_ptr->create(channel);
     if(! raw_client) {
         return {load_status::factory_creation_failed, full_path, "Failed to create generic client from factory"};

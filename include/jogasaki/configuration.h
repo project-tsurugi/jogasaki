@@ -700,6 +700,7 @@ private:
     bool enable_storage_key_ = true;
     std::string loader_path_{};
     std::string grpc_url_{};
+    std::string loader_path_{};
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"localhost:50051"};
     bool secure_ = false;

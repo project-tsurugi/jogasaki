@@ -30,6 +30,7 @@
 #include <jogasaki/data/result_store.h>
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/io/record_channel.h>
+#include <jogasaki/executor/io/writer_pool.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/kvs/database.h>
@@ -281,6 +282,19 @@ public:
      */
     void storage_lock(std::unique_ptr<storage::shared_lock> arg) noexcept;
 
+    /**
+     * @brief accessor for the writer pool
+     * @return writer pool for this request
+     * @return nullptr if writer pool is not initialized
+     */
+    [[nodiscard]] std::shared_ptr<executor::io::writer_pool> const& writer_pool() const noexcept;
+
+    /**
+     * @brief setter for writer pool
+     * @param arg writer pool to set
+     */
+    void writer_pool(std::shared_ptr<executor::io::writer_pool> arg) noexcept;
+
 private:
     std::shared_ptr<class configuration> config_{std::make_shared<class configuration>()};
     std::shared_ptr<memory::lifo_paged_memory_resource> request_resource_{};
@@ -305,6 +319,7 @@ private:
     request_info req_info_{};
     std::shared_ptr<commit_context> commit_ctx_{};
     std::unique_ptr<storage::shared_lock> storage_lock_{};
+    std::shared_ptr<executor::io::writer_pool> writer_pool_{};
 };
 
 /**

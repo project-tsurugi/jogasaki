@@ -111,13 +111,7 @@ io::record_writer* task_context::downstream_writer(task_context::writer_index id
 }
 
 io::record_writer* task_context::external_writer() {
-    BOOST_ASSERT(channel_ != nullptr);  //NOLINT
-    if (! external_writer_) {
-        if(auto res = channel_->acquire(external_writer_); res != status::ok) {
-            return nullptr;
-        }
-    }
-    return external_writer_.get();
+    return writer_seat_.writer().get();
 }
 
 class abstract::range const* task_context::range() {
@@ -130,6 +124,14 @@ std::size_t task_context::partition() const noexcept {
 
 io::record_channel* task_context::channel() const noexcept {
     return channel_;
+}
+
+io::writer_seat& task_context::writer_seat() noexcept {
+    return writer_seat_;
+}
+
+request_context* task_context::req_context() const noexcept {
+    return request_context_;
 }
 
 } // namespace jogasaki::executor::process::impl

@@ -71,6 +71,7 @@ file(GLOB SRCS
         "jogasaki/executor/common/*.cpp"
         "jogasaki/executor/dto/*.cpp"
         "jogasaki/executor/file/*.cpp"
+        "jogasaki/executor/io/*.cpp"
         "jogasaki/executor/process/*.cpp"
         "jogasaki/executor/process/ops/*.cpp"
         "jogasaki/executor/aggregate/*.cpp"

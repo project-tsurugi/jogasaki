@@ -73,6 +73,12 @@ public:
      */
     [[nodiscard]] ops::operator_container const& operators() const noexcept;
 
+    /**
+     * @brief accessor to the processor info
+     * @return the processor info
+     */
+    [[nodiscard]] std::shared_ptr<processor_info> const& info() const noexcept;
+
 private:
     std::shared_ptr<processor_info> info_{};
     ops::operator_container operators_{};

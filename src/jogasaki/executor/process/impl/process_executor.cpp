@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 Project Tsurugi.
+ * Copyright 2018-2025 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,23 @@
 
 #include <utility>
 
+#include <takatori/util/downcast.h>
+
+#include <jogasaki/executor/io/writer_pool.h>
 #include <jogasaki/executor/process/abstract/process_executor.h>
 #include <jogasaki/executor/process/abstract/processor.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/processor.h>
+#include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/task_context_pool.h>
+#include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::process::impl {
+
+using takatori::util::unsafe_downcast;
 
 abstract::process_executor_factory& default_process_executor_factory() {
     static abstract::process_executor_factory f = [](
@@ -38,8 +49,45 @@ process_executor::status process_executor::run() {
     // assign context
     auto context = contexts_->pop();
 
+    // use impl_ctx only when needs_seat=true. Mock task_context does not work with writer pool for now.
+    auto* impl_ctx = dynamic_cast<impl::task_context*>(context.get());
+    auto* rctx = impl_ctx ? impl_ctx->req_context() : nullptr;;
+
+    // check if the task contains emit operator and needs a writer seat
+    bool needs_seat = false;
+    if (impl_ctx) {
+        if (auto* proc = dynamic_cast<impl::processor*>(processor_.get())) {
+            if (proc->info() && proc->info()->details().has_emit_operator()) {
+                // queries requested with execute_statement does not have writer_pool even if emit exists
+                if (rctx && rctx->writer_pool()) {
+                    needs_seat = true;
+                }
+            }
+        }
+    }
+
+    // acquire seat if needed
+    if (needs_seat && ! impl_ctx->writer_seat().reserved()) {
+        io::writer_seat seat{};
+        if (! rctx->writer_pool()->acquire(seat)) {
+            // failed to acquire seat, yield the task
+            VLOG_LP(log_debug) << "writer_pool::acquire() failed, yielding task";
+            contexts_->push(std::move(context));
+            return status::to_yield;
+        }
+        VLOG_LP(log_trace) << "writer_pool::acquire() success";
+        impl_ctx->writer_seat() = std::move(seat);
+    }
+
     // execute task
     auto rc = processor_->run(context.get());
+
+    // release seat if acquired
+    if (needs_seat) {
+        rctx->writer_pool()->release(std::move(impl_ctx->writer_seat()));
+        VLOG_LP(log_trace) << "writer_pool::release() success";
+    }
+
     switch(rc) {
         case status::completed:
         case status::completed_with_errors:

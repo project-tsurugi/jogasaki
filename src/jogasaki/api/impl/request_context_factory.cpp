@@ -19,6 +19,7 @@
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
+#include <jogasaki/executor/io/writer_pool.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/scheduler/job_context.h>
@@ -54,6 +55,14 @@ std::shared_ptr<request_context> create_request_context(
         )
     );
     rctx->storage_provider(db.tables());
+
+    // Initialize writer_pool if record_channel is provided (i.e., this is a query)
+    if (channel) {
+        auto capacity = c->max_result_set_writers();
+        if (capacity > 0) {
+            rctx->writer_pool(std::make_shared<executor::io::writer_pool>(*channel, capacity));
+        }
+    }
 
     if (request_detail && req_info.request_source()) {
         request_detail->local_id(req_info.request_source()->local_id());

@@ -63,7 +63,6 @@ public:
 
 private:
     data::small_record_store buffer_{};
-    io::record_writer* writer_{};
 };
 
 }

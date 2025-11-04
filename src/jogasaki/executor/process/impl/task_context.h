@@ -27,6 +27,7 @@
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/io/record_channel.h>
 #include <jogasaki/executor/io/record_writer.h>
+#include <jogasaki/executor/io/writer_seat.h>
 #include <jogasaki/executor/process/abstract/range.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/abstract/work_context.h>
@@ -84,14 +85,26 @@ public:
 
     void deactivate_writer(writer_index idx) override;
 
+    /**
+     * @brief accessor to the writer seat
+     * @return writer seat held by this task context
+     */
+    [[nodiscard]] io::writer_seat& writer_seat() noexcept;
+
+    /**
+     * @brief accessor to the request context
+     * @return request context pointer
+     */
+    [[nodiscard]] request_context* req_context() const noexcept;
+
 private:
     request_context* request_context_{};
     std::size_t partition_{};
     io_exchange_map const* io_exchange_map_{};
     std::shared_ptr<impl::scan_range> range_{};
     io::record_channel* channel_{};
-    std::shared_ptr<io::record_writer> external_writer_{};
     partition_index sink_index_{};
+    io::writer_seat writer_seat_{};
 };
 
 } // namespace jogasaki::executor::process::impl

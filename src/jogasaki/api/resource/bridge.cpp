@@ -161,22 +161,15 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     }
     if (auto v = jogasaki_config->get<std::size_t>("max_result_set_writers")) {
         const std::size_t writers = v.value();
-        if (writers > 256) {
-            LOG_LP(ERROR) << "Too large max_result_set_writers (" << writers
-                          << ") given. It must be equal to or less than 256.";
+        if (writers > 256 || writers == 0) {
+            LOG_LP(ERROR) << "Invalid max_result_set_writers (" << writers
+                          << ") It must be greater than zero and less than or equal to 256.";
             return false;
         }
         ret->max_result_set_writers(writers);
     }
     if (auto v = jogasaki_config->get<std::size_t>("default_partitions")) {
-        const std::size_t partitions = v.value();
-        if (partitions > ret->max_result_set_writers()) {
-            LOG_LP(ERROR) << "Too large default_partitions (" << partitions
-                          << ") given. It must be equal to or less than max_result_set_writers ("
-                          << ret->max_result_set_writers() << ").";
-            return false;
-        }
-        ret->default_partitions(partitions);
+        ret->default_partitions(v.value());
     }
     if (auto v = jogasaki_config->get<bool>("stealing_enabled")) {
         ret->stealing_enabled(v.value());
@@ -268,14 +261,7 @@ static bool process_sql_config(std::shared_ptr<jogasaki::configuration>& ret, ta
         ret->direct_commit_callback(v.value());
     }
     if (auto v = jogasaki_config->get<std::size_t>("scan_default_parallel")) {
-        const std::size_t parallel = v.value();
-        if (parallel > ret->max_result_set_writers()) {
-            LOG_LP(ERROR) << "Too large scan_default_parallel (" << parallel
-                          << ") given. It must be equalt to or less than max_result_set_writers ("
-                          << ret->max_result_set_writers() << ").";
-            return false;
-        }
-        ret->scan_default_parallel(parallel);
+        ret->scan_default_parallel(v.value());
     }
     if (auto v = jogasaki_config->get<bool>("dev_inplace_teardown")) {
         ret->inplace_teardown(v.value());

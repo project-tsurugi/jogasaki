@@ -270,7 +270,7 @@ void finish_job(request_context& req_context) {
     auto req_detail = j.request();
 
     // release writer pool if this is a query request
-    if(auto pool = req_context.writer_pool()) {
+    if(auto const& pool = req_context.writer_pool()) {
         pool->release_pool();
     }
 

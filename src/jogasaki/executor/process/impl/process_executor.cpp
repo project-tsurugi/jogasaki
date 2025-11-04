@@ -33,8 +33,6 @@
 
 namespace jogasaki::executor::process::impl {
 
-using takatori::util::unsafe_downcast;
-
 abstract::process_executor_factory& default_process_executor_factory() {
     static abstract::process_executor_factory f = [](
         std::shared_ptr<abstract::processor> processor,

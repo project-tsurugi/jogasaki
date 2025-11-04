@@ -240,7 +240,10 @@ status database::start() {
     }
 
     // this function is not called on maintenance/quiescent mode
-    init();
+    auto res = init();
+    if (res != status::ok) {
+        return res;
+    }
     if (! kvs_db_) {
         // This is for dev/test. In production, kvs db is created outside.
         std::map<std::string, std::string> opts{};
@@ -385,10 +388,12 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 
 database::database() : database(std::make_shared<class configuration>()) {}
 
-void database::init() {
+status database::init() {
     global::storage_manager()->clear(); // clean up global objects first
     global::config_pool(cfg_);
-    if(initialized_) return;
+    if(initialized_) {
+        return status::ok;
+    }
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
     scalar_functions_ = global::scalar_function_provider(std::make_shared<yugawara::function::configurable_provider>());
     executor::function::add_builtin_scalar_functions(
@@ -398,11 +403,17 @@ void database::init() {
     loader_     = std::make_unique<plugin::udf::udf_loader>();
     auto results = loader_->load(std::string(cfg_->plugin_directory()));
     for (const auto& result : results) {
-        if (result.status() == plugin::udf::load_status::ok) {
-            LOG_LP(INFO) << "[gRPC] " << result.status() << " file: " << result.file()
+        auto res_status = result.status();
+        if (res_status == plugin::udf::load_status::ok) {
+            LOG_LP(INFO) << "[gRPC] " << res_status << " file: " << result.file()
                               << " detail: " << result.detail();
+        } else if (res_status == plugin::udf::load_status::path_not_found
+          || res_status == plugin::udf::load_status::ini_so_pair_mismatch ) {
+            LOG_LP(ERROR) << "[gRPC] " << res_status
+                                 << " file: " << result.file() << " detail: " << result.detail();
+            return status::err_aborted;
         } else {
-            LOG_LP(WARNING) << "[gRPC] " << result.status()
+            LOG_LP(WARNING) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
         }
     }
@@ -421,6 +432,7 @@ void database::init() {
         global::aggregate_function_repository()
     );
     initialized_ = true;
+    return status::ok;
 }
 
 void database::deinit() {

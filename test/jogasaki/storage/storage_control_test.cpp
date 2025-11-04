@@ -21,7 +21,6 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/relation_io_map.h>
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type.h>

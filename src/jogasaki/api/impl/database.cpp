@@ -411,7 +411,7 @@ status database::init() {
           || res_status == plugin::udf::load_status::ini_so_pair_mismatch ) {
             LOG_LP(ERROR) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
-            return status::err_aborted;
+            // return status::err_aborted;
         } else {
             LOG_LP(WARNING) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();

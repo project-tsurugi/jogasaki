@@ -408,7 +408,8 @@ status database::init() {
             LOG_LP(INFO) << "[gRPC] " << res_status << " file: " << result.file()
                               << " detail: " << result.detail();
         } else if (res_status == plugin::udf::load_status::path_not_found
-          || res_status == plugin::udf::load_status::ini_so_pair_mismatch ) {
+          || res_status == plugin::udf::load_status::ini_so_pair_mismatch
+          || res_status == plugin::udf::load_status::ini_invalid) {
             LOG_LP(ERROR) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
             // return status::err_aborted;

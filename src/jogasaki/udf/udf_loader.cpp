@@ -27,6 +27,9 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
+
 #include "enum_types.h"
 #include "error_info.h"
 #include "generic_client_factory.h"
@@ -36,75 +39,21 @@
 namespace fs = std::filesystem;
 using namespace plugin::udf;
 
-udf_config::udf_config(bool enabled, std::string endpoint, std::string secure) :
-    _enabled(enabled),
-    _endpoint(std::move(endpoint)),
-    _secure(std::move(secure)) {}
-
-bool udf_config::enabled() const noexcept { return _enabled; }
-std::string const& udf_config::endpoint() const noexcept { return _endpoint; }
-std::string const& udf_config::secure() const noexcept { return _secure; }
-
-[[nodiscard]] std::string const& client_info::default_endpoint() const noexcept { return default_endpoint_; }
-[[nodiscard]] std::string const& client_info::default_secure() const noexcept { return default_secure_; }
-void client_info::set_default_endpoint(std::string endpoint) { default_endpoint_ = std::move(endpoint); }
-void client_info::set_default_secure(std::string secure) { default_secure_ = std::move(secure); }
-
-std::optional<udf_config>
-udf_loader::parse_ini(fs::path const& ini_path, std::vector<load_result>& results, std::string const& name) {
-    try {
-        boost::property_tree::ptree pt;
-        boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
-
-        bool enabled = true;
-        std::string endpoint;
-        std::string secure;
-
-        if(auto opt = pt.get_optional<std::string>("udf.enabled")) {
-            std::string val = *opt;
-            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-            if(val == "false") {
-                enabled = false;
-            } else if(val != "true") {
-                results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.enabled must be true or false");
-                return std::nullopt;
-            }
-        }
-        if(auto opt = pt.get_optional<std::string>("udf.endpoint")) {
-            endpoint = *opt;
-        } else {
-            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.endpoint must be set");
-            return std::nullopt;
-        }
-        if(auto opt = pt.get_optional<std::string>("udf.secure")) {
-            secure = *opt;
-        } else {
-            results.emplace_back(load_status::ini_so_pair_mismatch, name, "udf.secure must be set");
-            return std::nullopt;
-        }
-        return udf_config(enabled, std::move(endpoint), std::move(secure));
-
-    } catch(std::exception const& e) {
-        results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());
-        return std::nullopt;
-    }
-}
-
-std::vector<load_result> udf_loader::load(std::string_view dir_path) {
-
-    fs::path path(dir_path);
-    std::vector<load_result> results;
-
+namespace {
+bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
     if(! fs::exists(path)) {
-        results.emplace_back(load_status::path_not_found, std::string(dir_path), "Directory not found");
-        return results;
+        results.emplace_back(load_status::path_not_found, path.string(), "Directory not found");
+        return false;
     }
     if(! fs::is_directory(path)) {
-        results.emplace_back(load_status::path_not_found, std::string(dir_path), "Path is not a directory");
-        return results;
+        results.emplace_back(load_status::path_not_found, path.string(), "Path is not a directory");
+        return false;
     }
-
-    std::unordered_map<std::string, std::pair<fs::path, fs::path>> pairs;
+    return true;
+}
+using pair_map = std::unordered_map<std::string, std::pair<fs::path, fs::path>>;
+pair_map collect_ini_so_pairs(fs::path const& path) {
+    pair_map pairs;
     for(auto const& entry: fs::directory_iterator(path)) {
         if(! entry.is_regular_file()) continue;
 
@@ -118,24 +67,110 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
             p.second = entry.path();
         }
     }
-
+    return pairs;
+}
+bool validate_pairs(pair_map const& pairs, std::vector<load_result>& results, std::string_view dir_path) {
     if(pairs.empty()) {
         results.emplace_back(
             load_status::no_ini_and_so_files,
             std::string(dir_path),
             "No .ini or .so files found (UDF disabled)"
         );
-        return results;
+        return false;
     }
+    for(auto const& [stem, p]: pairs) {
+        if(! p.first.empty() && p.second.empty()) {
+            results.emplace_back(load_status::ini_so_pair_mismatch, p.first, "Missing paired .so file");
+        } else if(p.first.empty() && ! p.second.empty()) {
+            results.emplace_back(load_status::ini_so_pair_mismatch, p.second, "Missing paired .ini file");
+        }
+    }
+    return true;
+}
+
+}  // namespace
+udf_config::udf_config(bool enabled, std::string endpoint, bool secure) :
+    _enabled(enabled),
+    _endpoint(std::move(endpoint)),
+    _secure(secure) {}
+
+bool udf_config::enabled() const noexcept { return _enabled; }
+std::string const& udf_config::endpoint() const noexcept { return _endpoint; }
+bool udf_config::secure() const noexcept { return _secure; }
+
+[[nodiscard]] std::string const& client_info::default_endpoint() const noexcept { return default_endpoint_; }
+[[nodiscard]] bool client_info::default_secure() const noexcept { return default_secure_; }
+void client_info::set_default_endpoint(std::string endpoint) { default_endpoint_ = std::move(endpoint); }
+void client_info::set_default_secure(bool secure) { default_secure_ = secure; }
+
+std::optional<udf_config> udf_loader::parse_ini(fs::path const& ini_path, std::vector<load_result>& results) {
+    try {
+        boost::property_tree::ptree pt;
+        boost::property_tree::ini_parser::read_ini(ini_path.string(), pt);
+
+        auto enabled_opt = pt.get_optional<std::string>("udf.enabled");
+        if(! enabled_opt) {
+            results.emplace_back(load_status::ini_invalid, ini_path.string(), "Missing required field: udf.enabled");
+            return std::nullopt;
+        }
+
+        std::string enabled_str = *enabled_opt;
+        std::transform(enabled_str.begin(), enabled_str.end(), enabled_str.begin(), ::tolower);
+        bool enabled = true;
+        if(enabled_str == "true") {
+            enabled = true;
+        } else if(enabled_str == "false") {
+            enabled = false;
+        } else {
+            results.emplace_back(
+                load_status::ini_invalid,
+                ini_path.string(),
+                "Invalid value for udf.enabled (must be true or false)"
+            );
+            return std::nullopt;
+        }
+
+        std::string endpoint = std::string(jogasaki::global::config_pool()->endpoint());
+        if(auto opt = pt.get_optional<std::string>("udf.endpoint")) { endpoint = *opt; }
+        bool secure = jogasaki::global::config_pool()->secure();
+        if(auto opt = pt.get_optional<std::string>("udf.secure")) {
+            std::string val = *opt;
+            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+            if(val == "false") {
+                secure = false;
+            } else if(val == "true") {
+                secure = true;
+            } else {
+                results.emplace_back(
+                    load_status::ini_invalid,
+                    ini_path.string(),
+                    "Invalid value for udf.secure (must be true or false)"
+                );
+                return std::nullopt;
+            }
+        }
+
+        return udf_config(enabled, std::move(endpoint), secure);
+
+    } catch(std::exception const& e) {
+        results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());
+        return std::nullopt;
+    }
+}
+
+std::vector<load_result> udf_loader::load(std::string_view dir_path) {
+
+    fs::path path(dir_path);
+    std::vector<load_result> results;
+
+    if(! validate_directory(path, results)) { return results; }
+    auto pairs = collect_ini_so_pairs(path);
+    if(! validate_pairs(pairs, results, dir_path)) { return results; }
     for(auto const& [name, paths]: pairs) {
         const auto& ini_path = paths.first;
         const auto& so_path = paths.second;
 
-        if(ini_path.empty() || so_path.empty()) {
-            results.emplace_back(load_status::ini_so_pair_mismatch, name, "Missing paired .ini or .so file");
-            return results;
-        }
-        auto udf_config_value = parse_ini(ini_path, results, name);
+        auto udf_config_value = parse_ini(ini_path, results);
         if(! udf_config_value.has_value()) { return results; }
         if(! udf_config_value->enabled()) {
             results.emplace_back(load_status::udf_disabled, name, "UDF disabled in configuration");
@@ -160,7 +195,7 @@ load_result udf_loader::create_api_from_handle(
     void* handle,
     std::string const& full_path,
     std::string const& endpoint,
-    std::string const& secure
+    bool secure
 ) {
     if(! handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
@@ -189,9 +224,7 @@ load_result udf_loader::create_api_from_handle(
             full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
-    if(secure != "false") {
-        return {load_status::ini_invalid, full_path, "Currently, only 'false' secure are supported"};
-    }
+    if(secure) { return {load_status::ini_invalid, full_path, "Currently, only 'false' secure are supported"}; }
     auto channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
     auto raw_client = factory_ptr->create(channel);
     if(! raw_client) {

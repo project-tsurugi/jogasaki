@@ -54,7 +54,7 @@ public:
     udf_config() = default;
     udf_config(udf_config const&) = default;
     udf_config(udf_config&&) noexcept = default;
-    udf_config(bool enabled, std::string endpoint, std::string secure);
+    udf_config(bool enabled, std::string endpoint, bool secure);
     udf_config& operator=(udf_config const&) = default;
     udf_config& operator=(udf_config&&) noexcept = default;
     ~udf_config() = default;
@@ -62,13 +62,13 @@ public:
     // Accessors
     [[nodiscard]] bool enabled() const noexcept;
     [[nodiscard]] std::string const& endpoint() const noexcept;
-    [[nodiscard]] std::string const& secure() const noexcept;
+    [[nodiscard]] bool secure() const noexcept;
 
 private:
 
     bool _enabled{true};
     std::string _endpoint{};
-    std::string _secure{};
+    bool _secure{false};
 };
 class client_info {
 public:
@@ -80,14 +80,14 @@ public:
     client_info(client_info&&) noexcept = default;
     client_info& operator=(client_info&&) noexcept = default;
     [[nodiscard]] std::string const& default_endpoint() const noexcept;
-    [[nodiscard]] std::string const& default_secure() const noexcept;
+    [[nodiscard]] bool default_secure() const noexcept;
     void set_default_endpoint(std::string endpoint);
-    void set_default_secure(std::string secure);
+    void set_default_secure(bool secure);
 
 private:
 
     std::string default_endpoint_{"localhost:50051"};
-    std::string default_secure_{"false"};
+    bool default_secure_{false};
 };
 
 class udf_loader : public plugin_loader {
@@ -127,14 +127,10 @@ public:
 private:
 
     /** List of raw `dlopen()` handles for loaded plugins. */
-    [[nodiscard]] load_result create_api_from_handle(
-        void* handle,
-        std::string const& full_path,
-        std::string const& endpoint,
-        std::string const& secure
-    );
+    [[nodiscard]] load_result
+    create_api_from_handle(void* handle, std::string const& full_path, std::string const& endpoint, bool secure);
     [[nodiscard]] std::optional<udf_config>
-    parse_ini(std::filesystem::path const& ini_path, std::vector<load_result>& results, std::string const&);
+    parse_ini(std::filesystem::path const& ini_path, std::vector<load_result>& results);
     /** List of loaded plugin API/client pairs. */
     std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>> plugins_;
 };

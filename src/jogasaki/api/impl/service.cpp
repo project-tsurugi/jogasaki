@@ -1573,18 +1573,8 @@ void service::execute_query(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        if (max_write_count.value() > global::config_pool()->max_result_set_writers()) {
-            auto msg = string_builder{} << "The requested statement was too complex to process."
-                                        << "The calculated paration (" << max_write_count.value() << ") "
-                                        << "exceeded sql.max_result_set_writers ("
-                                        << global::config_pool()->max_result_set_writers() << ")"
-                                        << string_builder::to_string;
-            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
-                msg, status::err_resource_limit_reached);
-            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
-            return;
-        }
-        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count.value());
+        std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
@@ -1732,18 +1722,8 @@ void service::execute_dump(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        if (max_write_count.value() > global::config_pool()->max_result_set_writers()) {
-            auto msg = string_builder{} << "The requested statement was too complex to process."
-                                        << "The calculated paration (" << max_write_count.value() << ") "
-                                        << "exceeded sql.max_result_set_writers ("
-                                        << global::config_pool()->max_result_set_writers() << ")"
-                                        << string_builder::to_string;
-            auto err_info =
-                create_error_info(error_code::unsupported_runtime_feature_exception, msg, status::err_resource_limit_reached);
-            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
-            return;
-        }
-        if (auto rc = res->acquire_channel(info->name_, ch, max_write_count.value());
+        std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =

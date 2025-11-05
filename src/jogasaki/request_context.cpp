@@ -245,4 +245,12 @@ void request_context::storage_lock(std::unique_ptr<storage::shared_lock> arg) no
     storage_lock_ = std::move(arg);
 }
 
+std::shared_ptr<executor::io::writer_pool> const& request_context::writer_pool() const noexcept {
+    return writer_pool_;
+}
+
+void request_context::writer_pool(std::shared_ptr<executor::io::writer_pool> arg) noexcept {
+    writer_pool_ = std::move(arg);
+}
+
 }  // namespace jogasaki

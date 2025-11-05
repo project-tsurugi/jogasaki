@@ -268,6 +268,12 @@ void finish_job(request_context& req_context) {
     auto& j = *req_context.job();
     auto& cb = j.callback();
     auto req_detail = j.request();
+
+    // release writer pool if this is a query request
+    if(auto const& pool = req_context.writer_pool()) {
+        pool->release_pool();
+    }
+
     if(cb) {
         cb();
     }

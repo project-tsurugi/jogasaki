@@ -94,20 +94,19 @@ operation_status emit::operator()(emit_context &ctx) {
             f.source_nullity_offset_
         );
     }
-    if (! ctx.writer_) {
-        ctx.writer_ = ctx.task_context().external_writer();
-        if(! ctx.writer_) {
-            set_error(
-                *ctx.req_context(),
-                error_code::sql_execution_exception,
-                "failed to acquire writer",
-                status::err_io_error
-            );
-            ctx.abort();
-            return {operation_status_kind::aborted};
-        }
+    auto* writer = ctx.task_context().external_writer();
+    if(! writer) {
+        // writer must have been reserved at the beginning of this process task, so normally this should not happen
+        set_error(
+            *ctx.req_context(),
+            error_code::sql_execution_exception,
+            "failed to acquire writer",
+            status::err_io_error
+        );
+        ctx.abort();
+        return {operation_status_kind::aborted};
     }
-    if(! ctx.writer_->write(target)) {
+    if(! writer->write(target)) {
         // possibly writer error due to buffer overflow
         // TODO retrieve the exact reason from writer and construct error message based on it
         set_error(

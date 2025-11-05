@@ -96,4 +96,8 @@ ops::operator_container const& processor::operators() const noexcept {
     return operators_;
 }
 
+std::shared_ptr<processor_info> const& processor::info() const noexcept {
+    return info_;
+}
+
 } // namespace jogasaki::executor::process::impl

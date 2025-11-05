@@ -43,10 +43,8 @@ operator_kind emit_context::kind() const noexcept {
 }
 
 void emit_context::release() {
-    if(writer_) {
-        writer_->flush();
-        writer_->release();
-    }
+    // this object does not own resources such as external writer.
+    // writer is managed by writer_seat in task_context
 }
 
 }

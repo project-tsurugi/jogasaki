@@ -30,7 +30,7 @@ writer_pool::writer_pool(record_channel& channel, std::size_t capacity):
     }
 }
 
-bool writer_pool::acquire(writer_seat& out) noexcept {
+bool writer_pool::acquire(writer_seat& out) noexcept {  // tbb queue and writer_seat won't throw, so we can noexcept
     writer_seat seat{};
     if (! queue_.try_pop(seat)) {
         return false;

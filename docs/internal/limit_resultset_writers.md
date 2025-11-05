@@ -137,3 +137,9 @@ public:
 ### 既存ロジックの削除
 
 - 既存のロジックではmax_result_set_writersの設定に基づいて、それを超えるような場合にクエリをエラーにしていたが、今回の設計では縮退運転を行うため、このロジックは削除する。
+
+
+## 注意点
+
+- 現状ではprocess_executor内部でseatをacquireしてreleaseするようにしている。将来的にINSERT文のようなprocess_executor経由で実行されないものが結果セットを戻す場合には、そちらにも別途seatのacquire/releaseを追加する必要がある。
+- 

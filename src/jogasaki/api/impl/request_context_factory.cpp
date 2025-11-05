@@ -59,7 +59,7 @@ std::shared_ptr<request_context> create_request_context(
     // Initialize writer_pool if record_channel is provided (i.e., this is a query)
     if (channel) {
         auto capacity = c->max_result_set_writers();
-        if (capacity > 0) {
+        if (capacity > 0) { // max_result_set_writers must be > 0, but just in case
             rctx->writer_pool(std::make_shared<executor::io::writer_pool>(*channel, capacity));
         }
     }

@@ -53,7 +53,7 @@ process_executor::status process_executor::run() {
 
     // check if the task contains emit operator and needs a writer seat
     bool needs_seat = false;
-    if (impl_ctx) {
+    if (impl_ctx) {  // impl_ctx can be nullptr when testing
         if (auto* proc = dynamic_cast<impl::processor*>(processor_.get())) {
             if (proc->info() && proc->info()->details().has_emit_operator()) {
                 // queries requested with execute_statement does not have writer_pool even if emit exists

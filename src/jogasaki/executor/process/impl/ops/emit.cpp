@@ -96,6 +96,7 @@ operation_status emit::operator()(emit_context &ctx) {
     }
     auto* writer = ctx.task_context().external_writer();
     if(! writer) {
+        // writer must have been reserved at the beginning of this process task, so normally this should not happen
         set_error(
             *ctx.req_context(),
             error_code::sql_execution_exception,

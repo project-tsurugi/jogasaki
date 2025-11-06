@@ -34,24 +34,24 @@ data_writer::data_writer(std::shared_ptr<tateyama::api::server::writer> origin) 
 {}
 
 status data_writer::write(char const* data, std::size_t length) {
-    log_entry << binstring(data, length);
+    log_entry << "this:" << this << " " binstring(data, length);
     status ret = status::ok;
     if (auto rc = origin_->write(data, length); rc != tateyama::status::ok) {
         VLOG_LP(log_error) << "failed to write data possibly due to writer buffer overflow length:" << length;
         ret = status::err_io_error;
     }
-    log_exit << ret;
+    log_exit << "this:" << this << " " << ret;
     return ret;
 }
 
 status data_writer::commit() {
-    log_entry;
+    log_entry << "this:" << this;
     status ret = status::ok;
     if (auto rc = origin_->commit(); rc != tateyama::status::ok) {
         VLOG_LP(log_error) << "failed to commit writer data";
         ret = status::err_io_error;
     }
-    log_exit << ret;
+    log_exit << "this:" << this << " " << ret;
     return ret;
 }
 

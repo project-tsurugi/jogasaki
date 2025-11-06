@@ -29,6 +29,7 @@ writer_seat::writer_seat(writer_seat&& other) noexcept:
     reserved_(other.reserved_)
 {
     other.channel_ = nullptr;
+    other.writer_ = nullptr;
     other.reserved_ = false;
 }
 
@@ -38,6 +39,7 @@ writer_seat& writer_seat::operator=(writer_seat&& other) noexcept {
         writer_ = std::move(other.writer_);
         reserved_ = other.reserved_;
         other.channel_ = nullptr;
+        other.writer_ = nullptr;
         other.reserved_ = false;
     }
     return *this;

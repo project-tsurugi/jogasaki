@@ -991,4 +991,39 @@ TEST_F(service_api_test, disposing_statement_twice) {
     test_dispose_prepare(stmt_handle);
 }
 
+TEST_F(service_api_test, limit_result_set) {
+    // verify the behavior limiting writers by max_result_set_writers
+    global::config_pool()->max_result_set_writers(1);
+    execute_statement("create table t (c0 int primary key)");
+    execute_statement("insert into t values (0),(1),(2),(3)");
+
+    api::transaction_handle tx_handle{};
+    {
+        test_begin(tx_handle, false, false);
+        test_query(
+            "select * from t union all select * from t",  // this query requires 2 writers
+            tx_handle,
+            {
+                {"c0", common_column::atom_type::int4},  // nullable is not sent now
+            },
+            {
+                true,
+            },
+            {
+                mock::create_nullable_record<meta::field_type_kind::int4>(0),
+                mock::create_nullable_record<meta::field_type_kind::int4>(0),
+                mock::create_nullable_record<meta::field_type_kind::int4>(1),
+                mock::create_nullable_record<meta::field_type_kind::int4>(1),
+                mock::create_nullable_record<meta::field_type_kind::int4>(2),
+                mock::create_nullable_record<meta::field_type_kind::int4>(2),
+                mock::create_nullable_record<meta::field_type_kind::int4>(3),
+                mock::create_nullable_record<meta::field_type_kind::int4>(3),
+            },
+            {"c0"},
+            true  // do sort
+        );
+        test_commit(tx_handle);
+    }
+}
+
 }  // namespace jogasaki::api

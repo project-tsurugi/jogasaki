@@ -49,7 +49,18 @@ public:
 
     writer_seat(writer_seat const& other) = delete;
     writer_seat& operator=(writer_seat const& other) = delete;
+
+    /**
+     * @brief move construct
+     * @param other moved target, which will be empty (i.e. default initialized) after the move
+     */
     writer_seat(writer_seat&& other) noexcept;
+
+    /**
+     * @brief move assign
+     * @param other moved target, which will be empty (i.e. default initialized) after the move
+     * @return self
+     */
     writer_seat& operator=(writer_seat&& other) noexcept;
 
     /**

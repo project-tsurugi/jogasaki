@@ -70,6 +70,7 @@
 #include <jogasaki/executor/dto/describe_table.h>
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/to_common_columns.h>
+#include <jogasaki/executor/writer_count_calculator.h>
 #include <jogasaki/executor/file/time_unit_kind.h>
 #include <jogasaki/executor/io/dump_config.h>
 #include <jogasaki/logging.h>
@@ -1562,7 +1563,19 @@ void service::execute_query(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        if (auto rc = res->acquire_channel(info->name_, ch, global::config_pool()->max_result_set_writers());
+        auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
+        if (!max_write_count.has_value()) {
+            auto msg = string_builder{}
+                       << "calculate_max_writer_count failed (statement_kind::execute not exists)"
+                       << string_builder::to_string;
+            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
+                msg, status::err_unsupported);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        VLOG_LP(log_debug) << "acquiring channel rid=" << req_info.id() << " max_writers:" << max_writers;
+        if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =
@@ -1700,7 +1713,19 @@ void service::execute_dump(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        if (auto rc = res->acquire_channel(info->name_, ch, global::config_pool()->max_result_set_writers());
+        auto max_write_count = executor::calculate_max_writer_count(*e, *tctx);
+        if (!max_write_count.has_value()) {
+            auto msg = string_builder{}
+                       << "calculate_max_writer_count failed (statement_kind::execute not exists)"
+                       << string_builder::to_string;
+            auto err_info = create_error_info(error_code::unsupported_runtime_feature_exception,
+                msg, status::err_unsupported);
+            details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
+            return;
+        }
+        std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        VLOG_LP(log_debug) << "acquiring channel rid=" << req_info.id() << " max_writers:" << max_writers;
+        if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
             auto err_info =

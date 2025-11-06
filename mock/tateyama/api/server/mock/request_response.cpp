@@ -19,6 +19,7 @@
 #include <sstream>
 #include <type_traits>
 #include <utility>
+#include <glog/logging.h>
 
 #include <tateyama/api/server/mock/request_response.h>
 
@@ -77,15 +78,18 @@ blob_info const& test_request::get_blob(std::string_view name) const {
 }
 
 status test_channel::acquire(std::shared_ptr<writer>& wrt) {
+    std::unique_lock<std::mutex> lock(mutex_);
     auto& s = buffers_.emplace_back(std::make_shared<test_writer>());
     if (on_write_) {
         s->set_on_write(on_write_);
     }
     wrt = s;
+    LOG(INFO) << "writer acquired:" << wrt.get();
     return status::ok;
 }
 
 status test_channel::release(writer&) {
+    std::unique_lock<std::mutex> lock(mutex_);
     ++released_;
     return status::ok;
 }

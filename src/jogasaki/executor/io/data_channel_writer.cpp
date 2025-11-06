@@ -54,7 +54,7 @@ namespace jogasaki::executor::io {
 //NOLINTEND
 
 bool data_channel_writer::write(accessor::record_ref rec) {
-    log_entry << "record_size:" << rec.size();
+    log_entry << "this:" << this << " record_size:" << rec.size();
     auto n = meta_->field_count();
     check_writer_rc(value_writer_->write_row_begin(n));
     for (std::size_t i=0; i < n; ++i) {
@@ -124,7 +124,7 @@ bool data_channel_writer::write(accessor::record_ref rec) {
         trace_scope_name("writer::commit");  //NOLINT
         writer_->commit();
     }
-    log_exit;
+    log_exit << "this:" << this;
     return true;
 }
 

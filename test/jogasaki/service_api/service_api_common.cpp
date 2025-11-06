@@ -222,7 +222,8 @@ void service_api_test::test_query(
     std::vector<dto::common_column> const& column_types,
     std::vector<bool> const& nullabilities,
     std::vector<mock::basic_record> const& expected,
-    std::vector<std::string> const& exp_colnames
+    std::vector<std::string> const& exp_colnames,
+    bool sort_before_compare
 ) {
     auto s = encode_execute_query(tx_handle, sql);
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
@@ -242,10 +243,13 @@ void service_api_test::test_query(
             auto m = create_record_meta(cols);
             auto v = deserialize_msg(ch.view(), m);
             ASSERT_EQ(expected.size(), v.size());
+            if (sort_before_compare) {
+                std::sort(v.begin(), v.end());
+            }
             for(std::size_t i=0, n=v.size(); i<n; ++i) {
                 EXPECT_EQ(expected[i], v[i]);
             }
-            EXPECT_TRUE(ch.all_released());
+            EXPECT_TRUE(ch.all_released()) << "# of writers:" << ch.buffers_.size() << " released:" << ch.released_;
         }
     }
     {

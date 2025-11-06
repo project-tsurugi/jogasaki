@@ -158,7 +158,8 @@ public:
         std::vector<dto::common_column> const& column_types,
         std::vector<bool> const& nullabilities,
         std::vector<mock::basic_record> const& expected,
-        std::vector<std::string> const& exp_colnames
+        std::vector<std::string> const& exp_colnames,
+        bool sort_before_compare = false
     );
     void test_prepared_statement(std::uint64_t stmt_handle, api::transaction_handle tx_handle, error_code exp = error_code::none);
     void test_prepared_statement(

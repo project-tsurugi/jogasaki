@@ -1574,6 +1574,7 @@ void service::execute_query(
             return;
         }
         std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        VLOG_LP(log_debug) << "acquiring channel rid=" << req_info.id() << " max_writers:" << max_writers;
         if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";
@@ -1723,6 +1724,7 @@ void service::execute_dump(
             return;
         }
         std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        VLOG_LP(log_debug) << "acquiring channel rid=" << req_info.id() << " max_writers:" << max_writers;
         if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
             auto msg = "creating output channel failed (maybe too many requests)";

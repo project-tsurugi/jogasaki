@@ -70,8 +70,8 @@ using namespace std::string_view_literals;
 
 TEST_F(limit_resultset_writers_test, simple_query_with_max_writers_1) {
     // test that simple queries work normally with max_result_set_writers = 1
-    // with default_partitions=5 (by default), some partitions fail to acquire, so
-    global::config_pool()->max_result_set_writers(2);
+    // with default_partitions=5 (by default), some partitions fail to acquire, so tasks yield frequently
+    global::config_pool()->max_result_set_writers(1);
     execute_statement("create table t (c0 int primary key)");
     execute_statement("INSERT INTO t VALUES (1), (2)");
     {

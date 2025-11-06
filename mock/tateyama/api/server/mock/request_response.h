@@ -234,6 +234,7 @@ public:
     std::vector<std::shared_ptr<test_writer>> buffers_{};  //NOLINT
     std::size_t released_{};  //NOLINT
     std::function<void(std::string_view)> on_write_{};
+    std::mutex mutex_{};  // protect all data members in this channel
 };
 
 class test_response : public response {

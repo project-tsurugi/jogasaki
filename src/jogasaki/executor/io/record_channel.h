@@ -119,6 +119,13 @@ public:
      * @brief accessor for record channel kind
      */
     [[nodiscard]] virtual record_channel_kind kind() const noexcept = 0;
+
+    /**
+     * @brief accessor for the maximum number of writers available on this channel
+     * @return the max number of writers
+     * @return std::nullopt if there is no maximum limit
+     */
+    [[nodiscard]] virtual std::optional<std::size_t> max_writer_count() = 0;
 };
 
 }  // namespace jogasaki::executor::io

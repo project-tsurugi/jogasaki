@@ -75,6 +75,10 @@ public:
     [[nodiscard]] record_channel_kind kind() const noexcept override{
         return record_channel_kind::null_record_channel;
     }
+
+    [[nodiscard]] std::optional<std::size_t> max_writer_count() override {
+        return {};
+    }
 private:
     std::vector<std::shared_ptr<null_record_channel_writer>> writers_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};

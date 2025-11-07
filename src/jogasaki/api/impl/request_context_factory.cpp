@@ -61,10 +61,13 @@ std::shared_ptr<request_context> create_request_context(
     if(channel && has_result_records) {
         // request has emit operator, though the channel can possibly be null_record_channel
         // (discard query result since api for statement is used)
-        auto capacity = c->max_result_set_writers();
-        if (capacity > 0) { // max_result_set_writers must be > 0, but just in case
-            rctx->writer_pool(std::make_shared<executor::io::writer_pool>(*channel, capacity));
-        }
+
+        // If channel has no max limit, we use max_result_set_writers as the number of seats.
+        // Though max_result_set_writers is large and expensive, this case is either null record channel or result
+        // set channel, and performance is not important.
+        std::size_t max_writers =
+            channel->max_writer_count().has_value() ? channel->max_writer_count().value() : c->max_result_set_writers();
+        rctx->writer_pool(std::make_shared<executor::io::writer_pool>(*channel, max_writers));
     }
 
     if (request_detail && req_info.request_source()) {

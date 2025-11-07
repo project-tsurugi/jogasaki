@@ -93,10 +93,15 @@ public:
         return writers_.size() == released_;
     }
 
+    [[nodiscard]] std::optional<std::size_t> max_writer_count() override {
+        return max_writer_count_;
+    }
+
     mutable std::mutex mutex_{};
     std::vector<std::shared_ptr<test_writer>> writers_{};  //NOLINT
     std::size_t released_{};  //NOLINT
     std::size_t write_latency_ms_{};  //NOLINT
+    std::optional<std::size_t> max_writer_count_{};
 };
 
 }

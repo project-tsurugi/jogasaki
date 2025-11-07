@@ -53,4 +53,8 @@ record_channel_stats& record_channel_adapter::statistics() {
     return stats_;
 }
 
+std::optional<std::size_t> record_channel_adapter::max_writer_count() {
+    return channel_->max_writer_count();
+}
+
 }  // namespace jogasaki::executor::io

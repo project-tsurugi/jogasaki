@@ -35,6 +35,7 @@ std::shared_ptr<request_context> create_request_context(
     maybe_shared_ptr<executor::io::record_channel> const& channel,
     std::shared_ptr<memory::lifo_paged_memory_resource> resource,
     request_info const& req_info,
+    bool has_result_records,
     std::shared_ptr<scheduler::request_detail> request_detail
 ) {
     auto& c = db.configuration();
@@ -56,12 +57,17 @@ std::shared_ptr<request_context> create_request_context(
     );
     rctx->storage_provider(db.tables());
 
-    // Initialize writer_pool if record_channel is provided (i.e., this is a query)
-    if (channel) {
-        auto capacity = c->max_result_set_writers();
-        if (capacity > 0) { // max_result_set_writers must be > 0, but just in case
-            rctx->writer_pool(std::make_shared<executor::io::writer_pool>(*channel, capacity));
-        }
+    // Initialize writer_pool if record_channel is provided for query
+    if(channel && has_result_records) {
+        // request has emit operator, though the channel can possibly be null_record_channel
+        // (discard query result since api for statement is used)
+
+        // If channel has no max limit, we use max_result_set_writers as the number of seats.
+        // Though max_result_set_writers is large and expensive, this case is either null record channel or result
+        // set channel, and performance is not important.
+        std::size_t max_writers =
+            channel->max_writer_count().has_value() ? channel->max_writer_count().value() : c->max_result_set_writers();
+        rctx->writer_pool(std::make_shared<executor::io::writer_pool>(*channel, max_writers));
     }
 
     if (request_detail && req_info.request_source()) {

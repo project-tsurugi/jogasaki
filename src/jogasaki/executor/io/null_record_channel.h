@@ -26,7 +26,11 @@
 namespace jogasaki::executor::io {
 
 /**
- * @brief adaptor to adapt api::data_channel to executor::record_channel
+ * @brief dummy object to behave as if record channel and writers exist
+ * @details this is used to integrate execute_async API for both statements and queries.
+ * Specifically, null_record_channel is created in the following cases:
+ *   - non-query statement e.g. INSERT/UPSERT/UPDATE or DDLs
+ *   - query statement is executed via the api that doesn't provide channel (i.e. execute_statement)
  */
 class null_record_channel : public executor::io::record_channel {
 public:
@@ -70,6 +74,10 @@ public:
      */
     [[nodiscard]] record_channel_kind kind() const noexcept override{
         return record_channel_kind::null_record_channel;
+    }
+
+    [[nodiscard]] std::optional<std::size_t> max_writer_count() override {
+        return {};
     }
 private:
     std::vector<std::shared_ptr<null_record_channel_writer>> writers_{};

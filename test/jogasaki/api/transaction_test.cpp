@@ -508,6 +508,7 @@ TEST_F(transaction_test, task_use_count) {
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         {},
+        false,
         nullptr
     );
 
@@ -548,6 +549,7 @@ TEST_F(transaction_test, commit_while_task_is_running) {
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         {},
+        false,
         nullptr
     );
 
@@ -597,6 +599,7 @@ TEST_F(transaction_test, abort_while_task_is_running) {
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         {},
+        false,
         nullptr
     );
 

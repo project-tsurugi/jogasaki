@@ -134,6 +134,16 @@ public:
     [[nodiscard]] record_channel_kind kind() const noexcept override{
         return record_channel_kind::dump_channel;
     }
+
+
+    /**
+     * @brief accessor for the maximum number of writers available on this channel
+     * @return the max number of writers
+     * @return std::nullopt if there is no maximum limit
+     */
+    [[nodiscard]] std::optional<std::size_t> max_writer_count() override {
+        return channel_->max_writer_count();
+    }
 private:
     maybe_shared_ptr<record_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};

@@ -1001,6 +1001,7 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         {},
+        false,
         {}
     );
     if(! utils::validate_index_key_type(*context, *index)) {
@@ -1320,6 +1321,7 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(  //NO
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         req_info,
+        false,
         req
     );
 
@@ -1530,6 +1532,7 @@ bool database::execute_load(
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         {},
+        false,
         req
     );
 

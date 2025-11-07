@@ -129,6 +129,10 @@ public:
     [[nodiscard]] executor::io::record_channel_kind kind() const noexcept override{
         return executor::io::record_channel_kind::result_store_channel;
     }
+
+    [[nodiscard]] std::optional<std::size_t> max_writer_count() override {
+        return {};
+    }
 private:
     maybe_shared_ptr<data::result_store> store_{};
     executor::io::record_channel_stats stats_{};

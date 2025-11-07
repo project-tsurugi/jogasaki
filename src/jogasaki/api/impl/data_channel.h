@@ -31,7 +31,10 @@ class data_channel : public api::data_channel {
 public:
     data_channel() = default;
 
-    explicit data_channel(std::shared_ptr<tateyama::api::server::data_channel> origin);
+    data_channel(
+        std::shared_ptr<tateyama::api::server::data_channel> origin,
+        std::size_t max_writers
+    );
 
     status acquire(std::shared_ptr<writer>& wrt) override;
 
@@ -39,8 +42,11 @@ public:
 
     [[nodiscard]] std::shared_ptr<tateyama::api::server::data_channel> const& origin() const noexcept;
 
+    [[nodiscard]] std::optional<std::size_t> max_writer_count() override;
+
 private:
     std::shared_ptr<tateyama::api::server::data_channel> origin_{};
+    std::size_t max_writer_count_{};
 };
 
 }

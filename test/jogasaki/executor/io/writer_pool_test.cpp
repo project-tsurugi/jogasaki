@@ -53,6 +53,9 @@ public:
     [[nodiscard]] record_channel_kind kind() const noexcept override {
         return record_channel_kind::null_record_channel;
     }
+    [[nodiscard]] std::optional<std::size_t> max_writer_count() override {
+        return {};
+    }
 
     std::vector<std::shared_ptr<fake_record_writer>> writers_{};
     record_channel_stats stats_{};

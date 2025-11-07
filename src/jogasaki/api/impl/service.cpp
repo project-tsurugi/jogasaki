@@ -1553,6 +1553,7 @@ void service::execute_query(
     }
 
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
+    std::size_t max_writers = 0;
     {
         trace_scope_name("acquire_channel");  //NOLINT
         auto tctx = get_transaction_context(tx);
@@ -1573,7 +1574,7 @@ void service::execute_query(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
         VLOG_LP(log_debug) << "acquiring channel rid=" << req_info.id() << " max_writers:" << max_writers;
         if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
@@ -1584,7 +1585,7 @@ void service::execute_query(
             return;
         }
     }
-    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch));
+    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch), max_writers);
     info->meta_ = e->meta();
     details::send_body_head(*res, *info, req_info);
     auto* cbp = c.get();
@@ -1703,6 +1704,7 @@ void service::execute_dump(
     }
 
     std::shared_ptr<tateyama::api::server::data_channel> ch{};
+    std::size_t max_writers = 0;
     {
         trace_scope_name("acquire_channel");  //NOLINT
         auto tctx = get_transaction_context(tx);
@@ -1723,7 +1725,7 @@ void service::execute_dump(
             details::error<sql::response::ResultOnly>(*res, err_info.get(), req_info);
             return;
         }
-        std::size_t max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
+        max_writers = std::min(max_write_count.value(), global::config_pool()->max_result_set_writers());
         VLOG_LP(log_debug) << "acquiring channel rid=" << req_info.id() << " max_writers:" << max_writers;
         if (auto rc = res->acquire_channel(info->name_, ch, max_writers);
             rc != tateyama::status::ok) {
@@ -1734,7 +1736,7 @@ void service::execute_dump(
             return;
         }
     }
-    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(ch);
+    info->data_channel_ = std::make_shared<jogasaki::api::impl::data_channel>(std::move(ch), max_writers);
     {
         auto m = std::make_shared<meta::record_meta>(
             std::vector<meta::field_type>{

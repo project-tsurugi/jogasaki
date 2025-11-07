@@ -30,9 +30,14 @@ namespace jogasaki::api::impl {
 
 using takatori::util::unsafe_downcast;
 
-data_channel::data_channel(std::shared_ptr<tateyama::api::server::data_channel> origin) :
-    origin_(std::move(origin))
+data_channel::data_channel(
+    std::shared_ptr<tateyama::api::server::data_channel> origin,
+    std::size_t max_writers
+) :
+    origin_(std::move(origin)),
+    max_writer_count_(max_writers)
 {}
+
 status data_channel::acquire(std::shared_ptr<writer>& wrt) {
     std::shared_ptr<tateyama::api::server::writer> writer{};
     if(auto rc = origin_->acquire(writer); rc != tateyama::status::ok) {
@@ -53,5 +58,10 @@ status data_channel::release(writer& wrt) {
 std::shared_ptr<tateyama::api::server::data_channel> const& data_channel::origin() const noexcept {
     return origin_;
 }
+
+std::optional<std::size_t> data_channel::max_writer_count() {
+    return max_writer_count_;
+}
+
 }
 

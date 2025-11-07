@@ -121,6 +121,7 @@ TEST_F(parallel_scan_task_test, simple) {
         nullptr,
         std::make_shared<memory::lifo_paged_memory_resource>(&global::page_pool()),
         {},
+        false,
         nullptr
     );
 

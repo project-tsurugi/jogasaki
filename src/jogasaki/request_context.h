@@ -217,6 +217,17 @@ public:
     [[nodiscard]] bool lightweight() const noexcept;
 
     /**
+     * @brief setter for the has_result_records parameter
+     */
+    void has_result_records(bool arg) noexcept;
+
+    /**
+     * @brief accessor for the has_result_records parameter
+     * @return whether the request has result_records (i.e. is query and has emit operator)
+     */
+    [[nodiscard]] bool has_result_records() const noexcept;
+
+    /**
      * @brief setter for the error info
      * @details only the first one is stored and subsequent error info (that comes late) is ignored
      * @param the error info to be stored
@@ -313,6 +324,7 @@ private:
     std::atomic<status> status_code_{status::ok};
     std::string status_message_{};
     bool lightweight_{};
+    bool has_result_records_{};
     std::shared_ptr<error::error_info> error_info_{};
     std::shared_ptr<request_statistics> stats_{};
 

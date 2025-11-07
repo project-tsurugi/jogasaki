@@ -56,7 +56,8 @@ process_executor::status process_executor::run() {
     if (impl_ctx) {  // impl_ctx can be nullptr when testing
         if (auto* proc = dynamic_cast<impl::processor*>(processor_.get())) {
             if (proc->info() && proc->info()->details().has_emit_operator()) {
-                // queries requested with execute_statement does not have writer_pool even if emit exists
+                // emit exists, so writer_pool must exist (even if channel is null_record_channel)
+                // this check is just for safety
                 if (rctx && rctx->writer_pool()) {
                     needs_seat = true;
                 }

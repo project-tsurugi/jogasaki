@@ -253,4 +253,12 @@ void request_context::writer_pool(std::shared_ptr<executor::io::writer_pool> arg
     writer_pool_ = std::move(arg);
 }
 
+void request_context::has_result_records(bool arg) noexcept {
+    has_result_records_ = arg;
+}
+
+bool request_context::has_result_records() const noexcept {
+    return has_result_records_;
+}
+
 }  // namespace jogasaki

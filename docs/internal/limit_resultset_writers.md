@@ -8,12 +8,13 @@
 ## 設計
 
 - writer poolをクエリごとに１つ保持する
-- poolに格納される最大メンバ数はconfiguration::max_result_set_writersと同数
-- writer poolはchannelから取得したwriterそのものではなく、writerを利用可能なseatを保持する。
-    - channelからacquireしてwriter本体を格納するとacquire時にメモリ確保が行われ、タスク実行の結果「結局使われなかったwriter」が無駄になる
+- 最大ライター数を計算する既存の関数 calculate_max_writer_count を利用して、poolの最大メンバ数を決定する
+  - 計算結果がconfiguration::max_result_set_writersを超える場合は、configuration::max_result_set_writersを最大メンバ数とする
+  - poolの初期化時に最大個数のseatを作成して詰める
+- writer poolはwriter_seatをキューで保持する。seatはchannelへの参照と予約状態を持つが、writer本体はacquire時ではなく、実際に使用される時に初めて作成される（遅延評価）。
+    - channelからacquireしてwriter本体を格納してしまうとacquire時にメモリ確保が行われ、タスク実行の結果「結局使われなかったwriter」が無駄になる
     - emitを含むタスクの実行時に初めてseatからwriterを実体化する(同時にseatにwriterを保存する)
     - seatは「writerを1つ使用する権利」を表すもの。長さ1のコンテナ。
-- poolの初期化時に最大個数のseatを作成して詰める
 
 - writer poolは並列キュー(FIFO)
     - ただし将来的にはthread localによるキャッシュを保持するかもしれない
@@ -133,13 +134,15 @@ public:
 - タスクの完了直前、writer_seat_が保持しているseatをwriter_poolにreleaseする
 - task::external_writer()はseatのwriter()を返すようにする
 - emit内でemit_contextにexternal_writer()で取得したwriterを一時的に格納し、emit_context::release()で解放していたが、writerのオーナーはseatなので、emit_contextにwriterを格納しないように変更する
+- ジョブの完了時、ジョブ完了コールバックを呼ぶ直前で、request_contextのwriter_pool_をrelease_pool()してリソースを解放する
+  - コールバックでchannelのreleaseが呼ばれるので、その直前にwriterが解放されるようにする
 
-### 既存ロジックの削除
+### 既存ロジックの変更
 
-- 既存のロジックではmax_result_set_writersの設定に基づいて、それを超えるような場合にクエリをエラーにしていたが、今回の設計では縮退運転を行うため、このロジックは削除する。
-
+- 既存のロジックではmax_result_set_writersの設定に基づいて、それを超えるような場合にクエリをエラーにしていたが、そのロジックはなくし、超える場合にはmax_result_set_writersを上限として縮退運転を行うようにする。
 
 ## 注意点
 
 - 現状ではprocess_executor内部でseatをacquireしてreleaseするようにしている。将来的にINSERT文のようなprocess_executor経由で実行されないものが結果セットを戻す場合には、そちらにも別途seatのacquire/releaseを追加する必要がある。
-- 
+- 現状ではINSERT/UPDATE文のような結果セットを戻さないステートメントや、クエリ(つまりemit演算子を含む)が結果セットを要求しないAPI (ExecuteStatement)で実行された際にnull_record_channelを作成して、「クエリかどうかにかかわらずステートメントの実行時にはかならずchannelが存在する」という状態にしている。このため、単純にchannelの有無ではemitを含むかどうかを判定できない。
+  - そこで `create_request_context()` に `has_result_records` という引数を追加し、クエリ実行時にはtrueを渡すようにした。クエリが結果セットを要求しないAPIで実行された場合でもwriter_poolが作成されるが、このケースは性能要求が高いとは考えにくいため、許容する。

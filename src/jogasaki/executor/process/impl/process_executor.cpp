@@ -49,7 +49,7 @@ process_executor::status process_executor::run() {
 
     // use impl_ctx only when needs_seat=true. Mock task_context does not work with writer pool for now.
     auto* impl_ctx = dynamic_cast<impl::task_context*>(context.get());
-    auto* rctx = impl_ctx ? impl_ctx->req_context() : nullptr;;
+    auto* rctx = impl_ctx ? impl_ctx->req_context() : nullptr;
 
     // check if the task contains emit operator and needs a writer seat
     bool needs_seat = false;

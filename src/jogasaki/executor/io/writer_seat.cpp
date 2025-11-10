@@ -62,7 +62,7 @@ std::shared_ptr<record_writer> const& writer_seat::writer() {
 }
 
 bool writer_seat::has_writer() const noexcept {
-    return static_cast<bool>(writer_);
+    return writer_ != nullptr;
 }
 
 }  // namespace jogasaki::executor::io

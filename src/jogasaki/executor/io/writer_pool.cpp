@@ -53,8 +53,6 @@ void writer_pool::release_pool() {
             wrt->flush();
             wrt->release();
         }
-        // reset local seat for next iteration
-        seat = writer_seat{};
     }
 
     // Drop the channel reference to indicate the pool no longer materializes writers.

@@ -59,18 +59,8 @@ bool bridge::setup(framework::environment& env) {
         env.mode() == framework::boot_mode::quiescent_server) {
         return true;
     }
-    if (db_) return true;
-    auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();
-    if(! kvs) {
-        LOG_LP(ERROR) << "failed to find transactional kvs";
-        return false;
-    }
-    auto cfg = convert_config(*env.configuration());
-    if(! cfg) {
-        return false;
-    }
-    db_ = jogasaki::api::create_database(cfg, kvs->core_object());
-    return true;
+    cfg_ = convert_config(*env.configuration());
+    return cfg_ != nullptr;
 }
 
 bool bridge::start(framework::environment& env) {
@@ -80,6 +70,16 @@ bool bridge::start(framework::environment& env) {
         env.mode() == framework::boot_mode::quiescent_server) {
         return true;
     }
+
+    if (! db_) {
+        auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();
+        if(! kvs) {
+            LOG_LP(ERROR) << "failed to find transactional kvs";
+            return false;
+        }
+        db_ = jogasaki::api::create_database(cfg_, kvs->core_object());
+    }
+
     auto ret = db_->start() == status::ok;
     started_ = ret;
     return ret;

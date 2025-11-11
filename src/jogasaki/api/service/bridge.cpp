@@ -47,20 +47,7 @@ framework::component::id_type bridge::id() const noexcept {
     return tag;
 }
 
-bool bridge::setup(framework::environment& env) {
-    // on maintenance/quiescent mode, sql service exists, but does nothing and returns error on sql request.
-    if(env.mode() == framework::boot_mode::maintenance_standalone ||
-        env.mode() == framework::boot_mode::maintenance_server ||
-        env.mode() == framework::boot_mode::quiescent_server) {
-        return true;
-    }
-    if (core_) return true;
-    auto br = env.resource_repository().find<resource::bridge>();
-    if(! br) {
-        LOG(ERROR) << "setup error";
-        return false;
-    }
-    core_ = std::make_unique<jogasaki::api::impl::service>(env.configuration(), br->database());
+bool bridge::setup(framework::environment&) {
     return true;
 }
 
@@ -72,6 +59,15 @@ bool bridge::start(framework::environment& env) {
         quiescent_or_maintenance_ = true;
         return true;
     }
+    if (! core_) {
+        auto br = env.resource_repository().find<resource::bridge>();
+        if(! br) {
+            LOG(ERROR) << "start error";
+            return false;
+        }
+        core_ = std::make_unique<jogasaki::api::impl::service>(env.configuration(), br->database());
+    }
+
     auto session_resource = env.resource_repository().find<tateyama::session::session_resource>();
     if(! session_resource) {
         LOG(ERROR) << "start error";

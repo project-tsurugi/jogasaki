@@ -185,9 +185,9 @@ TEST_F(framework_test, send_request_with_header) {
     auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
     sv.add_service(sqlsvc);
     sv.setup();
+    sv.start();
     auto* db = sqlsvc->database();
     db->config()->skip_smv_check(true);
-    sv.start();
     api::transaction_handle tx_handle{};
     {
         auto s = utils::encode_begin(false, false, std::vector<std::string>{});

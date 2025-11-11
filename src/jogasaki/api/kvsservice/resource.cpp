@@ -34,25 +34,25 @@ framework::component::id_type resource::id() const noexcept {
     return tag;
 }
 
-bool resource::setup(framework::environment &env) {
-    // on maintenance/quiescent mode, sql resource exists, but does nothing.
-    // see setup() in src/jogasaki/api/resource/bridge.cpp
-    if(env.mode() == framework::boot_mode::maintenance_standalone ||
-       env.mode() == framework::boot_mode::maintenance_server ||
-       env.mode() == framework::boot_mode::quiescent_server) {
-        return true;
-    }
-    if (store_) return true;
-    auto bridge = env.resource_repository().find<jogasaki::api::resource::bridge>();
-    if(! bridge) {
-        LOG(ERROR) << "failed to find jogasaki resource bridge";
-        return false;
-    }
-    store_ = std::make_unique<jogasaki::api::kvsservice::store>(bridge);
+bool resource::setup(framework::environment&) {
     return true;
 }
 
-bool resource::start(framework::environment&) {
+bool resource::start(framework::environment& env) {
+    // on maintenance/quiescent mode, sql resource exists, but does nothing.
+    // see setup() in src/jogasaki/api/resource/bridge.cpp
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+       env.mode() == framework::boot_mode::maintenance_server || env.mode() == framework::boot_mode::quiescent_server) {
+        return true;
+    }
+    if (! store_) {
+        auto bridge = env.resource_repository().find<jogasaki::api::resource::bridge>();
+        if(! bridge) {
+            LOG(ERROR) << "failed to find jogasaki resource bridge";
+            return false;
+        }
+        store_ = std::make_unique<jogasaki::api::kvsservice::store>(bridge);
+    }
     return true;
 }
 

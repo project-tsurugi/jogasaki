@@ -40,25 +40,22 @@ framework::component::id_type service::id() const noexcept {
     return tag;
 }
 
-bool service::setup(framework::environment& env) {
-    // on maintenance/quiescent mode, sql resource exists, but does nothing.
-    // see setup() in src/jogasaki/api/resource/bridge.cpp
-    if(env.mode() == framework::boot_mode::maintenance_standalone ||
-       env.mode() == framework::boot_mode::maintenance_server ||
-       env.mode() == framework::boot_mode::quiescent_server) {
-        return true;
-    }
-    if (core_) return true;
-    auto rsc = env.resource_repository().find<jogasaki::api::kvsservice::resource>();
-    core_ = std::make_unique<jogasaki::api::kvsservice::impl::service>(env.configuration(), rsc->store());
+bool service::setup(framework::environment&) {
     return true;
 }
 
-bool service::start(framework::environment&) {
-    if (core_) {
-        return core_->start();
+bool service::start(framework::environment& env) {
+    // on maintenance/quiescent mode, sql resource exists, but does nothing.
+    // see setup() in src/jogasaki/api/resource/bridge.cpp
+    if(env.mode() == framework::boot_mode::maintenance_standalone ||
+       env.mode() == framework::boot_mode::maintenance_server || env.mode() == framework::boot_mode::quiescent_server) {
+        return true;
     }
-    return true;
+    if (! core_) {
+        auto rsc = env.resource_repository().find<jogasaki::api::kvsservice::resource>();
+        core_ = std::make_unique<jogasaki::api::kvsservice::impl::service>(env.configuration(), rsc->store());
+    }
+    return core_->start();
 }
 
 bool service::shutdown(framework::environment&) {

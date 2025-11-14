@@ -315,8 +315,8 @@ void service_api_test::test_prepared_statement(
     }
 }
 
-void service_api_test::test_get_lob(std::uint64_t id, std::string_view expected_path) {
-    auto s = encode_get_large_object_data(id);
+void service_api_test::test_get_lob(std::uint64_t id, std::uint64_t reference_tag, std::string_view expected_path) {
+    auto s = encode_get_large_object_data(id, reference_tag);
 
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();

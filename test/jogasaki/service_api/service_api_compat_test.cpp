@@ -152,7 +152,7 @@ TEST_F(service_api_compat_test, invalid_version) {
     auto record = res->error_;
     EXPECT_EQ(record.code(), tateyama::proto::diagnostics::Code::INVALID_REQUEST);
     EXPECT_EQ(record.message(),
-              "inconsistent service message version: see https://github.com/project-tsurugi/tsurugidb/blob/master/docs/service-message-compatibilities.md (client: \"sql-2.0\", server: \"sql-"+std::to_string(service_message_version_major)+"."+std::to_string(service_message_version_minor)+"\")");
+              "inconsistent service message version: see https://github.com/project-tsurugi/tsurugidb/blob/master/docs/service-message-compatibilities.md (client: \"sql-"+std::to_string(service_message_version_major+1)+".0\", server: \"sql-"+std::to_string(service_message_version_major)+"."+std::to_string(service_message_version_minor)+"\")");
 }
 
 TEST_F(service_api_compat_test, none_version_provided) {

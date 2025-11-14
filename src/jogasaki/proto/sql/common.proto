@@ -328,6 +328,9 @@ message LargeObjectReference {
         // large object contents for small data.
         bytes contents = 3;
     }
+
+    // Reference tag of the large object.
+    uint64 reference_tag = 4;
 }
 
 // unit for time and timestamp value

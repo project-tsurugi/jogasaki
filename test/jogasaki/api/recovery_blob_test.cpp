@@ -116,8 +116,8 @@ TEST_F(recovery_blob_test, basic) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
 }
@@ -204,8 +204,8 @@ TEST_F(recovery_blob_test, update) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
               result[0]);
 
     EXPECT_NE(old_id1, ref1.object_id());
@@ -282,8 +282,8 @@ TEST_F(recovery_blob_test, update_with_cast) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
               result[0]);
 
     EXPECT_NE(old_id1, ref1.object_id());

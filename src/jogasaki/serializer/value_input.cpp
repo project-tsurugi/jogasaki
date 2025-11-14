@@ -531,28 +531,30 @@ std::size_t read_row_begin(buffer_view::const_iterator& position, buffer_view::c
     return size;
 }
 
-std::pair<std::uint64_t, std::uint64_t> read_blob(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
+std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> read_blob(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
     requires_entry(entry_type::blob, position, end);
     buffer_view::const_iterator iter = position;
     ++iter;
     auto provider = read_fixed<std::uint64_t>(iter, end);
     auto object_id = read_fixed<std::uint64_t>(iter, end);
+    auto reference_tag = read_fixed<std::uint64_t>(iter, end);
     position = iter;
     return {
-        provider, object_id
-        };
+        provider, object_id, reference_tag
+    };
 }
 
-std::pair<std::uint64_t, std::uint64_t> read_clob(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
+std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> read_clob(buffer_view::const_iterator& position, buffer_view::const_iterator end) {
     requires_entry(entry_type::clob, position, end);
     buffer_view::const_iterator iter = position;
     ++iter;
     auto provider = read_fixed<std::uint64_t>(iter, end);
     auto object_id = read_fixed<std::uint64_t>(iter, end);
+    auto reference_tag = read_fixed<std::uint64_t>(iter, end);
     position = iter;
     return {
-        provider, object_id
-        };
+        provider, object_id, reference_tag
+    };
 }
 
 } // namespace jogasaki::serializer

@@ -25,10 +25,11 @@
 namespace jogasaki::datastore {
 
 /**
- * @brief register lob file and publish new id
+ * @brief register lob file and publish new id and reference tag
  * @param path the path for the lob file
  * @param tx transaction to keep the scope object (blob pool) for the lob data
  * @param out [out] blob id assigned for the input lob data
+ * @param reference_tag [out] blob reference tag assigned for the input lob data
  * @param error [out] error information is set when status code other than status::ok is returned
  * @return status::ok when successful
  * @return any other error otherwise
@@ -37,6 +38,7 @@ status assign_lob_id(
     lob::lob_reference const& ref,
     transaction_context* tx,
     lob::lob_id_type& id,
+    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 );
 

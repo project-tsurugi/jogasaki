@@ -768,12 +768,13 @@ inline std::tuple<std::string, std::string, error> decode_extract_statement_info
     return {extract.success().sql(), extract.success().transaction_id().id(), {}};
 }
 
-inline std::string encode_get_large_object_data(std::uint64_t id) {
+inline std::string encode_get_large_object_data(std::uint64_t id, std::uint64_t reference_tag) {
     sql::request::Request r{};
     auto* gd = r.mutable_get_large_object_data();
     auto* ref = gd->mutable_reference();
     ref->set_object_id(id);
     ref->set_provider(sql::common::LargeObjectProvider::DATASTORE);
+    ref->set_reference_tag(reference_tag);
 
     auto s = serialize(r);
     r.clear_get_large_object_data();

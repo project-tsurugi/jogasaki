@@ -24,12 +24,12 @@ namespace jogasaki {
 /**
  * @brief current message version (major)
  */
-constexpr std::size_t service_message_version_major = 1;
+constexpr std::size_t service_message_version_major = 2;
 
 /**
  * @brief current message version (minor)
  */
-constexpr std::size_t service_message_version_minor = 6;
+constexpr std::size_t service_message_version_minor = 0;
 
 /**
  * @brief default number of partitions for testing and mocking purposes.

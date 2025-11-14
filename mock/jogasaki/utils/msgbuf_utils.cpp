@@ -120,13 +120,13 @@ std::vector<mock::basic_record> deserialize_msg(
                     break;
                 }
                 case jogasaki::meta::field_type_kind::blob: {
-                    auto [provider, id] = serializer::read_blob(it, end);
-                    ref.set_value<runtime_t<meta::field_type_kind::blob>>(meta.value_offset(index), lob::blob_reference{id, static_cast<lob::lob_data_provider>(provider)});
+                    auto [provider, id, reference_tag] = serializer::read_blob(it, end);
+                    ref.set_value<runtime_t<meta::field_type_kind::blob>>(meta.value_offset(index), lob::blob_reference{id, static_cast<lob::lob_data_provider>(provider), reference_tag});
                     break;
                 }
                 case jogasaki::meta::field_type_kind::clob: {
-                    auto [provider, id] = serializer::read_clob(it, end);
-                    ref.set_value<runtime_t<meta::field_type_kind::clob>>(meta.value_offset(index), lob::clob_reference{id, static_cast<lob::lob_data_provider>(provider)});
+                    auto [provider, id, reference_tag] = serializer::read_clob(it, end);
+                    ref.set_value<runtime_t<meta::field_type_kind::clob>>(meta.value_offset(index), lob::clob_reference{id, static_cast<lob::lob_data_provider>(provider), reference_tag});
                     break;
                 }
                 default:

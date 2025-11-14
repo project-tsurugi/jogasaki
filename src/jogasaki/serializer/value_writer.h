@@ -311,11 +311,12 @@ public:
      * @brief puts `blob` entry onto the current position.
      * @param provider the provider of the blob, see jogasaki::proto::sql::common::LargeObjectProvider
      * @param object_id the id of the blob object
+     * @param reference_tag the reference tag of the blob object
      */
-    result_type write_blob(std::uint64_t provider, std::uint64_t object_id) {
+    result_type write_blob(std::uint64_t provider, std::uint64_t object_id, std::uint64_t reference_tag) {
         auto buf = buffer();
         auto *iter = buf.begin();
-        auto ret = ::jogasaki::serializer::write_blob(provider, object_id, iter, buf.end());
+        auto ret = ::jogasaki::serializer::write_blob(provider, object_id, reference_tag, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
         (void) ret;
 
@@ -327,11 +328,12 @@ public:
      * @brief puts `clob` entry onto the current position.
      * @param provider the provider of the clob, see jogasaki::proto::sql::common::LargeObjectProvider
      * @param object_id the id of the clob object
+     * @param reference_tag the reference tag of the clob object
      */
-    result_type write_clob(std::uint64_t provider, std::uint64_t object_id) {
+    result_type write_clob(std::uint64_t provider, std::uint64_t object_id, std::uint64_t reference_tag) {
         auto buf = buffer();
         auto *iter = buf.begin();
-        auto ret = ::jogasaki::serializer::write_clob(provider, object_id, iter, buf.end());
+        auto ret = ::jogasaki::serializer::write_clob(provider, object_id, reference_tag, iter, buf.end());
         BOOST_ASSERT(ret); // NOLINT
         (void) ret;
 

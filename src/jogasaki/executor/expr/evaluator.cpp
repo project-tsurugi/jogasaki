@@ -450,12 +450,13 @@ create_any(accessor::record_ref ref, executor::process::impl::value_info const& 
         return {std::in_place_type<T>, var};
     }
     lob::lob_id_type id{};
+    lob::lob_reference_tag_type reference_tag{};
     std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto st = datastore::assign_lob_id(var, ctx.transaction(), id, error); st != status::ok) {
+    if (auto st = datastore::assign_lob_id(var, ctx.transaction(), id, reference_tag, error); st != status::ok) {
         ctx.set_error_info(std::move(error));
         return any{std::in_place_type<class error>, error_kind::error_info_provided};
     }
-    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore}};
+    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore, reference_tag}};
 }
 
 any engine::operator()(takatori::scalar::variable_reference const& exp) {

@@ -625,14 +625,14 @@ TEST_F(value_input_test, read_row_begin_full) {
 
 TEST_F(value_input_test, read_blob) {
     {
-        std::pair<std::uint64_t, std::uint64_t> input {};
-        auto buf = dump([=](auto& iter, auto end) { return write_blob(input.first, input.second, iter, end); });
+        std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> input {};
+        auto buf = dump([=](auto& iter, auto end) { return write_blob(std::get<0>(input), std::get<1>(input), std::get<2>(input), iter, end); });
         auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_blob(iter, end); });
         EXPECT_EQ(result, input);
     }
     {
-        std::pair<std::uint64_t, std::uint64_t> input {1, 100};
-        auto buf = dump([=](auto& iter, auto end) { return write_blob(input.first, input.second, iter, end); });
+        std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> input {1, 100, 10000};
+        auto buf = dump([=](auto& iter, auto end) { return write_blob(std::get<0>(input), std::get<1>(input), std::get<2>(input), iter, end); });
         auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_blob(iter, end); });
         EXPECT_EQ(result, input);
     }
@@ -640,14 +640,14 @@ TEST_F(value_input_test, read_blob) {
 
 TEST_F(value_input_test, read_clob) {
     {
-        std::pair<std::uint64_t, std::uint64_t> input {};
-        auto buf = dump([=](auto& iter, auto end) { return write_clob(input.first, input.second, iter, end); });
+        std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> input {};
+        auto buf = dump([=](auto& iter, auto end) { return write_clob(std::get<0>(input), std::get<1>(input), std::get<2>(input), iter, end); });
         auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_clob(iter, end); });
         EXPECT_EQ(result, input);
     }
     {
-        std::pair<std::uint64_t, std::uint64_t> input {1, 100};
-        auto buf = dump([=](auto& iter, auto end) { return write_clob(input.first, input.second, iter, end); });
+        std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> input {1, 100, 10000};
+        auto buf = dump([=](auto& iter, auto end) { return write_clob(std::get<0>(input), std::get<1>(input), std::get<2>(input), iter, end); });
         auto result = restore<decltype(input)>(buf, [](auto& iter, auto end) { return read_clob(iter, end); });
         EXPECT_EQ(result, input);
     }

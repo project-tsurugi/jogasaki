@@ -295,6 +295,7 @@ bool write_row_begin(
  * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
  * @param provider the provider of the blob, see jogasaki::proto::sql::common::LargeObjectProvider
  * @param object_id the id of the blob object
+ * @param reference_tag the reference tag of the blob object
  * @param position the buffer content iterator
  * @param end the buffer ending position
  * @return true the operation successfully completed
@@ -303,6 +304,7 @@ bool write_row_begin(
 bool write_blob(
         std::uint64_t provider,
         std::uint64_t object_id,
+        std::uint64_t reference_tag,
         buffer_view::iterator& position,
         buffer_view::const_iterator end);
 
@@ -311,6 +313,7 @@ bool write_blob(
  * @details This operation will advance the buffer iterator to the next entry, only if it is successfully completed.
  * @param provider the provider of the clob, see jogasaki::proto::sql::common::LargeObjectProvider
  * @param object_id the id of the clob object
+ * @param reference_tag the reference tag of the clob object
  * @param position the buffer content iterator
  * @param end the buffer ending position
  * @return true the operation successfully completed
@@ -319,6 +322,7 @@ bool write_blob(
 bool write_clob(
         std::uint64_t provider,
         std::uint64_t object_id,
+        std::uint64_t reference_tag,
         buffer_view::iterator& position,
         buffer_view::const_iterator end);
 

@@ -21,8 +21,13 @@
 namespace jogasaki::lob {
 
 /**
- * @brief blob id ype
+ * @brief blob id type
  */
 using lob_id_type = std::uint64_t;
+
+/**
+ * @brief blob reference tag type
+ */
+using lob_reference_tag_type = std::uint64_t;
 
 }  // namespace jogasaki::lob

@@ -122,7 +122,7 @@ private:
 static_assert(std::is_trivially_copyable_v<any>);
 static_assert(std::is_trivially_destructible_v<any>);
 static_assert(std::alignment_of_v<any> == 8);
-static_assert(sizeof(any) == 40);
+static_assert(sizeof(any) == 48); // this is not a fixed limit, but just to check the size is not unexpectedly large
 
 // bool is the syntax sugar for std::int8_t
 template<>

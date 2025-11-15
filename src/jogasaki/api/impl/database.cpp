@@ -81,6 +81,7 @@
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/executor.h>
+#include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
@@ -121,6 +122,11 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/udf/enum_types.h>
+#include <jogasaki/udf/error_info.h>
+#include <jogasaki/udf/generic_client.h>
+#include <jogasaki/udf/plugin_loader.h>
+#include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/create_statement_handle_error.h>
@@ -227,7 +233,10 @@ status database::start() {
     }
 
     // this function is not called on maintenance/quiescent mode
-    init();
+    auto res = init();
+    if (res != status::ok) {
+        return res;
+    }
     if (! kvs_db_) {
         // This is for dev/test. In production, kvs db is created outside.
         std::map<std::string, std::string> opts{};
@@ -349,16 +358,41 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 
 database::database() : database(std::make_shared<class configuration>()) {}
 
-void database::init() {
+status database::init() {
     global::storage_manager()->clear(); // clean up global objects first
     global::config_pool(cfg_);
-    if(initialized_) return;
+    if(initialized_) {
+        return status::ok;
+    }
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
     scalar_functions_ = global::scalar_function_provider(std::make_shared<yugawara::function::configurable_provider>());
     executor::function::add_builtin_scalar_functions(
         *scalar_functions_,
         global::scalar_function_repository()
     );
+    loader_     = std::make_unique<plugin::udf::udf_loader>();
+    auto results = loader_->load(std::string(cfg_->plugin_directory()));
+    for (const auto& result : results) {
+        auto res_status = result.status();
+        if (res_status == plugin::udf::load_status::ok) {
+            LOG_LP(INFO) << "[gRPC] " << res_status << " file: " << result.file()
+                              << " detail: " << result.detail();
+        } else if (res_status == plugin::udf::load_status::path_not_found
+          || res_status == plugin::udf::load_status::ini_so_pair_mismatch
+          || res_status == plugin::udf::load_status::ini_invalid) {
+            LOG_LP(ERROR) << "[gRPC] " << res_status
+                                 << " file: " << result.file() << " detail: " << result.detail();
+            // return status::err_aborted;
+        } else {
+            LOG_LP(WARNING) << "[gRPC] " << res_status
+                                 << " file: " << result.file() << " detail: " << result.detail();
+        }
+    }
+    for (auto& plugin : loader_->get_plugins()) {
+        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));
+    }
+    executor::function::add_udf_scalar_functions(
+        *scalar_functions_, global::scalar_function_repository(), plugins_);
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,
@@ -372,6 +406,7 @@ void database::init() {
         executor::add_analytics_benchmark_tables(*tables_);
     }
     initialized_ = true;
+    return status::ok;
 }
 
 void database::deinit() {

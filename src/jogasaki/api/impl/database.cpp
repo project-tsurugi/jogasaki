@@ -240,9 +240,8 @@ status database::start() {
     }
 
     // this function is not called on maintenance/quiescent mode
-    auto res = init();
-    if (res != status::ok) {
-        return res;
+    if (!init()) {
+        return status::err_aborted;
     }
     if (! kvs_db_) {
         // This is for dev/test. In production, kvs db is created outside.
@@ -388,11 +387,11 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 
 database::database() : database(std::make_shared<class configuration>()) {}
 
-status database::init() {
+bool database::init() {
     global::storage_manager()->clear(); // clean up global objects first
     global::config_pool(cfg_);
     if(initialized_) {
-        return status::ok;
+        return true;
     }
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
     scalar_functions_ = global::scalar_function_provider(std::make_shared<yugawara::function::configurable_provider>());
@@ -412,7 +411,7 @@ status database::init() {
           || res_status == plugin::udf::load_status::ini_invalid) {
             LOG_LP(ERROR) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
-            // return status::err_aborted;
+            // return false;
         } else {
             LOG_LP(WARNING) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
@@ -433,7 +432,7 @@ status database::init() {
         global::aggregate_function_repository()
     );
     initialized_ = true;
-    return status::ok;
+    return true;
 }
 
 void database::deinit() {

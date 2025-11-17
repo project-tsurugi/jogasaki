@@ -228,7 +228,7 @@ public:
 
     std::shared_ptr<class configuration>& config() noexcept override;
 
-    [[nodiscard]] status init();
+    [[nodiscard]] bool init();
     void deinit();
 
     status recover_metadata();

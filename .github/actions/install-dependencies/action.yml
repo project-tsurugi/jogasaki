@@ -75,6 +75,14 @@ runs:
         path: ${{ inputs.path }}/sharksfin
         ref: master
 
+    - name: Checkout_Data_Relay_gRPC
+      uses: actions/checkout@v4
+      if: ${{ inputs.checkout == 'true' }}
+      with:
+        repository: project-tsurugi/data-relay-grpc
+        path: ${{ inputs.path }}/data-relay-grpc
+        ref: master
+
     - name: Checkout_Tateyama
       uses: actions/checkout@v4
       if: ${{ inputs.checkout == 'true' }}
@@ -177,6 +185,16 @@ runs:
         mkdir build_debug
         cd build_debug
         cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${{ inputs.cmake_build_option }} ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
+    - name: Install_Data_Relay_gRPC
+      run: |
+        cd ${{ inputs.path }}/data-relay-grpc/server
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${{ inputs.cmake_build_option }} ..
         cmake --build . --target install --clean-first
       shell: bash
 

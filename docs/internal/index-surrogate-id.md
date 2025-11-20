@@ -46,6 +46,8 @@
 ストレージキーを受け取らずにストレージを新規作成するAPI関数 `sharksfin::storage_create()` を追加する。ストレージキーが自動的に生成される以外は既存の `sharksfin::storage_create()` と同様に動作する。
 また、`StorageHandle` からストレージキーやストレージIDを取得するためのAPI関数 `sharksfin::storage_key()` と `sharksfin::storage_native_handle()` を追加する。(ストレージIDはオプショナルだが、 `StorageHandle` よりも持ち回りやすいため利便性のために利用できるようにする)
 
+ストレージキーを受け取る既存のAPI関数 `sharksfin::storage_create()` は deprecated とする。(使い方によっては自動生成されるストレージキーと衝突する可能性があるため)
+
 ```
 /**
  * @brief creates a new storage space onto the target database with storage options
@@ -90,6 +92,8 @@ StatusCode storage_native_handle(
 ## shirakamiの変更点
 
 ストレージキーを受け取らずにストレージを新規作成するAPI関数 `shirakami::create_storage()` を追加する。ストレージキーが自動的に生成される以外は既存の `shirakami::create_storage()` と同様に動作する。また、`shirakami::Storage` からストレージキーを取得するためのAPI関数 `shirakami::get_storage_key()` を追加する。
+
+ストレージキーを受け取る既存のAPI関数 `shirakami::create_storage()` は deprecated とする。(使い方によっては自動生成されるストレージキーと衝突する可能性があるため)
 
 ```
 /**

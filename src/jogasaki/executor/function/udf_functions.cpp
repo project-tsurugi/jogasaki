@@ -91,13 +91,13 @@ using kind = meta::field_type_kind;
 using jogasaki::executor::expr::error;
 using jogasaki::executor::expr::error_kind;
 
-constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.value.Decimal";
-constexpr std::string_view DATE_RECORD = "tsurugidb.udf.value.Date";
-constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.value.LocalTime";
-constexpr std::string_view LOCALDATETIME_RECORD = "tsurugidb.udf.value.LocalDatetime";
-constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.value.OffsetDatetime";
-constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.value.BlobReference";
-constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.value.ClobReference";
+constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.Decimal";
+constexpr std::string_view DATE_RECORD = "tsurugidb.udf.Date";
+constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.LocalTime";
+constexpr std::string_view LOCALDATETIME_RECORD = "tsurugidb.udf.LocalDatetime";
+constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime";
+constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
+constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
 namespace {
 
 const std::unordered_map<plugin::udf::type_kind_type, std::size_t>& type_index_map() {

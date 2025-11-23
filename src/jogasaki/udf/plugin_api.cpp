@@ -62,8 +62,6 @@ std::string_view to_string_view(type_kind_type kind) {
         default: return "UnknownTypeKind"sv;
     }
 }
-std::ostream& operator<<(std::ostream& out, function_kind_type const& kind) { return out << to_string_view(kind); }
-std::ostream& operator<<(std::ostream& out, type_kind_type const& kind) { return out << to_string_view(kind); }
 
 void add_column(std::vector<column_descriptor*> const& cols) {
     for(auto const* col: cols) {
@@ -79,7 +77,8 @@ void add_column(std::vector<column_descriptor*> const& cols) {
     }
 }
 }  // anonymous namespace
-
+std::ostream& operator<<(std::ostream& out, function_kind_type const& kind) { return out << to_string_view(kind); }
+std::ostream& operator<<(std::ostream& out, type_kind_type const& kind) { return out << to_string_view(kind); }
 void print_columns(std::vector<column_descriptor*> const& cols, int indent = 0) {
     std::string indent_str(indent, ' ');
 

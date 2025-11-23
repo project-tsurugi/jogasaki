@@ -152,4 +152,6 @@ public:
 void print_columns(std::vector<column_descriptor*> const& cols, int indent);
 void print_plugin_info(std::shared_ptr<plugin_api> const& api);
 extern "C" plugin_api* create_plugin_api();
+std::ostream& operator<<(std::ostream& out, type_kind_type const& kind);
+std::ostream& operator<<(std::ostream& out, function_kind_type const& kind);
 }  // namespace plugin::udf

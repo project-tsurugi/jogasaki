@@ -300,8 +300,14 @@ std::shared_ptr<const takatori::type::data> determine_return_type(
     plugin::udf::record_descriptor const& output_record,
     std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>> const& type_map
 ) {
-    if(auto it = type_map.find(output_record.record_name()); it != type_map.end()) { return it->second(); }
-    if(! output_record.columns().empty()) { return map_type(output_record.columns()[0]->type_kind()); }
+    if(! output_record.columns().empty()) {
+        auto nest = output_record.columns()[0]->nested();
+        if(nest != nullptr) {
+            if(auto it = type_map.find(nest->record_name()); it != type_map.end()) { return it->second(); }
+        }
+        return map_type(output_record.columns()[0]->type_kind());
+    }
+
     return nullptr;
 }
 std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
@@ -690,11 +696,12 @@ data::any build_udf_response(
         ctx.add_error({error_kind::unknown, "Response has no cursor"});
         return data::any{std::in_place_type<error>, error(error_kind::unknown)};
     }
-
-    auto const& record_name = output.record_name();
+    auto nest = output.columns()[0]->nested();
     auto const& map = response_builder_map();
 
-    if(auto it = map.find(record_name); it != map.end()) { return it->second(*cursor); }
+    if(nest != nullptr) {
+        if(auto it = map.find(nest->record_name()); it != map.end()) { return it->second(*cursor); }
+    }
     auto output_values = cursor_to_any_values(response, output.columns(), ctx);
     if(! output_values.empty()) { return output_values.front(); }
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});

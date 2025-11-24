@@ -205,7 +205,6 @@ void fill_request_with_args(
     sequence_view<data::any> args,
     std::vector<plugin::udf::column_descriptor*> const& columns
 ) {
-
     for(std::size_t i = 0; i < columns.size(); ++i) {
         auto const& type = columns[i]->type_kind();
         auto const& src = args[i];
@@ -280,14 +279,25 @@ void fill_request_with_args(
                 uint32_t nano_adjustment = static_cast<uint32_t>(value.subsecond().count());
                 request.add_int8(offset_seconds);
                 request.add_uint4(nano_adjustment);
+                if(columns[i]->nested() != nullptr) {
+                    if(columns[i]->nested()->record_name() == OFFSETDATETIME_RECORD) {
+                        request.add_int4(static_cast<int32_t>(global::config_pool()->zone_offset()));
+                    }
+                }
                 break;
             }
             case data::any::index<runtime_t<kind::blob>>: {
-                // auto b = src.to<runtime_t<kind::blob>>();
+                auto value = src.to<runtime_t<kind::blob>>();
+                request.add_uint8(1);
+                request.add_uint8(value.object_id());
+                request.add_uint8(0);
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
-                // auto c = src.to<runtime_t<kind::clob>>();
+                auto value = src.to<runtime_t<kind::clob>>();
+                request.add_uint8(1);
+                request.add_uint8(value.object_id());
+                request.add_uint8(0);
                 break;
             }
             default:
@@ -402,7 +412,6 @@ bool build_udf_request(
     sequence_view<data::any> args
 ) {
     auto const& record_name = fn->input_record().record_name();
-
     if(record_name == DECIMAL_RECORD) {
         auto value = args[0].to<runtime_t<kind::decimal>>();
         std::int8_t sign = value.sign();

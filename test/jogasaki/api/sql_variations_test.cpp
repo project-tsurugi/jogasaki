@@ -147,12 +147,15 @@ TEST_F(sql_variations_test, multiple_lines) {
 }
 
 TEST_F(sql_variations_test, control_character_in_delimited_identifier) {
-    execute_statement("create table \"tt\ntt\" (\"aa\nbb\" int primary key)");
-    execute_statement("INSERT INTO \"tt\ntt\" (\"aa\nbb\") VALUES (0)");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("select \"aa\nbb\" from \"tt\ntt\"", result);
-        ASSERT_EQ(1, result.size());
-    }
+    // only UTF-8 except U+0000-U+001F, U+0022, and U+007F are allowed in delimited identifier
+    test_stmt_err("create table \"tt\ntt\" (c0 int primary key)", error_code::syntax_exception);
+    test_stmt_err("create table t (\"aa\nbb\" int primary key)", error_code::syntax_exception);
+
+    test_stmt_err("create table \"tt\x00tt\" (c0 int primary key)", error_code::syntax_exception);
+    test_stmt_err("create table \"tt\x1ftt\" (c0 int primary key)", error_code::syntax_exception);
+    test_stmt_err("create table \"tt\x7ftt\" (c0 int primary key)", error_code::syntax_exception);
+
+    // normally sql client uses proto buf. string to send SQL, so UTF-8 is assumed and it's impossible to pass invalid UTF8 sequence
+    // test_stmt_err("create table \"tt\x80tt\" (c0 int primary key)", error_code::syntax_exception);
 }
 }

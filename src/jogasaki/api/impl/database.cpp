@@ -92,6 +92,7 @@
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/kvs/storage_dump.h>
+#include <jogasaki/kvs/system_storage.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs/transaction_option.h>
 #include <jogasaki/logging.h>
@@ -244,12 +245,35 @@ status database::start() {
         LOG_LP(ERROR) << "Opening database failed.";
         return status::err_io_error;
     }
-    if(auto res = setup_system_storage(); res != status::ok) {
+    if(auto res = kvs::setup_system_storage(); res != status::ok) {
         (void) kvs_db_->close();
         kvs_db_.reset();
         deinit();
         return res;
     }
+    // setup analytics tables if not exist
+    // this works as if DDL executed on start-up if storages do not exist
+    if(cfg_->prepare_analytics_benchmark_tables()) {
+        auto tables = std::make_shared<yugawara::storage::configurable_provider>();
+        executor::add_analytics_benchmark_tables(*tables);
+
+        bool success = true;
+        std::string name{};
+        tables->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
+            if (! success) {
+                return;
+            }
+            if (auto status = kvs::create_storage_from_provider(id, id, *tables); status != status::ok) {
+                success = false;
+                name = id;
+            }
+        });
+        if (! success) {
+            LOG_LP(ERROR) << "creating table schema entries failed name:" << name;
+            return status::err_io_error;
+        }
+    }
+
     if(auto res = recover_metadata(); res != status::ok) {
         (void) kvs_db_->close();
         kvs_db_.reset();
@@ -294,7 +318,7 @@ status database::stop() {
         }
     }
     // this function is not called on maintenance/quiescent mode
-    if (cfg_->activate_scheduler()) {
+    if (cfg_->activate_scheduler() && task_scheduler_) {
         task_scheduler_->stop();
         task_scheduler_.reset();
     }
@@ -368,9 +392,6 @@ void database::init() {
         *aggregate_functions_,
         global::aggregate_function_repository()
     );
-    if(cfg_->prepare_analytics_benchmark_tables()) {
-        executor::add_analytics_benchmark_tables(*tables_);
-    }
     initialized_ = true;
 }
 
@@ -1119,15 +1140,6 @@ executor::sequence::manager* database::sequence_manager() const noexcept {
 }
 
 status database::initialize_from_providers() {
-    bool success = true;
-    tables_->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const&) {
-        // create storage so that subsequent processing can find
-        success = success && kvs_db_->get_or_create_storage(id);
-    });
-    if (! success) {
-        LOG_LP(ERROR) << "creating table schema entries failed";
-        return status::err_io_error;
-    }
     sequence_manager_ = std::make_unique<executor::sequence::manager>(*kvs_db_);
     {
         std::unique_ptr<kvs::transaction> tx{};
@@ -1217,39 +1229,6 @@ status database::recover_index_metadata(
             LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata:" << *err;
             return err->status();
         }
-    }
-    return status::ok;
-}
-
-status database::setup_system_storage() {
-    // if system table doesn't exist, create a kvs store, that will be recovered later in this start-up process
-    std::vector<std::string> names{};
-    auto stg = kvs_db_->get_storage(system_sequences_name);
-    if(stg) {
-        return status::ok;
-    }
-    auto provider = std::make_shared<yugawara::storage::configurable_provider>(); // just for serialize
-    executor::add_builtin_tables(*provider);
-    bool success = true;
-    provider->each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& i) {
-        if(! success) return;
-        std::string storage{};
-        if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{true})) {
-            success = false;
-            if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
-                VLOG_LP(log_error) << "error_info:" << *err;
-            }
-            return;
-        }
-        ::sharksfin::StorageOptions options{};
-        options.payload(std::move(storage));
-        if(stg = kvs_db_->create_storage(id, options); ! stg) {
-            success = false;
-            return;
-        }
-    });
-    if(! success) {
-        return status::err_unknown;
     }
     return status::ok;
 }

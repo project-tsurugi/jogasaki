@@ -331,7 +331,7 @@ operation_status write_existing::process_record(abstract::task_context* context)
         contexts.reserve(secondaries_.size());
         for(auto&& s : secondaries_) {
             contexts.emplace_back(
-                ctx.database()->get_or_create_storage(s.storage_name()),
+                ctx.database()->get_storage(s.storage_name()),
                 ctx.req_context()
             );
         }

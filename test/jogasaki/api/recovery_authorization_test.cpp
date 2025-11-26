@@ -24,6 +24,7 @@
 #include <jogasaki/auth/action_kind.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/kvs/id.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
@@ -80,6 +81,9 @@ public:
 };
 
 TEST_F(recovery_authorization_test, owner_control_persists_after_recovery) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
     // control priv. given to owner persists
     auto info = utils::create_req_info("user1");
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)", info);
@@ -93,6 +97,9 @@ TEST_F(recovery_authorization_test, owner_control_persists_after_recovery) {
 }
 
 TEST_F(recovery_authorization_test, multi_privs_persist_after_recovery) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
     // granted select/insert/update/delete privs. persist
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
     execute_statement("grant select, insert, update, delete on table t to user1, user2");
@@ -122,6 +129,9 @@ TEST_F(recovery_authorization_test, multi_privs_persist_after_recovery) {
 }
 
 TEST_F(recovery_authorization_test, granted_control_persists_after_recovery) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
     // similar to multi_privs_persist_after_recovery, but use "all privileges" for grant and revoke
     execute_statement("CREATE TABLE t (c0 INT PRIMARY KEY)");
     execute_statement("grant all privileges on table t to user1, user2");

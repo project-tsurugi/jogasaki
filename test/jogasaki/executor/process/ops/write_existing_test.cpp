@@ -438,7 +438,7 @@ TEST_F(write_existing_test , update_secondary) {
 
     std::vector<jogasaki::index::secondary_context> secondaries{};
     secondaries.emplace_back(
-        db_->get_or_create_storage(i100_secondary_->simple_name()),
+        db_->get_storage(i100_secondary_->simple_name()),
         nullptr
     );
 

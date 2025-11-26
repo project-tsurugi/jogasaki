@@ -65,11 +65,9 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
+        cfg->prepare_analytics_benchmark_tables(true);
         db_setup(cfg);
         auto* impl = db_impl();
-
-        add_analytics_benchmark_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
         utils::load_storage_data(*db_, impl->tables(), "PART", 3, true, 5);
         utils::load_storage_data(*db_, impl->tables(), "SUPPLIER", 3, true, 5);
         utils::load_storage_data(*db_, impl->tables(), "PARTSUPP", 3, true, 5);

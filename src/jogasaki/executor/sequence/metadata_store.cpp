@@ -173,7 +173,7 @@ bool metadata_store::remove(std::size_t def_id) {
 metadata_store::metadata_store(kvs::transaction& tx) :
     tx_(std::addressof(tx))
 {
-    stg_ = tx.database()->get_or_create_storage(system_sequences_name);
+    stg_ = tx.database()->get_storage(system_sequences_name);
 }
 
 std::size_t metadata_store::size() {

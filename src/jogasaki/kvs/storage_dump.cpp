@@ -42,7 +42,7 @@ public:
 
     status operator()(transaction& tx) {  //NOLINT(readability-function-cognitive-complexity)
         auto* db = tx.database();
-        auto stg = db->get_or_create_storage(storage_key_);
+        auto stg = db->get_storage(storage_key_);
 
         std::unique_ptr<iterator> it{};
         if (!cont_) {
@@ -126,7 +126,7 @@ public:
 
     status operator()(transaction& tx) {
         auto* db = tx.database();
-        auto stg = db->get_or_create_storage(storage_key_);
+        auto stg = db->get_storage(storage_key_);
 
         for (std::size_t i = 1;; ++i) {
             if (!storage_dump::read_next(stream_, key_buffer_, value_buffer_)) {

@@ -89,6 +89,7 @@ TEST_F(storage_dump_test, dump_manual_multiple) {
 }
 
 TEST_F(storage_dump_test, dump_empty) {
+    auto stg = db_->create_storage("temp");
     storage_dump dumper { *db_ };
 
     std::stringstream ss;
@@ -102,6 +103,7 @@ TEST_F(storage_dump_test, dump_empty) {
 }
 
 TEST_F(storage_dump_test, load_dump) {
+    auto stg = db_->create_storage("temp");
     std::stringstream ss;
     storage_dump::append(ss, "a", "AAA");
     storage_dump::append(ss, "b", "BBB");
@@ -133,6 +135,7 @@ TEST_F(storage_dump_test, load_dump) {
 }
 
 TEST_F(storage_dump_test, load_dump_batch) {
+    auto stg = db_->create_storage("temp");
     std::stringstream ss;
     storage_dump::append(ss, "a", "AAA");
     storage_dump::append(ss, "b", "BBB");

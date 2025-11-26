@@ -24,8 +24,10 @@
 #include <takatori/util/fail.h>
 #include <yugawara/storage/sequence.h>
 
+#include <jogasaki/api/impl/database.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/system_storage.h>
 #include <jogasaki/kvs_test_base.h>
 
 namespace jogasaki::executor::sequence {
@@ -44,6 +46,7 @@ class sequence_metadata_store_test :
 public:
     void SetUp() override {
         kvs_db_setup();
+        kvs::setup_system_storage();
     }
     void TearDown() override {
         kvs_db_teardown();

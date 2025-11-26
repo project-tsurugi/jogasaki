@@ -87,7 +87,7 @@ static std::vector<secondary_context> create_secondary_contexts(
     ret.reserve(targets.size());
     for (auto&& e: targets) {
         ret.emplace_back(
-            db.get_or_create_storage(e.storage_name()),
+            db.get_storage(e.storage_name()),
             std::addressof(context));
     }
     return ret;
@@ -175,7 +175,7 @@ write_context::write_context(
     memory::lifo_paged_memory_resource* resource
 ) :
     request_context_(std::addressof(context)),
-    primary_context_(db.get_or_create_storage(storage_name), key_meta, value_meta, std::addressof(context)),
+    primary_context_(db.get_storage(storage_name), key_meta, value_meta, std::addressof(context)),
     secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
     key_store_(key_meta, resource),
     value_store_(value_meta, resource),

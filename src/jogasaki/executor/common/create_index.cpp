@@ -69,7 +69,7 @@ model::statement_kind create_index::kind() const noexcept {
 
 // return false if table is not empty, or error with kvs
 bool create_index::validate_empty_table(request_context& context, std::string_view table_name) const {
-    auto stg = context.database()->get_or_create_storage(table_name);
+    auto stg = context.database()->get_storage(table_name);
     std::unique_ptr<kvs::iterator> it{};
     if(auto res =
            stg->content_scan(*context.transaction()->object(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);

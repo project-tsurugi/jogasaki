@@ -297,7 +297,7 @@ std::string any_to_string(value const& value, meta::field_type type) {
 
 void populate_storage_data(kvs::database* db, std::shared_ptr<configurable_provider> const& provider,
     std::string_view storage_name, std::size_t records_per_partition, bool sequential_data, std::size_t modulo) {
-    auto stg = db->get_or_create_storage(storage_name);
+    auto stg = db->get_storage(storage_name);
     static std::size_t buflen = 1024*8;
     std::string key_buf(buflen, '\0');
     std::string val_buf(buflen, '\0');

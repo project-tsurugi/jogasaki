@@ -145,6 +145,7 @@ public:
      * But concurrent operations for adding/removing storage entries are not strictly controlled for safety.
      * For the time being, storages are expected to be created sequentially before any transactions are started.
      * Accessing the storage object which is deleted by storage::delete_storage() causes undefined behavior.
+     * @deprecated use get_storage() and create_storage() separately
      */
     std::unique_ptr<storage> get_or_create_storage(std::string_view name);
 

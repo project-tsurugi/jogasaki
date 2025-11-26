@@ -47,7 +47,7 @@ std::string kvs_test_utils::put(
     mock::basic_record value
 ) {
     BOOST_ASSERT(key);  //NOLINT
-    auto stg = db.get_or_create_storage(storage_name);
+    auto stg = db.get_or_create_storage(storage_name); // allow this for testing
     auto tx = db.create_transaction();
 
     std::string key_buf(1000, '\0');
@@ -101,7 +101,7 @@ void kvs_test_utils::put_secondary(
     std::string_view encoded_primary_key
 ) {
     BOOST_ASSERT(key);  //NOLINT
-    auto stg = db.get_or_create_storage(storage_name);
+    auto stg = db.get_or_create_storage(storage_name);  // allow this for testing
     auto tx = db.create_transaction();
 
     std::string key_buf(1000, '\0');
@@ -139,7 +139,7 @@ void kvs_test_utils::get(
     mock::basic_record value_model,
     std::vector<std::pair<mock::basic_record, mock::basic_record>>& result
 ) {
-    auto stg = db.get_or_create_storage(storage_name);
+    auto stg = db.get_storage(storage_name);
     auto tx = db.create_transaction();
 
     std::unique_ptr<kvs::iterator> it{};
@@ -230,7 +230,7 @@ std::unique_ptr<kvs::storage> kvs_test_utils::get_storage(
     kvs::database& db,
     std::string_view name
 ) {
-    if(auto ret = db.get_or_create_storage(name)) {
+    if(auto ret = db.get_storage(name)) {
         return ret;
     }
     fail();

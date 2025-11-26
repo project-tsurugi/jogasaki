@@ -233,8 +233,6 @@ public:
         bool primary_only,
         std::vector<std::string>& skipped
     );
-    status setup_system_storage();
-
     void print_diagnostic(std::ostream& os) override;
 
     std::string diagnostic_string() override;

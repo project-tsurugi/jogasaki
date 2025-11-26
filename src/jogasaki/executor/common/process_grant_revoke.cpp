@@ -290,7 +290,7 @@ static bool serialize_and_save(
 
     sharksfin::StorageOptions options{};
     options.payload(std::move(storage));
-    auto stg = context.database()->get_or_create_storage(table_name);
+    auto stg = context.database()->get_storage(table_name);
     if(! stg) {
         // should not happen normally
         set_error(

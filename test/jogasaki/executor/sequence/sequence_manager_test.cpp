@@ -36,6 +36,7 @@
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/id.h>
+#include <jogasaki/kvs/system_storage.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/kvs_test_base.h>
 #include <jogasaki/status.h>
@@ -56,6 +57,7 @@ class sequence_manager_test :
 public:
     void SetUp() override {
         kvs_db_setup();
+        kvs::setup_system_storage();
     }
     void TearDown() override {
         kvs_db_teardown();

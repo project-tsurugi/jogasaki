@@ -184,7 +184,7 @@ operation_status write_create::process_record(abstract::task_context* context) {
         contexts.reserve(core_->secondaries().size());
         for(auto&& s : core_->secondaries()) {
             contexts.emplace_back(
-                ctx.database()->get_or_create_storage(s.storage_name()),
+                ctx.database()->get_storage(s.storage_name()),
                 ctx.req_context()
             );
         }

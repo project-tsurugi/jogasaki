@@ -178,6 +178,16 @@ runs:
         cmake --build . --target install --clean-first
       shell: bash
 
+    - name: Install_Data_Relay_gRPC
+      run: |
+        cd ${{ inputs.path }}/data-relay-grpc/server
+        rm -fr build
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DBUILD_TESTS=OFF -DBUILD_DOCUMENTS=OFF -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/.local ${{ inputs.cmake_build_option }} ..
+        cmake --build . --target install --clean-first
+      shell: bash
+
     - name: Install_moodycamel_Concurrentqueue
       run: |
         cd ${{ inputs.path }}/tateyama/third_party/concurrentqueue

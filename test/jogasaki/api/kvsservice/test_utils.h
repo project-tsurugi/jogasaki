@@ -55,6 +55,11 @@ constexpr std::string_view default_property {  // NOLINT
         "[system]\n"
         "pid_directory = /tmp\n"
 
+        "[grpc]\n"
+        "enabled=false\n"
+
+        "[blob_relay]\n"
+        "enabled=false\n"
 };
 
 std::shared_ptr<tateyama::api::configuration::whole> default_configuration() {

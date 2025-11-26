@@ -115,6 +115,12 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "url=http://localhost:8080/harinoki\n"
         "request_timeout=0\n"
 
+    "[grpc]\n"
+        "enabled=false\n"
+
+    "[blob_relay]\n"
+        "enabled=false\n"
+
     "[datastore]\n"
         "logging_max_parallelism=112\n"
         "log_location="

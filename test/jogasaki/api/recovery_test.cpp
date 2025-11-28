@@ -40,6 +40,7 @@
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/kvs/database.h>
@@ -47,6 +48,8 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/storage_dump_formatter.h>
 #include <jogasaki/utils/tables.h>
@@ -83,9 +86,6 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
     }
 
     void TearDown() override {
@@ -95,7 +95,11 @@ public:
     void dump_content() {
         utils::storage_dump_formatter f{};
         auto out = std::cerr << f;
-        db_->dump(out, "T", 100);
+        auto storage_key = global::storage_manager()->get_storage_key("T");
+        if (! storage_key) {
+            FAIL();
+        }
+        db_->dump(out, *storage_key, 100);
     }
 };
 

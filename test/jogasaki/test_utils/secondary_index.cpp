@@ -51,6 +51,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
@@ -180,7 +181,7 @@ std::vector<std::pair<mock::basic_record, mock::basic_record>> get_secondary_ent
             auto tx = wrap(db.create_transaction());
 
             std::unique_ptr<kvs::iterator> it{};
-            auto stg = db.get_storage(secondary.simple_name());
+            auto stg = utils::get_storage_by_index_name(secondary.simple_name());
             if(status::ok != stg->content_scan(*tx->object(), buf, kvs::end_point_kind::unbound, buf, kvs::end_point_kind::unbound, it)) {
                 fail_with_exception();
             };

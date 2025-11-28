@@ -89,12 +89,6 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-
-        auto* impl = db_impl();
-        utils::add_benchmark_tables(*impl->tables());
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
-
         temporary_.prepare();
     }
 

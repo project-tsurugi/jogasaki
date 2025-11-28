@@ -55,6 +55,7 @@
 #include <jogasaki/test_utils/secondary_index.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/coder.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "../kvs_test_utils.h"
 #include "api_test_base.h"
@@ -340,8 +341,8 @@ TEST_F(secondary_index_dml_test, insert_or_skip_wont_update_secondary_index_on_d
 }
 
 std::unordered_set<std::int32_t> secondary_index_dml_test::get_secondary_entries(std::string_view index_name, std::optional<std::int32_t> secondary_key) {
-    auto table = get_impl(*db_).kvs_db()->get_storage("T");
-    auto index = get_impl(*db_).kvs_db()->get_storage(index_name);
+    auto table = utils::get_storage_by_index_name("T");
+    auto index = utils::get_storage_by_index_name(index_name);
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     {

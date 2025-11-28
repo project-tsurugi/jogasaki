@@ -19,21 +19,21 @@
 
 #include <takatori/util/downcast.h>
 
-#include <jogasaki/executor/common/graph.h>
-#include <jogasaki/scheduler/dag_controller.h>
-
-#include <jogasaki/kvs/database.h>
-#include <jogasaki/kvs/coder.h>
-#include <jogasaki/mock/basic_record.h>
-#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/impl/database.h>
-#include <jogasaki/api/transaction_handle.h>
-#include <jogasaki/api/result_set.h>
 #include <jogasaki/api/impl/record.h>
 #include <jogasaki/api/impl/record_meta.h>
+#include <jogasaki/api/result_set.h>
+#include <jogasaki/api/transaction_handle.h>
+#include <jogasaki/executor/common/graph.h>
 #include <jogasaki/executor/tables.h>
+#include <jogasaki/kvs/coder.h>
+#include <jogasaki/kvs/database.h>
+#include <jogasaki/mock/basic_record.h>
+#include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/storage_data.h>
 #include <jogasaki/utils/tables.h>
 
 namespace jogasaki::testing {
@@ -55,9 +55,7 @@ public:
         auto cfg = std::make_shared<configuration>();
         db_ = api::create_database(cfg);
         db_->start();
-        auto& impl = api::impl::get_impl(*db_);
-        utils::add_test_tables(*impl.tables());
-        register_kvs_storage(*impl.kvs_db(), *impl.tables());
+        utils::add_test_tables();
     }
 
     void TearDown() {

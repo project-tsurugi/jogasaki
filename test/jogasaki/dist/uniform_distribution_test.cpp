@@ -26,6 +26,7 @@
 #include <jogasaki/kvs_test_utils.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/create_tx.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 
 namespace jogasaki::dist {
 
@@ -61,7 +62,7 @@ TEST_F(uniform_distribution_test, basic) {
     execute_statement("insert into t values (1),(2),(3)");
 
     auto db = api::impl::get_impl(*db_).kvs_db();
-    auto stg = get_storage(*db, "t");
+    auto stg = utils::get_storage_by_index_name("t");
     auto tx = utils::create_transaction(*db_);
     auto tctx = get_transaction_context(*tx);
 
@@ -87,7 +88,7 @@ TEST_F(uniform_distribution_test, complex_primary_key) {
     execute_statement("insert into t values (1,10),(2,20),(3,30)");
 
     auto db = api::impl::get_impl(*db_).kvs_db();
-    auto stg = get_storage(*db, "t");
+    auto stg = utils::get_storage_by_index_name("t");
     auto tx = utils::create_transaction(*db_);
     auto tctx = get_transaction_context(*tx);
 
@@ -195,7 +196,7 @@ TEST_F(uniform_distribution_test, compute_pivots) {
     execute_statement("insert into t values (1),(2),(3)");
 
     auto db = api::impl::get_impl(*db_).kvs_db();
-    auto stg = get_storage(*db, "t");
+    auto stg = utils::get_storage_by_index_name("t");
     auto tx = utils::create_transaction(*db_);
     auto tctx = get_transaction_context(*tx);
 

@@ -29,6 +29,7 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/runner.h>
 #include <jogasaki/utils/storage_data.h>
 #include <jogasaki/utils/tables.h>
@@ -58,9 +59,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        utils::add_test_tables();
         execute_statement("create table qa_t1 (c_pk int primary key, c_i4 int not null, c_i8 bigint not null, c_f4 real not null, c_f8 double not null, c_ch varchar(*) not null)");
         execute_statement("create index qa_t1_i4_idx on qa_t1(c_i4)");
     }

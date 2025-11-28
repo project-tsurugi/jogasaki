@@ -38,6 +38,7 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/status.h>
 #include <jogasaki/test_utils/temporary_folder.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/tables.h>
 
@@ -61,11 +62,8 @@ public:
 
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
-        cfg->single_thread(false);
         db_setup(cfg);
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        utils::add_test_tables();
 
         temporary_.prepare();
     }

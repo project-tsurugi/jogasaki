@@ -52,6 +52,7 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/random.h>
 #include <jogasaki/utils/tables.h>
@@ -306,9 +307,7 @@ static int run(
     }
     auto db = jogasaki::api::create_database(cfg);
     db->start();
-    auto& db_impl = unsafe_downcast<jogasaki::api::impl::database&>(*db);
-    jogasaki::utils::add_benchmark_tables(*db_impl.tables());
-    jogasaki::executor::register_kvs_storage(*db_impl.kvs_db(), *db_impl.tables());
+    utils::add_benchmark_tables();
 
     if(auto res = prepare_data(*db, records); !res) {
         LOG(ERROR) << "prepare dat error";

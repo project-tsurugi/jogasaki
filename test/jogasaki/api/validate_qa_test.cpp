@@ -32,6 +32,7 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/tables.h>
 
@@ -60,10 +61,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        utils::add_test_tables();
 
         execute_statement("create table qa_t1 (c_pk int primary key, c_i4 int not null, c_i8 bigint not null, c_f4 real not null, c_f8 double not null, c_ch varchar(*) not null)");
         execute_statement("create index qa_t1_i4_idx on qa_t1(c_i4)");

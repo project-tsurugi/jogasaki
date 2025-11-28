@@ -30,6 +30,7 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/storage_data.h>
 
 #include "../api/api_test_base.h"
@@ -81,7 +82,7 @@ void concurrent_op_test::test_content_scan_err(
     status expected,
     std::size_t error_record_index
 ) {
-    auto index = get_impl(*db_).kvs_db()->get_storage(index_name);
+    auto index = utils::get_storage_by_index_name(index_name);
 
     std::unique_ptr<kvs::iterator> it{};
     std::string buf{};

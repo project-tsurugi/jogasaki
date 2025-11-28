@@ -35,6 +35,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/mock/test_channel.h>
 #include <jogasaki/scheduler/dag_controller.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/storage_data.h>
@@ -86,9 +87,7 @@ public:
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
         temporary_.prepare();
-        auto* impl = db_impl();
-        utils::add_test_tables(*impl->tables());
-        register_kvs_storage(*impl->kvs_db(), *impl->tables());
+        utils::add_test_tables();
     }
 
     void TearDown() override {

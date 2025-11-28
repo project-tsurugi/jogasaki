@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 #include <string>
+#include <string_view>
 #include <gtest/gtest.h>
 
 #include <jogasaki/utils/binary_printer.h>
 
 namespace jogasaki::utils {
+
+using namespace std::string_view_literals;
 
 class binary_printer_test : public ::testing::Test {};
 
@@ -46,6 +49,14 @@ TEST_F(binary_printer_test, format_unchanged) {
     ss2 << binary_printer{str.data(), str.size()};
     ss2 << 65;
     EXPECT_EQ("4165", ss2.str());
+}
+
+TEST_F(binary_printer_test, cpp_literal) {
+    std::string s("\u0000A\u0001B\u0002C\u0003"sv);
+    EXPECT_EQ(7, s.size());
+    std::stringstream ss{};
+    ss << binary_printer{s.data(), s.size()}.cpp_literal(true);
+    EXPECT_EQ("\\u0000A\\u0001B\\u0002C\\u0003", ss.str());
 }
 
 }

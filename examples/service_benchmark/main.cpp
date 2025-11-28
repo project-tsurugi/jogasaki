@@ -61,6 +61,7 @@
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/proto/sql/common.pb.h>
 #include <jogasaki/proto/sql/request.pb.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/command_utils.h>
 #include <jogasaki/utils/msgbuf_utils.h>
@@ -794,9 +795,7 @@ public:
         if(ddl_) {
             setup_tables();
         } else {
-            auto& impl = jogasaki::api::impl::get_impl(*db_);
-            jogasaki::utils::add_benchmark_tables(*impl.tables());
-            jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
+            jogasaki::utils::add_benchmark_tables();
         }
         if (! FLAGS_load_from.empty()) {
             jogasaki::common_cli::load(*db_, FLAGS_load_from);

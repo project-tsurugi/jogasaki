@@ -57,7 +57,10 @@
 #include <jogasaki/model/port.h>
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/test_utils/secondary_index.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
+#include "jogasaki/utils/surrogate_id_utils.h"
 
 #include "api_test_base.h"
 
@@ -643,19 +646,17 @@ TEST_F(ddl_test, default_numeric_for_temporal_column) {
 
 TEST_F(ddl_test, drop_indices_cascade) {
     execute_statement("CREATE TABLE T (C0 INT, C1 INT)");
-    auto stg0 = utils::create_secondary_index(*db_impl(), "S0", "T", {1}, {});
-    ASSERT_TRUE(stg0);
-    auto stg1 = utils::create_secondary_index(*db_impl(), "S1", "T", {1}, {});
-    ASSERT_TRUE(stg1);
+    execute_statement("CREATE INDEX S0 ON T(C1)");
+    execute_statement("CREATE INDEX S1 ON T(C1)");
     execute_statement("DROP TABLE T");
     {
         auto provider = db_impl()->tables();
         auto s0 = provider->find_index("S0");
         ASSERT_FALSE(s0);
-        ASSERT_FALSE(db_impl()->kvs_db()->get_storage("S0"));
+        ASSERT_FALSE(utils::get_storage_by_index_name("S0"));
         auto s1 = provider->find_index("S0");
         ASSERT_FALSE(s1);
-        ASSERT_FALSE(db_impl()->kvs_db()->get_storage("S1"));
+        ASSERT_FALSE(utils::get_storage_by_index_name("S1"));
     }
 }
 

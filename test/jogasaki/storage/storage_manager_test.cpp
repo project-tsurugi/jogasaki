@@ -91,18 +91,50 @@ TEST_F(storage_manager_test, find_by_name) {
     ASSERT_TRUE(! mgr.find_by_name("T3"));
 }
 
+TEST_F(storage_manager_test, get_storage_key) {
+    // verify specifying storage key
+    storage_manager mgr{};
+    ASSERT_TRUE(mgr.add_entry(1, "T1", "K1"));
+    ASSERT_TRUE(mgr.add_entry(2, "T2", "K2"));
+    ASSERT_TRUE(mgr.add_entry(3, "T3"));
+    ASSERT_EQ("K1", mgr.get_storage_key("T1"));
+    ASSERT_EQ("K2", mgr.get_storage_key("T2"));
+    ASSERT_EQ("T3", mgr.get_storage_key("T3"));
+    ASSERT_TRUE(! mgr.get_storage_key("T4"));
+}
+
+TEST_F(storage_manager_test, get_storage_name) {
+    // verify get_storage_name
+    storage_manager mgr{};
+    ASSERT_TRUE(mgr.add_entry(1, "T1", "K1"));
+    ASSERT_TRUE(mgr.add_entry(2, "T2", "K2"));
+    ASSERT_TRUE(mgr.add_entry(3, "T3"));
+    ASSERT_EQ("T1", mgr.get_index_name("K1"));
+    ASSERT_EQ("T2", mgr.get_index_name("K2"));
+    ASSERT_EQ("T3", mgr.get_index_name("T3"));
+    ASSERT_TRUE(! mgr.get_index_name("T4"));
+}
+
 TEST_F(storage_manager_test, remove) {
     // remove entries
     storage_manager mgr{};
     ASSERT_TRUE(mgr.add_entry(1, "T1"));
     ASSERT_TRUE(mgr.add_entry(2, "T2"));
+    ASSERT_TRUE(mgr.add_entry(10, "T10", "K10"));
     ASSERT_TRUE(mgr.find_entry(1));
-    EXPECT_EQ(2, mgr.size());
+    ASSERT_TRUE(mgr.find_entry(10));
+    EXPECT_EQ(3, mgr.size());
     ASSERT_TRUE(mgr.remove_entry(1));
-    EXPECT_EQ(1, mgr.size());
+    EXPECT_EQ(2, mgr.size());
     ASSERT_TRUE(! mgr.find_entry(1));
+    ASSERT_TRUE(! mgr.get_storage_key("T1"));
+    ASSERT_TRUE(! mgr.get_index_name("T1"));
     ASSERT_TRUE(! mgr.remove_entry(3));
-    EXPECT_EQ(1, mgr.size());
+    EXPECT_EQ(2, mgr.size());
+    ASSERT_TRUE(mgr.remove_entry(10));
+    ASSERT_TRUE(! mgr.find_entry(10));
+    ASSERT_TRUE(! mgr.get_storage_key("T10"));
+    ASSERT_TRUE(! mgr.get_index_name("K10"));
 }
 
 TEST_F(storage_manager_test, acquire_lock) {

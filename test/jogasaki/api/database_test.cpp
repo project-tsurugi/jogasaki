@@ -41,6 +41,7 @@
 #include <jogasaki/executor/tables.h>
 #include <jogasaki/mock/basic_record.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/add_test_tables.h>
 #include <jogasaki/utils/create_tx.h>
 #include <jogasaki/utils/tables.h>
 
@@ -68,10 +69,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         db_setup(cfg);
-
-        auto& impl = *db_impl();
-        jogasaki::utils::add_test_tables(*impl.tables());
-        jogasaki::executor::register_kvs_storage(*impl.kvs_db(), *impl.tables());
+        jogasaki::utils::add_test_tables();
     }
 
     void TearDown() override {

@@ -36,7 +36,15 @@ void add_analytics_benchmark_tables(yugawara::storage::configurable_provider& pr
  * @brief create kvs storage based on the index definitions in the provider
  * @param db the database where the kvs storage will be created
  * @param provider object to provide index definition
+ * @deprecated use utils::add_test_tables or utils::add_benchmark_tables, which handle adding tables single-handed
  */
 void register_kvs_storage(kvs::database& db, yugawara::storage::configurable_provider& provider);
+
+/**
+ * @brief create kvs storage based on the index definitions in the provider
+ * @param provider object to provide index definition
+ * @deprecated use utils::add_test_tables or utils::add_benchmark_tables, which handle adding tables single-handed
+ */
+void register_kvs_storage(yugawara::storage::configurable_provider& provider);
 
 }

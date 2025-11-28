@@ -51,9 +51,11 @@
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/metadata_store.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/transaction.h>
 #include <jogasaki/plan/storage_processor.h>
+#include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
@@ -62,6 +64,7 @@
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/utils/validate_index_key_type.h>
 #include <jogasaki/utils/validate_table_definition.h>
 
@@ -164,9 +167,16 @@ bool create_table::operator()(request_context& context) const {
         }
     }
 
-    auto tid = storage::table_id_src++;
+    auto tid = storage::index_id_src++;
     auto& smgr = *global::storage_manager();
-    if(! smgr.add_entry(tid, c->simple_name())) {
+
+    // note: this code generating surrogate id has been added in release 1.8,
+    // and existing tables/indices that were created before the release
+    // do not have surrogate IDs
+    auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
+    auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
+
+    if(! smgr.add_entry(tid, c->simple_name(), opt, true)) {
         // should not happen normally
         set_error(
             context,
@@ -198,10 +208,16 @@ bool create_table::operator()(request_context& context) const {
 
     std::string storage{};
     yugawara::storage::configurable_provider target{};
+
     if(auto err = recovery::create_storage_option(
            *i,
            storage,
-           utils::metadata_serializer_option{false, std::addressof(se->authorized_actions())}
+           utils::metadata_serializer_option{
+               false,
+               std::addressof(se->authorized_actions()),
+               nullptr,
+               opt
+           }
        )) {
         // error should not happen normally
         set_error_info(context, err);
@@ -216,7 +232,7 @@ bool create_table::operator()(request_context& context) const {
 
     sharksfin::StorageOptions options{};
     options.payload(std::move(storage));
-    if(auto stg = context.database()->create_storage(c->simple_name(), options);! stg) {
+    if(auto stg = context.database()->create_storage((opt.has_value() ? opt.value() : c->simple_name()), options);! stg) {
         // should not happen normally
         set_error(
             context,

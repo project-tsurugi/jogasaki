@@ -33,12 +33,17 @@ status setup_system_storage();
 
 /**
  * @brief create storage with the index definition in the provider
- * @details create the built-in storage if it does not exist.
+ * @details create the built-in storage if it does not exist. If `storage_key` and `index_name` are identical,
+ * this function create pre-1.8 storage, that is, `storage_key` is used as identifier for sharksfin,
+ * but the storage metadata does not contain `IndexDefinition.storage_key` field.
  * @param storage_key the storage key assigned for the storage
  * @param index_name the index name used to find the index definition in the provider
  * @param provider provides the indices and other related objects
  * @return status::ok if successful
  * @return status::err_unknown if error
+ * @note this function is intended for backward compatibility to support built-in-like tables.
+ * Once you don't need built-in tables for testing/benchmarking, this function can be removed or
+ * simplified for specific use by setup_system_storage above.
  */
 status create_storage_from_provider(
     std::string_view storage_key,

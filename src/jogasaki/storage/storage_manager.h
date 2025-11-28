@@ -38,9 +38,9 @@
 
 namespace jogasaki::storage {
 
-// the source of table ids assigned for each table
-// table id is not durable and assigned arbitrarily from this source on restart
-inline std::atomic_size_t table_id_src = 100;  //NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+// the source of index ids assigned for each index
+// index id is not durable and assigned arbitrarily from this source on restart
+inline std::atomic_size_t index_id_src = 100;  //NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 namespace impl {
 
@@ -71,13 +71,25 @@ public:
 
     /**
      * @brief create named object
+     * @param name the name of the index (storage)
+     * @param is_primary whether this is a primary index (table) or secondary index
      */
-    explicit storage_control(std::string name) :
-        name_(std::move(name))
+    explicit storage_control(std::string name, bool is_primary = true) :
+        name_(std::move(name)),
+        is_primary_(is_primary)
     {}
 
     [[nodiscard]] std::string_view name() const noexcept {
         return name_;
+    }
+
+    /**
+     * @brief check whether this storage represents a primary index
+     * @return true if this is a primary index (table)
+     * @return false if this is a secondary index
+     */
+    [[nodiscard]] bool is_primary() const noexcept {
+        return is_primary_;
     }
 
     bool lock() {
@@ -164,9 +176,35 @@ public:
         });
     }
 
+    /**
+     * @brief getter for storage key (return name if storage key is not assigned)
+     */
+    [[nodiscard]] std::string_view derived_storage_key() const noexcept {
+        if (storage_key_) {
+            return *storage_key_;
+        }
+        return name_;
+    }
+
+    /**
+     * @brief getter for storage key
+     */
+    [[nodiscard]] std::optional<std::string_view> storage_key() const noexcept {
+        return storage_key_;
+    }
+    /**
+     * @brief setter for storage key
+     * @param key the storage key
+     */
+    void storage_key(std::optional<std::string_view> key) noexcept {
+        storage_key_ = key;
+    }
+
 private:
     std::atomic<lock_state> state_{};
     std::string name_{};
+    std::optional<std::string> storage_key_{};
+    bool is_primary_{true};
     auth::authorized_users_action_set authorized_actions_{};
     auth::action_set public_actions_{};
 };
@@ -199,11 +237,13 @@ public:
     /**
      * @brief add new storage entry with name
      * @param entry new storage entry to add
-     * @param name name of the storage (must be unique among same kind of storages)
+     * @param name name of the storage (must be unique)
+     * @param storage_key optional storage key for the index. if not provided, the name is used as the storage key
+     * @param is_primary whether this is a primary index (table) or secondary index. default is true
      * @return true if the entry was added successfully
      * @return false is the entry already exists
      */
-    bool add_entry(storage_entry entry, std::string_view name);
+    bool add_entry(storage_entry entry, std::string_view name, std::optional<std::string_view> storage_key = std::nullopt, bool is_primary = true);
 
     /**
      * @brief remove storage entry
@@ -270,9 +310,42 @@ public:
      */
     void clear();
 
+    /**
+     * @brief generate a new unique surrogate ID for an index
+     * @return the newly generated surrogate ID
+     * @details this function is thread-safe
+     */
+    [[nodiscard]] std::uint64_t generate_surrogate_id();
+
+    /**
+     * @brief initialize the next surrogate ID counter
+     * @param value the value to set for the next surrogate ID
+     * @details this function should only be called during database initialization/recovery.
+     * it is not thread-safe and should not be called concurrently with generate_surrogate_id().
+     */
+    void init_next_surrogate_id(std::uint64_t value);
+
+    /**
+     * @brief get the storage key for the given index name
+     * @param name the name of the index
+     * @return the storage key if found
+     * @return nullopt if the entry is not found
+     */
+    [[nodiscard]] std::optional<std::string> get_storage_key(std::string_view name) const;
+
+    /**
+     * @brief get the index name for the given storage key
+     * @param storage_key the storage key
+     * @return the index name if found
+     * @return nullopt if the entry is not found
+     */
+    [[nodiscard]] std::optional<std::string> get_index_name(std::string_view storage_key) const;
+
 private:
     tbb::concurrent_hash_map<storage_entry, std::shared_ptr<impl::storage_control>> storages_{};
     tbb::concurrent_hash_map<std::string, storage_entry> storage_names_{};
+    tbb::concurrent_hash_map<std::string, storage_entry> storage_keys_{};
+    std::atomic<std::uint64_t> next_surrogate_id_{1000};
 
     std::pair<bool, storage_list> lock_internal(bool shared, storage_list_view storages, unique_lock* lock);
 };

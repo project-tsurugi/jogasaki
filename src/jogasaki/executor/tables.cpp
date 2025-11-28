@@ -38,6 +38,7 @@
 #include <jogasaki/common_types.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/kvs/system_storage.h>
 
 namespace jogasaki::executor {
 
@@ -423,10 +424,14 @@ void add_analytics_benchmark_tables(storage::configurable_provider& provider) {
     }
 }
 
-void register_kvs_storage(kvs::database& db, yugawara::storage::configurable_provider& provider) {
-    provider.each_index([&db](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& ){
-        auto stg = db.create_storage(id);
+void register_kvs_storage(yugawara::storage::configurable_provider& provider) {
+    provider.each_index([&](std::string_view id, std::shared_ptr<yugawara::storage::index const> const& ){
+        kvs::create_storage_from_provider(id, id, provider);
     });
+}
+
+void register_kvs_storage(kvs::database&, yugawara::storage::configurable_provider& provider) {
+    register_kvs_storage(provider);
 }
 
 }

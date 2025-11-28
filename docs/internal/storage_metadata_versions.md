@@ -23,5 +23,4 @@ jogasakiのストレージメタデータ (`src/jogasaki/proto/metadata/storage.
 |  10 | 2023-10-03 | 1.0.0-BETA1 | [0f7514b77328a69363a7f68557c0260dd6effe1c](https://github.com/project-tsurugi/jogasaki/commit/0f7514b77328a69363a7f68557c0260dd6effe1c) | GA (1.0.0) もこのバージョンを使用 |
 |  11 | 2025-04-29 | 1.4.0 | [7b2dd1a5498f2cec3be068b29268e6c0fd3deccb](https://github.com/project-tsurugi/jogasaki/commit/7b2dd1a5498f2cec3be068b29268e6c0fd3deccb) | `description` の追加など |
 |  12 | 2025-07-30 | 1.6.0 | [bc8d04c1d035af1d52e96ea84f574bf533c18c82](https://github.com/project-tsurugi/jogasaki/commit/bc8d04c1d035af1d52e96ea84f574bf533c18c82) | テーブルへ認証情報の追加など |
-
-
+|  13 |            | 1.8.0 | | `storage_key` フィールドの追加 |

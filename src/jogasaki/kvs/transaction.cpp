@@ -31,6 +31,7 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/fail.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 
 namespace jogasaki::kvs {
 
@@ -146,8 +147,9 @@ static bool extract_storages(
     E const& names,
     T& table_areas
 ) {
+    (void) database;
     for(auto&& wp : names) {
-        auto s = database->get_storage(wp);
+        auto s = utils::get_storage_by_index_name(wp);
         if(! s) {
             VLOG_LP(log_error) << "Specified storage '" << wp << "' is not found.";
             return false;

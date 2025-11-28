@@ -54,6 +54,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/plan/plan_exception.h>
 #include <jogasaki/utils/from_endpoint.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/scan_parallel_enabled.h>
 
 #include "aggregate_group.h"
@@ -413,7 +414,7 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
         std::unique_ptr<kvs::storage> stg{};
         std::unique_ptr<dist::key_distribution> distribution{};
         if(global::config_pool()->key_distribution() == key_distribution_kind::uniform) {
-            stg = request_context_->database()->get_storage(secondary_or_primary_index.simple_name());
+            stg = utils::get_storage_by_index_name(secondary_or_primary_index.simple_name());
             distribution = std::make_unique<dist::uniform_key_distribution>(
                 *stg,
                 *request_context_->transaction()->object(),

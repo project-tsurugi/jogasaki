@@ -34,11 +34,13 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 
 #include "acquire_table_lock.h"
@@ -267,7 +269,8 @@ static bool serialize_and_save(
            utils::metadata_serializer_option{
                false,
                std::addressof(authorized_actions),
-               std::addressof(public_actions)
+               std::addressof(public_actions),
+               sc.storage_key()
            }
        )) {
         // error should not happen normally
@@ -290,7 +293,7 @@ static bool serialize_and_save(
 
     sharksfin::StorageOptions options{};
     options.payload(std::move(storage));
-    auto stg = context.database()->get_storage(table_name);
+    auto stg = utils::get_storage_by_index_name(table_name);
     if(! stg) {
         // should not happen normally
         set_error(

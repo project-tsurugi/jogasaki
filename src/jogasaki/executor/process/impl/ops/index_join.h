@@ -47,6 +47,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
 
@@ -304,8 +305,8 @@ public:
                 index(),
                 ctx.variable_table(block_index()),
                 ctx.variable_table(block_index()),
-                ctx.database()->get_storage(primary_storage_name_),
-                use_secondary_ ? ctx.database()->get_storage(secondary_storage_name_) : nullptr,
+                utils::get_storage_by_index_name(primary_storage_name_),
+                use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name_) : nullptr,
                 ctx.transaction(),
                 std::make_unique<details::matcher<MatchInfo>>(use_secondary_, match_info_, key_columns_, value_columns_),
                 ctx.resource(),

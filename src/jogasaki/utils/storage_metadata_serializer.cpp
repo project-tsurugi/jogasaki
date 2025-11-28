@@ -340,6 +340,10 @@ static void serialize_index(
     idef.mutable_description()->assign(idx.description());
     idef.set_synthesized(option.synthesized_);
 
+    if(option.storage_key_.has_value()) {
+        idef.set_storage_key(std::string{*option.storage_key_});
+    }
+
     auto* keys = idef.mutable_keys();
     for(auto&& k : idx.keys()) {
         auto* ic = keys->Add();

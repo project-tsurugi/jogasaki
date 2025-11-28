@@ -36,6 +36,8 @@
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/storage_manager.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "acquire_table_lock.h"
 #include "validate_alter_table_auth.h"
@@ -75,7 +77,7 @@ bool drop_index::operator()(request_context& context) const {
 
     // try to delete stroage on kvs.
 
-    auto stg = context.database()->get_storage(name);
+    auto stg = utils::get_storage_by_index_name(name);
     if (stg) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
             VLOG_LP(log_error) << res << "  " << name;
@@ -92,6 +94,17 @@ bool drop_index::operator()(request_context& context) const {
         VLOG_LP(log_info) << "kvs storage '" << name << "' not found.";
     }
     provider.remove_index(name);
+
+    auto& smgr = *global::storage_manager();
+    auto e = smgr.find_by_name(name);
+    if(! e) {
+        // normally should not happen
+        VLOG_LP(log_warning) << "failed to find storage entry name:" << name;
+        return true;
+    }
+    if(! smgr.remove_entry(e.value())) {
+        VLOG_LP(log_warning) << "failed to remove storage entry:" << storage_id;
+    }
     return true;
 }
 }

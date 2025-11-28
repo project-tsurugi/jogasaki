@@ -50,6 +50,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/string_manipulation.h>
 
@@ -125,7 +126,7 @@ static bool drop_auto_generated_sequences(
     return true;
 }
 
-bool drop_table::operator()(request_context& context) const {
+bool drop_table::operator()(request_context& context) const {  //NOLINT(readability-function-cognitive-complexity)
     BOOST_ASSERT(context.storage_provider());  //NOLINT
     auto& provider = *context.storage_provider();
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
@@ -169,7 +170,7 @@ bool drop_table::operator()(request_context& context) const {
     });
 
     for(auto&& n : indices) {
-        if(auto stg = context.database()->get_storage(n)) {
+        if(auto stg = utils::get_storage_by_index_name(n)) {
             if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
                 handle_generic_error(context, status::err_unknown, error_code::sql_execution_exception);
                 return false;
@@ -177,7 +178,7 @@ bool drop_table::operator()(request_context& context) const {
         }
     }
 
-    if(auto stg = context.database()->get_storage(c.simple_name())) {
+    if(auto stg = utils::get_storage_by_index_name(c.simple_name())) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
             handle_generic_error(context, status::err_unknown, error_code::sql_execution_exception);
             return false;
@@ -211,6 +212,21 @@ bool drop_table::operator()(request_context& context) const {
     }
 
     auto& smgr = *global::storage_manager();
+
+    // remove storage entries for secondary
+    for(auto&& n : indices) {
+        auto e = smgr.find_by_name(n);
+        if(! e) {
+            // normally should not happen, but if in that case, continue dropping entries as much as possible
+            VLOG_LP(log_warning) << "failed to find storage entry name:" << n;
+            continue;
+        }
+        if(! smgr.remove_entry(e.value())) {
+            VLOG_LP(log_warning) << "failed to remove storage entry:" << e.value();
+        }
+    }
+
+    // remove storage entries for primary
     if(! smgr.remove_entry(storage_id)) {
         VLOG_LP(log_warning) << "failed to remove storage entry:" << storage_id;
     }

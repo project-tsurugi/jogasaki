@@ -531,6 +531,14 @@ public:
         enable_session_store_ = arg;
     }
 
+    [[nodiscard]] bool enable_storage_key() const noexcept {
+        return enable_storage_key_;
+    }
+
+    void enable_storage_key(bool arg) noexcept {
+        enable_storage_key_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -592,6 +600,7 @@ public:
         print_non_default(enable_blob_cast);
         print_non_default(max_result_set_writers);
         print_non_default(enable_session_store);
+        print_non_default(enable_storage_key);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -657,6 +666,7 @@ private:
     bool enable_blob_cast_ = true;
     std::size_t max_result_set_writers_ = 64;
     bool enable_session_store_ = true;
+    bool enable_storage_key_ = true;
 };
 
 }  // namespace jogasaki

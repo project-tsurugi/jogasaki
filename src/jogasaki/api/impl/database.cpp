@@ -108,6 +108,7 @@
 #include <jogasaki/recovery/index.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_logging.h>
 #include <jogasaki/scheduler/conditional_task.h>
@@ -123,6 +124,7 @@
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/backoff_waiter.h>
+#include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/external_log_utils.h>
@@ -145,6 +147,10 @@ constexpr static std::string_view log_location_prefix = "/:jogasaki:api:impl:dat
 
 std::shared_ptr<kvs::database> const& database::kvs_db() const noexcept {
     return kvs_db_;
+}
+
+void database::reset_tables() {
+    tables_ = std::make_shared<yugawara::storage::configurable_provider>();
 }
 
 std::shared_ptr<yugawara::storage::configurable_provider> const& database::tables() const noexcept {
@@ -958,6 +964,12 @@ status database::do_create_table(std::shared_ptr<yugawara::storage::table> table
         VLOG_LP(log_error) << "table " << name << " already exists";
         return status::err_already_exists;
     }
+    // this api is deprecated, and left only for testing. no storage_key assigned
+    auto id = storage::index_id_src++;
+    if(! global::storage_manager()->add_entry(id, name, std::nullopt, true)) {
+        LOG_LP(ERROR) << "Metadata add entry failed. name:" << name << " id:" << id;
+        return status::err_unknown;
+    }
     return status::ok;
 }
 
@@ -1060,6 +1072,13 @@ status database::do_create_index(std::shared_ptr<yugawara::storage::index> index
             VLOG_LP(log_error) << "error_info:" << *err;
         }
         return err->status();
+    }
+
+    // this api is deprecated, and left only for testing. no storage_key assigned
+    auto id = storage::index_id_src++;
+    if(! global::storage_manager()->add_entry(id, name, std::nullopt, false)) {
+        LOG_LP(ERROR) << "Metadata add entry failed. name:" << name << " id:" << id;
+        return status::err_unknown;
     }
     return status::ok;
 }
@@ -1173,10 +1192,11 @@ status database::initialize_from_providers() {
     return status::ok;
 }
 
-status database::recover_index_metadata(
+status database::recover_index_metadata(  //NOLINT(readability-function-cognitive-complexity)
     std::vector<std::string> const& keys,
     bool primary_only,
-    std::vector<std::string>& skipped
+    std::vector<std::string>& skipped,
+    std::uint64_t& max_surrogate_id
 ) {
     skipped.clear();
     for(auto&& n : keys) {
@@ -1199,23 +1219,35 @@ status database::recover_index_metadata(
             LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata: " << *err;
             return err->status();
         }
-        if(primary_only && ! idef.has_table_definition()) {
+        bool is_primary = idef.has_table_definition();
+        if(primary_only && ! is_primary) {
             skipped.emplace_back(n);
             continue;
         }
-        if(primary_only) {
-            // fill auth actions only when processing primary index (table)
-            auto const& name = idef.table_definition().name().element_name();
-            auto id = storage::table_id_src++;
-            // Assign unique id to each table so that we can manage tables in storage_manager.
-            // Currently, these ids are not durable, so they are not guaranteed to be same across restarts.
-            // That's ok for now because name works as a unique identifier.
-            // That needs to be fixed when we support renaming tables.
-            // TODO make the table id durable
-            if(! global::storage_manager()->add_entry(id, name)) {
-                LOG_LP(ERROR) << "Metadata recovery failed. conflicting name:" << name;
-                return status::err_unknown;
+
+        bool has_storage_key = idef.storage_key_optional_case() ==
+            proto::metadata::storage::IndexDefinition::StorageKeyOptionalCase::kStorageKey;
+        if(has_storage_key) {
+            auto const& storage_key = idef.storage_key();
+            if(utils::is_surrogate_id(storage_key)) {
+                max_surrogate_id = std::max(max_surrogate_id, utils::from_big_endian(storage_key));
             }
+        }
+
+        // register index in storage_manager
+        auto const& name = idef.name().element_name();
+        auto id = storage::index_id_src++;
+        // determine storage_key from metadata
+        std::optional<std::string_view> storage_key =
+            has_storage_key ? std::optional<std::string_view>{idef.storage_key()} : std::nullopt;
+
+        if(! global::storage_manager()->add_entry(id, name, storage_key, is_primary)) {
+            LOG_LP(ERROR) << "Metadata recovery failed. conflicting name:" << name;
+            return status::err_unknown;
+        }
+
+        if(is_primary) {
+            // fill auth actions only when processing primary index (table)
             auto s = global::storage_manager()->find_entry(id);
             if(! s) {
                 LOG_LP(ERROR) << "Metadata recovery failed. storage not found id:" << id;
@@ -1224,7 +1256,7 @@ status database::recover_index_metadata(
             auth::from_authorization_list(idef.table_definition(), s->authorized_actions());
             auth::from_default_privilege(idef.table_definition(), s->public_actions());
         }
-        LOG_LP(INFO) << "Recovering metadata \"" << n << "\" (v=" << v << ") : " << utils::to_debug_string(idef);
+        LOG_LP(INFO) << "Recovering metadata \"" << utils::binary_printer(n).cpp_literal(true) << "\" (v=" << v << ") : " << utils::to_debug_string(idef);
         if(auto err = recovery::deserialize_into_provider(idef, *tables_, *tables_, false)) {
             LOG_LP(ERROR) << "Metadata recovery failed. Invalid metadata:" << *err;
             return err->status();
@@ -1243,17 +1275,20 @@ status database::recover_metadata() {
         LOG(ERROR) << "database metadata version is too old to recover";
         return status::err_invalid_state;
     }
+
+    std::uint64_t max_surrogate_id = 0;
     std::vector<std::string> secondaries{};
     secondaries.reserve(names.size());
     // recover primary index/table
-    if(auto res = recover_index_metadata(names, true, secondaries); res != status::ok) {
+    if(auto res = recover_index_metadata(names, true, secondaries, max_surrogate_id); res != status::ok) {
         return res;
     }
     // recover secondaries
     std::vector<std::string> skipped{};
-    if(auto res = recover_index_metadata(secondaries, false, skipped); res != status::ok) {
+    if(auto res = recover_index_metadata(secondaries, false, skipped, max_surrogate_id); res != status::ok) {
         return res;
     }
+    global::storage_manager()->init_next_surrogate_id(max_surrogate_id + 1);
     return status::ok;
 }
 

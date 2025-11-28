@@ -66,6 +66,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 
 #include "context_helper.h"
 #include "details/error_abort.h"
@@ -331,14 +332,14 @@ operation_status write_existing::process_record(abstract::task_context* context)
         contexts.reserve(secondaries_.size());
         for(auto&& s : secondaries_) {
             contexts.emplace_back(
-                ctx.database()->get_storage(s.storage_name()),
+                utils::get_storage_by_index_name(s.storage_name()),
                 ctx.req_context()
             );
         }
         p = ctx.make_context<write_existing_context>(
             index(),
             ctx.variable_table(block_index()),
-            ctx.database()->get_storage(storage_name()),
+            utils::get_storage_by_index_name(storage_name()),
             ctx.transaction(),
             primary_.key_meta(),
             primary_.value_meta(),

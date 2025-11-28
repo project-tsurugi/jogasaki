@@ -313,6 +313,12 @@ message IndexDefinition {
         StorageName name = 20;
     }
 
+    // the optional storage key.
+    oneof storage_key_optional {
+        // the index storage key.
+        bytes storage_key = 25;
+    }
+
     // the corresponding table information.
     oneof table {
 

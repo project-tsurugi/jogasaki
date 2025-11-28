@@ -48,7 +48,12 @@ status create_storage_from_provider(std::string_view storage_key, std::string_vi
         return status::err_unknown;
     }
     std::string storage{};
-    if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{true})) {
+    std::optional<std::string_view> stored_key = storage_key == index_name ? std::nullopt : std::optional{storage_key};
+    if(auto err = recovery::create_storage_option(
+           *i,
+           storage,
+           utils::metadata_serializer_option{true, nullptr, nullptr, stored_key}
+       )) {
         if(! VLOG_IS_ON(log_trace)) {  // avoid duplicate log entry with log_trace
             VLOG_LP(log_error) << "error_info:" << *err;
         }

@@ -211,6 +211,8 @@ public:
 
     [[nodiscard]] std::shared_ptr<yugawara::storage::configurable_provider> const& tables() const noexcept;
 
+    void reset_tables();
+
     [[nodiscard]] std::shared_ptr<yugawara::aggregate::configurable_provider> const&
         aggregate_functions() const noexcept;
 
@@ -231,7 +233,8 @@ public:
     status recover_index_metadata(
         std::vector<std::string> const& keys,
         bool primary_only,
-        std::vector<std::string>& skipped
+        std::vector<std::string>& skipped,
+        std::uint64_t& max_surrogate_id
     );
     void print_diagnostic(std::ostream& os) override;
 

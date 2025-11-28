@@ -47,6 +47,7 @@
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
 
@@ -125,8 +126,8 @@ operation_status find::process_record(abstract::task_context* context) {
         p = ctx.make_context<class find_context>(index(),
             ctx.variable_table(block_index()),
             ctx.variable_table(block_index()),
-            ctx.database()->get_storage(storage_name()),
-            use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
+            utils::get_storage_by_index_name(storage_name()),
+            use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name()) : nullptr,
             ctx.transaction(),
             ctx.resource(),
             ctx.varlen_resource(),

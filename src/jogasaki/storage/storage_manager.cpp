@@ -36,18 +36,23 @@ std::size_t storage_manager::size() const noexcept {
     return storages_.size();
 }
 
-bool storage_manager::add_entry(storage_entry entry, std::string_view name) {
+bool storage_manager::add_entry(storage_entry entry, std::string_view name, std::optional<std::string_view> storage_key, bool is_primary) {
     bool ret = false;
+    std::shared_ptr<impl::storage_control> control{};
     {
         decltype(storages_)::accessor acc;
         if (storages_.insert(acc, entry)) {
-            acc->second = std::make_shared<impl::storage_control>(std::string{name});
+            acc->second = std::make_shared<impl::storage_control>(std::string{name}, is_primary);
+            control = acc->second;
+            control->storage_key(storage_key);
             ret = true;
         }
     }
     if (ret) {
         // add name after storages_ is updated successfully
         storage_names_.emplace(std::string{name}, entry);
+        // add storage key mapping
+        storage_keys_.emplace(std::string{control->derived_storage_key()}, entry);
     }
     return ret;
 }
@@ -56,7 +61,9 @@ bool storage_manager::remove_entry(storage_entry entry) {
     decltype(storages_)::accessor acc;
     if (storages_.find(acc, entry)) {
         auto name = acc->second->name();
+        auto storage_key = acc->second->derived_storage_key();
         storage_names_.erase(std::string{name});
+        storage_keys_.erase(std::string{storage_key});
         storages_.erase(acc);
         return true;
     }
@@ -188,6 +195,43 @@ void storage_manager::remove_locked_storages(storage_list_view storages, unique_
 void storage_manager::clear() {
     storages_.clear();
     storage_names_.clear();
+    storage_keys_.clear();
+}
+
+std::uint64_t storage_manager::generate_surrogate_id() {
+    return next_surrogate_id_.fetch_add(1);
+}
+
+void storage_manager::init_next_surrogate_id(std::uint64_t value) {
+    next_surrogate_id_.store(value);
+}
+
+std::optional<std::string> storage_manager::get_storage_key(std::string_view name) const {
+    decltype(storage_names_)::const_accessor acc{};
+    if (! storage_names_.find(acc, std::string{name})) {
+        return std::nullopt;
+    }
+    auto entry = acc->second;
+
+    decltype(storages_)::const_accessor storages_acc{};
+    if (! storages_.find(storages_acc, entry)) {
+        return std::nullopt;
+    }
+    return std::string{storages_acc->second->derived_storage_key()};
+}
+
+std::optional<std::string> storage_manager::get_index_name(std::string_view storage_key) const {
+    decltype(storage_keys_)::const_accessor acc{};
+    if (! storage_keys_.find(acc, std::string{storage_key})) {
+        return std::nullopt;
+    }
+    auto entry = acc->second;
+
+    decltype(storages_)::const_accessor storages_acc{};
+    if (! storages_.find(storages_acc, entry)) {
+        return std::nullopt;
+    }
+    return std::string{storages_acc->second->name()};
 }
 
 }

@@ -59,6 +59,7 @@
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_encode_errors.h>
 #include <jogasaki/utils/handle_generic_error.h>
 
@@ -83,11 +84,12 @@ static std::vector<secondary_context> create_secondary_contexts(
     kvs::database& db,
     request_context& context
 ) {
+    (void) db;
     std::vector<secondary_context> ret{};
     ret.reserve(targets.size());
     for (auto&& e: targets) {
         ret.emplace_back(
-            db.get_storage(e.storage_name()),
+            utils::get_storage_by_index_name(e.storage_name()),
             std::addressof(context));
     }
     return ret;
@@ -175,7 +177,7 @@ write_context::write_context(
     memory::lifo_paged_memory_resource* resource
 ) :
     request_context_(std::addressof(context)),
-    primary_context_(db.get_storage(storage_name), key_meta, value_meta, std::addressof(context)),
+    primary_context_(utils::get_storage_by_index_name(storage_name), key_meta, value_meta, std::addressof(context)),
     secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
     key_store_(key_meta, resource),
     value_store_(value_meta, resource),

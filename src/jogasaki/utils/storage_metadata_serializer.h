@@ -40,11 +40,13 @@ struct metadata_serializer_option {
     explicit metadata_serializer_option(
         bool synthesized = false,
         auth::authorized_users_action_set const* authorized_actions = nullptr,
-        auth::action_set const* public_actions = nullptr
+        auth::action_set const* public_actions = nullptr,
+        std::optional<std::string_view> storage_key = std::nullopt
     ) :
         synthesized_(synthesized),
         authorized_actions_(authorized_actions),
-        public_actions_(public_actions)
+        public_actions_(public_actions),
+        storage_key_(storage_key)
     {}
 
     // whether the object is synthesized or not
@@ -55,6 +57,9 @@ struct metadata_serializer_option {
 
     // publicly allowed action for the index or table
     auth::action_set const* public_actions_{};  //NOLINT
+
+    // optional storage key for the index
+    std::optional<std::string_view> storage_key_{};  //NOLINT
 };
 
 /**

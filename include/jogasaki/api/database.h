@@ -263,6 +263,7 @@ public:
      * No update is made to the existing metadata.
      * @return status::err_unsupported if the table column type is unsupported
      * @note this function doesn't store table metadata into durable storage (while create_index for primary index does for both table/primary index metadata)
+     * @deprecated this function is not supported any more and will be removed soon. Use SQL DDL instead.
      */
     status create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -277,6 +278,7 @@ public:
      * @param schema the schema where table belongs.
      * @return the table if found
      * @return nullptr otherwise
+     * @deprecated this function is not supported any more and will be removed soon.
      */
     std::shared_ptr<yugawara::storage::table const> find_table(
         std::string_view name,
@@ -293,6 +295,7 @@ public:
      * @returns status::not_found when the table is not found
      * @note this doesn't modify the data stored in the table. Clean-up existing data needs to be done separately.
      * @note this function doesn't cascade to dependant objects, e.g. primary/secondary indices or sequences
+     * @deprecated this function is not supported any more and will be removed soon. Use SQL DDL instead.
      */
     status drop_table(
         std::string_view name,
@@ -310,6 +313,7 @@ public:
      * @return status::err_illegal_operation if this function tries to create primary index and one of key columns is nullable.
      * @note when creating primary index, this function stores also table and sequences metadata into primary index's durable storage.
      * When creating secondary index, this function stores only the secondary index metadata in its durable storage.
+     * @deprecated this function is not supported any more and will be removed soon. Use SQL DDL instead.
      */
     status create_index(
         std::shared_ptr<yugawara::storage::index> index,
@@ -324,6 +328,7 @@ public:
      * @param schema the schema where index belongs.
      * @return the index if found
      * @return nullptr otherwise
+     * @deprecated this function is not supported any more and will be removed soon.
      */
     std::shared_ptr<yugawara::storage::index const> find_index(
         std::string_view name,
@@ -340,6 +345,7 @@ public:
      * @returns status::not_found when the index is not found
      * @attention this function is not thread-safe, and should be called from single thread at a time.
      * @note this function doesn't cascade to dependant objects, e.g. secondary indices
+     * @deprecated this function is not supported any more and will be removed soon. Use SQL DDL instead.
      */
     status drop_index(
         std::string_view name,
@@ -356,6 +362,7 @@ public:
      * @return status::ok if the sequence is successfully created/registered.
      * @return status::err_already_exists if the table with same name already exists.
      * @note this function doesn't store sequence metadata into durable storage (while create_index for primary index does that for dependent sequences)
+     * @deprecated this function is not supported any more and will be removed soon. Use SQL DDL instead.
      */
     status create_sequence(
         std::shared_ptr<yugawara::storage::sequence> sequence,
@@ -370,6 +377,7 @@ public:
      * @param schema the schema where sequence belongs.
      * @return the sequence if found
      * @return nullptr otherwise
+     * @deprecated this function is not supported any more and will be removed soon.
      */
     std::shared_ptr<yugawara::storage::sequence const> find_sequence(
         std::string_view name,
@@ -385,6 +393,7 @@ public:
      * @returns status::ok when the sequence is successfully dropped
      * @returns status::not_found when the sequence is not found
      * @attention this function is not thread-safe, and should be called from single thread at a time.
+     * @deprecated this function is not supported any more and will be removed soon. Use SQL DDL instead.
      */
     status drop_sequence(
         std::string_view name,

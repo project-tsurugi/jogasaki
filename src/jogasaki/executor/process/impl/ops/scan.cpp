@@ -48,6 +48,7 @@
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/request_cancel_config.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/field_types.h>
@@ -122,13 +123,13 @@ operation_status scan::process_record(abstract::task_context* context) {
     context_helper ctx{*context};
     ctx.acquire_strand_if_needed();
     auto* p = find_context<scan_context>(index(), ctx.contexts());
-    auto stg = ctx.database()->get_storage(storage_name());
+    auto stg = utils::get_storage_by_index_name(storage_name());
     BOOST_ASSERT(stg);  //NOLINT //TODO handle error
     if (! p) {
         p = ctx.make_context<scan_context>(index(),
             ctx.variable_table(block_index()),
             std::move(stg),
-            use_secondary_ ? ctx.database()->get_storage(secondary_storage_name()) : nullptr,
+            use_secondary_ ? utils::get_storage_by_index_name(secondary_storage_name()) : nullptr,
             ctx.transaction(),
             unsafe_downcast<impl::scan_range const>(ctx.task_context()->range()),  //NOLINT
             ctx.resource(),

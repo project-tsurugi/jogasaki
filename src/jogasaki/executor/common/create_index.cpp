@@ -35,19 +35,24 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/error_code.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/proto/metadata/storage.pb.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/status.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_transaction.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
+#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/utils/validate_index_key_type.h>
 
 #include "acquire_table_lock.h"
@@ -69,7 +74,7 @@ model::statement_kind create_index::kind() const noexcept {
 
 // return false if table is not empty, or error with kvs
 bool create_index::validate_empty_table(request_context& context, std::string_view table_name) const {
-    auto stg = context.database()->get_storage(table_name);
+    auto stg = utils::get_storage_by_index_name(table_name);
     std::unique_ptr<kvs::iterator> it{};
     if(auto res =
            stg->content_scan(*context.transaction()->object(), {}, kvs::end_point_kind::unbound, {}, kvs::end_point_kind::unbound, it);
@@ -138,11 +143,36 @@ bool create_index::operator()(request_context& context) const {
         return false;
     }
 
+    auto tid = storage::index_id_src++;
+    auto& smgr = *global::storage_manager();
+
+    // note: this code has been added in release 1.8,
+    // and existing tables/indices that were created before the release
+    // do not have surrogate IDs
+    auto storage_key = utils::to_big_endian(smgr.generate_surrogate_id());
+    auto opt = global::config_pool()->enable_storage_key() ? std::optional<std::string_view>{storage_key} : std::nullopt;
+
+    if(! smgr.add_entry(tid, i->simple_name(), opt, false)) {
+        // should not happen normally
+        set_error(
+            context,
+            error_code::target_already_exists_exception,
+            string_builder{} << "Index id:" << tid << " already exists" << string_builder::to_string,
+            status::err_already_exists
+        );
+        return false;
+    }
+
     std::string storage{};
-    if(auto err = recovery::create_storage_option(*i, storage, utils::metadata_serializer_option{false})) {
+    if(auto err = recovery::create_storage_option(
+           *i,
+           storage,
+           utils::metadata_serializer_option{false, nullptr, nullptr, opt}
+       )) {
         set_error_info(context, err);
         return false;
     }
+
     auto target = std::make_shared<yugawara::storage::configurable_provider>();
     if(auto err = recovery::deserialize_storage_option_into_provider(storage, provider, *target, false)) {
         set_error_info(context, err);
@@ -151,7 +181,7 @@ bool create_index::operator()(request_context& context) const {
 
     sharksfin::StorageOptions options{};
     options.payload(std::move(storage));
-    if(auto stg = context.database()->create_storage(i->simple_name(), options);! stg) {
+    if(auto stg = context.database()->create_storage((opt.has_value() ? opt.value() : i->simple_name()), options);! stg) {
         // something went wrong. Storage already exists. // TODO recreate storage with new storage option
         VLOG_LP(log_warning) << "storage " << i->simple_name() << " already exists ";
         set_error(

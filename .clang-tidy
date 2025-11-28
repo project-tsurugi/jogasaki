@@ -8,6 +8,7 @@ bugprone-*,\
 -bugprone-branch-clone,\
 -bugprone-easily-swappable-parameters,\
 -bugprone-unchecked-optional-access,\
+-bugprone-nondeterministic-pointer-iteration-order,\
 cert-*,\
 -cert-oop54-cpp,\
 cppcoreguidelines-*,\
@@ -63,6 +64,6 @@ CheckOptions:
   - key: readability-function-cognitive-complexity.IgnoreMacros
     value: true
   - key: readability-simplify-boolean-expr.SimplifyDeMorgan
-    value: false 
+    value: false
 HeaderFilterRegex: '.*/(include|src|examples)/.*\.h$'
 ...

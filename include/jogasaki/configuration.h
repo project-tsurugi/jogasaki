@@ -694,7 +694,7 @@ private:
     bool enable_session_store_ = true;
     bool enable_storage_key_ = true;
     std::string plugin_directory_{"var/plugins/"};
-    std::string endpoint_{"localhost:50051"};
+    std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;
 };
 

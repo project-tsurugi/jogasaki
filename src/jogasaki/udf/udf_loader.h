@@ -86,7 +86,7 @@ public:
 
 private:
 
-    std::string default_endpoint_{"localhost:50051"};
+    std::string default_endpoint_{"dns:///localhost:50051"};
     bool default_secure_{false};
 };
 

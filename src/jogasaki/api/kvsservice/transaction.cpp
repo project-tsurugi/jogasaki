@@ -40,6 +40,7 @@
 #include <jogasaki/api/kvsservice/transaction_state.h>
 #include <jogasaki/data/aligned_buffer.h>
 #include <jogasaki/kvs/writable_stream.h>
+#include <jogasaki/storage/storage_manager.h>
 
 #include "convert.h"
 #include "record_columns.h"
@@ -132,7 +133,12 @@ status transaction::abort() {
 }
 
 status transaction::get_storage(std::string_view name, sharksfin::StorageHandle &storage) {
-    sharksfin::Slice key {name};
+    // resolve storage key from table name
+    auto sk = global::storage_manager()->get_storage_key(name);
+    if (! sk.has_value()) {
+        return status::err_table_not_found;
+    }
+    sharksfin::Slice key {sk.value()};
     auto code = sharksfin::storage_get(db_handle_, key, &storage);
     return convert(code);
 }

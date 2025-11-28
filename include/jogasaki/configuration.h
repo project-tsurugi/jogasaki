@@ -538,9 +538,6 @@ public:
     void enable_storage_key(bool arg) noexcept {
         enable_storage_key_ = arg;
     }
-    [[nodiscard]] std::string_view loader_path() const noexcept {
-        return loader_path_;
-    }
     [[nodiscard]] std::string_view plugin_directory() const noexcept {
         return plugin_directory_;
     }
@@ -627,8 +624,6 @@ public:
         print_non_default(max_result_set_writers);
         print_non_default(enable_session_store);
         print_non_default(enable_storage_key);
-        print_non_default(loader_path);
-        print_non_default(grpc_url);
         print_non_default(plugin_directory);
         print_non_default(endpoint);
         print_non_default(secure);
@@ -698,9 +693,6 @@ private:
     std::size_t max_result_set_writers_ = 64;
     bool enable_session_store_ = true;
     bool enable_storage_key_ = true;
-    std::string loader_path_{};
-    std::string grpc_url_{};
-    std::string loader_path_{};
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"localhost:50051"};
     bool secure_ = false;

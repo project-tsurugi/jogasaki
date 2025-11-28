@@ -207,6 +207,9 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_initial_core) " << cfg.initial_core() << " : the initial core (0-origin) that core assign begins with sequentially";
     LOGCFG << "(dev_assign_numa_nodes_uniformly) " << cfg.assign_numa_nodes_uniformly() << " : whether to assign nodes to worker threads uniformly";
     LOGCFG << "(dev_force_numa_node) " << cfg.force_numa_node() << " : whether to assign the single node to all worker threads";
+    LOGCFG << "(plugin_directory) " << cfg.plugin_directory() << " : Directory where UDF plugins (.so files) are stored.";
+    LOGCFG << "(endpoint) " << cfg.endpoint() << " : gRPC server endpoint for communication with UDF server.";
+    LOGCFG << "(secure) " << cfg.secure() << " : Whether to use a secure gRPC communication channel.";
 }
 
 static bool validate_core_assignment_parameters(configuration const& cfg) {

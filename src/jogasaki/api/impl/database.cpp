@@ -224,40 +224,46 @@ static bool validate_core_assignment_parameters(configuration const& cfg) {
     }
     return true;
 }
-
-status database::start() {
-    LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
-    dump_public_configurations(*cfg_);
-
-    if (! validate_core_assignment_parameters(*cfg_)) {
+bool database::validate_configuration() const noexcept {
+    if (!validate_core_assignment_parameters(*cfg_)) {
         LOG_LP(ERROR) << std::boolalpha
             << "invalid core assignment configuration core_affinity:" << cfg_->core_affinity()
             << " assign_numa_nodes_uniformly:" << cfg_->assign_numa_nodes_uniformly()
             << " force_numa_node:" << cfg_->force_numa_node()
             << " thread_pool_size:" << cfg_->thread_pool_size()
             << " #cores:" << std::thread::hardware_concurrency(); // logical cores
+        return false;
+    }
+    return true;
+}
+status database::init_kvs_db() noexcept {
+    // This is for dev/test. In production, kvs db is created outside.
+    if (!kvs_db_) {
+        std::map<std::string, std::string> opts{};
+        if (!cfg_->db_location().empty()) {
+            opts.emplace("location", cfg_->db_location());
+        }
+        kvs_db_ = kvs::database::open(opts);
+    }
+    if (!kvs_db_) {
+        LOG_LP(ERROR) << "Opening database failed.";
         return status::err_io_error;
     }
+    return status::ok;
+}
+status database::start() {
+    LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
+    dump_public_configurations(*cfg_);
 
+    if (!validate_configuration()) {
+        return status::err_io_error;
+    }
     // this function is not called on maintenance/quiescent mode
     if (!init()) {
         return status::err_aborted;
     }
-    if (! kvs_db_) {
-        // This is for dev/test. In production, kvs db is created outside.
-        std::map<std::string, std::string> opts{};
-        {
-            static constexpr std::string_view KEY_LOCATION{"location"};
-            auto loc = cfg_->db_location();
-            if (! loc.empty()) {
-                opts.emplace(KEY_LOCATION, loc);
-            }
-        }
-        kvs_db_ = kvs::database::open(opts);
-    }
-    if (! kvs_db_) {
-        LOG_LP(ERROR) << "Opening database failed.";
-        return status::err_io_error;
+    if(auto st = init_kvs_db(); st != status::ok) {
+        return st;
     }
     if(auto res = kvs::setup_system_storage(); res != status::ok) {
         (void) kvs_db_->close();

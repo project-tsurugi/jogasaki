@@ -326,8 +326,12 @@ static bool process_udf_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     if (jogasaki_config == nullptr) {
         return true;
     }
-    if (auto v = jogasaki_config->get<std::string>("plugin_directory")) {
-        ret->plugin_directory(v.value());
+    if (auto v = jogasaki_config->get<std::filesystem::path>("plugin_directory")) {
+        if(v->empty()) {
+            LOG_LP(ERROR) << "plugin_directory` in the UDF section must not be empty";
+            return false;
+        }
+        ret->plugin_directory(v->string());
     }
     if (auto v = jogasaki_config->get<std::string>("endpoint")) {
         ret->endpoint(v.value());

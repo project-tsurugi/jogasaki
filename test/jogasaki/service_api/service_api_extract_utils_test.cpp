@@ -44,6 +44,7 @@
 #include <jogasaki/test_utils/temporary_folder.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/command_utils.h>
+#include <jogasaki/utils/extract_sql_and_tx_id.h>
 #include <jogasaki/utils/latch.h>
 #include <jogasaki/utils/msgbuf_utils.h>
 #include <jogasaki/utils/storage_data.h>
@@ -84,6 +85,7 @@ using decimal_v = takatori::decimal::triple;
 using ft = meta::field_type_kind;
 
 using jogasaki::api::impl::get_impl;
+using jogasaki::utils::extract_sql_and_tx_id;
 
 std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
@@ -107,7 +109,7 @@ TEST_F(service_api_test, extract_sql) {
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
 
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+        ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -128,7 +130,7 @@ TEST_F(service_api_test, extract_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+        ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -156,7 +158,7 @@ TEST_F(service_api_test, extract_prepared_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+        ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -180,7 +182,7 @@ TEST_F(service_api_test, extract_prepared_sql) {
         std::shared_ptr<std::string> sql_text{};
         std::shared_ptr<error::error_info> err_info{};
         std::string tx_id{};
-        ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+        ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
         ASSERT_TRUE(sql_text);
         EXPECT_EQ(text, *sql_text);
         EXPECT_TRUE(! tx_id.empty()) << "tx_id:" << tx_id;
@@ -202,7 +204,7 @@ TEST_F(service_api_test, extract_sql_error) {
     std::shared_ptr<std::string> sql_text{};
     std::string tx_id{};
     std::shared_ptr<error::error_info> err_info{};
-    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+    ASSERT_TRUE(! extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(err_info);
     EXPECT_EQ(error_code::request_failure_exception, err_info->code());
 }
@@ -228,7 +230,7 @@ TEST_F(service_api_test, extract_sql_failing_to_fetch_tx_id) {
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err_info{};
     std::string tx_id{};
-    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+    ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(sql_text);
     EXPECT_EQ(text, *sql_text);
     EXPECT_TRUE(tx_id.empty());
@@ -258,7 +260,7 @@ TEST_F(service_api_test, fail_to_extract_sql_on_different_session) {
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err_info{};
     std::string tx_id{};
-    ASSERT_TRUE(! impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+    ASSERT_TRUE(! extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(err_info);
     EXPECT_EQ(error_code::statement_not_found_exception, err_info->code());
 
@@ -289,7 +291,7 @@ TEST_F(service_api_test, fail_to_extract_tx_on_different_session) {
     std::shared_ptr<std::string> sql_text{};
     std::shared_ptr<error::error_info> err_info{};
     std::string tx_id{};
-    ASSERT_TRUE(impl::extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
+    ASSERT_TRUE(extract_sql_and_tx_id(req, sql_text, tx_id, err_info, session_id_));
     ASSERT_TRUE(! err_info);
     ASSERT_TRUE(sql_text);
     EXPECT_EQ(text, *sql_text);

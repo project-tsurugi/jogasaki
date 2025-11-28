@@ -86,6 +86,7 @@
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/abort_error.h>
+#include <jogasaki/utils/append_request_info.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/create_statement_handle_error.h>
 #include <jogasaki/utils/external_log_utils.h>
@@ -720,13 +721,15 @@ bool execute_async_on_context(  //NOLINT(readability-function-cognitive-complexi
             if(rctx->transaction()) {
                 abort_transaction(rctx->transaction(), req_info);
             }
+            auto msg = "DML operation was blocked by DDL operation";
             auto res = status::err_illegal_operation;
             on_completion(res,
                 create_error_info(
                     error_code::sql_execution_exception,
-                    "DML operation was blocked by DDL operation",
+                    msg,
                     res
                 ), nullptr);
+            utils::print_error(*rctx, msg);
             return true; // false is for unrecoverable abnormal error. This case is normal error.
         }
     }

@@ -154,19 +154,19 @@ TEST_F(exclusive_ddl_dml_test, starting_ddls_blocked_by_dml_req) {
     while(c->can_lock()) { _mm_pause(); }  // wait for the query to acquire shared lock
     {
         auto tx = utils::create_transaction(*db_);
-        test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        test_stmt_err("drop table t0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
         // verify tx abort by the error above
         test_stmt_err("drop table t0", *tx, error_code::inactive_transaction_exception);
     }
     {
         auto tx = utils::create_transaction(*db_);
-        test_stmt_err("grant select on table t0 to public", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        test_stmt_err("grant select on table t0 to public", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
         // verify tx abort by the error above
         test_stmt_err("grant select on table t0 to public", *tx, error_code::inactive_transaction_exception);
     }
     {
         auto tx = utils::create_transaction(*db_);
-        test_stmt_err("revoke select on table t0 from public", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        test_stmt_err("revoke select on table t0 from public", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
         // verify tx abort by the error above
         test_stmt_err("revoke select on table t0 from public", *tx, error_code::inactive_transaction_exception);
     }
@@ -269,7 +269,7 @@ TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req)
     {
         // drop index is blocked by DML
         auto tx = utils::create_transaction(*db_);
-        test_stmt_err("drop index i0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        test_stmt_err("drop index i0", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
         // verify tx abort by the error above
         test_stmt_err("drop index i0", *tx, error_code::inactive_transaction_exception);
     }
@@ -279,7 +279,7 @@ TEST_F(exclusive_ddl_dml_test, starting_create_or_drop_index_blocked_by_dml_req)
     {
         // create index is blocked by DML
         auto tx = utils::create_transaction(*db_);
-        test_stmt_err("create index i1 on t0 (c0)", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation");
+        test_stmt_err("create index i1 on t0 (c0)", *tx, error_code::sql_execution_exception, "DDL operation was blocked by other DML operation. table:\"t0\"");
         // verify tx abort by the error above
         test_stmt_err("create index i1 on t0 (c0)", *tx, error_code::sql_execution_exception);
     }

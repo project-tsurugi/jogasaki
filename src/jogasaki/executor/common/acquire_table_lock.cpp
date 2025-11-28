@@ -50,6 +50,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/append_request_info.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/string_manipulation.h>
 
@@ -77,12 +78,15 @@ bool acquire_table_lock(request_context& context, std::string_view table_name, s
     }
     if(! smgr.add_locked_storages(stg, *tx.storage_lock())) {
         // table is locked by other operations
+        auto msg = string_builder{} << "DDL operation was blocked by other DML operation. table:\"" << table_name
+                                    << "\"" << string_builder::to_string;
         set_error(
             context,
             error_code::sql_execution_exception,
-            "DDL operation was blocked by other DML operation",
+            msg,
             status::err_illegal_operation
         );
+        utils::print_error(context, msg);
         return false;
     }
     return true;

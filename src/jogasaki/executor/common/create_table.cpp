@@ -61,6 +61,7 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/append_request_info.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
@@ -249,12 +250,15 @@ bool create_table::operator()(request_context& context) const {
     storage::storage_list stg{tid};
     if(! smgr.add_locked_storages(stg, *tx.storage_lock())) {
         // should not happen normally since this is newly created table
+        auto msg = string_builder{} << "DDL operation was blocked by other DML operation. table:\"" << c->simple_name()
+                                    << "\"" << string_builder::to_string;
         set_error(
             context,
             error_code::sql_execution_exception,
-            "DDL operation was blocked by other DML operation",
+            msg,
             status::err_illegal_operation
         );
+        utils::print_error(context, msg);
         return false;
     }
     return true;

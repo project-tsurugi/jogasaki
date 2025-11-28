@@ -1,0 +1,40 @@
+/*
+ * Copyright 2018-2025 Project Tsurugi.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <optional>
+
+#include <jogasaki/error/error_info.h>
+#include <jogasaki/request_context.h>
+#include <jogasaki/proto/sql/request.pb.h>
+
+namespace jogasaki::utils {
+
+/**
+ * @brief extract sql and tx from proto Request object
+ */
+bool extract_sql_and_tx_id(
+    proto::sql::request::Request const& req,
+    std::shared_ptr<std::string>& sql_text,
+    std::string& tx_id,
+    std::shared_ptr<jogasaki::error::error_info>& err_info,
+    std::optional<std::size_t> session_id
+);
+
+} // namespace jogasaki::utils

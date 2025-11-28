@@ -730,13 +730,4 @@ private:
         jogasaki::api::executable_statement const& es) const noexcept;
 };
 
-// public for testing purpose
-bool extract_sql_and_tx_id(
-    sql::request::Request const& req,
-    std::shared_ptr<std::string>& sql_text,
-    std::string& tx_id,
-    std::shared_ptr<error::error_info>& err_info,
-    std::optional<std::size_t> session_id
-);
-
 }  // namespace jogasaki::api::impl

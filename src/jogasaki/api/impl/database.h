@@ -375,7 +375,8 @@ private:
         std::shared_ptr<error::error_info>& out,
         plan::compile_option const& option
     );
-
+    [[nodiscard]] bool validate_configuration() const noexcept;
+    [[nodiscard]] status init_kvs_db() noexcept;
     status validate_option(transaction_option const& option);
     std::unique_ptr<plugin::udf::plugin_loader> loader_{};
     std::vector<std::tuple<std::shared_ptr<plugin::udf::plugin_api>,

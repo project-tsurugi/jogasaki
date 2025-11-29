@@ -61,6 +61,7 @@ public:
     void SetUp() override {
         auto cfg = std::make_shared<configuration>();
         cfg->prepare_analytics_benchmark_tables(true);
+        cfg->plugin_directory("");
         db_setup(cfg);
     }
 

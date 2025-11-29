@@ -62,6 +62,7 @@ enum class scalar_function_kind : std::size_t {
     using kind = scalar_function_kind;
     switch (value) {
         case kind::undefined: return "undefined"sv;
+        case kind::user_defined: return "user_defined"sv;
         case kind::octet_length: return "octet_length"sv;
         case kind::current_date: return "current_date"sv;
         case kind::localtime: return "localtime"sv;
@@ -83,7 +84,6 @@ enum class scalar_function_kind : std::size_t {
         case kind::decode: return "decode"sv;
         case kind::rtrim: return "rtrim"sv;
         case kind::ltrim: return "ltrim"sv;
-        case kind::user_defined: return "user_defined"sv;
     }
     std::abort();
 }

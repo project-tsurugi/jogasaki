@@ -26,7 +26,7 @@ namespace jogasaki::executor::function {
 enum class scalar_function_kind : std::size_t {
     undefined = 0,
 
-    // for user defined functions, for example, UDFs
+    // commonly used for any user defined scalar functions
     user_defined,
 
     octet_length,

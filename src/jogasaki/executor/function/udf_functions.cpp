@@ -498,7 +498,11 @@ data::any build_decimal_data(std::string const& unscaled, std::int32_t exponent)
     bool is_negative = (static_cast<unsigned char>(unscaled[0]) & 0x80U) != 0U;
     if(! unscaled.empty() && is_negative) {
         negative = true;
-        std::vector<uint8_t> bytes(unscaled.begin(), unscaled.end());
+        std::vector<uint8_t> bytes;
+        bytes.reserve(unscaled.size());
+        for (char c : unscaled) {
+            bytes.emplace_back(static_cast<uint8_t>(c));
+        }
         for(auto& b: bytes) b = ~b;
         for(int i = static_cast<int>(bytes.size()) - 1; i >= 0; --i) {
             if(++bytes[i] != 0) break;

@@ -228,7 +228,7 @@ static bool validate_core_assignment_parameters(configuration const& cfg) {
     return true;
 }
 bool database::validate_configuration() const noexcept {
-    if (!validate_core_assignment_parameters(*cfg_)) {
+    if (! validate_core_assignment_parameters(*cfg_)) {
         LOG_LP(ERROR) << std::boolalpha
             << "invalid core assignment configuration core_affinity:" << cfg_->core_affinity()
             << " assign_numa_nodes_uniformly:" << cfg_->assign_numa_nodes_uniformly()
@@ -241,14 +241,14 @@ bool database::validate_configuration() const noexcept {
 }
 status database::init_kvs_db() noexcept {
     // This is for dev/test. In production, kvs db is created outside.
-    if (!kvs_db_) {
+    if (! kvs_db_) {
         std::map<std::string, std::string> opts{};
-        if (!cfg_->db_location().empty()) {
+        if (! cfg_->db_location().empty()) {
             opts.emplace("location", cfg_->db_location());
         }
         kvs_db_ = kvs::database::open(opts);
     }
-    if (!kvs_db_) {
+    if (! kvs_db_) {
         LOG_LP(ERROR) << "Opening database failed.";
         return status::err_io_error;
     }
@@ -258,11 +258,11 @@ status database::start() {
     LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
     dump_public_configurations(*cfg_);
 
-    if (!validate_configuration()) {
+    if (! validate_configuration()) {
         return status::err_io_error;
     }
     // this function is not called on maintenance/quiescent mode
-    if (!init()) {
+    if (! init()) {
         return status::err_aborted;
     }
     if(auto st = init_kvs_db(); st != status::ok) {
@@ -1626,7 +1626,7 @@ bool database::execute_load(
 }
 
 std::shared_ptr<transaction_context> database::find_transaction(api::transaction_handle handle) {
-    if (!handle.session_id().has_value()) {
+    if (! handle.session_id().has_value()) {
         decltype(transactions_)::accessor acc{};
         if (transactions_.find(acc, handle)) {
             return acc->second;

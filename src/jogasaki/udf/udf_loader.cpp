@@ -160,9 +160,6 @@ std::optional<udf_config> udf_loader::parse_ini(fs::path const& ini_path, std::v
 
 std::vector<load_result> udf_loader::load(std::string_view dir_path) {
 
-    if(dir_path.empty()) {
-        return {load_result(load_status::path_is_empty, "", "Directory path is empty")};
-    }
     fs::path path(dir_path);
     std::vector<load_result> results;
 

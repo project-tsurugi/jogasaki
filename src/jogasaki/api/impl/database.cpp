@@ -420,7 +420,7 @@ bool database::init() {
           || res_status == plugin::udf::load_status::ini_invalid) {
             LOG_LP(ERROR) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
-            return false;
+            // return false;
         } else {
             LOG_LP(WARNING) << "[gRPC] " << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();

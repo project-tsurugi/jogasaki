@@ -28,6 +28,7 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
+
 #include <boost/assert.hpp>
 #include <glog/logging.h>
 
@@ -84,6 +85,7 @@
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
+#include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
@@ -108,7 +110,6 @@
 #include <jogasaki/recovery/index.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_logging.h>
 #include <jogasaki/scheduler/conditional_task.h>
@@ -123,6 +124,11 @@
 #include <jogasaki/status.h>
 #include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/udf/enum_types.h>
+#include <jogasaki/udf/error_info.h>
+#include <jogasaki/udf/generic_client.h>
+#include <jogasaki/udf/plugin_loader.h>
+#include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/utils/backoff_waiter.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/cancel_request.h>
@@ -132,6 +138,7 @@
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/utils/use_counter.h>
 #include <jogasaki/utils/validate_index_key_type.h>
 #include <jogasaki/utils/validate_table_definition.h>
@@ -201,6 +208,9 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(dev_initial_core) " << cfg.initial_core() << " : the initial core (0-origin) that core assign begins with sequentially";
     LOGCFG << "(dev_assign_numa_nodes_uniformly) " << cfg.assign_numa_nodes_uniformly() << " : whether to assign nodes to worker threads uniformly";
     LOGCFG << "(dev_force_numa_node) " << cfg.force_numa_node() << " : whether to assign the single node to all worker threads";
+    LOGCFG << "(plugin_directory) " << cfg.plugin_directory() << " : Directory where UDF plugins (.so files) are stored.";
+    LOGCFG << "(endpoint) " << cfg.endpoint() << " : gRPC server endpoint for communication with UDF server.";
+    LOGCFG << "(secure) " << cfg.secure() << " : Whether to use a secure gRPC communication channel.";
 }
 
 static bool validate_core_assignment_parameters(configuration const& cfg) {
@@ -218,11 +228,7 @@ static bool validate_core_assignment_parameters(configuration const& cfg) {
     }
     return true;
 }
-
-status database::start() {
-    LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
-    dump_public_configurations(*cfg_);
-
+bool database::validate_configuration() const noexcept {
     if (! validate_core_assignment_parameters(*cfg_)) {
         LOG_LP(ERROR) << std::boolalpha
             << "invalid core assignment configuration core_affinity:" << cfg_->core_affinity()
@@ -230,26 +236,38 @@ status database::start() {
             << " force_numa_node:" << cfg_->force_numa_node()
             << " thread_pool_size:" << cfg_->thread_pool_size()
             << " #cores:" << std::thread::hardware_concurrency(); // logical cores
-        return status::err_io_error;
+        return false;
     }
-
-    // this function is not called on maintenance/quiescent mode
-    init();
+    return true;
+}
+status database::init_kvs_db() noexcept {
+    // This is for dev/test. In production, kvs db is created outside.
     if (! kvs_db_) {
-        // This is for dev/test. In production, kvs db is created outside.
         std::map<std::string, std::string> opts{};
-        {
-            static constexpr std::string_view KEY_LOCATION{"location"};
-            auto loc = cfg_->db_location();
-            if (! loc.empty()) {
-                opts.emplace(KEY_LOCATION, loc);
-            }
+        if (! cfg_->db_location().empty()) {
+            opts.emplace("location", cfg_->db_location());
         }
         kvs_db_ = kvs::database::open(opts);
     }
     if (! kvs_db_) {
         LOG_LP(ERROR) << "Opening database failed.";
         return status::err_io_error;
+    }
+    return status::ok;
+}
+status database::start() {
+    LOG_LP(INFO) << "SQL engine configuration " << *cfg_;
+    dump_public_configurations(*cfg_);
+
+    if (! validate_configuration()) {
+        return status::err_io_error;
+    }
+    // this function is not called on maintenance/quiescent mode
+    if (! init()) {
+        return status::err_aborted;
+    }
+    if(auto st = init_kvs_db(); st != status::ok) {
+        return st;
     }
     if(auto res = kvs::setup_system_storage(); res != status::ok) {
         (void) kvs_db_->close();
@@ -379,16 +397,41 @@ std::shared_ptr<class configuration> const& database::configuration() const noex
 
 database::database() : database(std::make_shared<class configuration>()) {}
 
-void database::init() {
+bool database::init() {
     global::storage_manager()->clear(); // clean up global objects first
     global::config_pool(cfg_);
-    if(initialized_) return;
+    if(initialized_) {
+        return true;
+    }
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
     scalar_functions_ = global::scalar_function_provider(std::make_shared<yugawara::function::configurable_provider>());
     executor::function::add_builtin_scalar_functions(
         *scalar_functions_,
         global::scalar_function_repository()
     );
+    loader_     = std::make_unique<plugin::udf::udf_loader>();
+    auto results = loader_->load(std::string(cfg_->plugin_directory()));
+    for (const auto& result : results) {
+        auto res_status = result.status();
+        if (res_status == plugin::udf::load_status::ok) {
+            LOG_LP(INFO) << "[gRPC] " << res_status << " file: " << result.file()
+                              << " detail: " << result.detail();
+        } else if (res_status == plugin::udf::load_status::path_not_found
+          || res_status == plugin::udf::load_status::ini_so_pair_mismatch
+          || res_status == plugin::udf::load_status::ini_invalid) {
+            LOG_LP(ERROR) << "[gRPC] " << res_status
+                                 << " file: " << result.file() << " detail: " << result.detail();
+            // return false;
+        } else {
+            LOG_LP(WARNING) << "[gRPC] " << res_status
+                                 << " file: " << result.file() << " detail: " << result.detail();
+        }
+    }
+    for (auto& plugin : loader_->get_plugins()) {
+        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));
+    }
+    executor::function::add_udf_scalar_functions(
+        *scalar_functions_, global::scalar_function_repository(), plugins_);
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,
@@ -399,6 +442,7 @@ void database::init() {
         global::aggregate_function_repository()
     );
     initialized_ = true;
+    return true;
 }
 
 void database::deinit() {
@@ -1583,7 +1627,7 @@ bool database::execute_load(
 }
 
 std::shared_ptr<transaction_context> database::find_transaction(api::transaction_handle handle) {
-    if (!handle.session_id().has_value()) {
+    if (! handle.session_id().has_value()) {
         decltype(transactions_)::accessor acc{};
         if (transactions_.find(acc, handle)) {
             return acc->second;

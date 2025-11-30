@@ -110,8 +110,8 @@ file(GLOB SOURCES
         "jogasaki/storage/*.cpp"
         "jogasaki/utils/*.cpp"
         "jogasaki/dist/*.cpp"
+        "jogasaki/udf/*.cpp"
 )
-
 if(ENABLE_ALTIMETER)
 file(GLOB SRC_ALTIMETER_ENABLED
         "jogasaki/external_log/details/*.cpp"
@@ -127,7 +127,6 @@ set_source_files_properties(
         GENERATED TRUE
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
 )
-
 add_library(${ENGINE}
         ${SOURCES}
         ${GENERATED_SQL_PROTO_SRCS}
@@ -177,6 +176,7 @@ target_link_libraries(${ENGINE}
         PRIVATE protobuf::libprotobuf
         PRIVATE ${PARQUET_PREFIX}parquet_shared
         PRIVATE mpdecpp
+        PRIVATE ${GRPC_LIBRARIES}
         )
 
 if(LIKWID_ENABLE)

@@ -538,6 +538,29 @@ public:
     void enable_storage_key(bool arg) noexcept {
         enable_storage_key_ = arg;
     }
+    [[nodiscard]] std::string_view plugin_directory() const noexcept {
+        return plugin_directory_;
+    }
+
+    void plugin_directory(std::string_view arg) noexcept {
+        plugin_directory_ = arg;
+    }
+
+    [[nodiscard]] std::string_view endpoint() const noexcept {
+        return endpoint_;
+    }
+
+    void endpoint(std::string_view arg) noexcept {
+        endpoint_ = arg;
+    }
+
+    [[nodiscard]] bool secure() const noexcept {
+        return secure_;
+    }
+
+    void secure(bool arg) noexcept {
+        secure_ = arg;
+    }
 
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
@@ -601,6 +624,9 @@ public:
         print_non_default(max_result_set_writers);
         print_non_default(enable_session_store);
         print_non_default(enable_storage_key);
+        print_non_default(plugin_directory);
+        print_non_default(endpoint);
+        print_non_default(secure);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -667,6 +693,9 @@ private:
     std::size_t max_result_set_writers_ = 64;
     bool enable_session_store_ = true;
     bool enable_storage_key_ = true;
+    std::string plugin_directory_{"var/plugins/"};
+    std::string endpoint_{"dns:///localhost:50051"};
+    bool secure_ = false;
 };
 
 }  // namespace jogasaki

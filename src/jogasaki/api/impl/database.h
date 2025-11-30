@@ -65,8 +65,10 @@
 #include <jogasaki/scheduler/task_scheduler.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/udf/generic_client.h>
+#include <jogasaki/udf/plugin_api.h>
+#include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/utils/use_counter.h>
-
 #include "commit_stats.h"
 
 namespace jogasaki::scheduler {
@@ -226,7 +228,7 @@ public:
 
     std::shared_ptr<class configuration>& config() noexcept override;
 
-    void init();
+    [[nodiscard]] bool init();
     void deinit();
 
     status recover_metadata();
@@ -284,7 +286,10 @@ public:
     );
 
     status destroy_statement_internal(api::statement_handle prepared);
-
+    void add_udf_functions(
+        ::yugawara::function::configurable_provider& functions,
+        executor::function::scalar_function_repository& repo
+    );
 protected:
     status do_create_table(
         std::shared_ptr<yugawara::storage::table> table,
@@ -370,9 +375,12 @@ private:
         std::shared_ptr<error::error_info>& out,
         plan::compile_option const& option
     );
-
+    [[nodiscard]] bool validate_configuration() const noexcept;
+    [[nodiscard]] status init_kvs_db() noexcept;
     status validate_option(transaction_option const& option);
-
+    std::unique_ptr<plugin::udf::plugin_loader> loader_{};
+    std::vector<std::tuple<std::shared_ptr<plugin::udf::plugin_api>,
+        std::shared_ptr<plugin::udf::generic_client>>> plugins_;
 };
 
 inline api::impl::database& get_impl(api::database& db) {

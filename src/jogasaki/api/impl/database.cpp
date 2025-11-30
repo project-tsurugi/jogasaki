@@ -28,6 +28,7 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
+
 #include <boost/assert.hpp>
 #include <glog/logging.h>
 
@@ -81,10 +82,10 @@
 #include <jogasaki/executor/batch/batch_execution_state.h>
 #include <jogasaki/executor/batch/batch_executor.h>
 #include <jogasaki/executor/executor.h>
-#include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
+#include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/sequence/exception.h>
 #include <jogasaki/executor/sequence/manager.h>
@@ -109,7 +110,6 @@
 #include <jogasaki/recovery/index.h>
 #include <jogasaki/recovery/storage_options.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/request_info.h>
 #include <jogasaki/request_logging.h>
 #include <jogasaki/scheduler/conditional_task.h>
@@ -138,6 +138,7 @@
 #include <jogasaki/utils/proto_debug_string.h>
 #include <jogasaki/utils/storage_metadata_serializer.h>
 #include <jogasaki/utils/string_manipulation.h>
+#include <jogasaki/utils/surrogate_id_utils.h>
 #include <jogasaki/utils/use_counter.h>
 #include <jogasaki/utils/validate_index_key_type.h>
 #include <jogasaki/utils/validate_table_definition.h>

@@ -111,7 +111,6 @@ file(GLOB SOURCES
         "jogasaki/utils/*.cpp"
         "jogasaki/dist/*.cpp"
         "jogasaki/udf/*.cpp"
-        "jogasaki/lib_memory/*.cpp"
 )
 if(ENABLE_ALTIMETER)
 file(GLOB SRC_ALTIMETER_ENABLED
@@ -128,7 +127,6 @@ set_source_files_properties(
         GENERATED TRUE
         COMPILE_FLAGS "-Wno-unused-parameter -Wno-array-bounds"
 )
-add_library(wrap_memcpy STATIC ${CMAKE_SOURCE_DIR}/src/jogasaki/lib_memory/wrap_memcpy.cpp)
 add_library(${ENGINE}
         ${SOURCES}
         ${GENERATED_SQL_PROTO_SRCS}
@@ -159,7 +157,6 @@ else()
 endif()
 
 target_link_libraries(${ENGINE}
-        PRIVATE wrap_memcpy
         PUBLIC api
         PUBLIC ${tateyama_engine}
         PUBLIC takatori

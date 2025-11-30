@@ -178,7 +178,6 @@ target_link_libraries(${ENGINE}
         PRIVATE mpdecpp
         PRIVATE ${GRPC_LIBRARIES}
         )
-target_link_options(${ENGINE} PRIVATE "-Wl,--wrap=memcpy")
 
 if(LIKWID_ENABLE)
     target_link_libraries(${ENGINE}

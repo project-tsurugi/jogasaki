@@ -163,6 +163,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     fs::path path(dir_path);
     std::vector<load_result> results;
 
+    if(dir_path.empty()) { return {load_result(load_status::path_is_empty, "", "Directory path is empty")}; }
     if(! validate_directory(path, results)) { return results; }
     auto pairs = collect_ini_so_pairs(path);
     if(! validate_pairs(pairs, results, dir_path)) { return results; }

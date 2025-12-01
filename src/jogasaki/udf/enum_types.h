@@ -24,6 +24,7 @@ enum class function_kind_type {
 };
 // @see
 // https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto#L243
+// @see error_info.h (to_string_view)
 enum class type_kind_type {
     float8,
     float4,
@@ -45,8 +46,10 @@ enum class type_kind_type {
     sint8,
 };
 
+// @see error_info.h (to_string_view)
 enum class load_status {
     ok,
+    path_is_empty,
     path_not_found,
     no_ini_and_so_files,
     ini_so_pair_mismatch,

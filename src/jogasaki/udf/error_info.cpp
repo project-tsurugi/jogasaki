@@ -25,6 +25,7 @@ using error_code_type = grpc::StatusCode;
 error_code_type error_info::code() const noexcept { return code_; }
 std::string_view error_info::message() const noexcept { return message_; }
 // @see https://github.com/grpc/grpc/blob/master/include/grpcpp/support/status_code_enum.h#L43
+// @see enum_types.h (enum class error_code_type)
 std::string_view to_string_view(error_code_type code) noexcept {
     using namespace std::literals;
     switch(code) {
@@ -48,12 +49,18 @@ std::string_view to_string_view(error_code_type code) noexcept {
         default: return "UNKNOWN_CODE"sv;
     }
 }
+// @see enum_types.h (enum class load_status)
 std::string_view to_string_view(plugin::udf::load_status status) noexcept {
     using namespace std::literals;
     switch(status) {
         case load_status::ok: return "ok"sv;
+        case load_status::path_is_empty: return "path_is_empty"sv;
         case load_status::path_not_found: return "path_not_found"sv;
+        case load_status::no_ini_and_so_files: return "no_ini_and_so_files"sv;
+        case load_status::ini_so_pair_mismatch: return "ini_so_pair_mismatch"sv;
+        case load_status::ini_invalid: return "ini_invalid"sv;
         case load_status::not_regular_file_or_dir: return "not_regular_file_or_dir"sv;
+        case load_status::udf_disabled: return "udf_disabled"sv;
         case load_status::no_shared_objects_found: return "no_shared_objects_found"sv;
         case load_status::dlopen_failed: return "dlopen_failed"sv;
         case load_status::api_symbol_missing: return "api_symbol_missing"sv;

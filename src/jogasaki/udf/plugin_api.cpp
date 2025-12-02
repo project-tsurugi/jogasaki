@@ -27,59 +27,44 @@
 
 namespace plugin::udf {
 namespace {
-std::string_view to_string_view(function_kind_type kind) {
+std::string_view to_string_view(plugin::udf::function_kind_type kind) {
     using namespace std::literals;
     switch(kind) {
-        case function_kind_type::unary: return "unary"sv;
-        case function_kind_type::client_streaming: return "client_streaming"sv;
-        case function_kind_type::server_streaming: return "server_streaming"sv;
-        case function_kind_type::bidirectional_streaming: return "bidirectional_streaming"sv;
+        case plugin::udf::function_kind_type::unary: return "unary"sv;
+        case plugin::udf::function_kind_type::client_streaming: return "client_streaming"sv;
+        case plugin::udf::function_kind_type::server_streaming: return "server_streaming"sv;
+        case plugin::udf::function_kind_type::bidirectional_streaming: return "bidirectional_streaming"sv;
         default: return "unknown_function_kind"sv;
     }
 }
-
-std::string_view to_string_view(type_kind_type kind) {
+std::string_view to_string_view(plugin::udf::type_kind_type kind) {
     using namespace std::literals;
     switch(kind) {
-        case type_kind_type::float8: return "float8"sv;
-        case type_kind_type::float4: return "float4"sv;
-        case type_kind_type::int8: return "int8"sv;
-        case type_kind_type::uint8: return "uint8"sv;
-        case type_kind_type::int4: return "int4"sv;
-        case type_kind_type::fixed8: return "fixed8"sv;
-        case type_kind_type::fixed4: return "fixed4"sv;
-        case type_kind_type::boolean: return "bool"sv;
-        case type_kind_type::string: return "string"sv;
-        case type_kind_type::group: return "group"sv;
-        case type_kind_type::message: return "message"sv;
-        case type_kind_type::bytes: return "bytes"sv;
-        case type_kind_type::uint4: return "uint4"sv;
-        case type_kind_type::grpc_enum: return "enum"sv;
-        case type_kind_type::sint4: return "sint4"sv;
-        case type_kind_type::sint8: return "sint8"sv;
-        case type_kind_type::sfixed8: return "sfixed8"sv;
-        case type_kind_type::sfixed4: return "sfixed4"sv;
+        case plugin::udf::type_kind_type::float8: return "float8"sv;
+        case plugin::udf::type_kind_type::float4: return "float4"sv;
+        case plugin::udf::type_kind_type::int8: return "int8"sv;
+        case plugin::udf::type_kind_type::uint8: return "uint8"sv;
+        case plugin::udf::type_kind_type::int4: return "int4"sv;
+        case plugin::udf::type_kind_type::fixed8: return "fixed8"sv;
+        case plugin::udf::type_kind_type::fixed4: return "fixed4"sv;
+        case plugin::udf::type_kind_type::boolean: return "bool"sv;
+        case plugin::udf::type_kind_type::string: return "string"sv;
+        case plugin::udf::type_kind_type::group: return "group"sv;
+        case plugin::udf::type_kind_type::message: return "message"sv;
+        case plugin::udf::type_kind_type::bytes: return "bytes"sv;
+        case plugin::udf::type_kind_type::uint4: return "uint4"sv;
+        case plugin::udf::type_kind_type::grpc_enum: return "enum"sv;
+        case plugin::udf::type_kind_type::sint4: return "sint4"sv;
+        case plugin::udf::type_kind_type::sint8: return "sint8"sv;
+        case plugin::udf::type_kind_type::sfixed8: return "sfixed8"sv;
+        case plugin::udf::type_kind_type::sfixed4: return "sfixed4"sv;
         default: return "UnknownTypeKind"sv;
     }
 }
-
-void add_column(std::vector<column_descriptor*> const& cols) {
-    for(auto const* col: cols) {
-        std::cout << "- column_name: " << col->column_name() << std::endl;
-        std::cout << "  type_kind: " << col->type_kind() << std::endl;
-
-        if(auto nested = col->nested()) {
-            std::cout << "  nested_record:" << std::endl;
-            std::cout << "    record_name: " << nested->record_name() << std::endl;
-            std::cout << "    columns:" << std::endl;
-            add_column(nested->columns());
-        }
-    }
-}
-}  // anonymous namespace
-std::ostream& operator<<(std::ostream& out, function_kind_type const& kind) { return out << to_string_view(kind); }
-std::ostream& operator<<(std::ostream& out, type_kind_type const& kind) { return out << to_string_view(kind); }
-void print_columns(std::vector<column_descriptor*> const& cols, int indent = 0) {
+} // namespace anonymous
+std::ostream& operator<<(std::ostream& out, plugin::udf::function_kind_type const& kind) { return out << to_string_view(kind); }
+std::ostream& operator<<(std::ostream& out, plugin::udf::type_kind_type const& kind) { return out << to_string_view(kind); }
+void print_columns(std::vector<plugin::udf::column_descriptor*> const& cols, int indent = 0) {
     std::string indent_str(indent, ' ');
 
     for(auto const* col: cols) {
@@ -90,12 +75,12 @@ void print_columns(std::vector<column_descriptor*> const& cols, int indent = 0) 
             std::cout << indent_str << "  nested_record:" << std::endl;
             std::cout << indent_str << "    record_name: " << nested->record_name() << std::endl;
             std::cout << indent_str << "    columns:" << std::endl;
-            print_columns(nested->columns(), indent + 6);
+            plugin::udf::print_columns(nested->columns(), indent + 6);
         }
     }
 }
 
-void print_plugin_info(std::shared_ptr<plugin_api> const& api) {
+void print_plugin_info(std::shared_ptr<plugin::udf::plugin_api> const& api) {
     auto const& pkgs = api->packages();
     for(auto const* pkg: pkgs) {
         std::cout << "  - package_name: " << pkg->package_name() << std::endl;
@@ -114,13 +99,13 @@ void print_plugin_info(std::shared_ptr<plugin_api> const& api) {
                 std::cout << "            input_record:" << std::endl;
                 std::cout << "              record_name: " << input.record_name() << std::endl;
                 std::cout << "              columns:" << std::endl;
-                print_columns(input.columns(), 16);
+                plugin::udf::print_columns(input.columns(), 16);
 
                 auto const& output = fn->output_record();
                 std::cout << "            output_record:" << std::endl;
                 std::cout << "              record_name: " << output.record_name() << std::endl;
                 std::cout << "              columns:" << std::endl;
-                print_columns(output.columns(), 16);
+                plugin::udf::print_columns(output.columns(), 16);
             }
         }
     }

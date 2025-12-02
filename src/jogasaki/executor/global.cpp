@@ -19,6 +19,7 @@
 #include <utility>
 
 #include <yugawara/function/configurable_provider.h>
+#include <data-relay-grpc/data-relay-grpc/blob_relay/service.h>
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/configuration.h>
@@ -100,6 +101,15 @@ std::shared_ptr<storage::storage_manager> const& storage_manager(std::shared_ptr
         mgr = std::move(arg);
     }
     return mgr;
+}
+
+std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> const&
+relay_service(std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> arg) {
+    static std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> relay_service = nullptr;
+    if(arg) {
+        relay_service = std::move(arg);
+    }
+    return relay_service;
 }
 
 }  // namespace jogasaki::global

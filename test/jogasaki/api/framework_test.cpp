@@ -248,4 +248,25 @@ TEST_F(framework_test, quiescent_mode) {
     ASSERT_FALSE(sqlsvc->operator()(nullptr, nullptr));
     sv.shutdown();
 }
+
+TEST_F(framework_test, blob_relay_service) {
+    auto conf = create_config();
+    framework::boot_mode mode = framework::boot_mode::database_server;
+    framework::server sv{mode, conf};
+    framework::add_core_components(sv);
+    auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
+    sv.add_resource(sqlres);
+    auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
+    sv.add_service(sqlsvc);
+    sv.setup();
+    auto* db = sqlsvc->database();
+    sv.start();
+
+    auto relay_svc = global::relay_service();
+    ASSERT_TRUE(relay_svc);
+
+    sv.shutdown();
+}
+
+
 }

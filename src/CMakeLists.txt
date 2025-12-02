@@ -164,6 +164,7 @@ target_link_libraries(${ENGINE}
         PRIVATE mizugaki
         PRIVATE sharksfin-${SHARKSFIN_IMPLEMENTATION}
         PRIVATE limestone
+        PRIVATE data-relay-grpc
         PRIVATE tbb
         PRIVATE numa
         PRIVATE tsl::hopscotch_map

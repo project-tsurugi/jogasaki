@@ -90,7 +90,7 @@ using takatori::util::sequence_view;
 using kind = meta::field_type_kind;
 using jogasaki::executor::expr::error;
 using jogasaki::executor::expr::error_kind;
-
+namespace {
 constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.Decimal";
 constexpr std::string_view DATE_RECORD = "tsurugidb.udf.Date";
 constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.LocalTime";
@@ -98,7 +98,8 @@ constexpr std::string_view LOCALDATETIME_RECORD = "tsurugidb.udf.LocalDatetime";
 constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime";
 constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
 constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
-namespace {
+
+constexpr uint64_t BLOB_CLOB_PADDING = 0xFFFFFFFFFFFFFFFFULL;
 
 const std::unordered_map<plugin::udf::type_kind_type, std::size_t>& type_index_map() {
     using K = plugin::udf::type_kind_type;
@@ -290,14 +291,14 @@ void fill_request_with_args(
                 auto value = src.to<runtime_t<kind::blob>>();
                 request.add_uint8(1);
                 request.add_uint8(value.object_id());
-                request.add_uint8(0);
+                request.add_uint8(BLOB_CLOB_PADDING);
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
                 auto value = src.to<runtime_t<kind::clob>>();
                 request.add_uint8(1);
                 request.add_uint8(value.object_id());
-                request.add_uint8(0);
+                request.add_uint8(BLOB_CLOB_PADDING);
                 break;
             }
             default:
@@ -459,7 +460,7 @@ bool build_udf_request(
         auto value = args[0].to<runtime_t<kind::blob>>();
         request.add_uint8(1);
         request.add_uint8(value.object_id());
-        request.add_uint8(0);
+        request.add_uint8(BLOB_CLOB_PADDING);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
@@ -473,7 +474,7 @@ bool build_udf_request(
         auto value = args[0].to<runtime_t<kind::clob>>();
         request.add_uint8(1);
         request.add_uint8(value.object_id());
-        request.add_uint8(0);
+        request.add_uint8(BLOB_CLOB_PADDING);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.

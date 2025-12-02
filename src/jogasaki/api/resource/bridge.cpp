@@ -33,10 +33,12 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/repository.h>
 #include <tateyama/framework/transactional_kvs_resource.h>
+#include <tateyama/grpc/blob_relay_service_resource.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/resource/bridge.h>
 #include <jogasaki/commit_response.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 #include <jogasaki/status.h>
@@ -71,6 +73,13 @@ bool bridge::start(framework::environment& env) {
         return true;
     }
 
+    auto relay_service = env.resource_repository().find<::tateyama::grpc::blob_relay_service_resource>();
+    if (! relay_service) {
+        LOG_LP(ERROR) << "failed to find data relay service resource";
+        return false;
+    }
+    global::relay_service(relay_service->blob_relay_service());
+
     if (! db_) {
         auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();
         if(! kvs) {
@@ -88,6 +97,7 @@ bool bridge::start(framework::environment& env) {
 bool bridge::shutdown(framework::environment&) {
     if(started_) {
         if(db_->stop() == status::ok) {
+            global::relay_service(nullptr);
             started_ = false;
             return true;
         }

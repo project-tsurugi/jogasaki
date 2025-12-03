@@ -23,6 +23,9 @@
 #include <string_view>
 #include <vector>
 #include <gtest/gtest.h>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <takatori/util/downcast.h>
 #include <tateyama/api/configuration.h>
@@ -115,23 +118,43 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "url=http://localhost:8080/harinoki\n"
         "request_timeout=0\n"
 
-    "[grpc]\n"
-        "enabled=false\n"
+    "[grpc_server]\n"
+        "enabled=true\n"
+        "listen_address=0.0.0.0:52345\n"
+        "endpoint=dns:///localhost:52345\n"
+        "secure=false\n"
 
     "[blob_relay]\n"
-        "enabled=false\n"
+        "enabled=true\n"
+        "session_store=unset\n"
+        "session_quota_size=\n"
+        "local_enabled=true\n"
+        "local_upload_copy_file=false\n"
+        "stream_chunk_size=1048576\n"
+        "dev_accept_mock_tag=true\n"
 
     "[datastore]\n"
         "logging_max_parallelism=112\n"
-        "log_location="
+        "log_location=unset"
 };
 
 std::shared_ptr<tateyama::api::configuration::whole> framework_test::create_config() {
     std::stringstream ss{};
     ss << default_configuration;
-    ss << path();
     ss << "\n";
-    return tateyama::api::configuration::create_configuration("", ss.str());
+    auto cfg = tateyama::api::configuration::create_configuration("", ss.str());
+
+    {
+        auto p = path() + "/log_location";
+        boost::filesystem::create_directory(p);
+        cfg->get_section("datastore")->set("log_location", p);
+    }
+    {
+        auto p = path() + "/session_store";
+        boost::filesystem::create_directory(p);
+        cfg->get_section("blob_relay")->set("session_store", p);
+    }
+    return cfg;
 }
 
 TEST_F(framework_test, server_to_start_sql_engine) {

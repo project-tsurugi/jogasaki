@@ -666,4 +666,13 @@ TEST_F(sql_function_test, count_distinct_varlen) {
     }
 }
 
+TEST_F(sql_function_test, substr_int) {
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(5))");
+    execute_statement("insert into t values ('ABC')");
+    execute_query("SELECT substr(c0, 1::int, 1) FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::character>(accessor::text{"A"})), result[0]);
+}
+
 }  // namespace jogasaki::testing

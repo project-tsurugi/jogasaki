@@ -50,6 +50,12 @@ enum class scalar_function_kind : std::size_t {
     decode,
     rtrim,
     ltrim,
+
+    // enum used for testing.
+    // This is placed at last position so that deleting this one won't affect production.
+    // If you need new enum values for newly introduced functions, add them above this entry.
+    mock_function_for_testing,
+
 };
 
 /**
@@ -84,6 +90,7 @@ enum class scalar_function_kind : std::size_t {
         case kind::decode: return "decode"sv;
         case kind::rtrim: return "rtrim"sv;
         case kind::ltrim: return "ltrim"sv;
+        case kind::mock_function_for_testing: return "mock_function_for_testing"sv;
     }
     std::abort();
 }

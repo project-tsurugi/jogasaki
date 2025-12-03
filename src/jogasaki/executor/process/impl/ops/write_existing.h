@@ -27,6 +27,7 @@
 
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/executor/conv/assignment.h>
+#include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>

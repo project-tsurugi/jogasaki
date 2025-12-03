@@ -13,35 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include "unify.h"
 
 #include <takatori/type/data.h>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/executor/expr/details/cast_evaluation.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/request_context.h>
-#include <jogasaki/status.h>
 
 namespace jogasaki::executor::conv {
 
-/**
- * @brief conduct the assignment conversion
- * @details convert the input value of source type to target type
- * @param source_type the source type of the conversion
- * @param target_type the target type of the conversion
- * @param in the input value to convert
- * @param out the output value of the conversion
- * @param ctx the request context
- * @param resource the memory resource used for the conversion and output data
- * @warning output data can possibly be allocated in `resource` and caller is responsible to rewind the resource
-*/
-status conduct_assignment_conversion(
+using namespace jogasaki::executor::process::impl;
+
+status conduct_unifying_conversion(
     takatori::type::data const& source_type,
     takatori::type::data const& target_type,
     data::any const& in,
     data::any& out,
-    request_context& ctx,
     memory::lifo_paged_memory_resource* resource
-);
+) {
+    expr::evaluator_context ectx{resource, nullptr}; // evaluate no function
+    // unifying conversion doesn't lose precision
+    ectx.set_loss_precision_policy(expr::loss_precision_policy::ignore);
+    auto converted = expr::details::conduct_cast(ectx, source_type, target_type, in);
+    if(! converted.error()) {
+        out = converted;
+        return status::ok;
+    }
+    return status::err_expression_evaluation_failure;
+}
 
 }  // namespace jogasaki::executor::conv

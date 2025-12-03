@@ -45,7 +45,8 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/datastore/assign_lob_id.h>
 #include <jogasaki/error/error_info.h>
-#include <jogasaki/executor/conv/assignment.h>
+#include <jogasaki/executor/conv/require_conversion.h>
+#include <jogasaki/executor/conv/unify.h>
 #include <jogasaki/executor/equal_to.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator_context.h>

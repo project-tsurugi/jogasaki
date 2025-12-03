@@ -52,6 +52,7 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/conv/assignment.h>
 #include <jogasaki/executor/conv/create_default_value.h>
+#include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>

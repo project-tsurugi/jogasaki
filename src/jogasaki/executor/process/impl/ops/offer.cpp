@@ -25,7 +25,8 @@
 
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/error/error_info_factory.h>
-#include <jogasaki/executor/conv/assignment.h>
+#include <jogasaki/executor/conv/require_conversion.h>
+#include <jogasaki/executor/conv/unify.h>
 #include <jogasaki/executor/io/record_writer.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>

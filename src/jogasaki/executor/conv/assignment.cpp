@@ -98,29 +98,4 @@ status conduct_assignment_conversion(
     return res;
 }
 
-status conduct_unifying_conversion(
-    takatori::type::data const& source_type,
-    takatori::type::data const& target_type,
-    data::any const& in,
-    data::any& out,
-    memory::lifo_paged_memory_resource* resource
-) {
-    expr::evaluator_context ectx{resource, nullptr}; // evaluate no function
-    // unifying conversion doesn't lose precision
-    ectx.set_loss_precision_policy(expr::loss_precision_policy::ignore);
-    auto converted = expr::details::conduct_cast(ectx, source_type, target_type, in);
-    if(! converted.error()) {
-        out = converted;
-        return status::ok;
-    }
-    return status::err_expression_evaluation_failure;
-}
-
-bool to_require_conversion(
-    takatori::type::data const& source_type,
-    takatori::type::data const& target_type
-) {
-    return source_type != target_type;
-}
-
 }  // namespace jogasaki::executor::conv

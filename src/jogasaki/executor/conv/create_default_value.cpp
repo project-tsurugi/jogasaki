@@ -30,7 +30,7 @@
 #include <takatori/value/value_kind.h>
 
 #include <jogasaki/data/any.h>
-#include <jogasaki/executor/conv/assignment.h>
+#include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/expr/details/cast_evaluation.h>
 #include <jogasaki/executor/expr/error.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
@@ -39,8 +39,6 @@
 #include <jogasaki/utils/fail.h>
 
 namespace jogasaki::executor::conv {
-
-using namespace jogasaki::executor::process::impl;
 
 static std::shared_ptr<::takatori::type::data const> literal_type(::takatori::value::data const& value) {
     using k = ::takatori::value::value_kind;

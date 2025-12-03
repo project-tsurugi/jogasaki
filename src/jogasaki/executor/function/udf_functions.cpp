@@ -501,9 +501,7 @@ data::any build_decimal_data(std::string const& unscaled, std::int32_t exponent)
         negative = true;
         std::vector<uint8_t> bytes;
         bytes.reserve(unscaled.size());
-        for (char c : unscaled) {
-            bytes.emplace_back(static_cast<uint8_t>(c));
-        }
+        for(char c: unscaled) { bytes.emplace_back(static_cast<uint8_t>(c)); }
         for(auto& b: bytes) b = ~b;
         for(int i = static_cast<int>(bytes.size()) - 1; i >= 0; --i) {
             if(++bytes[i] != 0) break;
@@ -748,6 +746,16 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
 }
 
 }  // anonymous namespace
+
+bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
+    ctx.AddMetadata("X-TSURUGI-BLOB-SESSION", std::to_string(session_id_));
+    ctx.AddMetadata("X-TSURUGI-BLOB-ENDPOINT", endpoint_);
+    ctx.AddMetadata("X-TSURUGI-BLOB-SECURE", secure_ ? "true" : "false");
+    ctx.AddMetadata("X-TSURUGI-BLOB-TRANSPORT", transport_);
+    ctx.AddMetadata("X-TSURUGI-BLOB-STREAM-CHUNK-SIZE", std::to_string(chunk_size_));
+    return true;
+}
+
 void add_udf_scalar_functions(
     ::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,

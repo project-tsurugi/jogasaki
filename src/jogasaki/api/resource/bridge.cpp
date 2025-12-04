@@ -65,6 +65,38 @@ bool bridge::setup(framework::environment& env) {
     return cfg_ != nullptr;
 }
 
+static bool borrow_relay_service(framework::environment& env) {
+    // if config. allows, borrow relay service instance and make it available as global::relay_service().
+
+    bool grpc_server_enabled = false;
+    bool blob_relay_enabled = false;
+    if (auto* section = env.configuration()->get_section("grpc_server")) {
+        if (auto enabled = section->get<bool>("enabled")) {
+            grpc_server_enabled = enabled.value();
+        }
+    }
+    if (auto* section = env.configuration()->get_section("blob_relay")) {
+        if (auto enabled = section->get<bool>("enabled")) {
+            blob_relay_enabled = enabled.value();
+        }
+    }
+
+    if (grpc_server_enabled && blob_relay_enabled) {
+        auto resource = env.resource_repository().find<::tateyama::grpc::blob_relay_service_resource>();
+        if (! resource) {
+            LOG_LP(ERROR) << "failed to find data relay service resource";
+            return false;
+        }
+        auto relay_service = resource->blob_relay_service();
+        if (! relay_service) {
+            LOG_LP(ERROR) << "failed to get data relay service";
+            return false;
+        }
+        global::relay_service(std::move(relay_service));
+    }
+    return true;
+}
+
 bool bridge::start(framework::environment& env) {
     // on maintenance/quiescent mode, sql resource exists, but does nothing.
     if(env.mode() == framework::boot_mode::maintenance_standalone ||
@@ -73,12 +105,9 @@ bool bridge::start(framework::environment& env) {
         return true;
     }
 
-    auto relay_service = env.resource_repository().find<::tateyama::grpc::blob_relay_service_resource>();
-    if (! relay_service) {
-        LOG_LP(ERROR) << "failed to find data relay service resource";
+    if(! borrow_relay_service(env)) {
         return false;
     }
-    global::relay_service(relay_service->blob_relay_service());
 
     if (! db_) {
         auto kvs = env.resource_repository().find<framework::transactional_kvs_resource>();
@@ -97,11 +126,10 @@ bool bridge::start(framework::environment& env) {
 bool bridge::shutdown(framework::environment&) {
     if(started_) {
         if(db_->stop() == status::ok) {
-            global::relay_service(nullptr);
             started_ = false;
-            return true;
         }
     }
+    global::relay_service(nullptr);
     return true;
 }
 

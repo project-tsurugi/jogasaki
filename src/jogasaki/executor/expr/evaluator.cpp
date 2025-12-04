@@ -45,6 +45,7 @@
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/datastore/assign_lob_id.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/executor/conv/parameter_apply.h>
 #include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/conv/unify.h>
 #include <jogasaki/executor/equal_to.h>
@@ -1001,22 +1002,37 @@ any engine::operator()(takatori::scalar::let const&) {
 }
 
 any engine::operator()(takatori::scalar::function_call const& arg) {
+    auto f = yugawara::binding::extract_if<yugawara::function::declaration>(arg.function());
+    if(! f.has_value()) {
+        throw_exception(std::logic_error{""});
+    }
     std::vector<any> inputs{};
     inputs.reserve(arg.arguments().size());
+    std::size_t ind = 0;
     for(auto const& e : arg.arguments()) {
         auto v = dispatch(*this, e);
         if(v.error()) {
             return v;
         }
-        inputs.emplace_back(v);
-    }
-    if(auto f = yugawara::binding::extract_if<yugawara::function::declaration>(arg.function()); f.has_value()) {
-        if(auto info = global::scalar_function_repository().find(f->definition_id()); info != nullptr) {
-            if(! ctx_.transaction()) {
-                throw_exception(std::logic_error{""});
+        auto const& src_type = info_.type_of(e);
+        auto const& tgt_type = f->parameter_types().at(ind);
+        if(conv::to_require_conversion(src_type, tgt_type)) {
+            data::any out{};
+            auto res = conv::conduct_parameter_application_conversion(src_type, tgt_type, v, out, resource_);
+            if(res != status::ok || out.error()) {
+                // normally parameter application conversion should never be an error, but in case, return the error value
+                return out;
             }
-            return info->function_body()(ctx_, inputs);
+            v = out;
         }
+        inputs.emplace_back(v);
+        ++ind;
+    }
+    if(auto info = global::scalar_function_repository().find(f->definition_id()); info != nullptr) {
+        if(! ctx_.transaction()) {
+            throw_exception(std::logic_error{""});
+        }
+        return info->function_body()(ctx_, inputs);
     }
     throw_exception(std::logic_error{""});
 }

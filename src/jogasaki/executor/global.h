@@ -153,13 +153,18 @@ std::shared_ptr<api::impl::database> const& database_impl(std::shared_ptr<api::i
 std::shared_ptr<storage::storage_manager> const& storage_manager(std::shared_ptr<storage::storage_manager> arg = nullptr);
 
 /**
- * @brief thread-safe accessor to the blob_relay_service
- * @details once set by the `arg`, it can be shared by multiple threads.
- * The set call must be called from a single thread.
- * @param arg new relay service instance. Pass nullptr just to refer current one.
+ * @brief setter to the blob_relay_service
+ * @details This set call is not thread-safe and must be called from a single thread.
+ * @param arg new relay service instance.
  * @return reference to the blob_relay_service
  */
-std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> const&
-relay_service(std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> arg = nullptr);
+void relay_service(std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> arg);
+
+/**
+ * @brief thread-safe getter to the blob_relay_service
+ * @details once set by the setter above, it can be shared by multiple threads.
+ * @return reference to the blob_relay_service
+ */
+std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> const& relay_service();
 
 }  // namespace jogasaki::global

@@ -103,13 +103,21 @@ std::shared_ptr<storage::storage_manager> const& storage_manager(std::shared_ptr
     return mgr;
 }
 
-std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> const&
-relay_service(std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> arg) {
+static std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> const&
+relay_service_internal(std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> arg, bool set) {
     static std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> relay_service = nullptr;
-    if(arg) {
+    if(set) {
         relay_service = std::move(arg);
     }
     return relay_service;
+}
+
+void relay_service(std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> arg) {
+    relay_service_internal(std::move(arg), true);
+}
+
+std::shared_ptr<data_relay_grpc::blob_relay::blob_relay_service> const& relay_service() {
+    return relay_service_internal({}, false);
 }
 
 }  // namespace jogasaki::global

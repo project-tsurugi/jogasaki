@@ -262,8 +262,30 @@ TEST_F(framework_test, blob_relay_service) {
     auto* db = sqlsvc->database();
     sv.start();
 
-    auto relay_svc = global::relay_service();
-    ASSERT_TRUE(relay_svc);
+    ASSERT_TRUE(global::relay_service());
+    global::relay_service(nullptr);
+    ASSERT_TRUE(! global::relay_service());
+
+    sv.shutdown();
+}
+
+TEST_F(framework_test, blob_relay_service_unavailable) {
+    auto conf = create_config();
+    conf->get_section("blob_relay")->set("enabled", "false");
+    conf->get_section("grpc_server")->set("enabled", "false");
+
+    framework::boot_mode mode = framework::boot_mode::database_server;
+    framework::server sv{mode, conf};
+    framework::add_core_components(sv);
+    auto sqlres = std::make_shared<jogasaki::api::resource::bridge>();
+    sv.add_resource(sqlres);
+    auto sqlsvc = std::make_shared<jogasaki::api::service::bridge>();
+    sv.add_service(sqlsvc);
+    sv.setup();
+    auto* db = sqlsvc->database();
+    sv.start();
+
+    ASSERT_TRUE(! global::relay_service());
 
     sv.shutdown();
 }

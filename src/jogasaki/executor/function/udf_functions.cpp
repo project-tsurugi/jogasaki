@@ -732,7 +732,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         plugin::udf::generic_record_impl response;
         grpc::ClientContext context;
         // TODO: make these metadata configurable
-        blob_grpc_metadata metadata{12345, "dns:///localhost:52345", false, "stream", 1024 * 1024};
+        blob_grpc_metadata metadata{12345, "dns:///localhost:52345", false, "stream", 1024ULL * 1024ULL};
         if (!metadata.apply(context)) {
             ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};

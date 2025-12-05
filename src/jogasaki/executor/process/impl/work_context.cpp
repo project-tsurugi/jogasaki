@@ -21,6 +21,7 @@
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/relay/blob_session_container.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::process::impl {
@@ -43,7 +44,8 @@ work_context::work_context(
     database_(std::move(database)),
     transaction_(std::move(transaction)),
     empty_input_from_shuffle_(empty_input_from_shuffle),
-    in_transaction_and_non_sticky_(in_transaction_and_non_sticky)
+    in_transaction_and_non_sticky_(in_transaction_and_non_sticky),
+    blob_session_container_(transaction ? std::optional<std::uint64_t>{transaction->surrogate_id()} : std::nullopt)
 {
     variables_.reserve(block_count);
 }
@@ -99,6 +101,10 @@ bool work_context::empty_input_from_shuffle() const noexcept {
 
 bool work_context::in_transaction_and_non_sticky() const noexcept {
     return in_transaction_and_non_sticky_;
+}
+
+relay::blob_session_container& work_context::blob_session_container() noexcept {
+    return blob_session_container_;
 }
 
 }

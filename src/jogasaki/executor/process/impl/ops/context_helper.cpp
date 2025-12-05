@@ -85,6 +85,11 @@ kvs::transaction* context_helper::strand() const noexcept {
     }
     return work_context_->strand();
 }
+
+relay::blob_session_container& context_helper::blob_session_container() const noexcept {
+    return work_context_->blob_session_container();
+}
+
 }
 
 

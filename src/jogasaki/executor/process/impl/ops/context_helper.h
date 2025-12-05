@@ -28,6 +28,7 @@
 #include <jogasaki/executor/process/impl/task_context.h>
 #include <jogasaki/executor/process/impl/work_context.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/relay/blob_session_container.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/transaction_context.h>
 
@@ -125,6 +126,12 @@ public:
      * @brief accessor to strand
      */
     [[nodiscard]] kvs::transaction* strand() const noexcept;
+
+    /**
+     * @brief accessor to blob session container
+     * @return reference to the blob session container
+     */
+    [[nodiscard]] relay::blob_session_container& blob_session_container() const noexcept;
 
 private:
     abstract::task_context *context_{};

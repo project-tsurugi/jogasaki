@@ -19,7 +19,7 @@
 #include <utility>
 
 #include <yugawara/function/configurable_provider.h>
-#include <data-relay-grpc/data-relay-grpc/blob_relay/service.h>
+#include <data-relay-grpc/blob_relay/service.h>
 
 #include <jogasaki/api/impl/database.h>
 #include <jogasaki/configuration.h>

@@ -22,10 +22,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <gtest/gtest.h>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+#include <gtest/gtest.h>
 
 #include <takatori/util/downcast.h>
 #include <tateyama/api/configuration.h>
@@ -48,6 +48,7 @@
 #include <jogasaki/scheduler/hybrid_execution_mode.h>
 #include <jogasaki/utils/command_utils.h>
 
+#include "../test_utils/create_configuration.h"
 #include "../test_utils/temporary_folder.h"
 #include "api_test_base.h"
 
@@ -83,78 +84,11 @@ public:
 using namespace std::string_view_literals;
 using namespace tateyama;
 
-static constexpr std::string_view default_configuration {  // NOLINT
-    "[sql]\n"
-        "thread_pool_size=\n"
-        "enable_index_join=false\n"
-        "stealing_enabled=true\n"
-        "default_partitions=5\n"
-        "stealing_wait=1\n"
-        "task_polling_wait=0\n"
-        "lightweight_job_level=0\n"
-        "enable_hybrid_scheduler=true\n"
-
-    "[ipc_endpoint]\n"
-        "database_name=tsurugi\n"
-        "threads=104\n"
-        "datachannel_buffer_size=64\n"
-        "max_datachannel_buffers=256\n"
-        "admin_sessions=1\n"
-        "allow_blob_privileged=true\n"
-
-    "[stream_endpoint]\n"
-        "enabled=false\n"
-        "port=12345\n"
-        "threads=104\n"
-        "allow_blob_privileged=false\n"
-        "dev_idle_work_interval=1000\n"
-
-    "[cc]\n"
-        "epoch_duration=40000\n"
-        "waiting_resolver_threads=2\n"
-
-    "[authentication]\n"
-        "enabled=false\n"
-        "url=http://localhost:8080/harinoki\n"
-        "request_timeout=0\n"
-
-    "[grpc_server]\n"
-        "enabled=true\n"
-        "listen_address=0.0.0.0:52345\n"
-        "endpoint=dns:///localhost:52345\n"
-        "secure=false\n"
-
-    "[blob_relay]\n"
-        "enabled=true\n"
-        "session_store=unset\n"
-        "session_quota_size=\n"
-        "local_enabled=true\n"
-        "local_upload_copy_file=false\n"
-        "stream_chunk_size=1048576\n"
-        "dev_accept_mock_tag=true\n"
-
-    "[datastore]\n"
-        "logging_max_parallelism=112\n"
-        "log_location=unset"
-};
-
 std::shared_ptr<tateyama::api::configuration::whole> framework_test::create_config() {
-    std::stringstream ss{};
-    ss << default_configuration;
-    ss << "\n";
-    auto cfg = tateyama::api::configuration::create_configuration("", ss.str());
-
-    {
-        auto p = path() + "/log_location";
-        boost::filesystem::create_directory(p);
-        cfg->get_section("datastore")->set("log_location", p);
-    }
-    {
-        auto p = path() + "/session_store";
-        boost::filesystem::create_directory(p);
-        cfg->get_section("blob_relay")->set("session_store", p);
-    }
-    return cfg;
+    return test_utils::create_configuration(
+        path() + "/log_location",
+        path() + "/session_store"
+    );
 }
 
 TEST_F(framework_test, server_to_start_sql_engine) {
@@ -289,6 +223,5 @@ TEST_F(framework_test, blob_relay_service_unavailable) {
 
     sv.shutdown();
 }
-
 
 }

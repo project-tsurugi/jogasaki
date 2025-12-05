@@ -24,6 +24,7 @@
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/kvs/database.h>
+#include <jogasaki/relay/blob_session_container.h>
 #include <jogasaki/request_context.h>
 #include <jogasaki/transaction_context.h>
 
@@ -154,6 +155,12 @@ public:
      */
     [[nodiscard]] bool in_transaction_and_non_sticky() const noexcept;
 
+    /**
+     * @brief accessor to the blob session container
+     * @return reference to the blob session container
+     */
+    [[nodiscard]] relay::blob_session_container& blob_session_container() noexcept;
+
 private:
     request_context* request_context_{};
     ops::context_container contexts_{};
@@ -165,6 +172,7 @@ private:
     bool empty_input_from_shuffle_{};
     bool in_transaction_and_non_sticky_{};
     std::unique_ptr<kvs::transaction> strand_{};
+    relay::blob_session_container blob_session_container_{};
 };
 
 }

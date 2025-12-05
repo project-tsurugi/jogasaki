@@ -104,6 +104,7 @@ file(GLOB SOURCES
         "jogasaki/model/*.cpp"
         "jogasaki/plan/*.cpp"
         "jogasaki/recovery/*.cpp"
+        "jogasaki/relay/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/scheduler/details/*.cpp"
         "jogasaki/serializer/*.cpp"
@@ -226,6 +227,7 @@ target_link_libraries(jogasaki-impl
         INTERFACE takatori
         INTERFACE yugawara
         INTERFACE sharksfin-${SHARKSFIN_IMPLEMENTATION}
+        INTERFACE data-relay-grpc
         INTERFACE tbb
         INTERFACE numa
         INTERFACE tsl::hopscotch_map

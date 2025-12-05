@@ -5,6 +5,7 @@ file(GLOB TEST_COMMON_SRCS
         "jogasaki/mock/mock_task.cpp"
         "jogasaki/kvs_test_utils.cpp"
         "jogasaki/kvs/kvs_test_base.cpp"
+        "jogasaki/test_utils/create_configuration.cpp"
         "jogasaki/test_utils/secondary_index.cpp"
         )
 
@@ -45,6 +46,7 @@ function (add_test_executable source_file)
             PRIVATE atomic
             PRIVATE protobuf::libprotobuf
             PRIVATE mpdecpp
+            PRIVATE data-relay-grpc
             )
 
     target_sources(${test_target}
@@ -81,6 +83,7 @@ file(GLOB SRCS
         "jogasaki/meta/*.cpp"
         "jogasaki/mock/*.cpp"
         "jogasaki/plan/*.cpp"
+        "jogasaki/relay/*.cpp"
         "jogasaki/scheduler/*.cpp"
         "jogasaki/serializer/*.cpp"
         "jogasaki/service_api/*.cpp"

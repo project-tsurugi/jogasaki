@@ -731,6 +731,9 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         }
         plugin::udf::generic_record_impl response;
         grpc::ClientContext context;
+        // TODO: make these metadata configurable
+        blob_grpc_metadata metadata{12345, "dns:///localhost:52345", false, "stream", 1024 * 1024};
+        metadata.apply(context);
         client->call(context, {0, fn->function_index()}, request, response);
 
         if(response.error()) {

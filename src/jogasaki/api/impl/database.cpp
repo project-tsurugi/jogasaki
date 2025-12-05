@@ -211,6 +211,7 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(plugin_directory) " << cfg.plugin_directory() << " : Directory where UDF plugins (.so files) are stored.";
     LOGCFG << "(endpoint) " << cfg.endpoint() << " : gRPC server endpoint for communication with UDF server.";
     LOGCFG << "(secure) " << cfg.secure() << " : Whether to use a secure gRPC communication channel.";
+    LOGCFG << "(dev_enable_disjunction_range_hinting) " << cfg.enable_disjunction_range_hinting() << " : whether to extract ranges from conditions containing OR";
 }
 
 static bool validate_core_assignment_parameters(configuration const& cfg) {

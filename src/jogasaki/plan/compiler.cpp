@@ -695,6 +695,9 @@ static status prepare(
         sp,
         indices,
     };
+    if(cfg) {
+        c_options.enable_disjunction_range_hinting() = cfg->enable_disjunction_range_hinting();
+    }
 
     // restricted features - jogasaki does not implement yet
     if(! ctx.option().explain_by_text_only()) {

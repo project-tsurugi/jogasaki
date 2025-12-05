@@ -562,6 +562,14 @@ public:
         secure_ = arg;
     }
 
+    [[nodiscard]] bool enable_disjunction_range_hinting() const noexcept {
+        return enable_disjunction_range_hinting_;
+    }
+
+    void enable_disjunction_range_hinting(bool arg) noexcept {
+        enable_disjunction_range_hinting_ = arg;
+    }
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -627,6 +635,7 @@ public:
         print_non_default(plugin_directory);
         print_non_default(endpoint);
         print_non_default(secure);
+        print_non_default(enable_disjunction_range_hinting);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -696,6 +705,7 @@ private:
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;
+    bool enable_disjunction_range_hinting_ = false;
 };
 
 }  // namespace jogasaki

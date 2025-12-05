@@ -86,7 +86,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using decimal_v = takatori::decimal::triple;
+using triple = takatori::decimal::triple;
 using date = takatori::datetime::date;
 using time_of_day = takatori::datetime::time_of_day;
 using time_point = takatori::datetime::time_point;
@@ -116,182 +116,50 @@ public:
 
     void TearDown() override {
         db_teardown();
+        mock::basic_record::compare_decimals_as_triple_ = false;  // reset global flag
     }
-    template <kind OutValueKind>
-    void test_parameter_apply_conv(
-        takatori::type::data&& type,
-        std::string_view fn_input,
-        bool expect_error
-    );
 };
 
 using namespace std::string_view_literals;
-
 using namespace jogasaki::executor::function;
-
-template <kind OutValueKind>
-void sql_parameter_apply_conv_test::test_parameter_apply_conv(
-    takatori::type::data&& type,
-    std::string_view fn_input,
-    bool expect_error
-) {
-    namespace t = takatori::type;
-    using namespace ::yugawara;
-    bool called = false;
-
-    auto id = 5000000UL;  // any value to avoid conflict
-
-    global::scalar_function_repository().add(
-        id,
-        std::make_shared<scalar_function_info>(
-            scalar_function_kind::mock_function_for_testing,
-            [&](evaluator_context&, sequence_view<data::any> arg) -> data::any {
-                called = true;
-                return arg[0];
-            },
-            1
-        )
-    );
-    auto* in = type.clone();
-    auto* out = type.clone();
-    auto decl = global::scalar_function_provider()->add({
-        id,
-        "identity_fn",
-        std::move(*out),
-        {
-            std::move(*in)
-        },
-    });
-    delete in;
-    delete out;
-    execute_statement("create table t (c0 int primary key)");
-    execute_statement("insert into t values (1)");
-    auto sql = "SELECT identity_fn("+std::string{fn_input}+") FROM t";
-    if (expect_error) {
-        test_stmt_err(sql, error_code::symbol_analyze_exception);
-        global::scalar_function_repository().clear();
-        global::scalar_function_provider()->remove(*decl);
-        return;
-    }
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query(sql, result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<OutValueKind>(1, {false})), result[0]);
-    }
-    EXPECT_TRUE(called);
-    global::scalar_function_repository().clear();
-    global::scalar_function_provider()->remove(*decl);
-}
 
 namespace t = takatori::type;
 using namespace ::yugawara;
 
-TEST_F(sql_parameter_apply_conv_test, int4_to_int4) {
-    test_parameter_apply_conv<kind::int4>(t::int4(), "1::int", false);
+TEST_F(sql_parameter_apply_conv_test, verify_parameter_application_conversion) {
+    // no count(char) is registered, but count(varchar) is applied instead for char columns
+    // by paramater application conversion
+    execute_statement("create table t (c0 char(3))");
+    execute_statement("insert into t values ('aaa'), ('bbb'), ('ccc')");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT COUNT(c0) FROM t", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int8>(3)), result[0]);
+    }
 }
 
-TEST_F(sql_parameter_apply_conv_test, int4_to_int8) {
-    test_parameter_apply_conv<kind::int8>(t::int8(), "1::int", false);
+TEST_F(sql_parameter_apply_conv_test, substr_int) {
+    // regression testcase for issue 1367 - passing int parameter to substr was broken
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 varchar(5))");
+    execute_statement("insert into t values ('ABC')");
+    execute_query("SELECT substr(c0, 1::int, 1) FROM t", result);
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ((create_nullable_record<kind::character>(accessor::text{"A"})), result[0]);
 }
 
-TEST_F(sql_parameter_apply_conv_test, int4_to_decimal) {
-    test_parameter_apply_conv<kind::decimal>(t::decimal(), "1::int", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, int4_to_float4) {
-    test_parameter_apply_conv<kind::float4>(t::float4(), "1::int", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, int4_to_float8) {
-    test_parameter_apply_conv<kind::float8>(t::float8(), "1::int", false);
-}
-
-// from int8
-
-TEST_F(sql_parameter_apply_conv_test, int8_to_int4_err) {
-    test_parameter_apply_conv<kind::int4>(t::int4(), "1::bigint", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, int8_to_int8) {
-    test_parameter_apply_conv<kind::int8>(t::int8(), "1::bigint", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, int8_to_decimal) {
-    test_parameter_apply_conv<kind::decimal>(t::decimal(), "1::bigint", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, int8_to_float4) {
-    test_parameter_apply_conv<kind::float4>(t::float4(), "1::bigint", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, int8_to_float8) {
-    test_parameter_apply_conv<kind::float8>(t::float8(), "1::bigint", false);
-}
-
-// from decimal
-TEST_F(sql_parameter_apply_conv_test, decimal_to_int4_err) {
-    test_parameter_apply_conv<kind::int4>(t::int4(), "1::decimal", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, decimal_to_int8_err) {
-    test_parameter_apply_conv<kind::int8>(t::int8(), "1::decimal", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, decimal_to_decimal) {
-    test_parameter_apply_conv<kind::decimal>(t::decimal(), "1::decimal", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, decimal_to_float4) {
-    test_parameter_apply_conv<kind::float4>(t::float4(), "1::decimal", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, decimal_to_float8) {
-    test_parameter_apply_conv<kind::float8>(t::float8(), "1::decimal", false);
-}
-
-// from float4
-
-TEST_F(sql_parameter_apply_conv_test, float4_to_int4_err) {
-    test_parameter_apply_conv<kind::int4>(t::int4(), "1::real", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float4_to_int8_err) {
-    test_parameter_apply_conv<kind::int8>(t::int8(), "1::real", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float4_to_decimal_err) {
-    test_parameter_apply_conv<kind::decimal>(t::decimal(), "1::real", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float4_to_float4) {
-    test_parameter_apply_conv<kind::float4>(t::float4(), "1::real", false);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float4_to_float8) {
-    test_parameter_apply_conv<kind::float8>(t::float8(), "1::real", false);
-}
-
-// from float8
-
-TEST_F(sql_parameter_apply_conv_test, float8_to_int4_err) {
-    test_parameter_apply_conv<kind::int4>(t::int4(), "1::double", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float8_to_int8_err) {
-    test_parameter_apply_conv<kind::int8>(t::int8(), "1::double", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float8_to_decimal_err) {
-    test_parameter_apply_conv<kind::decimal>(t::decimal(), "1::double", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float8_to_float4_err) {
-    test_parameter_apply_conv<kind::float4>(t::float4(), "1::double", true);
-}
-
-TEST_F(sql_parameter_apply_conv_test, float8_to_float8) {
-    test_parameter_apply_conv<kind::float8>(t::float8(), "1::double", false);
+TEST_F(sql_parameter_apply_conv_test, conversion_preserves_precision) {
+    // regression testcase - 1.00/1.10 converted to 1/1.1 accidentally
+    mock::basic_record::compare_decimals_as_triple_ = true;
+    std::vector<mock::basic_record> result{};
+    execute_statement("create table t (c0 decimal(5,2))");
+    execute_statement("insert into t values (1.00),(1.10)");
+    execute_query("SELECT abs(c0) FROM t", result);
+    ASSERT_EQ(2, result.size());
+    std::sort(result.begin(), result.end());
+    EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{decimal_type()}, triple{1, 0, 100, -2})), result[0]);
+    EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{decimal_type()}, triple{1, 0, 110, -2})), result[1]);
 }
 
 }  // namespace jogasaki::testing

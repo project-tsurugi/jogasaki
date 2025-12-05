@@ -1016,7 +1016,7 @@ any engine::operator()(takatori::scalar::function_call const& arg) {
         }
         auto const& src_type = info_.type_of(e);
         auto const& tgt_type = f->parameter_types().at(ind);
-        if(conv::to_require_conversion(src_type, tgt_type)) {
+        if(conv::require_parameter_application_conversion(src_type, tgt_type)) {
             data::any out{};
             auto res = conv::conduct_parameter_application_conversion(src_type, tgt_type, v, out, resource_);
             if(res != status::ok || out.error()) {

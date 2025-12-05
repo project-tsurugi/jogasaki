@@ -30,4 +30,18 @@ inline bool to_require_conversion(
     return source_type != target_type;
 }
 
+/**
+ * @brief check if the parameter application conversion is required
+ * @details parameter
+*/
+inline bool require_parameter_application_conversion(
+    takatori::type::data const& source_type,
+    takatori::type::data const& target_type
+) {
+    // parameter application conversion (together with unary compatible type promotion) is intended to
+    // decrease ambiguity when function resolution, so strict type conversion is not always necessary
+    // especially when length/precision/scale are different. So we convert only when type kind is different.
+    return source_type.kind() != target_type.kind();
+}
+
 }  // namespace jogasaki::executor::conv

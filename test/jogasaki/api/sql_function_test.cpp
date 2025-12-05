@@ -63,7 +63,7 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using decimal_v = takatori::decimal::triple;
+using triple = takatori::decimal::triple;
 using date = takatori::datetime::date;
 using time_of_day = takatori::datetime::time_of_day;
 using time_point = takatori::datetime::time_point;
@@ -332,8 +332,8 @@ TEST_F(sql_function_test, aggregate_decimals) {
         {"p1", api::field_type_kind::decimal}
     };
     auto ps = api::create_parameter_set();
-    auto v10 = decimal_v{1, 0, 10, 0}; // 10
-    auto v20 = decimal_v{1, 0, 20, 0}; // 20
+    auto v10 = triple{1, 0, 10, 0}; // 10
+    auto v20 = triple{1, 0, 20, 0}; // 20
     ps->set_decimal("p0", v10);
     ps->set_decimal("p1", v20);
     execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps);
@@ -346,7 +346,7 @@ TEST_F(sql_function_test, aggregate_decimals) {
     EXPECT_FALSE(rec.is_null(1));
     EXPECT_FALSE(rec.is_null(2));
     EXPECT_FALSE(rec.is_null(3));
-    auto v15 = decimal_v{1, 0, 15, 0}; // 15
+    auto v15 = triple{1, 0, 15, 0}; // 15
 
     auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto i64 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
@@ -371,8 +371,8 @@ TEST_F(sql_function_test, aggregate_decimals_scale_zero) {
         {"p1", api::field_type_kind::decimal}
     };
     auto ps = api::create_parameter_set();
-    auto v10 = decimal_v{1, 0, 10, 0}; // 10
-    auto v20 = decimal_v{1, 0, 20, 0}; // 20
+    auto v10 = triple{1, 0, 10, 0}; // 10
+    auto v20 = triple{1, 0, 20, 0}; // 20
     ps->set_decimal("p0", v10);
     ps->set_decimal("p1", v20);
     execute_statement("INSERT INTO TT (C0) VALUES (:p0)", variables, *ps);
@@ -385,7 +385,7 @@ TEST_F(sql_function_test, aggregate_decimals_scale_zero) {
     EXPECT_FALSE(rec.is_null(1));
     EXPECT_FALSE(rec.is_null(2));
     EXPECT_FALSE(rec.is_null(3));
-    auto v15 = decimal_v{1, 0, 15, 0}; // 15
+    auto v15 = triple{1, 0, 15, 0}; // 15
 
     auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto i64 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int8>};
@@ -641,19 +641,6 @@ TEST_F(sql_function_test, min_max_timestamp_negative) {
     }
 }
 
-TEST_F(sql_function_test, verify_parameter_application_conversion) {
-    // no count(char) is registered, but count(varchar) is applied instead for char columns
-    // by paramater application conversion
-    execute_statement("create table t (c0 char(3))");
-    execute_statement("insert into t values ('aaa'), ('bbb'), ('ccc')");
-    {
-        std::vector<mock::basic_record> result{};
-        execute_query("SELECT COUNT(c0) FROM t", result);
-        ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int8>(3)), result[0]);
-    }
-}
-
 TEST_F(sql_function_test, count_distinct_varlen) {
     // regression testcase for issue 946
     execute_statement("create table t (c0 char(20))");
@@ -664,15 +651,6 @@ TEST_F(sql_function_test, count_distinct_varlen) {
         ASSERT_EQ(1, result.size());
         EXPECT_EQ((create_nullable_record<kind::int8>(2)), result[0]);
     }
-}
-
-TEST_F(sql_function_test, substr_int) {
-    std::vector<mock::basic_record> result{};
-    execute_statement("create table t (c0 varchar(5))");
-    execute_statement("insert into t values ('ABC')");
-    execute_query("SELECT substr(c0, 1::int, 1) FROM t", result);
-    ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::character>(accessor::text{"A"})), result[0]);
 }
 
 }  // namespace jogasaki::testing

@@ -45,7 +45,7 @@ work_context::work_context(
     transaction_(std::move(transaction)),
     empty_input_from_shuffle_(empty_input_from_shuffle),
     in_transaction_and_non_sticky_(in_transaction_and_non_sticky),
-    blob_session_container_(transaction ? std::optional<std::uint64_t>{transaction->surrogate_id()} : std::nullopt)
+    blob_session_container_(transaction_ ? std::optional<std::uint64_t>{transaction_->surrogate_id()} : std::nullopt)
 {
     variables_.reserve(block_count);
 }

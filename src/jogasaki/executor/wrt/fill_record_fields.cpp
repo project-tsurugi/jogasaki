@@ -170,6 +170,8 @@ status fill_default_value(
             break;
         }
         case process::impl::ops::default_value_kind::function: {
+            // function assignable as default value don't allow blob-related functions or udf,
+            // so no need to pass blob_session to evaluator_context
             expr::evaluator_context c{
                 std::addressof(resource),
                 ctx.transaction().get()

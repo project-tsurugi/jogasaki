@@ -41,6 +41,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/record_meta.h>
+#include <jogasaki/relay/blob_session_container.h>
 #include <jogasaki/request_context.h>
 
 namespace jogasaki::executor::wrt {
@@ -69,6 +70,7 @@ public:
     data::small_record_store key_store_{};  //NOLINT
     data::small_record_store value_store_{};  //NOLINT
     memory::lifo_paged_memory_resource* resource_{};  //NOLINT
+    relay::blob_session_container blob_session_container_{};  //NOLINT
 };
 
 /**

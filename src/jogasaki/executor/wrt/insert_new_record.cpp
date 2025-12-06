@@ -181,7 +181,8 @@ write_context::write_context(
     secondary_contexts_(create_secondary_contexts(secondaries, db, context)),
     key_store_(key_meta, resource),
     value_store_(value_meta, resource),
-    resource_(resource)
+    resource_(resource),
+    blob_session_container_(context.transaction() ? std::optional<std::uint64_t>{context.transaction()->surrogate_id()} : std::nullopt)
 {}
 
 bool insert_new_record::put_secondaries(

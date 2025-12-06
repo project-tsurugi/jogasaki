@@ -96,6 +96,8 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
             ctx.varlen_resource(),
             ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
         };
+        context_helper helper{ctx.task_context()};
+        c.blob_session(std::addressof(helper.blob_session_container()));
         auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
                                                            // by take/scan operator
         if (result.error()) {

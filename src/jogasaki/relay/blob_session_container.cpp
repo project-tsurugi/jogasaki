@@ -25,7 +25,7 @@ namespace jogasaki::relay {
 template<>
 data_relay_grpc::blob_relay::blob_session* basic_blob_session_container<data_relay_grpc::blob_relay::blob_session>::get_or_create() {
     if (! session_) {
-        auto relay_service = global::relay_service();
+        auto& relay_service = global::relay_service();
         if (relay_service) {
             auto& session = relay_service->create_session(transaction_id_);
             session_ = std::addressof(session);

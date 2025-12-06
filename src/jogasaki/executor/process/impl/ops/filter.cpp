@@ -73,6 +73,8 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     expr::evaluator_context c{resource,
         ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
     };
+    context_helper helper{ctx.task_context()};
+    c.blob_session(std::addressof(helper.blob_session_container()));
     auto res = evaluate_bool(c, evaluator_, vars, resource);
     if (res.error()) {
         return handle_expression_error(ctx, res, c);

@@ -39,7 +39,7 @@
 namespace jogasaki::executor::process::impl::ops::details {
 
 status encode_key(  //NOLINT(readability-function-cognitive-complexity)
-    request_context* context,
+    expr::evaluator_context& ectx,
     std::vector<details::search_key_field_info> const& keys,
     variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
@@ -52,11 +52,7 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     for(int loop = 0; loop < 2; ++loop) { // if first trial overflows `buf`, extend it and retry
         kvs::writable_stream s{out.data(), out.capacity(), loop == 0};
         for(auto&& k : keys) {
-            expr::evaluator_context ctx{
-                std::addressof(resource),
-                context ? context->transaction().get() : nullptr
-            };
-            auto a = k.evaluator_(ctx, input_variables, &resource);
+            auto a = k.evaluator_(ectx, input_variables, &resource);
             if (a.error()) {
                 VLOG_LP(log_error) << "evaluation error: " << a.to<expr::error>();
                 return status::err_expression_evaluation_failure;
@@ -97,14 +93,15 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
     return status::ok;
 }
 
-status two_encode_keys(request_context* context,
+status two_encode_keys(expr::evaluator_context& ectx,
+    request_context* context,
     std::vector<details::search_key_field_info> const& begin_keys,
     std::vector<details::search_key_field_info> const& end_keys, variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource, data::aligned_buffer& key_begin,
     std::size_t& blen, data::aligned_buffer& key_end, std::size_t& elen) {
     status status_result = status::ok;
     std::string message;
-    if ((status_result = impl::ops::details::encode_key(context, begin_keys, input_variables,
+    if ((status_result = impl::ops::details::encode_key(ectx, begin_keys, input_variables,
              resource, key_begin, blen, message)) != status::ok) {
 
         if (status_result == status::err_type_mismatch) {
@@ -114,7 +111,7 @@ status two_encode_keys(request_context* context,
         return status_result;
     }
     if ((status_result = impl::ops::details::encode_key(
-             context, end_keys, input_variables, resource, key_end, elen, message)) != status::ok) {
+             ectx, end_keys, input_variables, resource, key_end, elen, message)) != status::ok) {
 
         if (status_result == status::err_type_mismatch) {
             set_error(*context, error_code::unsupported_runtime_feature_exception, message,

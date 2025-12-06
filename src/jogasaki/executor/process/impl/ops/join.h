@@ -213,6 +213,7 @@ public:
         assert_with_exception(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2, kind_, n); //NOLINT
         assert_with_exception(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3), has_condition_, kind_, n); //NOLINT
         iterator_incrementer incr{std::move(iterators)};
+        context_helper helper{ctx.task_context()};
         switch(kind_) {
             case join_kind::inner: {
                 if(kind_ == join_kind::inner && ! groups_available(cgrp, false)) {
@@ -223,6 +224,7 @@ public:
                         ctx.varlen_resource(),
                         ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                     };
+                    c.blob_session(std::addressof(helper.blob_session_container()));
                     auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                     if(a.error()) {
                         return handle_expression_error(ctx, a, c);
@@ -249,6 +251,7 @@ public:
                                 ctx.varlen_resource(),
                                 ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                             };
+                            c.blob_session(std::addressof(helper.blob_session_container()));
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
                                 return handle_expression_error(ctx, a, c);
@@ -290,6 +293,7 @@ public:
                                 ctx.varlen_resource(),
                                 ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                             };
+                            c.blob_session(std::addressof(helper.blob_session_container()));
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
                                 return handle_expression_error(ctx, a, c);
@@ -344,6 +348,7 @@ public:
                                 ctx.varlen_resource(),
                                 ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                             };
+                            c.blob_session(std::addressof(helper.blob_session_container()));
                             auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
                             if (a.error()) {
                                 return handle_expression_error(ctx, a, c);

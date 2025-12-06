@@ -144,6 +144,7 @@ public:
      */
     template <class T = MatchInfo>
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_find>, bool> process(
+        expr::evaluator_context& ectx,
         request_context& ctx,
         variable_table& input_variables,
         variable_table& output_variables,
@@ -155,7 +156,7 @@ public:
         std::size_t len{};
         std::string msg{};
         if(auto res =
-               details::encode_key(std::addressof(ctx), info_.key_fields_, input_variables, *resource, buf_, len, msg);
+               details::encode_key(ectx, info_.key_fields_, input_variables, *resource, buf_, len, msg);
            res != status::ok) {
             status_ = res;
             if(res == status::err_integrity_constraint_violation) {
@@ -230,6 +231,7 @@ public:
      */
     template <class T = MatchInfo>
     [[nodiscard]] std::enable_if_t<std::is_same_v<T, match_info_scan>, bool> process(
+        expr::evaluator_context& ectx,
         request_context& ctx,
         variable_table& input_variables,
         variable_table& output_variables,
@@ -241,7 +243,7 @@ public:
         std::size_t begin_len{};
         std::size_t end_len{};
         std::string msg{};
-        if(auto res = details::encode_key(std::addressof(ctx), info_.begin_fields_, input_variables, *resource, buf_, begin_len, msg);
+        if(auto res = details::encode_key(ectx, info_.begin_fields_, input_variables, *resource, buf_, begin_len, msg);
         res != status::ok) {
             status_ = res;
             // TODO handle msg
@@ -254,7 +256,7 @@ public:
             handle_generic_error(ctx, res, error_code::sql_execution_exception);
             return false;
         }
-        if(auto res = details::encode_key(std::addressof(ctx), info_.end_fields_, input_variables, *resource, buf2_, end_len, msg);
+        if(auto res = details::encode_key(ectx, info_.end_fields_, input_variables, *resource, buf2_, end_len, msg);
         res != status::ok) {
             status_ = res;
             // TODO handle msg

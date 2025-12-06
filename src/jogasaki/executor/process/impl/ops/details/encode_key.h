@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -32,7 +33,7 @@ namespace jogasaki::executor::process::impl::ops::details {
 /**
  * @brief evaluate the search key and encode
  * @details evaluate the search key and encode it (for primary index or secondary index) for search
- * @param context the request context
+ * @param ectx the evaluator context
  * @param keys the key fields to be evaluated
  * @param input_variables the variables to be used for evaluation
  * @param resource the memory resource
@@ -47,7 +48,7 @@ namespace jogasaki::executor::process::impl::ops::details {
  * @return status::err_expression_evaluation_failure any other evaluation failure
  */
 status encode_key(
-    request_context* context,
+    expr::evaluator_context& ectx,
     std::vector<details::search_key_field_info> const& keys,
     executor::process::impl::variable_table& input_variables,
     memory::lifo_paged_memory_resource& resource,
@@ -58,6 +59,7 @@ status encode_key(
 /**
  * @brief evaluate the search two keys and encode
  * @details evaluate the search start and end keys and encode them so that they can be used for search
+ * @param ectx the evaluator context
  * @param context the request context
  * @param begin_keys the begin_key fields to be evaluated
  * @param end_keys the end_key fields to be evaluated
@@ -73,6 +75,7 @@ status encode_key(
  * @return status::err_expression_evaluation_failure any other evaluation failure
  */
 status two_encode_keys(
+    expr::evaluator_context& ectx,
     request_context* context,
     std::vector<details::search_key_field_info> const& begin_keys,
     std::vector<details::search_key_field_info> const& end_keys,

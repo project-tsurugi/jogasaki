@@ -26,6 +26,7 @@
 #include <jogasaki/error/error_info.h>
 #include <jogasaki/executor/diagnostic_record.h>
 #include <jogasaki/memory/paged_memory_resource.h>
+#include <jogasaki/relay/blob_session_container.h>
 
 #include "error.h"
 
@@ -241,6 +242,22 @@ public:
         return transaction_context_;
     }
 
+    /**
+     * @brief set blob session container
+     * @param arg pointer to the blob session container
+     */
+    void blob_session(relay::blob_session_container* arg) noexcept {
+        blob_session_container_ = arg;
+    }
+
+    /**
+     * @brief get blob session container
+     * @return pointer to the blob session container, or nullptr if not set
+     */
+    [[nodiscard]] relay::blob_session_container* blob_session() const noexcept {
+        return blob_session_container_;
+    }
+
 private:
     memory_resource* resource_{};
     loss_precision_policy loss_precision_policy_{loss_precision_policy::ignore};
@@ -249,6 +266,7 @@ private:
     bool lost_precision_{};
     transaction_context* transaction_context_{};
     std::shared_ptr<jogasaki::error::error_info> error_info_{};
+    relay::blob_session_container* blob_session_container_{};
 
 };
 

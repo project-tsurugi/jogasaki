@@ -178,7 +178,13 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     executor::process::impl::variable_table vars{};
     std::size_t len{};
     std::string msg{};
-    if(auto res = details::encode_key(ctx.req_context(), search_key_fields_, vars, *resource, ctx.key_, len, msg);
+    expr::evaluator_context ectx{
+        resource,
+        ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+    };
+    context_helper helper{ctx.task_context()};
+    ectx.blob_session(std::addressof(helper.blob_session_container()));
+    if(auto res = details::encode_key(ectx, search_key_fields_, vars, *resource, ctx.key_, len, msg);
         res != status::ok) {
         if (res == status::err_type_mismatch) {
             // unsupported type/value mapping detected during expression evaluation

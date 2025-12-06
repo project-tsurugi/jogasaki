@@ -331,7 +331,14 @@ public:
         auto resource = ctx.varlen_resource();
         nullify_output_variables(ctx.output_variables().store().ref());
         auto& tx = ctx.strand_ != nullptr ? *ctx.strand_ : *ctx.tx_->object();
+        context_helper helper{ctx.task_context()};
+        expr::evaluator_context ectx{
+            resource,
+            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+        };
+        ectx.blob_session(std::addressof(helper.blob_session_container()));
         bool matched = ctx.matcher_->template process<MatchInfo>(
+            ectx,
             *ctx.req_context(),
             ctx.input_variables(),
             ctx.output_variables(),
@@ -343,10 +350,12 @@ public:
         if(matched || join_kind_ == join_kind::left_outer) {
             do {
                 if (condition_) {
+                    // newly create c instead of re-using ectx since errors in ectx might have bad impact //TODO resolve this
                     expr::evaluator_context c{
                         resource,
                         ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                     };
+                    c.blob_session(std::addressof(helper.blob_session_container()));
                     auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                     if (r.error()) {
                         return handle_expression_error(ctx, r, c);

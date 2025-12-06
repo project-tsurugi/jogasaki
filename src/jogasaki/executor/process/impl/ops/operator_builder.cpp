@@ -391,7 +391,14 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
     std::unique_ptr<data::aligned_buffer> key_begin = std::make_unique<data::aligned_buffer>();
     std::unique_ptr<data::aligned_buffer> key_end   = std::make_unique<data::aligned_buffer>();
     auto resource_ptr  = std::make_unique<ops::context_base::memory_resource>(&global::page_pool());
-    auto status_result = details::two_encode_keys(request_context_,
+    expr::evaluator_context ectx{
+        resource_ptr.get(),
+        request_context_ ? request_context_->transaction().get() : nullptr
+    };
+    // we expect value expression defining scan ranges are not too complex and they never contain
+    // udf or blob related functions, so we skip setting blob_session to evaluator_context here - TODO check this
+    auto status_result = details::two_encode_keys(ectx,
+        request_context_,
         details::create_search_key_fields(secondary_or_primary_index, node.lower().keys(), *info_),
         details::create_search_key_fields(secondary_or_primary_index, node.upper().keys(), *info_),
         vars, *resource_ptr, *key_begin, blen, *key_end, elen);

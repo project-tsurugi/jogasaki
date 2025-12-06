@@ -94,6 +94,7 @@ constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 static status fill_evaluated_value(
     wrt::write_field const& f,
     request_context& ctx,
+    wrt::write_context& wctx,
     write_statement::tuple const& t,
     compiled_info const& info,
     memory::lifo_paged_memory_resource& resource,
@@ -107,6 +108,7 @@ static status fill_evaluated_value(
         std::addressof(resource),
         ctx.transaction().get()
     };
+    c.blob_session(std::addressof(wctx.blob_session_container_));
     auto res = eval(c, empty, std::addressof(resource));
     if (res.error()) {
         auto err = res.to<expr::error>();
@@ -183,6 +185,7 @@ static status fill_evaluated_value(
 
 static status create_record_from_tuple(  //NOLINT(readability-function-cognitive-complexity)
     request_context& ctx,
+    wrt::write_context& wctx,
     write_statement::tuple const& t,
     std::vector<wrt::write_field> const& fields,
     compiled_info const& info,
@@ -198,7 +201,7 @@ static status create_record_from_tuple(  //NOLINT(readability-function-cognitive
             }
             continue;
         }
-        if(auto res = fill_evaluated_value(f, ctx, t, info, resource, host_variables, out); res != status::ok) {
+        if(auto res = fill_evaluated_value(f, ctx, wctx, t, info, resource, host_variables, out); res != status::ok) {
             return res;
         }
     }
@@ -261,6 +264,7 @@ bool write_statement::process(request_context& context) {
         utils::checkpoint_holder cph(resource_);
         if(auto res = create_record_from_tuple(
             context,
+            wctx,
             tuple,
             key_fields_,
             info_,
@@ -272,6 +276,7 @@ bool write_statement::process(request_context& context) {
         }
         if(auto res = create_record_from_tuple(
             context,
+            wctx,
             tuple,
             value_fields_,
             info_,

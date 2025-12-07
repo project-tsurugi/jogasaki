@@ -96,8 +96,8 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
             ctx.varlen_resource(),
             ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
         };
-        auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
-                                                           // by take/scan operator
+        auto result = ev(c, vars); // result resource will be deallocated at once
+                                   // by take/scan operator
         if (result.error()) {
             return handle_expression_error(ctx, result, c);
         }

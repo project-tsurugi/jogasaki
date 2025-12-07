@@ -56,7 +56,7 @@ status encode_key(  //NOLINT(readability-function-cognitive-complexity)
                 std::addressof(resource),
                 context ? context->transaction().get() : nullptr
             };
-            auto a = k.evaluator_(ctx, input_variables, &resource);
+            auto a = k.evaluator_(ctx, input_variables);
             if (a.error()) {
                 VLOG_LP(log_error) << "evaluation error: " << a.to<expr::error>();
                 return status::err_expression_evaluation_failure;

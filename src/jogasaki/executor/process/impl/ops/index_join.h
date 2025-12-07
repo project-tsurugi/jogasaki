@@ -347,7 +347,7 @@ public:
                         resource,
                         ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                     };
-                    auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
+                    auto r = evaluate_bool(c, evaluator_, ctx.input_variables());
                     if (r.error()) {
                         return handle_expression_error(ctx, r, c);
                     }

@@ -229,7 +229,7 @@ public:
             set_values<In1, In2>(c1, c2, c1_is_null, c2_is_null);
             utils::checkpoint_holder cph{&resource_};
             evaluator_context c{&resource_};
-            auto a = evaluator_(c, vars_, &resource_);
+            auto a = evaluator_(c, vars_);
             ASSERT_TRUE(! a.error());
             if(exp_is_null) {
                 ASSERT_TRUE(a.empty());
@@ -635,7 +635,7 @@ TEST_F(expression_evaluator_test, arithmetic_error) {
         set_values<t::float8, t::float8>(10.0, 0.0, false, false);
         utils::checkpoint_holder cph{&resource_};
         evaluator_context c{&resource_};
-        auto result = evaluator_(c, vars_, &resource_);
+        auto result = evaluator_(c, vars_);
         ASSERT_FALSE(result);
         ASSERT_FALSE(result.empty());
         ASSERT_TRUE(result.error());

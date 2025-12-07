@@ -89,7 +89,7 @@ engine::engine(
     variables_(variables),
     info_(info),
     host_variables_(host_variables),
-    resource_(resource)
+    resource_(resource ? resource : static_cast<engine::memory_resource*>(ctx.resource()))
 {}
 
 template <class T>
@@ -1059,12 +1059,11 @@ evaluator::evaluator(
 
 any evaluator::operator()(
     evaluator_context& ctx,
-    executor::process::impl::variable_table& variables,
-    evaluator::memory_resource* resource
+    executor::process::impl::variable_table& variables
 ) const {
     try {
         details::ensure_decimal_context();
-        details::engine e{ctx, variables, *info_, host_variables_, resource};
+        details::engine e{ctx, variables, *info_, host_variables_, nullptr};
         return takatori::scalar::dispatch(e, *expression_);
     } catch (std::exception const& e) {
         // catch unexpected error during mpdecimal operation such as MallocError or ValueError
@@ -1081,11 +1080,11 @@ any evaluator::operator()(
 any evaluate_bool(
     evaluator_context& ctx,
     evaluator& eval,
-    executor::process::impl::variable_table& variables,
-    memory::lifo_paged_memory_resource* resource
+    executor::process::impl::variable_table& variables
 ) {
+    auto resource = static_cast<memory::lifo_paged_memory_resource*>(ctx.resource());
     utils::checkpoint_holder h{resource};
-    auto a = eval(ctx, variables, resource);
+    auto a = eval(ctx, variables);
     if (a.error()) {
         return a;
     }

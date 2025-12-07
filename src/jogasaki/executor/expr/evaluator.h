@@ -132,17 +132,14 @@ public:
      * @details The required memory is allocated from the memory resource to calculate and store the result value.
      * Caller is responsible for release the allocated store after consuming the result. This can be typically done by
      * remembering checkpoint before this call and using memory_resource::deallocate_after() after
-     * consuming return value.
+     * consuming return value. The memory resource is obtained from the evaluator_context.
+     * @param ctx the evaluator context which holds the memory resource and other evaluation settings
      * @param variables variables table used to evaluate the expression
-     * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
-     * never generate types whose values are stored via memory resource(e.g. accessor::text).
-     * Then UB if such type is processed.
      * @return the result of evaluation
      */
     [[nodiscard]] any operator()(
         evaluator_context& ctx,
-        executor::process::impl::variable_table& variables,
-        memory_resource* resource = nullptr
+        executor::process::impl::variable_table& variables
     ) const;
 
 private:
@@ -157,19 +154,17 @@ private:
  * resource used for evaluation and returns true/false (null is never returned.)
  * Unlike evaluator::operator(), this function doesn't require caller to release the
  * memory resource since the returned value contains true/false value only and no memory resource is used to store it.
+ * The memory resource is obtained from the evaluator_context.
+ * @param ctx the evaluator context which holds the memory resource and other evaluation settings
  * @param eval the evaluator to conduct the evaluation
  * @param variables variables table used to evaluate the expression
- * @param resource memory resource used to store generated value. Specify nullptr if the evaluation
- * never generate types whose values are stored via memory resource(e.g. accessor::text).
- * Then UB if such type is processed.
  * @return error if the evaluation failed
  * @return non-empty bool value of the evaluation result
  */
 [[nodiscard]] any evaluate_bool(
     evaluator_context& ctx,
     evaluator& eval,
-    executor::process::impl::variable_table& variables,
-    memory::lifo_paged_memory_resource* resource = nullptr
+    executor::process::impl::variable_table& variables
 );
 
 [[nodiscard]] any divide_any(any const& left, any const& right, evaluator_context& ctx);

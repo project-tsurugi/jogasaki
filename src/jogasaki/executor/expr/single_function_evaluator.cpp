@@ -68,7 +68,7 @@ single_function_evaluator::single_function_evaluator(
 
 data::any single_function_evaluator::operator()(evaluator_context& ctx) const {
     executor::process::impl::variable_table variables{};
-    return evaluator_(ctx, variables, nullptr);
+    return evaluator_(ctx, variables);
 }
 
 }  // namespace jogasaki::executor::expr

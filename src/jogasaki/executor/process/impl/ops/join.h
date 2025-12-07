@@ -169,12 +169,11 @@ public:
         expr::evaluator_context& context
     ) {
         assign_values(ctx, cgrp, incr, false);
-        auto resource = ctx.varlen_resource();
         auto& vars = ctx.input_variables();
         if(!has_condition_) {
             return data::any{std::in_place_type<bool>, true};
         }
-        return evaluate_bool(context, evaluator_, vars, resource);
+        return evaluate_bool(context, evaluator_, vars);
     }
 
     bool call_downstream(

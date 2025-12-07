@@ -73,7 +73,7 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
     expr::evaluator_context c{resource,
         ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
     };
-    auto res = evaluate_bool(c, evaluator_, vars, resource);
+    auto res = evaluate_bool(c, evaluator_, vars);
     if (res.error()) {
         return handle_expression_error(ctx, res, c);
     }

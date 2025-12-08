@@ -38,7 +38,7 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "enable_hybrid_scheduler=true\n"
 
     "[ipc_endpoint]\n"
-        "database_name=tsurugi\n"
+        "database_name=unset\n"
         "threads=104\n"
         "datachannel_buffer_size=64\n"
         "max_datachannel_buffers=256\n"
@@ -90,6 +90,9 @@ std::shared_ptr<tateyama::api::configuration::whole> create_configuration(
     ss << "\n";
     auto cfg = tateyama::api::configuration::create_configuration("", ss.str());
 
+    cfg->get_section("ipc_endpoint")->set("database_name", "tsurugidb-"+
+        std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count()));
     {
         boost::filesystem::create_directory(log_location);
         cfg->get_section("datastore")->set("log_location", log_location);

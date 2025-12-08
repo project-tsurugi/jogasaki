@@ -383,7 +383,7 @@ static bool process_udf_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     return true;
 }
 
-static bool process_grpc_server_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
+static bool process_grpc_server_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {
     // grpc_server section
     auto jogasaki_config = cfg.get_section("grpc_server");
     if (jogasaki_config == nullptr) {

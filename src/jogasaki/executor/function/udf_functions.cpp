@@ -732,7 +732,9 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         plugin::udf::generic_record_impl response;
         grpc::ClientContext context;
         // TODO: make these metadata configurable
-        auto session_id = ctx.blob_session()->get()->session_id();
+        auto* bs = ctx.blob_session();
+        assert_with_exception(bs != nullptr, bs, bs);
+        auto session_id = bs->get_or_create()->session_id();
         blob_grpc_metadata metadata{session_id,
             std::string(global::config_pool()->grpc_server_endpoint()),
             global::config_pool()->grpc_server_secure(), "stream", 1024ULL * 1024ULL};
@@ -740,6 +742,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
             ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
         }
+
         client->call(context, {0, fn->function_index()}, request, response);
 
         if(response.error()) {

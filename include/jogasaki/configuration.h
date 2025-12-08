@@ -570,6 +570,23 @@ public:
         enable_disjunction_range_hinting_ = arg;
     }
 
+    [[nodiscard]] std::string_view grpc_server_endpoint() const noexcept {
+        return grpc_server_endpoint_;
+    }
+
+    void grpc_server_endpoint(std::string_view arg) noexcept {
+        grpc_server_endpoint_ = arg;
+    }
+
+    [[nodiscard]] bool grpc_server_secure() const noexcept {
+        return grpc_server_secure_;
+    }
+
+    void grpc_server_secure(bool arg) noexcept {
+        grpc_server_secure_ = arg;
+    }
+
+
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
         //NOLINTBEGIN
@@ -636,6 +653,8 @@ public:
         print_non_default(endpoint);
         print_non_default(secure);
         print_non_default(enable_disjunction_range_hinting);
+        print_non_default(grpc_server_endpoint);
+        print_non_default(grpc_server_secure);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -706,6 +725,8 @@ private:
     std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;
     bool enable_disjunction_range_hinting_ = false;
+    std::string grpc_server_endpoint_{"dns:///localhost:52345"};
+    bool grpc_server_secure_ = false;
 };
 
 }  // namespace jogasaki

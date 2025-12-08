@@ -760,11 +760,11 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
 }  // anonymous namespace
 
 bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
-    ctx.AddMetadata("X-TSURUGI-BLOB-SESSION", std::to_string(session_id_));
-    ctx.AddMetadata("X-TSURUGI-BLOB-ENDPOINT", endpoint_);
-    ctx.AddMetadata("X-TSURUGI-BLOB-SECURE", secure_ ? "true" : "false");
-    ctx.AddMetadata("X-TSURUGI-BLOB-TRANSPORT", transport_);
-    ctx.AddMetadata("X-TSURUGI-BLOB-STREAM-CHUNK-SIZE", std::to_string(chunk_size_));
+    ctx.AddMetadata("x-tsurugi-blob-session", std::to_string(session_id_));
+    ctx.AddMetadata("x-tsurugi-blob-endpoint", endpoint_);
+    ctx.AddMetadata("x-tsurugi-blob-secure", secure_ ? "true" : "false");
+    ctx.AddMetadata("x-tsurugi-blob-transport", transport_);
+    ctx.AddMetadata("x-tsurugi-blob-stream-chunk-size", std::to_string(chunk_size_));
     return true;
 }
 

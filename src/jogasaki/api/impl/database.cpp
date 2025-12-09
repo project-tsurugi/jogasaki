@@ -212,6 +212,8 @@ static void dump_public_configurations(configuration const& cfg) {
     LOGCFG << "(endpoint) " << cfg.endpoint() << " : gRPC server endpoint for communication with UDF server.";
     LOGCFG << "(secure) " << cfg.secure() << " : Whether to use a secure gRPC communication channel.";
     LOGCFG << "(dev_enable_disjunction_range_hinting) " << cfg.enable_disjunction_range_hinting() << " : whether to extract ranges from conditions containing OR";
+    LOGCFG << "(grpc_server_endpoint) " << cfg.grpc_server_endpoint() << " : gRPC server endpoint for communication with BLOB server.";
+    LOGCFG << "(grpc_server_secure) " << cfg.grpc_server_secure() << " : Whether to use a secure gRPC communication channel for BLOB server.";
 }
 
 static bool validate_core_assignment_parameters(configuration const& cfg) {

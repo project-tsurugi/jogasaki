@@ -383,6 +383,21 @@ static bool process_udf_config(std::shared_ptr<jogasaki::configuration>& ret, ta
     return true;
 }
 
+static bool process_grpc_server_config(std::shared_ptr<jogasaki::configuration>& ret, tateyama::api::configuration::whole& cfg) {
+    // grpc_server section
+    auto jogasaki_config = cfg.get_section("grpc_server");
+    if (jogasaki_config == nullptr) {
+        return true;
+    }
+    if (auto v = jogasaki_config->get<std::string>("endpoint")) {
+        ret->grpc_server_endpoint(v.value());
+    }
+    if (auto v = jogasaki_config->get<bool>("secure")) {
+        ret->grpc_server_secure(v.value());
+    }
+    return true;
+}
+
 static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama::api::configuration::whole& cfg) {  //NOLINT(readability-function-cognitive-complexity)
     auto ret = std::make_shared<jogasaki::configuration>();
     if(! process_sql_config(ret, cfg)) {
@@ -392,6 +407,9 @@ static std::shared_ptr<jogasaki::configuration> convert_config_internal(tateyama
         return {};
     }
     if(! process_udf_config(ret, cfg)) {
+        return {};
+    }
+    if(! process_grpc_server_config(ret, cfg)) {
         return {};
     }
     return ret;

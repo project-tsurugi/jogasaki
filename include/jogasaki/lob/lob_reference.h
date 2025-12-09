@@ -142,18 +142,21 @@ public:
      * @return the output
      */
     friend std::ostream& operator<<(std::ostream& out, lob_reference const& value) {
+        out << "kind:" << value.kind_;
         if (value.kind_ == lob_reference_kind::undefined) {
-            return out << "undefined";
+            return out;
         }
+        out << ",tag:" << value.reference_tag_;
         if (value.kind_ == lob_reference_kind::provided) {
+            out << ",locator:";
             if(! value.locator_) {
                 // normally locator should be non-null
                 return out << "null";
             }
-            return out << *value.locator_;
+            return out << "{" << *value.locator_ << "}";
         }
         // fetched or resolved
-        return out << "id:" << value.id_ << ",provider:" << value.provider_;
+        return out << ",id:" << value.id_ << ",provider:" << value.provider_;
     }
 
 private:

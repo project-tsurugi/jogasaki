@@ -395,8 +395,9 @@ std::vector<std::shared_ptr<impl::scan_range>> operator_builder::create_scan_ran
         resource_ptr.get(),
         request_context_ ? request_context_->transaction().get() : nullptr
     };
-    // we expect value expression defining scan ranges are not too complex and they never contain
-    // udf or blob related functions, so we skip setting blob_session to evaluator_context here - TODO check this
+    // scan end point can be determined by blob related udf functions, so we need session container in ectx
+    relay::blob_session_container container{request_context_->transaction()->surrogate_id()};
+    ectx.blob_session(std::addressof(container));
     auto status_result = details::two_encode_keys(ectx,
         request_context_,
         details::create_search_key_fields(secondary_or_primary_index, node.lower().keys(), *info_),

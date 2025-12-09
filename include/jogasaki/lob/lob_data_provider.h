@@ -39,6 +39,8 @@ enum class lob_data_provider : std::int32_t {
     ///@brief sql engine provides lob data
     sql = 2,
 
+    ///@brief blob session for the data relay service provides lob data
+    relay_service_session = 3,
 };
 
 /**
@@ -53,6 +55,7 @@ enum class lob_data_provider : std::int32_t {
         case kind::undefined: return "undefined"sv;
         case kind::datastore: return "datastore"sv;
         case kind::sql: return "sql"sv;
+        case kind::relay_service_session: return "relay_service_session"sv;
     }
     std::abort();
 }

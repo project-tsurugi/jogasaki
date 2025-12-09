@@ -1001,6 +1001,49 @@ any engine::operator()(takatori::scalar::let const&) {
     return return_unsupported();
 }
 
+template <typename T>
+static std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
+post_process_lob(any in, evaluator_context& ctx) {
+    // check if the returned blog/clob references belong to the current blob session
+    // and if it's on the blog session, register the data to limestone
+    // before the session is disposed (at the end of task).
+    auto var = in.to<T>();
+    if (var.provider() != lob::lob_data_provider::relay_service_session) {
+        return in;
+    }
+
+    assert_with_exception(ctx.blob_session() != nullptr, "fail");
+    auto s = ctx.blob_session()->get();
+    if (! s) {
+        return in;
+    }
+    auto obj = s->find(var.object_id());
+    if (! obj) {
+        return in;
+    }
+    // create `provided` lob reference and register to limestone
+    lob::lob_locator loc{obj->string(), true};
+    lob::lob_reference ref{loc};
+    lob::lob_id_type id{};
+    lob::lob_reference_tag_type reference_tag{};
+    std::shared_ptr<jogasaki::error::error_info> error{};
+    if (auto st = datastore::assign_lob_id(ref, ctx.transaction(), id, reference_tag, error); st != status::ok) {
+        ctx.set_error_info(std::move(error));
+        return any{std::in_place_type<class error>, error_kind::error_info_provided};
+    }
+    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore, reference_tag}};
+}
+
+static any post_process_if_lob(any in, evaluator_context& ctx) {
+    if(in.type_index() == any::index<runtime_t<meta::field_type_kind::blob>>) {
+        return post_process_lob<runtime_t<meta::field_type_kind::blob>>(in, ctx);
+    }
+    if(in.type_index() == any::index<runtime_t<meta::field_type_kind::clob>>) {
+        return post_process_lob<runtime_t<meta::field_type_kind::clob>>(in, ctx);
+    }
+    return in;
+}
+
 any engine::operator()(takatori::scalar::function_call const& arg) {
     auto f = yugawara::binding::extract_if<yugawara::function::declaration>(arg.function());
     if(! f.has_value()) {
@@ -1032,7 +1075,7 @@ any engine::operator()(takatori::scalar::function_call const& arg) {
         if(! ctx_.transaction()) {
             throw_exception(std::logic_error{""});
         }
-        return info->function_body()(ctx_, inputs);
+        return post_process_if_lob(info->function_body()(ctx_, inputs), ctx_);
     }
     throw_exception(std::logic_error{""});
 }

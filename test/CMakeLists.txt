@@ -94,9 +94,6 @@ file(GLOB SRCS
         "jogasaki/utils/*.cpp"
         )
 
-# temporarily disabled due to proto version issue on CI env.
-list(FILTER SRCS EXCLUDE REGEX ".sql_lob_function_invocation_test\\.cpp$")
-
 # long tx specific testcases
 if(${SHARKSFIN_IMPLEMENTATION} STREQUAL "shirakami")
     # temporarily disable cc related test due to unstability

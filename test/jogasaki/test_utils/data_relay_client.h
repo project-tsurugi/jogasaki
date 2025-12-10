@@ -21,8 +21,8 @@
 #include <utility>
 
 #include <grpcpp/grpcpp.h>
-#include <jogasaki/test_utils/proto/blob_relay/blob_relay_streaming.grpc.pb.h>
-#include <jogasaki/test_utils/proto/blob_relay/blob_relay_streaming.pb.h>
+#include <data-relay-grpc/proto/blob_relay/blob_relay_streaming.pb.h>
+#include <data-relay-grpc/proto/blob_relay/blob_relay_streaming.grpc.pb.h>
 
 namespace jogasaki::testing {
 

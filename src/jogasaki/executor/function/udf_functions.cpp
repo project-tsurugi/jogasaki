@@ -343,6 +343,23 @@ std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
     }
     return param_types;
 }
+
+std::size_t count_effective_columns(plugin::udf::record_descriptor const& rec) {
+    std::size_t total = 0;
+
+    for (auto* col : rec.columns()) {
+        if (!col) continue;
+
+        auto* nested = col->nested();
+        if (nested) {
+            total += count_effective_columns(*nested);
+        } else {
+            total += 1;
+        }
+    }
+    return total;
+}
+
 void register_udf_function_patterns(
     yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
@@ -373,6 +390,9 @@ void register_udf_function_patterns(
         if(! param_types.empty()) {
             register_function(functions, repo, current_id, fn_name, return_type, param_types, lambda_func);
         }
+    }
+    if (count_effective_columns(input_record) == 0) {
+        register_function(functions, repo, current_id, fn_name, return_type, {}, lambda_func);
     }
 }
 std::vector<plugin::udf::column_descriptor*> const*

@@ -689,9 +689,10 @@ data::any build_blob_response(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
     auto object_id = cursor.fetch_uint8();
     auto tag = cursor.fetch_uint8();
-    if(object_id && storage_id && tag) {
-        jogasaki::lob::blob_reference blob_ref(object_id.value());
-        return data::any{std::in_place_type<runtime_t<kind::blob>>, blob_ref};
+    if (object_id && storage_id && tag) {
+        return data::any{std::in_place_type<lob::blob_reference>,
+            lob::blob_reference{
+                storage_id.value(), lob::lob_data_provider::relay_service_session, tag.value()}};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
@@ -699,9 +700,10 @@ data::any build_clob_response(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
     auto object_id = cursor.fetch_uint8();
     auto tag = cursor.fetch_uint8();
-    if(object_id && storage_id && tag) {
-        jogasaki::lob::clob_reference clob_ref(object_id.value());
-        return data::any{std::in_place_type<runtime_t<kind::clob>>, clob_ref};
+    if (object_id && storage_id && tag) {
+        return data::any{std::in_place_type<lob::clob_reference>,
+            lob::clob_reference{
+                storage_id.value(), lob::lob_data_provider::relay_service_session, tag.value()}};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }

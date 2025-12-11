@@ -690,11 +690,14 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto object_id = cursor.fetch_uint8();
     auto tag = cursor.fetch_uint8();
 
-    if (! storage_id || ! object_id || ! tag) {
+    if (! storage_id || ! object_id) {
         return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
     if (storage_id.value() == 1ULL) {
         return data::any{std::in_place_type<Ref>, Ref{object_id.value()}};
+    }
+    if (! tag) {
+        return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
     if (storage_id.value() == 0ULL) {
         return data::any{std::in_place_type<Ref>,

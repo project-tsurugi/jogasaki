@@ -685,25 +685,33 @@ data::any build_localdatetime_response(plugin::udf::generic_record_cursor& curso
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
-data::any build_blob_response(plugin::udf::generic_record_cursor& cursor) {
+template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
     auto object_id = cursor.fetch_uint8();
     auto tag = cursor.fetch_uint8();
-    if(object_id && storage_id && tag) {
-        jogasaki::lob::blob_reference blob_ref(object_id.value());
-        return data::any{std::in_place_type<runtime_t<kind::blob>>, blob_ref};
+
+    if (! storage_id || ! object_id) {
+        return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
+    if (storage_id.value() == 1ULL) {
+        return data::any{std::in_place_type<Ref>, Ref{object_id.value()}};
+    }
+    if (! tag) {
+        return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    }
+    if (storage_id.value() == 0ULL) {
+        return data::any{std::in_place_type<Ref>,
+            Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session,
+                tag.value()}};
+    }
+
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
+data::any build_blob_response(plugin::udf::generic_record_cursor& cursor) {
+    return build_lob_response_impl<lob::blob_reference>(cursor);
+}
 data::any build_clob_response(plugin::udf::generic_record_cursor& cursor) {
-    auto storage_id = cursor.fetch_uint8();
-    auto object_id = cursor.fetch_uint8();
-    auto tag = cursor.fetch_uint8();
-    if(object_id && storage_id && tag) {
-        jogasaki::lob::clob_reference clob_ref(object_id.value());
-        return data::any{std::in_place_type<runtime_t<kind::clob>>, clob_ref};
-    }
-    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    return build_lob_response_impl<lob::clob_reference>(cursor);
 }
 std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> const& response_builder_map() {
     static const std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> map{

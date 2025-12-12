@@ -40,6 +40,7 @@
 #include <jogasaki/meta/time_of_day_field_option.h>
 #include <jogasaki/meta/time_point_field_option.h>
 #include <jogasaki/serializer/value_writer.h>
+#include <jogasaki/utils/assign_reference_tag.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/trace_log.h>
 
@@ -106,19 +107,33 @@ bool data_channel_writer::write(accessor::record_ref rec) {
                 }
                 case k::blob: {
                     auto lob = rec.get_value<runtime_t<k::blob>>(os);
+                    auto reference_tag = utils::assign_reference_tag(
+                        parent_->option().transaction_id_,
+                        lob.object_id()
+                    );
+                    if (! reference_tag) {
+                        return false;
+                    }
                     check_writer_rc(value_writer_->write_blob(
                         static_cast<std::uint64_t>(lob.provider()),
                         lob.object_id(),
-                        lob.reference_tag()
+                        reference_tag.value()
                     ));
                     break;
                 }
                 case k::clob: {
                     auto lob = rec.get_value<runtime_t<k::clob>>(os);
+                    auto reference_tag = utils::assign_reference_tag(
+                        parent_->option().transaction_id_,
+                        lob.object_id()
+                    );
+                    if (! reference_tag) {
+                        return false;
+                    }
                     check_writer_rc(value_writer_->write_clob(
                         static_cast<std::uint64_t>(lob.provider()),
                         lob.object_id(),
-                        lob.reference_tag()
+                        reference_tag.value()
                     ));
                     break;
                 }

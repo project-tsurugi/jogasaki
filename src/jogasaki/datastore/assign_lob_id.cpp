@@ -24,7 +24,6 @@ namespace jogasaki::datastore {
  * @param ref the input lob reference to register
  * @param tx transaction to keep the scope object (blob pool) for the lob data
  * @param id [out] blob id assigned for the input lob data
- * @param reference_tag [out] blob reference tag assigned for the input lob data
  * @param error [out] error information is set when status code other than status::ok is returned
  * @return status::ok when successful
  * @return status::err_io_error when datastore met io error
@@ -34,21 +33,20 @@ status assign_lob_id(
     lob::lob_reference const& ref,
     transaction_context* tx,
     lob::lob_id_type& id,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 ) {
     using k = lob::lob_reference_kind;
     switch (ref.kind()) {
         case k::provided: {
             if(auto res =
-                   register_lob(ref.locator()->path(), ref.locator()->is_temporary(), tx, id, reference_tag, error);
+                   register_lob(ref.locator()->path(), ref.locator()->is_temporary(), tx, id, error);
                res != status::ok) {
                 return res;
             }
             break;
         }
         case k::fetched: {
-            if (auto res = duplicate_lob(ref.object_id(), tx, id, reference_tag, error); res != status::ok) {
+            if (auto res = duplicate_lob(ref.object_id(), tx, id, error); res != status::ok) {
                 return res;
             }
         }

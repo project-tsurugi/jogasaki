@@ -696,7 +696,7 @@ data::any build_localdatetime_response(plugin::udf::generic_record_cursor& curso
 template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
     auto object_id = cursor.fetch_uint8();
-    auto tag = cursor.fetch_uint8();
+    (void) cursor.fetch_uint8();  // tag field - unused
     auto provisioned = cursor.fetch_bool();
 
     if (! storage_id || ! object_id) {
@@ -704,22 +704,14 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     }
     if (storage_id.value() == 1ULL) {
         if (provisioned && provisioned.value()) {
-            if (! tag) {
-                return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
-            }
             return data::any{std::in_place_type<Ref>,
-                Ref{object_id.value(), jogasaki::lob::lob_data_provider::datastore,
-                    tag.value()}};
+                Ref{object_id.value(), jogasaki::lob::lob_data_provider::datastore}};
         }
         return data::any{std::in_place_type<Ref>, Ref{object_id.value()}};
     }
     if (storage_id.value() == 0ULL) {
-        if (! tag) {
-            return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
-        }
         return data::any{std::in_place_type<Ref>,
-            Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session,
-                tag.value()}};
+            Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session}};
     }
 
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};

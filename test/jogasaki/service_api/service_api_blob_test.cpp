@@ -169,8 +169,8 @@ TEST_F(service_api_test, blob_types) {
                 EXPECT_EQ((mock::typed_nullable_record<ft::blob, ft::clob>(
                     std::tuple{meta::blob_type(), meta::clob_type()},
                     {
-                        lob::blob_reference{v0.object_id(), lob::lob_data_provider::datastore, v0.reference_tag()},
-                        lob::clob_reference{v1.object_id(), lob::lob_data_provider::datastore, v1.reference_tag()},
+                        lob::blob_reference{v0.object_id(), lob::lob_data_provider::datastore},
+                        lob::clob_reference{v1.object_id(), lob::lob_data_provider::datastore},
                     },
                     {false, false}
                 )), v[0]);
@@ -186,7 +186,7 @@ TEST_F(service_api_test, blob_types) {
                 {
                     // test_get_lob(v0.object_id(), v0.reference_tag(), f0.path().string());
                     test_get_lob(v0.object_id(), 1, f0.path().string()); //FIXME currently any reference tag is accepted
-                    test_get_lob(v1.object_id(), v1.reference_tag(), f1.path().string());
+                    test_get_lob(v1.object_id(), 0, f1.path().string());
                 }
             }
         }
@@ -261,7 +261,6 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     lob::lob_id_type id{};
-    lob::lob_reference_tag_type reference_tag{};
     {
         // run query to get blob id
         std::vector<parameter> parameters{};
@@ -290,13 +289,13 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
                 ASSERT_EQ(1, v.size());
 
                 id = v[0].get_value<lob::blob_reference>(0).object_id();
-                reference_tag = v[0].get_value<lob::blob_reference>(0).reference_tag();
             }
         }
     }
     {
         // get blob data using the id
-        auto s = encode_get_large_object_data(id, reference_tag);
+        // reference_tag is no longer stored in lob_reference, pass 0
+        auto s = encode_get_large_object_data(id, 0);
 
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();

@@ -32,7 +32,6 @@ namespace jogasaki::datastore {
  * @param is_temporary true if the lob data file is temporary
  * @param tx transaction to keep the scope object (blob pool) for the lob data
  * @param out [out] blob id assigned for the input lob data
- * @param reference_tag [out] blob reference tag generated for the input lob data
  * @param error [out] error information is set when status code other than status::ok is returned
  * @return status::ok when successful
  * @return any other error otherwise
@@ -42,7 +41,6 @@ status register_lob(
     bool is_temporary,
     transaction_context* tx,
     lob::lob_id_type& out,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 );
 
@@ -51,7 +49,6 @@ status register_lob(
  * @param data the content for the lob
  * @param tx transaction to keep the scope object (blob pool) for the lob data
  * @param out [out] blob id assigned for the input lob data
- * @param reference_tag [out] blob reference tag generated for the input lob data
  * @param error [out] error information is set when status code other than status::ok is returned
  * @return status::ok when successful
  * @return any other error otherwise
@@ -60,7 +57,6 @@ status register_lob_data(
     std::string_view data,
     transaction_context* tx,
     lob::lob_id_type& out,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 );
 
@@ -69,7 +65,6 @@ status register_lob_data(
  * @param in the existing lob id
  * @param tx transaction to keep the scope object (blob pool) for the lob data
  * @param out [out] blob id assigned for the duplicated data
- * @param reference_tag [out] blob reference tag generated for the duplicated data
  * @param error [out] error information is set when status code other than status::ok is returned
  * @return status::ok when successful
  * @return any other error otherwise
@@ -78,7 +73,6 @@ status duplicate_lob(
     lob::lob_id_type in,
     transaction_context* tx,
     lob::lob_id_type& out,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 );
 

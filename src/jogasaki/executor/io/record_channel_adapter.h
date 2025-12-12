@@ -31,6 +31,16 @@
 namespace jogasaki::executor::io {
 
 /**
+ * @brief channel option for record_channel_adapter
+ */
+struct channel_option {
+    /**
+     * @brief transaction id (surrogate id)
+     */
+    std::uint64_t transaction_id_{};
+};
+
+/**
  * @brief adaptor to adapt api::data_channel to executor::record_channel
  */
 class record_channel_adapter : public executor::io::record_channel {
@@ -40,6 +50,18 @@ public:
      * @param channel the source channel object to adapt
      */
     explicit record_channel_adapter(maybe_shared_ptr<api::data_channel> channel) noexcept;
+
+    /**
+     * @brief set channel option
+     * @param opt the channel option
+     */
+    void option(channel_option opt) noexcept;
+
+    /**
+     * @brief get channel option
+     * @return the channel option
+     */
+    [[nodiscard]] channel_option const& option() const noexcept;
 
     /**
      * @brief acquire record writer
@@ -86,6 +108,7 @@ private:
     maybe_shared_ptr<api::data_channel> channel_{};
     maybe_shared_ptr<meta::external_record_meta> meta_{};
     record_channel_stats stats_{};
+    channel_option option_{};
 };
 
 }  // namespace jogasaki::executor::io

@@ -118,6 +118,13 @@ static bool execute_internal(
     req->statement_text(stmt->sql_text_shared());
     log_request(*req);
 
+    // Set transaction_id in channel option if record_channel_adapter is used
+    if (auto* adapter = dynamic_cast<executor::io::record_channel_adapter*>(channel.get())) {
+        executor::io::channel_option opt{};
+        opt.transaction_id_ = tx->surrogate_id();
+        adapter->option(opt);
+    }
+
     auto& s = unsafe_downcast<api::impl::executable_statement&>(*statement);
     auto rctx = create_request_context(
         database,

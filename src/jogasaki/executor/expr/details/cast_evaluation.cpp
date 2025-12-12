@@ -572,13 +572,12 @@ static any string_to_lob(
     evaluator_context& ctx
 ) {
     lob::lob_id_type id{};
-    lob::lob_reference_tag_type reference_tag{};
     std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto res = datastore::register_lob_data(s, ctx.transaction(), id, reference_tag, error); res != status::ok) {
+    if (auto res = datastore::register_lob_data(s, ctx.transaction(), id, error); res != status::ok) {
         ctx.set_error_info(std::move(error));
         return {std::in_place_type<class error>, error_kind::error_info_provided};
     }
-    return {std::in_place_type<LobReference>, LobReference{id, lob::lob_data_provider::datastore, reference_tag}};
+    return {std::in_place_type<LobReference>, LobReference{id, lob::lob_data_provider::datastore}};
 }
 
 namespace from_character {

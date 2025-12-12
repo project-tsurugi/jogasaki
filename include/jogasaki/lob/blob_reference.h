@@ -51,10 +51,9 @@ public:
      * @brief construct `resolved` object
      * @param id lob reference id
      * @param provider the provider that gives the lob data
-     * @param reference_tag the lob reference tag
      */
-    blob_reference(lob_id_type id, lob_data_provider provider, lob_reference_tag_type reference_tag) :
-        lob_reference(id, provider, reference_tag)
+    blob_reference(lob_id_type id, lob_data_provider provider) :
+        lob_reference(id, provider)
     {}
 
 };

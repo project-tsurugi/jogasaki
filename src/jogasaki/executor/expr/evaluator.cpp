@@ -452,13 +452,12 @@ create_any(accessor::record_ref ref, executor::process::impl::value_info const& 
         return {std::in_place_type<T>, var};
     }
     lob::lob_id_type id{};
-    lob::lob_reference_tag_type reference_tag{};
     std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto st = datastore::assign_lob_id(var, ctx.transaction(), id, reference_tag, error); st != status::ok) {
+    if (auto st = datastore::assign_lob_id(var, ctx.transaction(), id, error); st != status::ok) {
         ctx.set_error_info(std::move(error));
         return any{std::in_place_type<class error>, error_kind::error_info_provided};
     }
-    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore, reference_tag}};
+    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore}};
 }
 
 any engine::operator()(takatori::scalar::variable_reference const& exp) {
@@ -1009,29 +1008,33 @@ post_process_lob(any in, evaluator_context& ctx) {
     // before the session is disposed (at the end of task).
     auto var = in.to<T>();
     if (var.provider() != lob::lob_data_provider::relay_service_session) {
+        // stored on datastore, return as it is
         return in;
     }
 
     assert_with_exception(ctx.blob_session() != nullptr, "fail");
     auto s = ctx.blob_session()->get();
     if (! s) {
-        return in;
+        // should not happen normally
+        ctx.add_error({error_kind::unknown, "missing blob session"});
+        return any{std::in_place_type<class error>, error_kind::unknown};
     }
     auto obj = s->find(var.object_id());
     if (! obj) {
-        return in;
+        // should not happen normally
+        ctx.add_error({error_kind::unknown, "missing entry in the blob session"});
+        return any{std::in_place_type<class error>, error_kind::unknown};
     }
     // create `provided` lob reference and register to limestone
     lob::lob_locator loc{obj->string(), true};
     lob::lob_reference ref{loc};
     lob::lob_id_type id{};
-    lob::lob_reference_tag_type reference_tag{};
     std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto st = datastore::assign_lob_id(ref, ctx.transaction(), id, reference_tag, error); st != status::ok) {
+    if (auto st = datastore::assign_lob_id(ref, ctx.transaction(), id, error); st != status::ok) {
         ctx.set_error_info(std::move(error));
         return any{std::in_place_type<class error>, error_kind::error_info_provided};
     }
-    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore, reference_tag}};
+    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore}};
 }
 
 static any post_process_if_lob(any in, evaluator_context& ctx) {

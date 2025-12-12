@@ -140,7 +140,6 @@ template <class T>
 std::string download_lob(evaluator_context& ectx, data::any in, data_relay_client& client) {
     auto const& ref = in.to<T>();
     std::size_t blob_id = ref.object_id();
-    std::size_t tag = ref.reference_tag();
     auto provider = ref.provider();
 
     auto s = ectx.blob_session()->get_or_create();
@@ -155,9 +154,7 @@ std::string download_lob(evaluator_context& ectx, data::any in, data_relay_clien
 
     // For datastore blobs, use MOCK_TAG to bypass tag verification
     constexpr std::uint64_t MOCK_TAG = 0xffffffffffffffffULL;
-    if (provider == lob::lob_data_provider::datastore) {
-        tag = MOCK_TAG;
-    }
+    std::size_t tag = (provider == lob::lob_data_provider::datastore) ? MOCK_TAG : 0;
 
     return client.get_blob(session_id, storage_id, blob_id, tag);
 }
@@ -175,11 +172,11 @@ data::any upload_lob(evaluator_context& ectx, std::string const& in, data_relay_
         return data::any{};
     }
 
-    std::uint64_t tag = s->compute_tag(blob_id);
+    // reference_tag is no longer stored in lob_reference
 
     // The gRPC Put returns storage_id=0 (SESSION_STORAGE_ID)
     // but we need the blob to be accessible from the session
-    return data::any{std::in_place_type<T>, T{blob_id, lob::lob_data_provider::relay_service_session, tag}};
+    return data::any{std::in_place_type<T>, T{blob_id, lob::lob_data_provider::relay_service_session}};
 }
 
 TEST_F(sql_lob_function_invocation_test, modify_input) {
@@ -222,7 +219,7 @@ TEST_F(sql_lob_function_invocation_test, modify_input) {
         auto v = result[0].get_value<lob::clob_reference>(0);
         EXPECT_EQ((mock::typed_nullable_record<kind::clob>(
             std::tuple{meta::clob_type()},
-            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore, v.reference_tag()}},
+            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}},
             {false, false}
         )), result[0]);
 
@@ -275,7 +272,7 @@ TEST_F(sql_lob_function_invocation_test, identity) {
         auto v = result[0].get_value<lob::clob_reference>(0);
         EXPECT_EQ((mock::typed_nullable_record<kind::clob>(
             std::tuple{meta::clob_type()},
-            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore, v.reference_tag()}},
+            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}},
             {false, false}
         )), result[0]);
 

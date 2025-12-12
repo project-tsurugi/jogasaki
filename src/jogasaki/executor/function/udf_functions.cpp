@@ -292,6 +292,7 @@ void fill_request_with_args(
                 request.add_uint8(1);
                 request.add_uint8(value.object_id());
                 request.add_uint8(BLOB_CLOB_PADDING);
+                request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
@@ -299,6 +300,7 @@ void fill_request_with_args(
                 request.add_uint8(1);
                 request.add_uint8(value.object_id());
                 request.add_uint8(BLOB_CLOB_PADDING);
+                request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
                 break;
             }
             default:
@@ -481,12 +483,15 @@ bool build_udf_request(
         request.add_uint8(1);
         request.add_uint8(value.object_id());
         request.add_uint8(BLOB_CLOB_PADDING);
+        request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
         // uint64 object_id = 2;
         // a tag for additional access control.
         // uint64 tag = 3;
+        // whether the object is provisioned
+        // bool provisioned = 4;
         return true;
     }
     // @see include/jogasaki/lob/clob_reference.h
@@ -495,12 +500,15 @@ bool build_udf_request(
         request.add_uint8(1);
         request.add_uint8(value.object_id());
         request.add_uint8(BLOB_CLOB_PADDING);
+        request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
         // uint64 object_id = 2;
         // a tag for additional access control.
         // uint64 tag = 3;
+        // whether the object is provisioned
+        // bool provisioned = 4;
         return true;
     }
     auto const* matched_pattern = find_matched_pattern(fn, args);
@@ -689,17 +697,26 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto storage_id = cursor.fetch_uint8();
     auto object_id = cursor.fetch_uint8();
     auto tag = cursor.fetch_uint8();
+    auto provisioned = cursor.fetch_bool();
 
     if (! storage_id || ! object_id) {
         return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
     if (storage_id.value() == 1ULL) {
+        if (provisioned && provisioned.value()) {
+            if (! tag) {
+                return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+            }
+            return data::any{std::in_place_type<Ref>,
+                Ref{object_id.value(), jogasaki::lob::lob_data_provider::datastore,
+                    tag.value()}};
+        }
         return data::any{std::in_place_type<Ref>, Ref{object_id.value()}};
     }
-    if (! tag) {
-        return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
-    }
     if (storage_id.value() == 0ULL) {
+        if (! tag) {
+            return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+        }
         return data::any{std::in_place_type<Ref>,
             Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session,
                 tag.value()}};

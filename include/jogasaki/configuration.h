@@ -724,7 +724,7 @@ private:
     std::string plugin_directory_{"var/plugins/"};
     std::string endpoint_{"dns:///localhost:50051"};
     bool secure_ = false;
-    bool enable_disjunction_range_hinting_ = false;
+    bool enable_disjunction_range_hinting_ = true;
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;
 };

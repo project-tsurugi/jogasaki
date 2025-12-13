@@ -735,7 +735,7 @@ private:
     bool enable_disjunction_range_hinting_ = true;
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;
-    bool udf_pass_mock_tag_ = true;
+    bool udf_pass_mock_tag_ = false;
 };
 
 }  // namespace jogasaki

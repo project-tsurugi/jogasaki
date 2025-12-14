@@ -8,8 +8,8 @@ find_library(mpdec_LIBRARY_FILE NAMES mpdec)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(mpdecpp DEFAULT_MSG
-        mpdecpp_INCLUDE_DIR
         mpdecpp_LIBRARY_FILE
+        mpdecpp_INCLUDE_DIR
         mpdec_LIBRARY_FILE
         )
 

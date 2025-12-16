@@ -21,8 +21,8 @@
 #include <utility>
 
 #include <grpcpp/grpcpp.h>
-#include <data-relay-grpc/proto/blob_relay/blob_relay_streaming.pb.h>
-#include <data-relay-grpc/proto/blob_relay/blob_relay_streaming.grpc.pb.h>
+#include <data_relay_grpc/proto/blob_relay/blob_relay_streaming.pb.h>
+#include <data_relay_grpc/proto/blob_relay/blob_relay_streaming.grpc.pb.h>
 
 namespace jogasaki::testing {
 
@@ -53,9 +53,9 @@ public:
         std::uint64_t blob_id,
         std::uint64_t tag
     ) {
-        using BlobRelayStreaming = data_relay_grpc::blob_relay::proto::BlobRelayStreaming;
-        using GetStreamingRequest = data_relay_grpc::blob_relay::proto::GetStreamingRequest;
-        using GetStreamingResponse = data_relay_grpc::blob_relay::proto::GetStreamingResponse;
+        using BlobRelayStreaming = data_relay_grpc::proto::blob_relay::blob_relay_streaming::BlobRelayStreaming;
+        using GetStreamingRequest = data_relay_grpc::proto::blob_relay::blob_relay_streaming::GetStreamingRequest;
+        using GetStreamingResponse = data_relay_grpc::proto::blob_relay::blob_relay_streaming::GetStreamingResponse;
 
         auto channel = ::grpc::CreateChannel(endpoint_, ::grpc::InsecureChannelCredentials());
         BlobRelayStreaming::Stub stub(channel);
@@ -96,9 +96,9 @@ public:
         std::uint64_t session_id,
         std::string const& data
     ) {
-        using BlobRelayStreaming = data_relay_grpc::blob_relay::proto::BlobRelayStreaming;
-        using PutStreamingRequest = data_relay_grpc::blob_relay::proto::PutStreamingRequest;
-        using PutStreamingResponse = data_relay_grpc::blob_relay::proto::PutStreamingResponse;
+        using BlobRelayStreaming = data_relay_grpc::proto::blob_relay::blob_relay_streaming::BlobRelayStreaming;
+        using PutStreamingRequest = data_relay_grpc::proto::blob_relay::blob_relay_streaming::PutStreamingRequest;
+        using PutStreamingResponse = data_relay_grpc::proto::blob_relay::blob_relay_streaming::PutStreamingResponse;
 
         auto channel = ::grpc::CreateChannel(endpoint_, ::grpc::InsecureChannelCredentials());
         BlobRelayStreaming::Stub stub(channel);

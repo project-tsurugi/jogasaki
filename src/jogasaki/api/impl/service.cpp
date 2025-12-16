@@ -113,7 +113,8 @@ void report_error(
     VLOG(log_error) << log_location_prefix << msg;
     tateyama::proto::diagnostics::Record rec{};
     rec.set_code(code);
-    rec.set_message(msg.data(), msg.size());
+    std::string sanitized_msg{utils::sanitize_utf8(msg)};
+    rec.set_message(sanitized_msg);
     VLOG(log_trace) << log_location_prefix << "respond with error (rid=" << reqid
                     << "): " << utils::to_debug_string(rec);
     res.error(rec);

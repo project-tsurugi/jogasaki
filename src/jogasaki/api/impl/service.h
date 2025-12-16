@@ -320,7 +320,8 @@ inline void success<sql::response::Explain>(
     success->set_format_version(sql_proto_explain_format_version);
     std::string id{sql_proto_explain_format_id};
     success->set_format_id(std::move(id));
-    success->set_contents(std::move(output));
+    std::string sanitized_output{utils::sanitize_utf8(output)};
+    success->set_contents(std::move(sanitized_output));
     set_metadata(meta, *success);
     reply(res, r, req_info);
 }
@@ -339,7 +340,8 @@ inline void success<sql::response::DescribeTable>(
     success->set_schema_name(result->schema_name_);
     success->set_database_name(result->database_name_);
     if (result->description_) {
-        success->set_description(*result->description_);
+        std::string sanitized_desc{utils::sanitize_utf8(*result->description_)};
+        success->set_description(sanitized_desc);
     }
     auto* cols = success->mutable_columns();
     for(auto&& col : result->columns_) {
@@ -396,9 +398,11 @@ inline void success<sql::response::GetErrorInfo>(
         auto* error = gei->mutable_success();
         error->set_code(map_error(info->code()));
         auto msg = info->message();
-        error->set_detail(msg.data(), msg.size());
+        std::string detail{utils::sanitize_utf8(msg)};
+        error->set_detail(detail);
         auto text = info->supplemental_text();
-        error->set_supplemental_text(text.data(), text.size());
+        std::string suptext{utils::sanitize_utf8(text)};
+        error->set_supplemental_text(suptext);
     }
     reply(res, r, req_info);
 }
@@ -447,7 +451,8 @@ inline void success<sql::response::ExtractStatementInfo>(
     sql::response::Response r{};
     auto* dt = r.mutable_extract_statement_info();
     auto* success = dt->mutable_success();
-    success->set_sql(*sql_text);
+    std::string sanitized_sql{utils::sanitize_utf8(*sql_text)};
+    success->set_sql(sanitized_sql);
     success->mutable_transaction_id()->set_id(std::string{tx_id});
     reply(res, r, req_info);
 }
@@ -513,7 +518,8 @@ inline void success<sql::response::GetTransactionStatus>(
     auto [st, msg] = status_and_message(status);
     success->set_status(st);
     if (! msg.empty()) {
-        success->set_message(msg);
+        std::string sanitized_msg{utils::sanitize_utf8(msg)};
+        success->set_message(sanitized_msg);
     }
     reply(res, r, req_info);
 }

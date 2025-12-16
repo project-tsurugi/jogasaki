@@ -184,20 +184,20 @@ data::any upload_lob(evaluator_context& ectx, std::string const& in, data_relay_
 
 TEST_F(sql_lob_function_invocation_test, modify_input) {
     // function duplicates and concatenates input clob
-    bool called = false;
+    auto called = std::make_shared<bool>(false);
     auto id = 1000UL;  // any value to avoid conflict
-    data_relay_client client{"localhost:52345"};
+    auto client = std::make_shared<data_relay_client>("localhost:52345");
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(
         id,
         std::make_shared<scalar_function_info>(
             scalar_function_kind::mock_function_for_testing,
-            [&](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
-                called = true;
-                auto e = download_lob<lob::clob_reference>(ectx, args[0], client);
+            [called, client](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
+                *called = true;
+                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client);
                 auto concat = e + e;
-                return upload_lob<lob::clob_reference>(ectx, concat, client);
+                return upload_lob<lob::clob_reference>(ectx, concat, *client);
             },
             1
         )
@@ -232,7 +232,7 @@ TEST_F(sql_lob_function_invocation_test, modify_input) {
         EXPECT_EQ("ABCABC"sv, read_file(ret1.path().string())) << ret1.path().string();
         EXPECT_EQ(status::ok, tx->commit());
     }
-    EXPECT_TRUE(called);
+    EXPECT_TRUE(*called);
     global::scalar_function_repository().clear();
     global::scalar_function_provider()->remove(*decl);
 }
@@ -297,15 +297,15 @@ bool contains(std::string_view whole, std::string_view part) {
 TEST_F(sql_lob_function_invocation_test, variety_for_lob_function_usage) {
     // verify blob_session is provided correctly to evaluator_context where blob function can be called
     auto id = 1000UL;  // any value to avoid conflict
-    data_relay_client client{"localhost:52345"};
+    auto client = std::make_shared<data_relay_client>("localhost:52345");
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(
         id,
         std::make_shared<scalar_function_info>(
             scalar_function_kind::mock_function_for_testing,
-            [&](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
-                auto e = download_lob<lob::clob_reference>(ectx, args[0], client);
+            [client](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
+                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client);
                 return data::any{std::in_place_type<std::int32_t>, e.size()};
             },
             1

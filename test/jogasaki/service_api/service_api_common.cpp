@@ -315,8 +315,8 @@ void service_api_test::test_prepared_statement(
     }
 }
 
-void service_api_test::test_get_lob(std::uint64_t id, std::uint64_t reference_tag, std::string_view expected_path) {
-    auto s = encode_get_large_object_data(id, reference_tag);
+void service_api_test::test_get_lob(std::uint64_t id, std::uint64_t reference_tag, std::string_view expected_path, std::uint64_t tx_id, bool expect_permission_error) {
+    auto s = encode_get_large_object_data(id, reference_tag, tx_id);
 
     auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
     auto res = std::make_shared<tateyama::api::server::mock::test_response>();
@@ -325,6 +325,11 @@ void service_api_test::test_get_lob(std::uint64_t id, std::uint64_t reference_ta
     EXPECT_TRUE(res->wait_completion());
     EXPECT_TRUE(res->completed());
     ASSERT_TRUE(st);
+    if (expect_permission_error) {
+        ASSERT_TRUE(res->error_.code() == ::tateyama::proto::diagnostics::Code::PERMISSION_ERROR);
+        return;
+    }
+    ASSERT_EQ(::tateyama::proto::diagnostics::Code::UNKNOWN, res->error_.code()); // verify no error happened
 
     auto [channel_name, contents, error] = decode_get_large_object_data(res->body_);
     bool found = false;

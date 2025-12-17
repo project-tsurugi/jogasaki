@@ -84,6 +84,7 @@
 #include <jogasaki/scheduler/request_detail.h>
 #include <jogasaki/status.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/assign_reference_tag.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/convert_offset.h>
 #include <jogasaki/utils/create_statement_handle_error.h>
@@ -871,6 +872,31 @@ void service::command_get_large_object_data(
         return;
     }
     auto const& reference = gd.reference();
+
+    auto reference_tag = utils::assign_reference_tag(
+        gd.transaction_handle().handle(),
+        reference.object_id()
+    );
+    if (! reference_tag) {
+        // normally this should not happen
+        auto err_info = create_error_info(
+            error_code::sql_execution_exception,
+            "failed to generate reference tag",
+            status::err_unknown
+        );
+        details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
+        return;
+    }
+    if (reference_tag.value() != reference.reference_tag()) {
+        auto err = create_error_info(
+            error_code::permission_error,
+            string_builder{} << "invalid reference tag in the request to get large object data object_id:"
+                             << reference.object_id() << string_builder::to_string,
+            status::err_illegal_operation
+        );
+        details::error<sql::response::GetLargeObjectData>(*res, err.get(), req_info);
+        return;
+    }
 
     std::shared_ptr<error::error_info> err{};
     std::unique_ptr<tateyama::api::server::blob_info> info{};

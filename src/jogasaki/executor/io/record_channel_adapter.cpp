@@ -57,4 +57,12 @@ std::optional<std::size_t> record_channel_adapter::max_writer_count() {
     return channel_->max_writer_count();
 }
 
+void record_channel_adapter::option(channel_option opt) noexcept {
+    option_ = opt;
+}
+
+channel_option const& record_channel_adapter::option() const noexcept {
+    return option_;
+}
+
 }  // namespace jogasaki::executor::io

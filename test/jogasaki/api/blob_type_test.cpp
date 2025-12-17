@@ -135,8 +135,8 @@ TEST_F(blob_type_test, insert_provided) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("ABC", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
 }
@@ -236,8 +236,8 @@ TEST_F(blob_type_test, update) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("def", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
     EXPECT_NE(id1, ref1.object_id());
@@ -307,8 +307,8 @@ TEST_F(blob_type_test, update_partially) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
 
@@ -361,8 +361,8 @@ TEST_F(blob_type_test, insert_from_select) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
 
@@ -426,13 +426,13 @@ TEST_F(blob_type_test, insert_from_select_duplication) {
                                             kind::clob, kind::clob>({
                   1,
                   lob::blob_reference{ref10.object_id(),
-                                      lob::lob_data_provider::datastore, ref10.reference_tag()},
+                                      lob::lob_data_provider::datastore},
                   lob::blob_reference{ref11.object_id(),
-                                      lob::lob_data_provider::datastore, ref11.reference_tag()},
+                                      lob::lob_data_provider::datastore},
                   lob::clob_reference{ref20.object_id(),
-                                      lob::lob_data_provider::datastore, ref20.reference_tag()},
+                                      lob::lob_data_provider::datastore},
                   lob::clob_reference{ref21.object_id(),
-                                      lob::lob_data_provider::datastore, ref21.reference_tag()},
+                                      lob::lob_data_provider::datastore},
                   })),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
@@ -490,8 +490,8 @@ TEST_F(blob_type_test, insert_generated_blob) {
         ASSERT_TRUE(ret2);
         EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
                   result[0]);
     }
 }
@@ -535,8 +535,8 @@ TEST_F(blob_type_test, insert_generated_empty_blob) {
         ASSERT_TRUE(ret2);
         EXPECT_EQ(""sv, read_file(ret2.path().string())) << ret2.path().string();
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
                   result[0]);
     }
 }
@@ -579,8 +579,8 @@ TEST_F(blob_type_test, update_generated_blob) {
         ASSERT_TRUE(ret2);
         EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
                   result[0]);
         EXPECT_EQ(status::ok, tx->commit());
     }
@@ -615,8 +615,8 @@ TEST_F(blob_type_test, query_generated_blob) {
         ASSERT_TRUE(ret2);
         EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
                   result[0]);
     }
 }
@@ -660,8 +660,8 @@ TEST_F(blob_type_test, query_provided_blob) {
     EXPECT_EQ("ABC", read_file(ret2.path().string())) << ret2.path().string();
     // currently input blobs are registered to datastore first so the provider is datastore
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore, ref1.reference_tag()},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore, ref2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
     EXPECT_EQ(status::ok, tx->commit());
 }
@@ -839,8 +839,8 @@ TEST_F(blob_type_test, insert_provided_multiple_times) {
     ASSERT_TRUE(ret0_2);
     EXPECT_EQ("ABC", read_file(ret0_2.path().string())) << ret0_2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore, ref0_1.reference_tag()},
-                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore, ref0_2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
 
     auto ret1_1 = ds->get_blob_file(ref1_1.object_id());
@@ -850,8 +850,8 @@ TEST_F(blob_type_test, insert_provided_multiple_times) {
     ASSERT_TRUE(ret1_2);
     EXPECT_EQ("ABC", read_file(ret1_2.path().string())) << ret1_2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore, ref1_1.reference_tag()},
-                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore, ref1_2.reference_tag()}})),
+                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}})),
               result[1]);
     EXPECT_EQ(status::ok, tx->commit());
 }
@@ -899,8 +899,8 @@ TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true
     ASSERT_TRUE(ret0_2);
     EXPECT_EQ("ABC", read_file(ret0_2.path().string())) << ret0_2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore, ref0_1.reference_tag()},
-                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore, ref0_2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
 
     auto ret1_1 = ds->get_blob_file(ref1_1.object_id());
@@ -910,8 +910,8 @@ TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true
     ASSERT_TRUE(ret1_2);
     EXPECT_EQ("ABC", read_file(ret1_2.path().string())) << ret1_2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore, ref1_1.reference_tag()},
-                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore, ref1_2.reference_tag()}})),
+                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}})),
               result[1]);
     EXPECT_EQ(status::ok, tx->commit());
 }
@@ -959,8 +959,8 @@ TEST_F(blob_type_test, update_provided_multiple_times) {
     ASSERT_TRUE(ret0_2);
     EXPECT_EQ("ABC", read_file(ret0_2.path().string())) << ret0_2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore, ref0_1.reference_tag()},
-                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore, ref0_2.reference_tag()}})),
+                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}})),
               result[0]);
 
     auto ret1_1 = ds->get_blob_file(ref1_1.object_id());
@@ -970,8 +970,8 @@ TEST_F(blob_type_test, update_provided_multiple_times) {
     ASSERT_TRUE(ret1_2);
     EXPECT_EQ("ABC", read_file(ret1_2.path().string())) << ret1_2.path().string();
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore, ref1_1.reference_tag()},
-                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore, ref1_2.reference_tag()}})),
+                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
+                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}})),
               result[1]);
     EXPECT_EQ(status::ok, tx->commit());
 }

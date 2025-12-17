@@ -279,7 +279,7 @@ public:
         }
     }
 
-    void test_get_lob(std::uint64_t id, std::uint64_t reference_tag, std::string_view expected_path);
+    void test_get_lob(std::uint64_t id, std::uint64_t reference_tag, std::string_view expected_path, std::uint64_t tx_id, bool expect_permission_error = false);
 
     void test_get_tx_status(api::transaction_handle tx_handle, std::optional<::jogasaki::proto::sql::response::TransactionStatus> expected_status, error_code expected_err = error_code::none);
 

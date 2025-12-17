@@ -148,6 +148,13 @@ std::vector<std::size_t> index_vector(std::size_t init, std::index_sequence<Is..
     return std::vector<std::size_t>{(init + Is)...};
 }
 
+// additional data for the column values
+// this is part of the data returned as result set, but it should not be stored in record_ref,
+// so basic_record additionally hold this object for each field
+struct value_info {
+    std::uint64_t blob_reference_tag_{};
+};
+
 }  //namespace details
 
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
@@ -255,7 +262,8 @@ public:
     basic_record(basic_record const& other) :
         meta_(other.meta_),
         entity_(other.entity_),
-        varlen_fields_(other.varlen_fields_.size())
+        varlen_fields_(other.varlen_fields_.size()),
+        fields_value_info_(other.fields_value_info_)
     {
         for(std::size_t i=0, n=varlen_fields_.size(); i<n; ++i) {
             varlen_fields_[i].assign(other.varlen_fields_[i]);
@@ -270,6 +278,7 @@ public:
         for(std::size_t i=0, n=varlen_fields_.size(); i<n; ++i) {
             varlen_fields_[i].assign(other.varlen_fields_[i]);
         }
+        fields_value_info_ = other.fields_value_info_;
         return *this;
     }
 
@@ -287,6 +296,7 @@ public:
         meta_(std::move(meta))
     {
         std::memcpy(&entity_[0], &src[0], sizeof(entity_type));
+        fields_value_info_.resize(meta_->field_count());
     }
 
     /**
@@ -298,7 +308,9 @@ public:
         maybe_shared_ptr<meta::record_meta> meta
     ) noexcept :
         meta_(std::move(meta))
-    {}
+    {
+        fields_value_info_.resize(meta_->field_count());
+    }
 
     /**
      * @brief construct new object from record_ref with given meta data
@@ -314,6 +326,7 @@ public:
         basic_record(std::move(meta)) // NOLINT(performance-unnecessary-value-param)
     {
         details::create_entity(entity_, ref, resource, *meta_);
+        fields_value_info_.resize(meta_->field_count());
     }
 
     /**
@@ -393,6 +406,15 @@ public:
             return false;
         }
         return ref().is_null(meta->nullity_offset(field));
+    }
+
+    /**
+     * @brief returns the additional field value info
+     * @note this field is to convey additional info. for field values,
+     * and this info is not considered when comparing basic_record objects by operators ==, !=, <, >
+     */
+    [[nodiscard]] details::value_info& get_field_value_info(std::size_t field) noexcept {
+        return fields_value_info_[field];
     }
 
     /// @brief equality comparison operator
@@ -486,6 +508,7 @@ private:
     maybe_shared_ptr<meta::record_meta> meta_{};
     entity_type entity_{};
     std::vector<data::aligned_buffer> varlen_fields_{};
+    std::vector<details::value_info> fields_value_info_{};  // this is not considered by comparison such as operator==/!=
 };
 
 /**

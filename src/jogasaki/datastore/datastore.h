@@ -99,6 +99,16 @@ public:
      *    during the transaction that has provided the corresponding BLOB reference.
      */
     [[nodiscard]] virtual limestone::api::blob_file get_blob_file(limestone::api::blob_id_type reference) = 0;
+
+    /**
+     * @brief generates a reference tag for the BLOB.
+     * @param blob_id the target BLOB ID
+     * @param transaction_id the transaction ID
+     * @return the generated reference tag
+     */
+    [[nodiscard]] virtual limestone::api::blob_reference_tag_type generate_reference_tag(
+        limestone::api::blob_id_type blob_id,
+        std::uint64_t transaction_id) = 0;
 };
 
 }  // namespace jogasaki::datastore

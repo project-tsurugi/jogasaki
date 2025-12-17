@@ -586,6 +586,13 @@ public:
         grpc_server_secure_ = arg;
     }
 
+    [[nodiscard]] bool udf_pass_mock_tag() const noexcept {
+        return udf_pass_mock_tag_;
+    }
+
+    void udf_pass_mock_tag(bool arg) noexcept {
+        udf_pass_mock_tag_ = arg;
+    }
 
     friend inline std::ostream& operator<<(std::ostream& out, configuration const& cfg) {
 
@@ -655,6 +662,7 @@ public:
         print_non_default(enable_disjunction_range_hinting);
         print_non_default(grpc_server_endpoint);
         print_non_default(grpc_server_secure);
+        print_non_default(udf_pass_mock_tag);
 
         if(cfg.req_cancel_config()) {
             out << "req_cancel_config:" << *cfg.req_cancel_config() << " "; \
@@ -727,6 +735,7 @@ private:
     bool enable_disjunction_range_hinting_ = true;
     std::string grpc_server_endpoint_{"dns:///localhost:52345"};
     bool grpc_server_secure_ = false;
+    bool udf_pass_mock_tag_ = false;
 };
 
 }  // namespace jogasaki

@@ -73,6 +73,16 @@ public:
      */
     [[nodiscard]] limestone::api::blob_file get_blob_file(limestone::api::blob_id_type reference) override;
 
+    /**
+     * @brief generates a reference tag for the BLOB.
+     * @param blob_id the target BLOB ID
+     * @param transaction_id the transaction ID
+     * @return the generated reference tag
+     */
+    [[nodiscard]] limestone::api::blob_reference_tag_type generate_reference_tag(
+        limestone::api::blob_id_type blob_id,
+        std::uint64_t transaction_id) override;
+
 private:
     std::unordered_map<std::string, limestone::api::blob_id_type> path_to_id_{};
     std::unordered_map<limestone::api::blob_id_type, std::string> id_to_path_{};

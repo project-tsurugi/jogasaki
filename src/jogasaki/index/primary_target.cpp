@@ -216,15 +216,14 @@ static status resolve_lob_field(
     }
     auto ref = rec.get_reference<T>(field.offset_);
     lob::lob_id_type id = ref.object_id();
-    lob::lob_reference_tag_type reference_tag = ref.reference_tag();
     if (ref.kind() != lob::lob_reference_kind::resolved) {
         std::shared_ptr<error::error_info> error{};
-        if (auto res = datastore::assign_lob_id(ref, tx, id, reference_tag, error); res != status::ok) {
+        if (auto res = datastore::assign_lob_id(ref, tx, id, error); res != status::ok) {
             error::set_error_info(context, error);
             return res;
         }
     }
-    rec.set_value(field.offset_, T{id, lob::lob_data_provider::datastore, reference_tag});
+    rec.set_value(field.offset_, T{id, lob::lob_data_provider::datastore});
     lobs.emplace_back(id);
     return status::ok;
 }

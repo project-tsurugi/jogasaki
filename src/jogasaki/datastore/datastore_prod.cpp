@@ -27,4 +27,10 @@ limestone::api::blob_file datastore_prod::get_blob_file(limestone::api::blob_id_
     return ds_->get_blob_file(reference);
 }
 
+limestone::api::blob_reference_tag_type datastore_prod::generate_reference_tag(
+    limestone::api::blob_id_type blob_id,
+    std::uint64_t transaction_id) {
+    return ds_->generate_reference_tag(blob_id, transaction_id);
+}
+
 }  // namespace jogasaki::datastore

@@ -29,7 +29,6 @@ static status register_lob_impl(
     bool is_temporary,
     transaction_context* tx,
     lob::lob_id_type& out,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 ) {
     auto* ds = get_datastore();
@@ -50,7 +49,6 @@ static status register_lob_impl(
         } else {
             out = tx->blob_pool()->duplicate_data(in);
         }
-        reference_tag = tx->blob_pool()->generate_reference_tag(out, tx->surrogate_id());
     } catch (limestone::api::limestone_blob_exception const& e) {
         // assuming only the possible scenario is IO error with register_file
         status res = status::err_io_error;
@@ -65,30 +63,27 @@ status register_lob(
     bool is_temporary,
     transaction_context* tx,
     lob::lob_id_type& out,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 ) {
-    return register_lob_impl(path, {}, {}, is_temporary, tx, out, reference_tag, error);
+    return register_lob_impl(path, {}, {}, is_temporary, tx, out, error);
 }
 
 status register_lob_data(
     std::string_view data,
     transaction_context* tx,
     lob::lob_id_type& out,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 ) {
-    return register_lob_impl({}, data, {}, {}, tx, out, reference_tag, error);
+    return register_lob_impl({}, data, {}, {}, tx, out, error);
 }
 
 status duplicate_lob(
     lob::lob_id_type in,
     transaction_context* tx,
     lob::lob_id_type& out,
-    lob::lob_reference_tag_type& reference_tag,
     std::shared_ptr<error::error_info>& error
 ) {
-    return register_lob_impl({}, {}, in, {}, tx, out, reference_tag, error);
+    return register_lob_impl({}, {}, in, {}, tx, out, error);
 }
 
 }  // namespace jogasaki::datastore

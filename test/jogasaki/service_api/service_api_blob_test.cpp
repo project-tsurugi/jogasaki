@@ -165,12 +165,14 @@ TEST_F(service_api_test, blob_types) {
 
                 auto v0 = v[0].get_value<lob::blob_reference>(0);
                 auto v1 = v[0].get_value<lob::clob_reference>(1);
+                auto tag0 = v[0].get_field_value_info(0).blob_reference_tag_;
+                auto tag1 = v[0].get_field_value_info(1).blob_reference_tag_;
 
                 EXPECT_EQ((mock::typed_nullable_record<ft::blob, ft::clob>(
                     std::tuple{meta::blob_type(), meta::clob_type()},
                     {
-                        lob::blob_reference{v0.object_id(), lob::lob_data_provider::datastore, v0.reference_tag()},
-                        lob::clob_reference{v1.object_id(), lob::lob_data_provider::datastore, v1.reference_tag()},
+                        lob::blob_reference{v0.object_id(), lob::lob_data_provider::datastore},
+                        lob::clob_reference{v1.object_id(), lob::lob_data_provider::datastore},
                     },
                     {false, false}
                 )), v[0]);
@@ -184,9 +186,8 @@ TEST_F(service_api_test, blob_types) {
                 EXPECT_EQ("DEF", read_file(f1.path().string()));
 
                 {
-                    // test_get_lob(v0.object_id(), v0.reference_tag(), f0.path().string());
-                    test_get_lob(v0.object_id(), 1, f0.path().string()); //FIXME currently any reference tag is accepted
-                    test_get_lob(v1.object_id(), v1.reference_tag(), f1.path().string());
+                    test_get_lob(v0.object_id(), tag0, f0.path().string(), tx_handle.surrogate_id());
+                    test_get_lob(v1.object_id(), tag1, f1.path().string(), tx_handle.surrogate_id());
                 }
             }
         }
@@ -261,7 +262,7 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
     api::transaction_handle tx_handle{};
     test_begin(tx_handle);
     lob::lob_id_type id{};
-    lob::lob_reference_tag_type reference_tag{};
+    std::uint64_t reference_tag{};
     {
         // run query to get blob id
         std::vector<parameter> parameters{};
@@ -290,13 +291,13 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
                 ASSERT_EQ(1, v.size());
 
                 id = v[0].get_value<lob::blob_reference>(0).object_id();
-                reference_tag = v[0].get_value<lob::blob_reference>(0).reference_tag();
+                reference_tag = v[0].get_field_value_info(0).blob_reference_tag_;
             }
         }
     }
     {
         // get blob data using the id
-        auto s = encode_get_large_object_data(id, reference_tag);
+        auto s = encode_get_large_object_data(id, reference_tag, tx_handle.surrogate_id());
 
         auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
         auto res = std::make_shared<tateyama::api::server::mock::test_response>();

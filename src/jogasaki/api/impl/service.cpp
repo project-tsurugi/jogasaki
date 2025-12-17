@@ -873,8 +873,12 @@ void service::command_get_large_object_data(
     }
     auto const& reference = gd.reference();
 
+    auto tx = validate_transaction_handle<sql::response::GetLargeObjectData>(gd, db_, *res, req_info);
+    if(! tx) {
+        return;
+    }
     auto reference_tag = utils::assign_reference_tag(
-        gd.transaction_handle().handle(),
+        tx.surrogate_id(),
         reference.object_id()
     );
     if (! reference_tag) {
@@ -884,6 +888,7 @@ void service::command_get_large_object_data(
             "failed to generate reference tag",
             status::err_unknown
         );
+        abort_transaction(tx, req_info, err_info);
         details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
         return;
     }
@@ -894,6 +899,7 @@ void service::command_get_large_object_data(
                              << reference.object_id() << string_builder::to_string,
             status::err_illegal_operation
         );
+        abort_transaction(tx, req_info, err);
         details::error<sql::response::GetLargeObjectData>(*res, err.get(), req_info);
         return;
     }
@@ -905,6 +911,7 @@ void service::command_get_large_object_data(
             static_cast<lob::lob_data_provider>(reference.provider()), err,
             info);
         st != status::ok) {
+        abort_transaction(tx, req_info, err);
         details::error<sql::response::GetLargeObjectData>(*res, err.get(), req_info);
         return;
     }
@@ -916,6 +923,7 @@ void service::command_get_large_object_data(
                 "BLOB handling in privileged mode is not allowed",
                 status::err_unsupported
             );
+            abort_transaction(tx, req_info, err_info);
             details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
             return;
         }
@@ -924,6 +932,7 @@ void service::command_get_large_object_data(
             "failed to add blob to response",
             status::err_unknown
         );
+        abort_transaction(tx, req_info, err_info);
         details::error<sql::response::GetLargeObjectData>(*res, err_info.get(), req_info);
         return;
     }

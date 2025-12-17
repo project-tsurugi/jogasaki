@@ -63,6 +63,8 @@ public:
             std::uint64_t transaction_id) override {
         (void) blob_id;
         (void) transaction_id;
+        // deprecated, should not be called
+        std::abort();
         return {};
     }
 

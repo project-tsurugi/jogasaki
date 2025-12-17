@@ -312,7 +312,76 @@ TEST_F(service_api_test, blob_types_error_sending_back_unprivileded) {
         EXPECT_EQ(::tateyama::proto::diagnostics::Code::OPERATION_DENIED, rec.code());
         std::cerr << "error:" << rec.message() << std::endl;
     }
-    test_commit(tx_handle);
+    test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_test, get_lob_data_with_invalid_reference) {
+    // global::config_pool()->mock_datastore(true);
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    execute_statement("insert into t values (0, 'ABC'::clob)");
+
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select c1 from t"
+    );
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            std::vector<common_column> exp{
+                {"c1", common_column::atom_type::clob},   // nullable is not sent now
+            };
+            ASSERT_EQ(exp, cols);
+
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(1, v.size());
+
+                auto v0 = v[0].get_value<lob::clob_reference>(0);
+                auto tag0 = v[0].get_field_value_info(0).blob_reference_tag_;
+
+                EXPECT_EQ((mock::typed_nullable_record<ft::clob>(
+                    std::tuple{meta::clob_type()},
+                    {
+                        lob::clob_reference{v0.object_id(), lob::lob_data_provider::datastore}
+                    },
+                    {false, false}
+                )), v[0]);
+
+                auto* ds = datastore::get_datastore();
+                auto f0 = ds->get_blob_file(v0.object_id());
+                ASSERT_TRUE(f0);
+                EXPECT_EQ("ABC", read_file(f0.path().string()));
+
+                // expect error here by invalid reference tag
+                ASSERT_NE(0, tag0);  // ensure valid tag is not 0
+                test_get_lob(v0.object_id(), 0, f0.path().string(), tx_handle.surrogate_id(),
+                             true);  // expect error
+                test_stmt_err("select * from t", tx_handle, error_code::inactive_transaction_exception);
+            }
+        }
+        {
+            // query itself should be completed successfully
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
     test_dispose_prepare(query_handle);
 }
 

@@ -137,7 +137,7 @@ public:
 };
 
 template <class T>
-std::string download_lob(evaluator_context& ectx, data::any in, data_relay_client& client) {
+std::string download_lob(evaluator_context& ectx, data::any in, data_relay_client& client, std::optional<std::uint64_t> reference_tag = std::nullopt) {
     auto const& ref = in.to<T>();
     std::size_t blob_id = ref.object_id();
     auto provider = ref.provider();
@@ -152,10 +152,7 @@ std::string download_lob(evaluator_context& ectx, data::any in, data_relay_clien
     // SESSION_STORAGE_ID = 0, LIMESTONE_BLOB_STORE = 1
     std::uint64_t storage_id = (provider == lob::lob_data_provider::datastore) ? 1 : 0;
 
-    // For datastore blobs, use MOCK_TAG to bypass tag verification
-    constexpr std::uint64_t MOCK_TAG = 0xffffffffffffffffULL;
-    std::size_t tag = (provider == lob::lob_data_provider::datastore) ? MOCK_TAG : 0;
-
+    auto tag = reference_tag ? reference_tag.value() : s->compute_tag(blob_id);
     return client.get_blob(session_id, storage_id, blob_id, tag);
 }
 
@@ -394,5 +391,49 @@ TEST_F(sql_lob_function_invocation_test, variety_for_lob_function_usage) {
     global::scalar_function_repository().clear();
     global::scalar_function_provider()->remove(*decl);
 }
+
+TEST_F(sql_lob_function_invocation_test, invalid_reference_tag) {
+    // scenario where function parameter clob gets accidentally invalid tag
+    // verify the expression evaluation happens and the tx aborts
+    auto called = std::make_shared<bool>(false);
+    auto id = 1000UL;  // any value to avoid conflict
+    auto client = std::make_shared<data_relay_client>("localhost:52345");
+
+    // dup function duplicates the input CLOB value
+    global::scalar_function_repository().add(
+        id,
+        std::make_shared<scalar_function_info>(
+            scalar_function_kind::mock_function_for_testing,
+            [called, client](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
+                *called = true;
+                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client, 0); // use invalid reference tag
+                auto concat = e + e;
+                return upload_lob<lob::clob_reference>(ectx, concat, *client);
+            },
+            1
+        )
+    );
+    auto decl = global::scalar_function_provider()->add({
+        id,
+        "dup",
+        t::clob(),
+        {
+            t::clob(),
+        },
+    });
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    execute_statement("insert into t values (0, 'ABC'::clob)");
+    auto sql = "SELECT dup(c1) FROM t";
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err(sql, *tx, error_code::value_evaluation_exception);
+        test_stmt_err(sql, *tx, error_code::inactive_transaction_exception);
+    }
+    EXPECT_TRUE(*called);
+    global::scalar_function_repository().clear();
+    global::scalar_function_provider()->remove(*decl);
+}
+
 
 }  // namespace jogasaki::testing

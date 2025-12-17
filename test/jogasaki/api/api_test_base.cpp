@@ -296,7 +296,6 @@ void api_test_base::execute_statement(
     );
 }
 
-
 void api_test_base::test_stmt_err(
     std::string_view stmt,
     api::transaction_handle& tx,
@@ -313,6 +312,8 @@ void api_test_base::test_stmt_err(
             .run()
             .report()
     );
+    ASSERT_TRUE(result) << "error expected, but was successful stmt:\"" << stmt << "\" expected_code:" << expected
+                        << " expected_msg :\"" << msg << "\"";
     std::cerr << *result << std::endl;
     ASSERT_EQ(expected, result->code());
     if(! msg.empty()) {
@@ -336,7 +337,8 @@ void api_test_base::test_stmt_err(
             .run()
             .report()
     );
-    ASSERT_TRUE(result); // if this fails, statement was executed successfully
+    ASSERT_TRUE(result) << "error expected, but was successful stmt:\"" << stmt << "\" expected_code:" << expected
+                        << " expected_msg :\"" << msg << "\"";
     std::cerr << *result << std::endl;
     ASSERT_EQ(expected, result->code());
     if(! msg.empty()) {
@@ -365,7 +367,7 @@ void api_test_base::test_stmt_err(
             .run()
             .report()
     );
-    ASSERT_TRUE(result);
+    ASSERT_TRUE(result) << "error expected, but was successful stmt:\"" << stmt << "\" expected_code:" << expected;
     std::cerr << *result << std::endl;
     ASSERT_EQ(expected, result->code());
 }
@@ -387,7 +389,8 @@ void api_test_base::test_stmt_err(
             .run()
             .report()
     );
-    ASSERT_TRUE(result);
+    ASSERT_TRUE(result) << "error expected, but was successful stmt:\"" << stmt << "\" expected_code:" << expected
+                        << " expected_msg :\"" << msg << "\"";
     std::cerr << *result << std::endl;
     ASSERT_EQ(expected, result->code());
     if(! msg.empty()) {

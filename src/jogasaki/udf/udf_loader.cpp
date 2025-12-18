@@ -147,13 +147,16 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     if (! validate_directory(path, results)) { return results; }
     ini_files = collect_ini_files(path);
     if (ini_files.empty()) {
-        results.emplace_back(load_status::no_ini_and_so_files, std::string(dir_path),
+        results.emplace_back(load_status::no_ini_files, std::string(dir_path),
             "No .ini files found (UDF disabled)");
         return results;
     }
     for (auto const& ini_path : ini_files) {
         auto udf_config_value = parse_ini(ini_path, results);
-        if (! udf_config_value.has_value()) { return results; }
+        if (! udf_config_value.has_value()) {
+            results.emplace_back(load_status::ini_invalid, ini_path.string(), "Failed to parse ini file");
+            continue;
+        }
         if (! udf_config_value->enabled()) {
             results.emplace_back(
                 load_status::udf_disabled, ini_path.string(), "UDF disabled in configuration");

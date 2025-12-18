@@ -51,6 +51,7 @@ enum class load_status {
     ok,
     path_is_empty,
     path_not_found,
+    no_ini_files,
     no_ini_and_so_files,
     ini_so_pair_mismatch,
     ini_invalid,

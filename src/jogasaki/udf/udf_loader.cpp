@@ -153,6 +153,9 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     }
     for (auto const& ini_path : ini_files) {
         auto udf_config_value = parse_ini(ini_path, results);
+        if (! udf_config_value){
+            continue;
+        }
         if (! udf_config_value.has_value()) {
             results.emplace_back(load_status::ini_invalid, ini_path.string(), "Failed to parse ini file");
             continue;

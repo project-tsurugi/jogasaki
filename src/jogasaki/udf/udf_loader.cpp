@@ -51,41 +51,20 @@ bool validate_directory(fs::path const& path, std::vector<load_result>& results)
     }
     return true;
 }
-using pair_map = std::unordered_map<std::string, std::pair<fs::path, fs::path>>;
-pair_map collect_ini_so_pairs(fs::path const& path) {
-    pair_map pairs;
-    for(auto const& entry: fs::directory_iterator(path)) {
-        if(! entry.is_regular_file()) continue;
+std::vector<std::filesystem::path>
+collect_ini_files(std::filesystem::path const& dir) {
+    std::vector<std::filesystem::path> result{};
+    for (auto const& entry : std::filesystem::directory_iterator(dir)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
 
-        auto ext = entry.path().extension();
-        auto stem = entry.path().stem().string();
-        auto& p = pairs[stem];
-
-        if(ext == ".ini") {
-            p.first = entry.path();
-        } else if(ext == ".so") {
-            p.second = entry.path();
+        auto const& path = entry.path();
+        if (path.extension() == ".ini") {
+            result.emplace_back(path);
         }
     }
-    return pairs;
-}
-bool validate_pairs(pair_map const& pairs, std::vector<load_result>& results, std::string_view dir_path) {
-    if(pairs.empty()) {
-        results.emplace_back(
-            load_status::no_ini_and_so_files,
-            std::string(dir_path),
-            "No .ini or .so files found (UDF disabled)"
-        );
-        return false;
-    }
-    for(auto const& [stem, p]: pairs) {
-        if(! p.first.empty() && p.second.empty()) {
-            results.emplace_back(load_status::ini_so_pair_mismatch, p.first, "Missing paired .so file");
-        } else if(p.first.empty() && ! p.second.empty()) {
-            results.emplace_back(load_status::ini_so_pair_mismatch, p.second, "Missing paired .ini file");
-        }
-    }
-    return true;
+    return result;
 }
 
 }  // namespace
@@ -159,33 +138,47 @@ std::optional<udf_config> udf_loader::parse_ini(fs::path const& ini_path, std::v
 }
 
 std::vector<load_result> udf_loader::load(std::string_view dir_path) {
-
     fs::path path(dir_path);
-    std::vector<load_result> results;
-
-    if(dir_path.empty()) { return {load_result(load_status::path_is_empty, "", "Directory path is empty")}; }
-    if(! validate_directory(path, results)) { return results; }
-    auto pairs = collect_ini_so_pairs(path);
-    if(! validate_pairs(pairs, results, dir_path)) { return results; }
-    for(auto const& [name, paths]: pairs) {
-        const auto& ini_path = paths.first;
-        const auto& so_path = paths.second;
-
+    std::vector<load_result> results{};
+    std::vector<std::filesystem::path> ini_files{};
+    if (dir_path.empty()) {
+        return {load_result(load_status::path_is_empty, "", "Directory path is empty")};
+    }
+    if (! validate_directory(path, results)) { return results; }
+    ini_files = collect_ini_files(path);
+    if (ini_files.empty()) {
+        results.emplace_back(load_status::no_ini_files, std::string(dir_path),
+            "No .ini files found (UDF disabled)");
+        return results;
+    }
+    for (auto const& ini_path : ini_files) {
         auto udf_config_value = parse_ini(ini_path, results);
-        if(! udf_config_value.has_value()) { return results; }
-        if(! udf_config_value->enabled()) {
-            results.emplace_back(load_status::udf_disabled, name, "UDF disabled in configuration");
+        if (! udf_config_value){
+            continue;
+        }
+        if (! udf_config_value->enabled()) {
+            results.emplace_back(
+                load_status::udf_disabled, ini_path.string(), "UDF disabled in configuration");
+            continue;
+        }
+        auto so_path = ini_path;
+        so_path.replace_extension(".so");
+        if (! fs::exists(so_path)) {
+            results.emplace_back(load_status::ini_so_pair_mismatch, so_path.string(),
+                "Missing paired .so file: " + so_path.string());
             continue;
         }
         std::string full_path = so_path.string();
         dlerror();
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
-        const char* err = dlerror();
-        if(! handle || err) {
-            results.emplace_back(load_status::dlopen_failed, full_path, err ? err : "dlopen failed with unknown error");
+        if (! handle) {
+            const char* err = dlerror();
+            results.emplace_back(load_status::dlopen_failed, full_path,
+                err ? err : "dlopen failed with unknown error");
             return results;
         }
-        auto res = create_api_from_handle(handle, full_path, udf_config_value->endpoint(), udf_config_value->secure());
+        auto res = create_api_from_handle(
+            handle, full_path, udf_config_value->endpoint(), udf_config_value->secure());
         results.push_back(std::move(res));
     }
     return results;

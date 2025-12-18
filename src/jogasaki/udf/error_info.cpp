@@ -60,6 +60,7 @@ std::string_view to_string_view(plugin::udf::load_status status) noexcept {
         case load_status::ini_so_pair_mismatch: return "ini_so_pair_mismatch"sv;
         case load_status::ini_invalid: return "ini_invalid"sv;
         case load_status::not_regular_file_or_dir: return "not_regular_file_or_dir"sv;
+        case load_status::no_ini_files: return "no_ini_files"sv;
         case load_status::udf_disabled: return "udf_disabled"sv;
         case load_status::no_shared_objects_found: return "no_shared_objects_found"sv;
         case load_status::dlopen_failed: return "dlopen_failed"sv;

@@ -419,7 +419,8 @@ bool database::init() {
         if (res_status == plugin::udf::load_status::ok ||
             res_status == plugin::udf::load_status::udf_disabled ||
             res_status == plugin::udf::load_status::path_is_empty ||
-            res_status == plugin::udf::load_status::no_ini_and_so_files) {
+            res_status == plugin::udf::load_status::no_ini_and_so_files ||
+            res_status == plugin::udf::load_status::no_ini_files) {
             LOG_LP(INFO) << "[gRPC] " << res_status << " file: " << result.file()
                          << " detail: " << result.detail();
         } else if (res_status == plugin::udf::load_status::path_not_found ||

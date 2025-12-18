@@ -156,10 +156,6 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         if (! udf_config_value){
             continue;
         }
-        if (! udf_config_value.has_value()) {
-            results.emplace_back(load_status::ini_invalid, ini_path.string(), "Failed to parse ini file");
-            continue;
-        }
         if (! udf_config_value->enabled()) {
             results.emplace_back(
                 load_status::udf_disabled, ini_path.string(), "UDF disabled in configuration");

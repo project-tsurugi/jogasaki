@@ -21,7 +21,7 @@
 
 #include <jogasaki/utils/assert.h>
 
-#include <data-relay-grpc/blob_relay/session.h>
+#include <data_relay_grpc/blob_relay/session.h>
 
 namespace jogasaki::relay {
 

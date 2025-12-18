@@ -15,8 +15,8 @@
  */
 #include <jogasaki/relay/blob_session_container.h>
 
-#include <data-relay-grpc/blob_relay/service.h>
-#include <data-relay-grpc/blob_relay/session.h>
+#include <data_relay_grpc/blob_relay/service.h>
+#include <data_relay_grpc/blob_relay/session.h>
 
 #include <jogasaki/executor/global.h>
 

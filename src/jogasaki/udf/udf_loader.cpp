@@ -165,7 +165,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         so_path.replace_extension(".so");
         if (! fs::exists(so_path)) {
             results.emplace_back(load_status::ini_so_pair_mismatch, so_path.string(),
-                "Missing paired .so file for " + ini_path.string());
+                "Missing paired .so file: " + so.string());
             continue;
         }
         std::string full_path = so_path.string();

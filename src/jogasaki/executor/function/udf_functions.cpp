@@ -93,6 +93,8 @@ using kind = meta::field_type_kind;
 using jogasaki::executor::expr::error;
 using jogasaki::executor::expr::error_kind;
 namespace {
+constexpr std::size_t SUPPORTED_MAJOR = 1;
+constexpr std::size_t SUPPORTED_MINOR = 0;
 constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.Decimal";
 constexpr std::string_view DATE_RECORD = "tsurugidb.udf.Date";
 constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.LocalTime";
@@ -151,6 +153,12 @@ get_type_map() {
             {CLOB_RECORD, [] { return std::make_shared<takatori::type::clob>(); }},
         };
     return map;
+}
+
+[[nodiscard]]
+bool is_supported_version(plugin::udf::package_version const& v) noexcept {
+    return v.major() == SUPPORTED_MAJOR &&
+           v.minor() == SUPPORTED_MINOR;
 }
 
 std::string int128_to_bytes(__int128 coeff) {
@@ -833,6 +841,20 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
     };
 }
 
+bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
+    auto const& v = pkg.version();
+    if (is_supported_version(v)) {
+        LOG_LP(INFO) << "[gRPC] Package '" << pkg.file_name() << "' version " << v.major() << "."
+                     << v.minor() << "." << v.patch();
+        return true;
+    }
+    LOG_LP(WARNING) << "[gRPC] Package '" << pkg.file_name() << "' has unsupported version "
+                    << v.major() << "." << v.minor() << "." << v.patch() << ". Only version "
+                    << SUPPORTED_MAJOR << "." << SUPPORTED_MINOR << ".x is supported.";
+
+    return false;
+}
+
 }  // anonymous namespace
 
 bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
@@ -860,6 +882,9 @@ void add_udf_scalar_functions(
         // plugin::udf::print_plugin_info(plugin);
         auto packages = plugin->packages();
         for(auto const* pkg: packages) {
+            if (!check_supported_version(*pkg)) {
+                continue;
+            }
             for(auto const* svc: pkg->services()) {
                 for(auto const* fn: svc->functions()) {
                     auto lambda_func = make_udf_lambda(client, fn);

@@ -61,6 +61,13 @@ public:
         return disposed_;
     }
 
+    /**
+     * @brief returns the ID of this session.
+     * @return the session ID
+     */
+    [[nodiscard]] std::uint64_t session_id() const noexcept {
+        return {};
+    }
 private:
     bool disposed_{false};
 };

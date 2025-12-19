@@ -40,6 +40,7 @@
 #include <jogasaki/accessor/text.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/data/any.h>
 #include <jogasaki/executor/comparator.h>
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/memory/paged_memory_resource.h>
@@ -63,7 +64,9 @@ using kind = meta::field_type_kind;
 using takatori::util::maybe_shared_ptr;
 using takatori::util::fail;
 
-constexpr static std::size_t basic_record_field_size = 32;
+// must be larger than all record field, otherwise data will be lost just after create_nullable_record
+constexpr static std::size_t basic_record_field_size = sizeof(data::any);
+
 constexpr static std::size_t basic_record_field_alignment = 8;
 constexpr static std::size_t basic_record_max_field_count = 100;
 constexpr static std::size_t basic_record_buffer_size =

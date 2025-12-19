@@ -127,6 +127,10 @@ public:
             server_.reset();
         }
         temporary_.clean();
+        global::scalar_function_repository().clear();
+        if(decl_) {
+            global::scalar_function_provider()->remove(*decl_);
+        }
     }
 
     [[nodiscard]] std::string path() const {
@@ -134,6 +138,7 @@ public:
     }
 
     std::unique_ptr<framework::server> server_{};
+    std::shared_ptr<yugawara::function::declaration> decl_{}; // needed here to remove even if test fails
 };
 
 template <class T>
@@ -144,7 +149,7 @@ std::string download_lob(evaluator_context& ectx, data::any in, data_relay_clien
 
     auto s = ectx.blob_session()->get_or_create();
     if (! s) {
-        return "";
+        takatori::util::throw_exception(std::runtime_error(""));
     }
     std::uint64_t session_id = s->session_id();
 
@@ -160,20 +165,20 @@ template <class T>
 data::any upload_lob(evaluator_context& ectx, std::string const& in, data_relay_client& client) {
     auto s = ectx.blob_session()->get_or_create();
     if (! s) {
-        return data::any{};
+        takatori::util::throw_exception(std::runtime_error(""));
     }
     std::uint64_t session_id = s->session_id();
 
-    auto [blob_id, storage_id] = client.put_blob(session_id, in);
+    auto [blob_id, storage_id, tag] = client.put_blob(session_id, in);
     if (blob_id == 0) {
-        return data::any{};
+        takatori::util::throw_exception(
+            std::runtime_error("put_blob() failed session_id:" + std::to_string(session_id))
+        );
     }
-
-    // reference_tag is no longer stored in lob_reference
 
     // The gRPC Put returns storage_id=0 (SESSION_STORAGE_ID)
     // but we need the blob to be accessible from the session
-    return data::any{std::in_place_type<T>, T{blob_id, lob::lob_data_provider::relay_service_session}};
+    return data::any{std::in_place_type<T>, T{blob_id, lob::lob_data_provider::relay_service_session}.reference_tag(tag)};
 }
 
 TEST_F(sql_lob_function_invocation_test, modify_input) {
@@ -189,14 +194,20 @@ TEST_F(sql_lob_function_invocation_test, modify_input) {
             scalar_function_kind::mock_function_for_testing,
             [called, client](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
                 *called = true;
-                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client);
+                auto ref = args[0].to<lob::clob_reference>();
+                EXPECT_TRUE(ref.lob_reference::reference_tag());
+                EXPECT_NE(0, ref.lob_reference::reference_tag().value());
+                LOG(INFO) << "function received blob_ref:" << ref;
+                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client, ref.lob_reference::reference_tag().value());
                 auto concat = e + e;
-                return upload_lob<lob::clob_reference>(ectx, concat, *client);
+                auto ret = upload_lob<lob::clob_reference>(ectx, concat, *client);
+                LOG(INFO) << "function returns blob_ref:" << ret.to<lob::clob_reference>();
+                return ret;
             },
             1
         )
     );
-    auto decl = global::scalar_function_provider()->add({
+    decl_ = global::scalar_function_provider()->add({
         id,
         "dup",
         t::clob(),
@@ -227,8 +238,6 @@ TEST_F(sql_lob_function_invocation_test, modify_input) {
         EXPECT_EQ(status::ok, tx->commit());
     }
     EXPECT_TRUE(*called);
-    global::scalar_function_repository().clear();
-    global::scalar_function_provider()->remove(*decl);
 }
 
 TEST_F(sql_lob_function_invocation_test, identity) {
@@ -244,12 +253,16 @@ TEST_F(sql_lob_function_invocation_test, identity) {
             scalar_function_kind::mock_function_for_testing,
             [&](evaluator_context&, sequence_view<data::any> args) -> data::any {
                 called = true;
+                auto ref = args[0].to<lob::clob_reference>();
+                EXPECT_TRUE(ref.lob_reference::reference_tag());
+                EXPECT_NE(0, ref.lob_reference::reference_tag().value());
+                LOG(INFO) << "function receives and returns blob_ref:" << ref;
                 return args[0];
             },
             1
         )
     );
-    auto decl = global::scalar_function_provider()->add({
+    decl_ = global::scalar_function_provider()->add({
         id,
         "identity_fn",
         t::clob(),
@@ -280,8 +293,61 @@ TEST_F(sql_lob_function_invocation_test, identity) {
         EXPECT_EQ(status::ok, tx->commit());
     }
     EXPECT_TRUE(called);
-    global::scalar_function_repository().clear();
-    global::scalar_function_provider()->remove(*decl);
+}
+
+TEST_F(sql_lob_function_invocation_test, identity_resolved) {
+    // similar to identity testcase, but use resolved blob reference
+    bool called = false;
+    auto id = 1000UL;  // any value to avoid conflict
+    data_relay_client client{"localhost:52345"};
+
+    // dup function duplicates the input CLOB value
+    global::scalar_function_repository().add(
+        id,
+        std::make_shared<scalar_function_info>(
+            scalar_function_kind::mock_function_for_testing,
+            [&](evaluator_context&, sequence_view<data::any> args) -> data::any {
+                called = true;
+                auto ref = args[0].to<lob::clob_reference>();
+                EXPECT_TRUE(ref.lob_reference::reference_tag());
+                EXPECT_NE(0, ref.lob_reference::reference_tag().value());
+                LOG(INFO) << "function receives and returns blob_ref:" << ref;
+                return args[0];
+            },
+            1
+        )
+    );
+    decl_ = global::scalar_function_provider()->add({
+        id,
+        "identity_fn",
+        t::clob(),
+        {
+            t::clob(),
+        },
+    });
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    execute_statement("insert into t values (0, ''::clob)");
+    auto sql = "SELECT identity_fn('ABC'::clob) FROM t";
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        execute_query(sql, *tx, result);
+        ASSERT_EQ(1, result.size());
+
+        auto v = result[0].get_value<lob::clob_reference>(0);
+        EXPECT_EQ((mock::typed_nullable_record<kind::clob>(
+            std::tuple{meta::clob_type()},
+            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}},
+            {false, false}
+        )), result[0]);
+
+        auto* ds = datastore::get_datastore();
+        auto ret1 = ds->get_blob_file(v.object_id());
+        ASSERT_TRUE(ret1);
+        EXPECT_EQ("ABC"sv, read_file(ret1.path().string())) << ret1.path().string();
+        EXPECT_EQ(status::ok, tx->commit());
+    }
+    EXPECT_TRUE(called);
 }
 
 bool contains(std::string_view whole, std::string_view part) {
@@ -299,13 +365,16 @@ TEST_F(sql_lob_function_invocation_test, variety_for_lob_function_usage) {
         std::make_shared<scalar_function_info>(
             scalar_function_kind::mock_function_for_testing,
             [client](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
-                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client);
+                auto ref = args[0].to<lob::clob_reference>();
+                EXPECT_TRUE(ref.lob_reference::reference_tag());
+                EXPECT_NE(0, ref.lob_reference::reference_tag().value());
+                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client, ref.lob_reference::reference_tag().value());
                 return data::any{std::in_place_type<std::int32_t>, e.size()};
             },
             1
         )
     );
-    auto decl = global::scalar_function_provider()->add({
+    decl_ = global::scalar_function_provider()->add({
         id,
         "clob_length",
         t::int4(),
@@ -387,12 +456,9 @@ TEST_F(sql_lob_function_invocation_test, variety_for_lob_function_usage) {
         EXPECT_EQ((create_nullable_record<kind::int4>(30)), result[0]);
     }
     */
-
-    global::scalar_function_repository().clear();
-    global::scalar_function_provider()->remove(*decl);
 }
 
-TEST_F(sql_lob_function_invocation_test, invalid_reference_tag) {
+TEST_F(sql_lob_function_invocation_test, invalid_reference_tag_download) {
     // scenario where function parameter clob gets accidentally invalid tag
     // verify the expression evaluation happens and the tx aborts
     auto called = std::make_shared<bool>(false);
@@ -413,7 +479,7 @@ TEST_F(sql_lob_function_invocation_test, invalid_reference_tag) {
             1
         )
     );
-    auto decl = global::scalar_function_provider()->add({
+    decl_ = global::scalar_function_provider()->add({
         id,
         "dup",
         t::clob(),
@@ -427,12 +493,57 @@ TEST_F(sql_lob_function_invocation_test, invalid_reference_tag) {
     {
         std::vector<mock::basic_record> result{};
         auto tx = utils::create_transaction(*db_);
-        test_stmt_err(sql, *tx, error_code::value_evaluation_exception);
+        test_stmt_err(sql, *tx, error_code::value_evaluation_exception);  // TODO should be permission error
         test_stmt_err(sql, *tx, error_code::inactive_transaction_exception);
     }
     EXPECT_TRUE(*called);
-    global::scalar_function_repository().clear();
-    global::scalar_function_provider()->remove(*decl);
+}
+
+TEST_F(sql_lob_function_invocation_test, invalid_reference_tag_upload) {
+    // scenario where function parameter clob gets accidentally invalid tag
+    // verify the expression evaluation happens and the tx aborts
+    auto called = std::make_shared<bool>(false);
+    auto id = 1000UL;  // any value to avoid conflict
+    auto client = std::make_shared<data_relay_client>("localhost:52345");
+
+    // dup function duplicates the input CLOB value
+    global::scalar_function_repository().add(
+        id,
+        std::make_shared<scalar_function_info>(
+            scalar_function_kind::mock_function_for_testing,
+            [called, client](evaluator_context& ectx, sequence_view<data::any> args) -> data::any {
+                *called = true;
+                auto ref = args[0].to<lob::clob_reference>();
+                EXPECT_TRUE(ref.lob_reference::reference_tag());
+                EXPECT_NE(0, ref.lob_reference::reference_tag().value());
+
+                auto e = download_lob<lob::clob_reference>(ectx, args[0], *client, ref.lob_reference::reference_tag().value());
+                auto concat = e + e;
+                auto uploaded = upload_lob<lob::clob_reference>(ectx, concat, *client);
+                auto bad_ref = uploaded.to<lob::clob_reference>().reference_tag(0); // use invalid reference tag
+                return data::any{std::in_place_type<lob::clob_reference>, bad_ref};
+            },
+            1
+        )
+    );
+    decl_ = global::scalar_function_provider()->add({
+        id,
+        "dup",
+        t::clob(),
+        {
+            t::clob(),
+        },
+    });
+    execute_statement("create table t (c0 int primary key, c1 clob)");
+    execute_statement("insert into t values (0, 'ABC'::clob)");
+    auto sql = "SELECT dup(c1) FROM t";
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_);
+        test_stmt_err(sql, *tx, error_code::permission_error);
+        test_stmt_err(sql, *tx, error_code::inactive_transaction_exception);
+    }
+    EXPECT_TRUE(*called);
 }
 
 

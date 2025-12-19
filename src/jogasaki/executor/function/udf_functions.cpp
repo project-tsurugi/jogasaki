@@ -103,8 +103,6 @@ constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime
 constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
 constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
 
-constexpr uint64_t BLOB_CLOB_PADDING = 0xFFFFFFFFFFFFFFFFULL;
-
 const std::unordered_map<plugin::udf::type_kind_type, std::size_t>& type_index_map() {
     using K = plugin::udf::type_kind_type;
     static const std::unordered_map<K, std::size_t> map = {
@@ -213,7 +211,6 @@ void register_function(
 
 void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity)
     plugin::udf::generic_record_impl& request,
-    evaluator_context& ctx,
     sequence_view<data::any> args,
     std::vector<plugin::udf::column_descriptor*> const& columns
 ) {
@@ -300,35 +297,17 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
             }
             case data::any::index<runtime_t<kind::blob>>: {
                 auto value = src.to<runtime_t<kind::blob>>();
-                request.add_uint8(1);
+                request.add_uint8(1);  // currently input args must be on datastore
                 request.add_uint8(value.object_id());
-                if (global::config_pool()->udf_pass_mock_tag()) {
-                    request.add_uint8(BLOB_CLOB_PADDING);
-                } else {
-                    auto reference_tag = utils::assign_reference_tag(
-                        ctx.transaction()->surrogate_id(),
-                        value.object_id()
-                    );
-                    assert_with_exception(reference_tag.has_value(), value.object_id());
-                    request.add_uint8(reference_tag.value());
-                }
+                request.add_uint8(value.lob_reference::reference_tag().value());
                 request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
                 auto value = src.to<runtime_t<kind::clob>>();
-                request.add_uint8(1);
+                request.add_uint8(1);  // currently input args must be on datastore
                 request.add_uint8(value.object_id());
-                if (global::config_pool()->udf_pass_mock_tag()) {
-                    request.add_uint8(BLOB_CLOB_PADDING);
-                } else {
-                    auto reference_tag = utils::assign_reference_tag(
-                        ctx.transaction()->surrogate_id(),
-                        value.object_id()
-                    );
-                    assert_with_exception(reference_tag.has_value(), value.object_id());
-                    request.add_uint8(reference_tag.value());
-                }
+                request.add_uint8(value.lob_reference::reference_tag().value());
                 request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
                 break;
             }
@@ -509,18 +488,9 @@ bool build_udf_request(
     // @see include/jogasaki/lob/blob_reference.h
     if(record_name == BLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::blob>>();
-        request.add_uint8(1);
+        request.add_uint8(1);  // currently input args must be on datastore
         request.add_uint8(value.object_id());
-        if (global::config_pool()->udf_pass_mock_tag()) {
-            request.add_uint8(BLOB_CLOB_PADDING);
-        } else {
-            auto reference_tag = utils::assign_reference_tag(
-                ctx.transaction()->surrogate_id(),
-                value.object_id()
-            );
-            assert_with_exception(reference_tag.has_value(), value.object_id());
-            request.add_uint8(reference_tag.value());
-        }
+        request.add_uint8(value.lob_reference::reference_tag().value());
         request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
@@ -535,18 +505,9 @@ bool build_udf_request(
     // @see include/jogasaki/lob/clob_reference.h
     if(record_name == CLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::clob>>();
-        request.add_uint8(1);
+        request.add_uint8(1);  // currently input args must be on datastore
         request.add_uint8(value.object_id());
-        if (global::config_pool()->udf_pass_mock_tag()) {
-            request.add_uint8(BLOB_CLOB_PADDING);
-        } else {
-            auto reference_tag = utils::assign_reference_tag(
-                ctx.transaction()->surrogate_id(),
-                value.object_id()
-            );
-            assert_with_exception(reference_tag.has_value(), value.object_id());
-            request.add_uint8(reference_tag.value());
-        }
+        request.add_uint8(value.lob_reference::reference_tag().value());
         request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
@@ -563,7 +524,7 @@ bool build_udf_request(
         ctx.add_error({error_kind::invalid_input_value, "No matching argument pattern found for given arguments"});
         return false;
     }
-    fill_request_with_args(request, ctx, args, *matched_pattern);
+    fill_request_with_args(request, args, *matched_pattern);
     return true;
 }
 
@@ -743,22 +704,22 @@ data::any build_localdatetime_response(plugin::udf::generic_record_cursor& curso
 template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
     auto object_id = cursor.fetch_uint8();
-    (void) cursor.fetch_uint8();  // tag field - unused
+    auto tag = cursor.fetch_uint8();
     auto provisioned = cursor.fetch_bool();
 
-    if (! storage_id || ! object_id) {
+    if (! storage_id || ! object_id || ! tag) {
         return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
     if (storage_id.value() == 1ULL) {
         if (provisioned && provisioned.value()) {
             return data::any{std::in_place_type<Ref>,
-                Ref{object_id.value(), jogasaki::lob::lob_data_provider::datastore}};
+                Ref{object_id.value(), jogasaki::lob::lob_data_provider::datastore}.reference_tag(tag)};
         }
-        return data::any{std::in_place_type<Ref>, Ref{object_id.value()}};
+        return data::any{std::in_place_type<Ref>, Ref{object_id.value()}.reference_tag(tag)};
     }
     if (storage_id.value() == 0ULL) {
         return data::any{std::in_place_type<Ref>,
-            Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session}};
+            Ref{object_id.value(), jogasaki::lob::lob_data_provider::relay_service_session}.reference_tag(tag)};
     }
 
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};

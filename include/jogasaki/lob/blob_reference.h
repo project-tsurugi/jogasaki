@@ -56,6 +56,17 @@ public:
         lob_reference(id, provider)
     {}
 
+    /**
+     * @brief setter of reference tag of the lob data
+     * @note the reference tag is a special field, @see log::lob_reference::reference_tag()
+     */
+    blob_reference& reference_tag(std::optional<lob_reference_tag_type> arg) noexcept {
+        lob_reference::reference_tag(arg);
+        return *this;
+    }
 };
+
+static_assert(std::is_trivially_copyable_v<blob_reference>);
+static_assert(std::is_trivially_destructible_v<blob_reference>);
 
 }  // namespace jogasaki::lob

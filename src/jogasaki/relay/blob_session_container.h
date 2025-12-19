@@ -18,8 +18,11 @@
 #include <memory>
 #include <optional>
 #include <cstdint>
+#include <glog/logging.h>
 
 #include <jogasaki/utils/assert.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 
 #include <data_relay_grpc/blob_relay/session.h>
 
@@ -71,6 +74,7 @@ public:
      */
     void dispose() noexcept {
         if (session_ != nullptr) {
+            VLOG_LP(log_debug) << "disposing blob session session_id:" << session_->session_id();
             session_->dispose();
             session_ = nullptr;
         }

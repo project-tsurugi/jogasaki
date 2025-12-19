@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <type_traits>
 
 #include <jogasaki/lob/lob_reference_kind.h>
@@ -82,6 +83,24 @@ public:
     }
 
     /**
+     * @brief return reference tag of the lob data
+     */
+    [[nodiscard]] std::optional<lob_reference_tag_type> reference_tag() const noexcept {
+        return reference_tag_;
+    }
+
+    /**
+     * @brief setter of reference tag of the lob data
+     * @details the member variable `reference_tag_` is special field in that it's available only when the lob reference
+     * is being passed from SQL function to evaluator. This field is just a vehicle of values for specific code path
+     * and is not intrinsic property of this object.
+     * This setter can be used in order to exchange the reference tag only for that interim.
+     */
+    void reference_tag(std::optional<lob_reference_tag_type> arg) noexcept {
+        reference_tag_ = arg;
+    }
+
+    /**
      * @brief return locator of the lob data
      */
     [[nodiscard]] lob_locator const* locator() const noexcept {
@@ -138,6 +157,9 @@ public:
         if (value.kind_ == lob_reference_kind::undefined) {
             return out;
         }
+        if (value.reference_tag_) {
+            out << ",tag:" << value.reference_tag_.value();
+        }
         if (value.kind_ == lob_reference_kind::provided) {
             out << ",locator:";
             if(! value.locator_) {
@@ -155,11 +177,14 @@ private:
     lob_id_type id_{};
     lob_data_provider provider_{};
     lob_locator const* locator_{};
+
+    // special member that is not always available - see the doc comment for setter `reference_tag()`
+    std::optional<lob_reference_tag_type> reference_tag_{};
 };
 
 static_assert(std::is_trivially_copyable_v<lob_reference>);
 static_assert(std::is_trivially_destructible_v<lob_reference>);
 static_assert(std::alignment_of_v<lob_reference> == 8);
-static_assert(sizeof(lob_reference) == 32); // this is not a fixed limit, but just to check the size is not unexpectedly large
+static_assert(sizeof(lob_reference) == 48); // this is not a fixed limit, but just to check the size is not unexpectedly large
 
 }  // namespace jogasaki::lob

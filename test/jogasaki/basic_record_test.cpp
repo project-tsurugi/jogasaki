@@ -223,5 +223,22 @@ TEST_F(basic_record_test, compare_different_scale_decimal) {
     EXPECT_NE(r1, r2);
 }
 
+TEST_F(basic_record_test, lob_types) {
+    // regression testcase - when adding reference_tag to lob_reference
+    // the size got larger than the mock::basic_record_field_size and many blob testcase failed due to the problem
+    // in create_nullable_record
+
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::blob, kind::blob>(
+            {lob::blob_reference{0, lob::lob_data_provider::datastore},
+             lob::blob_reference{1, lob::lob_data_provider::datastore}}
+        )),
+        (mock::create_nullable_record<kind::blob, kind::blob>(
+            {lob::blob_reference{0, lob::lob_data_provider::datastore},
+             lob::blob_reference{1, lob::lob_data_provider::datastore}}
+        ))
+    );
+}
+
 
 }

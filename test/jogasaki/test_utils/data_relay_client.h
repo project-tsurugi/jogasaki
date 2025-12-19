@@ -79,8 +79,7 @@ public:
                   << " object_id=" << blob->object_id()
                   << " tag=" << blob->tag();
 
-        std::unique_ptr<::grpc::ClientReader<GetStreamingResponse>> reader(
-            stub.Get(&context, req));
+        std::unique_ptr<::grpc::ClientReader<GetStreamingResponse>> reader(stub.Get(&context, req));
 
         std::string blob_data{};
         GetStreamingResponse resp{};
@@ -149,9 +148,9 @@ public:
      * @brief upload blob data via gRPC Put streaming
      * @param session_id session ID
      * @param data blob data to upload
-     * @return pair of (blob_id, storage_id), or (0, 0) on failure
+     * @return pair of (blob_id, storage_id, reference_tag), or (0, 0, 0) on failure
      */
-    std::pair<std::uint64_t, std::uint64_t> put_blob(
+    std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> put_blob(
         std::uint64_t session_id,
         std::string const& data
     ) {
@@ -164,8 +163,7 @@ public:
         ::grpc::ClientContext context{};
 
         PutStreamingResponse res{};
-        std::unique_ptr<::grpc::ClientWriter<PutStreamingRequest>> writer(
-            stub.Put(&context, &res));
+        std::unique_ptr<::grpc::ClientWriter<PutStreamingRequest>> writer(stub.Put(&context, &res));
 
         PutStreamingRequest req_metadata{};
         auto* metadata = req_metadata.mutable_metadata();
@@ -186,8 +184,7 @@ public:
                   << req_metadata.DebugString();
 
         if (! writer->Write(req_metadata)) {
-            takatori::util::throw_exception(std::runtime_error(
-                "put_blob: failed to write metadata"));
+            takatori::util::throw_exception(std::runtime_error("put_blob: failed to write metadata"));
         }
 
         constexpr std::size_t chunk_size = 1024;
@@ -212,6 +209,7 @@ public:
 
         if (!writes_done_ok) {
             LOG(ERROR) << "[data_relay_client::put_blob] WritesDone() failed (stream closed before completing writes)";
+            takatori::util::throw_exception(std::runtime_error("WritesDone failed"));
         }
 
         if (! status.ok()) {
@@ -229,9 +227,10 @@ public:
         }
         LOG(INFO) << "[data_relay_client::put_blob] RPC finished successfully";
         LOG(INFO) << "[data_relay_client::put_blob] Response: object_id=" << res.blob().object_id()
-                  << " storage_id=" << res.blob().storage_id();
+                  << " storage_id=" << res.blob().storage_id()
+                  << " reference_tag=" << res.blob().tag();
 
-        return {res.blob().object_id(), res.blob().storage_id()};
+        return {res.blob().object_id(), res.blob().storage_id(), res.blob().tag()};
     }
 
 private:

@@ -520,8 +520,22 @@ bool build_udf_request(
         return true;
     }
     auto const* matched_pattern = find_matched_pattern(fn, args);
-    if(! matched_pattern) {
-        ctx.add_error({error_kind::invalid_input_value, "No matching argument pattern found for given arguments"});
+    if (! matched_pattern) {
+        bool null_arg_found = false;
+        std::string fn_name(fn->function_name());
+        for (std::size_t i = 0; i < args.size(); ++i) {
+            if (args[i].empty()) {
+                std::string msg = "Function '" + fn_name + "', argument #" + std::to_string(i + 1) +
+                    " must not be NULL";
+                ctx.add_error({error_kind::invalid_input_value, msg});
+                null_arg_found = true;
+                break;
+            }
+        }
+        if (! null_arg_found) {
+            std::string msg = fn_name + " : no matching argument pattern found for given arguments";
+            ctx.add_error({error_kind::invalid_input_value, msg});
+        }
         return false;
     }
     fill_request_with_args(request, args, *matched_pattern);
@@ -772,7 +786,7 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
     return [client, fn](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
         plugin::udf::generic_record_impl request;
         if(! build_udf_request(request, ctx, fn, args)) {
-            return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+            return data::any{std::in_place_type<error>, error(error_kind::unknown)};
         }
         plugin::udf::generic_record_impl response;
         grpc::ClientContext context;

@@ -93,8 +93,8 @@ using kind = meta::field_type_kind;
 using jogasaki::executor::expr::error;
 using jogasaki::executor::expr::error_kind;
 namespace {
-constexpr std::size_t SUPPORTED_MAJOR = 1;
-constexpr std::size_t SUPPORTED_MINOR = 0;
+constexpr std::size_t SUPPORTED_MAJOR = 0;
+constexpr std::size_t SUPPORTED_MINOR = 1;
 constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.Decimal";
 constexpr std::string_view DATE_RECORD = "tsurugidb.udf.Date";
 constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.LocalTime";

@@ -81,6 +81,7 @@ meta::field_type type_for(takatori::type::data const& type) {
         case t::record:
         case t::row_reference:
         case t::row_id:
+        case t::table:
         case t::declared:
         case t::extension:
             fail_with_exception();

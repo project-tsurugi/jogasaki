@@ -848,6 +848,7 @@ static any cast_from_character(evaluator_context& ctx,
         case k::unknown: break;
         case k::row_reference: break;
         case k::row_id: break;
+        case k::table: break;
         case k::declared: break;
         case k::extension: break;
     }
@@ -889,6 +890,7 @@ static any cast_from_decimal(evaluator_context& ctx,
         case k::unknown: break; // not supported
         case k::row_reference: break; // not supported
         case k::row_id: break; // not supported
+        case k::table: break;  // not supported
         case k::declared: break; // not supported
         case k::extension: break; // not supported
     }
@@ -1083,6 +1085,7 @@ static any cast_from_int4(evaluator_context& ctx,
         case k::unknown: break;  // not supported
         case k::row_reference: break;  // not supported
         case k::row_id: break;  // not supported
+        case k::table: break;  // not supported
         case k::declared: break;  // not supported
         case k::extension: break;  // not supported
     }
@@ -1166,6 +1169,7 @@ static any cast_from_int8(evaluator_context& ctx,
         case k::unknown: break; // not supported
         case k::row_reference: break; // not supported
         case k::row_id: break; // not supported
+        case k::table: break;  // not supported
         case k::declared: break; // not supported
         case k::extension: break; // not supported
     }
@@ -1220,6 +1224,7 @@ static any cast_from_boolean(evaluator_context& ctx,
         case k::unknown: break;  // not supported
         case k::row_reference: break;  // not supported
         case k::row_id: break;  // not supported
+        case k::table: break;  // not supported
         case k::declared: break;  // not supported
         case k::extension: break;  // not supported
     }
@@ -1322,6 +1327,7 @@ static any cast_from_float4(evaluator_context& ctx,
         case k::unknown: break; // not supported
         case k::row_reference: break; // not supported
         case k::row_id: break; // not supported
+        case k::table: break;  // not supported
         case k::declared: break; // not supported
         case k::extension: break; // not supported
     }
@@ -1446,6 +1452,7 @@ static any cast_from_float8(evaluator_context& ctx,
         case k::unknown: break; // not supported
         case k::row_reference: break; // not supported
         case k::row_id: break; // not supported
+        case k::table: break;  // not supported
         case k::declared: break; // not supported
         case k::extension: break; // not supported
     }
@@ -1522,6 +1529,7 @@ static any cast_from_octet(evaluator_context& ctx,
         case k::unknown: break;
         case k::row_reference: break;
         case k::row_id: break;
+        case k::table: break;
         case k::declared: break;
         case k::extension: break;
     }
@@ -1615,6 +1623,7 @@ static any cast_from_blob(evaluator_context& ctx,
         case k::unknown: break;
         case k::row_reference: break;
         case k::row_id: break;
+        case k::table: break;
         case k::declared: break;
         case k::extension: break;
     }
@@ -1666,6 +1675,7 @@ static any cast_from_clob(evaluator_context& ctx,
         case k::unknown: break;
         case k::row_reference: break;
         case k::row_id: break;
+        case k::table: break;
         case k::declared: break;
         case k::extension: break;
     }
@@ -1737,6 +1747,7 @@ any conduct_cast(
         case k::unknown: break;
         case k::row_reference: break;
         case k::row_id: break;
+        case k::table: break;
         case k::declared: break;
         case k::extension: break;
     }

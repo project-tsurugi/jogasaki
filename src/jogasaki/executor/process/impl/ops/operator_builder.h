@@ -17,6 +17,7 @@
 
 #include <memory>
 
+#include <takatori/relation/apply.h>
 #include <takatori/relation/buffer.h>
 #include <takatori/relation/emit.h>
 #include <takatori/relation/expression.h>
@@ -101,6 +102,7 @@ public:
     std::unique_ptr<operator_base> operator()(relation::scan const& node);
     std::unique_ptr<operator_base> operator()(relation::join_find const& node);
     std::unique_ptr<operator_base> operator()(relation::join_scan const& node);
+    std::unique_ptr<operator_base> operator()(relation::apply const& node);
     std::unique_ptr<operator_base> operator()(relation::project const& node);
     std::unique_ptr<operator_base> operator()(relation::filter const& node);
     std::unique_ptr<operator_base> operator()(relation::buffer const& node);

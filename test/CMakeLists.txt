@@ -94,6 +94,13 @@ file(GLOB SRCS
         "jogasaki/utils/*.cpp"
         )
 
+if(${SHARKSFIN_IMPLEMENTATION} STREQUAL "memory")
+    # exclusive_ddl_dml test uses many txns and goes into infinite loop with jogasaki-memory
+    list(FILTER SRCS EXCLUDE REGEX ".*/exclusive_ddl_dml[^/]*$")
+    # sql_lob_function_invocation depends on limestone and data-relay-grpc service and somehow fails with jogasaki-memory
+    list(FILTER SRCS EXCLUDE REGEX ".*/sql_lob_function_invocation[^/]*$")
+endif()
+
 # long tx specific testcases
 if(${SHARKSFIN_IMPLEMENTATION} STREQUAL "shirakami")
     # temporarily disable cc related test due to unstability

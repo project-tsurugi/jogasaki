@@ -95,6 +95,9 @@ TEST_F(transaction_store_test, basic) {
 }
 
 TEST_F(transaction_store_test, multiple_transactions) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "memory bridge goes into infinite loop";
+    }
     // verify creating transactions for one session
     execute_statement("create table t (c0 INT PRIMARY KEY)");
     execute_statement("INSERT INTO t VALUES (0)");

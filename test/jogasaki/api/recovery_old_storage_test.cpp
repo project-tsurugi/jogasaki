@@ -215,6 +215,9 @@ TEST_F(recovery_old_storage_test, recover_old_index) {
 }
 
 TEST_F(recovery_old_storage_test, tables_with_no_storage_key_grant_revoke) {
+    if (jogasaki::kvs::implementation_id() == "memory") {
+        GTEST_SKIP() << "jogasaki-memory doesn't support recovery";
+    }
     // verify once table is created with no storage_key, grant/revoke with recovery won't add one
     global::config_pool()->enable_storage_key(false);
     execute_statement("CREATE TABLE t0 (c0 int primary key, c1 int)");

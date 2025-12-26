@@ -36,7 +36,8 @@ HTML/
 # ctest
 Testing/
 
-
 ## experimental usage for github copilot instructions
 .github/copilot-instructions.md
 
+## use this directory name to store local/private files
+.local

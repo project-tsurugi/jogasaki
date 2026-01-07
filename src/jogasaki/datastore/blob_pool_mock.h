@@ -58,16 +58,6 @@ public:
         return released_;
     }
 
-    [[nodiscard]] limestone::api::blob_reference_tag_type generate_reference_tag(
-            limestone::api::blob_id_type blob_id,
-            std::uint64_t transaction_id) override {
-        (void) blob_id;
-        (void) transaction_id;
-        // deprecated, should not be called
-        std::abort();
-        return {};
-    }
-
 private:
 
     datastore_mock *parent_{};

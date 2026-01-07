@@ -59,7 +59,7 @@ public:
 
         jogasaki::plan::compiler_context ctx{};
         ctx.storage_provider(make_tables());
-        ctx.function_provider(jogasaki::global::scalar_function_provider());
+        ctx.function_provider(jogasaki::global::regular_function_provider());
         ctx.aggregate_provider(std::make_shared<::yugawara::aggregate::configurable_provider>());
 
         ASSERT_EQ(jogasaki::status::ok, jogasaki::plan::prepare(sql, ctx));

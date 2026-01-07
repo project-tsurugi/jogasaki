@@ -243,7 +243,7 @@ void create_generated_field(
             } else {
                 throw_exception(std::logic_error{"function must be defined with definition_id"});
             }
-            functions = global::scalar_function_provider().get();
+            functions = global::regular_function_provider().get();
             break;
         }
     }

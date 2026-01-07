@@ -55,6 +55,7 @@
 #include <jogasaki/durability_callback.h>
 #include <jogasaki/durability_manager.h>
 #include <jogasaki/error/error_info.h>
+#include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/executor/sequence/manager.h>
 #include <jogasaki/executor/sequence/sequence.h>
 #include <jogasaki/kvs/database.h>
@@ -344,8 +345,8 @@ private:
     std::shared_ptr<yugawara::aggregate::configurable_provider> aggregate_functions_{
         std::make_shared<yugawara::aggregate::configurable_provider>()
     };
-    std::shared_ptr<yugawara::function::configurable_provider> scalar_functions_{
-        global::scalar_function_provider()
+    std::shared_ptr<yugawara::function::configurable_provider> regular_functions_{
+        global::regular_function_provider()
     };
     std::shared_ptr<kvs::database> kvs_db_{};
     std::shared_ptr<scheduler::task_scheduler> task_scheduler_;

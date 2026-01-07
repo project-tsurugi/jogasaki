@@ -84,6 +84,7 @@
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
+#include <jogasaki/executor/function/builtin_table_valued_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/global.h>
@@ -407,9 +408,9 @@ bool database::init() {
         return true;
     }
     tables_ = std::make_shared<yugawara::storage::configurable_provider>();
-    scalar_functions_ = global::scalar_function_provider(std::make_shared<yugawara::function::configurable_provider>());
+    regular_functions_ = global::regular_function_provider(std::make_shared<yugawara::function::configurable_provider>());
     executor::function::add_builtin_scalar_functions(
-        *scalar_functions_,
+        *regular_functions_,
         global::scalar_function_repository()
     );
     loader_     = std::make_unique<plugin::udf::udf_loader>();
@@ -438,7 +439,7 @@ bool database::init() {
         plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));
     }
     executor::function::add_udf_scalar_functions(
-        *scalar_functions_, global::scalar_function_repository(), plugins_);
+        *regular_functions_, global::scalar_function_repository(), plugins_);
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,
@@ -448,6 +449,12 @@ bool database::init() {
         *aggregate_functions_,
         global::aggregate_function_repository()
     );
+    if (cfg_->mock_table_valued_functions()) {
+        executor::function::add_builtin_table_valued_functions(
+            *regular_functions_,
+            global::table_valued_function_repository()
+        );
+    }
     initialized_ = true;
     return true;
 }
@@ -507,7 +514,7 @@ status database::prepare_common(
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
-    ctx->function_provider(scalar_functions_);
+    ctx->function_provider(regular_functions_);
     ctx->variable_provider(std::move(provider));
     ctx->option(option);
     if(auto rc = plan::prepare(sql, *ctx); rc != status::ok) {
@@ -826,7 +833,7 @@ status database::resolve_common(
     ctx->resource(resource);
     ctx->storage_provider(tables_);
     ctx->aggregate_provider(aggregate_functions_);
-    ctx->function_provider(scalar_functions_);
+    ctx->function_provider(regular_functions_);
     auto& ps = stmt.body();
     ctx->variable_provider(ps->host_variables());
     ctx->prepared_statement(ps);

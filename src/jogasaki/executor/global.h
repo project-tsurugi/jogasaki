@@ -41,6 +41,10 @@ namespace jogasaki::executor::function {
 class scalar_function_repository;
 }
 
+namespace jogasaki::executor::function {
+class table_valued_function_repository;
+}
+
 namespace jogasaki::kvs {
 class database;
 }
@@ -112,6 +116,13 @@ enum class pool_operation : std::int32_t {
 [[nodiscard]] executor::function::scalar_function_repository& scalar_function_repository();
 
 /**
+ * @brief thread-safe accessor to the global repository for table-valued functions
+ * @details the repository will be initialized on the first call and can be shared by multiple threads
+ * @return reference to the repository
+ */
+[[nodiscard]] executor::function::table_valued_function_repository& table_valued_function_repository();
+
+/**
  * @brief thread-safe accessor to the global configuration pool
  * @details the pool will be initialized on the first call and can be shared by multiple threads
  * @param arg updated configuration. Pass nullptr just to refer current value.
@@ -120,13 +131,13 @@ enum class pool_operation : std::int32_t {
 takatori::util::maybe_shared_ptr<configuration> const& config_pool(takatori::util::maybe_shared_ptr<configuration> arg = nullptr);
 
 /**
- * @brief thread-safe accessor to the global provider for scalar functions
+ * @brief thread-safe accessor to the global function provider that manages regular functions (scalar and table-valued)
  * @details the provider will be initialized on the first call and can be shared by multiple threads
  * @param arg updated provider. Pass nullptr just to refer current value.
  * @return reference to the function provider
  */
 std::shared_ptr<yugawara::function::configurable_provider> const&
-scalar_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg = nullptr);
+regular_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg = nullptr);
 
 /**
  * @brief thread-safe accessor to the kvs database

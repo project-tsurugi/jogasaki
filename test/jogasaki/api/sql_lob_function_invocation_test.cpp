@@ -129,7 +129,7 @@ public:
         temporary_.clean();
         global::scalar_function_repository().clear();
         if(decl_) {
-            global::scalar_function_provider()->remove(*decl_);
+            global::regular_function_provider()->remove(*decl_);
         }
     }
 
@@ -207,7 +207,7 @@ TEST_F(sql_lob_function_invocation_test, modify_input) {
             1
         )
     );
-    decl_ = global::scalar_function_provider()->add({
+    decl_ = global::regular_function_provider()->add({
         id,
         "dup",
         t::clob(),
@@ -262,7 +262,7 @@ TEST_F(sql_lob_function_invocation_test, identity) {
             1
         )
     );
-    decl_ = global::scalar_function_provider()->add({
+    decl_ = global::regular_function_provider()->add({
         id,
         "identity_fn",
         t::clob(),
@@ -317,7 +317,7 @@ TEST_F(sql_lob_function_invocation_test, identity_resolved) {
             1
         )
     );
-    decl_ = global::scalar_function_provider()->add({
+    decl_ = global::regular_function_provider()->add({
         id,
         "identity_fn",
         t::clob(),
@@ -374,7 +374,7 @@ TEST_F(sql_lob_function_invocation_test, variety_for_lob_function_usage) {
             1
         )
     );
-    decl_ = global::scalar_function_provider()->add({
+    decl_ = global::regular_function_provider()->add({
         id,
         "clob_length",
         t::int4(),
@@ -479,7 +479,7 @@ TEST_F(sql_lob_function_invocation_test, invalid_reference_tag_download) {
             1
         )
     );
-    decl_ = global::scalar_function_provider()->add({
+    decl_ = global::regular_function_provider()->add({
         id,
         "dup",
         t::clob(),
@@ -526,7 +526,7 @@ TEST_F(sql_lob_function_invocation_test, invalid_reference_tag_upload) {
             1
         )
     );
-    decl_ = global::scalar_function_provider()->add({
+    decl_ = global::regular_function_provider()->add({
         id,
         "dup",
         t::clob(),

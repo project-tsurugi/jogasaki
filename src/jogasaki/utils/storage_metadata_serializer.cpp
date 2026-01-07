@@ -544,7 +544,7 @@ static yugawara::storage::column_value default_value(
         case proto::metadata::storage::TableColumn::kGenerator: {
             auto& g = column.generator();
             auto id = g.definition_id();
-            auto decl = utils::find_function(*global::scalar_function_provider(), id);
+            auto decl = utils::find_function(*global::regular_function_provider(), id);
             if(! decl) {
                 VLOG_LP(log_error) << "default_value: function not found for given definition id:" << id;
                 return {};

@@ -26,6 +26,7 @@
 #include <jogasaki/executor/function/aggregate_function_repository.h>
 #include <jogasaki/executor/function/incremental/aggregate_function_repository.h>
 #include <jogasaki/executor/function/scalar_function_repository.h>
+#include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/kvs/database.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/storage/storage_manager.h>
@@ -61,8 +62,13 @@ executor::function::scalar_function_repository& scalar_function_repository() {
     return repo;
 }
 
+executor::function::table_valued_function_repository& table_valued_function_repository() {
+    static executor::function::table_valued_function_repository repo{};
+    return repo;
+}
+
 std::shared_ptr<yugawara::function::configurable_provider> const&
-scalar_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg) {
+regular_function_provider(std::shared_ptr<yugawara::function::configurable_provider> arg) {
     static std::shared_ptr<yugawara::function::configurable_provider> provider =
         std::make_shared<yugawara::function::configurable_provider>();
     if(arg) {

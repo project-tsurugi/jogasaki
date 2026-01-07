@@ -33,6 +33,7 @@
 #include <takatori/util/sequence_view.h>
 #include <takatori/util/string_builder.h>
 #include <yugawara/binding/extract.h>
+#include <yugawara/function/declaration.h>
 #include <yugawara/storage/table.h>
 
 #include <jogasaki/data/iterable_record_store.h>
@@ -47,6 +48,7 @@
 #include <jogasaki/executor/process/impl/ops/operator_container.h>
 #include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/io_exchange_map.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/relation_io_map.h>
@@ -58,6 +60,7 @@
 #include <jogasaki/utils/scan_parallel_enabled.h>
 
 #include "aggregate_group.h"
+#include "apply.h"
 #include "emit.h"
 #include "filter.h"
 #include "find.h"
@@ -192,9 +195,50 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::join
     );
 }
 
-std::unique_ptr<operator_base> operator_builder::operator()(const relation::apply&) {
-    throw_exception(std::logic_error{""});
-    return {};
+std::unique_ptr<operator_base> operator_builder::operator()(const relation::apply& node) {
+    auto block_index = info_->block_indices().at(&node);
+    auto downstream = dispatch(*this, node.output().opposite()->owner());
+
+    // get table-valued function info from repository
+    auto const& func_desc = node.function();
+    auto const& func_decl = yugawara::binding::extract<yugawara::function::declaration>(func_desc);
+    auto func_id = func_decl.definition_id();
+
+    // get function info from repository
+    auto& tvf_repo = global::table_valued_function_repository();
+    auto* function_info = tvf_repo.find(func_id);
+    if (! function_info) {
+        throw_exception(std::logic_error{
+            string_builder{}
+                << "table-valued function not found: id=" << func_id
+                << string_builder::to_string
+        });
+    }
+
+    // build argument evaluators
+    std::vector<expr::evaluator> argument_evaluators{};
+    argument_evaluators.reserve(node.arguments().size());
+    for (auto const& arg : node.arguments()) {
+        argument_evaluators.emplace_back(arg, info_->compiled_info(), info_->host_variables());
+    }
+
+    // build column definitions
+    std::vector<takatori::relation::details::apply_column> columns{};
+    columns.reserve(node.columns().size());
+    for (auto const& col : node.columns()) {
+        columns.push_back(col);
+    }
+
+    return std::make_unique<apply>(
+        index_++,
+        *info_,
+        block_index,
+        node.operator_kind(),
+        function_info,
+        columns,
+        std::move(argument_evaluators),
+        std::move(downstream)
+    );
 }
 
 std::unique_ptr<operator_base> operator_builder::operator()(const relation::project& node) {

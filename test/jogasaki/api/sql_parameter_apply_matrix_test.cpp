@@ -155,7 +155,7 @@ void sql_parameter_apply_matrix_test::test_parameter_apply_conv(
     );
     auto* in = type.clone();
     auto* out = type.clone();
-    auto decl = global::scalar_function_provider()->add({
+    auto decl = global::regular_function_provider()->add({
         id,
         "identity_fn",
         std::move(*out),
@@ -171,7 +171,7 @@ void sql_parameter_apply_matrix_test::test_parameter_apply_conv(
     if (expect_error) {
         test_stmt_err(sql, error_code::symbol_analyze_exception);
         global::scalar_function_repository().clear();
-        global::scalar_function_provider()->remove(*decl);
+        global::regular_function_provider()->remove(*decl);
         return;
     }
     {
@@ -182,7 +182,7 @@ void sql_parameter_apply_matrix_test::test_parameter_apply_conv(
     }
     EXPECT_TRUE(called);
     global::scalar_function_repository().clear();
-    global::scalar_function_provider()->remove(*decl);
+    global::regular_function_provider()->remove(*decl);
 }
 
 namespace t = takatori::type;

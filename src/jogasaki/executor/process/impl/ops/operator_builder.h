@@ -47,6 +47,7 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/executor/process/impl/ops/io_info.h>
 #include <jogasaki/executor/process/impl/ops/operator_base.h>
 #include <jogasaki/executor/process/impl/scan_range.h>

@@ -31,7 +31,7 @@
 
 #include <grpcpp/grpcpp.h>
 namespace jogasaki::executor::function {
-void add_udf_scalar_functions(
+void add_udf_functions(
     ::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     const std::vector<

@@ -16,11 +16,14 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include <takatori/relation/apply.h>
 
+#include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
@@ -68,37 +71,11 @@ public:
      */
     void release() override;
 
-    /**
-     * @brief sets the current sequence stream.
-     * @param stream the stream to set
-     */
-    void stream(std::unique_ptr<data::any_sequence_stream> stream) noexcept;
-
-    /**
-     * @brief returns whether a stream is currently set.
-     * @return true if a stream is set
-     */
-    [[nodiscard]] bool has_stream() const noexcept;
-
-    /**
-     * @brief returns whether any row has been output for the current left input.
-     * @return true if at least one row has been output
-     */
-    [[nodiscard]] bool has_output() const noexcept;
-
-    /**
-     * @brief marks that a row has been output.
-     */
-    void mark_output() noexcept;
-
-    /**
-     * @brief resets the output flag for a new left input.
-     */
-    void reset_output() noexcept;
-
 private:
     std::unique_ptr<data::any_sequence_stream> stream_{};
     bool has_output_{false};
+    std::vector<data::any> args_{};
+    expr::evaluator_context evaluator_context_;
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

@@ -226,7 +226,7 @@ std::unique_ptr<operator_base> operator_builder::operator()(const relation::appl
     std::vector<takatori::relation::details::apply_column> columns{};
     columns.reserve(node.columns().size());
     for (auto const& col : node.columns()) {
-        columns.push_back(col);
+        columns.emplace_back(col);
     }
 
     return std::make_unique<apply>(

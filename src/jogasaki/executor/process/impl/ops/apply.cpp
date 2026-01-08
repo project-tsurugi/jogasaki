@@ -69,8 +69,8 @@ apply::apply(
     column_positions_.reserve(columns.size());
     column_variables_.reserve(columns.size());
     for (auto const& col : columns) {
-        column_positions_.push_back(col.position());
-        column_variables_.push_back(col.variable());
+        column_positions_.emplace_back(col.position());
+        column_variables_.emplace_back(col.variable());
     }
 }
 
@@ -94,10 +94,14 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         return {operation_status_kind::aborted};
     }
 
+    // setup evaluator context blob session once per record
+    context_helper helper{*context};
+    ctx.evaluator_context_.blob_session(std::addressof(helper.blob_session_container()));
+
     // evaluate arguments
-    std::vector<data::any> args{};
-    args.reserve(argument_evaluators_.size());
-    if (! evaluate_arguments(ctx, args)) {
+    ctx.args_.clear();
+    ctx.args_.reserve(argument_evaluators_.size());
+    if (! evaluate_arguments(ctx, ctx.args_)) {
         ctx.abort();
         return {operation_status_kind::aborted};
     }
@@ -108,14 +112,9 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         return error_abort(ctx, status::err_unknown);
     }
 
-    expr::evaluator_context eval_ctx{
-        ctx.varlen_resource(),
-        ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-    };
-
     auto stream = function_info_->function_body()(
-        eval_ctx,
-        takatori::util::sequence_view<data::any>{args.data(), args.size()}
+        ctx.evaluator_context_,
+        takatori::util::sequence_view<data::any>{ctx.args_.data(), ctx.args_.size()}
     );
 
     if (! stream) {
@@ -124,10 +123,11 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
     }
 
     // synchronously collect all results
-    ctx.reset_output();
+    ctx.has_output_ = false;
     data::any_sequence sequence{};
 
     while (true) {
+        sequence.clear();
         auto status = stream->next(sequence, std::nullopt);
 
         if (status == data::any_sequence_stream_status::end_of_stream) {
@@ -136,6 +136,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
 
         if (status == data::any_sequence_stream_status::error) {
             VLOG_LP(log_error) << "Error while reading from table-valued function stream";
+            stream->close();
             ctx.abort();
             return {operation_status_kind::aborted};
         }
@@ -143,11 +144,12 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         if (status == data::any_sequence_stream_status::ok) {
             // assign sequence values to output variables
             assign_sequence_to_variables(ctx, sequence);
-            ctx.mark_output();
+            ctx.has_output_ = true;
 
             // call downstream
             if (downstream_) {
                 if (auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); ! st) {
+                    stream->close();
                     ctx.abort();
                     return {operation_status_kind::aborted};
                 }
@@ -156,11 +158,12 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
     }
 
     // for OUTER APPLY: if no rows were output, emit NULL row
-    if (operator_kind_ == takatori::relation::apply_kind::outer && ! ctx.has_output()) {
+    if (operator_kind_ == takatori::relation::apply_kind::outer && ! ctx.has_output_) {
         assign_null_to_variables(ctx);
 
         if (downstream_) {
             if (auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); ! st) {
+                stream->close();
                 ctx.abort();
                 return {operation_status_kind::aborted};
             }
@@ -192,19 +195,12 @@ bool apply::evaluate_arguments(apply_context& ctx, std::vector<data::any>& args)
     auto& vars = ctx.output_variables();
 
     for (auto& ev : argument_evaluators_) {
-        expr::evaluator_context eval_ctx{
-            ctx.varlen_resource(),
-            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-        };
-        context_helper helper{ctx.task_context()};
-        eval_ctx.blob_session(std::addressof(helper.blob_session_container()));
-
-        auto result = ev(eval_ctx, vars, ctx.varlen_resource());
+        auto result = ev(ctx.evaluator_context_, vars, ctx.varlen_resource());
         if (result.error()) {
             VLOG_LP(log_error) << "Error evaluating apply operator argument";
             return false;
         }
-        args.push_back(result);
+        args.emplace_back(result);
     }
     return true;
 }

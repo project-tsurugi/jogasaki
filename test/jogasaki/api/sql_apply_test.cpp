@@ -88,6 +88,8 @@ TEST_F(sql_apply_test, cross_apply_basic) {
     // total: 4 rows
     ASSERT_EQ(4, result.size());
 
+    std::sort(result.begin(), result.end());
+
     // first input row (1, 100) × function output (1*1, 100*1) and (2*1, 200*1)
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(1, 100, 1, 100)), result[0]);
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(1, 100, 2, 200)), result[1]);
@@ -140,21 +142,12 @@ TEST_F(sql_apply_test, outer_apply_empty_right) {
     // expected: 2 rows with NULL for R.c1 and R.c2
     ASSERT_EQ(2, result.size());
 
-    auto& rec1 = result[0];
-    EXPECT_FALSE(rec1.is_null(0));  // T.C0
-    EXPECT_EQ(1, rec1.get_value<std::int32_t>(0));
-    EXPECT_FALSE(rec1.is_null(1));  // T.C1
-    EXPECT_EQ(100, rec1.get_value<std::int64_t>(1));
-    EXPECT_TRUE(rec1.is_null(2));   // R.c1 (NULL)
-    EXPECT_TRUE(rec1.is_null(3));   // R.c2 (NULL)
+    std::sort(result.begin(), result.end());
 
-    auto& rec2 = result[1];
-    EXPECT_FALSE(rec2.is_null(0));  // T.C0
-    EXPECT_EQ(2, rec2.get_value<std::int32_t>(0));
-    EXPECT_FALSE(rec2.is_null(1));  // T.C1
-    EXPECT_EQ(200, rec2.get_value<std::int64_t>(1));
-    EXPECT_TRUE(rec2.is_null(2));   // R.c1 (NULL)
-    EXPECT_TRUE(rec2.is_null(3));   // R.c2 (NULL)
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
+        std::tuple{1, 100, 0, 0}, {false, false, true, true})), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
+        std::tuple{2, 200, 0, 0}, {false, false, true, true})), result[1]);
 }
 
 TEST_F(sql_apply_test, cross_apply_multiple_rows) {
@@ -170,6 +163,8 @@ TEST_F(sql_apply_test, cross_apply_multiple_rows) {
 
     // expected: 1 input row × 3 rows from function = 3 rows
     ASSERT_EQ(3, result.size());
+
+    std::sort(result.begin(), result.end());
 
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 1, 10)), result[0]);
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 2, 20)), result[1]);
@@ -191,6 +186,8 @@ TEST_F(sql_apply_test, cross_apply_with_where) {
 
     // expected: only rows for T.C0 = 2
     ASSERT_EQ(2, result.size());
+
+    std::sort(result.begin(), result.end());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 2)), result[0]);
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(2, 4)), result[1]);
 }
@@ -208,6 +205,8 @@ TEST_F(sql_apply_test, outer_apply_basic) {
 
     // expected: same as CROSS APPLY when right side is not empty
     ASSERT_EQ(2, result.size());
+
+    std::sort(result.begin(), result.end());
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(1, 100, 1, 100)), result[0]);
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(1, 100, 2, 200)), result[1]);
 }
@@ -225,9 +224,99 @@ TEST_F(sql_apply_test, cross_apply_parameter_from_function) {
 
     // expected: 1 input row (C0=5) × 5 rows from function = 5 rows
     ASSERT_EQ(5, result.size());
+
+    std::sort(result.begin(), result.end());
     for (int i = 0; i < 5; ++i) {
         EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(5, i + 1)), result[i]);
     }
+}
+
+TEST_F(sql_apply_test, cross_apply_twice) {
+    // insert test data
+    execute_statement("INSERT INTO T VALUES (1, 100)");
+    execute_statement("INSERT INTO T VALUES (2, 200)");
+
+    // CROSS APPLY twice: first APPLY generates rows, second APPLY uses those rows
+    // mock_table_func_fixed(multiplier) returns (multiplier, 100*multiplier), (2*multiplier, 200*multiplier)
+    // Then mock_table_func_generate(count) returns N rows: (1, 10), (2, 20), ..., (N, N*10)
+    std::vector<mock::basic_record> result{};
+    execute_query(
+        "SELECT T.C0, R1.c1, R2.c1, R2.c2 "
+        "FROM T CROSS APPLY mock_table_func_fixed(T.C0) AS R1 "
+        "CROSS APPLY mock_table_func_generate(R1.c1) AS R2(c1, c2)",
+        result
+    );
+
+    // expected: complex nested result
+    // For T.C0=1: R1 has (1,100) and (2,200), then for each R1.c1, generate R1.c1 rows
+    // For (1,100): generate 1 row -> (1,10)
+    // For (2,200): generate 2 rows -> (1,10), (2,20)
+    // For T.C0=2: R1 has (2,200) and (4,400), then for each R1.c1, generate R1.c1 rows
+    // For (2,200): generate 2 rows -> (1,10), (2,20)
+    // For (4,400): generate 4 rows -> (1,10), (2,20), (3,30), (4,40)
+    // Total: 1 + 2 + 2 + 4 = 9 rows
+    ASSERT_EQ(9, result.size());
+
+    std::sort(result.begin(), result.end());
+
+    // Expected rows after sorting
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(1, 1, 1, 10)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(1, 2, 1, 10)), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(1, 2, 2, 20)), result[2]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 2, 1, 10)), result[3]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 2, 2, 20)), result[4]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 4, 1, 10)), result[5]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 4, 2, 20)), result[6]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 4, 3, 30)), result[7]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int8>(2, 4, 4, 40)), result[8]);
+}
+
+TEST_F(sql_apply_test, cross_apply_column_alias) {
+    // insert test data
+    execute_statement("INSERT INTO T VALUES (1, 100)");
+
+    // Function returns (c1, c2), but SQL specifies AS R(c2, c1) - column names are swapped
+    std::vector<mock::basic_record> result{};
+    execute_query(
+        "SELECT T.C0, R.c2, R.c1 "
+        "FROM T CROSS APPLY mock_table_func_fixed(T.C0) AS R(c2, c1)",
+        result
+    );
+
+    // mock_table_func_fixed(1) returns (1, 100), (2, 200)
+    // With AS R(c2, c1), R.c2 gets function's c1, R.c1 gets function's c2
+    ASSERT_EQ(2, result.size());
+
+    std::sort(result.begin(), result.end());
+
+    // First row: T.C0=1, R.c2=function.c1=1, R.c1=function.c2=100
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 1, 100)), result[0]);
+    // Second row: T.C0=1, R.c2=function.c1=2, R.c1=function.c2=200
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 2, 200)), result[1]);
+}
+
+TEST_F(sql_apply_test, cross_apply_column_alias_different_names) {
+    // insert test data
+    execute_statement("INSERT INTO T VALUES (1, 100)");
+
+    // Function returns (c1, c2), but SQL specifies AS R(c10, c20) - completely different names
+    std::vector<mock::basic_record> result{};
+    execute_query(
+        "SELECT T.C0, R.c10, R.c20 "
+        "FROM T CROSS APPLY mock_table_func_fixed(T.C0) AS R(c10, c20)",
+        result
+    );
+
+    // mock_table_func_fixed(1) returns (1, 100), (2, 200)
+    // With AS R(c10, c20), R.c10 gets function's c1, R.c20 gets function's c2
+    ASSERT_EQ(2, result.size());
+
+    std::sort(result.begin(), result.end());
+
+    // First row: T.C0=1, R.c10=function.c1=1, R.c20=function.c2=100
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 1, 100)), result[0]);
+    // Second row: T.C0=1, R.c10=function.c1=2, R.c20=function.c2=200
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 2, 200)), result[1]);
 }
 
 } // namespace jogasaki::testing

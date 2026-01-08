@@ -25,8 +25,14 @@ apply_context::apply_context(
     memory_resource* resource,
     memory_resource* varlen_resource
 ) :
-    context_base(ctx, variables, resource, varlen_resource)
-{}
+    context_base(ctx, variables, resource, varlen_resource),
+    evaluator_context_{varlen_resource, nullptr}
+{
+    // update transaction context after context_base is initialized
+    if (req_context()) {
+        evaluator_context_.set_transaction(req_context()->transaction().get());
+    }
+}
 
 operator_kind apply_context::kind() const noexcept {
     return operator_kind::apply;
@@ -37,26 +43,6 @@ void apply_context::release() {
         stream_->close();
         stream_.reset();
     }
-    has_output_ = false;
-}
-
-void apply_context::stream(std::unique_ptr<data::any_sequence_stream> stream) noexcept {
-    stream_ = std::move(stream);
-}
-
-bool apply_context::has_stream() const noexcept {
-    return stream_ != nullptr;
-}
-
-bool apply_context::has_output() const noexcept {
-    return has_output_;
-}
-
-void apply_context::mark_output() noexcept {
-    has_output_ = true;
-}
-
-void apply_context::reset_output() noexcept {
     has_output_ = false;
 }
 

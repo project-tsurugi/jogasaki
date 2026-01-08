@@ -829,6 +829,29 @@ bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
 
     return false;
 }
+void register_scalar_function(yugawara::function::configurable_provider& functions,
+    scalar_function_repository& scalar_repo,
+    yugawara::function::declaration::definition_id_type& current_id,
+    std::shared_ptr<plugin::udf::generic_client> const& client,
+    plugin::udf::function_descriptor const* fn) {
+    auto unary_func = make_udf_lambda(client, fn);
+    register_udf_function_patterns(functions, scalar_repo, current_id, unary_func, fn);
+}
+void register_udf_function(yugawara::function::configurable_provider& functions,
+    scalar_function_repository& scalar_repo,
+    yugawara::function::declaration::definition_id_type& current_id,
+    std::shared_ptr<plugin::udf::generic_client> const& client,
+    plugin::udf::function_descriptor const* fn) {
+    switch (fn->function_kind()) {
+        case plugin::udf::function_kind_type::unary: {
+            register_scalar_function(functions, scalar_repo, current_id, client, fn);
+            break;
+        }
+        default:
+            // currently only unary functions are supported
+            break;
+    }
+}
 
 }  // anonymous namespace
 
@@ -840,8 +863,7 @@ bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-stream-chunk-size", std::to_string(chunk_size_));
     return true;
 }
-
-void add_udf_scalar_functions(
+void add_udf_functions(
     ::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     const std::vector<
@@ -862,8 +884,7 @@ void add_udf_scalar_functions(
             }
             for(auto const* svc: pkg->services()) {
                 for(auto const* fn: svc->functions()) {
-                    auto lambda_func = make_udf_lambda(client, fn);
-                    register_udf_function_patterns(functions, repo, current_id, lambda_func, fn);
+                    register_udf_function(functions, repo, current_id, client, fn);
                 }
             }
         }

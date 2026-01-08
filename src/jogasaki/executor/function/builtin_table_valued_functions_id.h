@@ -55,6 +55,28 @@ enum table_valued_function_id : std::size_t {
      * @details returns a parameterized number of rows.
      */
     tvf_id_12002,
+
+    /**
+     * @brief mock table-valued function with three columns.
+     * @details returns rows with three columns for testing column discarding.
+     */
+    tvf_id_12003,
+
+    /**
+     * @brief mock table-valued functions for type matrix testing.
+     * @details each function takes one argument of specific type and returns a table with one column of the same type.
+     */
+    tvf_id_12010,  // mock_table_func_int4_type
+    tvf_id_12011,  // mock_table_func_int8_type
+    tvf_id_12012,  // mock_table_func_float4_type
+    tvf_id_12013,  // mock_table_func_float8_type
+    tvf_id_12014,  // mock_table_func_decimal_type
+    tvf_id_12015,  // mock_table_func_character_type
+    tvf_id_12016,  // mock_table_func_date_type
+    tvf_id_12017,  // mock_table_func_time_of_day_type
+    tvf_id_12018,  // mock_table_func_time_point_type
+    tvf_id_12019,  // mock_table_func_boolean_type
+    tvf_id_12020,  // mock_table_func_binary_type
 };
 
 }  // namespace jogasaki::executor::function

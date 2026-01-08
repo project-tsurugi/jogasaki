@@ -319,4 +319,28 @@ TEST_F(sql_apply_test, cross_apply_column_alias_different_names) {
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int8>(1, 2, 200)), result[1]);
 }
 
+TEST_F(sql_apply_test, cross_apply_unused_columns) {
+    // insert test data
+    execute_statement("INSERT INTO T VALUES (1, 100)");
+
+    // Function returns 3 columns (c1, c2, c3), but SQL only uses c2 - other columns should be discarded
+    std::vector<mock::basic_record> result{};
+    execute_query(
+        "SELECT T.C0, R.c2 "
+        "FROM T CROSS APPLY mock_table_func_three_columns(T.C0) AS R(c1, c2, c3)",
+        result
+    );
+
+    // mock_table_func_three_columns(1) returns (1, 100, 1000), (2, 200, 2000)
+    // Only c2 is used in SELECT, c1 and c3 are discarded
+    ASSERT_EQ(2, result.size());
+
+    std::sort(result.begin(), result.end());
+
+    // First row: T.C0=1, R.c2=100
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8>(1, 100)), result[0]);
+    // Second row: T.C0=1, R.c2=200
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8>(1, 200)), result[1]);
+}
+
 } // namespace jogasaki::testing

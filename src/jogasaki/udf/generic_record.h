@@ -19,6 +19,10 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <condition_variable>
+#include <queue>
+#include <chrono>
+#include <mutex>
 
 #include "error_info.h"
 namespace plugin::udf {
@@ -88,4 +92,45 @@ public:
     [[nodiscard]] virtual std::unique_ptr<generic_record_cursor> cursor() const = 0;
 };
 
+class generic_record_stream {
+public:
+    /// @brief represents the status of record retrieval.
+    using status_type = generic_record_stream_status;
+    generic_record_stream() = default;
+    generic_record_stream(generic_record_stream const&) = delete;
+    generic_record_stream& operator=(generic_record_stream const&) = delete;
+    generic_record_stream(generic_record_stream&&) = delete;
+    generic_record_stream& operator=(generic_record_stream&&) = delete;
+    virtual ~generic_record_stream() = default;
+    /**
+     * @brief attempts to retrieve the next record from the stream.
+     * @details if error occurs during retrieval, the resulting record will contain its error information.
+     * @param record the record to store the retrieved data, including its error information.
+     *               The contents will be modified if and only if the return value is status_type::ok or status_type::error.
+     * @return status_type::ok if a record was successfully retrieved
+     * @return status_type::error if an erroneous record was retrieved
+     * @return status_type::end_of_stream if the end of the stream has been reached
+     * @return status_type::not_ready if the next record is not yet available
+     */
+    [[nodiscard]] virtual status_type try_next(generic_record& record) = 0;
+
+    /**
+     * @brief retrieves the next record from the stream, waiting up to the specified timeout.
+     * @details if error occurs during retrieval, the resulting record will contain its error information.
+     * @param record the record to store the retrieved data, including its error information.
+     *               The contents will be modified if and only if the return value is status_type::ok or status_type::error.
+     * @param timeout the maximum duration to wait for the next record, or `std::nullopt` to wait indefinitely
+     * @return status_type::ok if a record was successfully retrieved
+     * @return status_type::error if an erroneous record was retrieved
+     * @return status_type::end_of_stream if the end of the stream has been reached
+     * @return status_type::not_ready if the operation timed out before a record could be retrieved
+     */
+    [[nodiscard]] virtual status_type
+    next(generic_record& record, std::optional<std::chrono::milliseconds> timeout = std::nullopt) = 0;
+
+    /**
+     * @brief closes the stream and releases associated resources.
+     */
+    virtual void close() = 0;
+};
 }  // namespace plugin::udf

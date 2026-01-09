@@ -51,7 +51,7 @@ public:
     [[nodiscard]] std::optional<error_info>& error() noexcept override;
     [[nodiscard]] std::optional<error_info> const& error() const noexcept override;
     void set_error(error_info const& status) override;
-
+    void assign_from(generic_record_impl&& other) noexcept;
 private:
 
     std::vector<value_type> values_;
@@ -72,7 +72,6 @@ public:
     [[nodiscard]] std::optional<double> fetch_double() override;
     [[nodiscard]] std::optional<std::string> fetch_string() override;
     [[nodiscard]] bool has_next() override;
-
 private:
 
     std::vector<value_type> const& values_;
@@ -80,4 +79,38 @@ private:
 };
 template<class>
 struct always_false : std::false_type {};
+
+class generic_record_stream_impl final : public generic_record_stream {
+public:
+
+    generic_record_stream_impl();
+    ~generic_record_stream_impl() override;
+
+    // Copying is explicitly disabled because this class manages a mutex and condition_variable
+    generic_record_stream_impl(const generic_record_stream_impl&) = delete;
+    generic_record_stream_impl& operator=(const generic_record_stream_impl&) = delete;
+
+    // Move constructor and move assignment are allowed
+    generic_record_stream_impl(generic_record_stream_impl&& other) noexcept;
+    generic_record_stream_impl& operator=(generic_record_stream_impl&& other) noexcept;
+
+    void push(std::unique_ptr<generic_record_impl> record);
+    void end_of_stream();
+    void close() override;
+
+    status_type try_next(generic_record& record) override;
+    status_type next(generic_record& record, std::optional<std::chrono::milliseconds> timeout = std::nullopt) override;
+
+private:
+
+    status_type extract_record_from_queue_unlocked(generic_record& record);
+
+    std::queue<std::unique_ptr<generic_record_impl>> queue_;
+    bool closed_{false};
+    bool eos_{false};
+
+    std::mutex mutex_;
+    std::condition_variable cv_;
+};
+
 }  // namespace plugin::udf

@@ -42,9 +42,9 @@ public:
     friend class apply;
 
     /**
-     * @brief constructs an empty context.
+     * @brief default constructor is deleted to own evaluator context.
      */
-    apply_context() = default;
+    apply_context() = delete;
 
     /**
      * @brief constructs a new context.

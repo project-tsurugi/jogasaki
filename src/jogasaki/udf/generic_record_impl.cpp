@@ -22,6 +22,8 @@
 #include <utility>
 #include <variant>
 #include <vector>
+#include <chrono>
+#include <queue>
 
 #include "error_info.h"
 namespace plugin::udf {
@@ -131,4 +133,105 @@ std::optional<std::string> generic_record_cursor_impl::fetch_string() {
     return value;
 }
 
+generic_record_stream_impl::generic_record_stream_impl() = default;
+generic_record_stream_impl::~generic_record_stream_impl() { close(); }
+
+generic_record_stream_impl::generic_record_stream_impl(generic_record_stream_impl&& other) noexcept {
+    {
+        std::lock_guard lk(other.mutex_);
+        queue_ = std::move(other.queue_);
+        closed_ = other.closed_;
+        eos_ = other.eos_;
+        other.closed_ = true;
+        other.eos_ = true;
+    }
+    other.cv_.notify_all();
+}
+
+generic_record_stream_impl& generic_record_stream_impl::operator=(generic_record_stream_impl&& other) noexcept {
+    if(this == &other) { return *this; }
+    {
+        std::scoped_lock lk(mutex_, other.mutex_);
+        queue_ = std::move(other.queue_);
+        closed_ = other.closed_;
+        eos_ = other.eos_;
+        other.closed_ = true;
+        other.eos_ = true;
+    }
+    other.cv_.notify_all();
+    return *this;
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
+void generic_record_impl::assign_from(generic_record_impl&& other) noexcept {
+    values_ = std::move(other.values_);
+    err_    = std::move(other.err_);
+    other.reset();
+}
+
+void generic_record_stream_impl::push(std::unique_ptr<generic_record_impl> record) {
+    {
+        std::lock_guard lk(mutex_);
+        if(closed_ || eos_) { return; }
+        queue_.push(std::move(record));
+    }
+    cv_.notify_one();
+}
+
+void generic_record_stream_impl::end_of_stream() {
+    {
+        std::lock_guard lk(mutex_);
+        eos_ = true;
+    }
+    cv_.notify_all();
+}
+
+void generic_record_stream_impl::close() {
+    {
+        std::lock_guard lk(mutex_);
+        closed_ = true;
+        eos_ = true;
+        std::queue<std::unique_ptr<generic_record_impl>> empty;
+        queue_.swap(empty);
+    }
+    cv_.notify_all();
+}
+
+generic_record_stream::status_type generic_record_stream_impl::extract_record_from_queue_unlocked(generic_record& record
+) {
+    if (queue_.empty()) {
+        return status_type::end_of_stream;
+    }
+
+    auto rec = std::move(queue_.front());
+    queue_.pop();
+
+    if (auto* impl = dynamic_cast<generic_record_impl*>(&record)) {
+        impl->assign_from(std::move(*rec));
+        return impl->error() ? status_type::error : status_type::ok;
+    }
+    return status_type::error;
+}
+
+generic_record_stream::status_type generic_record_stream_impl::try_next(generic_record& record) {
+    std::lock_guard lk(mutex_);
+    if(! queue_.empty()) { return extract_record_from_queue_unlocked(record); }
+    if(eos_) { return status_type::end_of_stream; }
+    return status_type::not_ready;
+}
+
+generic_record_stream::status_type
+generic_record_stream_impl::next(generic_record& record, std::optional<std::chrono::milliseconds> timeout) {
+    std::unique_lock lk(mutex_);
+    auto pred = [&] { return ! queue_.empty() || eos_ || closed_; };
+
+    if(timeout) {
+        if(! cv_.wait_for(lk, *timeout, pred)) { return status_type::not_ready; }
+    } else {
+        cv_.wait(lk, pred);
+    }
+
+    if(! queue_.empty()) { return extract_record_from_queue_unlocked(record); }
+    return status_type::end_of_stream;
+}
 }  // namespace plugin::udf

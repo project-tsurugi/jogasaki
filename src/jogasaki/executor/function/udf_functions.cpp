@@ -44,6 +44,7 @@
 #include <takatori/type/primitive.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
+#include <takatori/type/table.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/type/varying.h>
 #include <takatori/util/sequence_view.h>
@@ -829,6 +830,63 @@ bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
 
     return false;
 }
+std::shared_ptr<takatori::type::table> build_table_return_type(
+    plugin::udf::function_descriptor const* fn) {
+    namespace t = takatori::type;
+
+    std::vector<t::table::column_type> cols;
+    for (auto* col : fn->output_record().columns()) {
+        if (!col) continue;
+        cols.emplace_back(std::string{col->column_name()}, map_type(col->type_kind()));
+    }
+    return std::make_shared<t::table>(std::move(cols));
+}
+void register_server_stream_function(yugawara::function::configurable_provider& functions,
+    yugawara::function::declaration::definition_id_type& current_id,
+    plugin::udf::function_descriptor const* fn) {
+
+    std::string fn_name(fn->function_name());
+    std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
+
+    auto return_type         = build_table_return_type(fn);
+    auto const& input_record = fn->input_record();
+    auto const& type_map     = get_type_map();
+
+    if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
+        if (auto param_type = it->second()) {
+            functions.add(yugawara::function::declaration{
+                ++current_id,
+                fn_name,
+                return_type,
+                {param_type},
+                {yugawara::function::function_feature::table_valued_function},
+            });
+        }
+        return;
+    }
+    for (auto const& pattern : input_record.argument_patterns()) {
+        auto param_types = build_param_types(pattern, type_map);
+        if (!param_types.empty()) {
+            functions.add(yugawara::function::declaration{
+                ++current_id,
+                fn_name,
+                return_type,
+                std::move(param_types),
+                {yugawara::function::function_feature::table_valued_function},
+            });
+        }
+    }
+    if (count_effective_columns(input_record) == 0) {
+        functions.add(yugawara::function::declaration{
+            ++current_id,
+            fn_name,
+            return_type,
+            {},
+            {yugawara::function::function_feature::table_valued_function},
+        });
+    }
+}
+
 void register_scalar_function(yugawara::function::configurable_provider& functions,
     scalar_function_repository& scalar_repo,
     yugawara::function::declaration::definition_id_type& current_id,
@@ -848,7 +906,7 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
             break;
         }
         default:
-            // currently only unary functions are supported
+            register_server_stream_function(functions, current_id, fn);
             break;
     }
 }

@@ -27,43 +27,43 @@
 
 namespace plugin::udf {
 namespace {
-std::string_view to_string_view(plugin::udf::function_kind_type kind) {
+std::string_view to_string_view(plugin::udf::function_kind kind) {
     using namespace std::literals;
     switch(kind) {
-        case plugin::udf::function_kind_type::unary: return "unary"sv;
-        case plugin::udf::function_kind_type::client_streaming: return "client_streaming"sv;
-        case plugin::udf::function_kind_type::server_streaming: return "server_streaming"sv;
-        case plugin::udf::function_kind_type::bidirectional_streaming: return "bidirectional_streaming"sv;
+        case plugin::udf::function_kind::unary: return "unary"sv;
+        case plugin::udf::function_kind::client_streaming: return "client_streaming"sv;
+        case plugin::udf::function_kind::server_streaming: return "server_streaming"sv;
+        case plugin::udf::function_kind::bidirectional_streaming: return "bidirectional_streaming"sv;
         default: return "unknown_function_kind"sv;
     }
 }
-std::string_view to_string_view(plugin::udf::type_kind_type kind) {
+std::string_view to_string_view(plugin::udf::type_kind kind) {
     using namespace std::literals;
     switch(kind) {
-        case plugin::udf::type_kind_type::float8: return "float8"sv;
-        case plugin::udf::type_kind_type::float4: return "float4"sv;
-        case plugin::udf::type_kind_type::int8: return "int8"sv;
-        case plugin::udf::type_kind_type::uint8: return "uint8"sv;
-        case plugin::udf::type_kind_type::int4: return "int4"sv;
-        case plugin::udf::type_kind_type::fixed8: return "fixed8"sv;
-        case plugin::udf::type_kind_type::fixed4: return "fixed4"sv;
-        case plugin::udf::type_kind_type::boolean: return "bool"sv;
-        case plugin::udf::type_kind_type::string: return "string"sv;
-        case plugin::udf::type_kind_type::group: return "group"sv;
-        case plugin::udf::type_kind_type::message: return "message"sv;
-        case plugin::udf::type_kind_type::bytes: return "bytes"sv;
-        case plugin::udf::type_kind_type::uint4: return "uint4"sv;
-        case plugin::udf::type_kind_type::grpc_enum: return "enum"sv;
-        case plugin::udf::type_kind_type::sint4: return "sint4"sv;
-        case plugin::udf::type_kind_type::sint8: return "sint8"sv;
-        case plugin::udf::type_kind_type::sfixed8: return "sfixed8"sv;
-        case plugin::udf::type_kind_type::sfixed4: return "sfixed4"sv;
+        case plugin::udf::type_kind::float8: return "float8"sv;
+        case plugin::udf::type_kind::float4: return "float4"sv;
+        case plugin::udf::type_kind::int8: return "int8"sv;
+        case plugin::udf::type_kind::uint8: return "uint8"sv;
+        case plugin::udf::type_kind::int4: return "int4"sv;
+        case plugin::udf::type_kind::fixed8: return "fixed8"sv;
+        case plugin::udf::type_kind::fixed4: return "fixed4"sv;
+        case plugin::udf::type_kind::boolean: return "bool"sv;
+        case plugin::udf::type_kind::string: return "string"sv;
+        case plugin::udf::type_kind::group: return "group"sv;
+        case plugin::udf::type_kind::message: return "message"sv;
+        case plugin::udf::type_kind::bytes: return "bytes"sv;
+        case plugin::udf::type_kind::uint4: return "uint4"sv;
+        case plugin::udf::type_kind::grpc_enum: return "enum"sv;
+        case plugin::udf::type_kind::sint4: return "sint4"sv;
+        case plugin::udf::type_kind::sint8: return "sint8"sv;
+        case plugin::udf::type_kind::sfixed8: return "sfixed8"sv;
+        case plugin::udf::type_kind::sfixed4: return "sfixed4"sv;
         default: return "UnknownTypeKind"sv;
     }
 }
 } // namespace anonymous
-std::ostream& operator<<(std::ostream& out, plugin::udf::function_kind_type const& kind) { return out << to_string_view(kind); }
-std::ostream& operator<<(std::ostream& out, plugin::udf::type_kind_type const& kind) { return out << to_string_view(kind); }
+std::ostream& operator<<(std::ostream& out, plugin::udf::function_kind const& kind) { return out << to_string_view(kind); }
+std::ostream& operator<<(std::ostream& out, plugin::udf::type_kind const& kind) { return out << to_string_view(kind); }
 void print_columns(std::vector<plugin::udf::column_descriptor*> const& cols, int indent = 0) {
     std::string indent_str(indent, ' ');
 

@@ -103,8 +103,8 @@ constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime
 constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
 constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
 
-const std::unordered_map<plugin::udf::type_kind_type, std::size_t>& type_index_map() {
-    using K = plugin::udf::type_kind_type;
+const std::unordered_map<plugin::udf::type_kind, std::size_t>& type_index_map() {
+    using K = plugin::udf::type_kind;
     static const std::unordered_map<K, std::size_t> map = {
         {K::float8, data::any::index<runtime_t<kind::float8>>},
         {K::float4, data::any::index<runtime_t<kind::float4>>},
@@ -167,9 +167,9 @@ std::string int128_to_bytes(__int128 coeff) {
     return bytes;
 }
 
-std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind_type kind) {
+std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind kind) {
     namespace t = takatori::type;
-    using K = plugin::udf::type_kind_type;
+    using K = plugin::udf::type_kind;
     switch(kind) {
         case K::float8: return std::make_shared<t::simple_type<t::type_kind::float8>>();
         case K::float4: return std::make_shared<t::simple_type<t::type_kind::float4>>();
@@ -224,8 +224,8 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
             }
             case data::any::index<runtime_t<kind::int4>>: {
                 auto result = src.to<runtime_t<kind::int4>>();
-                if(type == plugin::udf::type_kind_type::int4 || type == plugin::udf::type_kind_type::sfixed4 ||
-                   type == plugin::udf::type_kind_type::sint4) {
+                if(type == plugin::udf::type_kind::int4 || type == plugin::udf::type_kind::sfixed4 ||
+                   type == plugin::udf::type_kind::sint4) {
                     request.add_int4(result);
                 } else {
                     request.add_uint4(result);
@@ -234,8 +234,8 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
             }
             case data::any::index<runtime_t<kind::int8>>: {
                 auto result = src.to<runtime_t<kind::int8>>();
-                if(type == plugin::udf::type_kind_type::int8 || type == plugin::udf::type_kind_type::sfixed8 ||
-                   type == plugin::udf::type_kind_type::sint8) {
+                if(type == plugin::udf::type_kind::int8 || type == plugin::udf::type_kind::sfixed8 ||
+                   type == plugin::udf::type_kind::sint8) {
                     request.add_int8(result);
                 } else {
                     request.add_uint8(result);
@@ -341,7 +341,7 @@ std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
     for(auto* col: pattern) {
         if(! col) continue;
 
-        if(col->type_kind() == plugin::udf::type_kind_type::message) {
+        if(col->type_kind() == plugin::udf::type_kind::message) {
             if(auto nested = col->nested()) {
                 if(auto it = type_map.find(nested->record_name()); it != type_map.end()) {
                     if(auto ptr = it->second()) { param_types.emplace_back(ptr); }
@@ -417,7 +417,7 @@ find_matched_pattern(plugin::udf::function_descriptor const* fn, sequence_view<d
             auto const& arg = args[i];
             auto const& col = pattern[i];
             auto kind = col->type_kind();
-            if(kind == plugin::udf::type_kind_type::string || kind == plugin::udf::type_kind_type::message) {
+            if(kind == plugin::udf::type_kind::string || kind == plugin::udf::type_kind::message) {
                 if(auto nested = col->nested()) {
                     auto nested_it = nested_map.find(nested->record_name());
                     match &= (nested_it != nested_map.end() && arg.type_index() == nested_it->second);
@@ -602,20 +602,20 @@ std::vector<data::any> cursor_to_any_values(
             auto type_kind = col->type_kind();
 
             switch(type_kind) {
-                case plugin::udf::type_kind_type::sfixed4:
-                case plugin::udf::type_kind_type::int4:
-                case plugin::udf::type_kind_type::sint4:
+                case plugin::udf::type_kind::sfixed4:
+                case plugin::udf::type_kind::int4:
+                case plugin::udf::type_kind::sint4:
                     fetch_and_emplace<runtime_t<kind::int4>>(result, [&] { return cursor->fetch_int4(); });
                     break;
 
-                case plugin::udf::type_kind_type::sfixed8:
-                case plugin::udf::type_kind_type::int8:
-                case plugin::udf::type_kind_type::sint8:
+                case plugin::udf::type_kind::sfixed8:
+                case plugin::udf::type_kind::int8:
+                case plugin::udf::type_kind::sint8:
                     fetch_and_emplace<runtime_t<kind::int8>>(result, [&] { return cursor->fetch_int8(); });
                     break;
 
-                case plugin::udf::type_kind_type::uint4:
-                case plugin::udf::type_kind_type::fixed4:
+                case plugin::udf::type_kind::uint4:
+                case plugin::udf::type_kind::fixed4:
                     fetch_and_emplace_cast<runtime_t<kind::int4>>(
                         result,
                         [&] { return cursor->fetch_uint4(); },
@@ -623,8 +623,8 @@ std::vector<data::any> cursor_to_any_values(
                     );
                     break;
 
-                case plugin::udf::type_kind_type::uint8:
-                case plugin::udf::type_kind_type::fixed8:
+                case plugin::udf::type_kind::uint8:
+                case plugin::udf::type_kind::fixed8:
                     fetch_and_emplace_cast<runtime_t<kind::int8>>(
                         result,
                         [&] { return cursor->fetch_uint8(); },
@@ -632,19 +632,19 @@ std::vector<data::any> cursor_to_any_values(
                     );
                     break;
 
-                case plugin::udf::type_kind_type::float4:
+                case plugin::udf::type_kind::float4:
                     fetch_and_emplace<runtime_t<kind::float4>>(result, [&] { return cursor->fetch_float(); });
                     break;
 
-                case plugin::udf::type_kind_type::float8:
+                case plugin::udf::type_kind::float8:
                     fetch_and_emplace<runtime_t<kind::float8>>(result, [&] { return cursor->fetch_double(); });
                     break;
 
-                case plugin::udf::type_kind_type::boolean:
+                case plugin::udf::type_kind::boolean:
                     fetch_and_emplace<runtime_t<kind::boolean>>(result, [&] { return cursor->fetch_bool(); });
                     break;
 
-                case plugin::udf::type_kind_type::string:
+                case plugin::udf::type_kind::string:
                     if(auto v = cursor->fetch_string()) {
                         result.emplace_back(
                             std::in_place_type<runtime_t<kind::character>>,
@@ -655,7 +655,7 @@ std::vector<data::any> cursor_to_any_values(
                     }
                     break;
 
-                case plugin::udf::type_kind_type::bytes:
+                case plugin::udf::type_kind::bytes:
                     if(auto v = cursor->fetch_string()) {
                         result.emplace_back(
                             std::in_place_type<runtime_t<kind::octet>>,
@@ -666,8 +666,8 @@ std::vector<data::any> cursor_to_any_values(
                     }
                     break;
 
-                case plugin::udf::type_kind_type::group:
-                case plugin::udf::type_kind_type::message: {
+                case plugin::udf::type_kind::group:
+                case plugin::udf::type_kind::message: {
                     if(auto nested_cols = col->nested()) {
                         auto nested_values = cursor_to_any_values(response, nested_cols->columns(), ctx);
                         result.insert(result.end(), nested_values.begin(), nested_values.end());
@@ -843,7 +843,7 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
     std::shared_ptr<plugin::udf::generic_client> const& client,
     plugin::udf::function_descriptor const* fn) {
     switch (fn->function_kind()) {
-        case plugin::udf::function_kind_type::unary: {
+        case plugin::udf::function_kind::unary: {
             register_scalar_function(functions, scalar_repo, current_id, client, fn);
             break;
         }

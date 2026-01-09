@@ -39,5 +39,10 @@ public:
         generic_record& request,
         generic_record& response
     ) const = 0;
+    virtual std::unique_ptr<plugin::udf::generic_record_stream> call_server_streaming_async(
+        grpc::ClientContext const& context,
+        function_index_type function_index,
+        generic_record& request
+    ) const = 0;
 };
 }  // namespace plugin::udf

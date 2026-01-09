@@ -16,7 +16,8 @@
  */
 #pragma once
 namespace plugin::udf {
-enum class function_kind_type {
+
+enum class function_kind {
     unary,
     client_streaming,
     server_streaming,
@@ -24,8 +25,7 @@ enum class function_kind_type {
 };
 // @see
 // https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto#L243
-// @see error_info.h (to_string_view)
-enum class type_kind_type {
+enum class type_kind {
     float8,
     float4,
     int8,
@@ -46,7 +46,6 @@ enum class type_kind_type {
     sint8,
 };
 
-// @see error_info.h (to_string_view)
 enum class load_status {
     ok,
     path_is_empty,
@@ -63,5 +62,12 @@ enum class load_status {
     api_init_failed,
     factory_symbol_missing,
     factory_creation_failed
+};
+
+enum class generic_record_stream_status {
+    ok,
+    error,
+    end_of_stream,
+    not_ready
 };
 }  // namespace plugin::udf

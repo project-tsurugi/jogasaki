@@ -44,7 +44,7 @@ column_descriptor_impl::column_descriptor_impl(
 
 column_descriptor::index_type column_descriptor_impl::index() const noexcept { return _idx; }
 std::string_view column_descriptor_impl::column_name() const noexcept { return _name; }
-type_kind_type column_descriptor_impl::type_kind() const noexcept { return _kind; }
+type_kind column_descriptor_impl::type_kind() const noexcept { return _kind; }
 record_descriptor* column_descriptor_impl::nested() const noexcept { return _nested_record; }
 std::optional<column_descriptor::oneof_index_type> column_descriptor_impl::oneof_index() const noexcept {
     return _oneof_idx;
@@ -117,7 +117,7 @@ function_descriptor_impl::function_descriptor_impl(
 
 function_descriptor::index_type function_descriptor_impl::function_index() const noexcept { return _idx; }
 std::string_view function_descriptor_impl::function_name() const noexcept { return _name; }
-function_kind_type function_descriptor_impl::function_kind() const noexcept { return _kind; }
+function_kind function_descriptor_impl::function_kind() const noexcept { return _kind; }
 record_descriptor const& function_descriptor_impl::input_record() const noexcept { return *_input; }
 record_descriptor const& function_descriptor_impl::output_record() const noexcept { return *_output; }
 

@@ -162,6 +162,7 @@ generic_record_stream_impl& generic_record_stream_impl::operator=(generic_record
     return *this;
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
 void generic_record_impl::assign_from(generic_record_impl&& other) noexcept {
     values_ = std::move(other.values_);
     err_    = std::move(other.err_);
@@ -198,13 +199,18 @@ void generic_record_stream_impl::close() {
 
 generic_record_stream::status_type generic_record_stream_impl::extract_record_from_queue_unlocked(generic_record& record
 ) {
+    if (queue_.empty()) {
+        return status_type::end_of_stream;
+    }
+
     auto rec = std::move(queue_.front());
     queue_.pop();
 
-    auto& impl = static_cast<generic_record_impl&>(record);
-    impl.assign_from(std::move(*rec));
-
-    return impl.error() ? status_type::error : status_type::ok;
+    if (auto* impl = dynamic_cast<generic_record_impl*>(&record)) {
+        impl->assign_from(std::move(*rec));
+        return impl->error() ? status_type::error : status_type::ok;
+    }
+    return status_type::error;
 }
 
 generic_record_stream::status_type generic_record_stream_impl::try_next(generic_record& record) {

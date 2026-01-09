@@ -52,6 +52,7 @@ public:
     [[nodiscard]] std::optional<error_info> const& error() const noexcept override;
     void set_error(error_info const& status) override;
     void assign_from(generic_record_impl&& other) noexcept;
+
 private:
 
     std::vector<value_type> values_;
@@ -72,6 +73,7 @@ public:
     [[nodiscard]] std::optional<double> fetch_double() override;
     [[nodiscard]] std::optional<std::string> fetch_string() override;
     [[nodiscard]] bool has_next() override;
+
 private:
 
     std::vector<value_type> const& values_;
@@ -99,7 +101,7 @@ public:
     void close() override;
 
     status_type try_next(generic_record& record) override;
-    status_type next(generic_record& record, std::optional<std::chrono::milliseconds> timeout = std::nullopt) override;
+    status_type next(generic_record& record, std::optional<std::chrono::milliseconds> timeout) override;
 
 private:
 

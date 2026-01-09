@@ -126,7 +126,7 @@ public:
      * @return status_type::not_ready if the operation timed out before a record could be retrieved
      */
     [[nodiscard]] virtual status_type
-    next(generic_record& record, std::optional<std::chrono::milliseconds> timeout = std::nullopt) = 0;
+    next(generic_record& record, std::optional<std::chrono::milliseconds> timeout) = 0;
 
     /**
      * @brief closes the stream and releases associated resources.

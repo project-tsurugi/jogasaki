@@ -125,8 +125,9 @@ private:
      * @brief assigns the sequence values to output variables.
      * @param ctx the apply context
      * @param sequence the sequence of values to assign
+     * @return true if assignment succeeded, false otherwise
      */
-    void assign_sequence_to_variables(apply_context& ctx, data::any_sequence const& sequence);
+    bool assign_sequence_to_variables(apply_context& ctx, data::any_sequence const& sequence);
 
     /**
      * @brief assigns NULL values to all output variables (for OUTER APPLY).

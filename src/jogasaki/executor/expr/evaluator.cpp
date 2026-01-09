@@ -70,6 +70,7 @@
 #include "details/cast_evaluation.h"
 #include "details/common.h"
 #include "details/decimal_context.h"
+#include "lob_processing.h"
 
 namespace jogasaki::executor::expr {
 
@@ -1002,133 +1003,7 @@ any engine::operator()(takatori::scalar::let const&) {
     return return_unsupported();
 }
 
-template <typename T>
-static std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
-validate_reference_tag(T in, data_relay_grpc::blob_relay::blob_session& session, evaluator_context& ctx) {
-    auto create_error = [&]() {
-        ctx.set_error_info(create_error_info(
-            error_code::permission_error,
-            string_builder{} << "invalid reference tag in the large object function return value object_id:"
-                             << in.object_id() << string_builder::to_string,
-            status::err_illegal_operation
-            )
-        );
-        return any{std::in_place_type<class error>, error_kind::error_info_provided};
-    };
-    auto tag = static_cast<lob::lob_reference&>(in).reference_tag();
-    if(! tag) {
-        // normally this should not happen
-        return create_error();
-    }
-    lob::lob_reference_tag_type computed{};
-    if (in.provider() == lob::lob_data_provider::datastore) {
-        auto t = utils::assign_reference_tag(
-            ctx.transaction()->surrogate_id(),
-            in.object_id()
-        );
-        if(! t) {
-            // normally this should not happen
-            return create_error();
-        }
-        computed = t.value();
-    } else if(in.provider() == lob::lob_data_provider::relay_service_session) {
-        computed = session.compute_tag(in.object_id());
-    }
-    if (computed != tag.value()) {
-        VLOG_LP(log_debug) << "validating reference tag failed computed_tag:" << computed << " blob_ref:" << in;
-        return create_error();
-    }
-    VLOG_LP(log_debug) << "validating reference tag successful blob_ref:" << in;
-    return {};
-}
-
-template <typename T>
-static std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
-post_process_lob(any in, evaluator_context& ctx) {
-    // check if the returned blog/clob references belong to the current blob session
-    // and if it's on the blog session, register the data to limestone
-    // before the session is disposed (at the end of task).
-    assert_with_exception(ctx.blob_session() != nullptr, "fail");
-    auto s = ctx.blob_session()->get_or_create();
-    if (! s) {
-        // should not happen normally
-        ctx.add_error({error_kind::unknown, "missing blob session"});
-        return any{std::in_place_type<class error>, error_kind::unknown};
-    }
-    auto var = in.to<T>();
-    if (auto a = validate_reference_tag(var, *s, ctx); a.error()) {
-        return a;
-    }
-    if (var.provider() != lob::lob_data_provider::relay_service_session) {
-        // stored on datastore, return as it is
-        return in;
-    }
-    auto obj = s->find(var.object_id());
-    if (! obj) {
-        // should not happen normally
-        ctx.add_error({error_kind::unknown, "missing entry in the blob session"});
-        return any{std::in_place_type<class error>, error_kind::unknown};
-    }
-    // create `provided` lob reference and register to limestone
-    lob::lob_locator loc{obj->string(), true};
-    lob::lob_reference ref{loc};
-    lob::lob_id_type id{};
-    std::shared_ptr<jogasaki::error::error_info> error{};
-    if (auto st = datastore::assign_lob_id(ref, ctx.transaction(), id, error); st != status::ok) {
-        ctx.set_error_info(std::move(error));
-        return any{std::in_place_type<class error>, error_kind::error_info_provided};
-    }
-    return {std::in_place_type<T>, T{id, lob::lob_data_provider::datastore}};
-}
-
-static any post_process_if_lob(any in, evaluator_context& ctx) {
-    if(in.type_index() == any::index<runtime_t<meta::field_type_kind::blob>>) {
-        return post_process_lob<runtime_t<meta::field_type_kind::blob>>(in, ctx);
-    }
-    if(in.type_index() == any::index<runtime_t<meta::field_type_kind::clob>>) {
-        return post_process_lob<runtime_t<meta::field_type_kind::clob>>(in, ctx);
-    }
-    return in;
-}
-
-constexpr uint64_t BLOB_CLOB_PADDING = 0xFFFFFFFFFFFFFFFFULL;
-
-template <typename T>
-static std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, any>
-pre_process_lob(T var, evaluator_context& ctx) {
-    // assign lob reference tag before passing lob reference to functions
-    if (global::config_pool()->udf_pass_mock_tag()) {
-        var.reference_tag(BLOB_CLOB_PADDING);
-        return {std::in_place_type<T>, var};
-    }
-    auto tag = utils::assign_reference_tag(
-        ctx.transaction()->surrogate_id(),
-        var.object_id()
-    );
-    if (! tag.has_value()) {
-        ctx.add_error(
-            {error_kind::unknown,
-             string_builder{} << "unexpected error occurred during generating reference tag tx_id:"
-                              << ctx.transaction()->surrogate_id() << " object_id:" << var.object_id()
-                              << string_builder::to_string}
-        );
-        return any{std::in_place_type<class error>, error_kind::unknown};
-    }
-    var.reference_tag(tag);
-    return {std::in_place_type<T>, var};
-}
-
-static any pre_process_if_lob(any in, evaluator_context& ctx) {
-    if(in.type_index() == any::index<runtime_t<meta::field_type_kind::blob>>) {
-        auto var = in.to<runtime_t<meta::field_type_kind::blob>>();
-        return pre_process_lob<runtime_t<meta::field_type_kind::blob>>(var, ctx);
-    }
-    if(in.type_index() == any::index<runtime_t<meta::field_type_kind::clob>>) {
-        auto var = in.to<runtime_t<meta::field_type_kind::clob>>();
-        return pre_process_lob<runtime_t<meta::field_type_kind::clob>>(var, ctx);
-    }
-    return in;
-}
+// LOB processing functions moved to lob_processing.cpp
 
 any engine::operator()(takatori::scalar::function_call const& arg) {
     auto f = yugawara::binding::extract_if<yugawara::function::declaration>(arg.function());

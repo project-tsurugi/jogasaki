@@ -20,17 +20,25 @@
 
 #include <boost/assert.hpp>
 #include <glog/logging.h>
+#include <stdexcept>
+#include <string>
 
 #include <takatori/relation/apply.h>
 #include <takatori/type/data.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/util/downcast.h>
+#include <takatori/util/exception.h>
+#include <takatori/util/sequence_view.h>
+#include <yugawara/binding/extract.h>
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
+#include <jogasaki/executor/conv/parameter_apply.h>
+#include <jogasaki/executor/conv/require_conversion.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
+#include <jogasaki/executor/expr/lob_processing.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/error_abort.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
@@ -48,6 +56,7 @@
 
 namespace jogasaki::executor::process::impl::ops {
 
+using takatori::util::throw_exception;
 using takatori::util::unsafe_downcast;
 
 apply::apply(
@@ -137,13 +146,16 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         if (status == data::any_sequence_stream_status::error) {
             VLOG_LP(log_error) << "Error while reading from table-valued function stream";
             stream->close();
-            ctx.abort();
-            return {operation_status_kind::aborted};
+            return error_abort(ctx, status::err_unknown);
         }
 
         if (status == data::any_sequence_stream_status::ok) {
             // assign sequence values to output variables
-            assign_sequence_to_variables(ctx, sequence);
+            if (! assign_sequence_to_variables(ctx, sequence)) {
+                stream->close();
+                ctx.abort();
+                return {operation_status_kind::aborted};
+            }
             ctx.has_output_ = true;
 
             // call downstream
@@ -197,15 +209,23 @@ bool apply::evaluate_arguments(apply_context& ctx, std::vector<data::any>& args)
     for (auto& ev : argument_evaluators_) {
         auto result = ev(ctx.evaluator_context_, vars, ctx.varlen_resource());
         if (result.error()) {
-            VLOG_LP(log_error) << "Error evaluating apply operator argument";
+            handle_expression_error(ctx, result, ctx.evaluator_context_);
             return false;
         }
+
+        // Pre-process LOB references (assign reference tags)
+        result = expr::pre_process_if_lob(result, ctx.evaluator_context_);
+        if (result.error()) {
+            handle_expression_error(ctx, result, ctx.evaluator_context_);
+            return false;
+        }
+
         args.emplace_back(result);
     }
     return true;
 }
 
-void apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence const& sequence) {
+bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence const& sequence) {
     auto& vars = ctx.output_variables();
     auto ref = vars.store().ref();
     auto& cinfo = compiled_info();
@@ -216,7 +236,12 @@ void apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
 
         if (pos >= sequence.size()) {
             VLOG_LP(log_warning) << "Column position " << pos << " exceeds sequence size " << sequence.size();
-            continue;
+            throw_exception(
+                std::logic_error(
+                    "Column position " + std::to_string(pos) + " exceeds sequence size " +
+                    std::to_string(sequence.size())
+                )
+            );
         }
 
         auto const& value = sequence[pos];
@@ -226,51 +251,65 @@ void apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
         ref.set_null(info.nullity_offset(), is_null);
 
         if (! is_null) {
+            // Post-process LOB references (register session storage LOBs to datastore)
+            auto processed_value = expr::post_process_if_lob(value, ctx.evaluator_context_);
+            if (processed_value.error()) {
+                handle_expression_error(ctx, processed_value, ctx.evaluator_context_);
+                return false;
+            }
             using t = takatori::type::type_kind;
             switch (cinfo.type_of(var).kind()) {
                 case t::boolean:
                     ref.set_value<runtime_t<meta::field_type_kind::boolean>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::boolean>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::boolean>>());
                     break;
                 case t::int4:
                     ref.set_value<runtime_t<meta::field_type_kind::int4>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::int4>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::int4>>());
                     break;
                 case t::int8:
                     ref.set_value<runtime_t<meta::field_type_kind::int8>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::int8>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::int8>>());
                     break;
                 case t::float4:
                     ref.set_value<runtime_t<meta::field_type_kind::float4>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::float4>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::float4>>());
                     break;
                 case t::float8:
                     ref.set_value<runtime_t<meta::field_type_kind::float8>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::float8>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::float8>>());
                     break;
                 case t::decimal:
                     ref.set_value<runtime_t<meta::field_type_kind::decimal>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::decimal>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::decimal>>());
                     break;
                 case t::character:
                     ref.set_value<runtime_t<meta::field_type_kind::character>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::character>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::character>>());
                     break;
                 case t::octet:
                     ref.set_value<runtime_t<meta::field_type_kind::octet>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::octet>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::octet>>());
                     break;
                 case t::date:
                     ref.set_value<runtime_t<meta::field_type_kind::date>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::date>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::date>>());
                     break;
                 case t::time_of_day:
                     ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::time_of_day>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::time_of_day>>());
                     break;
                 case t::time_point:
                     ref.set_value<runtime_t<meta::field_type_kind::time_point>>(
-                        info.value_offset(), value.to<runtime_t<meta::field_type_kind::time_point>>());
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::time_point>>());
+                    break;
+                case t::clob:
+                    ref.set_value<runtime_t<meta::field_type_kind::clob>>(
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::clob>>());
+                    break;
+                case t::blob:
+                    ref.set_value<runtime_t<meta::field_type_kind::blob>>(
+                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::blob>>());
                     break;
                 default:
                     VLOG_LP(log_warning) << "Unsupported type in apply operator: " << cinfo.type_of(var).kind();
@@ -278,6 +317,7 @@ void apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
             }
         }
     }
+    return true;
 }
 
 void apply::assign_null_to_variables(apply_context& ctx) {

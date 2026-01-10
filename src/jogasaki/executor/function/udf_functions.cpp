@@ -59,6 +59,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/data/udf_any_sequence_stream.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
@@ -836,8 +837,35 @@ data::any build_udf_response(
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
-
-std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_lambda(
+/**
+ * @brief Create callable for scalar UDF (unary RPC).
+ *
+ * This function builds a callable which is passed to
+ * `scalar_function_info` as `scalar_function_type`:
+ *
+ * @code
+ * using scalar_function_type =
+ *   std::function<data::any(evaluator_context&, sequence_view<data::any>)>;
+ * @endcode
+ *
+ * ### Execution model (scalar / unary)
+ * - Build a UDF request record from evaluator arguments (`build_udf_request()`).
+ * - Invoke unary RPC:
+ *   `generic_client::call(context, function_index, request, response)`
+ * - Convert the response record into a single `data::any` (`build_udf_response()`).
+ *
+ * ### Contrast with server-streaming (table-valued function)
+ * - TVF callable returns `std::unique_ptr<data::any_sequence_stream>`,
+ *   not `data::any`.
+ * - TVF invokes server-streaming RPC
+ *   `call_server_streaming_async(...)` and returns a stream wrapper.
+ * - Row-by-row conversion to `any_sequence` happens inside the stream wrapper.
+ *
+ * @param client gRPC UDF client
+ * @param fn     function descriptor (function_index, input/output schema, etc.)
+ * @return scalar callable which returns `data::any`
+ */
+std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_scalar_lambda(
     std::shared_ptr<plugin::udf::generic_client> const& client,
     plugin::udf::function_descriptor const* fn
 ) {
@@ -898,13 +926,17 @@ std::shared_ptr<takatori::type::table> build_table_return_type(
     }
     return std::make_shared<t::table>(std::move(cols));
 }
-void register_server_stream_function(yugawara::function::configurable_provider& functions,
-    yugawara::function::declaration::definition_id_type& current_id,
-    plugin::udf::function_descriptor const* fn) {
 
+void register_server_stream_function(yugawara::function::configurable_provider& functions,
+    executor::function::table_valued_function_repository& tvf_repo,
+    yugawara::function::declaration::definition_id_type& current_id,
+    std::shared_ptr<plugin::udf::generic_client> const& client,
+    plugin::udf::function_descriptor const* fn) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
 
+    (void) tvf_repo;  // currently not used
+    (void) client;    // currently not used
     auto return_type         = build_table_return_type(fn);
     auto const& input_record = fn->input_record();
     auto const& type_map     = get_type_map();
@@ -949,22 +981,21 @@ void register_scalar_function(yugawara::function::configurable_provider& functio
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
     plugin::udf::function_descriptor const* fn) {
-    auto unary_func = make_udf_lambda(client, fn);
+    auto unary_func = make_udf_scalar_lambda(client, fn);
     register_udf_function_patterns(functions, scalar_repo, current_id, unary_func, fn);
 }
 void register_udf_function(yugawara::function::configurable_provider& functions,
-    scalar_function_repository& scalar_repo,
+    scalar_function_repository& sf_repo,
+    executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
     plugin::udf::function_descriptor const* fn) {
     switch (fn->function_kind()) {
         case plugin::udf::function_kind::unary: {
-            register_scalar_function(functions, scalar_repo, current_id, client, fn);
+            register_scalar_function(functions, sf_repo, current_id, client, fn);
             break;
         }
-        default:
-            register_server_stream_function(functions, current_id, fn);
-            break;
+        default: register_server_stream_function(functions, tvf_repo, current_id, client, fn); break;
     }
 }
 
@@ -980,7 +1011,8 @@ bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
 }
 void add_udf_functions(
     ::yugawara::function::configurable_provider& functions,
-    executor::function::scalar_function_repository& repo,
+    executor::function::scalar_function_repository& sf_repo,
+    executor::function::table_valued_function_repository& tvf_repo,
     const std::vector<
         std::tuple<std::shared_ptr<plugin::udf::plugin_api>, std::shared_ptr<plugin::udf::generic_client>>>& plugins
 ) {
@@ -999,7 +1031,7 @@ void add_udf_functions(
             }
             for(auto const* svc: pkg->services()) {
                 for(auto const* fn: svc->functions()) {
-                    register_udf_function(functions, repo, current_id, client, fn);
+                    register_udf_function(functions, sf_repo, tvf_repo,current_id, client, fn);
                 }
             }
         }

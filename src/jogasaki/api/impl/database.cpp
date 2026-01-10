@@ -438,8 +438,8 @@ bool database::init() {
     for (auto& plugin : loader_->get_plugins()) {
         plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));
     }
-    executor::function::add_udf_functions(
-        *regular_functions_, global::scalar_function_repository(), plugins_);
+    executor::function::add_udf_functions(*regular_functions_, global::scalar_function_repository(),
+        global::table_valued_function_repository(), plugins_);
     aggregate_functions_ = std::make_shared<yugawara::aggregate::configurable_provider>();
     executor::function::incremental::add_builtin_aggregate_functions(
         *aggregate_functions_,

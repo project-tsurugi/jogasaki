@@ -874,6 +874,47 @@ data::any build_udf_response(
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
+bool is_special_nested_record(std::string_view rn) {
+    return rn == DECIMAL_RECORD || rn == DATE_RECORD || rn == LOCALTIME_RECORD ||
+           rn == LOCALDATETIME_RECORD || rn == OFFSETDATETIME_RECORD || rn == BLOB_RECORD ||
+           rn == CLOB_RECORD;
+}
+void append_column_names(std::vector<table_valued_function_column>& out,
+    std::vector<plugin::udf::column_descriptor*> const& cols, std::string const& prefix = {}) {
+    for (auto* col : cols) {
+        if (!col) continue;
+        auto name = std::string{col->column_name()};
+
+        std::string full;
+        if (prefix.empty()) {
+            full = std::move(name);
+        } else {
+            full.reserve(prefix.size() + 1 + name.size());
+            full.append(prefix);
+            full.push_back('_');
+            full.append(name);
+        }
+
+        if (auto* nested = col->nested()) {
+            auto rn = nested->record_name();
+
+            if (is_special_nested_record(rn)) {
+                out.emplace_back(full);
+            } else {
+                append_column_names(out, nested->columns(), full);
+            }
+            continue;
+        }
+
+        out.emplace_back(full);
+    }
+}
+table_valued_function_info::columns_type build_tvf_columns(plugin::udf::function_descriptor const& fn) {
+    table_valued_function_info::columns_type cols;
+    cols.reserve(count_effective_columns(fn.output_record()));
+    append_column_names(cols, fn.output_record().columns());
+    return cols;
+}
 meta::field_type make_field_type(meta::field_type_kind k) {
     using mk = meta::field_type_kind;
 
@@ -910,11 +951,6 @@ meta::field_type_kind to_meta_kind_from_nested_record(std::string_view rn) {
     if (rn == CLOB_RECORD) return k::clob;
 
     return k::character;
-}
-bool is_special_nested_record(std::string_view rn) {
-    return rn == DECIMAL_RECORD || rn == DATE_RECORD || rn == LOCALTIME_RECORD ||
-           rn == LOCALDATETIME_RECORD || rn == OFFSETDATETIME_RECORD || rn == BLOB_RECORD ||
-           rn == CLOB_RECORD;
 }
 void append_column_types(
     std::vector<meta::field_type>& out, std::vector<plugin::udf::column_descriptor*> const& cols) {
@@ -1097,65 +1133,106 @@ bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
 
     return false;
 }
-std::shared_ptr<takatori::type::table> build_table_return_type(
-    plugin::udf::function_descriptor const* fn) {
+void append_table_cols(std::vector<takatori::type::table::column_type>& out,
+    std::vector<plugin::udf::column_descriptor*> const& cols, std::string const& prefix = {}) {
+    auto const& type_map = get_type_map();
+
+    for (auto* col : cols) {
+        if (!col) continue;
+
+        auto name = std::string{col->column_name()};
+
+        std::string full;
+        if (prefix.empty()) {
+            full = std::move(name);
+        } else {
+            full.reserve(prefix.size() + 1 + name.size());
+            full.append(prefix);
+            full.push_back('_');
+            full.append(name);
+        }
+
+        if (auto* nested = col->nested()) {
+            auto rn = nested->record_name();
+            if (is_special_nested_record(rn)) {
+                if (auto it = type_map.find(rn); it != type_map.end()) {
+                    out.emplace_back(full, it->second());
+                } else {
+                    out.emplace_back(full, map_type(col->type_kind()));
+                }
+            } else {
+                append_table_cols(out, nested->columns(), full);
+            }
+            continue;
+        }
+        out.emplace_back(full, map_type(col->type_kind()));
+    }
+}
+
+std::shared_ptr<takatori::type::table> build_table_return_type(plugin::udf::function_descriptor const* fn) {
     namespace t = takatori::type;
 
     std::vector<t::table::column_type> cols;
-    for (auto* col : fn->output_record().columns()) {
-        if (!col) continue;
-        cols.emplace_back(std::string{col->column_name()}, map_type(col->type_kind()));
-    }
+    cols.reserve(count_effective_columns(fn->output_record()));
+    append_table_cols(cols, fn->output_record().columns());
     return std::make_shared<t::table>(std::move(cols));
 }
 
-void register_server_stream_function(yugawara::function::configurable_provider& functions,
+void register_server_stream_function(
+    yugawara::function::configurable_provider& functions,
     executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
-    plugin::udf::function_descriptor const* fn) {
+    plugin::udf::function_descriptor const* fn
+) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
 
-    (void) tvf_repo;  // currently not used
     auto tvf_callable = make_udf_server_stream_lambda(client, fn);
-    (void) tvf_callable;  // currently not used
-    auto return_type         = build_table_return_type(fn);
+    auto return_type  = build_table_return_type(fn);
+
     auto const& input_record = fn->input_record();
     auto const& type_map     = get_type_map();
 
-    if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
-        if (auto param_type = it->second()) {
+    auto register_tvf =
+        [&](std::vector<std::shared_ptr<const takatori::type::data>> param_types) {
+            auto cols = build_tvf_columns(*fn);
+
+            ++current_id;
+
+            auto info = std::make_shared<table_valued_function_info>(
+                table_valued_function_kind::user_defined,
+                tvf_callable,
+                param_types.size(),
+                std::move(cols)
+            );
+            tvf_repo.add(static_cast<std::size_t>(current_id), info);
+
             functions.add(yugawara::function::declaration{
-                ++current_id,
-                fn_name,
-                return_type,
-                {param_type},
-                {yugawara::function::function_feature::table_valued_function},
-            });
-        }
-        return;
-    }
-    for (auto const& pattern : input_record.argument_patterns()) {
-        auto param_types = build_param_types(pattern, type_map);
-        if (!param_types.empty()) {
-            functions.add(yugawara::function::declaration{
-                ++current_id,
+                current_id,
                 fn_name,
                 return_type,
                 std::move(param_types),
                 {yugawara::function::function_feature::table_valued_function},
             });
+        };
+
+    if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
+        if (auto param_type = it->second()) {
+            register_tvf({param_type});
+        }
+        return;
+    }
+
+    for (auto const& pattern : input_record.argument_patterns()) {
+        auto param_types = build_param_types(pattern, type_map);
+        if (!param_types.empty()) {
+            register_tvf(std::move(param_types));
         }
     }
+
     if (count_effective_columns(input_record) == 0) {
-        functions.add(yugawara::function::declaration{
-            ++current_id,
-            fn_name,
-            return_type,
-            {},
-            {yugawara::function::function_feature::table_valued_function},
-        });
+        register_tvf({});
     }
 }
 

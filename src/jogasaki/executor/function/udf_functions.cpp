@@ -59,7 +59,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
-#include <jogasaki/data/udf_any_sequence_stream.h>
+//#include <jogasaki/data/udf_any_sequence_stream.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>

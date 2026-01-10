@@ -901,7 +901,6 @@ std::shared_ptr<takatori::type::table> build_table_return_type(
 void register_server_stream_function(yugawara::function::configurable_provider& functions,
     yugawara::function::declaration::definition_id_type& current_id,
     plugin::udf::function_descriptor const* fn) {
-    namespace ttype = ::takatori::type;
 
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);

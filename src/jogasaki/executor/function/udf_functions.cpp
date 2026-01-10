@@ -59,7 +59,7 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
-//#include <jogasaki/data/udf_any_sequence_stream.h>
+#include <jogasaki/data/udf_any_sequence_stream.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
@@ -167,6 +167,43 @@ semantic_type_map() {
         {sem::octet, [] { return std::make_shared<t::octet>(t::varying); }},
     };
     return map;
+}
+
+const std::unordered_map<udf_semantic_type, meta::field_type_kind>& semantic_meta_kind_map() {
+    using sem = udf_semantic_type;
+    using k   = meta::field_type_kind;
+
+    static const std::unordered_map<sem, k> map{
+        {sem::boolean, k::boolean},
+        {sem::int4, k::int4},
+        {sem::int8, k::int8},
+        {sem::float4, k::float4},
+        {sem::float8, k::float8},
+        {sem::character, k::character},
+        {sem::octet, k::octet},
+    };
+    return map;
+}
+meta::field_type_kind to_meta_kind(plugin::udf::type_kind k) {
+    using mk = meta::field_type_kind;
+
+    auto const& sem_map = udf_semantic_map();
+    auto sit = sem_map.find(k);
+    if (sit == sem_map.end()) {
+        return mk::character; // fallback
+    }
+
+    auto const& meta_map = semantic_meta_kind_map();
+    auto mit = meta_map.find(sit->second);
+    if (mit == meta_map.end()) {
+        return mk::character; // fallback
+    }
+
+    return mit->second;
+}
+
+meta::field_type_kind to_meta_kind(plugin::udf::column_descriptor const& col) {
+    return to_meta_kind(col.type_kind());
 }
 
 const std::unordered_map<plugin::udf::type_kind, std::size_t>& type_index_map() {
@@ -837,6 +874,151 @@ data::any build_udf_response(
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
+meta::field_type make_field_type(meta::field_type_kind k) {
+    using mk = meta::field_type_kind;
+
+    switch (k) {
+        case mk::boolean: return meta::field_type(meta::field_enum_tag<mk::boolean>);
+        case mk::int4: return meta::field_type(meta::field_enum_tag<mk::int4>);
+        case mk::int8: return meta::field_type(meta::field_enum_tag<mk::int8>);
+        case mk::float4: return meta::field_type(meta::field_enum_tag<mk::float4>);
+        case mk::float8: return meta::field_type(meta::field_enum_tag<mk::float8>);
+        case mk::date: return meta::field_type(meta::field_enum_tag<mk::date>);
+        case mk::blob: return meta::field_type(meta::field_enum_tag<mk::blob>);
+        case mk::clob: return meta::field_type(meta::field_enum_tag<mk::clob>);
+
+        case mk::character:
+            return meta::field_type(std::make_shared<meta::character_field_option>());
+        case mk::octet: return meta::field_type(std::make_shared<meta::octet_field_option>());
+        case mk::decimal: return meta::field_type(std::make_shared<meta::decimal_field_option>());
+        case mk::time_of_day:
+            return meta::field_type(std::make_shared<meta::time_of_day_field_option>());
+        case mk::time_point:
+            return meta::field_type(std::make_shared<meta::time_point_field_option>());
+        default: return meta::field_type(std::make_shared<meta::character_field_option>());
+    }
+}
+meta::field_type_kind to_meta_kind_from_nested_record(std::string_view rn) {
+    using k = meta::field_type_kind;
+
+    if (rn == DECIMAL_RECORD) return k::decimal;
+    if (rn == DATE_RECORD) return k::date;
+    if (rn == LOCALTIME_RECORD) return k::time_of_day;
+    if (rn == LOCALDATETIME_RECORD) return k::time_point;
+    if (rn == OFFSETDATETIME_RECORD) return k::time_point;
+    if (rn == BLOB_RECORD) return k::blob;
+    if (rn == CLOB_RECORD) return k::clob;
+
+    return k::character;
+}
+bool is_special_nested_record(std::string_view rn) {
+    return rn == DECIMAL_RECORD || rn == DATE_RECORD || rn == LOCALTIME_RECORD ||
+           rn == LOCALDATETIME_RECORD || rn == OFFSETDATETIME_RECORD || rn == BLOB_RECORD ||
+           rn == CLOB_RECORD;
+}
+void append_column_types(
+    std::vector<meta::field_type>& out, std::vector<plugin::udf::column_descriptor*> const& cols) {
+    for (auto* col : cols) {
+        if (!col) continue;
+
+        if (auto* nested = col->nested()) {
+            auto rn = nested->record_name();
+
+            if (is_special_nested_record(rn)) {
+                out.emplace_back(make_field_type(to_meta_kind_from_nested_record(rn)));
+            } else {
+                append_column_types(out, nested->columns());
+            }
+            continue;
+        }
+
+        out.emplace_back(make_field_type(to_meta_kind(*col)));
+    }
+}
+std::vector<meta::field_type> build_output_column_types(plugin::udf::function_descriptor const& fn) {
+    std::vector<meta::field_type> out;
+    out.reserve(count_effective_columns(fn.output_record()));
+    append_column_types(out, fn.output_record().columns());
+    return out;
+}
+/**
+ * @brief Create callable for server-streaming UDF (table-valued function).
+ *
+ * This function builds a callable used as
+ * `table_valued_function_type` for `table_valued_function_info`:
+ *
+ * @code
+ * using table_valued_function_type =
+ *   std::function<std::unique_ptr<data::any_sequence_stream>(
+ *     evaluator_context&,
+ *     sequence_view<data::any>)>;
+ * @endcode
+ *
+ * ### Execution model (server streaming / TVF)
+ * - Build a UDF request record from evaluator arguments (`build_udf_request()`).
+ * - Create `grpc::ClientContext` and apply blob-related gRPC metadata
+ *   using `blob_grpc_metadata::apply()`.
+ * - Invoke server-streaming RPC via
+ *   `generic_client::call_server_streaming_async(...)`.
+ * - Wrap the returned `generic_record_stream` with
+ *   `data::udf_any_sequence_stream` and return it.
+ *
+ * ### Contrast with scalar UDF
+ * - Scalar UDF invokes unary RPC (`call`) and immediately builds `data::any`.
+ * - Server-streaming UDF returns an `any_sequence_stream`;
+ *   row materialization is deferred and performed incrementally by the stream.
+ *
+ * ### Error handling
+ * - If request building fails or streaming cannot be started,
+ *   this callable pushes an error into `ctx` and returns `nullptr`.
+ * - Errors occurring during streaming are expected to be handled
+ *   inside the stream implementation.
+ *
+ * @param client gRPC UDF client
+ * @param fn     function descriptor
+ * @return callable which produces `any_sequence_stream`
+ */
+std::function<std::unique_ptr<data::any_sequence_stream>(
+    evaluator_context&, sequence_view<data::any>)>
+make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const& client,
+    plugin::udf::function_descriptor const* fn) {
+    return [client, fn](evaluator_context& ctx,
+               sequence_view<data::any> args) -> std::unique_ptr<data::any_sequence_stream> {
+        plugin::udf::generic_record_impl request;
+        if (!build_udf_request(request, ctx, fn, args)) {
+            // build_udf_request already reports detailed error to ctx
+            return {};
+        }
+
+        // 2. Prepare gRPC context and metadata
+        grpc::ClientContext context;
+
+        auto* bs = ctx.blob_session();
+        assert_with_exception(bs != nullptr, bs, bs);
+        auto session_id = bs->get_or_create()->session_id();
+
+        blob_grpc_metadata metadata{session_id,
+            std::string(global::config_pool()->grpc_server_endpoint()),
+            global::config_pool()->grpc_server_secure(), "stream", 1024ULL * 1024ULL};
+
+        if (!metadata.apply(context)) {
+            ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
+            return {};
+        }
+
+        auto udf_stream =
+            client->call_server_streaming_async(context, {0, fn->function_index()}, request);
+
+        if (!udf_stream) {
+            ctx.add_error({error_kind::unknown, "Failed to start UDF server-streaming RPC"});
+            return {};
+        }
+        auto column_types = build_output_column_types(*fn);
+
+        return std::make_unique<data::udf_any_sequence_stream>(
+            std::move(udf_stream), std::move(column_types));
+    };
+}
 /**
  * @brief Create callable for scalar UDF (unary RPC).
  *
@@ -936,7 +1118,8 @@ void register_server_stream_function(yugawara::function::configurable_provider& 
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
 
     (void) tvf_repo;  // currently not used
-    (void) client;    // currently not used
+    auto tvf_callable = make_udf_server_stream_lambda(client, fn);
+    (void) tvf_callable;  // currently not used
     auto return_type         = build_table_return_type(fn);
     auto const& input_record = fn->input_record();
     auto const& type_map     = get_type_map();

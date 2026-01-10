@@ -44,6 +44,7 @@
 #include <takatori/type/primitive.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
+#include <takatori/type/table.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/type/varying.h>
 #include <takatori/util/sequence_view.h>
@@ -103,25 +104,85 @@ constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime
 constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
 constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
 
+const std::unordered_map<plugin::udf::type_kind, udf_semantic_type>& udf_semantic_map() {
+    using K = plugin::udf::type_kind;
+    using sem = udf_semantic_type;
+    static const std::unordered_map<K, udf_semantic_type> map {
+        // boolean
+        {K::boolean, sem::boolean},
+        // int4 family
+        {K::int4,    sem::int4},
+        {K::uint4,   sem::int4},
+        {K::sint4,   sem::int4},
+        {K::fixed4,  sem::int4},
+        {K::sfixed4, sem::int4},
+        {K::grpc_enum, sem::int4},
+        // int8 family
+        {K::int8,    sem::int8},
+        {K::uint8,   sem::int8},
+        {K::sint8,   sem::int8},
+        {K::fixed8,  sem::int8},
+        {K::sfixed8, sem::int8},
+        // float
+        {K::float4,  sem::float4},
+        {K::float8,  sem::float8},
+        // text-like
+        {K::string,  sem::character},
+        {K::group,   sem::character},
+        {K::message, sem::character},
+        // binary
+        {K::bytes,   sem::octet},
+    };
+    return map;
+}
+const std::unordered_map<udf_semantic_type, std::size_t>& semantic_index_map() {
+    using sem = udf_semantic_type;
+    static const std::unordered_map<udf_semantic_type, std::size_t> map {
+        {sem::boolean,   data::any::index<runtime_t<kind::boolean>>},
+        {sem::int4,      data::any::index<runtime_t<kind::int4>>},
+        {sem::int8,      data::any::index<runtime_t<kind::int8>>},
+        {sem::float4,    data::any::index<runtime_t<kind::float4>>},
+        {sem::float8,    data::any::index<runtime_t<kind::float8>>},
+        {sem::character, data::any::index<accessor::text>},
+        {sem::octet,     data::any::index<accessor::binary>},
+    };
+    return map;
+}
+
+const std::unordered_map<udf_semantic_type,
+    std::function<std::shared_ptr<takatori::type::data const>()>>&
+semantic_type_map() {
+
+    namespace t = takatori::type;
+    using sem   = udf_semantic_type;
+
+    static const std::unordered_map<sem, std::function<std::shared_ptr<t::data const>()>> map{
+        {sem::boolean, [] { return std::make_shared<t::simple_type<t::type_kind::boolean>>(); }},
+        {sem::int4, [] { return std::make_shared<t::simple_type<t::type_kind::int4>>(); }},
+        {sem::int8, [] { return std::make_shared<t::simple_type<t::type_kind::int8>>(); }},
+        {sem::float4, [] { return std::make_shared<t::simple_type<t::type_kind::float4>>(); }},
+        {sem::float8, [] { return std::make_shared<t::simple_type<t::type_kind::float8>>(); }},
+        {sem::character, [] { return std::make_shared<t::character>(t::varying); }},
+        {sem::octet, [] { return std::make_shared<t::octet>(t::varying); }},
+    };
+    return map;
+}
+
 const std::unordered_map<plugin::udf::type_kind, std::size_t>& type_index_map() {
     using K = plugin::udf::type_kind;
-    static const std::unordered_map<K, std::size_t> map = {
-        {K::float8, data::any::index<runtime_t<kind::float8>>},
-        {K::float4, data::any::index<runtime_t<kind::float4>>},
-        {K::int8, data::any::index<runtime_t<kind::int8>>},
-        {K::sint8, data::any::index<runtime_t<kind::int8>>},
-        {K::sfixed8, data::any::index<runtime_t<kind::int8>>},
-        {K::uint8, data::any::index<runtime_t<kind::int8>>},
-        {K::fixed8, data::any::index<runtime_t<kind::int8>>},
-        {K::int4, data::any::index<runtime_t<kind::int4>>},
-        {K::sint4, data::any::index<runtime_t<kind::int4>>},
-        {K::sfixed4, data::any::index<runtime_t<kind::int4>>},
-        {K::uint4, data::any::index<runtime_t<kind::int4>>},
-        {K::fixed4, data::any::index<runtime_t<kind::int4>>},
-        {K::boolean, data::any::index<runtime_t<kind::boolean>>},
-        {K::group, data::any::index<accessor::text>},
-        {K::bytes, data::any::index<accessor::binary>},
-    };
+
+    static const std::unordered_map<K, std::size_t> map = [] {
+        std::unordered_map<K, std::size_t> m;
+
+        auto const& sem_map = udf_semantic_map();
+        auto const& idx_map = semantic_index_map();
+
+        for (auto const& [k, sem] : sem_map) {
+            if (auto it = idx_map.find(sem); it != idx_map.end()) { m.emplace(k, it->second); }
+        }
+        return m;
+    }();
+
     return map;
 }
 
@@ -168,29 +229,21 @@ std::string int128_to_bytes(__int128 coeff) {
 }
 
 std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind kind) {
-    namespace t = takatori::type;
-    using K = plugin::udf::type_kind;
-    switch(kind) {
-        case K::float8: return std::make_shared<t::simple_type<t::type_kind::float8>>();
-        case K::float4: return std::make_shared<t::simple_type<t::type_kind::float4>>();
-        case K::int8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::uint8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::int4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::fixed8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::fixed4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::boolean: return std::make_shared<t::simple_type<t::type_kind::boolean>>();
-        case K::string: return std::make_shared<t::character>(t::varying);
-        case K::group: return std::make_shared<t::character>(t::varying);
-        case K::message: return std::make_shared<t::character>(t::varying);
-        case K::bytes: return std::make_shared<t::octet>(t::varying);
-        case K::uint4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::grpc_enum: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::sfixed4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::sfixed8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        case K::sint4: return std::make_shared<t::simple_type<t::type_kind::int4>>();
-        case K::sint8: return std::make_shared<t::simple_type<t::type_kind::int8>>();
-        default: return std::make_shared<t::character>(t::varying);
+
+    auto const& sem_map  = udf_semantic_map();
+    auto const& type_map = semantic_type_map();
+
+    auto sit = sem_map.find(kind);
+    if (sit == sem_map.end()) {
+        return std::make_shared<takatori::type::character>(takatori::type::varying);
     }
+
+    auto tit = type_map.find(sit->second);
+    if (tit == type_map.end()) {
+        return std::make_shared<takatori::type::character>(takatori::type::varying);
+    }
+
+    return tit->second();
 }
 
 void register_function(
@@ -208,7 +261,14 @@ void register_function(
     repo.add(current_id, info);
     functions.add(yugawara::function::declaration(current_id, fn_name, return_type, param_types));
 }
-
+bool is_signed_int4(plugin::udf::type_kind k) noexcept {
+    using K = plugin::udf::type_kind;
+    return k == K::int4 || k == K::sfixed4 || k == K::sint4;
+}
+bool is_signed_int8(plugin::udf::type_kind k) noexcept {
+    using K = plugin::udf::type_kind;
+    return k == K::int8 || k == K::sfixed8 || k == K::sint8;
+}
 void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity)
     plugin::udf::generic_record_impl& request,
     sequence_view<data::any> args,
@@ -224,8 +284,7 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
             }
             case data::any::index<runtime_t<kind::int4>>: {
                 auto result = src.to<runtime_t<kind::int4>>();
-                if(type == plugin::udf::type_kind::int4 || type == plugin::udf::type_kind::sfixed4 ||
-                   type == plugin::udf::type_kind::sint4) {
+                if (is_signed_int4(type)) {
                     request.add_int4(result);
                 } else {
                     request.add_uint4(result);
@@ -234,8 +293,7 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
             }
             case data::any::index<runtime_t<kind::int8>>: {
                 auto result = src.to<runtime_t<kind::int8>>();
-                if(type == plugin::udf::type_kind::int8 || type == plugin::udf::type_kind::sfixed8 ||
-                   type == plugin::udf::type_kind::sint8) {
+                if (is_signed_int8(type)) {
                     request.add_int8(result);
                 } else {
                     request.add_uint8(result);
@@ -829,6 +887,63 @@ bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
 
     return false;
 }
+std::shared_ptr<takatori::type::table> build_table_return_type(
+    plugin::udf::function_descriptor const* fn) {
+    namespace t = takatori::type;
+
+    std::vector<t::table::column_type> cols;
+    for (auto* col : fn->output_record().columns()) {
+        if (!col) continue;
+        cols.emplace_back(std::string{col->column_name()}, map_type(col->type_kind()));
+    }
+    return std::make_shared<t::table>(std::move(cols));
+}
+void register_server_stream_function(yugawara::function::configurable_provider& functions,
+    yugawara::function::declaration::definition_id_type& current_id,
+    plugin::udf::function_descriptor const* fn) {
+
+    std::string fn_name(fn->function_name());
+    std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
+
+    auto return_type         = build_table_return_type(fn);
+    auto const& input_record = fn->input_record();
+    auto const& type_map     = get_type_map();
+
+    if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
+        if (auto param_type = it->second()) {
+            functions.add(yugawara::function::declaration{
+                ++current_id,
+                fn_name,
+                return_type,
+                {param_type},
+                {yugawara::function::function_feature::table_valued_function},
+            });
+        }
+        return;
+    }
+    for (auto const& pattern : input_record.argument_patterns()) {
+        auto param_types = build_param_types(pattern, type_map);
+        if (!param_types.empty()) {
+            functions.add(yugawara::function::declaration{
+                ++current_id,
+                fn_name,
+                return_type,
+                std::move(param_types),
+                {yugawara::function::function_feature::table_valued_function},
+            });
+        }
+    }
+    if (count_effective_columns(input_record) == 0) {
+        functions.add(yugawara::function::declaration{
+            ++current_id,
+            fn_name,
+            return_type,
+            {},
+            {yugawara::function::function_feature::table_valued_function},
+        });
+    }
+}
+
 void register_scalar_function(yugawara::function::configurable_provider& functions,
     scalar_function_repository& scalar_repo,
     yugawara::function::declaration::definition_id_type& current_id,
@@ -848,7 +963,7 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
             break;
         }
         default:
-            // currently only unary functions are supported
+            register_server_stream_function(functions, current_id, fn);
             break;
     }
 }

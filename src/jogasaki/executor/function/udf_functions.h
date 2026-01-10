@@ -68,4 +68,14 @@ private:
     std::string transport_{"stream"};
     const std::uint64_t chunk_size_{1048576};  // 1MB
 };
+enum class udf_semantic_type {
+    boolean,
+    int4,
+    int8,
+    float4,
+    float8,
+    character,
+    octet,
+    unknown,
+};
 }  // namespace jogasaki::executor::function

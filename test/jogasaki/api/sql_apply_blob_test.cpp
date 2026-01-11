@@ -55,6 +55,7 @@
 #include <jogasaki/utils/create_tx.h>
 
 #include "api_test_base.h"
+#include "lob_test_helper.h"
 
 namespace jogasaki::testing {
 
@@ -68,46 +69,6 @@ using namespace jogasaki::executor::function;
 namespace t = takatori::type;
 
 using kind = meta::field_type_kind;
-
-template <class T>
-std::string download_lob(evaluator_context& ectx, data::any in, data_relay_client& client, std::optional<std::uint64_t> reference_tag = std::nullopt) {
-    auto const& ref = in.to<T>();
-    std::size_t blob_id = ref.object_id();
-    auto provider = ref.provider();
-
-    auto s = ectx.blob_session()->get_or_create();
-    if (! s) {
-        takatori::util::throw_exception(std::runtime_error(""));
-    }
-    std::uint64_t session_id = s->session_id();
-
-    // Determine storage_id based on the data provider
-    // SESSION_STORAGE_ID = 0, LIMESTONE_BLOB_STORE = 1
-    std::uint64_t storage_id = (provider == lob::lob_data_provider::datastore) ? 1 : 0;
-
-    auto tag = reference_tag ? reference_tag.value() : s->compute_tag(blob_id);
-    return client.get_blob(session_id, storage_id, blob_id, tag);
-}
-
-template <class T>
-data::any upload_lob(evaluator_context& ectx, std::string const& in, data_relay_client& client) {
-    auto s = ectx.blob_session()->get_or_create();
-    if (! s) {
-        takatori::util::throw_exception(std::runtime_error(""));
-    }
-    std::uint64_t session_id = s->session_id();
-
-    auto [blob_id, storage_id, tag] = client.put_blob(session_id, in);
-    if (blob_id == 0) {
-        takatori::util::throw_exception(
-            std::runtime_error("put_blob() failed session_id:" + std::to_string(session_id))
-        );
-    }
-
-    // The gRPC Put returns storage_id=0 (SESSION_STORAGE_ID)
-    // but we need the blob to be accessible from the session
-    return data::any{std::in_place_type<T>, T{blob_id, lob::lob_data_provider::relay_service_session}.reference_tag(tag)};
-}
 
 /**
  * @brief test for APPLY operator with BLOB/CLOB

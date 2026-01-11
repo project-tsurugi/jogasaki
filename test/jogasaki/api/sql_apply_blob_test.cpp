@@ -86,9 +86,11 @@ public:
     void SetUp() override {
         temporary_.prepare();
 
+        grpc_port_ = 52345 + (std::hash<std::thread::id>{}(std::this_thread::get_id()) % 1000);
         auto conf = test_utils::create_configuration(
             path() + "/log_location",
-            path() + "/session_store"
+            path() + "/session_store",
+            grpc_port_
         );
         framework::boot_mode mode = framework::boot_mode::database_server;
         server_ = std::make_unique<framework::server>(mode, conf);
@@ -119,6 +121,7 @@ public:
         return temporary_.path();
     }
 
+    std::size_t grpc_port_{};
     std::unique_ptr<framework::server> server_{};
     std::shared_ptr<yugawara::function::declaration> decl_{}; // needed here to remove even if test fails
 };
@@ -129,7 +132,7 @@ TEST_F(sql_apply_blob_test, apply_with_clob) {
     // The function returns 3 rows, each with the input appended with "1", "2", "3"
 
     auto id = 13000UL;  // any value to avoid conflict
-    auto client = std::make_shared<data_relay_client>("localhost:52345");
+    auto client = std::make_shared<data_relay_client>("localhost:" + std::to_string(grpc_port_));
 
     // Register function declaration for SQL compilation
     decl_ = global::regular_function_provider()->add(

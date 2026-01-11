@@ -30,7 +30,8 @@ namespace jogasaki::test_utils {
  */
 std::shared_ptr<tateyama::api::configuration::whole> create_configuration(
     std::string const& log_location,
-    std::string const& session_store
+    std::string const& session_store,
+    std::optional<std::size_t> grpc_port = 52345
 );
 
 }  // namespace jogasaki::test_utils

@@ -105,9 +105,11 @@ public:
     void SetUp() override {
         temporary_.prepare();
 
+        grpc_port_ = 52345 + (std::hash<std::thread::id>{}(std::this_thread::get_id()) % 1000);
         auto conf = test_utils::create_configuration(
             path() + "/log_location",
-            path() + "/session_store"
+            path() + "/session_store",
+            grpc_port_
         );
         framework::boot_mode mode = framework::boot_mode::database_server;
         server_ = std::make_unique<framework::server>(mode, conf);
@@ -138,6 +140,7 @@ public:
         return temporary_.path();
     }
 
+    std::size_t grpc_port_{};
     std::unique_ptr<framework::server> server_{};
     std::shared_ptr<yugawara::function::declaration> decl_{}; // needed here to remove even if test fails
 };
@@ -146,7 +149,8 @@ TEST_F(sql_lob_function_invocation_test, modify_input) {
     // function duplicates and concatenates input clob
     auto called = std::make_shared<bool>(false);
     auto id = 1000UL;  // any value to avoid conflict
-    auto client = std::make_shared<data_relay_client>("localhost:52345");
+
+    auto client = std::make_shared<data_relay_client>("localhost:" + std::to_string(grpc_port_));
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(
@@ -205,7 +209,7 @@ TEST_F(sql_lob_function_invocation_test, identity) {
     // verify post processing for lob return value does not affect if the return value is not stored on session
     bool called = false;
     auto id = 1000UL;  // any value to avoid conflict
-    data_relay_client client{"localhost:52345"};
+    data_relay_client client{"localhost:" + std::to_string(grpc_port_)};
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(
@@ -260,7 +264,7 @@ TEST_F(sql_lob_function_invocation_test, identity_resolved) {
     // similar to identity testcase, but use resolved blob reference
     bool called = false;
     auto id = 1000UL;  // any value to avoid conflict
-    data_relay_client client{"localhost:52345"};
+    data_relay_client client{"localhost:" + std::to_string(grpc_port_)};
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(
@@ -318,7 +322,7 @@ bool contains(std::string_view whole, std::string_view part) {
 TEST_F(sql_lob_function_invocation_test, variety_for_lob_function_usage) {
     // verify blob_session is provided correctly to evaluator_context where blob function can be called
     auto id = 1000UL;  // any value to avoid conflict
-    auto client = std::make_shared<data_relay_client>("localhost:52345");
+    auto client = std::make_shared<data_relay_client>("localhost:" + std::to_string(grpc_port_));
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(
@@ -424,7 +428,7 @@ TEST_F(sql_lob_function_invocation_test, invalid_reference_tag_download) {
     // verify the expression evaluation happens and the tx aborts
     auto called = std::make_shared<bool>(false);
     auto id = 1000UL;  // any value to avoid conflict
-    auto client = std::make_shared<data_relay_client>("localhost:52345");
+    auto client = std::make_shared<data_relay_client>("localhost:" + std::to_string(grpc_port_));
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(
@@ -465,7 +469,7 @@ TEST_F(sql_lob_function_invocation_test, invalid_reference_tag_upload) {
     // verify the expression evaluation happens and the tx aborts
     auto called = std::make_shared<bool>(false);
     auto id = 1000UL;  // any value to avoid conflict
-    auto client = std::make_shared<data_relay_client>("localhost:52345");
+    auto client = std::make_shared<data_relay_client>("localhost:" + std::to_string(grpc_port_));
 
     // dup function duplicates the input CLOB value
     global::scalar_function_repository().add(

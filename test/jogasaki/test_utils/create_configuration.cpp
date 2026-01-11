@@ -83,7 +83,8 @@ static constexpr std::string_view default_configuration {  // NOLINT
 
 std::shared_ptr<tateyama::api::configuration::whole> create_configuration(
     std::string const& log_location,
-    std::string const& session_store
+    std::string const& session_store,
+    std::optional<std::size_t> grpc_port
 ) {
     std::stringstream ss{};
     ss << default_configuration;
@@ -100,6 +101,12 @@ std::shared_ptr<tateyama::api::configuration::whole> create_configuration(
     {
         boost::filesystem::create_directory(session_store);
         cfg->get_section("blob_relay")->set("session_store", session_store);
+    }
+    if (grpc_port) {
+        std::string laddr = "0.0.0.0:" + std::to_string(*grpc_port);
+        cfg->get_section("grpc_server")->set("listen_address", laddr);
+        std::string endpoint = "dns:///localhost:" + std::to_string(*grpc_port);;
+        cfg->get_section("grpc_server")->set("endpoint=dns:///localhost:52345", endpoint);
     }
     return cfg;
 }

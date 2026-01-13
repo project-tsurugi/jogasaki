@@ -148,7 +148,10 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
                 emplace_nullable_with.template operator()<accessor::text>(
                     cursor->fetch_string(), [](auto const& s) { return accessor::text{s}; });
                 break;
-
+            case kind::octet:
+                emplace_nullable_with.template operator()<accessor::binary>(
+                    cursor->fetch_string(), [](auto const& s) { return accessor::binary{s}; });
+                break;
             default:
                 fail_with_exception_msg(
                     "unsupported meta::field_type_kind in convert_record_to_sequence()");

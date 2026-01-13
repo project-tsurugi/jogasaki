@@ -60,6 +60,7 @@
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/udf_any_sequence_stream.h>
+#include <jogasaki/data/udf_wire_codec.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
@@ -630,33 +631,8 @@ bool build_udf_request(
 }
 
 data::any build_decimal_data(std::string const& unscaled, std::int32_t exponent) {
-    bool negative = false;
-    unsigned __int128 ucoeff = 0;
-
-    bool is_negative = (static_cast<unsigned char>(unscaled[0]) & 0x80U) != 0U;
-    if(! unscaled.empty() && is_negative) {
-        negative = true;
-        std::vector<uint8_t> bytes;
-        bytes.reserve(unscaled.size());
-        for(char c: unscaled) { bytes.emplace_back(static_cast<uint8_t>(c)); }
-        for(auto& b: bytes) b = ~b;
-        for(int i = static_cast<int>(bytes.size()) - 1; i >= 0; --i) {
-            if(++bytes[i] != 0) break;
-        }
-        // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        for(uint8_t b: bytes) ucoeff = (ucoeff << 8) | b;
-    } else {
-        // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        for(uint8_t b: unscaled) ucoeff = (ucoeff << 8) | b;
-    }
-    // NOLINTNEXTLINE(hicpp-signed-bitwise)
-    auto coeff_high = static_cast<std::uint64_t>((ucoeff >> 64) & 0xFFFFFFFFFFFFFFFFULL);
-    // NOLINTNEXTLINE(hicpp-signed-bitwise)
-    auto coeff_low = static_cast<std::uint64_t>(ucoeff & 0xFFFFFFFFFFFFFFFFULL);
-    std::int64_t sign = negative ? -1 : (ucoeff == 0 ? 0 : +1);
-
-    takatori::decimal::triple triple_value(sign, coeff_high, coeff_low, exponent);
-    return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple_value};
+    auto triple = jogasaki::data::decode_decimal_triple(unscaled, exponent);
+    return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple};
 }
 
 template<typename RuntimeT, typename FetchFn>
@@ -778,27 +754,27 @@ data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
-    if(auto result = cursor.fetch_int4()) {
-        takatori::datetime::date tp(static_cast<takatori::datetime::date::difference_type>(*result));
-        return data::any{std::in_place_type<runtime_t<kind::date>>, tp};
+    if (auto days = cursor.fetch_int4()) {
+        return data::any{std::in_place_type<runtime_t<kind::date>>,
+            jogasaki::data::decode_date_from_wire(*days)};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
-    if(auto result = cursor.fetch_int8()) {
-        takatori::datetime::time_of_day tp(static_cast<takatori::datetime::time_of_day::time_unit>(*result));
-        return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp};
+    if (auto nanos = cursor.fetch_int8()) {
+        return data::any{
+            std::in_place_type<runtime_t<kind::time_of_day>>,
+            jogasaki::data::decode_time_of_day_from_wire(*nanos)
+        };
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
-    auto offset_seconds = cursor.fetch_int8();
+    auto offset_seconds  = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
-    if(offset_seconds && nano_adjustment) {
-        takatori::datetime::time_point value{
-            takatori::datetime::time_point::offset_type(*offset_seconds),
-            std::chrono::nanoseconds(*nano_adjustment)};
-        return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
+    if (offset_seconds && nano_adjustment) {
+        return data::any{std::in_place_type<runtime_t<kind::time_point>>,
+            jogasaki::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }

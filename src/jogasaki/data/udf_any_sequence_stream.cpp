@@ -152,10 +152,21 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
                 emplace_nullable_with.template operator()<accessor::binary>(
                     cursor->fetch_string(), [](auto const& s) { return accessor::binary{s}; });
                 break;
-            default:
-                fail_with_exception_msg(
-                    "unsupported meta::field_type_kind in convert_record_to_sequence()");
+            case kind::decimal:
+            case kind::date:
+            case kind::time_of_day:
+            case kind::time_point:
+            case kind::time_interval:
+            case kind::blob:
+            case kind::clob:
+                values.emplace_back();
                 break;
+            default: {
+                std::ostringstream ss;
+                ss << "unsupported meta::field_type in convert_record_to_sequence(): kind="
+                   << meta::to_string_view(col_type.kind());
+                fail_with_exception_msg(ss.str());
+            }
         }
     }
 

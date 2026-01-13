@@ -185,19 +185,14 @@ const std::unordered_map<udf_semantic_type, meta::field_type_kind>& semantic_met
     return map;
 }
 meta::field_type_kind to_meta_kind(plugin::udf::type_kind k) {
-    using mk = meta::field_type_kind;
 
     auto const& sem_map = udf_semantic_map();
     auto sit = sem_map.find(k);
-    if (sit == sem_map.end()) {
-        return mk::character; // fallback
-    }
+    assert_with_exception(sit != sem_map.end(), k);
 
     auto const& meta_map = semantic_meta_kind_map();
     auto mit = meta_map.find(sit->second);
-    if (mit == meta_map.end()) {
-        return mk::character; // fallback
-    }
+    assert_with_exception(mit != meta_map.end(), k);
 
     return mit->second;
 }
@@ -272,14 +267,10 @@ std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind kind
     auto const& type_map = semantic_type_map();
 
     auto sit = sem_map.find(kind);
-    if (sit == sem_map.end()) {
-        return std::make_shared<takatori::type::character>(takatori::type::varying);
-    }
+    assert_with_exception(sit != sem_map.end(), kind);
 
     auto tit = type_map.find(sit->second);
-    if (tit == type_map.end()) {
-        return std::make_shared<takatori::type::character>(takatori::type::varying);
-    }
+    assert_with_exception(tit != type_map.end(), kind);
 
     return tit->second();
 }
@@ -936,7 +927,7 @@ meta::field_type make_field_type(meta::field_type_kind k) {
             return meta::field_type(std::make_shared<meta::time_of_day_field_option>());
         case mk::time_point:
             return meta::field_type(std::make_shared<meta::time_point_field_option>());
-        default: return meta::field_type(std::make_shared<meta::character_field_option>());
+        default: fail_with_exception_msg("unhandled meta::field_type_kind in make_field_type()");
     }
 }
 meta::field_type_kind to_meta_kind_from_nested_record(std::string_view rn) {
@@ -950,7 +941,7 @@ meta::field_type_kind to_meta_kind_from_nested_record(std::string_view rn) {
     if (rn == BLOB_RECORD) return k::blob;
     if (rn == CLOB_RECORD) return k::clob;
 
-    return k::character;
+    fail_with_exception_msg("unknown special nested record_name in UDF schema");
 }
 void append_column_types(
     std::vector<meta::field_type>& out, std::vector<plugin::udf::column_descriptor*> const& cols) {
@@ -1030,7 +1021,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
         grpc::ClientContext context;
 
         auto* bs = ctx.blob_session();
-        assert_with_exception(bs != nullptr, bs, bs);
+        assert_with_exception(bs != nullptr, bs);
         auto session_id = bs->get_or_create()->session_id();
 
         blob_grpc_metadata metadata{session_id,
@@ -1252,10 +1243,14 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
     plugin::udf::function_descriptor const* fn) {
     switch (fn->function_kind()) {
         case plugin::udf::function_kind::unary: {
+
             register_scalar_function(functions, sf_repo, current_id, client, fn);
             break;
         }
-        default: register_server_stream_function(functions, tvf_repo, current_id, client, fn); break;
+        default: {
+            register_server_stream_function(functions, tvf_repo, current_id, client, fn);
+            break;
+        }
     }
 }
 
@@ -1291,7 +1286,7 @@ void add_udf_functions(
             }
             for(auto const* svc: pkg->services()) {
                 for(auto const* fn: svc->functions()) {
-                    register_udf_function(functions, sf_repo, tvf_repo,current_id, client, fn);
+                    register_udf_function(functions, sf_repo, tvf_repo, current_id, client, fn);
                 }
             }
         }

@@ -149,7 +149,10 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
                     cursor->fetch_string(), [](auto const& s) { return accessor::text{s}; });
                 break;
 
-            default: values.emplace_back(); break;
+            default:
+                fail_with_exception_msg(
+                    "unsupported meta::field_type_kind in convert_record_to_sequence()");
+                break;
         }
     }
 

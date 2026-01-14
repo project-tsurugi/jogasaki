@@ -59,6 +59,8 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
+#include <jogasaki/data/udf_any_sequence_stream.h>
+#include <jogasaki/data/udf_wire_codec.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
@@ -168,6 +170,38 @@ semantic_type_map() {
     return map;
 }
 
+const std::unordered_map<udf_semantic_type, meta::field_type_kind>& semantic_meta_kind_map() {
+    using sem = udf_semantic_type;
+    using k   = meta::field_type_kind;
+
+    static const std::unordered_map<sem, k> map{
+        {sem::boolean, k::boolean},
+        {sem::int4, k::int4},
+        {sem::int8, k::int8},
+        {sem::float4, k::float4},
+        {sem::float8, k::float8},
+        {sem::character, k::character},
+        {sem::octet, k::octet},
+    };
+    return map;
+}
+meta::field_type_kind to_meta_kind(plugin::udf::type_kind k) {
+
+    auto const& sem_map = udf_semantic_map();
+    auto sit = sem_map.find(k);
+    assert_with_exception(sit != sem_map.end(), k);
+
+    auto const& meta_map = semantic_meta_kind_map();
+    auto mit = meta_map.find(sit->second);
+    assert_with_exception(mit != meta_map.end(), k);
+
+    return mit->second;
+}
+
+meta::field_type_kind to_meta_kind(plugin::udf::column_descriptor const& col) {
+    return to_meta_kind(col.type_kind());
+}
+
 const std::unordered_map<plugin::udf::type_kind, std::size_t>& type_index_map() {
     using K = plugin::udf::type_kind;
 
@@ -234,14 +268,10 @@ std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind kind
     auto const& type_map = semantic_type_map();
 
     auto sit = sem_map.find(kind);
-    if (sit == sem_map.end()) {
-        return std::make_shared<takatori::type::character>(takatori::type::varying);
-    }
+    assert_with_exception(sit != sem_map.end(), kind);
 
     auto tit = type_map.find(sit->second);
-    if (tit == type_map.end()) {
-        return std::make_shared<takatori::type::character>(takatori::type::varying);
-    }
+    assert_with_exception(tit != type_map.end(), kind);
 
     return tit->second();
 }
@@ -601,33 +631,8 @@ bool build_udf_request(
 }
 
 data::any build_decimal_data(std::string const& unscaled, std::int32_t exponent) {
-    bool negative = false;
-    unsigned __int128 ucoeff = 0;
-
-    bool is_negative = (static_cast<unsigned char>(unscaled[0]) & 0x80U) != 0U;
-    if(! unscaled.empty() && is_negative) {
-        negative = true;
-        std::vector<uint8_t> bytes;
-        bytes.reserve(unscaled.size());
-        for(char c: unscaled) { bytes.emplace_back(static_cast<uint8_t>(c)); }
-        for(auto& b: bytes) b = ~b;
-        for(int i = static_cast<int>(bytes.size()) - 1; i >= 0; --i) {
-            if(++bytes[i] != 0) break;
-        }
-        // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        for(uint8_t b: bytes) ucoeff = (ucoeff << 8) | b;
-    } else {
-        // NOLINTNEXTLINE(hicpp-signed-bitwise)
-        for(uint8_t b: unscaled) ucoeff = (ucoeff << 8) | b;
-    }
-    // NOLINTNEXTLINE(hicpp-signed-bitwise)
-    auto coeff_high = static_cast<std::uint64_t>((ucoeff >> 64) & 0xFFFFFFFFFFFFFFFFULL);
-    // NOLINTNEXTLINE(hicpp-signed-bitwise)
-    auto coeff_low = static_cast<std::uint64_t>(ucoeff & 0xFFFFFFFFFFFFFFFFULL);
-    std::int64_t sign = negative ? -1 : (ucoeff == 0 ? 0 : +1);
-
-    takatori::decimal::triple triple_value(sign, coeff_high, coeff_low, exponent);
-    return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple_value};
+    auto triple = jogasaki::data::decode_decimal_triple(unscaled, exponent);
+    return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple};
 }
 
 template<typename RuntimeT, typename FetchFn>
@@ -749,27 +754,27 @@ data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
-    if(auto result = cursor.fetch_int4()) {
-        takatori::datetime::date tp(static_cast<takatori::datetime::date::difference_type>(*result));
-        return data::any{std::in_place_type<runtime_t<kind::date>>, tp};
+    if (auto days = cursor.fetch_int4()) {
+        return data::any{std::in_place_type<runtime_t<kind::date>>,
+            jogasaki::data::decode_date_from_wire(*days)};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
-    if(auto result = cursor.fetch_int8()) {
-        takatori::datetime::time_of_day tp(static_cast<takatori::datetime::time_of_day::time_unit>(*result));
-        return data::any{std::in_place_type<runtime_t<kind::time_of_day>>, tp};
+    if (auto nanos = cursor.fetch_int8()) {
+        return data::any{
+            std::in_place_type<runtime_t<kind::time_of_day>>,
+            jogasaki::data::decode_time_of_day_from_wire(*nanos)
+        };
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
-    auto offset_seconds = cursor.fetch_int8();
+    auto offset_seconds  = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
-    if(offset_seconds && nano_adjustment) {
-        takatori::datetime::time_point value{
-            takatori::datetime::time_point::offset_type(*offset_seconds),
-            std::chrono::nanoseconds(*nano_adjustment)};
-        return data::any{std::in_place_type<runtime_t<kind::time_point>>, value};
+    if (offset_seconds && nano_adjustment) {
+        return data::any{std::in_place_type<runtime_t<kind::time_point>>,
+            jogasaki::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
@@ -836,8 +841,216 @@ data::any build_udf_response(
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
+bool is_special_nested_record(std::string_view rn) {
+    return rn == DECIMAL_RECORD || rn == DATE_RECORD || rn == LOCALTIME_RECORD ||
+           rn == LOCALDATETIME_RECORD || rn == OFFSETDATETIME_RECORD || rn == BLOB_RECORD ||
+           rn == CLOB_RECORD;
+}
+void append_column_names(std::vector<table_valued_function_column>& out,
+    std::vector<plugin::udf::column_descriptor*> const& cols, std::string const& prefix = {}) {
+    for (auto* col : cols) {
+        if (!col) continue;
+        auto name = std::string{col->column_name()};
 
-std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_lambda(
+        std::string full;
+        if (prefix.empty()) {
+            full = std::move(name);
+        } else {
+            full.reserve(prefix.size() + 1 + name.size());
+            full.append(prefix);
+            full.push_back('_');
+            full.append(name);
+        }
+
+        if (auto* nested = col->nested()) {
+            auto rn = nested->record_name();
+
+            if (is_special_nested_record(rn)) {
+                out.emplace_back(full);
+            } else {
+                append_column_names(out, nested->columns(), full);
+            }
+            continue;
+        }
+
+        out.emplace_back(full);
+    }
+}
+table_valued_function_info::columns_type build_tvf_columns(plugin::udf::function_descriptor const& fn) {
+    table_valued_function_info::columns_type cols;
+    cols.reserve(count_effective_columns(fn.output_record()));
+    append_column_names(cols, fn.output_record().columns());
+    return cols;
+}
+meta::field_type make_field_type(meta::field_type_kind k) {
+    using mk = meta::field_type_kind;
+
+    switch (k) {
+        case mk::boolean: return meta::field_type(meta::field_enum_tag<mk::boolean>);
+        case mk::int4: return meta::field_type(meta::field_enum_tag<mk::int4>);
+        case mk::int8: return meta::field_type(meta::field_enum_tag<mk::int8>);
+        case mk::float4: return meta::field_type(meta::field_enum_tag<mk::float4>);
+        case mk::float8: return meta::field_type(meta::field_enum_tag<mk::float8>);
+        case mk::date: return meta::field_type(meta::field_enum_tag<mk::date>);
+        case mk::blob: return meta::field_type(meta::field_enum_tag<mk::blob>);
+        case mk::clob: return meta::field_type(meta::field_enum_tag<mk::clob>);
+
+        case mk::character:
+            return meta::field_type(std::make_shared<meta::character_field_option>());
+        case mk::octet: return meta::field_type(std::make_shared<meta::octet_field_option>());
+        case mk::decimal: return meta::field_type(std::make_shared<meta::decimal_field_option>());
+        case mk::time_of_day:
+            return meta::field_type(std::make_shared<meta::time_of_day_field_option>());
+        case mk::time_point:
+            return meta::field_type(std::make_shared<meta::time_point_field_option>());
+        default: fail_with_exception_msg("unhandled meta::field_type_kind in make_field_type()");
+    }
+}
+meta::field_type_kind to_meta_kind_from_nested_record(std::string_view rn) {
+    using k = meta::field_type_kind;
+
+    if (rn == DECIMAL_RECORD) return k::decimal;
+    if (rn == DATE_RECORD) return k::date;
+    if (rn == LOCALTIME_RECORD) return k::time_of_day;
+    if (rn == LOCALDATETIME_RECORD) return k::time_point;
+    if (rn == OFFSETDATETIME_RECORD) return k::time_point;
+    if (rn == BLOB_RECORD) return k::blob;
+    if (rn == CLOB_RECORD) return k::clob;
+
+    fail_with_exception_msg("unknown special nested record_name in UDF schema");
+}
+void append_column_types(
+    std::vector<meta::field_type>& out, std::vector<plugin::udf::column_descriptor*> const& cols) {
+    for (auto* col : cols) {
+        if (!col) continue;
+
+        if (auto* nested = col->nested()) {
+            auto rn = nested->record_name();
+
+            if (is_special_nested_record(rn)) {
+                out.emplace_back(make_field_type(to_meta_kind_from_nested_record(rn)));
+            } else {
+                append_column_types(out, nested->columns());
+            }
+            continue;
+        }
+
+        out.emplace_back(make_field_type(to_meta_kind(*col)));
+    }
+}
+std::vector<meta::field_type> build_output_column_types(plugin::udf::function_descriptor const& fn) {
+    std::vector<meta::field_type> out;
+    out.reserve(count_effective_columns(fn.output_record()));
+    append_column_types(out, fn.output_record().columns());
+    return out;
+}
+/**
+ * @brief Create callable for server-streaming UDF (table-valued function).
+ *
+ * This function builds a callable used as
+ * `table_valued_function_type` for `table_valued_function_info`:
+ *
+ * @code
+ * using table_valued_function_type =
+ *   std::function<std::unique_ptr<data::any_sequence_stream>(
+ *     evaluator_context&,
+ *     sequence_view<data::any>)>;
+ * @endcode
+ *
+ * ### Execution model (server streaming / TVF)
+ * - Build a UDF request record from evaluator arguments (`build_udf_request()`).
+ * - Create `grpc::ClientContext` and apply blob-related gRPC metadata
+ *   using `blob_grpc_metadata::apply()`.
+ * - Invoke server-streaming RPC via
+ *   `generic_client::call_server_streaming_async(...)`.
+ * - Wrap the returned `generic_record_stream` with
+ *   `data::udf_any_sequence_stream` and return it.
+ *
+ * ### Contrast with scalar UDF
+ * - Scalar UDF invokes unary RPC (`call`) and immediately builds `data::any`.
+ * - Server-streaming UDF returns an `any_sequence_stream`;
+ *   row materialization is deferred and performed incrementally by the stream.
+ *
+ * ### Error handling
+ * - If request building fails or streaming cannot be started,
+ *   this callable pushes an error into `ctx` and returns `nullptr`.
+ * - Errors occurring during streaming are expected to be handled
+ *   inside the stream implementation.
+ *
+ * @param client gRPC UDF client
+ * @param fn     function descriptor
+ * @return callable which produces `any_sequence_stream`
+ */
+std::function<std::unique_ptr<data::any_sequence_stream>(
+    evaluator_context&, sequence_view<data::any>)>
+make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const& client,
+    plugin::udf::function_descriptor const* fn) {
+    return [client, fn](evaluator_context& ctx,
+               sequence_view<data::any> args) -> std::unique_ptr<data::any_sequence_stream> {
+        plugin::udf::generic_record_impl request;
+        if (!build_udf_request(request, ctx, fn, args)) {
+            // build_udf_request already reports detailed error to ctx
+            return {};
+        }
+
+        // 2. Prepare gRPC context and metadata
+        grpc::ClientContext context;
+
+        auto* bs = ctx.blob_session();
+        assert_with_exception(bs != nullptr, bs);
+        auto session_id = bs->get_or_create()->session_id();
+
+        blob_grpc_metadata metadata{session_id,
+            std::string(global::config_pool()->grpc_server_endpoint()),
+            global::config_pool()->grpc_server_secure(), "stream", 1024ULL * 1024ULL};
+
+        if (!metadata.apply(context)) {
+            ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
+            return {};
+        }
+
+        auto udf_stream =
+            client->call_server_streaming_async(context, {0, fn->function_index()}, request);
+
+        if (!udf_stream) {
+            ctx.add_error({error_kind::unknown, "Failed to start UDF server-streaming RPC"});
+            return {};
+        }
+        auto column_types = build_output_column_types(*fn);
+
+        return std::make_unique<data::udf_any_sequence_stream>(
+            std::move(udf_stream), std::move(column_types));
+    };
+}
+/**
+ * @brief Create callable for scalar UDF (unary RPC).
+ *
+ * This function builds a callable which is passed to
+ * `scalar_function_info` as `scalar_function_type`:
+ *
+ * @code
+ * using scalar_function_type =
+ *   std::function<data::any(evaluator_context&, sequence_view<data::any>)>;
+ * @endcode
+ *
+ * ### Execution model (scalar / unary)
+ * - Build a UDF request record from evaluator arguments (`build_udf_request()`).
+ * - Invoke unary RPC:
+ *   `generic_client::call(context, function_index, request, response)`
+ * - Convert the response record into a single `data::any` (`build_udf_response()`).
+ *
+ * ### Contrast with server-streaming (table-valued function)
+ * - TVF callable returns `std::unique_ptr<data::any_sequence_stream>`,
+ *   not `data::any`.
+ * - TVF invokes server-streaming RPC
+ *   `call_server_streaming_async(...)` and returns a stream wrapper.
+ * - Row-by-row conversion to `any_sequence` happens inside the stream wrapper.
+ *
+ * @param client gRPC UDF client
+ * @param fn     function descriptor (function_index, input/output schema, etc.)
+ * @return scalar callable which returns `data::any`
+ */
+std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_scalar_lambda(
     std::shared_ptr<plugin::udf::generic_client> const& client,
     plugin::udf::function_descriptor const* fn
 ) {
@@ -887,60 +1100,106 @@ bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
 
     return false;
 }
-std::shared_ptr<takatori::type::table> build_table_return_type(
-    plugin::udf::function_descriptor const* fn) {
+void append_table_cols(std::vector<takatori::type::table::column_type>& out,
+    std::vector<plugin::udf::column_descriptor*> const& cols, std::string const& prefix = {}) {
+    auto const& type_map = get_type_map();
+
+    for (auto* col : cols) {
+        if (!col) continue;
+
+        auto name = std::string{col->column_name()};
+
+        std::string full;
+        if (prefix.empty()) {
+            full = std::move(name);
+        } else {
+            full.reserve(prefix.size() + 1 + name.size());
+            full.append(prefix);
+            full.push_back('_');
+            full.append(name);
+        }
+
+        if (auto* nested = col->nested()) {
+            auto rn = nested->record_name();
+            if (is_special_nested_record(rn)) {
+                if (auto it = type_map.find(rn); it != type_map.end()) {
+                    out.emplace_back(full, it->second());
+                } else {
+                    out.emplace_back(full, map_type(col->type_kind()));
+                }
+            } else {
+                append_table_cols(out, nested->columns(), full);
+            }
+            continue;
+        }
+        out.emplace_back(full, map_type(col->type_kind()));
+    }
+}
+
+std::shared_ptr<takatori::type::table> build_table_return_type(plugin::udf::function_descriptor const* fn) {
     namespace t = takatori::type;
 
     std::vector<t::table::column_type> cols;
-    for (auto* col : fn->output_record().columns()) {
-        if (!col) continue;
-        cols.emplace_back(std::string{col->column_name()}, map_type(col->type_kind()));
-    }
+    cols.reserve(count_effective_columns(fn->output_record()));
+    append_table_cols(cols, fn->output_record().columns());
     return std::make_shared<t::table>(std::move(cols));
 }
-void register_server_stream_function(yugawara::function::configurable_provider& functions,
-    yugawara::function::declaration::definition_id_type& current_id,
-    plugin::udf::function_descriptor const* fn) {
 
+void register_server_stream_function(
+    yugawara::function::configurable_provider& functions,
+    executor::function::table_valued_function_repository& tvf_repo,
+    yugawara::function::declaration::definition_id_type& current_id,
+    std::shared_ptr<plugin::udf::generic_client> const& client,
+    plugin::udf::function_descriptor const* fn
+) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
 
-    auto return_type         = build_table_return_type(fn);
+    auto tvf_callable = make_udf_server_stream_lambda(client, fn);
+    auto return_type  = build_table_return_type(fn);
+
     auto const& input_record = fn->input_record();
     auto const& type_map     = get_type_map();
 
-    if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
-        if (auto param_type = it->second()) {
+    auto register_tvf =
+        [&](std::vector<std::shared_ptr<const takatori::type::data>> param_types) {
+            auto cols = build_tvf_columns(*fn);
+
+            ++current_id;
+
+            auto info = std::make_shared<table_valued_function_info>(
+                table_valued_function_kind::user_defined,
+                tvf_callable,
+                param_types.size(),
+                std::move(cols)
+            );
+            tvf_repo.add(static_cast<std::size_t>(current_id), info);
+
             functions.add(yugawara::function::declaration{
-                ++current_id,
-                fn_name,
-                return_type,
-                {param_type},
-                {yugawara::function::function_feature::table_valued_function},
-            });
-        }
-        return;
-    }
-    for (auto const& pattern : input_record.argument_patterns()) {
-        auto param_types = build_param_types(pattern, type_map);
-        if (!param_types.empty()) {
-            functions.add(yugawara::function::declaration{
-                ++current_id,
+                current_id,
                 fn_name,
                 return_type,
                 std::move(param_types),
                 {yugawara::function::function_feature::table_valued_function},
             });
+        };
+
+    if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {
+        if (auto param_type = it->second()) {
+            register_tvf({param_type});
+        }
+        return;
+    }
+
+    for (auto const& pattern : input_record.argument_patterns()) {
+        auto param_types = build_param_types(pattern, type_map);
+        if (!param_types.empty()) {
+            register_tvf(std::move(param_types));
         }
     }
+
     if (count_effective_columns(input_record) == 0) {
-        functions.add(yugawara::function::declaration{
-            ++current_id,
-            fn_name,
-            return_type,
-            {},
-            {yugawara::function::function_feature::table_valued_function},
-        });
+        register_tvf({});
     }
 }
 
@@ -949,22 +1208,25 @@ void register_scalar_function(yugawara::function::configurable_provider& functio
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
     plugin::udf::function_descriptor const* fn) {
-    auto unary_func = make_udf_lambda(client, fn);
+    auto unary_func = make_udf_scalar_lambda(client, fn);
     register_udf_function_patterns(functions, scalar_repo, current_id, unary_func, fn);
 }
 void register_udf_function(yugawara::function::configurable_provider& functions,
-    scalar_function_repository& scalar_repo,
+    scalar_function_repository& sf_repo,
+    executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
     plugin::udf::function_descriptor const* fn) {
     switch (fn->function_kind()) {
         case plugin::udf::function_kind::unary: {
-            register_scalar_function(functions, scalar_repo, current_id, client, fn);
+
+            register_scalar_function(functions, sf_repo, current_id, client, fn);
             break;
         }
-        default:
-            register_server_stream_function(functions, current_id, fn);
+        default: {
+            register_server_stream_function(functions, tvf_repo, current_id, client, fn);
             break;
+        }
     }
 }
 
@@ -980,7 +1242,8 @@ bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
 }
 void add_udf_functions(
     ::yugawara::function::configurable_provider& functions,
-    executor::function::scalar_function_repository& repo,
+    executor::function::scalar_function_repository& sf_repo,
+    executor::function::table_valued_function_repository& tvf_repo,
     const std::vector<
         std::tuple<std::shared_ptr<plugin::udf::plugin_api>, std::shared_ptr<plugin::udf::generic_client>>>& plugins
 ) {
@@ -999,7 +1262,7 @@ void add_udf_functions(
             }
             for(auto const* svc: pkg->services()) {
                 for(auto const* fn: svc->functions()) {
-                    register_udf_function(functions, repo, current_id, client, fn);
+                    register_udf_function(functions, sf_repo, tvf_repo, current_id, client, fn);
                 }
             }
         }

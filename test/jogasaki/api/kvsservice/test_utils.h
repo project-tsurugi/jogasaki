@@ -54,6 +54,7 @@ constexpr std::string_view default_property {  // NOLINT
 
         "[system]\n"
         "pid_directory = /tmp\n"
+        "instance_id=instance-id-for-test\n"
 
         "[grpc]\n"
         "enabled=false\n"

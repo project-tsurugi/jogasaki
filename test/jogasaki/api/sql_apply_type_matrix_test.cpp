@@ -47,6 +47,7 @@ using kind = meta::field_type_kind;
  * @brief test for APPLY operator with type matrix.
  * @details this test verifies that all data types can be used as arguments and return values
  *          for table-valued functions in APPLY operations.
+ * Actually, APPLY operator has not very type-specific logic, but as the end-to-end test, we verify all types here.
  */
 class sql_apply_type_matrix_test :
     public ::testing::Test,

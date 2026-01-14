@@ -77,6 +77,7 @@
 #include "jogasaki/proto/sql/response.pb.h"
 
 #include "../api/api_test_base.h"
+#include "../api/lob_test_helper.h"
 #include "service_api_common.h"
 
 namespace jogasaki::api {
@@ -99,7 +100,11 @@ using takatori::util::maybe_shared_ptr;
 using jogasaki::api::impl::get_impl;
 namespace framework = tateyama::framework;
 
-class service_api_lob_function_invocation_test : public service_api_test {
+/**
+ * @brief test for LOB function invocation via service API
+ * @details this in complement to sql_apply_lob_test, which cannot test returned LOB reference tags.
+ */
+class service_api_apply_lob_test : public service_api_test {
 
 public:
     void SetUp() override {
@@ -150,7 +155,7 @@ public:
     std::shared_ptr<yugawara::function::declaration> decl_{};
 };
 
-TEST_F(service_api_lob_function_invocation_test, lob_types_with_apply) {
+TEST_F(service_api_apply_lob_test, return_single_column) {
     // verify reference tag is set correctly for lob references returned from APPLY operator
     test_statement("create table t (c0 int primary key, c1 clob)");
     test_statement("insert into t values (1, 'ABC'::clob)");
@@ -188,47 +193,15 @@ TEST_F(service_api_lob_function_invocation_test, lob_types_with_apply) {
                 // Download the input CLOB
                 auto ref = args[0].to<lob::clob_reference>();
                 auto tag = ref.lob_reference::reference_tag();
-                auto input_data = [&]() -> std::string {
-                    auto provider = ref.provider();
-                    std::size_t blob_id = ref.object_id();
-                    if (provider == lob::lob_data_provider::datastore && ! tag) {
-                        auto* ds = datastore::get_datastore();
-                        auto result = ds->get_blob_file(blob_id);
-                        if (! result) {
-                            takatori::util::throw_exception(std::runtime_error("failed to get blob from datastore"));
-                        }
-                        return read_file(result.path().string());
-                    }
-                    auto s = ectx.blob_session()->get_or_create();
-                    if (! s) {
-                        takatori::util::throw_exception(std::runtime_error(""));
-                    }
-                    std::uint64_t session_id = s->session_id();
-                    std::uint64_t storage_id = (provider == lob::lob_data_provider::datastore) ? 1 : 0;
-                    auto t = tag ? tag.value() : s->compute_tag(blob_id);
-                    return client->get_blob(session_id, storage_id, blob_id, t);
-                }();
+                auto input_data = ::jogasaki::testing::download_lob<lob::clob_reference>(ectx, args[0], *client, tag);
 
                 // Create 3 rows with appended data
                 std::vector<data::any_sequence> sequences{};
                 for (int i = 1; i <= 3; ++i) {
                     auto appended = input_data + std::to_string(i);
-                    auto s = ectx.blob_session()->get_or_create();
-                    if (! s) {
-                        takatori::util::throw_exception(std::runtime_error(""));
-                    }
-                    std::uint64_t session_id = s->session_id();
-                    auto [blob_id, storage_id, tag_val] = client->put_blob(session_id, appended);
-                    if (blob_id == 0) {
-                        takatori::util::throw_exception(
-                            std::runtime_error("put_blob() failed session_id:" + std::to_string(session_id))
-                        );
-                    }
-                    ::jogasaki::lob::clob_reference clob_ref(blob_id, ::jogasaki::lob::lob_data_provider::relay_service_session);
-                    clob_ref.reference_tag(tag_val);
-                    ::jogasaki::data::any uploaded(std::in_place_type<::jogasaki::lob::clob_reference>, clob_ref);
+                    auto uploaded = ::jogasaki::testing::upload_lob<lob::clob_reference>(ectx, appended, *client);
                     std::vector<::jogasaki::data::any> row;
-                    row.emplace_back(uploaded);
+                    row.emplace_back(std::move(uploaded));
                     sequences.emplace_back(::jogasaki::data::any_sequence(std::move(row)));
                 }
 
@@ -298,6 +271,157 @@ TEST_F(service_api_lob_function_invocation_test, lob_types_with_apply) {
 
                     // Verify that test_get_lob succeeds with the reference tag
                     test_get_lob(clob_ref.object_id(), tag, blob_file_opt.path().string(), tx_handle.surrogate_id());
+                }
+            }
+        }
+        {
+            auto [success, error] = decode_result_only(res->body_);
+            ASSERT_TRUE(success);
+        }
+    }
+    test_commit(tx_handle);
+    test_dispose_prepare(query_handle);
+}
+
+TEST_F(service_api_apply_lob_test, return_multiple_columns) {
+    // same as return_single_column, but with multiple columns returned from APPLY function
+    test_statement("create table t (c0 int primary key, c1 clob)");
+    test_statement("insert into t values (1, 'DATA'::clob)");
+
+    // Register table-valued function for APPLY
+    auto id = 13001UL;
+    auto client = std::make_shared<::jogasaki::testing::data_relay_client>("localhost:" + std::to_string(grpc_port_));
+
+    // Register function declaration for SQL compilation
+    decl_ = global::regular_function_provider()->add(
+        std::make_shared<yugawara::function::declaration>(
+            id,
+            "split_columns",
+            std::make_shared<takatori::type::table>(std::initializer_list<takatori::type::table::column_type>{
+                {"left_output", std::make_shared<takatori::type::clob>()},
+                {"right_output", std::make_shared<takatori::type::clob>()},
+            }),
+            std::vector<std::shared_ptr<takatori::type::data const>>{
+                std::make_shared<takatori::type::clob>(),
+            },
+            yugawara::function::declaration::feature_set_type{
+                yugawara::function::function_feature::table_valued_function
+            }
+        )
+    );
+
+    // Register execution information
+    global::table_valued_function_repository().add(
+        id,
+        std::make_shared<executor::function::table_valued_function_info>(
+            executor::function::table_valued_function_kind::builtin,
+            [client](
+                executor::expr::evaluator_context& ectx,
+                takatori::util::sequence_view<data::any> args
+            ) -> std::unique_ptr<data::any_sequence_stream> {
+                // Download the input CLOB
+                auto ref = args[0].to<lob::clob_reference>();
+                auto tag = ref.lob_reference::reference_tag();
+                auto input_data = ::jogasaki::testing::download_lob<lob::clob_reference>(ectx, args[0], *client, tag);
+
+                // Create 3 rows with different left and right columns
+                std::vector<data::any_sequence> sequences{};
+                for (int i = 1; i <= 3; ++i) {
+                    // Create left column CLOB
+                    auto left_data = input_data + "_LEFT" + std::to_string(i);
+                    auto left_uploaded = ::jogasaki::testing::upload_lob<lob::clob_reference>(ectx, left_data, *client);
+
+                    // Create right column CLOB
+                    auto right_data = input_data + "_RIGHT" + std::to_string(i);
+                    auto right_uploaded = ::jogasaki::testing::upload_lob<lob::clob_reference>(ectx, right_data, *client);
+
+                    std::vector<::jogasaki::data::any> row;
+                    row.emplace_back(std::move(left_uploaded));
+                    row.emplace_back(std::move(right_uploaded));
+                    sequences.emplace_back(::jogasaki::data::any_sequence(std::move(row)));
+                }
+
+                return std::make_unique<data::mock_any_sequence_stream>(std::move(sequences));
+            },
+            1,
+            executor::function::table_valued_function_info::columns_type{
+                executor::function::table_valued_function_column{"left_output"},
+                executor::function::table_valued_function_column{"right_output"}
+            }
+        )
+    );
+
+    std::uint64_t query_handle{};
+    test_prepare(
+        query_handle,
+        "select t.c0, r.left_output, r.right_output from t cross apply split_columns(t.c1) as r"
+    );
+
+    api::transaction_handle tx_handle{};
+    test_begin(tx_handle);
+    {
+        std::vector<parameter> parameters{};
+        auto s = encode_execute_prepared_query(tx_handle, query_handle, parameters);
+
+        auto req = std::make_shared<tateyama::api::server::mock::test_request>(s, session_id_);
+        auto res = std::make_shared<tateyama::api::server::mock::test_response>();
+
+        auto st = (*service_)(req, res);
+        EXPECT_TRUE(res->wait_completion());
+        EXPECT_TRUE(res->completed());
+        ASSERT_TRUE(st);
+
+        {
+            auto [name, cols] = decode_execute_query(res->body_head_);
+            std::vector<common_column> exp{
+                {"c0", common_column::atom_type::int4},
+                {"left_output", common_column::atom_type::clob},
+                {"right_output", common_column::atom_type::clob},
+            };
+            ASSERT_EQ(exp, cols);
+
+            {
+                ASSERT_TRUE(res->channel_);
+                auto& ch = *res->channel_;
+                auto m = create_record_meta(cols);
+                auto v = deserialize_msg(ch.view(), m);
+                ASSERT_EQ(3, v.size());
+
+                auto* ds = datastore::get_datastore();
+                for (std::size_t i = 0; i < 3; ++i) {
+                    EXPECT_EQ(1, v[i].get_value<std::int32_t>(0)) << "Row " << i;
+
+                    // Verify left column CLOB reference
+                    auto left_clob_ref = v[i].get_value<lob::clob_reference>(1);
+                    auto left_tag = v[i].get_field_value_info(1).blob_reference_tag_;
+
+                    EXPECT_EQ(lob::lob_data_provider::datastore, left_clob_ref.provider()) << "Row " << i << " left column";
+                    EXPECT_NE(0, left_tag) << "Row " << i << " left column: reference tag should not be 0";
+
+                    auto left_blob_file_opt = ds->get_blob_file(left_clob_ref.object_id());
+                    ASSERT_TRUE(left_blob_file_opt) << "Row " << i << " left column: Failed to get blob from datastore";
+
+                    auto left_content = read_file(left_blob_file_opt.path().string());
+                    std::string left_expected = "DATA_LEFT" + std::to_string(i + 1);
+                    EXPECT_EQ(left_expected, left_content) << "Row " << i << " left column content mismatch";
+
+                    test_get_lob(left_clob_ref.object_id(), left_tag, left_blob_file_opt.path().string(), tx_handle.surrogate_id());
+
+                    // Verify right column CLOB reference
+                    auto right_clob_ref = v[i].get_value<lob::clob_reference>(2);
+                    auto right_tag = v[i].get_field_value_info(2).blob_reference_tag_;
+
+                    EXPECT_EQ(lob::lob_data_provider::datastore, right_clob_ref.provider()) << "Row " << i << " right column";
+                    EXPECT_NE(0, right_tag) << "Row " << i << " right column: reference tag should not be 0";
+
+                    auto right_blob_file_opt = ds->get_blob_file(right_clob_ref.object_id());
+                    ASSERT_TRUE(right_blob_file_opt) << "Row " << i << " right column: Failed to get blob from datastore";
+
+                    auto right_content = read_file(right_blob_file_opt.path().string());
+                    std::string right_expected = "DATA_RIGHT" + std::to_string(i + 1);
+                    EXPECT_EQ(right_expected, right_content) << "Row " << i << " right column content mismatch";
+
+                    test_get_lob(right_clob_ref.object_id(), right_tag, right_blob_file_opt.path().string(), tx_handle.surrogate_id());
                 }
             }
         }

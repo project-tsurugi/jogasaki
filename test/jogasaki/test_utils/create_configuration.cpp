@@ -61,6 +61,10 @@ static constexpr std::string_view default_configuration {  // NOLINT
         "url=http://localhost:8080/harinoki\n"
         "request_timeout=0\n"
 
+    "[system]\n"
+        "pid_directory = /tmp\n"
+        "instance_id=instance-id-for-test\n"
+
     "[grpc_server]\n"
         "enabled=true\n"
         "listen_address=0.0.0.0:52345\n"

@@ -103,6 +103,10 @@ public:
     time_type start_at() const noexcept override {
         return {};
     }
+
+    std::string_view instance_id() const noexcept override {
+        return "instance-id";
+    }
 };
 
 class session_info_impl : public tateyama::api::server::session_info {

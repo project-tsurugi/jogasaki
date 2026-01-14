@@ -79,15 +79,18 @@ public:
         temporary_.clean();
     }
     std::shared_ptr<tateyama::api::configuration::whole> create_config();
+    std::size_t grpc_port_{};
 };
 
 using namespace std::string_view_literals;
 using namespace tateyama;
 
 std::shared_ptr<tateyama::api::configuration::whole> framework_test::create_config() {
+    grpc_port_ = 52345 + (std::hash<std::thread::id>{}(std::this_thread::get_id()) % 1000);
     return test_utils::create_configuration(
         path() + "/log_location",
-        path() + "/session_store"
+        path() + "/session_store",
+        grpc_port_
     );
 }
 

@@ -51,9 +51,11 @@ public:
     void SetUp() override {
         temporary_.prepare();
 
+        grpc_port_ = 52345 + (std::hash<std::thread::id>{}(std::this_thread::get_id()) % 1000);
         auto conf = test_utils::create_configuration(
             path() + "/log_location",
-            path() + "/session_store"
+            path() + "/session_store",
+            grpc_port_
         );
         framework::boot_mode mode = framework::boot_mode::database_server;
         server_ = std::make_unique<framework::server>(mode, conf);
@@ -81,6 +83,7 @@ protected:
         return temporary_.path();
     }
 
+    std::size_t grpc_port_{};
     jogasaki::test::temporary_folder temporary_{};
     std::unique_ptr<framework::server> server_{};
 };

@@ -992,9 +992,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             // build_udf_request already reports detailed error to ctx
             return {};
         }
-
-        // 2. Prepare gRPC context and metadata
-        grpc::ClientContext context;
+        auto context = std::make_unique<grpc::ClientContext>();
 
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs);
@@ -1004,13 +1002,13 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             std::string(global::config_pool()->grpc_server_endpoint()),
             global::config_pool()->grpc_server_secure(), "stream", 1024ULL * 1024ULL};
 
-        if (!metadata.apply(context)) {
+        if (!metadata.apply(*context)) {
             ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
             return {};
         }
 
         auto udf_stream =
-            client->call_server_streaming_async(context, {0, fn->function_index()}, request);
+            client->call_server_streaming_async(std::move(context), {0, fn->function_index()}, request);
 
         if (!udf_stream) {
             ctx.add_error({error_kind::unknown, "Failed to start UDF server-streaming RPC"});

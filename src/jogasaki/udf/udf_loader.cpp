@@ -179,12 +179,23 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         }
         auto res = create_api_from_handle(
             handle, full_path, udf_config_value->endpoint(), udf_config_value->secure());
+        if (res.status() == load_status::ok) {
+            handles_.push_back(handle);
+        } else {
+            dlclose(handle);
+        }
         results.push_back(std::move(res));
     }
     return results;
 }
 
-void udf_loader::unload_all() {}
+void udf_loader::unload_all() {
+    plugins_.clear();
+    for (auto* h : handles_) {
+        if (h) dlclose(h);
+    }
+    handles_.clear();
+}
 load_result udf_loader::create_api_from_handle(
     void* handle,
     std::string const& full_path,
@@ -200,8 +211,9 @@ load_result udf_loader::create_api_from_handle(
     auto* api_func = reinterpret_cast<create_api_func>(dlsym(handle, "create_plugin_api"));
     if(! api_func) { return {load_status::api_symbol_missing, full_path, "Symbol 'create_plugin_api' not found"}; }
 
-    auto api_ptr = std::unique_ptr<plugin_api>(api_func());
-    if(! api_ptr) { return {load_status::api_init_failed, full_path, "Failed to initialize plugin API"}; }
+    auto api_uptr = std::unique_ptr<plugin_api>(api_func());
+    if(! api_uptr) { return {load_status::api_init_failed, full_path, "Failed to initialize plugin API"}; }
+    std::shared_ptr<plugin_api> api_sptr = std::move(api_uptr);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* factory_func = reinterpret_cast<create_factory_func>(dlsym(handle, "tsurugi_create_generic_client_factory"));
     if(! factory_func) {
@@ -224,7 +236,7 @@ load_result udf_loader::create_api_from_handle(
     if(! raw_client) {
         return {load_status::factory_creation_failed, full_path, "Failed to create generic client from factory"};
     }
-    plugins_.emplace_back(api_ptr.release(), std::shared_ptr<generic_client>(raw_client));
+    plugins_.emplace_back(std::move(api_sptr), std::shared_ptr<generic_client>(raw_client));
     return {load_status::ok, full_path, "Loaded successfully"};
 }
 

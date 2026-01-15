@@ -133,5 +133,6 @@ private:
     parse_ini(std::filesystem::path const& ini_path, std::vector<load_result>& results);
     /** List of loaded plugin API/client pairs. */
     std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>> plugins_;
+    std::vector<void*> handles_;
 };
 }  // namespace plugin::udf

@@ -289,7 +289,9 @@ void register_function(
     auto info =
         std::make_shared<scalar_function_info>(scalar_function_kind::user_defined, lambda_func, param_types.size());
     repo.add(current_id, info);
-    functions.add(yugawara::function::declaration(current_id, fn_name, return_type, param_types));
+    auto decl = yugawara::function::declaration(current_id, fn_name, return_type, param_types);
+    LOG_LP(INFO) << "registering UDSF " << decl;
+    functions.add(std::move(decl));
 }
 bool is_signed_int4(plugin::udf::type_kind k) noexcept {
     using K = plugin::udf::type_kind;
@@ -1173,13 +1175,15 @@ void register_server_stream_function(
             );
             tvf_repo.add(static_cast<std::size_t>(current_id), info);
 
-            functions.add(yugawara::function::declaration{
+            auto decl = yugawara::function::declaration{
                 current_id,
                 fn_name,
                 return_type,
                 std::move(param_types),
-                {yugawara::function::function_feature::table_valued_function},
-            });
+                {yugawara::function::function_feature::table_valued_function}
+            };
+            LOG_LP(INFO) << "registering UDTF " << decl;
+            functions.add(std::move(decl));
         };
 
     if (auto it = type_map.find(input_record.record_name()); it != type_map.end()) {

@@ -49,6 +49,7 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 
@@ -152,6 +153,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         }
 
         if (status == data::any_sequence_stream_status::ok) {
+            utils::checkpoint_holder cp{ctx.varlen_resource()};
             // assign sequence values to output variables
             if (! assign_sequence_to_variables(ctx, sequence)) {
                 stream->close();

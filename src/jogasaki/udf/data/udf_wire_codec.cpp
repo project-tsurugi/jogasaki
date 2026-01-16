@@ -22,7 +22,7 @@
 #include <takatori/datetime/time_of_day.h>
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
-namespace jogasaki::data {
+namespace jogasaki::udf::data {
 namespace {
 template <class Ref>
 Ref decode_lob_reference_from_wire(
@@ -116,4 +116,4 @@ jogasaki::lob::clob_reference decode_clob_reference_from_wire(std::uint64_t stor
         storage_id, object_id, tag, provisioned);
 }
 
-} // namespace jogasaki::data
+} // namespace jogasaki::udf::data

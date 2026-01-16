@@ -59,8 +59,6 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/any.h>
-#include <jogasaki/data/udf_any_sequence_stream.h>
-#include <jogasaki/data/udf_wire_codec.h>
 #include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
@@ -76,6 +74,9 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/udf/bridge/udf_semantic_mappings.h>
+#include <jogasaki/udf/data/udf_any_sequence_stream.h>
+#include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/error_info.h>
 #include <jogasaki/udf/generic_record_impl.h>
@@ -105,120 +106,6 @@ constexpr std::string_view LOCALDATETIME_RECORD = "tsurugidb.udf.LocalDatetime";
 constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime";
 constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
 constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
-
-const std::unordered_map<plugin::udf::type_kind, udf_semantic_type>& udf_semantic_map() {
-    using K = plugin::udf::type_kind;
-    using sem = udf_semantic_type;
-    static const std::unordered_map<K, udf_semantic_type> map {
-        // boolean
-        {K::boolean, sem::boolean},
-        // int4 family
-        {K::int4,    sem::int4},
-        {K::uint4,   sem::int4},
-        {K::sint4,   sem::int4},
-        {K::fixed4,  sem::int4},
-        {K::sfixed4, sem::int4},
-        {K::grpc_enum, sem::int4},
-        // int8 family
-        {K::int8,    sem::int8},
-        {K::uint8,   sem::int8},
-        {K::sint8,   sem::int8},
-        {K::fixed8,  sem::int8},
-        {K::sfixed8, sem::int8},
-        // float
-        {K::float4,  sem::float4},
-        {K::float8,  sem::float8},
-        // text-like
-        {K::string,  sem::character},
-        {K::group,   sem::character},
-        {K::message, sem::character},
-        // binary
-        {K::bytes,   sem::octet},
-    };
-    return map;
-}
-const std::unordered_map<udf_semantic_type, std::size_t>& semantic_index_map() {
-    using sem = udf_semantic_type;
-    static const std::unordered_map<udf_semantic_type, std::size_t> map {
-        {sem::boolean,   data::any::index<runtime_t<kind::boolean>>},
-        {sem::int4,      data::any::index<runtime_t<kind::int4>>},
-        {sem::int8,      data::any::index<runtime_t<kind::int8>>},
-        {sem::float4,    data::any::index<runtime_t<kind::float4>>},
-        {sem::float8,    data::any::index<runtime_t<kind::float8>>},
-        {sem::character, data::any::index<accessor::text>},
-        {sem::octet,     data::any::index<accessor::binary>},
-    };
-    return map;
-}
-
-const std::unordered_map<udf_semantic_type,
-    std::function<std::shared_ptr<takatori::type::data const>()>>&
-semantic_type_map() {
-
-    namespace t = takatori::type;
-    using sem   = udf_semantic_type;
-
-    static const std::unordered_map<sem, std::function<std::shared_ptr<t::data const>()>> map{
-        {sem::boolean, [] { return std::make_shared<t::simple_type<t::type_kind::boolean>>(); }},
-        {sem::int4, [] { return std::make_shared<t::simple_type<t::type_kind::int4>>(); }},
-        {sem::int8, [] { return std::make_shared<t::simple_type<t::type_kind::int8>>(); }},
-        {sem::float4, [] { return std::make_shared<t::simple_type<t::type_kind::float4>>(); }},
-        {sem::float8, [] { return std::make_shared<t::simple_type<t::type_kind::float8>>(); }},
-        {sem::character, [] { return std::make_shared<t::character>(t::varying); }},
-        {sem::octet, [] { return std::make_shared<t::octet>(t::varying); }},
-    };
-    return map;
-}
-
-const std::unordered_map<udf_semantic_type, meta::field_type_kind>& semantic_meta_kind_map() {
-    using sem = udf_semantic_type;
-    using k   = meta::field_type_kind;
-
-    static const std::unordered_map<sem, k> map{
-        {sem::boolean, k::boolean},
-        {sem::int4, k::int4},
-        {sem::int8, k::int8},
-        {sem::float4, k::float4},
-        {sem::float8, k::float8},
-        {sem::character, k::character},
-        {sem::octet, k::octet},
-    };
-    return map;
-}
-meta::field_type_kind to_meta_kind(plugin::udf::type_kind k) {
-
-    auto const& sem_map = udf_semantic_map();
-    auto sit = sem_map.find(k);
-    assert_with_exception(sit != sem_map.end(), k);
-
-    auto const& meta_map = semantic_meta_kind_map();
-    auto mit = meta_map.find(sit->second);
-    assert_with_exception(mit != meta_map.end(), k);
-
-    return mit->second;
-}
-
-meta::field_type_kind to_meta_kind(plugin::udf::column_descriptor const& col) {
-    return to_meta_kind(col.type_kind());
-}
-
-const std::unordered_map<plugin::udf::type_kind, std::size_t>& type_index_map() {
-    using K = plugin::udf::type_kind;
-
-    static const std::unordered_map<K, std::size_t> map = [] {
-        std::unordered_map<K, std::size_t> m;
-
-        auto const& sem_map = udf_semantic_map();
-        auto const& idx_map = semantic_index_map();
-
-        for (auto const& [k, sem] : sem_map) {
-            if (auto it = idx_map.find(sem); it != idx_map.end()) { m.emplace(k, it->second); }
-        }
-        return m;
-    }();
-
-    return map;
-}
 
 std::unordered_map<std::string_view, std::size_t> const& nested_type_map() {
     static const std::unordered_map<std::string_view, std::size_t> map{
@@ -260,20 +147,6 @@ std::string int128_to_bytes(__int128 coeff) {
     // NOLINTNEXTLINE(hicpp-signed-bitwise)
     for(int i = 0; i < 16; ++i) { bytes[15 - i] = static_cast<char>((u >> (i * 8)) & 0xFFU); }
     return bytes;
-}
-
-std::shared_ptr<takatori::type::data const> map_type(plugin::udf::type_kind kind) {
-
-    auto const& sem_map  = udf_semantic_map();
-    auto const& type_map = semantic_type_map();
-
-    auto sit = sem_map.find(kind);
-    assert_with_exception(sit != sem_map.end(), kind);
-
-    auto tit = type_map.find(sit->second);
-    assert_with_exception(tit != type_map.end(), kind);
-
-    return tit->second();
 }
 
 void register_function(
@@ -414,7 +287,7 @@ std::shared_ptr<const takatori::type::data> determine_return_type(
         if(nest != nullptr) {
             if(auto it = type_map.find(nest->record_name()); it != type_map.end()) { return it->second(); }
         }
-        return map_type(output_record.columns()[0]->type_kind());
+        return jogasaki::udf::bridge::to_takatori_type(output_record.columns()[0]->type_kind());
     }
 
     return nullptr;
@@ -436,7 +309,9 @@ std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
                 }
             }
         } else {
-            if(auto mapped = map_type(col->type_kind())) { param_types.emplace_back(mapped); }
+            if (auto mapped = jogasaki::udf::bridge::to_takatori_type(col->type_kind())) {
+                param_types.emplace_back(mapped);
+            }
         }
     }
     return param_types;
@@ -496,7 +371,7 @@ void register_udf_function_patterns(
 std::vector<plugin::udf::column_descriptor*> const*
 find_matched_pattern(plugin::udf::function_descriptor const* fn, sequence_view<data::any> const& args) {
     auto const& input = fn->input_record();
-    auto const& type_map = type_index_map();
+    auto const& type_map = jogasaki::udf::bridge::type_index_map();
     auto const& nested_map = nested_type_map();
     for(auto const& pattern: input.argument_patterns()) {
         if(pattern.size() != args.size()) continue;
@@ -631,7 +506,7 @@ bool build_udf_request(
 }
 
 data::any build_decimal_data(std::string const& unscaled, std::int32_t exponent) {
-    auto triple = jogasaki::data::decode_decimal_triple(unscaled, exponent);
+    auto triple = jogasaki::udf::data::decode_decimal_triple(unscaled, exponent);
     return data::any{std::in_place_type<runtime_t<kind::decimal>>, triple};
 }
 
@@ -756,7 +631,7 @@ data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
 data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto days = cursor.fetch_int4()) {
         return data::any{std::in_place_type<runtime_t<kind::date>>,
-            jogasaki::data::decode_date_from_wire(*days)};
+            jogasaki::udf::data::decode_date_from_wire(*days)};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
@@ -764,7 +639,7 @@ data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto nanos = cursor.fetch_int8()) {
         return data::any{
             std::in_place_type<runtime_t<kind::time_of_day>>,
-            jogasaki::data::decode_time_of_day_from_wire(*nanos)
+            jogasaki::udf::data::decode_time_of_day_from_wire(*nanos)
         };
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
@@ -774,7 +649,7 @@ data::any build_localdatetime_response(plugin::udf::generic_record_cursor& curso
     auto nano_adjustment = cursor.fetch_uint4();
     if (offset_seconds && nano_adjustment) {
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
-            jogasaki::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
+            jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
@@ -882,30 +757,7 @@ table_valued_function_info::columns_type build_tvf_columns(plugin::udf::function
     append_column_names(cols, fn.output_record().columns());
     return cols;
 }
-meta::field_type make_field_type(meta::field_type_kind k) {
-    using mk = meta::field_type_kind;
 
-    switch (k) {
-        case mk::boolean: return meta::field_type(meta::field_enum_tag<mk::boolean>);
-        case mk::int4: return meta::field_type(meta::field_enum_tag<mk::int4>);
-        case mk::int8: return meta::field_type(meta::field_enum_tag<mk::int8>);
-        case mk::float4: return meta::field_type(meta::field_enum_tag<mk::float4>);
-        case mk::float8: return meta::field_type(meta::field_enum_tag<mk::float8>);
-        case mk::date: return meta::field_type(meta::field_enum_tag<mk::date>);
-        case mk::blob: return meta::field_type(meta::field_enum_tag<mk::blob>);
-        case mk::clob: return meta::field_type(meta::field_enum_tag<mk::clob>);
-
-        case mk::character:
-            return meta::field_type(std::make_shared<meta::character_field_option>());
-        case mk::octet: return meta::field_type(std::make_shared<meta::octet_field_option>());
-        case mk::decimal: return meta::field_type(std::make_shared<meta::decimal_field_option>());
-        case mk::time_of_day:
-            return meta::field_type(std::make_shared<meta::time_of_day_field_option>());
-        case mk::time_point:
-            return meta::field_type(std::make_shared<meta::time_point_field_option>());
-        default: fail_with_exception_msg("unhandled meta::field_type_kind in make_field_type()");
-    }
-}
 meta::field_type_kind to_meta_kind_from_nested_record(std::string_view rn) {
     using k = meta::field_type_kind;
 
@@ -928,14 +780,14 @@ void append_column_types(
             auto rn = nested->record_name();
 
             if (is_special_nested_record(rn)) {
-                out.emplace_back(make_field_type(to_meta_kind_from_nested_record(rn)));
+                out.emplace_back(jogasaki::udf::bridge::to_field_type(to_meta_kind_from_nested_record(rn)));
             } else {
                 append_column_types(out, nested->columns());
             }
             continue;
         }
 
-        out.emplace_back(make_field_type(to_meta_kind(*col)));
+        out.emplace_back(jogasaki::udf::bridge::to_field_type(jogasaki::udf::bridge::to_meta_kind(*col)));
     }
 }
 std::vector<meta::field_type> build_output_column_types(plugin::udf::function_descriptor const& fn) {
@@ -964,7 +816,7 @@ std::vector<meta::field_type> build_output_column_types(plugin::udf::function_de
  * - Invoke server-streaming RPC via
  *   `generic_client::call_server_streaming_async(...)`.
  * - Wrap the returned `generic_record_stream` with
- *   `data::udf_any_sequence_stream` and return it.
+ *   `udf::data::udf_any_sequence_stream` and return it.
  *
  * ### Contrast with scalar UDF
  * - Scalar UDF invokes unary RPC (`call`) and immediately builds `data::any`.
@@ -1016,7 +868,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
         }
         auto column_types = build_output_column_types(*fn);
 
-        return std::make_unique<data::udf_any_sequence_stream>(
+        return std::make_unique<udf::data::udf_any_sequence_stream>(
             std::move(udf_stream), std::move(column_types));
     };
 }
@@ -1123,14 +975,14 @@ void append_table_cols(std::vector<takatori::type::table::column_type>& out,
                 if (auto it = type_map.find(rn); it != type_map.end()) {
                     out.emplace_back(full, it->second());
                 } else {
-                    out.emplace_back(full, map_type(col->type_kind()));
+                    out.emplace_back(full, jogasaki::udf::bridge::to_takatori_type(col->type_kind()));
                 }
             } else {
                 append_table_cols(out, nested->columns(), full);
             }
             continue;
         }
-        out.emplace_back(full, map_type(col->type_kind()));
+        out.emplace_back(full, jogasaki::udf::bridge::to_takatori_type(col->type_kind()));
     }
 }
 

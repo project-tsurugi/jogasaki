@@ -23,12 +23,13 @@
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
 #include <jogasaki/data/any_sequence_stream_status.h>
-#include <jogasaki/data/mock_any_sequence_stream.h>
 #include <jogasaki/test_root.h>
+#include <jogasaki/test_utils/mock_any_sequence_stream.h>
 
 namespace jogasaki::data {
 
 using namespace testing;
+using jogasaki::testing::mock_any_sequence_stream;
 
 // helper function to create any from int64_t
 inline any make_any_int64(std::int64_t v) {

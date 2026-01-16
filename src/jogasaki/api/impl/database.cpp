@@ -84,7 +84,6 @@
 #include <jogasaki/executor/executor.h>
 #include <jogasaki/executor/function/builtin_functions.h>
 #include <jogasaki/executor/function/builtin_scalar_functions.h>
-#include <jogasaki/executor/function/builtin_table_valued_functions.h>
 #include <jogasaki/executor/function/incremental/builtin_functions.h>
 #include <jogasaki/executor/function/udf_functions.h>
 #include <jogasaki/executor/global.h>
@@ -449,12 +448,6 @@ bool database::init() {
         *aggregate_functions_,
         global::aggregate_function_repository()
     );
-    if (cfg_->mock_table_valued_functions()) {
-        executor::function::add_builtin_table_valued_functions(
-            *regular_functions_,
-            global::table_valued_function_repository()
-        );
-    }
     initialized_ = true;
     return true;
 }

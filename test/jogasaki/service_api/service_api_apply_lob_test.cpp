@@ -47,7 +47,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
-#include <jogasaki/data/mock_any_sequence_stream.h>
+#include <jogasaki/test_utils/mock_any_sequence_stream.h>
 #include <jogasaki/datastore/get_datastore.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/table_valued_function_info.h>
@@ -98,6 +98,7 @@ using takatori::util::unsafe_downcast;
 using takatori::util::maybe_shared_ptr;
 
 using jogasaki::api::impl::get_impl;
+using jogasaki::testing::mock_any_sequence_stream;
 namespace framework = tateyama::framework;
 
 /**
@@ -205,7 +206,7 @@ TEST_F(service_api_apply_lob_test, return_single_column) {
                     sequences.emplace_back(::jogasaki::data::any_sequence(std::move(row)));
                 }
 
-                return std::make_unique<data::mock_any_sequence_stream>(std::move(sequences));
+                return std::make_unique<mock_any_sequence_stream>(std::move(sequences));
             },
             1,
             executor::function::table_valued_function_info::columns_type{
@@ -341,7 +342,7 @@ TEST_F(service_api_apply_lob_test, return_multiple_columns) {
                     sequences.emplace_back(::jogasaki::data::any_sequence(std::move(row)));
                 }
 
-                return std::make_unique<data::mock_any_sequence_stream>(std::move(sequences));
+                return std::make_unique<mock_any_sequence_stream>(std::move(sequences));
             },
             1,
             executor::function::table_valued_function_info::columns_type{

@@ -43,7 +43,6 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
-#include <jogasaki/data/mock_any_sequence_stream.h>
 #include <jogasaki/datastore/datastore_mock.h>
 #include <jogasaki/datastore/get_datastore.h>
 #include <jogasaki/executor/expr/evaluator_context.h>

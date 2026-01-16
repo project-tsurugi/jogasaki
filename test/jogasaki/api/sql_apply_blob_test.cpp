@@ -37,7 +37,6 @@
 #include <jogasaki/configuration.h>
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence_stream.h>
-#include <jogasaki/data/mock_any_sequence_stream.h>
 #include <jogasaki/datastore/get_datastore.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/table_valued_function_info.h>
@@ -52,6 +51,7 @@
 #include <jogasaki/test_utils/create_configuration.h>
 #include <jogasaki/test_utils/create_file.h>
 #include <jogasaki/test_utils/data_relay_client.h>
+#include <jogasaki/test_utils/mock_any_sequence_stream.h>
 #include <jogasaki/utils/create_tx.h>
 
 #include "api_test_base.h"
@@ -175,7 +175,7 @@ TEST_F(sql_apply_blob_test, apply_with_clob) {
                     sequences.emplace_back(std::vector<data::any>{uploaded});
                 }
 
-                return std::make_unique<data::mock_any_sequence_stream>(std::move(sequences));
+                return std::make_unique<mock_any_sequence_stream>(std::move(sequences));
             },
             1,
             table_valued_function_info::columns_type{

@@ -49,6 +49,8 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/field_types.h>
 
 #include "apply_context.h"
 #include "context_helper.h"
@@ -247,75 +249,24 @@ bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
         auto const& value = sequence[pos];
         auto info = vars.info().at(var);
 
-        bool is_null = value.empty();
-        ref.set_null(info.nullity_offset(), is_null);
-
-        if (! is_null) {
-            // Post-process LOB references (register session storage LOBs to datastore)
-            auto processed_value = expr::post_process_if_lob(value, ctx.evaluator_context_);
-            if (processed_value.error()) {
-                handle_expression_error(ctx, processed_value, ctx.evaluator_context_);
-                return false;
-            }
-            using t = takatori::type::type_kind;
-            switch (cinfo.type_of(var).kind()) {
-                case t::boolean:
-                    ref.set_value<runtime_t<meta::field_type_kind::boolean>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::boolean>>());
-                    break;
-                case t::int4:
-                    ref.set_value<runtime_t<meta::field_type_kind::int4>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::int4>>());
-                    break;
-                case t::int8:
-                    ref.set_value<runtime_t<meta::field_type_kind::int8>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::int8>>());
-                    break;
-                case t::float4:
-                    ref.set_value<runtime_t<meta::field_type_kind::float4>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::float4>>());
-                    break;
-                case t::float8:
-                    ref.set_value<runtime_t<meta::field_type_kind::float8>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::float8>>());
-                    break;
-                case t::decimal:
-                    ref.set_value<runtime_t<meta::field_type_kind::decimal>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::decimal>>());
-                    break;
-                case t::character:
-                    ref.set_value<runtime_t<meta::field_type_kind::character>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::character>>());
-                    break;
-                case t::octet:
-                    ref.set_value<runtime_t<meta::field_type_kind::octet>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::octet>>());
-                    break;
-                case t::date:
-                    ref.set_value<runtime_t<meta::field_type_kind::date>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::date>>());
-                    break;
-                case t::time_of_day:
-                    ref.set_value<runtime_t<meta::field_type_kind::time_of_day>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::time_of_day>>());
-                    break;
-                case t::time_point:
-                    ref.set_value<runtime_t<meta::field_type_kind::time_point>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::time_point>>());
-                    break;
-                case t::clob:
-                    ref.set_value<runtime_t<meta::field_type_kind::clob>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::clob>>());
-                    break;
-                case t::blob:
-                    ref.set_value<runtime_t<meta::field_type_kind::blob>>(
-                        info.value_offset(), processed_value.to<runtime_t<meta::field_type_kind::blob>>());
-                    break;
-                default:
-                    VLOG_LP(log_warning) << "Unsupported type in apply operator: " << cinfo.type_of(var).kind();
-                    break;
-            }
+        // Post-process LOB references (register session storage LOBs to datastore)
+        auto processed_value = expr::post_process_if_lob(value, ctx.evaluator_context_);
+        if (processed_value.error()) {
+            handle_expression_error(ctx, processed_value, ctx.evaluator_context_);
+            return false;
         }
+
+        // Get field type from variable and use copy_nullable_field
+        // This properly handles varlen data (character/octet) by allocating them with ctx.varlen_resource()
+        auto field_type = utils::type_for(cinfo, var);
+        utils::copy_nullable_field(
+            field_type,
+            ref,
+            info.value_offset(),
+            info.nullity_offset(),
+            processed_value,
+            ctx.varlen_resource()
+        );
     }
     return true;
 }

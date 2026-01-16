@@ -24,15 +24,15 @@
 #include <takatori/datetime/time_point.h>
 #include <takatori/decimal/triple.h>
 
-namespace jogasaki::data {
-
-takatori::decimal::triple decode_decimal_triple(std::string const& unscaled, std::int32_t exponent);
-takatori::datetime::date decode_date_from_wire(std::int32_t days);
-takatori::datetime::time_of_day decode_time_of_day_from_wire(std::int64_t nanos);
-takatori::datetime::time_point decode_time_point_from_wire(
-    std::int64_t seconds, std::uint32_t nanos);
-jogasaki::lob::blob_reference decode_blob_reference_from_wire(std::uint64_t storage_id,
-    std::uint64_t object_id, std::uint64_t tag, std::optional<bool> provisioned);
-jogasaki::lob::clob_reference decode_clob_reference_from_wire(std::uint64_t storage_id,
-    std::uint64_t object_id, std::uint64_t tag, std::optional<bool> provisioned);
-} // namespace jogasaki::data
+namespace jogasaki::udf::data {
+enum class udf_semantic_type {
+    boolean,
+    int4,
+    int8,
+    float4,
+    float8,
+    character,
+    octet,
+    unknown,
+};
+} // namespace jogasaki::udf::data

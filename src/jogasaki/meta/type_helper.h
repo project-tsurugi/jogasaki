@@ -38,37 +38,38 @@ std::enable_if_t<
      meta::field_type_kind::octet != Kind),
     meta::field_type>
 create_field_type() {
-    return meta::field_type(meta::field_enum_tag<Kind>);
+    // NOLINTNEXTLINE(google-readability-casting)
+    return meta::field_type{meta::field_enum_tag<Kind>};
 }
 
 template<meta::field_type_kind Kind, class... Args>
 std::enable_if_t<(meta::field_type_kind::time_of_day == Kind), meta::field_type>
 create_field_type(Args&&... args) {
-    return meta::field_type(std::make_shared<meta::time_of_day_field_option>(std::forward<Args>(args)...));
+    return meta::field_type{std::make_shared<meta::time_of_day_field_option>(std::forward<Args>(args)...)};
 }
 
 template<meta::field_type_kind Kind, class... Args>
 std::enable_if_t<(meta::field_type_kind::time_point == Kind), meta::field_type>
 create_field_type(Args&&... args) {
-    return meta::field_type(std::make_shared<meta::time_point_field_option>(std::forward<Args>(args)...));
+    return meta::field_type{std::make_shared<meta::time_point_field_option>(std::forward<Args>(args)...)};
 }
 
 template<meta::field_type_kind Kind, class... Args>
 std::enable_if_t<(meta::field_type_kind::decimal == Kind), meta::field_type>
 create_field_type(Args&&... args) {
-    return meta::field_type(std::make_shared<meta::decimal_field_option>(std::forward<Args>(args)...));
+    return meta::field_type{std::make_shared<meta::decimal_field_option>(std::forward<Args>(args)...)};
 }
 
 template<meta::field_type_kind Kind, class... Args>
 std::enable_if_t<(meta::field_type_kind::character == Kind), meta::field_type>
 create_field_type(Args&&... args) {
-    return meta::field_type(std::make_shared<meta::character_field_option>(std::forward<Args>(args)...));
+    return meta::field_type{std::make_shared<meta::character_field_option>(std::forward<Args>(args)...)};
 }
 
 template<meta::field_type_kind Kind, class... Args>
 std::enable_if_t<(meta::field_type_kind::octet == Kind), meta::field_type>
 create_field_type(Args&&... args) {
-    return meta::field_type(std::make_shared<meta::octet_field_option>(std::forward<Args>(args)...));
+    return meta::field_type{std::make_shared<meta::octet_field_option>(std::forward<Args>(args)...)};
 }
 
 inline field_type boolean_type() {

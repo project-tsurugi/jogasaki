@@ -26,14 +26,16 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/udf/generic_record.h>
 
-namespace jogasaki::data {
+namespace jogasaki::udf::data {
 
+using any_sequence = ::jogasaki::data::any_sequence;
+using status_type  = ::jogasaki::data::any_sequence_stream::status_type;
 /**
  * @brief adapter class that wraps generic_record_stream to provide any_sequence_stream interface.
  * @details this adapter bridges the UDF world (generic_record_stream) and the jogasaki world (any_sequence_stream).
  *          it converts generic_record to any_sequence by mapping record fields to any values.
  */
-class udf_any_sequence_stream : public any_sequence_stream {
+class udf_any_sequence_stream : public ::jogasaki::data::any_sequence_stream {
 public:
     /**
      * @brief constructs a new adapter with the specified generic_record_stream.
@@ -85,4 +87,4 @@ private:
     bool convert_record_to_sequence(plugin::udf::generic_record const& record, any_sequence& seq);
 };
 
-}  // namespace jogasaki::data
+}  // namespace jogasaki::udf::data

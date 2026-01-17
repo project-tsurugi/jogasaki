@@ -40,3 +40,11 @@ forwardはレコードを到達順 (FIFO order) にインクリメンタルに�
 `utils::checkpoint_holder` によって、開始時点のlifo_paged_memory_resourceの状態を記録し、スコープの終了時点でその状態に戻すことができる。
 
 プロセスのトップレベル関係演算子はこの機能を利用して、送出単位ごとにvarlen. bufferをrewindして不必要になった領域を再利用する。送出単位の境界を超えてvarlen. bufferをrewindしてしまうと、下流の関係演算子が参照している領域が解放されてしまうため、メモリ破壊につながる( https://github.com/project-tsurugi/tsurugi-issues/issues/946 )。この場合メモリページ自体は `memory::page_pool`によって確保されているため、ASANによって検出されず発見しにくいバグとなる。
+
+## evaluatorと可変長バッファ
+
+evaluatorは式の評価の途中でvarlen dataを生成して使用する必要がある際に、varlen bufferを作成してそこへの参照を`any`に入れて戻すことがある。そのため、evaluatorが評価結果を`any`によって戻す際、その`any`にvarlen bufferへの参照が含まれる可能性がある。
+
+evaluator側ではvarlen bufferをrewindすることができないため、evaluatorを呼び出した側で結果を使用した後（その`any`が完全に不要になった後）にvarlen bufferをrewindする必要がある。
+
+なお、`any`を戻さない式評価の場合はこの限りではない。例えば`evaluator::evaluate_bool`はその内部でrewindする機構を持っている。

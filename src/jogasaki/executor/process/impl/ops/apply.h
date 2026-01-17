@@ -19,7 +19,6 @@
 #include <memory>
 #include <vector>
 
-#include <takatori/descriptor/variable.h>
 #include <takatori/relation/apply.h>
 #include <takatori/util/downcast.h>
 
@@ -33,6 +32,7 @@
 #include <jogasaki/executor/process/impl/ops/operation_status.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/processor_info.h>
+#include <jogasaki/meta/field_type.h>
 
 #include "apply_context.h"
 #include "operator_base.h"
@@ -40,6 +40,21 @@
 namespace jogasaki::executor::process::impl::ops {
 
 using takatori::util::unsafe_downcast;
+
+namespace details {
+
+/**
+ * @brief field information for apply operator.
+ * @details contains pre-computed field metadata to avoid repeated lookups.
+ */
+struct apply_field {
+    meta::field_type type_{};
+    std::size_t value_offset_{};
+    std::size_t nullity_offset_{};
+    std::size_t pos_{};
+};
+
+}  // namespace details
 
 /**
  * @brief apply operator for table-valued function application.
@@ -108,10 +123,18 @@ public:
 private:
     takatori::relation::apply_kind operator_kind_{};
     function::table_valued_function_info const* function_info_{};
-    std::vector<std::size_t> column_positions_{};
-    std::vector<takatori::descriptor::variable> column_variables_{};
+    std::vector<details::apply_field> fields_{};
     std::vector<expr::evaluator> argument_evaluators_{};
     std::unique_ptr<operator_base> downstream_{};
+
+    /**
+     * @brief creates the field information for output columns.
+     * @param columns the output column definitions from the apply node
+     * @return vector of field information
+     */
+    [[nodiscard]] std::vector<details::apply_field> create_fields(
+        std::vector<takatori::relation::details::apply_column> const& columns
+    );
 
     /**
      * @brief evaluates the function arguments.

@@ -29,7 +29,6 @@
 #include <takatori/util/downcast.h>
 #include <takatori/util/exception.h>
 #include <takatori/util/sequence_view.h>
-#include <yugawara/binding/extract.h>
 #include <yugawara/compiled_info.h>
 
 #include <jogasaki/data/any_sequence.h>
@@ -75,16 +74,10 @@ apply::apply(
     record_operator(index, info, block_index),
     operator_kind_(operator_kind),
     function_info_(function_info),
+    fields_(create_fields(columns)),
     argument_evaluators_(std::move(arguments)),
     downstream_(std::move(downstream))
-{
-    column_positions_.reserve(columns.size());
-    column_variables_.reserve(columns.size());
-    for (auto const& col : columns) {
-        column_positions_.emplace_back(col.position());
-        column_variables_.emplace_back(col.variable());
-    }
-}
+{}
 
 operation_status apply::process_record(abstract::task_context* context) {
     BOOST_ASSERT(context != nullptr);  //NOLINT
@@ -232,11 +225,9 @@ bool apply::evaluate_arguments(apply_context& ctx, std::vector<data::any>& args)
 bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence const& sequence) {
     auto& vars = ctx.output_variables();
     auto ref = vars.store().ref();
-    auto& cinfo = compiled_info();
 
-    for (std::size_t i = 0; i < column_positions_.size(); ++i) {
-        auto pos = column_positions_[i];
-        auto const& var = column_variables_[i];
+    for (auto const& field : fields_) {
+        auto pos = field.pos_;
 
         if (pos >= sequence.size()) {
             VLOG_LP(log_warning) << "Column position " << pos << " exceeds sequence size " << sequence.size();
@@ -249,7 +240,6 @@ bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
         }
 
         auto const& value = sequence[pos];
-        auto info = vars.info().at(var);
 
         // Post-process LOB references (register session storage LOBs to datastore)
         auto processed_value = expr::post_process_if_lob(value, ctx.evaluator_context_);
@@ -258,14 +248,12 @@ bool apply::assign_sequence_to_variables(apply_context& ctx, data::any_sequence 
             return false;
         }
 
-        // Get field type from variable and use copy_nullable_field
-        // This properly handles varlen data (character/octet) by allocating them with ctx.varlen_resource()
-        auto field_type = utils::type_for(cinfo, var);
+        // Use pre-computed field information to copy the value
         utils::copy_nullable_field(
-            field_type,
+            field.type_,
             ref,
-            info.value_offset(),
-            info.nullity_offset(),
+            field.value_offset_,
+            field.nullity_offset_,
             processed_value,
             ctx.varlen_resource()
         );
@@ -277,10 +265,30 @@ void apply::assign_null_to_variables(apply_context& ctx) {
     auto& vars = ctx.output_variables();
     auto ref = vars.store().ref();
 
-    for (auto const& var : column_variables_) {
-        auto info = vars.info().at(var);
-        ref.set_null(info.nullity_offset(), true);
+    for (auto const& field : fields_) {
+        ref.set_null(field.nullity_offset_, true);
     }
+}
+
+std::vector<details::apply_field> apply::create_fields(
+    std::vector<takatori::relation::details::apply_column> const& columns
+) {
+    std::vector<details::apply_field> fields{};
+    fields.reserve(columns.size());
+    auto& cinfo = compiled_info();
+    auto& var_info = block_info();
+
+    for (auto const& col : columns) {
+        auto const& var = col.variable();
+        auto info = var_info.at(var);
+        fields.emplace_back(details::apply_field{
+            utils::type_for(cinfo, var),
+            info.value_offset(),
+            info.nullity_offset(),
+            col.position()
+        });
+    }
+    return fields;
 }
 
 }  // namespace jogasaki::executor::process::impl::ops

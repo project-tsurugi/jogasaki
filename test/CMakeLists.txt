@@ -54,12 +54,11 @@ function (add_test_executable source_file serial_execution)
     target_sources(${test_target}
             PRIVATE ${source_file}
             )
-    add_test(
-            NAME ${test_name}
-            COMMAND ${test_target} --gtest_output=xml:${test_name}_gtest_result.xml
-    )
+
     if(serial_execution)
-        set_tests_properties(${test_name} PROPERTIES RESOURCE_LOCK framework_server)
+        gtest_discover_tests(${test_target} PROPERTIES RESOURCE_LOCK framework_server)
+    else()
+        gtest_discover_tests(${test_target})
     endif()
 endfunction (add_test_executable)
 
@@ -131,6 +130,7 @@ foreach(file ${ADDED})
     list(APPEND SRCS ${file})
 endforeach()
 
+include(GoogleTest)
 # List of test files that use framework::server and require serial execution
 set(SERIAL_EXECUTION_TESTS
         "jogasaki/api/framework_test.cpp"

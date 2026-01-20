@@ -52,6 +52,7 @@ void tx_start(
             " tx_id:" << tx_id <<
             " tx_type:" << tx_type <<
             " tx_label:" << tx_label <<
+            " instance_id:" << (req_info.request_source() ? req_info.request_source()->database_info().instance_id() : "null") <<
             "";
     }
     (void) req_info;
@@ -78,6 +79,7 @@ void tx_end(
         " tx_label:" << tx_label <<
         " result:" << result <<
         " duration_time:" << duration_time_ns <<
+        " instance_id:" << (req_info.request_source() ? req_info.request_source()->database_info().instance_id() : "null") <<
         "";
     }
     (void) req_info;
@@ -106,6 +108,7 @@ void stmt_start(
         " job_id:" << job_id <<
         " statement:\"" << statement << "\"" <<
         " parameter:\"" << parameter << "\"" <<
+        " instance_id:" << (req_info.request_source() ? req_info.request_source()->database_info().instance_id() : "null") <<
         "";
     }
     (void) req_info;
@@ -150,6 +153,7 @@ void stmt_end(
         " deleted:" << deleted <<
         " merged:" << merged <<
         " duration_time:" << duration_time_ns <<
+        " instance_id:" << (req_info.request_source() ? req_info.request_source()->database_info().instance_id() : "null") <<
         "";
     }
     (void) req_info;
@@ -191,6 +195,7 @@ void stmt_explain(
         " job_id:" << job_id <<
         " tx_label:" << tx_label <<
         " data:" << data <<
+        " instance_id:" << (req_info.request_source() ? req_info.request_source()->database_info().instance_id() : "null") <<
         "";
     }
     (void) req_info;

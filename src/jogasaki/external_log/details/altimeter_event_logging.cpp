@@ -48,6 +48,7 @@ static void fill_common_properties(
         item.add(::altimeter::event::item::dbname, database_name);
     }
     item.add(::altimeter::event::item::pid, static_cast<pid_t>(database_info.process_id()));
+    item.add(::altimeter::event::item::instance_id, database_info.instance_id());
     if(auto connection_information = session_info.connection_information(); ! connection_information.empty()) {
         item.add(::altimeter::event::item::remote_host, connection_information);
     }

@@ -15,15 +15,6 @@
  */
 #pragma once
 
-#include <jogasaki/lob/blob_reference.h>
-#include <jogasaki/lob/clob_reference.h>
-#include <jogasaki/utils/fail.h>
-
-#include <takatori/datetime/date.h>
-#include <takatori/datetime/time_of_day.h>
-#include <takatori/datetime/time_point.h>
-#include <takatori/decimal/triple.h>
-
 namespace jogasaki::udf::data {
 enum class udf_semantic_type {
     boolean,

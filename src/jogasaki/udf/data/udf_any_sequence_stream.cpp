@@ -23,16 +23,16 @@
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
-#include <jogasaki/data/udf_wire_codec.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/generic_record.h>
 #include <jogasaki/udf/generic_record_impl.h>
 
-namespace jogasaki::data {
+namespace jogasaki::udf::data {
 
 namespace {
-
+using any = ::jogasaki::data::any;
 template <class T, class Opt> void emplace_nullable(std::vector<any>& values, Opt const& opt) {
     if (opt) {
         values.emplace_back(std::in_place_type<T>, *opt);
@@ -54,7 +54,7 @@ void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor
     auto unscaled_opt = cursor.fetch_string();
     auto exponent_opt = cursor.fetch_int4();
     if (unscaled_opt && exponent_opt) {
-        auto triple = jogasaki::data::decode_decimal_triple(*unscaled_opt, *exponent_opt);
+        auto triple = jogasaki::udf::data::decode_decimal_triple(*unscaled_opt, *exponent_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, triple);
     } else {
         values.emplace_back();
@@ -63,7 +63,7 @@ void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor
 
 void append_date(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     if (auto days_opt = cursor.fetch_int4()) {
-        auto date = jogasaki::data::decode_date_from_wire(*days_opt);
+        auto date = jogasaki::udf::data::decode_date_from_wire(*days_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::date>>, date);
     } else {
         values.emplace_back();
@@ -72,7 +72,7 @@ void append_date(std::vector<any>& values, plugin::udf::generic_record_cursor& c
 
 void append_time_of_day(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     if (auto nanos_opt = cursor.fetch_int8()) {
-        auto tod = jogasaki::data::decode_time_of_day_from_wire(*nanos_opt);
+        auto tod = jogasaki::udf::data::decode_time_of_day_from_wire(*nanos_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, tod);
     } else {
         values.emplace_back();
@@ -83,7 +83,7 @@ void append_time_point(std::vector<any>& values, plugin::udf::generic_record_cur
     auto sec_opt  = cursor.fetch_int8();
     auto nano_opt = cursor.fetch_uint4();
     if (sec_opt && nano_opt) {
-        auto tp = jogasaki::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
+        auto tp = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp);
     } else {
         values.emplace_back();
@@ -109,14 +109,14 @@ void append_lob_reference(std::vector<any>& values, plugin::udf::generic_record_
 void append_blob(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     append_lob_reference<runtime_t<meta::field_type_kind::blob>>(values, cursor,
         [](std::uint64_t s, std::uint64_t o, std::uint64_t t, std::optional<bool> p) {
-            return jogasaki::data::decode_blob_reference_from_wire(s, o, t, p);
+            return jogasaki::udf::data::decode_blob_reference_from_wire(s, o, t, p);
         });
 }
 
 void append_clob(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     append_lob_reference<runtime_t<meta::field_type_kind::clob>>(values, cursor,
         [](std::uint64_t s, std::uint64_t o, std::uint64_t t, std::optional<bool> p) {
-            return jogasaki::data::decode_clob_reference_from_wire(s, o, t, p);
+            return jogasaki::udf::data::decode_clob_reference_from_wire(s, o, t, p);
         });
 }
 
@@ -128,13 +128,14 @@ void fail_unsupported(meta::field_type const& col_type) {
 }
 
 } // namespace
+using base_stream = ::jogasaki::data::any_sequence_stream;
 
 udf_any_sequence_stream::udf_any_sequence_stream(
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
     std::vector<meta::field_type> column_types)
     : udf_stream_(std::move(udf_stream)), column_types_(std::move(column_types)) {}
 
-any_sequence_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
+base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
     if (!udf_stream_) { return status_type::end_of_stream; }
 
     plugin::udf::generic_record_impl record;
@@ -151,7 +152,7 @@ any_sequence_stream::status_type udf_any_sequence_stream::try_next(any_sequence&
     return status_type::error;
 }
 
-any_sequence_stream::status_type udf_any_sequence_stream::next(
+base_stream::status_type udf_any_sequence_stream::next(
     any_sequence& seq, std::optional<std::chrono::milliseconds> timeout) {
     if (!udf_stream_) { return status_type::end_of_stream; }
 
@@ -215,4 +216,4 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
     return true;
 }
 
-} // namespace jogasaki::data
+} // namespace jogasaki::udf::data

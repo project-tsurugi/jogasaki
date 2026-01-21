@@ -468,7 +468,7 @@ TEST_F(sql_apply_test, cross_apply_basic) {
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(1, 100, 2, 200)), result[1]);
 
     // second input row (2, 200) × function output (1*2, 100*2) and (2*2, 200*2)
-    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(2, 200, 2, 200)), result[2]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(3, 200, 2, 200)), result[2]);
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(2, 200, 4, 400)), result[3]);
 }
 

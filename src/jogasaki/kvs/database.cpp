@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ std::shared_ptr<database> database::open(std::map<std::string, std::string> cons
         dbopts.attribute(p.first, p.second);
     }
     DatabaseHandle handle{};
-    if(auto res = sharksfin::database_open(dbopts, &handle); res != sharksfin::StatusCode::OK) {
+    if(auto res = sharksfin::database_open(dbopts, nullptr, &handle); res != sharksfin::StatusCode::OK) {
         LOG_LP(ERROR) << "database_open failed with " << res;
         return {};
     }

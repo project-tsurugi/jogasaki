@@ -119,3 +119,35 @@ SQL実行エンジンのデータ型の実装における内部仕様につい�
 
 - カッコが省略された場合は既定の最大桁の整数となる
   - `DECIMAL` == `DECIMAL(38, 0)`
+
+## `DATE`
+
+- 実行時型: `takatori::datetime::date`
+- 日付を保持する型
+
+## `TIME`
+
+- 実行時型: `takatori::datetime::time_of_day`
+- ローカル時刻(タイムゾーンを考慮しない)を保持する型
+
+## `TIMESTAMP`
+
+- 実行時型: `takatori::datetime::time_point`
+- ローカルタイムスタンプ(タイムゾーンを考慮しない)を保持する型
+
+## `TIMESTAMP WITH TIME ZONE`
+
+- 実行時型: `takatori::datetime::time_point`
+- タイムゾーン取り扱い可能なタイムスタンプを保持する型で、タイムゾーンオフセットを指定された値の入出力が可能
+- ただし Tsurugi (jogasaki) 内部ではタイムゾーンオフセットは保存せず、同時刻を表すUTC時刻として記録する
+- 外部(クライアントやUDF等)へこの型が渡される際には「システムタイムゾーン」を持つ値として渡される 
+  - 例えば java クライアントの場合はシステムタイムゾーンを持つ `OffsetDateTime`
+- システムタイムゾーンは、以下のように設定できる
+  - tsurugi.ini の設定でオフセットを指定する ( `session.zone_offset` パラメータ)
+  - 未設定時(つまり上記パラメータのデフォルト)はUTC
+
+参考: [Issue #790 コメント](https://github.com/project-tsurugi/tsurugi-issues/issues/790#issuecomment-2237778585)
+
+### `TIME WITH TIME ZONE`
+
+- `TIME WITH TIME ZONE`という型も存在するが、用途不明のためdeprecated扱いである

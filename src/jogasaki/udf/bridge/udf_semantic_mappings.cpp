@@ -42,7 +42,7 @@
 
 namespace jogasaki::udf::bridge {
 
-namespace { // anonymous
+namespace {
 const std::unordered_map<plugin::udf::type_kind, jogasaki::udf::data::udf_semantic_type>&
 udf_semantic_map() {
     using K   = plugin::udf::type_kind;
@@ -132,7 +132,7 @@ semantic_meta_kind_map() {
     };
     return map;
 }
-} // namespace
+} // namespace anonymous
 jogasaki::meta::field_type to_field_type(jogasaki::meta::field_type_kind k) {
     using mk = jogasaki::meta::field_type_kind;
 

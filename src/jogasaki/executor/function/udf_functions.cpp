@@ -74,8 +74,11 @@
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
+#include <jogasaki/udf/bridge/udf_record_flattening.h>
 #include <jogasaki/udf/bridge/udf_semantic_mappings.h>
+#include <jogasaki/udf/bridge/udf_special_records.h>
 #include <jogasaki/udf/data/udf_any_sequence_stream.h>
+#include <jogasaki/udf/data/udf_semantic_type.h>
 #include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/error_info.h>
@@ -99,23 +102,16 @@ using jogasaki::executor::expr::error_kind;
 namespace {
 constexpr std::size_t SUPPORTED_MAJOR = 0;
 constexpr std::size_t SUPPORTED_MINOR = 1;
-constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.Decimal";
-constexpr std::string_view DATE_RECORD = "tsurugidb.udf.Date";
-constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.LocalTime";
-constexpr std::string_view LOCALDATETIME_RECORD = "tsurugidb.udf.LocalDatetime";
-constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime";
-constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
-constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
 
 std::unordered_map<std::string_view, std::size_t> const& nested_type_map() {
     static const std::unordered_map<std::string_view, std::size_t> map{
-        {DECIMAL_RECORD, data::any::index<runtime_t<kind::decimal>>},
-        {DATE_RECORD, data::any::index<runtime_t<kind::date>>},
-        {LOCALTIME_RECORD, data::any::index<runtime_t<kind::time_of_day>>},
-        {LOCALDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
-        {OFFSETDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
-        {BLOB_RECORD, data::any::index<runtime_t<kind::blob>>},
-        {CLOB_RECORD, data::any::index<runtime_t<kind::clob>>},
+        {jogasaki::udf::bridge::DECIMAL_RECORD, data::any::index<runtime_t<kind::decimal>>},
+        {jogasaki::udf::bridge::DATE_RECORD, data::any::index<runtime_t<kind::date>>},
+        {jogasaki::udf::bridge::LOCALTIME_RECORD, data::any::index<runtime_t<kind::time_of_day>>},
+        {jogasaki::udf::bridge::LOCALDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
+        {jogasaki::udf::bridge::OFFSETDATETIME_RECORD, data::any::index<runtime_t<kind::time_point>>},
+        {jogasaki::udf::bridge::BLOB_RECORD, data::any::index<runtime_t<kind::blob>>},
+        {jogasaki::udf::bridge::CLOB_RECORD, data::any::index<runtime_t<kind::clob>>},
     };
     return map;
 }
@@ -123,14 +119,14 @@ std::unordered_map<std::string_view, std::function<std::shared_ptr<const takator
 get_type_map() {
     static const std::unordered_map<std::string_view, std::function<std::shared_ptr<const takatori::type::data>()>>
         map = {
-            {DECIMAL_RECORD, [] { return std::make_shared<takatori::type::decimal>(); }},
-            {DATE_RECORD, [] { return std::make_shared<takatori::type::date>(); }},
-            {LOCALTIME_RECORD, [] { return std::make_shared<takatori::type::time_of_day>(); }},
-            {LOCALDATETIME_RECORD, [] { return std::make_shared<takatori::type::time_point>(); }},
-            {OFFSETDATETIME_RECORD,
+            {jogasaki::udf::bridge::DECIMAL_RECORD, [] { return std::make_shared<takatori::type::decimal>(); }},
+            {jogasaki::udf::bridge::DATE_RECORD, [] { return std::make_shared<takatori::type::date>(); }},
+            {jogasaki::udf::bridge::LOCALTIME_RECORD, [] { return std::make_shared<takatori::type::time_of_day>(); }},
+            {jogasaki::udf::bridge::LOCALDATETIME_RECORD, [] { return std::make_shared<takatori::type::time_point>(); }},
+            {jogasaki::udf::bridge::OFFSETDATETIME_RECORD,
              [] { return std::make_shared<takatori::type::time_point>(takatori::type::with_time_zone); }},
-            {BLOB_RECORD, [] { return std::make_shared<takatori::type::blob>(); }},
-            {CLOB_RECORD, [] { return std::make_shared<takatori::type::clob>(); }},
+            {jogasaki::udf::bridge::BLOB_RECORD, [] { return std::make_shared<takatori::type::blob>(); }},
+            {jogasaki::udf::bridge::CLOB_RECORD, [] { return std::make_shared<takatori::type::clob>(); }},
         };
     return map;
 }
@@ -250,7 +246,7 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 request.add_int8(offset_seconds);
                 request.add_uint4(nano_adjustment);
                 if(columns[i]->nested() != nullptr) {
-                    if(columns[i]->nested()->record_name() == OFFSETDATETIME_RECORD) {
+                    if(columns[i]->nested()->record_name() == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
                         request.add_int4(static_cast<int32_t>(global::config_pool()->zone_offset()));
                     }
                 }
@@ -317,22 +313,6 @@ std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
     return param_types;
 }
 
-std::size_t count_effective_columns(plugin::udf::record_descriptor const& rec) {
-    std::size_t total = 0;
-
-    for (auto* col : rec.columns()) {
-        if (!col) continue;
-
-        auto* nested = col->nested();
-        if (nested) {
-            total += count_effective_columns(*nested);
-        } else {
-            total += 1;
-        }
-    }
-    return total;
-}
-
 void register_udf_function_patterns(
     yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
@@ -364,7 +344,7 @@ void register_udf_function_patterns(
             register_function(functions, repo, current_id, fn_name, return_type, param_types, lambda_func);
         }
     }
-    if (count_effective_columns(input_record) == 0) {
+    if (jogasaki::udf::bridge::count_effective_columns(input_record) == 0) {
         register_function(functions, repo, current_id, fn_name, return_type, {}, lambda_func);
     }
 }
@@ -406,7 +386,7 @@ bool build_udf_request(
     sequence_view<data::any> args
 ) {
     auto const& record_name = fn->input_record().record_name();
-    if(record_name == DECIMAL_RECORD) {
+    if(record_name == jogasaki::udf::bridge::DECIMAL_RECORD) {
         auto value = args[0].to<runtime_t<kind::decimal>>();
         std::int8_t sign = value.sign();
         std::uint64_t hi = value.coefficient_high();
@@ -425,23 +405,23 @@ bool build_udf_request(
         request.add_int4(exp);
         return true;
     }
-    if(record_name == DATE_RECORD) {
+    if(record_name == jogasaki::udf::bridge::DATE_RECORD) {
         auto value = args[0].to<runtime_t<kind::date>>();
         request.add_int4(static_cast<int32_t>(value.days_since_epoch()));
         return true;
     }
-    if(record_name == LOCALTIME_RECORD) {
+    if(record_name == jogasaki::udf::bridge::LOCALTIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_of_day>>();
         request.add_int8(static_cast<int64_t>(value.time_since_epoch().count()));
         return true;
     }
-    if(record_name == LOCALDATETIME_RECORD) {
+    if(record_name == jogasaki::udf::bridge::LOCALDATETIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_point>>();
         request.add_int8(static_cast<int64_t>(value.seconds_since_epoch().count()));
         request.add_uint4(static_cast<uint32_t>(value.subsecond().count()));
         return true;
     }
-    if(record_name == OFFSETDATETIME_RECORD) {
+    if(record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_point>>();
         request.add_int8(static_cast<int64_t>(value.seconds_since_epoch().count()));
         request.add_uint4(static_cast<uint32_t>(value.subsecond().count()));
@@ -449,7 +429,7 @@ bool build_udf_request(
         return true;
     }
     // @see include/jogasaki/lob/blob_reference.h
-    if(record_name == BLOB_RECORD) {
+    if(record_name == jogasaki::udf::bridge::BLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::blob>>();
         request.add_uint8(1);  // currently input args must be on datastore
         request.add_uint8(value.object_id());
@@ -466,7 +446,7 @@ bool build_udf_request(
         return true;
     }
     // @see include/jogasaki/lob/clob_reference.h
-    if(record_name == CLOB_RECORD) {
+    if(record_name == jogasaki::udf::bridge::CLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::clob>>();
         request.add_uint8(1);  // currently input args must be on datastore
         request.add_uint8(value.object_id());
@@ -653,6 +633,17 @@ data::any build_localdatetime_response(plugin::udf::generic_record_cursor& curso
     }
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
+data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& cursor) {
+    auto offset_seconds = cursor.fetch_int8();
+    auto nano_adjustment = cursor.fetch_uint4();
+    auto tz_offset = cursor.fetch_int4();
+    (void)tz_offset;
+    if (offset_seconds && nano_adjustment && tz_offset) {
+        return data::any{std::in_place_type<runtime_t<kind::time_point>>,
+            jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
+    }
+    return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+}
 template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
     auto storage_id = cursor.fetch_uint8();
     auto object_id = cursor.fetch_uint8();
@@ -684,13 +675,13 @@ data::any build_clob_response(plugin::udf::generic_record_cursor& cursor) {
 }
 std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> const& response_builder_map() {
     static const std::unordered_map<std::string_view, data::any (*)(plugin::udf::generic_record_cursor&)> map{
-        {DECIMAL_RECORD, &build_decimal_response},
-        {DATE_RECORD, &build_date_response},
-        {LOCALTIME_RECORD, &build_localtime_response},
-        {LOCALDATETIME_RECORD, &build_localdatetime_response},
-        {OFFSETDATETIME_RECORD, &build_localdatetime_response},
-        {BLOB_RECORD, &build_blob_response},
-        {CLOB_RECORD, &build_clob_response},
+        {jogasaki::udf::bridge::DECIMAL_RECORD, &build_decimal_response},
+        {jogasaki::udf::bridge::DATE_RECORD, &build_date_response},
+        {jogasaki::udf::bridge::LOCALTIME_RECORD, &build_localtime_response},
+        {jogasaki::udf::bridge::LOCALDATETIME_RECORD, &build_localdatetime_response},
+        {jogasaki::udf::bridge::OFFSETDATETIME_RECORD, &build_offsetdatetime_response},
+        {jogasaki::udf::bridge::BLOB_RECORD, &build_blob_response},
+        {jogasaki::udf::bridge::CLOB_RECORD, &build_clob_response},
     };
     return map;
 }
@@ -715,86 +706,6 @@ data::any build_udf_response(
     if(! output_values.empty()) { return output_values.front(); }
     ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
-}
-bool is_special_nested_record(std::string_view rn) {
-    return rn == DECIMAL_RECORD || rn == DATE_RECORD || rn == LOCALTIME_RECORD ||
-           rn == LOCALDATETIME_RECORD || rn == OFFSETDATETIME_RECORD || rn == BLOB_RECORD ||
-           rn == CLOB_RECORD;
-}
-void append_column_names(std::vector<table_valued_function_column>& out,
-    std::vector<plugin::udf::column_descriptor*> const& cols, std::string const& prefix = {}) {
-    for (auto* col : cols) {
-        if (!col) continue;
-        auto name = std::string{col->column_name()};
-
-        std::string full;
-        if (prefix.empty()) {
-            full = std::move(name);
-        } else {
-            full.reserve(prefix.size() + 1 + name.size());
-            full.append(prefix);
-            full.push_back('_');
-            full.append(name);
-        }
-
-        if (auto* nested = col->nested()) {
-            auto rn = nested->record_name();
-
-            if (is_special_nested_record(rn)) {
-                out.emplace_back(full);
-            } else {
-                append_column_names(out, nested->columns(), full);
-            }
-            continue;
-        }
-
-        out.emplace_back(full);
-    }
-}
-table_valued_function_info::columns_type build_tvf_columns(plugin::udf::function_descriptor const& fn) {
-    table_valued_function_info::columns_type cols;
-    cols.reserve(count_effective_columns(fn.output_record()));
-    append_column_names(cols, fn.output_record().columns());
-    return cols;
-}
-
-meta::field_type_kind to_meta_kind_from_nested_record(std::string_view rn) {
-    using k = meta::field_type_kind;
-
-    if (rn == DECIMAL_RECORD) return k::decimal;
-    if (rn == DATE_RECORD) return k::date;
-    if (rn == LOCALTIME_RECORD) return k::time_of_day;
-    if (rn == LOCALDATETIME_RECORD) return k::time_point;
-    if (rn == OFFSETDATETIME_RECORD) return k::time_point;
-    if (rn == BLOB_RECORD) return k::blob;
-    if (rn == CLOB_RECORD) return k::clob;
-
-    fail_with_exception_msg("unknown special nested record_name in UDF schema");
-}
-void append_column_types(
-    std::vector<meta::field_type>& out, std::vector<plugin::udf::column_descriptor*> const& cols) {
-    for (auto* col : cols) {
-        if (!col) continue;
-
-        if (auto* nested = col->nested()) {
-            auto rn = nested->record_name();
-
-            if (is_special_nested_record(rn)) {
-                out.emplace_back(jogasaki::udf::bridge::to_field_type(to_meta_kind_from_nested_record(rn)));
-            } else {
-                append_column_types(out, nested->columns());
-            }
-            continue;
-        }
-
-        out.emplace_back(jogasaki::udf::bridge::to_field_type(jogasaki::udf::bridge::to_meta_kind(*col)));
-    }
-}
-std::vector<meta::field_type> build_output_column_types(plugin::udf::function_descriptor const& fn) {
-    std::vector<meta::field_type> out;
-    out.reserve(count_effective_columns(fn.output_record()));
-    append_column_types(out, fn.output_record().columns());
-    return out;
 }
 /**
  * @brief Create callable for server-streaming UDF (table-valued function).
@@ -866,8 +777,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             ctx.add_error({error_kind::unknown, "Failed to start UDF server-streaming RPC"});
             return {};
         }
-        auto column_types = build_output_column_types(*fn);
-
+        auto column_types = jogasaki::udf::bridge::build_output_column_types(*fn);
         return std::make_unique<udf::data::udf_any_sequence_stream>(
             std::move(udf_stream), std::move(column_types));
     };
@@ -971,7 +881,7 @@ void append_table_cols(std::vector<takatori::type::table::column_type>& out,
 
         if (auto* nested = col->nested()) {
             auto rn = nested->record_name();
-            if (is_special_nested_record(rn)) {
+            if (jogasaki::udf::bridge::is_special_nested_record(rn)) {
                 if (auto it = type_map.find(rn); it != type_map.end()) {
                     out.emplace_back(full, it->second());
                 } else {
@@ -990,7 +900,7 @@ std::shared_ptr<takatori::type::table> build_table_return_type(plugin::udf::func
     namespace t = takatori::type;
 
     std::vector<t::table::column_type> cols;
-    cols.reserve(count_effective_columns(fn->output_record()));
+    cols.reserve(jogasaki::udf::bridge::count_effective_columns(fn->output_record()));
     append_table_cols(cols, fn->output_record().columns());
     return std::make_shared<t::table>(std::move(cols));
 }
@@ -1013,7 +923,7 @@ void register_server_stream_function(
 
     auto register_tvf =
         [&](std::vector<std::shared_ptr<const takatori::type::data>> param_types) {
-            auto cols = build_tvf_columns(*fn);
+            auto cols = jogasaki::udf::bridge::build_tvf_columns(*fn);
 
             ++current_id;
 
@@ -1048,7 +958,7 @@ void register_server_stream_function(
         }
     }
 
-    if (count_effective_columns(input_record) == 0) {
+    if (jogasaki::udf::bridge::count_effective_columns(input_record) == 0) {
         register_tvf({});
     }
 }
@@ -1080,7 +990,7 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
     }
 }
 
-}  // anonymous namespace
+}  // namespace anonymous
 
 bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-session", std::to_string(session_id_));

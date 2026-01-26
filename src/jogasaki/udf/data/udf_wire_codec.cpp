@@ -44,7 +44,7 @@ Ref decode_lob_reference_from_wire(
     }
     fail_with_exception_msg("invalid storage_id for lob_reference");
 }
-} // namespace anoymous
+} // namespace anonymous
 takatori::decimal::triple decode_decimal_triple(
     std::string const& unscaled, std::int32_t exponent) {
     bool negative            = false;

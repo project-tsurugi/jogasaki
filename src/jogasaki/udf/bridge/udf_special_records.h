@@ -15,31 +15,15 @@
  */
 #pragma once
 
-namespace jogasaki::udf::data {
-enum class udf_semantic_type {
-    boolean,
-    int4,
-    int8,
-    float4,
-    float8,
-    character,
-    octet,
-    unknown,
-};
-enum class udf_wire_kind {
-    boolean,
-    int4,
-    int8,
-    float4,
-    float8,
-    character,
-    octet,
-    decimal,
-    date,
-    time_of_day,
-    time_point,                // LocalDatetime
-    time_point_with_time_zone, // OffsetDatetime
-    blob,
-    clob
-};
-} // namespace jogasaki::udf::data
+#include <string_view>
+namespace jogasaki::udf::bridge {
+
+constexpr std::string_view DECIMAL_RECORD = "tsurugidb.udf.Decimal";
+constexpr std::string_view DATE_RECORD = "tsurugidb.udf.Date";
+constexpr std::string_view LOCALTIME_RECORD = "tsurugidb.udf.LocalTime";
+constexpr std::string_view LOCALDATETIME_RECORD = "tsurugidb.udf.LocalDatetime";
+constexpr std::string_view OFFSETDATETIME_RECORD = "tsurugidb.udf.OffsetDatetime";
+constexpr std::string_view BLOB_RECORD = "tsurugidb.udf.BlobReference";
+constexpr std::string_view CLOB_RECORD = "tsurugidb.udf.ClobReference";
+
+} // namespace jogasaki::udf::bridge

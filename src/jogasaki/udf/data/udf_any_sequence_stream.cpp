@@ -23,6 +23,8 @@
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/udf/data/udf_semantic_type.h>
@@ -161,8 +163,22 @@ base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
 
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
+            if (record.error()) {
+                VLOG_LP(log_error) << "[udf] UDF stream record has error: code=" 
+                    << plugin::udf::to_string_view(record.error()->code())
+                    << ", message=" << record.error()->message();
+                return status_type::error;
+            }
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
-        case plugin::udf::generic_record_stream_status::error: return status_type::error;
+        case plugin::udf::generic_record_stream_status::error:
+            if (record.error()) {
+                VLOG_LP(log_error) << "[udf] UDF stream error: code=" 
+                    << plugin::udf::to_string_view(record.error()->code())
+                    << ", message=" << record.error()->message();
+            } else {
+                VLOG_LP(log_error) << "[udf] UDF stream error (no error details in record)";
+            }
+            return status_type::error;
         case plugin::udf::generic_record_stream_status::end_of_stream:
             return status_type::end_of_stream;
         case plugin::udf::generic_record_stream_status::not_ready: return status_type::not_ready;
@@ -179,8 +195,22 @@ base_stream::status_type udf_any_sequence_stream::next(
 
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
+            if (record.error()) {
+                VLOG_LP(log_error) << "[udf] UDF stream record has error: code=" 
+                    << plugin::udf::to_string_view(record.error()->code())
+                    << ", message=" << record.error()->message();
+                return status_type::error;
+            }
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
-        case plugin::udf::generic_record_stream_status::error: return status_type::error;
+        case plugin::udf::generic_record_stream_status::error:
+            if (record.error()) {
+                VLOG_LP(log_error) << "[udf] UDF stream error: code=" 
+                    << plugin::udf::to_string_view(record.error()->code())
+                    << ", message=" << record.error()->message();
+            } else {
+                VLOG_LP(log_error) << "[udf] UDF stream error (no error details in record)";
+            }
+            return status_type::error;
         case plugin::udf::generic_record_stream_status::end_of_stream:
             return status_type::end_of_stream;
         case plugin::udf::generic_record_stream_status::not_ready: return status_type::not_ready;

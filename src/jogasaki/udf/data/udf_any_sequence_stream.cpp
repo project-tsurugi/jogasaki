@@ -29,6 +29,7 @@
 #include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/generic_record.h>
 #include <jogasaki/udf/generic_record_impl.h>
+#include <jogasaki/utils/convert_offset.h>
 
 namespace jogasaki::udf::data {
 
@@ -93,12 +94,15 @@ void append_time_point(std::vector<any>& values, plugin::udf::generic_record_cur
 
 void append_time_point_with_time_zone(
     std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
-    auto sec_opt   = cursor.fetch_int8();
-    auto nano_opt  = cursor.fetch_uint4();
+    auto sec_opt = cursor.fetch_int8();
+    auto nano_opt = cursor.fetch_uint4();
     auto tz_offset = cursor.fetch_int4();
-    (void)tz_offset;
     if (sec_opt && nano_opt && tz_offset) {
-        auto tp = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
+        auto tp_local = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
+        auto offset_min = static_cast<std::int32_t>(*tz_offset);
+        auto tp =
+            jogasaki::utils::remove_offset(jogasaki::utils::time_point_tz{tp_local, offset_min});
+
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp);
     } else {
         values.emplace_back();

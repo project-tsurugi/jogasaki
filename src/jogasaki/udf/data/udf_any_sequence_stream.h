@@ -23,6 +23,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
+#include <jogasaki/udf/data/udf_semantic_type.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/udf/generic_record.h>
 
@@ -44,7 +45,7 @@ public:
      */
     udf_any_sequence_stream(
         std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
-        std::vector<meta::field_type> column_types
+        std::vector<jogasaki::udf::data::udf_wire_kind> column_types
     );
 
     /**
@@ -75,7 +76,7 @@ public:
 
 private:
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream_;
-    std::vector<meta::field_type> column_types_;
+    std::vector<jogasaki::udf::data::udf_wire_kind> column_types_;
 
     /**
      * @brief converts a generic_record to any_sequence.

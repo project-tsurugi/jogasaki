@@ -777,7 +777,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             ctx.add_error({error_kind::unknown, "Failed to start UDF server-streaming RPC"});
             return {};
         }
-        auto column_types = jogasaki::udf::bridge::build_output_column_types(*fn);
+        auto column_types = jogasaki::udf::bridge::build_output_wire_kinds(*fn);
         return std::make_unique<udf::data::udf_any_sequence_stream>(
             std::move(udf_stream), std::move(column_types));
     };

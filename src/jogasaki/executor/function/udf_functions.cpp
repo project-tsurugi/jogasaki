@@ -88,6 +88,7 @@
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/assign_reference_tag.h>
 #include <jogasaki/utils/base64_utils.h>
+#include <jogasaki/utils/convert_offset.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/round.h>
 #include <jogasaki/utils/string_utils.h>
@@ -241,14 +242,22 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
             }
             case data::any::index<runtime_t<kind::time_point>>: {
                 auto value = src.to<runtime_t<kind::time_point>>();
-                auto offset_seconds = static_cast<int64_t>(value.seconds_since_epoch().count());
-                uint32_t nano_adjustment = static_cast<uint32_t>(value.subsecond().count());
-                request.add_int8(offset_seconds);
-                request.add_uint4(nano_adjustment);
-                if(columns[i]->nested() != nullptr) {
-                    if(columns[i]->nested()->record_name() == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
-                        request.add_int4(static_cast<int32_t>(global::config_pool()->zone_offset()));
-                    }
+                if (columns[i]->nested() != nullptr &&
+                    columns[i]->nested()->record_name() ==
+                        jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
+                    auto offset_min =
+                        static_cast<std::int32_t>(global::config_pool()->zone_offset());
+                    auto tp_tz = jogasaki::utils::add_offset(value, offset_min);
+                    auto tp_local = tp_tz.first;
+                    auto off = tp_tz.second;
+                    request.add_int8(
+                        static_cast<std::int64_t>(tp_local.seconds_since_epoch().count()));
+                    request.add_uint4(static_cast<std::uint32_t>(tp_local.subsecond().count()));
+                    request.add_int4(static_cast<std::int32_t>(off));
+                } else {
+                    request.add_int8(
+                        static_cast<std::int64_t>(value.seconds_since_epoch().count()));
+                    request.add_uint4(static_cast<std::uint32_t>(value.subsecond().count()));
                 }
                 break;
             }
@@ -423,9 +432,13 @@ bool build_udf_request(
     }
     if(record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_point>>();
-        request.add_int8(static_cast<int64_t>(value.seconds_since_epoch().count()));
-        request.add_uint4(static_cast<uint32_t>(value.subsecond().count()));
-        request.add_int4(static_cast<int32_t>(global::config_pool()->zone_offset()));
+        auto offset_min = static_cast<std::int32_t>(global::config_pool()->zone_offset());
+        auto tp_tz = jogasaki::utils::add_offset(value, offset_min);
+        auto tp_local = tp_tz.first;
+        auto off = tp_tz.second;
+        request.add_int8(static_cast<std::int64_t>(tp_local.seconds_since_epoch().count()));
+        request.add_uint4(static_cast<std::uint32_t>(tp_local.subsecond().count()));
+        request.add_int4(static_cast<std::int32_t>(off));
         return true;
     }
     // @see include/jogasaki/lob/blob_reference.h
@@ -777,7 +790,7 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             ctx.add_error({error_kind::unknown, "Failed to start UDF server-streaming RPC"});
             return {};
         }
-        auto column_types = jogasaki::udf::bridge::build_output_column_types(*fn);
+        auto column_types = jogasaki::udf::bridge::build_output_wire_kinds(*fn);
         return std::make_unique<udf::data::udf_any_sequence_stream>(
             std::move(udf_stream), std::move(column_types));
     };

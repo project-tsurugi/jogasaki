@@ -25,9 +25,11 @@
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
+#include <jogasaki/udf/data/udf_semantic_type.h>
 #include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/generic_record.h>
 #include <jogasaki/udf/generic_record_impl.h>
+#include <jogasaki/utils/convert_offset.h>
 
 namespace jogasaki::udf::data {
 
@@ -90,6 +92,23 @@ void append_time_point(std::vector<any>& values, plugin::udf::generic_record_cur
     }
 }
 
+void append_time_point_with_time_zone(
+    std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
+    auto sec_opt = cursor.fetch_int8();
+    auto nano_opt = cursor.fetch_uint4();
+    auto tz_offset = cursor.fetch_int4();
+    if (sec_opt && nano_opt && tz_offset) {
+        auto tp_local = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
+        auto offset_min = static_cast<std::int32_t>(*tz_offset);
+        auto tp =
+            jogasaki::utils::remove_offset(jogasaki::utils::time_point_tz{tp_local, offset_min});
+
+        values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp);
+    } else {
+        values.emplace_back();
+    }
+}
+
 template <class Ref, class DecodeFn>
 void append_lob_reference(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor,
     DecodeFn const& decode_fn) {
@@ -120,10 +139,9 @@ void append_clob(std::vector<any>& values, plugin::udf::generic_record_cursor& c
         });
 }
 
-void fail_unsupported(meta::field_type const& col_type) {
+void fail_unsupported() {
     std::ostringstream ss;
-    ss << "unsupported meta::field_type in convert_record_to_sequence(): kind="
-       << meta::to_string_view(col_type.kind()) << " field_type=" << col_type;
+    ss << "unsupported meta::field_type in convert_record_to_sequence()";
     fail_with_exception_msg(ss.str());
 }
 
@@ -132,7 +150,7 @@ using base_stream = ::jogasaki::data::any_sequence_stream;
 
 udf_any_sequence_stream::udf_any_sequence_stream(
     std::unique_ptr<plugin::udf::generic_record_stream> udf_stream,
-    std::vector<meta::field_type> column_types)
+    std::vector<jogasaki::udf::data::udf_wire_kind> column_types)
     : udf_stream_(std::move(udf_stream)), column_types_(std::move(column_types)) {}
 
 base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
@@ -181,10 +199,10 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
     std::vector<any> values;
     values.reserve(column_types_.size());
 
-    using kind = meta::field_type_kind;
+    using kind = jogasaki::udf::data::udf_wire_kind;
 
     for (auto const& col_type : column_types_) {
-        switch (col_type.kind()) {
+        switch (col_type) {
             case kind::boolean: emplace_nullable<bool>(values, cursor->fetch_bool()); break;
             case kind::int4: emplace_nullable<std::int32_t>(values, cursor->fetch_int4()); break;
             case kind::int8: emplace_nullable<std::int64_t>(values, cursor->fetch_int8()); break;
@@ -205,10 +223,11 @@ bool udf_any_sequence_stream::convert_record_to_sequence(
             case kind::date: append_date(values, *cursor); break;
             case kind::time_of_day: append_time_of_day(values, *cursor); break;
             case kind::time_point: append_time_point(values, *cursor); break;
+            case kind::time_point_with_time_zone: append_time_point_with_time_zone(values, *cursor); break;
             case kind::blob: append_blob(values, *cursor); break;
             case kind::clob: append_clob(values, *cursor); break;
 
-            default: fail_unsupported(col_type);
+            default: fail_unsupported();
         }
     }
 

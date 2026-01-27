@@ -21,11 +21,12 @@
 #include <jogasaki/executor/function/table_valued_function_info.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/udf/plugin_api.h>
+#include <jogasaki/udf/data/udf_semantic_type.h>
 namespace jogasaki::udf::bridge {
 [[nodiscard]] bool is_special_nested_record(std::string_view rn);
 [[nodiscard]] jogasaki::executor::function::table_valued_function_info::columns_type
 build_tvf_columns(plugin::udf::function_descriptor const& fn);
 [[nodiscard]] std::size_t count_effective_columns(plugin::udf::record_descriptor const& rec);
-[[nodiscard]] std::vector<jogasaki::meta::field_type> build_output_column_types(
-    plugin::udf::function_descriptor const& fn);
+[[nodiscard]] std::vector<jogasaki::udf::data::udf_wire_kind>
+build_output_wire_kinds(plugin::udf::function_descriptor const& fn) ;
 } // namespace jogasaki::udf::bridge

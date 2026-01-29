@@ -24,7 +24,7 @@
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
 
-#include <data_relay_grpc/blob_relay/session.h>
+#include <data_relay_grpc/common/session.h>
 
 namespace jogasaki::relay {
 
@@ -131,8 +131,8 @@ private:
 };
 
 /**
- * @brief type alias for BLOB session container with data_relay_grpc::blob_relay::blob_session
+ * @brief type alias for BLOB session container with data_relay_grpc::common::blob_session
  */
-using blob_session_container = basic_blob_session_container<data_relay_grpc::blob_relay::blob_session>;
+using blob_session_container = basic_blob_session_container<data_relay_grpc::common::blob_session>;
 
 }

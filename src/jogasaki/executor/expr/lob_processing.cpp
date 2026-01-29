@@ -43,7 +43,7 @@ constexpr std::uint64_t BLOB_CLOB_PADDING = 0xFFFFFFFFFFFFFFFFULL;
 
 template <typename T>
 std::enable_if_t<std::is_same_v<T, lob::clob_reference> || std::is_same_v<T, lob::blob_reference>, data::any>
-validate_reference_tag(T in, data_relay_grpc::blob_relay::blob_session& session, evaluator_context& ctx) {
+validate_reference_tag(T in, data_relay_grpc::common::blob_session& session, evaluator_context& ctx) {
     auto create_error = [&]() {
         ctx.set_error_info(create_error_info(
             error_code::permission_error,

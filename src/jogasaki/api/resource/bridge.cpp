@@ -33,7 +33,7 @@
 #include <tateyama/framework/environment.h>
 #include <tateyama/framework/repository.h>
 #include <tateyama/framework/transactional_kvs_resource.h>
-#include <tateyama/grpc/blob_relay_service_resource.h>
+#include <tateyama/grpc/blob_relay/service_proxy.h>
 
 #include <jogasaki/api/database.h>
 #include <jogasaki/api/resource/bridge.h>
@@ -82,12 +82,12 @@ static bool borrow_relay_service(framework::environment& env) {
     }
 
     if (grpc_server_enabled && blob_relay_enabled) {
-        auto resource = env.resource_repository().find<::tateyama::grpc::blob_relay_service_resource>();
-        if (! resource) {
-            LOG_LP(ERROR) << "failed to find data relay service resource";
+        auto proxy = env.resource_repository().find<::tateyama::grpc::blob_relay::service_proxy>();
+        if (! proxy) {
+            LOG_LP(ERROR) << "failed to find data relay service proxy resource";
             return false;
         }
-        auto relay_service = resource->blob_relay_service();
+        auto relay_service = proxy->blob_relay_service();
         if (! relay_service) {
             LOG_LP(ERROR) << "failed to get data relay service";
             return false;

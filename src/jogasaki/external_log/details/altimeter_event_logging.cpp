@@ -23,8 +23,16 @@
 #endif
 
 #include <memory>
+#include <ostream>
+#include <sstream>
 #include <sys/types.h>
 
+#include <glog/logging.h>
+
+#include <jogasaki/configuration.h>
+#include <jogasaki/executor/global.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <tateyama/api/server/database_info.h>
 #include <tateyama/api/server/request.h>
 #include <tateyama/api/server/session_info.h>
@@ -32,6 +40,24 @@
 #include <jogasaki/request_info.h>
 
 namespace jogasaki::external_log::details {
+
+static void append_log(std::ostream& out, ::altimeter::log_item const& item) {
+    out << "category:" << item.category()
+        << " type:" << item.type()
+        << " level:" << item.level();
+    for (auto const& entry : item.items()) {
+        out << " " << entry;
+    }
+}
+
+static void trace_log_item(::altimeter::log_item const& item) {
+    auto& cfg = global::config_pool();
+    if (cfg && cfg->trace_external_log()) {
+        std::stringstream ss{};
+        append_log(ss, item);
+        VLOG_LP(log_trace) << "[altimeter] " << ss.str();
+    }
+}
 
 static void fill_common_properties(
     request_info const& req_info,
@@ -59,6 +85,9 @@ static void fill_common_properties(
         item.add(::altimeter::event::item::session_label, session_label);
     }
     item.add(::altimeter::event::item::session_id, static_cast<std::int64_t>(session_info.id()));
+    if(auto user_name = session_info.username(); user_name.has_value()) {
+        item.add(::altimeter::event::item::user, user_name.value());
+    }
 }
 
 void tx_start(
@@ -84,6 +113,7 @@ void tx_start(
     item.add(::altimeter::event::item::tx_id, tx_id);
     item.add(::altimeter::event::item::tx_type, tx_type);
     item.add(::altimeter::event::item::tx_label, tx_label);
+    trace_log_item(item);
     ::altimeter::logger::log(item);
 }
 
@@ -114,6 +144,7 @@ void tx_end(
     item.add(::altimeter::event::item::result, result);
     item.add(::altimeter::event::item::duration_time, duration_time_ns);
     item.add(::altimeter::event::item::tx_label, tx_label);
+    trace_log_item(item);
     ::altimeter::logger::log(item);
 }
 
@@ -146,6 +177,7 @@ void stmt_start(
     item.add(::altimeter::event::item::statement, statement);
     item.add(::altimeter::event::item::parameter, parameter);
     item.add(::altimeter::event::item::tx_label, tx_label);
+    trace_log_item(item);
     ::altimeter::logger::log(item);
 }
 
@@ -200,6 +232,7 @@ void stmt_end(
     item.add(::altimeter::event::item::merged, merged);
     item.add(::altimeter::event::item::duration_time, duration_time_ns);
     item.add(::altimeter::event::item::tx_label, tx_label);
+    trace_log_item(item);
     ::altimeter::logger::log(item);
 }
 
@@ -226,6 +259,7 @@ void stmt_explain(
     item.add(::altimeter::event::item::job_id, job_id);
     item.add(::altimeter::event::item::data, data);
     item.add(::altimeter::event::item::tx_label, tx_label);
+    trace_log_item(item);
     ::altimeter::logger::log(item);
 }
 

@@ -46,7 +46,7 @@ class error_info_factory_test : public test_root {};
 
 TEST_F(error_info_factory_test, basic) {
     request_context rctx{};
-    set_error(rctx, error_code::sql_service_exception, "msg", status::ok);
+    set_error_context(rctx, error_code::sql_service_exception, "msg", status::ok);
     auto errinfo = rctx.error_info();
     ASSERT_TRUE(errinfo);
     LOG(INFO) << *errinfo;
@@ -54,7 +54,7 @@ TEST_F(error_info_factory_test, basic) {
 
 TEST_F(error_info_factory_test, stacktrace) {
     request_context rctx{};
-    jogasaki::error::set_error_impl(rctx, error_code::sql_service_exception, "msg", __FILE__, line_number_string, status::ok, true);
+    jogasaki::error::set_error_context_impl(rctx, error_code::sql_service_exception, "msg", __FILE__, line_number_string, status::ok, true);
     auto errinfo = rctx.error_info();
     ASSERT_TRUE(errinfo);
     LOG(INFO) << *errinfo;

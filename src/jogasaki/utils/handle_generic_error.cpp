@@ -36,7 +36,7 @@ void handle_generic_error_impl(  //NOLINT(misc-use-internal-linkage) false posit
     std::string_view position
 ) noexcept {
     if(! context.error_info()) {
-        error::set_error_impl(
+        error::set_error_context_impl(
             context,
             ec,
             string_builder{} << "Unexpected error occurred. status:" << res << string_builder::to_string,

@@ -118,7 +118,7 @@ bool create_table::operator()(request_context& context) const {
     auto& provider = *context.storage_provider();
     auto c = yugawara::binding::extract_shared<yugawara::storage::table>(ct_->definition());
     if(provider.find_table(c->simple_name())) {
-        set_error(
+        set_error_context(
             context,
             error_code::target_already_exists_exception,
             string_builder{} << "Table \"" << c->simple_name() << "\" already exists." << string_builder::to_string,
@@ -134,7 +134,7 @@ bool create_table::operator()(request_context& context) const {
             VLOG_LP(log_error) << "insufficient authorization user:\""
                                << (username.has_value() ? username.value() : "")
                                << "\"";
-            set_error(
+            set_error_context(
                 context,
                 error_code::permission_error,
                 "insufficient authorization for the requested operation",
@@ -179,7 +179,7 @@ bool create_table::operator()(request_context& context) const {
 
     if(! smgr.add_entry(tid, c->simple_name(), opt, true)) {
         // should not happen normally
-        set_error(
+        set_error_context(
             context,
             error_code::target_already_exists_exception,
             string_builder{} << "Table id:" << tid << " already exists" << string_builder::to_string,
@@ -191,7 +191,7 @@ bool create_table::operator()(request_context& context) const {
     auto se = smgr.find_entry(tid);
     if(! se) {
         // should not happen normally
-        set_error(
+        set_error_context(
             context,
             error_code::sql_execution_exception,
             string_builder{} << "Table id:" << tid << " not found" << string_builder::to_string,
@@ -235,7 +235,7 @@ bool create_table::operator()(request_context& context) const {
     options.payload(std::move(storage));
     if(auto stg = context.database()->create_storage((opt.has_value() ? opt.value() : c->simple_name()), options);! stg) {
         // should not happen normally
-        set_error(
+        set_error_context(
             context,
             error_code::target_already_exists_exception,
             string_builder{} << "Storage \"" << c->simple_name() << "\" already exists " << string_builder::to_string,
@@ -252,7 +252,7 @@ bool create_table::operator()(request_context& context) const {
         // should not happen normally since this is newly created table
         auto msg = string_builder{} << "DDL operation was blocked by other DML operation. table:\"" << c->simple_name()
                                     << "\"" << string_builder::to_string;
-        set_error(
+        set_error_context(
             context,
             error_code::sql_execution_exception,
             msg,

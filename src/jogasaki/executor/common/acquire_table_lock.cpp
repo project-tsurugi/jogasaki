@@ -62,7 +62,7 @@ bool acquire_table_lock(request_context& context, std::string_view table_name, s
     auto& smgr = *global::storage_manager();
     auto e = smgr.find_by_name(table_name);
     if(! e.has_value()) {
-        set_error(
+        set_error_context(
             context,
             error_code::target_not_found_exception,
             string_builder{} << "Table \"" << table_name << "\" not found." << string_builder::to_string,
@@ -80,7 +80,7 @@ bool acquire_table_lock(request_context& context, std::string_view table_name, s
         // table is locked by other operations
         auto msg = string_builder{} << "DDL operation was blocked by other DML operation. table:\"" << table_name
                                     << "\"" << string_builder::to_string;
-        set_error(
+        set_error_context(
             context,
             error_code::sql_execution_exception,
             msg,

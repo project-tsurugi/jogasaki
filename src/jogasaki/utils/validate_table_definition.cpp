@@ -50,7 +50,7 @@ static bool validate_type(
     } else {
         return true;
     }
-    set_error(
+    set_error_context(
         context,
         error_code::unsupported_runtime_feature_exception,
         string_builder{} << "decimal type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,
@@ -70,7 +70,7 @@ static bool validate_type(
     } else {
         return true;
     }
-    set_error(
+    set_error_context(
         context,
         error_code::unsupported_runtime_feature_exception,
         string_builder{} << "character type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,
@@ -90,7 +90,7 @@ static bool validate_type(
     } else {
         return true;
     }
-    set_error(
+    set_error_context(
         context,
         error_code::unsupported_runtime_feature_exception,
         string_builder{} << "octet type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,
@@ -106,7 +106,7 @@ static bool validate_default_value(
     if(c.default_value().kind() == yugawara::storage::column_value_kind::immediate) {
         auto& dv = c.default_value().element<yugawara::storage::column_value_kind::immediate>();
         if(auto a = executor::conv::create_immediate_default_value(*dv, c.type(), context.request_resource()); a.error()) {
-            set_error(
+            set_error_context(
                 context,
                 error_code::unsupported_runtime_feature_exception,
                 string_builder{} << "unable to convert default value for column \"" << c.simple_name()
@@ -168,7 +168,7 @@ bool validate_table_definition(
             default:
                 break;
         }
-        set_error(
+        set_error_context(
             context,
             error_code::unsupported_runtime_feature_exception,
             string_builder{} << "Data type specified for column \"" << c.simple_name() << "\" is unsupported."

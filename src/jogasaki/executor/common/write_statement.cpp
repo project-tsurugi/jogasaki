@@ -114,7 +114,7 @@ static status fill_evaluated_value(
         auto err = res.to<expr::error>();
         if(err.kind() == expr::error_kind::lost_precision_value_too_long) {
             auto rc = status::err_expression_evaluation_failure;
-            set_error(
+            set_error_context(
                 ctx,
                 error_code::value_too_long_exception,
                 "evaluated value was too long to write",
@@ -124,7 +124,7 @@ static status fill_evaluated_value(
         }
         if(err.kind() == expr::error_kind::unsupported) {
             auto rc = status::err_unsupported;
-            set_error(
+            set_error_context(
                 ctx,
                 error_code::unsupported_runtime_feature_exception,
                 "unsupported expression",
@@ -137,7 +137,7 @@ static status fill_evaluated_value(
             return c.get_error_info()->status();
         }
         auto rc = status::err_expression_evaluation_failure;
-        set_error(
+        set_error_context(
             ctx,
             error_code::value_evaluation_exception,
             string_builder{} << "An error occurred in evaluating values. error:"
@@ -171,7 +171,7 @@ static status fill_evaluated_value(
     } else {
         if (!converted) {
             auto rc = status::err_integrity_constraint_violation;
-            set_error(
+            set_error_context(
                 ctx,
                 error_code::not_null_constraint_violation_exception,
                 string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,

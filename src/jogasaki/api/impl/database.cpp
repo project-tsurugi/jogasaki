@@ -1402,21 +1402,21 @@ scheduler::job_context::job_id_type database::do_create_transaction_async(  //NO
             if(res != status::ok) {
                 // possibly option args are invalid
                 if(res == status::err_invalid_argument) {
-                    set_error(
+                    set_error_context(
                         *rctx,
                         error_code::target_not_found_exception,
                         string_builder{} << "Target specified in transaction option is not found. " << option  << string_builder::to_string,
                         res
                     );
                 } else if(res == status::err_resource_limit_reached) {
-                        set_error(
+                        set_error_context(
                             *rctx,
                             error_code::transaction_exceeded_limit_exception,
                             "The number of transactions exceeded the limit.",
                             res
                         );
                 } else {
-                    set_error(
+                    set_error_context(
                         *rctx,
                         error_code::sql_execution_exception,
                         string_builder{} << "creating transaction failed with error:" << res << string_builder::to_string,

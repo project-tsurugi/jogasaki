@@ -97,7 +97,7 @@ operation_status emit::operator()(emit_context &ctx) {
     auto* writer = ctx.task_context().external_writer();
     if(! writer) {
         // writer must have been reserved at the beginning of this process task, so normally this should not happen
-        set_error(
+        set_error_context(
             *ctx.req_context(),
             error_code::sql_execution_exception,
             "failed to acquire writer",
@@ -109,7 +109,7 @@ operation_status emit::operator()(emit_context &ctx) {
     if(! writer->write(target)) {
         // possibly writer error due to buffer overflow
         // TODO retrieve the exact reason from writer and construct error message based on it
-        set_error(
+        set_error_context(
             *ctx.req_context(),
             error_code::sql_execution_exception,
             "an error occurred in writing output records, possibly due to buffer overflow in endpoint",

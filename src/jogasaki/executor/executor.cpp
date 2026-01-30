@@ -901,7 +901,7 @@ static void process_commit_callback(
         auto code = res == status::err_inactive_transaction ?
             error_code::inactive_transaction_exception :
             error_code::cc_exception;
-        set_error(*rctx, code, msg, res);
+        set_error_context(*rctx, code, msg, res);
         submit_commit_response(rctx, commit_response_kind::accepted, true, false, false);
         return;
     }
@@ -1010,7 +1010,7 @@ scheduler::job_context::job_id_type commit_async(
 
         termination_state ts{};
         if (! rctx->transaction()->termination_mgr().try_set_going_to_commit(ts)) {
-            set_error(
+            set_error_context(
                 *rctx,
                 error_code::inactive_transaction_exception,
                 "the other request already made to terminate the transaction",
@@ -1021,7 +1021,7 @@ scheduler::job_context::job_id_type commit_async(
         }
         if (! ts.task_empty()) {
             rctx->transaction()->state(transaction_state_kind::going_to_abort);
-            set_error(
+            set_error_context(
                 *rctx,
                 error_code::restricted_operation_exception,
                 "commit requested while other transaction operations are on-going",

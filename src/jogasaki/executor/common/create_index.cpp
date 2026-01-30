@@ -85,7 +85,7 @@ bool create_index::validate_empty_table(request_context& context, std::string_vi
     }
     auto st = it->next();
     if(st == status::ok) {
-        set_error(
+        set_error_context(
             context,
             error_code::unsupported_runtime_feature_exception,
             string_builder{} << "Records exist in the table \"" << table_name
@@ -111,7 +111,7 @@ bool create_index::operator()(request_context& context) const {
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->definition());
     if(i->simple_name().empty()) {
         // The index name is omitted. It's not supported for now.
-        set_error(
+        set_error_context(
             context,
             error_code::unsupported_runtime_feature_exception,
             "omitting index name is currently unsupported",
@@ -120,7 +120,7 @@ bool create_index::operator()(request_context& context) const {
         return false;
     }
     if(provider.find_index(i->simple_name())) {
-        set_error(
+        set_error_context(
             context,
             error_code::target_already_exists_exception,
             string_builder{} << "Index \"" << i->simple_name() << "\" already exists." << string_builder::to_string,
@@ -154,7 +154,7 @@ bool create_index::operator()(request_context& context) const {
 
     if(! smgr.add_entry(tid, i->simple_name(), opt, false)) {
         // should not happen normally
-        set_error(
+        set_error_context(
             context,
             error_code::target_already_exists_exception,
             string_builder{} << "Index id:" << tid << " already exists" << string_builder::to_string,
@@ -184,7 +184,7 @@ bool create_index::operator()(request_context& context) const {
     if(auto stg = context.database()->create_storage((opt.has_value() ? opt.value() : i->simple_name()), options);! stg) {
         // something went wrong. Storage already exists. // TODO recreate storage with new storage option
         VLOG_LP(log_warning) << "storage " << i->simple_name() << " already exists ";
-        set_error(
+        set_error_context(
             context,
             error_code::sql_execution_exception,
             string_builder{} << "Unexpected error." << string_builder::to_string,

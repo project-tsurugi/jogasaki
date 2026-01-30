@@ -197,7 +197,7 @@ bool flat_task::execute(tateyama::task_scheduler::context& ctx) {
         if (! tctx.termination_mgr().try_increment_task_use_count(ts)) {
             // set error info. for request context, and not for transaction context
             // if request context already has error info, it's not overwritten
-            set_error(
+            set_error_context(
                 *req_context_,
                 error_code::inactive_transaction_exception,
                 "the other request already made to terminate the transaction",
@@ -343,7 +343,7 @@ bool flat_task::execute_with_catch(tateyama::task_scheduler::context& ctx) {
         // try to complete the current job in order to reply back to client.
         // Otherwise, the request appears to remain running and shutdown of session or database is hindered.
         job_completes = true;
-        set_error(*req_context_, error_code::unknown_internal_error, "unexpected internal error occurred "+message, status::err_unknown);
+        set_error_context(*req_context_, error_code::unknown_internal_error, "unexpected internal error occurred "+message, status::err_unknown);
     }
     return job_completes;
 
@@ -528,7 +528,7 @@ bool flat_task::load() {
     } else {
         if(res == executor::file::loader_result::error) {
             auto [st, msg] = loader_->error_info();
-            set_error(
+            set_error_context(
                 *req_context_,
                 error_code::sql_execution_exception,
                 msg,

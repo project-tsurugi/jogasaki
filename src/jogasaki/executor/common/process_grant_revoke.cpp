@@ -83,7 +83,7 @@ static bool check_grant_revoke_preconditions(  //NOLINT(readability-function-cog
     for(auto&& tpe : elements) {
         auto c = yugawara::binding::extract_shared<yugawara::storage::table>(tpe.table());
         if (! c) {
-            set_error(
+            set_error_context(
                 context,
                 error_code::target_not_found_exception,
                 "target table not found",
@@ -93,7 +93,7 @@ static bool check_grant_revoke_preconditions(  //NOLINT(readability-function-cog
         }
         auto table = provider.find_table(c->simple_name());
         if (! table) {
-            set_error(
+            set_error_context(
                 context,
                 error_code::target_not_found_exception,
                 string_builder{} << "table \"" << c->simple_name() << "\" not found" << string_builder::to_string,
@@ -106,7 +106,7 @@ static bool check_grant_revoke_preconditions(  //NOLINT(readability-function-cog
             if(tae.user_kind() == takatori::statement::authorization_user_kind::current_user) {
                 // `current_user` is allowed only when the user name is available
                 if (! current_user.has_value()) {
-                    set_error(
+                    set_error_context(
                         context,
                         error_code::value_evaluation_exception,
                         "current_user value is not available",
@@ -118,7 +118,7 @@ static bool check_grant_revoke_preconditions(  //NOLINT(readability-function-cog
             if(tae.user_kind() == takatori::statement::authorization_user_kind::all_users) {
                 // `*` is allowed only when the user name is available
                 if (! current_user.has_value()) {
-                    set_error(
+                    set_error_context(
                         context,
                         error_code::value_evaluation_exception,
                         "cannot revoke table privileges from all users when authentication mechanism is disabled",
@@ -129,7 +129,7 @@ static bool check_grant_revoke_preconditions(  //NOLINT(readability-function-cog
                 // `*` is allowed for REVOKE ALL PRIVILEGES only
                 for(auto&& tpa : tae.privileges()) {
                     if(tpa.action_kind() != takatori::statement::details::table_privilege_action::action_kind_type::control) {
-                        set_error(
+                        set_error_context(
                             context,
                             error_code::unsupported_runtime_feature_exception,
                             "to revoke table privileges from all users, the privilege must be ALL PRIVILEGES",
@@ -181,7 +181,7 @@ static bool check_grant_revoke_preconditions(  //NOLINT(readability-function-cog
 
         VLOG_LP(log_error) << "insufficient authorization user:\"" << (current_user.has_value() ? current_user.value() : "")
                            << "\" user_type:" << to_string_view(tateyama::api::server::user_type::standard);
-        set_error(
+        set_error_context(
             context,
             error_code::permission_error,
             "insufficient authorization for the requested operation",
@@ -296,7 +296,7 @@ static bool serialize_and_save(
     auto stg = utils::get_storage_by_index_name(table_name);
     if(! stg) {
         // should not happen normally
-        set_error(
+        set_error_context(
             context,
             error_code::target_not_found_exception,
             string_builder{} << "Storage \"" << table_name << "\" not found" << string_builder::to_string,
@@ -307,7 +307,7 @@ static bool serialize_and_save(
     if(auto res = stg->set_options(options);res != status::ok) {
         // should not happen normally
         // though this calls sharksfin, updating storage metadata should almost always succeed
-        set_error(
+        set_error_context(
             context,
             error_code::sql_execution_exception,
             string_builder{} << "failed to modify storage metadata. status:" << res << string_builder::to_string,

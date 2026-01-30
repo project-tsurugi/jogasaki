@@ -144,13 +144,13 @@ status index_field_mapper::find_primary_index(
         if(res == status::concurrent_operation) {
             // concurrent operation blocks finding primary entry - retry might change the situation
             ss << "finding primary entry from secondary index entry failed due to concurrent operation";
-            set_error(req_context, error_code::blocked_by_concurrent_operation_exception , ss.str(), res);
+            set_error_context(req_context, error_code::blocked_by_concurrent_operation_exception , ss.str(), res);
             utils::abort_transaction(tx);
         } else if (res == status::not_found) {
             // primary/secondary indices are not consistent
             ss << "missing primary index entry corresponding to the secondary index entry";
             res = status::err_inconsistent_index;
-            set_error(req_context, error_code::secondary_index_corruption_exception, ss.str(), res);
+            set_error_context(req_context, error_code::secondary_index_corruption_exception, ss.str(), res);
             utils::abort_transaction(tx);
         } else {
             handle_kvs_errors(req_context, res);

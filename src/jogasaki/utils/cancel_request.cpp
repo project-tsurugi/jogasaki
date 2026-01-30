@@ -34,7 +34,7 @@ void cancel_request_impl(
     std::string_view filepath,
     std::string_view position
 ) {
-    error::set_error_impl(
+    error::set_error_context_impl(
         context,
         error_code::request_canceled,
         "the operation has been canceled",

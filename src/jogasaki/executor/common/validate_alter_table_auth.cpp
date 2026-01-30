@@ -39,7 +39,7 @@ bool validate_alter_table_auth(
                 VLOG_LP(log_error) << "insufficient authorization user:\""
                                    << (username.has_value() ? username.value() : "")
                                    << "\"";
-                set_error(
+                set_error_context(
                     context,
                     error_code::permission_error,
                     "insufficient authorization for the requested operation",

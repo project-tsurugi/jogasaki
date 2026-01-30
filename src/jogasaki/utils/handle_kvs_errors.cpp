@@ -43,7 +43,7 @@ void handle_kvs_errors_impl(
 
         case status::err_serialization_failure: {
             auto msg = utils::create_abort_message(context);
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::cc_exception,
                 msg,
@@ -55,7 +55,7 @@ void handle_kvs_errors_impl(
             return;
         }
         case status::err_conflict_on_write_preserve: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::conflict_on_write_preserve_exception,
                 "Serialization failed due to conflict on write preserve. ",
@@ -67,7 +67,7 @@ void handle_kvs_errors_impl(
             return;
         }
         case status::err_read_area_violation: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::read_operation_on_restricted_read_area_exception,
                 "Read operation outside read area.",
@@ -79,7 +79,7 @@ void handle_kvs_errors_impl(
             return;
         }
         case status::err_write_without_write_preserve: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::ltx_write_operation_without_write_preserve_exception,
                 "Ltx write operation outside write preserve.",
@@ -91,7 +91,7 @@ void handle_kvs_errors_impl(
             return;
         }
         case status::err_write_operation_by_rtx: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::write_operation_by_rtx_exception,
                 "Write operation by rtx.",
@@ -103,7 +103,7 @@ void handle_kvs_errors_impl(
             return;
         }
         case status::err_inactive_transaction: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::inactive_transaction_exception,
                 "Current transaction is inactive (maybe aborted already.)",
@@ -115,7 +115,7 @@ void handle_kvs_errors_impl(
             return;
         }
         case status::err_invalid_key_length: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::value_too_long_exception,
                 "The key is too long to manipulate the kvs entry.",

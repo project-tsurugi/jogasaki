@@ -141,7 +141,7 @@ bool insert_new_record::put_primary(
             if (kind_ == write_kind::insert) {
                 // integrity violation should be handled in SQL layer and forces transaction abort
                 // status::already_exists is an internal code, raise it as constraint violation
-                set_error(
+                set_error_context(
                     *wctx.request_context_,
                     error_code::unique_constraint_violation_exception,
                     string_builder{} << "Unique constraint violation occurred. Table:" << primary_.storage_name()

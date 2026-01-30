@@ -73,7 +73,7 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
                                     << " possibly due to DDL failure. Recreating "
                                        "the table may fix the situation"
                                     << string_builder::to_string;
-        set_error(ctx, error_code::sql_execution_exception, msg, rc);
+        set_error_context(ctx, error_code::sql_execution_exception, msg, rc);
         // system level errornous situation - table can be read, but write is not reliable until recration
         LOG_LP(ERROR) << msg;
         return rc;
@@ -90,7 +90,7 @@ status next_sequence_value(request_context& ctx, sequence_definition_id def_id, 
     if(! ret) {
         auto rc = status::err_illegal_operation;
         auto min_or_max = ret.error() == sequence::sequence_error::out_of_upper_bound ? "maximum" : "minimum";
-        set_error(
+        set_error_context(
             ctx,
             error_code::value_evaluation_exception,
             string_builder{} << "reached " << min_or_max << " value of sequence:" << seq->info().name() << string_builder::to_string,
@@ -111,7 +111,7 @@ static status assign_value_to_field(
     auto is_null = src.empty();
     if (is_null && !f.nullable_) {
         auto rc = status::err_integrity_constraint_violation;
-        set_error(
+        set_error_context(
             ctx,
             error_code::not_null_constraint_violation_exception,
             string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
@@ -143,7 +143,7 @@ status fill_default_value(
     switch (f.kind_) {
         case process::impl::ops::default_value_kind::nothing:
             if (!f.nullable_) {
-                set_error(
+                set_error_context(
                     ctx,
                     error_code::not_null_constraint_violation_exception,
                     string_builder{} << "Null assigned for non-nullable field." << string_builder::to_string,
@@ -181,7 +181,7 @@ status fill_default_value(
             // such as time_point_type(true) and time_point_type(false)
             if(! utils::validate_any_type(src, f.type_)) {
                 auto rc = status::err_unsupported;
-                set_error(
+                set_error_context(
                     ctx,
                     error_code::invalid_runtime_value_exception,
                     string_builder{} << "invalid value was assigned as default value field-type:" << f.type_

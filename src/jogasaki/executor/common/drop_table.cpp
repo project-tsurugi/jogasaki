@@ -87,7 +87,7 @@ static bool remove_generated_sequences(
             } catch(executor::sequence::exception const& e) {
                 // unrecoverable error - transaction aborted and we cannot continue
                 VLOG_LP(log_error) << "removing sequence '" << sequence_name << "' failed";
-                set_error(
+                set_error_context(
                     context,
                     error_code::sql_execution_exception,
                     e.what(),
@@ -132,7 +132,7 @@ bool drop_table::operator()(request_context& context) const {  //NOLINT(readabil
     auto& c = yugawara::binding::extract<yugawara::storage::table>(ct_->target());
     auto t = provider.find_table(c.simple_name());
     if(t == nullptr) {
-        set_error(
+        set_error_context(
             context,
             error_code::target_not_found_exception,
             string_builder{} << "Table \"" << c.simple_name() << "\" not found." << string_builder::to_string,

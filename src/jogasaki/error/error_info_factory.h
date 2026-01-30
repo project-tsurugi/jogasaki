@@ -34,7 +34,7 @@
 namespace jogasaki::error {
 
 #define create_error_info(code, msg, st) jogasaki::error::create_error_info_impl((code), (msg), __FILE__, line_number_string, (st), false) //NOLINT
-#define set_error(rctx, code, msg, st) jogasaki::error::set_error_impl((rctx), (code), (msg), __FILE__, line_number_string, (st), false) //NOLINT
+#define set_error_context(rctx, code, msg, st) jogasaki::error::set_error_context_impl((rctx), (code), (msg), __FILE__, line_number_string, (st), false) //NOLINT
 #define create_error_from_exception(e) jogasaki::error::create_error_from_exception_impl((e), __FILE__, line_number_string) //NOLINT
 
 std::shared_ptr<error_info> create_error_info_impl(
@@ -60,7 +60,7 @@ std::shared_ptr<error_info> create_error_info_with_stack_impl(
  * @param rctx request context to set error
  * @param info error info to be set
  */
-void set_error_impl(
+void set_error_context_impl(
     request_context& rctx,
     jogasaki::error_code code,
     std::string_view message,

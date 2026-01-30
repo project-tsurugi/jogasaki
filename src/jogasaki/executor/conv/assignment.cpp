@@ -61,7 +61,7 @@ status conduct_assignment_conversion(
     if(err.kind() == expr::error_kind::unsupported) {
         auto res = status::err_unsupported;
         auto [msg, value_msg] = expr::create_conversion_error_message(ectx);
-        set_error(
+        set_error_context(
             ctx,
             error_code::unsupported_runtime_feature_exception,
             msg,
@@ -72,7 +72,7 @@ status conduct_assignment_conversion(
     if(err.kind() == expr::error_kind::lost_precision_value_too_long) {
         auto res = status::err_expression_evaluation_failure;
         auto [msg, value_msg] = expr::create_conversion_error_message(ectx);
-        set_error(
+        set_error_context(
             ctx,
             error_code::value_too_long_exception,
             msg,
@@ -86,7 +86,7 @@ status conduct_assignment_conversion(
     auto res = status::err_expression_evaluation_failure;
     auto [msg, value_msg] = expr::create_conversion_error_message(ectx);
     auto m = string_builder{} << "error in evaluating expression: " << msg << string_builder::to_string;
-    set_error(
+    set_error_context(
         ctx,
         error_code::value_evaluation_exception,
         m,

@@ -41,7 +41,7 @@ bool validate_index_key_type(
         if(k.column().type().kind() == type_kind::octet) {
             auto&& typ = unsafe_downcast<takatori::type::octet const>(k.column().type());
             if(typ.varying()) {
-                set_error(
+                set_error_context(
                     context,
                     error_code::unsupported_runtime_feature_exception,
                     string_builder{} << "data type used for column \"" << k.column().simple_name()
@@ -52,7 +52,7 @@ bool validate_index_key_type(
             }
             if(typ.length().has_value() && !(1 <= typ.length().value() && typ.length().value() <= octet_type_max_length_for_key)) {
                 std::string_view reason = "invalid length";
-                set_error(
+                set_error_context(
                     context,
                     error_code::unsupported_runtime_feature_exception,
                     string_builder{} << "binary type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,
@@ -66,7 +66,7 @@ bool validate_index_key_type(
             auto&& typ = unsafe_downcast<takatori::type::character const>(k.column().type());
             if(typ.length().has_value() && !(1 <= typ.length().value() && typ.length().value() <= character_type_max_length_for_key)) {
                 std::string_view reason = "invalid length";
-                set_error(
+                set_error_context(
                     context,
                     error_code::unsupported_runtime_feature_exception,
                     string_builder{} << "character type on column \"" << colname << "\" is unsupported (" << reason << ")" << string_builder::to_string,

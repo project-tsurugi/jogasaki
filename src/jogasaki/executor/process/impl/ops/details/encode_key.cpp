@@ -105,7 +105,7 @@ status two_encode_keys(expr::evaluator_context& ectx,
              resource, key_begin, blen, message)) != status::ok) {
 
         if (status_result == status::err_type_mismatch) {
-            set_error(*context, error_code::unsupported_runtime_feature_exception, message,
+            set_error_context(*context, error_code::unsupported_runtime_feature_exception, message,
                 status_result);
         }
         return status_result;
@@ -114,7 +114,7 @@ status two_encode_keys(expr::evaluator_context& ectx,
              ectx, end_keys, input_variables, resource, key_end, elen, message)) != status::ok) {
 
         if (status_result == status::err_type_mismatch) {
-            set_error(*context, error_code::unsupported_runtime_feature_exception, message,
+            set_error_context(*context, error_code::unsupported_runtime_feature_exception, message,
                 status_result);
         }
         return status_result;

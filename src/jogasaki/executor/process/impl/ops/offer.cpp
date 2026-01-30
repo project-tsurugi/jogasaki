@@ -117,7 +117,7 @@ operation_status offer::operator()(offer_context& ctx) {
            );
            res != status::ok) {
             // normaly unifying conversion does not fail
-            set_error(
+            set_error_context(
                 *ctx.req_context(),
                 error_code::sql_execution_exception,
                 "unexpected error in type conversion",
@@ -133,7 +133,7 @@ operation_status offer::operator()(offer_context& ctx) {
         ctx.writer_ = ctx.task_context().downstream_writer(writer_index_);
     }
     if(! ctx.writer_->write(target)) {
-        set_error(
+        set_error_context(
             *ctx.req_context(),
             error_code::sql_execution_exception,
             "unexpected error when writing data to exchange",

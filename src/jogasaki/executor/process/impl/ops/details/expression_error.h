@@ -51,7 +51,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
     auto err = res.to<expr::error>();
     if (err.kind() == expr::error_kind::unsupported) {
         auto rc = status::err_unsupported;
-        error::set_error_impl(
+        error::set_error_context_impl(
             *ctx.req_context(),
             error_code::unsupported_runtime_feature_exception,
             string_builder{} << "unsupported expression is used" << string_builder::to_string,
@@ -64,7 +64,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
     }
     if (err.kind() == expr::error_kind::lost_precision_value_too_long) {
         auto rc = status::err_expression_evaluation_failure;
-        error::set_error_impl(
+        error::set_error_context_impl(
             *ctx.req_context(),
             error_code::value_too_long_exception,
             "evaluated value was too long",
@@ -77,7 +77,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
     }
     if (err.kind() == expr::error_kind::lob_file_io_error) {
         auto rc = status::err_io_error;
-        error::set_error_impl(
+        error::set_error_context_impl(
             *ctx.req_context(),
             error_code::lob_file_io_error,
             "I/O error occurred while evaluating lob data",
@@ -90,7 +90,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
     }
     if (err.kind() == expr::error_kind::lob_reference_invalid) {
         auto rc = status::err_invalid_state;
-        error::set_error_impl(
+        error::set_error_context_impl(
             *ctx.req_context(),
             error_code::lob_reference_invalid,
             "invalid lob reference was used to evaluate expression",
@@ -108,7 +108,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
     }
     if (err.kind() == expr::error_kind::invalid_input_value) {
         auto rc = status::err_expression_evaluation_failure;
-        error::set_error_impl(
+        error::set_error_context_impl(
             *ctx.req_context(),
             error_code::value_evaluation_exception,
             string_builder{} << "invalid input value is used" << string_builder::to_string,
@@ -143,7 +143,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
             }
         }
         auto rc = status::err_expression_evaluation_failure;
-        error::set_error_impl(
+        error::set_error_context_impl(
             *ctx.req_context(),
             error_code::value_evaluation_exception,
             msg,
@@ -167,7 +167,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
         first = false;
     }
     ss << "]";
-    error::set_error_impl(
+    error::set_error_context_impl(
         *ctx.req_context(),
         error_code::value_evaluation_exception,
         ss.str(),

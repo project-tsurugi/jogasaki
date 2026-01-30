@@ -59,7 +59,7 @@ bool drop_index::operator()(request_context& context) const {
     auto i = yugawara::binding::extract_shared<yugawara::storage::index>(ct_->target());
     auto name = i->simple_name();
     if(! provider.find_index(name)) {
-        set_error(
+        set_error_context(
             context,
             error_code::target_not_found_exception,
             string_builder{} << "Target index \"" << name << "\" is not found." << string_builder::to_string,
@@ -81,7 +81,7 @@ bool drop_index::operator()(request_context& context) const {
     if (stg) {
         if(auto res = stg->delete_storage(); res != status::ok && res != status::not_found) {
             VLOG_LP(log_error) << res << "  " << name;
-            set_error(
+            set_error_context(
                 context,
                 error_code::sql_execution_exception,
                 string_builder{} << "An error occurred in deleting storage. status:" << res << string_builder::to_string,

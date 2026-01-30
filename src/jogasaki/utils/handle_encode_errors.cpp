@@ -31,7 +31,7 @@ void handle_encode_errors_impl(
     if(res == status::ok) return;
     switch (res) {
         case status::err_data_corruption: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::data_corruption_exception,
                 "Data inconsistency detected.",
@@ -43,7 +43,7 @@ void handle_encode_errors_impl(
             return;
         }
         case status::err_expression_evaluation_failure: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::value_evaluation_exception,
                 "An error occurred in evaluating values. Encoding failed.",
@@ -55,7 +55,7 @@ void handle_encode_errors_impl(
             return;
         }
         case status::err_insufficient_field_storage: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::value_too_long_exception,
                 "Insufficient storage to store field data.",
@@ -67,7 +67,7 @@ void handle_encode_errors_impl(
             return;
         }
         case status::err_invalid_runtime_value: {
-            error::set_error_impl(
+            error::set_error_context_impl(
                 context,
                 error_code::invalid_runtime_value_exception,
                 "detected invalid runtime value",

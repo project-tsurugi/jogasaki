@@ -89,7 +89,7 @@ void set_error_info(
     }
 }
 
-void set_error_impl(
+void set_error_context_impl(
     request_context& rctx,
     jogasaki::error_code code,
     std::string_view message,

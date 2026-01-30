@@ -189,7 +189,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         if (res == status::err_type_mismatch) {
             // unsupported type/value mapping detected during expression evaluation
             ctx.abort();
-            set_error(
+            set_error_context(
                 *ctx.req_context(),
                 error_code::unsupported_runtime_feature_exception,
                 msg,

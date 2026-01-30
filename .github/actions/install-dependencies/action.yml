@@ -81,7 +81,7 @@ runs:
       with:
         repository: project-tsurugi/data-relay-grpc
         path: ${{ inputs.path }}/data-relay-grpc
-        ref: feat-grpc-server
+        ref: master
 
     - name: Checkout_Tateyama
       uses: actions/checkout@v4
@@ -89,7 +89,7 @@ runs:
       with:
         repository: project-tsurugi/tateyama
         path: ${{ inputs.path }}/tateyama
-        ref: feat-grpc-server
+        ref: master
         submodules: true
 
     - name: Install_Takatori

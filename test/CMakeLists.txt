@@ -56,9 +56,18 @@ function (add_test_executable source_file serial_execution)
             )
 
     if(serial_execution)
-        gtest_discover_tests(${test_target} PROPERTIES RESOURCE_LOCK framework_server)
+        gtest_discover_tests(
+            ${test_target}
+            PROPERTIES RESOURCE_LOCK framework_server
+            TEST_SUFFIX _gtest_result
+            XML_OUTPUT_DIR .
+        )
     else()
-        gtest_discover_tests(${test_target})
+        gtest_discover_tests(
+            ${test_target}
+            TEST_SUFFIX _gtest_result
+            XML_OUTPUT_DIR .
+        )
     endif()
 endfunction (add_test_executable)
 

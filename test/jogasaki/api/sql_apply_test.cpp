@@ -39,6 +39,7 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/function/table_valued_function_info.h>
 #include <jogasaki/executor/function/table_valued_function_kind.h>
@@ -59,6 +60,7 @@ using namespace jogasaki::mock;
 using takatori::util::sequence_view;
 using executor::expr::evaluator_context;
 using namespace executor::function;
+using namespace executor::expr;
 namespace t = takatori::type;
 
 using kind = meta::field_type_kind;
@@ -860,6 +862,178 @@ TEST_F(sql_apply_test, null_values) {
         std::tuple{0, 0}, {true, false})), result[0]);
     EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(
         std::tuple{0, 1}, {true, false})), result[1]);
+}
+
+TEST_F(sql_apply_test, error_handling_in_function) {
+    // test: table-valued function returns nullptr with error in evaluator_context
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+
+    // register mock_table_func_error inline for this test
+    // returns error when called
+    constexpr std::size_t tvf_id = 12100;
+    constexpr std::string_view error_message = "mock error from table-valued function";
+
+    auto mock_table_func_error = [error_message](
+        evaluator_context& ctx,
+        sequence_view<data::any> /* args */
+    ) -> std::unique_ptr<data::any_sequence_stream> {
+        // set error to context and return nullptr
+        ctx.add_error(evaluator_context::error_type{
+            error_kind::unknown,
+            std::string{error_message}
+        });
+        return nullptr;
+    };
+
+    // register the function
+    auto decl_error = global::regular_function_provider()->add(
+        std::make_shared<yugawara::function::declaration>(
+            tvf_id,
+            "mock_table_func_error",
+            std::make_shared<t::table>(std::initializer_list<t::table::column_type>{
+                {"c1", std::make_shared<t::int4>()},
+                {"c2", std::make_shared<t::int4>()},
+            }),
+            std::vector<std::shared_ptr<takatori::type::data const>>{
+                std::make_shared<t::int4>(),
+            },
+            yugawara::function::declaration::feature_set_type{
+                yugawara::function::function_feature::table_valued_function
+            }
+        )
+    );
+
+    global::table_valued_function_repository().add(
+        tvf_id,
+        std::make_shared<table_valued_function_info>(
+            table_valued_function_kind::builtin,
+            mock_table_func_error,
+            1,
+            table_valued_function_info::columns_type{
+                table_valued_function_column{"c1"},
+                table_valued_function_column{"c2"}
+            }
+        )
+    );
+
+    // execute query and expect error
+    test_stmt_err(
+        "SELECT T.C0, R.c1, R.c2 FROM T CROSS APPLY mock_table_func_error(T.C0) AS R(c1, c2)",
+        error_code::evaluation_exception,
+        error_message
+    );
+
+    // unregister the function
+    if (decl_error) {
+        global::regular_function_provider()->remove(*decl_error);
+    }
+}
+
+TEST_F(sql_apply_test, error_handling_with_error_in_sequence) {
+    // test: table-valued function returns error status on second row with error in any_sequence
+    execute_statement("CREATE TABLE T (C0 INT PRIMARY KEY)");
+    execute_statement("INSERT INTO T VALUES (1)");
+    execute_statement("INSERT INTO T VALUES (2)");
+
+    // register mock_table_func_error_in_sequence inline for this test
+    // returns first row successfully, then returns error status
+    constexpr std::size_t tvf_id = 12101;
+    constexpr std::string_view error_message = "mock error in second row";
+
+    // custom stream that returns error on second call
+    class error_sequence_stream : public data::any_sequence_stream {
+    public:
+        explicit error_sequence_stream(std::string_view msg) : error_message_(msg) {}
+
+        [[nodiscard]] status_type try_next(data::any_sequence& sequence) override {
+            return next(sequence, std::nullopt);
+        }
+
+        [[nodiscard]] status_type next(
+            data::any_sequence& sequence,
+            std::optional<std::chrono::milliseconds> /* timeout */) override {
+            if (position_ == 0) {
+                // first row: return normal data
+                sequence.assign(data::any_sequence::storage_type{
+                    data::any{std::in_place_type<std::int32_t>, 1},
+                    data::any{std::in_place_type<std::int32_t>, 100}
+                });
+                ++position_;
+                return status_type::ok;
+            } else if (position_ == 1) {
+                // second row: return error
+                auto err_info = std::make_shared<jogasaki::error::error_info>(
+                    error_code::value_evaluation_exception,
+                    error_message_,
+                    "",
+                    "",
+                    ""
+                );
+                sequence.clear();
+                sequence.error(err_info);
+                ++position_;
+                return status_type::error;
+            }
+            return status_type::end_of_stream;
+        }
+
+        void close() override {}
+
+    private:
+        std::string error_message_{};
+        std::size_t position_{0};
+    };
+
+    auto mock_table_func_error_in_sequence = [error_message](
+        evaluator_context& /* ctx */,
+        sequence_view<data::any> /* args */
+    ) -> std::unique_ptr<data::any_sequence_stream> {
+        return std::make_unique<error_sequence_stream>(error_message);
+    };
+
+    // register the function
+    auto decl_error_in_seq = global::regular_function_provider()->add(
+        std::make_shared<yugawara::function::declaration>(
+            tvf_id,
+            "mock_table_func_error_in_sequence",
+            std::make_shared<t::table>(std::initializer_list<t::table::column_type>{
+                {"c1", std::make_shared<t::int4>()},
+                {"c2", std::make_shared<t::int4>()},
+            }),
+            std::vector<std::shared_ptr<takatori::type::data const>>{
+                std::make_shared<t::int4>(),
+            },
+            yugawara::function::declaration::feature_set_type{
+                yugawara::function::function_feature::table_valued_function
+            }
+        )
+    );
+
+    global::table_valued_function_repository().add(
+        tvf_id,
+        std::make_shared<table_valued_function_info>(
+            table_valued_function_kind::builtin,
+            mock_table_func_error_in_sequence,
+            1,
+            table_valued_function_info::columns_type{
+                table_valued_function_column{"c1"},
+                table_valued_function_column{"c2"}
+            }
+        )
+    );
+
+    // execute query and expect error
+    test_stmt_err(
+        "SELECT T.C0, R.c1, R.c2 FROM T CROSS APPLY mock_table_func_error_in_sequence(T.C0) AS R(c1, c2)",
+        error_code::value_evaluation_exception,
+        error_message
+    );
+
+    // unregister the function
+    if (decl_error_in_seq) {
+        global::regular_function_provider()->remove(*decl_error_in_seq);
+    }
 }
 
 }  // namespace jogasaki::testing

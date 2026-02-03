@@ -23,6 +23,7 @@
 
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
+#include <jogasaki/error/error_info_factory.h>
 #include <jogasaki/meta/field_type.h>
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/udf/data/udf_semantic_type.h>
@@ -145,6 +146,21 @@ void fail_unsupported() {
     fail_with_exception_msg(ss.str());
 }
 
+/**
+ * @brief converts plugin::udf::error_info to jogasaki::error::error_info.
+ * @param udf_error the UDF error info to convert
+ * @return the converted jogasaki error info
+ */
+std::shared_ptr<jogasaki::error::error_info> convert_udf_error(
+    plugin::udf::error_info const& udf_error) {
+    // Convert gRPC status code to jogasaki error_code
+    // For now, map all UDF errors to evaluation_exception with the message from UDF
+    jogasaki::error_code code = jogasaki::error_code::evaluation_exception;
+    std::ostringstream ss;
+    ss << "UDF error(" << plugin::udf::to_string_view(udf_error.code()) << "): " << udf_error.message();
+    return create_error_info(code, ss.str(), status::err_expression_evaluation_failure);
+}
+
 } // namespace
 using base_stream = ::jogasaki::data::any_sequence_stream;
 
@@ -162,7 +178,11 @@ base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
-        case plugin::udf::generic_record_stream_status::error: return status_type::error;
+        case plugin::udf::generic_record_stream_status::error:
+            if (record.error()) { // this must be true, but just in case
+                seq.error(convert_udf_error(*record.error()));
+            }
+            return status_type::error;
         case plugin::udf::generic_record_stream_status::end_of_stream:
             return status_type::end_of_stream;
         case plugin::udf::generic_record_stream_status::not_ready: return status_type::not_ready;
@@ -180,7 +200,11 @@ base_stream::status_type udf_any_sequence_stream::next(
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
-        case plugin::udf::generic_record_stream_status::error: return status_type::error;
+        case plugin::udf::generic_record_stream_status::error:
+            if (record.error()) { // this must be true, but just in case
+                seq.error(convert_udf_error(*record.error()));
+            }
+            return status_type::error;
         case plugin::udf::generic_record_stream_status::end_of_stream:
             return status_type::end_of_stream;
         case plugin::udf::generic_record_stream_status::not_ready: return status_type::not_ready;

@@ -42,9 +42,9 @@
 #include <takatori/type/decimal.h>
 #include <takatori/type/octet.h>
 #include <takatori/type/primitive.h>
+#include <takatori/type/table.h>
 #include <takatori/type/time_of_day.h>
 #include <takatori/type/time_point.h>
-#include <takatori/type/table.h>
 #include <takatori/type/type_kind.h>
 #include <takatori/type/varying.h>
 #include <takatori/util/sequence_view.h>
@@ -69,6 +69,8 @@
 #include <jogasaki/executor/function/scalar_function_repository.h>
 #include <jogasaki/executor/function/value_generator.h>
 #include <jogasaki/executor/global.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/monotonic_paged_memory_resource.h>
 #include <jogasaki/memory/page_pool.h>
 #include <jogasaki/meta/field_type.h>
@@ -88,6 +90,7 @@
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/assign_reference_tag.h>
 #include <jogasaki/utils/base64_utils.h>
+#include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/convert_offset.h>
 #include <jogasaki/utils/fail.h>
 #include <jogasaki/utils/round.h>
@@ -101,6 +104,9 @@ using kind = meta::field_type_kind;
 using jogasaki::executor::expr::error;
 using jogasaki::executor::expr::error_kind;
 namespace {
+constexpr std::string_view udf_in_prefix = "[udf in] ";
+constexpr std::string_view udf_out_prefix = "[udf out] ";
+
 constexpr std::size_t SUPPORTED_MAJOR = 0;
 constexpr std::size_t SUPPORTED_MINOR = 1;
 
@@ -179,15 +185,19 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
         auto const& src = args[i];
         switch(src.type_index()) {
             case data::any::index<runtime_t<kind::boolean>>: {
-                request.add_bool(static_cast<bool>(src.to<runtime_t<kind::boolean>>()));
+                auto value = static_cast<bool>(src.to<runtime_t<kind::boolean>>());
+                request.add_bool(value);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " boolean:" << value;
                 break;
             }
             case data::any::index<runtime_t<kind::int4>>: {
                 auto result = src.to<runtime_t<kind::int4>>();
                 if (is_signed_int4(type)) {
                     request.add_int4(result);
+                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " int4:" << result;
                 } else {
                     request.add_uint4(result);
+                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " uint4:" << result;
                 }
                 break;
             }
@@ -195,23 +205,35 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 auto result = src.to<runtime_t<kind::int8>>();
                 if (is_signed_int8(type)) {
                     request.add_int8(result);
+                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " int8:" << result;
                 } else {
                     request.add_uint8(result);
+                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " uint8:" << result;
                 }
                 break;
             }
-            case data::any::index<runtime_t<kind::float4>>: request.add_float(src.to<runtime_t<kind::float4>>()); break;
-            case data::any::index<runtime_t<kind::float8>>:
-                request.add_double(src.to<runtime_t<kind::float8>>());
+            case data::any::index<runtime_t<kind::float4>>: {
+                auto value = src.to<runtime_t<kind::float4>>();
+                request.add_float(value);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " float4:" << value;
                 break;
+            }
+            case data::any::index<runtime_t<kind::float8>>: {
+                auto value = src.to<runtime_t<kind::float8>>();
+                request.add_double(value);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " float8:" << value;
+                break;
+            }
             case data::any::index<accessor::binary>: {
                 auto bin = static_cast<std::string>(src.to<runtime_t<kind::octet>>());
                 request.add_string(bin);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " bytes:" << utils::binary_printer{bin}.show_hyphen(false);
                 break;
             }
             case data::any::index<accessor::text>: {
                 auto ch = static_cast<std::string>(src.to<runtime_t<kind::character>>());
                 request.add_string(ch);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " string:" << ch;
                 break;
             }
             case data::any::index<runtime_t<kind::decimal>>: {
@@ -226,18 +248,21 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 std::string coeff_bytes = int128_to_bytes(coeff);
                 request.add_string(coeff_bytes);
                 request.add_int4(exp);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " decimal:(" << utils::binary_printer{coeff_bytes}.show_hyphen(false) << "," << exp << ")";
                 break;
             }
             case data::any::index<runtime_t<kind::date>>: {
                 auto value = src.to<runtime_t<kind::date>>();
                 auto days = static_cast<int32_t>(value.days_since_epoch());
                 request.add_int4(days);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " date:" << days;
                 break;
             }
             case data::any::index<runtime_t<kind::time_of_day>>: {
                 auto value = src.to<runtime_t<kind::time_of_day>>();
                 auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
                 request.add_int8(nanos);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_of_day:" << nanos;
                 break;
             }
             case data::any::index<runtime_t<kind::time_point>>: {
@@ -250,31 +275,46 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                     auto tp_tz = jogasaki::utils::add_offset(value, offset_min);
                     auto tp_local = tp_tz.first;
                     auto off = tp_tz.second;
-                    request.add_int8(
-                        static_cast<std::int64_t>(tp_local.seconds_since_epoch().count()));
-                    request.add_uint4(static_cast<std::uint32_t>(tp_local.subsecond().count()));
-                    request.add_int4(static_cast<std::int32_t>(off));
+                    auto sec = static_cast<std::int64_t>(tp_local.seconds_since_epoch().count());
+                    auto nano = static_cast<std::uint32_t>(tp_local.subsecond().count());
+                    auto off_val = static_cast<std::int32_t>(off);
+                    request.add_int8(sec);
+                    request.add_uint4(nano);
+                    request.add_int4(off_val);
+                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_point_tz:(" << sec << "," << nano << "," << off_val << ")";
                 } else {
-                    request.add_int8(
-                        static_cast<std::int64_t>(value.seconds_since_epoch().count()));
-                    request.add_uint4(static_cast<std::uint32_t>(value.subsecond().count()));
+                    auto sec = static_cast<std::int64_t>(value.seconds_since_epoch().count());
+                    auto nano = static_cast<std::uint32_t>(value.subsecond().count());
+                    request.add_int8(sec);
+                    request.add_uint4(nano);
+                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_point:(" << sec << "," << nano << ")";
                 }
                 break;
             }
             case data::any::index<runtime_t<kind::blob>>: {
                 auto value = src.to<runtime_t<kind::blob>>();
-                request.add_uint8(1);  // currently input args must be on datastore
-                request.add_uint8(value.object_id());
-                request.add_uint8(value.lob_reference::reference_tag().value());
-                request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
+                auto storage = 1ULL;  // currently input args must be on datastore
+                auto object = value.object_id();
+                auto tag = value.lob_reference::reference_tag().value();
+                auto prov = value.kind() == lob::lob_reference_kind::resolved;
+                request.add_uint8(storage);
+                request.add_uint8(object);
+                request.add_uint8(tag);
+                request.add_bool(prov);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
                 auto value = src.to<runtime_t<kind::clob>>();
-                request.add_uint8(1);  // currently input args must be on datastore
-                request.add_uint8(value.object_id());
-                request.add_uint8(value.lob_reference::reference_tag().value());
-                request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
+                auto storage = 1ULL;  // currently input args must be on datastore
+                auto object = value.object_id();
+                auto tag = value.lob_reference::reference_tag().value();
+                auto prov = value.kind() == lob::lob_reference_kind::resolved;
+                request.add_uint8(storage);
+                request.add_uint8(object);
+                request.add_uint8(tag);
+                request.add_bool(prov);
+                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
                 break;
             }
             default:
@@ -412,22 +452,30 @@ bool build_udf_request(
 
         request.add_string(bytes);
         request.add_int4(exp);
+        VLOG_LP(log_trace) << udf_in_prefix << "decimal:(" << utils::binary_printer{bytes}.show_hyphen(false) << "," << exp << ")";
         return true;
     }
     if(record_name == jogasaki::udf::bridge::DATE_RECORD) {
         auto value = args[0].to<runtime_t<kind::date>>();
-        request.add_int4(static_cast<int32_t>(value.days_since_epoch()));
+        auto days = static_cast<int32_t>(value.days_since_epoch());
+        request.add_int4(days);
+        VLOG_LP(log_trace) << udf_in_prefix << "date:" << days;
         return true;
     }
     if(record_name == jogasaki::udf::bridge::LOCALTIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_of_day>>();
-        request.add_int8(static_cast<int64_t>(value.time_since_epoch().count()));
+        auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
+        request.add_int8(nanos);
+        VLOG_LP(log_trace) << udf_in_prefix << "time_of_day:" << nanos;
         return true;
     }
     if(record_name == jogasaki::udf::bridge::LOCALDATETIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_point>>();
-        request.add_int8(static_cast<int64_t>(value.seconds_since_epoch().count()));
-        request.add_uint4(static_cast<uint32_t>(value.subsecond().count()));
+        auto sec = static_cast<int64_t>(value.seconds_since_epoch().count());
+        auto nano = static_cast<uint32_t>(value.subsecond().count());
+        request.add_int8(sec);
+        request.add_uint4(nano);
+        VLOG_LP(log_trace) << udf_in_prefix << "time_point:(" << sec << "," << nano << ")";
         return true;
     }
     if(record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
@@ -436,18 +484,27 @@ bool build_udf_request(
         auto tp_tz = jogasaki::utils::add_offset(value, offset_min);
         auto tp_local = tp_tz.first;
         auto off = tp_tz.second;
-        request.add_int8(static_cast<std::int64_t>(tp_local.seconds_since_epoch().count()));
-        request.add_uint4(static_cast<std::uint32_t>(tp_local.subsecond().count()));
-        request.add_int4(static_cast<std::int32_t>(off));
+        auto sec = static_cast<std::int64_t>(tp_local.seconds_since_epoch().count());
+        auto nano = static_cast<std::uint32_t>(tp_local.subsecond().count());
+        auto off_val = static_cast<std::int32_t>(off);
+        request.add_int8(sec);
+        request.add_uint4(nano);
+        request.add_int4(off_val);
+        VLOG_LP(log_trace) << udf_in_prefix << "time_point_tz:(" << sec << "," << nano << "," << off_val << ")";
         return true;
     }
     // @see include/jogasaki/lob/blob_reference.h
     if(record_name == jogasaki::udf::bridge::BLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::blob>>();
-        request.add_uint8(1);  // currently input args must be on datastore
-        request.add_uint8(value.object_id());
-        request.add_uint8(value.lob_reference::reference_tag().value());
-        request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
+        auto storage = 1ULL;  // currently input args must be on datastore
+        auto object = value.object_id();
+        auto tag = value.lob_reference::reference_tag().value();
+        auto prov = value.kind() == lob::lob_reference_kind::resolved;
+        request.add_uint8(storage);
+        request.add_uint8(object);
+        request.add_uint8(tag);
+        request.add_bool(prov);
+        VLOG_LP(log_trace) << udf_in_prefix << "blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
@@ -461,10 +518,15 @@ bool build_udf_request(
     // @see include/jogasaki/lob/clob_reference.h
     if(record_name == jogasaki::udf::bridge::CLOB_RECORD) {
         auto value = args[0].to<runtime_t<kind::clob>>();
-        request.add_uint8(1);  // currently input args must be on datastore
-        request.add_uint8(value.object_id());
-        request.add_uint8(value.lob_reference::reference_tag().value());
-        request.add_bool(value.kind() == lob::lob_reference_kind::resolved);
+        auto storage = 1ULL;  // currently input args must be on datastore
+        auto object = value.object_id();
+        auto tag = value.lob_reference::reference_tag().value();
+        auto prov = value.kind() == lob::lob_reference_kind::resolved;
+        request.add_uint8(storage);
+        request.add_uint8(object);
+        request.add_uint8(tag);
+        request.add_bool(prov);
+        VLOG_LP(log_trace) << udf_in_prefix << "clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
@@ -507,8 +569,10 @@ template<typename RuntimeT, typename FetchFn>
 void fetch_and_emplace(std::vector<data::any>& result, FetchFn fetch_fn) {
     if(auto v = fetch_fn()) {
         result.emplace_back(std::in_place_type<RuntimeT>, *v);
+        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
     } else {
         result.emplace_back();
+        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
     }
 }
 
@@ -516,8 +580,10 @@ template<typename RuntimeT, typename FetchFn, typename CastFn>
 void fetch_and_emplace_cast(std::vector<data::any>& result, FetchFn fetch_fn, CastFn cast_fn) {
     if(auto v = fetch_fn()) {
         result.emplace_back(std::in_place_type<RuntimeT>, cast_fn(*v));
+        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
     } else {
         result.emplace_back();
+        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
     }
 }
 
@@ -581,8 +647,10 @@ std::vector<data::any> cursor_to_any_values(
                             std::in_place_type<runtime_t<kind::character>>,
                             runtime_t<kind::character>{ctx.resource(), *v}
                         );
+                        VLOG_LP(log_trace) << udf_out_prefix << "string:" << *v;
                     } else {
                         result.emplace_back();
+                        VLOG_LP(log_trace) << udf_out_prefix << "string:NULL";
                     }
                     break;
 
@@ -592,8 +660,10 @@ std::vector<data::any> cursor_to_any_values(
                             std::in_place_type<runtime_t<kind::octet>>,
                             runtime_t<kind::octet>{ctx.resource(), *v}
                         );
+                        VLOG_LP(log_trace) << udf_out_prefix << "bytes:" << utils::binary_printer{*v}.show_hyphen(false);
                     } else {
                         result.emplace_back();
+                        VLOG_LP(log_trace) << udf_out_prefix << "bytes:NULL";
                     }
                     break;
 
@@ -618,43 +688,58 @@ std::vector<data::any> cursor_to_any_values(
 data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
     auto unscaled_opt = cursor.fetch_string();
     auto exponent_opt = cursor.fetch_int4();
-    if(unscaled_opt && exponent_opt) { return build_decimal_data(*unscaled_opt, *exponent_opt); }
+    if(unscaled_opt && exponent_opt) {
+        if (VLOG_IS_ON(log_trace)) {
+            std::string_view bin_view{unscaled_opt->data(), unscaled_opt->size()};
+            VLOG_LP(log_trace) << udf_out_prefix << "decimal:(" << utils::binary_printer{bin_view}.show_hyphen(false)
+                               << "," << *exponent_opt << ")";
+        }
+        return build_decimal_data(*unscaled_opt, *exponent_opt);
+    }
+    VLOG_LP(log_trace) << udf_out_prefix << "decimal:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto days = cursor.fetch_int4()) {
+        VLOG_LP(log_trace) << udf_out_prefix << "date:" << *days;
         return data::any{std::in_place_type<runtime_t<kind::date>>,
             jogasaki::udf::data::decode_date_from_wire(*days)};
     }
+    VLOG_LP(log_trace) << udf_out_prefix << "date:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto nanos = cursor.fetch_int8()) {
+        VLOG_LP(log_trace) << udf_out_prefix << "time_of_day:" << *nanos;
         return data::any{
             std::in_place_type<runtime_t<kind::time_of_day>>,
             jogasaki::udf::data::decode_time_of_day_from_wire(*nanos)
         };
     }
+    VLOG_LP(log_trace) << udf_out_prefix << "time_of_day:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
     auto offset_seconds  = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
     if (offset_seconds && nano_adjustment) {
+        VLOG_LP(log_trace) << udf_out_prefix << "time_point:(" << *offset_seconds << "," << *nano_adjustment << ")";
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
+    VLOG_LP(log_trace) << udf_out_prefix << "time_point:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& cursor) {
     auto offset_seconds = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
     auto tz_offset = cursor.fetch_int4();
-    (void)tz_offset;
     if (offset_seconds && nano_adjustment && tz_offset) {
+        VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:(" << *offset_seconds << "," << *nano_adjustment << "," << *tz_offset << ")";
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
+    VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
@@ -664,7 +749,13 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto provisioned = cursor.fetch_bool();
 
     if (! storage_id || ! object_id || ! tag) {
+        VLOG_LP(log_trace) << udf_out_prefix << "lob:NULL";
         return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
+    }
+    if (VLOG_IS_ON(log_trace)) {
+        std::string prov_str = provisioned ? (provisioned.value() ? "true" : "false") : "empty";
+        VLOG_LP(log_trace) << udf_out_prefix << "lob:(" << *storage_id << "," << *object_id << "," << *tag << ","
+                           << prov_str << ")";
     }
     if (storage_id.value() == 1ULL) {
         if (provisioned && provisioned.value()) {

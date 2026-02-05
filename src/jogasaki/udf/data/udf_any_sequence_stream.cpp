@@ -36,6 +36,7 @@
 #include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/generic_record.h>
 #include <jogasaki/udf/generic_record_impl.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/convert_offset.h>
 
@@ -211,6 +212,7 @@ base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
 
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
+            assert_with_exception(!record.error(), "inconsistent status with record error state");
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
         case plugin::udf::generic_record_stream_status::error:
             if (record.error()) { // this must be true, but just in case

@@ -113,8 +113,14 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
 
     // call table-valued function
     if (! function_info_ || ! function_info_->function_body()) {
-        VLOG_LP(log_error) << "Table-valued function info is not set";
-        return error_abort(ctx, status::err_unknown);
+        set_error_context(
+            *ctx.req_context(),
+            error_code::sql_execution_exception,
+            "Table-valued function info is not set",
+            status::err_unknown
+        );
+        ctx.abort();
+        return {operation_status_kind::aborted};
     }
 
     auto stream = function_info_->function_body()(
@@ -123,8 +129,20 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
     );
 
     if (! stream) {
-        VLOG_LP(log_error) << "Table-valued function returned null stream";
-        return error_abort(ctx, status::err_unknown);
+        std::string msg = "Table-valued function returned null stream"; // normally this message is not used
+        if(! ctx.evaluator_context_.errors().empty()) {
+            // when error is provided, use the first one
+            auto& error = ctx.evaluator_context_.errors().front();
+            msg = error.message();
+        }
+        set_error_context(
+            *ctx.req_context(),
+            error_code::evaluation_exception,
+            msg,
+            status::err_expression_evaluation_failure
+        );
+        ctx.abort();
+        return {operation_status_kind::aborted};
     }
 
     // synchronously collect all results
@@ -140,9 +158,20 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         }
 
         if (status == data::any_sequence_stream_status::error) {
-            VLOG_LP(log_error) << "Error while reading from table-valued function stream";
+            // Propagate error info from sequence to evaluator context
+            if (sequence.error()) {
+                set_error_info(*ctx.req_context(), sequence.error());
+            } else {
+                set_error_context(
+                    *ctx.req_context(),
+                    error_code::sql_execution_exception,
+                    "unexpected error occurred in table-valued function stream",
+                    status::err_unknown
+                );
+            }
             stream->close();
-            return error_abort(ctx, status::err_unknown);
+            ctx.abort();
+            return {operation_status_kind::aborted};
         }
 
         if (status == data::any_sequence_stream_status::ok) {

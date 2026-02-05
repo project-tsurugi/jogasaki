@@ -16,12 +16,14 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <ostream>
 #include <vector>
 
 #include <takatori/util/sequence_view.h>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/error/error_info.h>
 
 namespace jogasaki::data {
 
@@ -149,8 +151,21 @@ public:
      */
     void assign(storage_type values) noexcept;
 
+    /**
+     * @brief returns the error information if set.
+     * @return the error information, or nullptr if no error is set
+     */
+    [[nodiscard]] std::shared_ptr<jogasaki::error::error_info> const& error() const noexcept;
+
+    /**
+     * @brief sets the error information.
+     * @param err the error information to set
+     */
+    void error(std::shared_ptr<jogasaki::error::error_info> err) noexcept;
+
 private:
     storage_type storage_{};
+    std::shared_ptr<jogasaki::error::error_info> error_{};
 };
 
 /**

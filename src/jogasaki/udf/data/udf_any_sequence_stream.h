@@ -23,8 +23,8 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/any_sequence.h>
 #include <jogasaki/data/any_sequence_stream.h>
-#include <jogasaki/udf/data/udf_semantic_type.h>
 #include <jogasaki/meta/field_type.h>
+#include <jogasaki/udf/data/udf_semantic_type.h>
 #include <jogasaki/udf/generic_record.h>
 
 namespace jogasaki::udf::data {

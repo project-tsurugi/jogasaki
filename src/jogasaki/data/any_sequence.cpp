@@ -15,7 +15,10 @@
  */
 #include "any_sequence.h"
 
+#include <memory>
 #include <utility>
+
+#include <jogasaki/error/error_info.h>
 
 namespace jogasaki::data {
 
@@ -65,6 +68,7 @@ any_sequence::iterator any_sequence::end() const noexcept {
 
 void any_sequence::clear() noexcept {
     storage_.clear();
+    error_.reset();
 }
 
 void any_sequence::assign(view_type view) noexcept {
@@ -73,6 +77,14 @@ void any_sequence::assign(view_type view) noexcept {
 
 void any_sequence::assign(storage_type values) noexcept {
     storage_ = std::move(values);
+}
+
+std::shared_ptr<jogasaki::error::error_info> const& any_sequence::error() const noexcept {
+    return error_;
+}
+
+void any_sequence::error(std::shared_ptr<jogasaki::error::error_info> err) noexcept {
+    error_ = std::move(err);
 }
 
 bool operator==(any_sequence const& a, any_sequence const& b) noexcept {

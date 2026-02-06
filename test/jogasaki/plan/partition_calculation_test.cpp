@@ -476,45 +476,35 @@ TEST_F(partition_calculation_test, left_outer_join_rtx) {
     auto& b3       = grp1.downstreams()[0];
     auto&& graph3  = takatori::util::downcast<takatori::plan::process>(b3).operators();
     auto&& emit    = last<relation::emit>(graph3);
-    auto&& project = next<relation::project>(emit.input());
-    auto&& join    = next<relation::step::join>(project.input());
+    auto&& join    = next<relation::step::join>(emit.input());
     auto&& take    = next<relation::step::take_cogroup>(join.input());
     {
         auto&& p0 = find(c.execution_plan(), take);
         auto&& p1 = find(c.execution_plan(), join);
         auto&& p2 = find(c.execution_plan(), emit);
-        auto&& p3 = find(c.execution_plan(), project);
         ASSERT_EQ(p0, p1);
         ASSERT_EQ(p1, p2);
-        ASSERT_EQ(p2, p3);
         EXPECT_TRUE(executor::impl::has_emit_operator(p0));
         EXPECT_TRUE(executor::impl::has_emit_operator(p1));
         EXPECT_TRUE(executor::impl::has_emit_operator(p2));
-        EXPECT_TRUE(executor::impl::has_emit_operator(p3));
         EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
                                  p0, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
                                  p1, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
                                  p2, global::config_pool()->scan_default_parallel(), true));
-        EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
-                                 p3, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
                                  p0, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
                                  p1, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
                                  p2, global::config_pool()->scan_default_parallel(), true));
-        EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
-                                 p3, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::calculate_partition(
                                  p0, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::calculate_partition(
                                  p1, global::config_pool()->scan_default_parallel(), true));
         EXPECT_EQ(partition, executor::impl::calculate_partition(
                                  p2, global::config_pool()->scan_default_parallel(), true));
-        EXPECT_EQ(partition, executor::impl::calculate_partition(
-                                 p3, global::config_pool()->scan_default_parallel(), true));
     }
 }
 
@@ -594,45 +584,35 @@ TEST_F(partition_calculation_test, left_outer_join_no_rtx) {
     auto& b3       = grp1.downstreams()[0];
     auto&& graph3  = takatori::util::downcast<takatori::plan::process>(b3).operators();
     auto&& emit    = last<relation::emit>(graph3);
-    auto&& project = next<relation::project>(emit.input());
-    auto&& join    = next<relation::step::join>(project.input());
+    auto&& join    = next<relation::step::join>(emit.input());
     auto&& take    = next<relation::step::take_cogroup>(join.input());
     {
         auto&& p0 = find(c.execution_plan(), take);
         auto&& p1 = find(c.execution_plan(), join);
         auto&& p2 = find(c.execution_plan(), emit);
-        auto&& p3 = find(c.execution_plan(), project);
         ASSERT_EQ(p0, p1);
         ASSERT_EQ(p1, p2);
-        ASSERT_EQ(p2, p3);
         EXPECT_TRUE(executor::impl::has_emit_operator(p0));
         EXPECT_TRUE(executor::impl::has_emit_operator(p1));
         EXPECT_TRUE(executor::impl::has_emit_operator(p2));
-        EXPECT_TRUE(executor::impl::has_emit_operator(p3));
         EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
                                  p0, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
                                  p1, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
                                  p2, global::config_pool()->scan_default_parallel(), false));
-        EXPECT_EQ(partition, executor::impl::terminal_calculate_partition(
-                                 p3, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
                                  p0, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
                                  p1, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
                                  p2, global::config_pool()->scan_default_parallel(), false));
-        EXPECT_EQ(partition, executor::impl::intermediate_calculate_partition(
-                                 p3, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::calculate_partition(
                                  p0, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::calculate_partition(
                                  p1, global::config_pool()->scan_default_parallel(), false));
         EXPECT_EQ(partition, executor::impl::calculate_partition(
                                  p2, global::config_pool()->scan_default_parallel(), false));
-        EXPECT_EQ(partition, executor::impl::calculate_partition(
-                                 p3, global::config_pool()->scan_default_parallel(), false));
     }
 }
 

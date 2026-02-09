@@ -103,7 +103,7 @@ jobs:
         uses: ./.github/actions/install-dependencies
         with:
           sharksfin_implementation: ${{ env.SHARKSFIN_IMPLEMENTATION }}
-          cmake_build_option: ${{ inputs.cmake_build_option }}
+          cmake_build_option: -DUSE_GRPC_CONFIG=ON ${{ inputs.cmake_build_option }}
 
       - name: CMake_Build
         run: |

@@ -34,6 +34,7 @@
 #include "error_info.h"
 #include "generic_client_factory.h"
 #include "generic_record_impl.h"
+#include "udf_config.h"
 
 #include <grpcpp/grpcpp.h>
 namespace fs = std::filesystem;
@@ -68,14 +69,6 @@ collect_ini_files(std::filesystem::path const& dir) {
 }
 
 }  // namespace
-udf_config::udf_config(bool enabled, std::string endpoint, bool secure) :
-    _enabled(enabled),
-    _endpoint(std::move(endpoint)),
-    _secure(secure) {}
-
-bool udf_config::enabled() const noexcept { return _enabled; }
-std::string const& udf_config::endpoint() const noexcept { return _endpoint; }
-bool udf_config::secure() const noexcept { return _secure; }
 
 [[nodiscard]] std::string const& client_info::default_endpoint() const noexcept { return default_endpoint_; }
 [[nodiscard]] bool client_info::default_secure() const noexcept { return default_secure_; }
@@ -110,7 +103,14 @@ std::optional<udf_config> udf_loader::parse_ini(fs::path const& ini_path, std::v
         }
 
         std::string endpoint = std::string(jogasaki::global::config_pool()->endpoint());
-        if(auto opt = pt.get_optional<std::string>("udf.endpoint")) { endpoint = *opt; }
+        if (auto opt = pt.get_optional<std::string>("udf.endpoint")) { endpoint = *opt; }
+        std::string transport = "stream";
+        if (auto opt = pt.get_optional<std::string>("udf.transport")) {
+            transport = *opt;
+            if (transport.empty()) {
+                transport = "stream";
+            }
+        }
         bool secure = jogasaki::global::config_pool()->secure();
         if(auto opt = pt.get_optional<std::string>("udf.secure")) {
             std::string val = *opt;
@@ -129,7 +129,7 @@ std::optional<udf_config> udf_loader::parse_ini(fs::path const& ini_path, std::v
             }
         }
 
-        return udf_config(enabled, std::move(endpoint), secure);
+        return udf_config(enabled, std::move(endpoint), std::move(transport), secure);
 
     } catch(std::exception const& e) {
         results.emplace_back(load_status::ini_invalid, ini_path.string(), e.what());
@@ -177,8 +177,8 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
                 err ? err : "dlopen failed with unknown error");
             return results;
         }
-        auto res = create_api_from_handle(
-            handle, full_path, udf_config_value->endpoint(), udf_config_value->secure());
+        auto cfg_sp = std::make_shared<udf_config>(std::move(*udf_config_value));
+        auto res = create_api_from_handle(handle, full_path, cfg_sp);
         if (res.status() == load_status::ok) {
             handles_.push_back(handle);
         } else {
@@ -199,8 +199,7 @@ void udf_loader::unload_all() {
 load_result udf_loader::create_api_from_handle(
     void* handle,
     std::string const& full_path,
-    std::string const& endpoint,
-    bool secure
+    std::shared_ptr<const udf_config> cfg
 ) {
     if(! handle) { return {load_status::dlopen_failed, "", "Invalid handle (nullptr)"}; }
 
@@ -230,18 +229,17 @@ load_result udf_loader::create_api_from_handle(
             full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
-    if(secure) { return {load_status::ini_invalid, full_path, "Currently, only 'false' secure are supported"}; }
-    auto channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
+    if (cfg->secure()) {
+        return {load_status::ini_invalid, full_path, "Currently, only 'false' secure are supported"};
+    }
+    auto channel = grpc::CreateChannel(cfg->endpoint(), grpc::InsecureChannelCredentials());
     auto raw_client = factory_ptr->create(channel);
     if(! raw_client) {
         return {load_status::factory_creation_failed, full_path, "Failed to create generic client from factory"};
     }
-    plugins_.emplace_back(std::move(api_sptr), std::shared_ptr<generic_client>(raw_client));
+    plugins_.emplace_back(std::move(api_sptr), std::shared_ptr<generic_client>(raw_client),std::move(cfg));
     return {load_status::ok, full_path, "Loaded successfully"};
 }
+std::vector<plugin_entry>& udf_loader::get_plugins() noexcept { return plugins_; }
 
-std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
-udf_loader::get_plugins() noexcept {
-    return plugins_;
-}
 udf_loader::~udf_loader() { unload_all(); }

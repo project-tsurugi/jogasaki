@@ -362,13 +362,11 @@ std::vector<std::shared_ptr<const takatori::type::data>> build_param_types(
     return param_types;
 }
 
-void register_udf_function_patterns(
-    yugawara::function::configurable_provider& functions,
+void register_udf_function_patterns(yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::function<data::any(evaluator_context&, sequence_view<data::any>)> const& lambda_func,
-    plugin::udf::function_descriptor const* fn
-) {
+    plugin::udf::function_descriptor const* fn) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), [](unsigned char c) { return std::tolower(c); });
     auto const& input_record = fn->input_record();
@@ -851,8 +849,9 @@ data::any build_udf_response(
 std::function<std::unique_ptr<data::any_sequence_stream>(
     evaluator_context&, sequence_view<data::any>)>
 make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const& client,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
-    return [client, fn](evaluator_context& ctx,
+    return [client, fn, cfg](evaluator_context& ctx,
                sequence_view<data::any> args) -> std::unique_ptr<data::any_sequence_stream> {
         plugin::udf::generic_record_impl request;
         if (!build_udf_request(request, ctx, fn, args)) {
@@ -864,10 +863,10 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs);
         auto session_id = bs->get_or_create()->session_id();
-
+        std::string transport = (cfg ? cfg->transport() : std::string{"stream"});
         blob_grpc_metadata metadata{session_id,
             std::string(global::config_pool()->grpc_server_endpoint()),
-            global::config_pool()->grpc_server_secure(), "stream", 1024ULL * 1024ULL};
+            global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
 
         if (!metadata.apply(*context)) {
             ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
@@ -916,9 +915,10 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
  */
 std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_scalar_lambda(
     std::shared_ptr<plugin::udf::generic_client> const& client,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn
 ) {
-    return [client, fn](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
+    return [client, fn, cfg](evaluator_context& ctx, sequence_view<data::any> args) -> data::any {
         plugin::udf::generic_record_impl request;
         if(! build_udf_request(request, ctx, fn, args)) {
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
@@ -929,9 +929,10 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
         auto* bs = ctx.blob_session();
         assert_with_exception(bs != nullptr, bs, bs);
         auto session_id = bs->get_or_create()->session_id();
+        std::string transport = (cfg ? cfg->transport() : std::string{"stream"});
         blob_grpc_metadata metadata{session_id,
             std::string(global::config_pool()->grpc_server_endpoint()),
-            global::config_pool()->grpc_server_secure(), "stream", 1024ULL * 1024ULL};
+            global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
         if (! metadata.apply(context)) {
             ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
@@ -1014,12 +1015,13 @@ void register_server_stream_function(
     executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn
 ) {
     std::string fn_name(fn->function_name());
     std::transform(fn_name.begin(), fn_name.end(), fn_name.begin(), ::tolower);
 
-    auto tvf_callable = make_udf_server_stream_lambda(client, fn);
+    auto tvf_callable = make_udf_server_stream_lambda(client, cfg, fn);
     auto return_type  = build_table_return_type(fn);
 
     auto const& input_record = fn->input_record();
@@ -1071,8 +1073,9 @@ void register_scalar_function(yugawara::function::configurable_provider& functio
     scalar_function_repository& scalar_repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
-    auto unary_func = make_udf_scalar_lambda(client, fn);
+    auto unary_func = make_udf_scalar_lambda(client, cfg, fn);
     register_udf_function_patterns(functions, scalar_repo, current_id, unary_func, fn);
 }
 void register_udf_function(yugawara::function::configurable_provider& functions,
@@ -1080,15 +1083,16 @@ void register_udf_function(yugawara::function::configurable_provider& functions,
     executor::function::table_valued_function_repository& tvf_repo,
     yugawara::function::declaration::definition_id_type& current_id,
     std::shared_ptr<plugin::udf::generic_client> const& client,
+    std::shared_ptr<const plugin::udf::udf_config> const& cfg,
     plugin::udf::function_descriptor const* fn) {
     switch (fn->function_kind()) {
         case plugin::udf::function_kind::unary: {
 
-            register_scalar_function(functions, sf_repo, current_id, client, fn);
+            register_scalar_function(functions, sf_repo, current_id, client, cfg, fn);
             break;
         }
         default: {
-            register_server_stream_function(functions, tvf_repo, current_id, client, fn);
+            register_server_stream_function(functions, tvf_repo, current_id, client, cfg, fn);
             break;
         }
     }
@@ -1102,15 +1106,16 @@ bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-secure", secure_ ? "true" : "false");
     ctx.AddMetadata("x-tsurugi-blob-transport", transport_);
     ctx.AddMetadata("x-tsurugi-blob-stream-chunk-size", std::to_string(chunk_size_));
+    VLOG_LP(log_trace) << "[gRPC] udf grpc metadata"
+        << " session=" << std::to_string(session_id_) << ", endpoint=" << endpoint_
+        << ", secure=" << (secure_ ? "true" : "false") << ", transport=" << transport_
+        << ", chunk_size=" << std::to_string(chunk_size_);
     return true;
 }
-void add_udf_functions(
-    ::yugawara::function::configurable_provider& functions,
+void add_udf_functions(::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& sf_repo,
     executor::function::table_valued_function_repository& tvf_repo,
-    const std::vector<
-        std::tuple<std::shared_ptr<plugin::udf::plugin_api>, std::shared_ptr<plugin::udf::generic_client>>>& plugins
-) {
+    const std::vector<plugin::udf::plugin_entry>& plugins) {
     using namespace ::yugawara;
     // @see
     // https://github.com/project-tsurugi/jogasaki/blob/master/docs/internal/sql_functions.md
@@ -1118,6 +1123,7 @@ void add_udf_functions(
     for(auto const& tup: plugins) {
         auto client = std::get<1>(tup);
         auto plugin = std::get<0>(tup);
+        auto cfg = std::get<2>(tup);
         // plugin::udf::print_plugin_info(plugin);
         auto packages = plugin->packages();
         for(auto const* pkg: packages) {
@@ -1126,7 +1132,8 @@ void add_udf_functions(
             }
             for(auto const* svc: pkg->services()) {
                 for(auto const* fn: svc->functions()) {
-                    register_udf_function(functions, sf_repo, tvf_repo, current_id, client, fn);
+                    register_udf_function(
+                        functions, sf_repo, tvf_repo, current_id, client, cfg, fn);
                 }
             }
         }

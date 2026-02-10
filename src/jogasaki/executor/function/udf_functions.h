@@ -36,8 +36,7 @@ void add_udf_functions(
     ::yugawara::function::configurable_provider& functions,
     executor::function::scalar_function_repository& repo,
     executor::function::table_valued_function_repository& tvf_repo,
-    const std::vector<
-        std::tuple<std::shared_ptr<plugin::udf::plugin_api>, std::shared_ptr<plugin::udf::generic_client>>>& plugins
+    const std::vector<plugin::udf::plugin_entry>& plugins
 );
 
 class blob_grpc_metadata {

@@ -69,6 +69,7 @@
 #include <jogasaki/udf/generic_client.h>
 #include <jogasaki/udf/plugin_api.h>
 #include <jogasaki/udf/plugin_loader.h>
+#include <jogasaki/udf/udf_config.h>
 #include <jogasaki/utils/use_counter.h>
 #include "commit_stats.h"
 
@@ -380,8 +381,7 @@ private:
     [[nodiscard]] status init_kvs_db() noexcept;
     status validate_option(transaction_option const& option);
     std::unique_ptr<plugin::udf::plugin_loader> loader_{};
-    std::vector<std::tuple<std::shared_ptr<plugin::udf::plugin_api>,
-        std::shared_ptr<plugin::udf::generic_client>>> plugins_;
+    std::vector<plugin::udf::plugin_entry> plugins_;
 };
 
 inline api::impl::database& get_impl(api::database& db) {

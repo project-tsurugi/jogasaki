@@ -435,7 +435,7 @@ bool database::init() {
         }
     }
     for (auto& plugin : loader_->get_plugins()) {
-        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)));
+        plugins_.emplace_back(std::move(std::get<0>(plugin)), std::move(std::get<1>(plugin)), std::move(std::get<2>(plugin)));
     }
     executor::function::add_udf_functions(*regular_functions_, global::scalar_function_repository(),
         global::table_valued_function_repository(), plugins_);

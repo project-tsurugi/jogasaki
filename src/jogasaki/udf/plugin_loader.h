@@ -21,7 +21,12 @@
 #include "error_info.h"
 #include "generic_client.h"
 #include "plugin_api.h"
+#include "udf_config.h"
+
 namespace plugin::udf {
+
+using plugin_entry = std::tuple<std::shared_ptr<plugin::udf::plugin_api>,
+    std::shared_ptr<plugin::udf::generic_client>, std::shared_ptr<const plugin::udf::udf_config>>;
 class plugin_loader {
 public:
 
@@ -33,7 +38,7 @@ public:
     virtual ~plugin_loader() = default;
     [[nodiscard]] virtual std::vector<load_result> load(std::string_view dir_path) = 0;
     virtual void unload_all() = 0;
-    [[nodiscard]] virtual std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
+    [[nodiscard]] virtual std::vector<plugin_entry>&
     get_plugins() noexcept = 0;
 };
 }  // namespace plugin::udf

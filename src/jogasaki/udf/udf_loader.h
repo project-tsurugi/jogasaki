@@ -23,6 +23,7 @@
 #include "generic_client.h"
 #include "plugin_api.h"
 #include "plugin_loader.h"
+#include "udf_config.h"
 namespace plugin::udf {
 /**
  * @brief Loader for dynamically loading and unloading User Defined Function (UDF) plugins.
@@ -48,28 +49,7 @@ namespace plugin::udf {
  * @see plugin_loader
  */
 
-class udf_config {
-public:
 
-    udf_config() = default;
-    udf_config(udf_config const&) = default;
-    udf_config(udf_config&&) noexcept = default;
-    udf_config(bool enabled, std::string endpoint, bool secure);
-    udf_config& operator=(udf_config const&) = default;
-    udf_config& operator=(udf_config&&) noexcept = default;
-    ~udf_config() = default;
-
-    // Accessors
-    [[nodiscard]] bool enabled() const noexcept;
-    [[nodiscard]] std::string const& endpoint() const noexcept;
-    [[nodiscard]] bool secure() const noexcept;
-
-private:
-
-    bool _enabled{true};
-    std::string _endpoint{};
-    bool _secure{false};
-};
 class client_info {
 public:
 
@@ -116,23 +96,30 @@ public:
      */
     void unload_all() override;
     /**
-     * @brief Retrieves the list of loaded plugin API/factory pairs.
+     * @brief Retrieves the list of loaded UDF plugins.
      *
-     * @return Vector of tuples containing (`plugin_api*`, `generic_client_factory*`).
-     *         The pointers remain valid until `unload_all()` is called.
+     * Each entry contains:
+     * - `std::shared_ptr<plugin_api>`       : plugin API descriptor
+     * - `std::shared_ptr<generic_client>`   : gRPC client for invoking the plugin
+     * - `std::shared_ptr<const udf_config>` : configuration associated with the plugin
+     *
+     * The returned vector is owned by the loader implementation.
+     * All shared_ptr instances remain valid as long as the loader (or database)
+     * that owns them is alive.
+     *
+     * @return Reference to a vector of plugin entries.
      */
-    [[nodiscard]] std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>>&
-    get_plugins() noexcept override;
+    [[nodiscard]] std::vector<plugin_entry>& get_plugins() noexcept override;
 
-private:
+  private:
 
     /** List of raw `dlopen()` handles for loaded plugins. */
     [[nodiscard]] load_result
-    create_api_from_handle(void* handle, std::string const& full_path, std::string const& endpoint, bool secure);
+    create_api_from_handle(void* handle, std::string const& full_path, std::shared_ptr<const udf_config> cfg);
     [[nodiscard]] std::optional<udf_config>
     parse_ini(std::filesystem::path const& ini_path, std::vector<load_result>& results);
     /** List of loaded plugin API/client pairs. */
-    std::vector<std::tuple<std::shared_ptr<plugin_api>, std::shared_ptr<generic_client>>> plugins_;
+    std::vector<plugin_entry> plugins_;
     std::vector<void*> handles_;
 };
 }  // namespace plugin::udf

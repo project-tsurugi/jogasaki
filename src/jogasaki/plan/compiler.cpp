@@ -712,6 +712,7 @@ static status prepare(
             yugawara::restricted_feature::exchange_discard,
             yugawara::restricted_feature::statement_write_delete,
             yugawara::restricted_feature::statement_write_update,
+            yugawara::restricted_feature::statement_truncate_table,
         };
     }
 

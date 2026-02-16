@@ -216,7 +216,13 @@ base_stream::status_type udf_any_sequence_stream::try_next(any_sequence& seq) {
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
         case plugin::udf::generic_record_stream_status::error:
             if (record.error()) { // this must be true, but just in case
+                VLOG_LP(log_error) << "UDF stream error: code="
+                    << plugin::udf::to_string_view(record.error()->code())
+                    << ", message=" << record.error()->message();
                 seq.error(convert_udf_error(*record.error()));
+            } else {
+                // should not happen though
+                VLOG_LP(log_error) << "UDF stream error (no error details in record)";
             }
             return status_type::error;
         case plugin::udf::generic_record_stream_status::end_of_stream:
@@ -235,10 +241,17 @@ base_stream::status_type udf_any_sequence_stream::next(
 
     switch (status) {
         case plugin::udf::generic_record_stream_status::ok:
+            assert_with_exception(!record.error(), "inconsistent status with record error state");
             return convert_record_to_sequence(record, seq) ? status_type::ok : status_type::error;
         case plugin::udf::generic_record_stream_status::error:
             if (record.error()) { // this must be true, but just in case
+                VLOG_LP(log_error) << "UDF stream error: code="
+                    << plugin::udf::to_string_view(record.error()->code())
+                    << ", message=" << record.error()->message();
                 seq.error(convert_udf_error(*record.error()));
+            } else {
+                // should not happen though
+                VLOG_LP(log_error) << "UDF stream error (no error details in record)";
             }
             return status_type::error;
         case plugin::udf::generic_record_stream_status::end_of_stream:

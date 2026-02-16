@@ -543,6 +543,7 @@ bool build_udf_request(
             if (args[i].empty()) {
                 std::string msg = "Function '" + fn_name + "', argument #" + std::to_string(i + 1) +
                     " must not be NULL";
+                VLOG_LP(log_error) << msg;
                 ctx.add_error({error_kind::invalid_input_value, msg});
                 null_arg_found = true;
                 break;
@@ -550,6 +551,7 @@ bool build_udf_request(
         }
         if (! null_arg_found) {
             std::string msg = fn_name + " : no matching argument pattern found for given arguments";
+            VLOG_LP(log_error) << msg;
             ctx.add_error({error_kind::invalid_input_value, msg});
         }
         return false;
@@ -795,7 +797,9 @@ data::any build_udf_response(
     auto const& output = fn->output_record();
     auto cursor = response.cursor();
     if(! cursor) {
-        ctx.add_error({error_kind::unknown, "Response has no cursor"});
+        std::string msg = "Response has no cursor";
+        VLOG_LP(log_error) << msg;
+        ctx.add_error({error_kind::unknown, msg});
         return data::any{std::in_place_type<error>, error(error_kind::unknown)};
     }
     auto nest = output.columns()[0]->nested();
@@ -806,7 +810,9 @@ data::any build_udf_response(
     }
     auto output_values = cursor_to_any_values(response, output.columns(), ctx);
     if(! output_values.empty()) { return output_values.front(); }
-    ctx.add_error({error_kind::invalid_input_value, "Invalid or missing UDF response"});
+    std::string msg = "Invalid or missing UDF response";
+    VLOG_LP(log_error) << msg;
+    ctx.add_error({error_kind::invalid_input_value, msg});
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 /**
@@ -869,7 +875,9 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
 
         if (!metadata.apply(*context)) {
-            ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
+            std::string msg = "Failed to apply gRPC metadata";
+            VLOG_LP(log_error) << msg;
+            ctx.add_error({error_kind::unknown, msg});
             return {};
         }
 
@@ -877,7 +885,9 @@ make_udf_server_stream_lambda(std::shared_ptr<plugin::udf::generic_client> const
             client->call_server_streaming_async(std::move(context), {0, fn->function_index()}, request);
 
         if (!udf_stream) {
-            ctx.add_error({error_kind::unknown, "Failed to start UDF server-streaming RPC"});
+            std::string msg = "Failed to start UDF server-streaming RPC";
+            VLOG_LP(log_error) << msg;
+            ctx.add_error({error_kind::unknown, msg});
             return {};
         }
         auto column_types = jogasaki::udf::bridge::build_output_wire_kinds(*fn);
@@ -934,18 +944,19 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
             std::string(global::config_pool()->grpc_server_endpoint()),
             global::config_pool()->grpc_server_secure(), transport, 1024ULL * 1024ULL};
         if (! metadata.apply(context)) {
-            ctx.add_error({error_kind::unknown, "Failed to apply gRPC metadata"});
+            std::string msg = "Failed to apply gRPC metadata";
+            VLOG_LP(log_error) << msg;
+            ctx.add_error({error_kind::unknown, msg});
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
         }
 
         client->call(context, {0, fn->function_index()}, request, response);
 
         if(response.error()) {
-            ctx.add_error(
-                {error_kind::unknown,
-                 "RPC failed: code=" + std::string(plugin::udf::to_string_view(response.error()->code())) +
-                     ", message=" + std::string(response.error()->message())}
-            );
+            std::string msg = "RPC failed: code=" + std::string(plugin::udf::to_string_view(response.error()->code())) +
+                     ", message=" + std::string(response.error()->message());
+            VLOG_LP(log_error) << msg;
+            ctx.add_error({error_kind::unknown, msg});
             return data::any{std::in_place_type<error>, error(error_kind::unknown)};
         }
         return build_udf_response(response, ctx, fn);

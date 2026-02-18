@@ -175,6 +175,18 @@ bool is_signed_int8(plugin::udf::type_kind k) noexcept {
     using K = plugin::udf::type_kind;
     return k == K::int8 || k == K::sfixed8 || k == K::sint8;
 }
+void add_time_point_args(plugin::udf::generic_record_impl& request, sequence_view<data::any> args,
+    std::size_t i, std::int32_t offset_min) {
+    auto value = args[i].to<runtime_t<kind::time_point>>();
+    auto sec = static_cast<std::int64_t>(value.seconds_since_epoch().count());
+    auto nano = static_cast<std::uint32_t>(value.subsecond().count());
+    request.add_int8(sec);
+    request.add_uint4(nano);
+    request.add_int4(offset_min);
+    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_point_tz:(" << sec << ","
+                       << nano << "," << offset_min << ")";
+}
+
 void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity)
     plugin::udf::generic_record_impl& request,
     sequence_view<data::any> args,
@@ -270,18 +282,7 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 if (columns[i]->nested() != nullptr &&
                     columns[i]->nested()->record_name() ==
                         jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
-                    auto offset_min =
-                        static_cast<std::int32_t>(global::config_pool()->zone_offset());
-                    auto tp_tz = jogasaki::utils::add_offset(value, offset_min);
-                    auto tp_local = tp_tz.first;
-                    auto off = tp_tz.second;
-                    auto sec = static_cast<std::int64_t>(tp_local.seconds_since_epoch().count());
-                    auto nano = static_cast<std::uint32_t>(tp_local.subsecond().count());
-                    auto off_val = static_cast<std::int32_t>(off);
-                    request.add_int8(sec);
-                    request.add_uint4(nano);
-                    request.add_int4(off_val);
-                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_point_tz:(" << sec << "," << nano << "," << off_val << ")";
+                    add_time_point_args(request, args, i, global::config_pool()->zone_offset());
                 } else {
                     auto sec = static_cast<std::int64_t>(value.seconds_since_epoch().count());
                     auto nano = static_cast<std::uint32_t>(value.subsecond().count());
@@ -477,18 +478,7 @@ bool build_udf_request(
         return true;
     }
     if(record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
-        auto value = args[0].to<runtime_t<kind::time_point>>();
-        auto offset_min = static_cast<std::int32_t>(global::config_pool()->zone_offset());
-        auto tp_tz = jogasaki::utils::add_offset(value, offset_min);
-        auto tp_local = tp_tz.first;
-        auto off = tp_tz.second;
-        auto sec = static_cast<std::int64_t>(tp_local.seconds_since_epoch().count());
-        auto nano = static_cast<std::uint32_t>(tp_local.subsecond().count());
-        auto off_val = static_cast<std::int32_t>(off);
-        request.add_int8(sec);
-        request.add_uint4(nano);
-        request.add_int4(off_val);
-        VLOG_LP(log_trace) << udf_in_prefix << "time_point_tz:(" << sec << "," << nano << "," << off_val << ")";
+        add_time_point_args(request, args, 0, global::config_pool()->zone_offset());
         return true;
     }
     // @see include/jogasaki/lob/blob_reference.h

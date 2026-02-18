@@ -128,11 +128,7 @@ void append_time_point_with_time_zone(
         VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:("
                            << *sec_opt << "," << *nano_opt << "," << *tz_offset << ")";
         auto tp_local = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
-        auto offset_min = static_cast<std::int32_t>(*tz_offset);
-        auto tp =
-            jogasaki::utils::remove_offset(jogasaki::utils::time_point_tz{tp_local, offset_min});
-
-        values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp);
+        values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp_local);
     } else {
         VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:NULL";
         values.emplace_back();

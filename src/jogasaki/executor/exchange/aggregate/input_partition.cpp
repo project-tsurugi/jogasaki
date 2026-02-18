@@ -139,7 +139,7 @@ void input_partition::aggregate_empty_input() {
 void input_partition::flush() {
     if(! current_table_active_) return;
     current_table_active_ = false;
-    auto sz = info_->record_meta()->record_size();
+    auto sz = info_->pre().group_meta()->key().record_size();
     auto& table = pointer_tables_.back();
     std::sort(table.begin(), table.end(), [&](auto const&x, auto const& y){
         return comparator_(

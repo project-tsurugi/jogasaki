@@ -63,15 +63,15 @@ public:
      */
     explicit iterator_pair_comparator(aggregate_info const* info) :
         info_(info),
-        record_size_(info_->record_meta()->record_size()),
+        record_size_(info_->pre().group_meta()->key().record_size()),
         key_comparator_(info_->mid().key_compare_info())
     {}
 
     [[nodiscard]] bool operator()(iterator_pair const& x, iterator_pair const& y) {
         auto& it_x = x.first;
         auto& it_y = y.first;
-        auto key_x = info_->extract_key(accessor::record_ref(*it_x, record_size_));
-        auto key_y = info_->extract_key(accessor::record_ref(*it_y, record_size_));
+        auto key_x = accessor::record_ref(*it_x, record_size_);
+        auto key_y = accessor::record_ref(*it_y, record_size_);
         return key_comparator_(key_x, key_y) > 0;
     }
 

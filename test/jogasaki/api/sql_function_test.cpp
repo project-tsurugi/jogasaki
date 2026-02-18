@@ -653,4 +653,71 @@ TEST_F(sql_function_test, count_distinct_varlen) {
     }
 }
 
+TEST_F(sql_function_test, aggregate_default_partitions_1) {
+    // regression testcase for issue 1430
+    // default_partitions=1 made flush to crash
+    global::config_pool()->default_partitions(1);
+
+    execute_statement("create table t (c0 INT NOT NULL, c1 BIGINT NOT NULL)");
+    execute_statement("insert into t values (1, 5000), (2, 5000)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t GROUP BY c1, c0", result);
+        ASSERT_EQ(2, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[1]);
+    }
+}
+
+TEST_F(sql_function_test, aggregate_default) {
+    // regression testcase for issue 1430
+    // same as aggregate_default_partitions_1 except using default value of default_partitions which is 4, to make sure the issue is not specific to the value of default_partitions
+    execute_statement("create table t (c0 INT NOT NULL, c1 BIGINT NOT NULL)");
+    execute_statement("insert into t values (1, 5000), (2, 5000)");
+    execute_statement("insert into t values (3, 5000), (4, 5000)");
+    execute_statement("insert into t values (5, 5000), (6, 5000)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM t GROUP BY c1, c0", result);
+        ASSERT_EQ(6, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(3)), result[2]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(4)), result[3]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(5)), result[4]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(6)), result[5]);
+    }
+}
+
+TEST_F(sql_function_test, aggregate_with_rtx) {
+    // regression testcase for issue 1430
+    // RTX runs parallel scan, so it hit the other problem where reader handles multiple input partitions
+    execute_statement("create table t (c0 INT NOT NULL, c1 BIGINT NOT NULL)");
+    execute_statement("insert into t values (1, 5000), (1, 5000)");
+    {
+        std::vector<mock::basic_record> result{};
+        auto tx = utils::create_transaction(*db_, true, false);
+        execute_query("SELECT c0 FROM t GROUP BY c1, c0", *tx, result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+}
+
+TEST_F(sql_function_test, multiple_group_by) {
+    // regression testcase for issue 1430
+    // re-produced the same problem with aggregate_with_rtx but without RTX, to make sure the problem is not specific to RTX
+    // By group by c0, c1, c2 in the inner query, multiple partitions are created and the outer query has to read from multiple partitions, which caused the same problem as aggregate_with_rtx
+    execute_statement("create table t (c0 INT NOT NULL, c1 BIGINT NOT NULL, c2 INT NOT NULL)");
+    execute_statement("insert into t values (1, 5000, 1), (1, 5000, 1)");
+    execute_statement("insert into t values (1, 5000, 2), (1, 5000, 2)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT c0 FROM (select c0, c1 from t group by c0, c1, c2) as r GROUP BY c1, c0", result);
+        ASSERT_EQ(1, result.size());
+        EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[0]);
+    }
+}
+
 }  // namespace jogasaki::testing

@@ -52,7 +52,6 @@
             "program": "${workspaceFolder}/build-${env:BUILD_TYPE}-${env:SHARKSFIN_IMPLEMENTATION}/examples/service_benchmark/cli",
             "args": [
                 "--minimum"
-
             ],
             "MIMode": "gdb",
             "cwd": "${workspaceFolder}",
@@ -70,6 +69,29 @@
             ],
             "miDebuggerPath": "/usr/bin/gdb"
         },
+        {
+            "name": "(ctest) Launch",
+            "type": "cppdbg",
+            "cwd": "${workspaceFolder}",
+            "request": "launch",
+            // Resolved by CMake Tools:
+            "program": "${cmake.testProgram}",
+            "args": [
+                "${cmake.testArgs}"
+            ],
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
     ],
     "version": "2.0.0"
 }

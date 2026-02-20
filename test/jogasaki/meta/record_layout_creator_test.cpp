@@ -202,7 +202,7 @@ TEST_F(record_layout_creator_test, temporal_types) {
     EXPECT_EQ(1,  c.nullity_offset_table()[2]);
 }
 
-TEST_F(record_layout_creator_test, nullable_fields_and_pointer_field) {
+TEST_F(record_layout_creator_test, int8_int4_pointer) {
     // to verify the layout used in issue 1430
     record_layout_creator c{
             std::vector<field_type>{
@@ -219,6 +219,22 @@ TEST_F(record_layout_creator_test, nullable_fields_and_pointer_field) {
     EXPECT_EQ(0, c.nullity_offset_table()[0]);
     EXPECT_EQ(1, c.nullity_offset_table()[1]);
     EXPECT_EQ(2, c.nullity_offset_table()[2]);
+}
+
+TEST_F(record_layout_creator_test, int4_int8) {
+    // to verify the layout used in issue 1430
+    record_layout_creator c{
+            std::vector<field_type>{
+                    field_type(field_enum_tag<kind::int4>),
+                    field_type(field_enum_tag<kind::int8>),
+            },
+            boost::dynamic_bitset<std::uint64_t>{"11"s}};
+    EXPECT_EQ(8, c.record_alignment());
+    EXPECT_EQ(16, c.record_size());
+    EXPECT_EQ(4, c.value_offset_table()[0]);
+    EXPECT_EQ(8, c.value_offset_table()[1]);
+    EXPECT_EQ(0, c.nullity_offset_table()[0]);
+    EXPECT_EQ(1, c.nullity_offset_table()[1]);
 }
 
 }  // namespace jogasaki::meta::impl

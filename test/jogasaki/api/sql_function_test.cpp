@@ -720,4 +720,21 @@ TEST_F(sql_function_test, multiple_group_by) {
     }
 }
 
+TEST_F(sql_function_test, aggregate_crash_not_reproduced) {
+    // testcase that didn't fail by issue 1430
+    // by grouping by c1 only, the group key record length (16 = 8(null bits) + 8(c1)) does not exceed
+    // the input record length (16 = 4(null bits) + 4(c0) + 8(c1))
+    global::config_pool()->default_partitions(1);
+
+    execute_statement("create table t (c0 INT NOT NULL, c1 BIGINT NOT NULL)");
+    execute_statement("insert into t values (1, 5000), (2, 5000)");
+    {
+        std::vector<mock::basic_record> result{};
+        execute_query("SELECT max(c0) FROM t GROUP BY c1", result);
+        ASSERT_EQ(1, result.size());
+        std::sort(result.begin(), result.end());
+        EXPECT_EQ((create_nullable_record<kind::int4>(2)), result[0]);
+    }
+}
+
 }  // namespace jogasaki::testing

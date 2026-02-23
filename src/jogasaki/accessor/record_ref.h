@@ -19,11 +19,10 @@
 #include <cstring>
 #include <optional>
 #include <type_traits>
-#include <boost/assert.hpp>
-
 #include <takatori/util/assertion.h>
 
 #include <jogasaki/constants.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::accessor {
 
@@ -63,7 +62,7 @@ public:
      * @warning this function is meaningful only when the field is nullable.
      * For non-nullable field, the return value should not be used and ignored.
      */
-    [[nodiscard]] bool is_null(offset_type nullity_offset) const noexcept;
+    [[nodiscard]] bool is_null(offset_type nullity_offset) const;
 
     /**
      * @brief set nullity
@@ -75,7 +74,7 @@ public:
      * set beforehand, and this function sets nullity = true, then the value is ignored and the field
      * is handled as null.
      */
-    void set_null(offset_type nullity_offset, bool nullity = true) noexcept;
+    void set_null(offset_type nullity_offset, bool nullity = true);
 
     /**
      * @brief field value setter
@@ -87,7 +86,7 @@ public:
      */
     template<typename T>
     void set_value(offset_type value_offset, T x) {
-        BOOST_ASSERT(value_offset < size_);  //NOLINT
+        assert_with_exception(value_offset < size_, value_offset, size_);
         static_assert(std::is_trivially_copy_constructible_v<T>);
         std::memcpy( static_cast<char*>(data_) + value_offset, &x, sizeof(T)); //NOLINT
     }
@@ -103,7 +102,7 @@ public:
      */
     template<typename T>
     [[nodiscard]] T get_value(offset_type value_offset) const {
-        BOOST_ASSERT(value_offset < size_);  //NOLINT
+        assert_with_exception(value_offset < size_, value_offset, size_);
         static_assert(std::is_trivially_copy_constructible_v<T>);
         T data{};
         std::memcpy(&data, static_cast<char*>(data_) + value_offset, sizeof(T)); //NOLINT
@@ -121,7 +120,7 @@ public:
      */
     template<typename T>
     [[nodiscard]] T const& get_reference(offset_type value_offset) const {
-        BOOST_ASSERT(value_offset < size_);  //NOLINT
+        assert_with_exception(value_offset < size_, value_offset, size_);
         static_assert(std::is_trivially_copy_constructible_v<T>);
         return *reinterpret_cast<T const*>(static_cast<char*>(data_) + value_offset);  //NOLINT
     }
@@ -135,8 +134,8 @@ public:
      */
     template<typename T>
     [[nodiscard]] std::optional<T> get_if(offset_type nullity_offset, offset_type value_offset) const {
-        BOOST_ASSERT(nullity_offset / bits_per_byte < size_);  //NOLINT
-        BOOST_ASSERT(value_offset < size_);  //NOLINT
+        assert_with_exception(nullity_offset / bits_per_byte < size_, nullity_offset, size_);
+        assert_with_exception(value_offset < size_, value_offset, size_);
         if(is_null(nullity_offset)) {
             return {};
         }

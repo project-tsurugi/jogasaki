@@ -16,12 +16,13 @@
 #include "record_ref.h"
 
 #include <jogasaki/constants.h>
+#include <jogasaki/utils/assert.h>
 
 namespace jogasaki::accessor {
 
 
-bool record_ref::is_null(record_ref::offset_type nullity_offset) const noexcept {
-    BOOST_ASSERT(nullity_offset / bits_per_byte < size_); //NOLINT
+bool record_ref::is_null(record_ref::offset_type nullity_offset) const {
+    assert_with_exception(nullity_offset / bits_per_byte < size_, nullity_offset, size_);
     offset_type byte_offset = nullity_offset / bits_per_byte;
     offset_type offset_in_byte = nullity_offset % bits_per_byte;
     unsigned char bitmask = 1U << offset_in_byte;
@@ -29,8 +30,8 @@ bool record_ref::is_null(record_ref::offset_type nullity_offset) const noexcept 
     return (*p & bitmask) != 0;
 }
 
-void record_ref::set_null(record_ref::offset_type nullity_offset, bool nullity) noexcept {
-    BOOST_ASSERT(nullity_offset / bits_per_byte < size_); //NOLINT
+void record_ref::set_null(record_ref::offset_type nullity_offset, bool nullity) {
+    assert_with_exception(nullity_offset / bits_per_byte < size_, nullity_offset, size_);
     offset_type byte_offset = nullity_offset / bits_per_byte;
     offset_type offset_in_byte = nullity_offset % bits_per_byte;
     unsigned char bitmask = 1U << offset_in_byte;

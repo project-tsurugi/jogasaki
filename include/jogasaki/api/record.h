@@ -100,7 +100,7 @@ public:
     }
 
 protected:
-    virtual void write_to(std::ostream& os) const noexcept = 0;
+    virtual void write_to(std::ostream& os) const = 0;
 };
 
 }

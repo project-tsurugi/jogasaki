@@ -99,7 +99,7 @@ void record::ref(accessor::record_ref r) noexcept {
     ref_ = r;
 }
 
-void record::write_to(std::ostream& os) const noexcept {
+void record::write_to(std::ostream& os) const {
     os << ref_ << *meta_;
 }
 

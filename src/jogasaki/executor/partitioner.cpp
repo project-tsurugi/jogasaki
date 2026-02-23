@@ -37,7 +37,7 @@ partitioner::partitioner(
     hash_(meta_.get())
 {}
 
-std::size_t partitioner::operator()(accessor::record_ref key) const noexcept {
+std::size_t partitioner::operator()(accessor::record_ref key) const {
     return hash_(key) % partitions_;
 }
 

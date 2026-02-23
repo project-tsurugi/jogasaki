@@ -99,7 +99,7 @@ public:
 
     [[nodiscard]] accessor::record_ref ref() const noexcept;
 
-    void write_to(std::ostream& os) const noexcept override;
+    void write_to(std::ostream& os) const override;
 
 private:
     accessor::record_ref ref_{};

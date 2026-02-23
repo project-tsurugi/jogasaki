@@ -46,7 +46,7 @@ public:
      * @param record the record to calculate the hash
      * @return hash of the record
      */
-    [[nodiscard]] hash_value operator()(accessor::record_ref const& record) const noexcept {
+    [[nodiscard]] hash_value operator()(accessor::record_ref const& record) const {
         static const std::size_t p = 18446744073709551557ULL; // arbitrary prime in uint64_t
         hash_value h{};
         for(std::size_t i = 0, n = meta_->field_count(); i < n; ++i) {
@@ -61,7 +61,7 @@ public:
      * @param ptr the pointer to record data to calculate the hash
      * @return hash of the record
      */
-    [[nodiscard]] hash_value operator()(void* ptr) const noexcept {
+    [[nodiscard]] hash_value operator()(void* ptr) const {
         return operator()(accessor::record_ref(ptr, meta_->record_size()));
     }
 

@@ -51,7 +51,7 @@ public:
      * @param key the record to be evaluated
      * @return the target partition number
      */
-    [[nodiscard]] std::size_t operator()(accessor::record_ref key) const noexcept;
+    [[nodiscard]] std::size_t operator()(accessor::record_ref key) const;
 
 private:
     std::size_t partitions_{};

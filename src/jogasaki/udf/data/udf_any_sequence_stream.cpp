@@ -36,6 +36,7 @@
 #include <jogasaki/udf/data/udf_wire_codec.h>
 #include <jogasaki/udf/generic_record.h>
 #include <jogasaki/udf/generic_record_impl.h>
+#include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/binary_printer.h>
 #include <jogasaki/utils/convert_offset.h>
@@ -45,15 +46,13 @@ namespace jogasaki::udf::data {
 namespace {
 using any = ::jogasaki::data::any;
 
-constexpr std::string_view udf_out_prefix = "[udf out] ";
-
 template <class T, class Opt> void emplace_nullable(std::vector<any>& values, Opt const& opt) {
     if (opt) {
         values.emplace_back(std::in_place_type<T>, *opt);
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(T).name() << ":" << *opt;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(T).name() << ":" << *opt;
     } else {
         values.emplace_back();
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(T).name() << ":NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(T).name() << ":NULL";
     }
 }
 
@@ -61,10 +60,10 @@ template <class T, class Opt, class F>
 void emplace_nullable_with(std::vector<any>& values, Opt const& opt, F const& f) {
     if (opt) {
         values.emplace_back(std::in_place_type<T>, f(*opt));
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(T).name() << ":" << *opt;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(T).name() << ":" << *opt;
     } else {
         values.emplace_back();
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(T).name() << ":NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(T).name() << ":NULL";
     }
 }
 
@@ -74,34 +73,34 @@ void append_decimal(std::vector<any>& values, plugin::udf::generic_record_cursor
     if (unscaled_opt && exponent_opt) {
         if (VLOG_IS_ON(log_trace)) {
             std::string_view bin_view{unscaled_opt->data(), unscaled_opt->size()};
-            VLOG_LP(log_trace) << udf_out_prefix << "decimal:(" << utils::binary_printer{bin_view}.show_hyphen(false) << "," << *exponent_opt << ")";
+            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:(" << utils::binary_printer{bin_view}.show_hyphen(false) << "," << *exponent_opt << ")";
         }
         auto triple = jogasaki::udf::data::decode_decimal_triple(*unscaled_opt, *exponent_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::decimal>>, triple);
     } else {
-        VLOG_LP(log_trace) << udf_out_prefix << "decimal:NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:NULL";
         values.emplace_back();
     }
 }
 
 void append_date(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     if (auto days_opt = cursor.fetch_int4()) {
-        VLOG_LP(log_trace) << udf_out_prefix << "date:" << *days_opt;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:" << *days_opt;
         auto date = jogasaki::udf::data::decode_date_from_wire(*days_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::date>>, date);
     } else {
-        VLOG_LP(log_trace) << udf_out_prefix << "date:NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:NULL";
         values.emplace_back();
     }
 }
 
 void append_time_of_day(std::vector<any>& values, plugin::udf::generic_record_cursor& cursor) {
     if (auto nanos_opt = cursor.fetch_int8()) {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_of_day:" << *nanos_opt;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:" << *nanos_opt;
         auto tod = jogasaki::udf::data::decode_time_of_day_from_wire(*nanos_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_of_day>>, tod);
     } else {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_of_day:NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:NULL";
         values.emplace_back();
     }
 }
@@ -110,11 +109,11 @@ void append_time_point(std::vector<any>& values, plugin::udf::generic_record_cur
     auto sec_opt  = cursor.fetch_int8();
     auto nano_opt = cursor.fetch_uint4();
     if (sec_opt && nano_opt) {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_point:(" << *sec_opt << "," << *nano_opt << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:(" << *sec_opt << "," << *nano_opt << ")";
         auto tp = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp);
     } else {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_point:NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:NULL";
         values.emplace_back();
     }
 }
@@ -125,12 +124,12 @@ void append_time_point_with_time_zone(
     auto nano_opt = cursor.fetch_uint4();
     auto tz_offset = cursor.fetch_int4();
     if (sec_opt && nano_opt && tz_offset) {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:("
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:("
                            << *sec_opt << "," << *nano_opt << "," << *tz_offset << ")";
         auto tp_local = jogasaki::udf::data::decode_time_point_from_wire(*sec_opt, *nano_opt);
         values.emplace_back(std::in_place_type<runtime_t<meta::field_type_kind::time_point>>, tp_local);
     } else {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:NULL";
         values.emplace_back();
     }
 }
@@ -146,13 +145,13 @@ void append_lob_reference(std::vector<any>& values, plugin::udf::generic_record_
     if (storage_opt && object_opt && tag_opt) {
         if (VLOG_IS_ON(log_trace)) {
             std::string prov_str = prov_opt ? (prov_opt.value() ? "true" : "false") : "empty";
-            VLOG_LP(log_trace) << udf_out_prefix << "lob:("
+            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:("
                                << *storage_opt << "," << *object_opt << "," << *tag_opt << "," << prov_str << ")";
         }
         auto ref = decode_fn(*storage_opt, *object_opt, *tag_opt, prov_opt);
         values.emplace_back(std::in_place_type<Ref>, ref);
     } else {
-        VLOG_LP(log_trace) << udf_out_prefix << "lob:NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:NULL";
         values.emplace_back();
     }
 }

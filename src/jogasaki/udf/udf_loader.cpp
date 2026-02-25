@@ -17,6 +17,7 @@
 
 #include <dlfcn.h>
 #include <filesystem>
+#include <glog/logging.h>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -29,7 +30,9 @@
 
 #include <jogasaki/configuration.h>
 #include <jogasaki/executor/global.h>
-
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
+#include <jogasaki/udf/log/logging_prefix.h>
 #include "enum_types.h"
 #include "error_info.h"
 #include "generic_client_factory.h"
@@ -74,7 +77,6 @@ collect_ini_files(std::filesystem::path const& dir) {
 [[nodiscard]] bool client_info::default_secure() const noexcept { return default_secure_; }
 void client_info::set_default_endpoint(std::string endpoint) { default_endpoint_ = std::move(endpoint); }
 void client_info::set_default_secure(bool secure) { default_secure_ = secure; }
-
 std::optional<udf_config> udf_loader::parse_ini(fs::path const& ini_path, std::vector<load_result>& results) {
     try {
         boost::property_tree::ptree pt;
@@ -163,11 +165,11 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         }
         auto so_path = ini_path;
         so_path.replace_extension(".so");
-        if (! fs::exists(so_path)) {
-            results.emplace_back(load_status::ini_so_pair_mismatch, so_path.string(),
-                "Missing paired .so file: " + so_path.string());
+        if (!fs::exists(so_path)) {
             continue;
         }
+        VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix << "UDF library found: " << so_path.string()
+                                  << " (config: " << ini_path.string() << ")";
         std::string full_path = so_path.string();
         dlerror();
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);

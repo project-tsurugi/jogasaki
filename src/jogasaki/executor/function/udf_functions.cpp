@@ -85,6 +85,7 @@
 #include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/error_info.h>
 #include <jogasaki/udf/generic_record_impl.h>
+#include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/utils/assert.h>
@@ -104,8 +105,6 @@ using kind = meta::field_type_kind;
 using jogasaki::executor::expr::error;
 using jogasaki::executor::expr::error_kind;
 namespace {
-constexpr std::string_view udf_in_prefix = "[udf in] ";
-constexpr std::string_view udf_out_prefix = "[udf out] ";
 
 constexpr std::size_t SUPPORTED_MAJOR = 0;
 constexpr std::size_t SUPPORTED_MINOR = 1;
@@ -183,7 +182,7 @@ void add_time_point_args(plugin::udf::generic_record_impl& request, sequence_vie
     request.add_int8(sec);
     request.add_uint4(nano);
     request.add_int4(offset_min);
-    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_point_tz:(" << sec << ","
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " time_point_tz:(" << sec << ","
                        << nano << "," << offset_min << ")";
 }
 
@@ -199,17 +198,17 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
             case data::any::index<runtime_t<kind::boolean>>: {
                 auto value = static_cast<bool>(src.to<runtime_t<kind::boolean>>());
                 request.add_bool(value);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " boolean:" << value;
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " boolean:" << value;
                 break;
             }
             case data::any::index<runtime_t<kind::int4>>: {
                 auto result = src.to<runtime_t<kind::int4>>();
                 if (is_signed_int4(type)) {
                     request.add_int4(result);
-                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " int4:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " int4:" << result;
                 } else {
                     request.add_uint4(result);
-                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " uint4:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " uint4:" << result;
                 }
                 break;
             }
@@ -217,35 +216,35 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 auto result = src.to<runtime_t<kind::int8>>();
                 if (is_signed_int8(type)) {
                     request.add_int8(result);
-                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " int8:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " int8:" << result;
                 } else {
                     request.add_uint8(result);
-                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " uint8:" << result;
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " uint8:" << result;
                 }
                 break;
             }
             case data::any::index<runtime_t<kind::float4>>: {
                 auto value = src.to<runtime_t<kind::float4>>();
                 request.add_float(value);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " float4:" << value;
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " float4:" << value;
                 break;
             }
             case data::any::index<runtime_t<kind::float8>>: {
                 auto value = src.to<runtime_t<kind::float8>>();
                 request.add_double(value);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " float8:" << value;
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " float8:" << value;
                 break;
             }
             case data::any::index<accessor::binary>: {
                 auto bin = static_cast<std::string>(src.to<runtime_t<kind::octet>>());
                 request.add_string(bin);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " bytes:" << utils::binary_printer{bin}.show_hyphen(false);
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " bytes:" << utils::binary_printer{bin}.show_hyphen(false);
                 break;
             }
             case data::any::index<accessor::text>: {
                 auto ch = static_cast<std::string>(src.to<runtime_t<kind::character>>());
                 request.add_string(ch);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " string:" << ch;
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " string:" << ch;
                 break;
             }
             case data::any::index<runtime_t<kind::decimal>>: {
@@ -260,21 +259,21 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 std::string coeff_bytes = int128_to_bytes(coeff);
                 request.add_string(coeff_bytes);
                 request.add_int4(exp);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " decimal:(" << utils::binary_printer{coeff_bytes}.show_hyphen(false) << "," << exp << ")";
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " decimal:(" << utils::binary_printer{coeff_bytes}.show_hyphen(false) << "," << exp << ")";
                 break;
             }
             case data::any::index<runtime_t<kind::date>>: {
                 auto value = src.to<runtime_t<kind::date>>();
                 auto days = static_cast<int32_t>(value.days_since_epoch());
                 request.add_int4(days);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " date:" << days;
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " date:" << days;
                 break;
             }
             case data::any::index<runtime_t<kind::time_of_day>>: {
                 auto value = src.to<runtime_t<kind::time_of_day>>();
                 auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
                 request.add_int8(nanos);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_of_day:" << nanos;
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " time_of_day:" << nanos;
                 break;
             }
             case data::any::index<runtime_t<kind::time_point>>: {
@@ -288,7 +287,7 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                     auto nano = static_cast<std::uint32_t>(value.subsecond().count());
                     request.add_int8(sec);
                     request.add_uint4(nano);
-                    VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " time_point:(" << sec << "," << nano << ")";
+                    VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " time_point:(" << sec << "," << nano << ")";
                 }
                 break;
             }
@@ -302,7 +301,7 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 request.add_uint8(object);
                 request.add_uint8(tag);
                 request.add_bool(prov);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
                 break;
             }
             case data::any::index<runtime_t<kind::clob>>: {
@@ -315,7 +314,7 @@ void fill_request_with_args(  //NOLINT(readability-function-cognitive-complexity
                 request.add_uint8(object);
                 request.add_uint8(tag);
                 request.add_bool(prov);
-                VLOG_LP(log_trace) << udf_in_prefix << "colidx:" << i << " clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+                VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "colidx:" << i << " clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
                 break;
             }
             default:
@@ -451,21 +450,21 @@ bool build_udf_request(
 
         request.add_string(bytes);
         request.add_int4(exp);
-        VLOG_LP(log_trace) << udf_in_prefix << "decimal:(" << utils::binary_printer{bytes}.show_hyphen(false) << "," << exp << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "decimal:(" << utils::binary_printer{bytes}.show_hyphen(false) << "," << exp << ")";
         return true;
     }
     if(record_name == jogasaki::udf::bridge::DATE_RECORD) {
         auto value = args[0].to<runtime_t<kind::date>>();
         auto days = static_cast<int32_t>(value.days_since_epoch());
         request.add_int4(days);
-        VLOG_LP(log_trace) << udf_in_prefix << "date:" << days;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "date:" << days;
         return true;
     }
     if(record_name == jogasaki::udf::bridge::LOCALTIME_RECORD) {
         auto value = args[0].to<runtime_t<kind::time_of_day>>();
         auto nanos = static_cast<int64_t>(value.time_since_epoch().count());
         request.add_int8(nanos);
-        VLOG_LP(log_trace) << udf_in_prefix << "time_of_day:" << nanos;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "time_of_day:" << nanos;
         return true;
     }
     if(record_name == jogasaki::udf::bridge::LOCALDATETIME_RECORD) {
@@ -474,7 +473,7 @@ bool build_udf_request(
         auto nano = static_cast<uint32_t>(value.subsecond().count());
         request.add_int8(sec);
         request.add_uint4(nano);
-        VLOG_LP(log_trace) << udf_in_prefix << "time_point:(" << sec << "," << nano << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "time_point:(" << sec << "," << nano << ")";
         return true;
     }
     if(record_name == jogasaki::udf::bridge::OFFSETDATETIME_RECORD) {
@@ -492,7 +491,7 @@ bool build_udf_request(
         request.add_uint8(object);
         request.add_uint8(tag);
         request.add_bool(prov);
-        VLOG_LP(log_trace) << udf_in_prefix << "blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "blob:(" << storage << "," << object << "," << tag << "," << prov << ")";
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
@@ -514,7 +513,7 @@ bool build_udf_request(
         request.add_uint8(object);
         request.add_uint8(tag);
         request.add_bool(prov);
-        VLOG_LP(log_trace) << udf_in_prefix << "clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_in_prefix << "clob:(" << storage << "," << object << "," << tag << "," << prov << ")";
         // the ID of the storage where the BLOB data is stored.
         // uint64 storage_id = 1;
         // the ID of the element within the BLOB storage.
@@ -559,10 +558,10 @@ template<typename RuntimeT, typename FetchFn>
 void fetch_and_emplace(std::vector<data::any>& result, FetchFn fetch_fn) {
     if(auto v = fetch_fn()) {
         result.emplace_back(std::in_place_type<RuntimeT>, *v);
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
     } else {
         result.emplace_back();
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
     }
 }
 
@@ -570,10 +569,10 @@ template<typename RuntimeT, typename FetchFn, typename CastFn>
 void fetch_and_emplace_cast(std::vector<data::any>& result, FetchFn fetch_fn, CastFn cast_fn) {
     if(auto v = fetch_fn()) {
         result.emplace_back(std::in_place_type<RuntimeT>, cast_fn(*v));
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":" << *v;
     } else {
         result.emplace_back();
-        VLOG_LP(log_trace) << udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << typeid(RuntimeT).name() << ":NULL";
     }
 }
 
@@ -637,10 +636,10 @@ std::vector<data::any> cursor_to_any_values(
                             std::in_place_type<runtime_t<kind::character>>,
                             runtime_t<kind::character>{ctx.resource(), *v}
                         );
-                        VLOG_LP(log_trace) << udf_out_prefix << "string:" << *v;
+                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "string:" << *v;
                     } else {
                         result.emplace_back();
-                        VLOG_LP(log_trace) << udf_out_prefix << "string:NULL";
+                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "string:NULL";
                     }
                     break;
 
@@ -650,10 +649,10 @@ std::vector<data::any> cursor_to_any_values(
                             std::in_place_type<runtime_t<kind::octet>>,
                             runtime_t<kind::octet>{ctx.resource(), *v}
                         );
-                        VLOG_LP(log_trace) << udf_out_prefix << "bytes:" << utils::binary_printer{*v}.show_hyphen(false);
+                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "bytes:" << utils::binary_printer{*v}.show_hyphen(false);
                     } else {
                         result.emplace_back();
-                        VLOG_LP(log_trace) << udf_out_prefix << "bytes:NULL";
+                        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "bytes:NULL";
                     }
                     break;
 
@@ -681,43 +680,43 @@ data::any build_decimal_response(plugin::udf::generic_record_cursor& cursor) {
     if(unscaled_opt && exponent_opt) {
         if (VLOG_IS_ON(log_trace)) {
             std::string_view bin_view{unscaled_opt->data(), unscaled_opt->size()};
-            VLOG_LP(log_trace) << udf_out_prefix << "decimal:(" << utils::binary_printer{bin_view}.show_hyphen(false)
+            VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:(" << utils::binary_printer{bin_view}.show_hyphen(false)
                                << "," << *exponent_opt << ")";
         }
         return build_decimal_data(*unscaled_opt, *exponent_opt);
     }
-    VLOG_LP(log_trace) << udf_out_prefix << "decimal:NULL";
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "decimal:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_date_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto days = cursor.fetch_int4()) {
-        VLOG_LP(log_trace) << udf_out_prefix << "date:" << *days;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:" << *days;
         return data::any{std::in_place_type<runtime_t<kind::date>>,
             jogasaki::udf::data::decode_date_from_wire(*days)};
     }
-    VLOG_LP(log_trace) << udf_out_prefix << "date:NULL";
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "date:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localtime_response(plugin::udf::generic_record_cursor& cursor) {
     if (auto nanos = cursor.fetch_int8()) {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_of_day:" << *nanos;
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:" << *nanos;
         return data::any{
             std::in_place_type<runtime_t<kind::time_of_day>>,
             jogasaki::udf::data::decode_time_of_day_from_wire(*nanos)
         };
     }
-    VLOG_LP(log_trace) << udf_out_prefix << "time_of_day:NULL";
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_of_day:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_localdatetime_response(plugin::udf::generic_record_cursor& cursor) {
     auto offset_seconds  = cursor.fetch_int8();
     auto nano_adjustment = cursor.fetch_uint4();
     if (offset_seconds && nano_adjustment) {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_point:(" << *offset_seconds << "," << *nano_adjustment << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:(" << *offset_seconds << "," << *nano_adjustment << ")";
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
-    VLOG_LP(log_trace) << udf_out_prefix << "time_point:NULL";
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& cursor) {
@@ -725,11 +724,11 @@ data::any build_offsetdatetime_response(plugin::udf::generic_record_cursor& curs
     auto nano_adjustment = cursor.fetch_uint4();
     auto tz_offset = cursor.fetch_int4();
     if (offset_seconds && nano_adjustment && tz_offset) {
-        VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:(" << *offset_seconds << "," << *nano_adjustment << "," << *tz_offset << ")";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:(" << *offset_seconds << "," << *nano_adjustment << "," << *tz_offset << ")";
         return data::any{std::in_place_type<runtime_t<kind::time_point>>,
             jogasaki::udf::data::decode_time_point_from_wire(*offset_seconds, *nano_adjustment)};
     }
-    VLOG_LP(log_trace) << udf_out_prefix << "time_point_tz:NULL";
+    VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "time_point_tz:NULL";
     return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
 }
 template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_record_cursor& cursor) {
@@ -739,12 +738,12 @@ template <class Ref> data::any build_lob_response_impl(plugin::udf::generic_reco
     auto provisioned = cursor.fetch_bool();
 
     if (! storage_id || ! object_id || ! tag) {
-        VLOG_LP(log_trace) << udf_out_prefix << "lob:NULL";
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:NULL";
         return data::any{std::in_place_type<error>, error(error_kind::invalid_input_value)};
     }
     if (VLOG_IS_ON(log_trace)) {
         std::string prov_str = provisioned ? (provisioned.value() ? "true" : "false") : "empty";
-        VLOG_LP(log_trace) << udf_out_prefix << "lob:(" << *storage_id << "," << *object_id << "," << *tag << ","
+        VLOG_LP(log_trace) << jogasaki::udf::log::udf_out_prefix << "lob:(" << *storage_id << "," << *object_id << "," << *tag << ","
                            << prov_str << ")";
     }
     if (storage_id.value() == 1ULL) {
@@ -956,11 +955,11 @@ std::function<data::any(evaluator_context&, sequence_view<data::any>)> make_udf_
 bool check_supported_version(plugin::udf::package_descriptor const& pkg) {
     auto const& v = pkg.version();
     if (is_supported_version(v)) {
-        LOG_LP(INFO) << "[gRPC] Package '" << pkg.file_name() << "' version " << v.major() << "."
+        LOG_LP(INFO) << jogasaki::udf::log::grpc_prefix << "Package '" << pkg.file_name() << "' version " << v.major() << "."
                      << v.minor() << "." << v.patch();
         return true;
     }
-    LOG_LP(WARNING) << "[gRPC] Package '" << pkg.file_name() << "' has unsupported version "
+    LOG_LP(WARNING) << jogasaki::udf::log::grpc_prefix  << "Package '" << pkg.file_name() << "' has unsupported version "
                     << v.major() << "." << v.minor() << "." << v.patch() << ". Only version "
                     << SUPPORTED_MAJOR << "." << SUPPORTED_MINOR << ".x is supported.";
 
@@ -1107,7 +1106,7 @@ bool blob_grpc_metadata::apply(grpc::ClientContext& ctx) const noexcept {
     ctx.AddMetadata("x-tsurugi-blob-secure", secure_ ? "true" : "false");
     ctx.AddMetadata("x-tsurugi-blob-transport", transport_);
     ctx.AddMetadata("x-tsurugi-blob-stream-chunk-size", std::to_string(chunk_size_));
-    VLOG_LP(log_trace) << "[gRPC] udf grpc metadata"
+    VLOG_LP(log_trace) << jogasaki::udf::log::grpc_prefix << "udf grpc metadata"
         << " session=" << std::to_string(session_id_) << ", endpoint=" << endpoint_
         << ", secure=" << (secure_ ? "true" : "false") << ", transport=" << transport_
         << ", chunk_size=" << std::to_string(chunk_size_);

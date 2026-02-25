@@ -127,6 +127,7 @@
 #include <jogasaki/udf/enum_types.h>
 #include <jogasaki/udf/error_info.h>
 #include <jogasaki/udf/generic_client.h>
+#include <jogasaki/udf/log/logging_prefix.h>
 #include <jogasaki/udf/plugin_loader.h>
 #include <jogasaki/udf/udf_loader.h>
 #include <jogasaki/utils/backoff_waiter.h>
@@ -421,16 +422,16 @@ bool database::init() {
             res_status == plugin::udf::load_status::path_is_empty ||
             res_status == plugin::udf::load_status::no_ini_and_so_files ||
             res_status == plugin::udf::load_status::no_ini_files) {
-            LOG_LP(INFO) << "[gRPC] " << res_status << " file: " << result.file()
+            LOG_LP(INFO) << jogasaki::udf::log::prefix << res_status << " file: " << result.file()
                          << " detail: " << result.detail();
         } else if (res_status == plugin::udf::load_status::path_not_found ||
                    res_status == plugin::udf::load_status::ini_so_pair_mismatch ||
                    res_status == plugin::udf::load_status::ini_invalid) {
-            LOG_LP(ERROR) << "[gRPC] " << res_status
+            LOG_LP(ERROR) << jogasaki::udf::log::prefix << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
             // return false;
         } else {
-            LOG_LP(WARNING) << "[gRPC] " << res_status
+            LOG_LP(WARNING) << jogasaki::udf::log::prefix << res_status
                                  << " file: " << result.file() << " detail: " << result.detail();
         }
     }

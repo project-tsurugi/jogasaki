@@ -114,6 +114,7 @@ file(GLOB SOURCES
         "jogasaki/udf/*.cpp"
         "jogasaki/udf/bridge/*.cpp"
         "jogasaki/udf/data/*.cpp"
+        "jogasaki/udf/log/*.cpp"
 )
 if(ENABLE_ALTIMETER)
 file(GLOB SRC_ALTIMETER_ENABLED

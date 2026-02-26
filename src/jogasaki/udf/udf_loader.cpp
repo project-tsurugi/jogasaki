@@ -231,10 +231,19 @@ load_result udf_loader::create_api_from_handle(
             full_path,
             "Symbol 'tsurugi_create_generic_client_factory' not found"};
     }
+    std::shared_ptr<grpc::ChannelCredentials> creds;
     if (cfg->secure()) {
-        return {load_status::ini_invalid, full_path, "Currently, only 'false' secure are supported"};
+        grpc::SslCredentialsOptions opts;
+        creds = grpc::SslCredentials(opts);
+        VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
+                                  << "Creating TLS channel to endpoint: " << cfg->endpoint()
+                                  << " (using system root certificates)";
+    } else {
+        creds = grpc::InsecureChannelCredentials();
+        VLOG(jogasaki::log_trace) << jogasaki::udf::log::prefix
+                                  << "Creating INSECURE channel to endpoint: " << cfg->endpoint();
     }
-    auto channel = grpc::CreateChannel(cfg->endpoint(), grpc::InsecureChannelCredentials());
+    auto channel = grpc::CreateChannel(cfg->endpoint(), creds);
     auto raw_client = factory_ptr->create(channel);
     if(! raw_client) {
         return {load_status::factory_creation_failed, full_path, "Failed to create generic client from factory"};

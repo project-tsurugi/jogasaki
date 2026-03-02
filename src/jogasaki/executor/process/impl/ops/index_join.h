@@ -326,7 +326,7 @@ public:
      */
     operation_status operator()(index_join_context<MatchInfo>& ctx, abstract::task_context* context = nullptr) { //NOLINT(readability-function-cognitive-complexity)
         if (ctx.aborted()) {
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
         auto resource = ctx.varlen_resource();
         nullify_output_variables(ctx.output_variables().store().ref());
@@ -372,7 +372,7 @@ public:
                 if (downstream_) {
                     if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
                         ctx.abort();
-                        return {operation_status_kind::aborted};
+                        return operation_status_kind::aborted;
                     }
                 }
                 // clean output variables for next record just in case
@@ -383,9 +383,9 @@ public:
         if(auto res = ctx.matcher_->result(); res != status::ok && res != status::not_found) {
             // on error, error info is already filled in the request context so just finish the operator
             ctx.abort();
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
-        return {};
+        return operation_status_kind::ok;
     }
 
     /**

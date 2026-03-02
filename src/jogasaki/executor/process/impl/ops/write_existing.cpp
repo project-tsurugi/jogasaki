@@ -96,7 +96,7 @@ operator_kind write_existing::kind() const noexcept {
 
 operation_status write_existing::operator()(write_existing_context& ctx) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     switch(kind_) {
         case write_kind::update:
@@ -276,7 +276,7 @@ operation_status write_existing::do_update(write_existing_context& ctx) {
             return error_abort(ctx, res);
         }
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operation_status write_existing::do_delete(write_existing_context& ctx) {
@@ -292,7 +292,7 @@ operation_status write_existing::do_delete(write_existing_context& ctx) {
         if(context.req_context()) {
             context.req_context()->enable_stats()->counter(counter_kind::deleted).count(1);
         }
-        return {};
+        return operation_status_kind::ok;
     }
 
     if(auto res = primary_.encode_find_remove(
@@ -320,7 +320,7 @@ operation_status write_existing::do_delete(write_existing_context& ctx) {
             return error_abort(ctx, res);
         }
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operation_status write_existing::process_record(abstract::task_context* context) {

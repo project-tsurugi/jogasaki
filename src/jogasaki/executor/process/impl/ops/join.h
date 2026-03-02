@@ -202,7 +202,7 @@ public:
         constexpr static std::size_t secondary_group_index = 1;
 
         if (ctx.aborted()) {
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
         std::size_t n = cgrp.groups().size();
         std::vector<iterator_pair> iterators{};
@@ -232,7 +232,7 @@ public:
                     if(a.template to<bool>()) {
                         if(! call_downstream(context)) {
                             ctx.abort();
-                            return {operation_status_kind::aborted};
+                            return operation_status_kind::aborted;
                         }
                     }
                 } while (incr.increment());
@@ -260,7 +260,7 @@ public:
                                 exists_match = true;
                                 if (!call_downstream(context)) {
                                     ctx.abort();
-                                    return {operation_status_kind::aborted};
+                                    return operation_status_kind::aborted;
                                 }
                             }
                         } while (incr.increment(secondary_group_index));
@@ -271,7 +271,7 @@ public:
                         assign_values(ctx, cgrp, incr, true);
                         if (! call_downstream(context)) {
                             ctx.abort();
-                            return {operation_status_kind::aborted};
+                            return operation_status_kind::aborted;
                         }
                     }
                 } while (incr.increment(primary_group_index));
@@ -303,7 +303,7 @@ public:
                                 unmatched_right.reset(secondary_group_pos);
                                 if (!call_downstream(context)) {
                                     ctx.abort();
-                                    return {operation_status_kind::aborted};
+                                    return operation_status_kind::aborted;
                                 }
                             }
                             ++secondary_group_pos;
@@ -316,7 +316,7 @@ public:
                         assign_values(ctx, cgrp, incr, true);
                         if (! call_downstream(context)) {
                             ctx.abort();
-                            return {operation_status_kind::aborted};
+                            return operation_status_kind::aborted;
                         }
                     }
                 } while (incr.increment(primary_group_index));
@@ -328,7 +328,7 @@ public:
                         assign_values(ctx, cgrp, incr, false, true);
                         if (! call_downstream(context)) {
                             ctx.abort();
-                            return {operation_status_kind::aborted};
+                            return operation_status_kind::aborted;
                         }
                     }
                     (void) incr.increment(secondary_group_index);
@@ -364,14 +364,14 @@ public:
                         assign_values(ctx, cgrp, incr, true);
                         if (! call_downstream(context)) {
                             ctx.abort();
-                            return {operation_status_kind::aborted};
+                            return operation_status_kind::aborted;
                         }
                     }
                 } while (incr.increment(primary_group_index));
                 break;
             }
         }
-        return {};
+        return operation_status_kind::ok;
     }
 
     /**

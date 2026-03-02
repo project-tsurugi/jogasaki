@@ -145,13 +145,13 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     abstract::task_context* context
 ) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if(ctx.it_ == nullptr){
         if (ctx.range_->is_empty()){
             // range keys contain null. Nothing should match.
             finish(context);
-            return {};
+            return operation_status_kind::ok;
         }
         if(auto res = open(ctx); res != status::ok) {
            // res can be status::err_type_mismatch, then ctx already filled with error info
@@ -174,7 +174,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 cancel_request(*ctx.req_context());
                 ctx.abort();
                 finish(context);
-                return {operation_status_kind::aborted};
+                return operation_status_kind::aborted;
             }
         }
         if((st = ctx.it_->next()) != status::ok) {
@@ -210,7 +210,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             if(auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st2) {
                 ctx.abort();
                 finish(context);
-                return {operation_status_kind::aborted};
+                return operation_status_kind::aborted;
             }
         }
         if (scan_block_size != 0 && scan_block_size <= loop_count ){
@@ -224,7 +224,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 ) << "scan operator yields count:"
                   << ctx.yield_count_ << " loop_count:" << loop_count << " elapsed(us):"
                   << std::chrono::duration_cast<std::chrono::microseconds>(current_time - previous_time).count();
-                return {operation_status_kind::yield};
+                return operation_status_kind::yield;
             }
         }
         loop_count++;
@@ -233,7 +233,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     if (st != status::not_found) {
         return error_abort(ctx, st);
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind scan::kind() const noexcept {

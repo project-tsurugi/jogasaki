@@ -159,7 +159,7 @@ operation_status aggregate_group::operator()(
     abstract::task_context* context
 ) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     for(std::size_t i=0, n=arguments_.size(); i < n; ++i) {
         // append value store the values
@@ -195,7 +195,7 @@ operation_status aggregate_group::operator()(
         if (downstream_) {
             if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
                 ctx.abort();
-                return {operation_status_kind::aborted};
+                return operation_status_kind::aborted;
             }
         }
         // reset
@@ -205,7 +205,7 @@ operation_status aggregate_group::operator()(
             ctx.nulls_resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
         }
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind aggregate_group::kind() const noexcept {

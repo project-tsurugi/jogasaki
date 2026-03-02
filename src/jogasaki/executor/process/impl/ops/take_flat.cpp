@@ -86,7 +86,7 @@ operation_status take_flat::process_record(abstract::task_context* context) {
 
 operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     auto target = ctx.output_variables().store().ref();
     if (! ctx.reader_) {
@@ -105,7 +105,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
                     cancel_request(*ctx.req_context());
                     ctx.abort();
                     finish(context);
-                    return {operation_status_kind::aborted};
+                    return operation_status_kind::aborted;
                 }
             }
             utils::checkpoint_holder cp{resource};
@@ -126,7 +126,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
                 if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
                     ctx.abort();
                     finish(context);
-                    return {operation_status_kind::aborted};
+                    return operation_status_kind::aborted;
                 }
             }
         }
@@ -137,7 +137,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
         // expecting upstream writes new one soon
     }
     finish(context);
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind take_flat::kind() const noexcept {

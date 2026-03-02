@@ -153,15 +153,15 @@ operation_status find::call_downstream(
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
             ctx.abort();
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if(utils::request_cancel_enabled(request_cancel_kind::find) && ctx.req_context()) {
         auto& res_src = ctx.req_context()->req_info().response_source();
@@ -169,7 +169,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             cancel_request(*ctx.req_context());
             ctx.abort();
             finish(context);
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
     }
     auto target = ctx.output_variables().store().ref();
@@ -195,12 +195,12 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
                 msg,
                 res
             );
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
         if (res == status::err_integrity_constraint_violation) {
             // null is assigned for find condition. Nothing should be found.
             finish(context);
-            return {};
+            return operation_status_kind::ok;
         }
         return error_abort(ctx, res);
     }
@@ -212,7 +212,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             finish(context);
             utils::modify_concurrent_operation_status(*ctx.tx_->object(), res, false);
             if (res == status::not_found) {
-                return {};
+                return operation_status_kind::ok;
             }
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
@@ -236,7 +236,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         if(auto res = it->next(); res != status::ok) {
             finish(context);
             if (res == status::not_found) {
-                return {};
+                return operation_status_kind::ok;
             }
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
@@ -259,7 +259,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         }
     }
     finish(context);
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind find::kind() const noexcept {

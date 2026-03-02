@@ -76,7 +76,7 @@ operation_status offer::process_record(abstract::task_context* context) {
 
 operation_status offer::operator()(offer_context& ctx) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     auto target = ctx.store_.ref();
     auto source = ctx.input_variables().store().ref();
@@ -124,7 +124,7 @@ operation_status offer::operator()(offer_context& ctx) {
                 status::err_io_error
             );
             ctx.abort();
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
         utils::copy_nullable_field(f.type_, target, f.target_offset_, f.target_nullity_offset_, converted, nocopy);
     }
@@ -140,9 +140,9 @@ operation_status offer::operator()(offer_context& ctx) {
             status::err_io_error
         );
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind offer::kind() const noexcept {

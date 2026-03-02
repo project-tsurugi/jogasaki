@@ -85,7 +85,7 @@ operation_status take_group::process_record(abstract::task_context* context) {
 
 operation_status take_group::operator()(take_group_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     auto target = ctx.output_variables().store().ref();
     if (! ctx.reader_) {
@@ -119,7 +119,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
                     cancel_request(*ctx.req_context());
                     ctx.abort();
                     finish(context);
-                    return {operation_status_kind::aborted};
+                    return operation_status_kind::aborted;
                 }
             }
             auto value = ctx.reader_->get_member();
@@ -142,13 +142,13 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
                         downstream_.get())-> process_group(context, !has_next); !st) {
                     ctx.abort();
                     finish(context);
-                    return {operation_status_kind::aborted};
+                    return operation_status_kind::aborted;
                 }
             }
         }
     }
     finish(context);
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind take_group::kind() const noexcept {

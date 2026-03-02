@@ -66,7 +66,7 @@ operation_status filter::process_record(abstract::task_context* context) {
 
 operation_status filter::operator()(filter_context& ctx, abstract::task_context* context) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     auto& vars = ctx.input_variables();
     auto resource = ctx.varlen_resource();
@@ -83,11 +83,11 @@ operation_status filter::operator()(filter_context& ctx, abstract::task_context*
         if (downstream_) {
             if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
                 ctx.abort();
-                return {operation_status_kind::aborted};
+                return operation_status_kind::aborted;
             }
         }
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind filter::kind() const noexcept {

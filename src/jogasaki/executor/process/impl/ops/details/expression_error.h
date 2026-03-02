@@ -60,7 +60,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
             rc,
             false);
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if (err.kind() == expr::error_kind::lost_precision_value_too_long) {
         auto rc = status::err_expression_evaluation_failure;
@@ -73,7 +73,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
             rc,
             false);
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if (err.kind() == expr::error_kind::lob_file_io_error) {
         auto rc = status::err_io_error;
@@ -86,7 +86,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
             rc,
             false);
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if (err.kind() == expr::error_kind::lob_reference_invalid) {
         auto rc = status::err_invalid_state;
@@ -99,12 +99,12 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
             rc,
             false);
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if(err.kind() == expr::error_kind::error_info_provided) {
         set_error_info(*ctx.req_context(), ectx.get_error_info());
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if (err.kind() == expr::error_kind::invalid_input_value) {
         auto rc = status::err_expression_evaluation_failure;
@@ -117,7 +117,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
             rc,
             false);
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if (err.kind() == expr::error_kind::arithmetic_error) {
         std::string_view msg = "arithmetic error occurred";  // generic message - use more specific one if available
@@ -152,7 +152,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
             rc,
             false);
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     auto rc = status::err_expression_evaluation_failure;
 
@@ -176,7 +176,7 @@ operation_status handle_expression_error_impl(  //NOLINT(readability-function-co
         rc,
         false);
     ctx.abort();
-    return {operation_status_kind::aborted};
+    return operation_status_kind::aborted;
 }
 
 }  // namespace jogasaki::executor::process::impl::ops::details

@@ -123,7 +123,7 @@ static status fill_default_value_for_fields(
 
 operation_status write_create::operator()(write_create_context& ctx) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
 
     wrt::write_context wctx(
@@ -171,9 +171,9 @@ operation_status write_create::operator()(write_create_context& ctx) {
     if(! core_->process_record(*ctx.req_context(), wctx)) {
         // error already logged in error_info in request context
         details::abort_transaction(*ctx.transaction());
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operation_status write_create::process_record(abstract::task_context* context) {

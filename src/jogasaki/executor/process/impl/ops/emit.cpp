@@ -79,7 +79,7 @@ operation_status emit::process_record(abstract::task_context *context) {
 
 operation_status emit::operator()(emit_context &ctx) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     auto target = ctx.buffer_.ref();
     auto source = ctx.input_variables().store().ref();
@@ -104,7 +104,7 @@ operation_status emit::operator()(emit_context &ctx) {
             status::err_io_error
         );
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if(! writer->write(target)) {
         // possibly writer error due to buffer overflow
@@ -116,9 +116,9 @@ operation_status emit::operator()(emit_context &ctx) {
             status::err_io_error
         );
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 maybe_shared_ptr<meta::external_record_meta> const& emit::meta() const noexcept {

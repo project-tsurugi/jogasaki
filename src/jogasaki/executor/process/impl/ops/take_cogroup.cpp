@@ -138,7 +138,7 @@ operation_status take_cogroup::process_record(abstract::task_context* context) {
 
 operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     using iterator = data::iterable_record_store::iterator;
     if (ctx.readers_.empty()) {
@@ -171,7 +171,7 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
                 cancel_request(*ctx.req_context());
                 ctx.abort();
                 finish(context);
-                return {operation_status_kind::aborted};
+                return operation_status_kind::aborted;
             }
         }
         switch(s) {
@@ -238,7 +238,7 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
                             process_cogroup(context, cgrp); !st) {
                         ctx.abort();
                         finish(context);
-                        return {operation_status_kind::aborted};
+                        return operation_status_kind::aborted;
                     }
                 }
                 for(auto&& in : inputs) {
@@ -251,7 +251,7 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
         }
     }
     finish(context);
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind take_cogroup::kind() const noexcept {

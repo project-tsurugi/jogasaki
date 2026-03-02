@@ -37,7 +37,7 @@ operation_status error_abort_impl(
 ) {
     ctx.abort();
     if(ctx.req_context()->error_info()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     switch(res) {
         case status::err_unique_constraint_violation:
@@ -130,7 +130,7 @@ operation_status error_abort_impl(
             );
             break;
     }
-    return {operation_status_kind::aborted};
+    return operation_status_kind::aborted;
 }
 
 }

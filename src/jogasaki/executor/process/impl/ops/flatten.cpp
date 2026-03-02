@@ -59,15 +59,15 @@ operation_status flatten::process_group(abstract::task_context* context, bool la
 
 operation_status flatten::operator()(flatten_context& ctx, abstract::task_context* context) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
             ctx.abort();
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind flatten::kind() const noexcept {

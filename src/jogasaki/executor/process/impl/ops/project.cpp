@@ -82,7 +82,7 @@ operation_status project::process_record(abstract::task_context* context) {
 
 operation_status project::operator()(project_context& ctx, abstract::task_context* context) {
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
     auto& vars = ctx.output_variables();
     // fill scope variables
@@ -131,10 +131,10 @@ operation_status project::operator()(project_context& ctx, abstract::task_contex
     if (downstream_) {
         if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
             ctx.abort();
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
     }
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind project::kind() const noexcept {

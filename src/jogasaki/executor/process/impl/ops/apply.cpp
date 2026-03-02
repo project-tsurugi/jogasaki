@@ -96,7 +96,7 @@ operation_status apply::process_record(abstract::task_context* context) {
 
 operation_status apply::operator()(apply_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
     if (ctx.aborted()) {
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
 
     // setup evaluator context blob session once per record
@@ -108,7 +108,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
     ctx.args_.reserve(argument_evaluators_.size());
     if (! evaluate_arguments(ctx, ctx.args_)) {
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
 
     // call table-valued function
@@ -120,7 +120,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
             status::err_unknown
         );
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
 
     auto stream = function_info_->function_body()(
@@ -142,7 +142,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
             status::err_expression_evaluation_failure
         );
         ctx.abort();
-        return {operation_status_kind::aborted};
+        return operation_status_kind::aborted;
     }
 
     // synchronously collect all results
@@ -171,7 +171,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
             }
             stream->close();
             ctx.abort();
-            return {operation_status_kind::aborted};
+            return operation_status_kind::aborted;
         }
 
         if (status == data::any_sequence_stream_status::ok) {
@@ -180,7 +180,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
             if (! assign_sequence_to_variables(ctx, sequence)) {
                 stream->close();
                 ctx.abort();
-                return {operation_status_kind::aborted};
+                return operation_status_kind::aborted;
             }
             ctx.has_output_ = true;
 
@@ -189,7 +189,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
                 if (auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); ! st) {
                     stream->close();
                     ctx.abort();
-                    return {operation_status_kind::aborted};
+                    return operation_status_kind::aborted;
                 }
             }
         }
@@ -203,13 +203,13 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
             if (auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); ! st) {
                 stream->close();
                 ctx.abort();
-                return {operation_status_kind::aborted};
+                return operation_status_kind::aborted;
             }
         }
     }
 
     stream->close();
-    return {};
+    return operation_status_kind::ok;
 }
 
 operator_kind apply::kind() const noexcept {

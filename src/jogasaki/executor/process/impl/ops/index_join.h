@@ -325,7 +325,7 @@ public:
      * @return status of the operation
      */
     operation_status operator()(index_join_context<MatchInfo>& ctx, abstract::task_context* context = nullptr) { //NOLINT(readability-function-cognitive-complexity)
-        if (ctx.inactive()) {
+        if (ctx.aborted()) {
             return {operation_status_kind::aborted};
         }
         auto resource = ctx.varlen_resource();

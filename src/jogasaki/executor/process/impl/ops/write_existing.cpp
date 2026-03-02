@@ -95,7 +95,7 @@ operator_kind write_existing::kind() const noexcept {
 }
 
 operation_status write_existing::operator()(write_existing_context& ctx) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     switch(kind_) {

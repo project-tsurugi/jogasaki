@@ -201,7 +201,7 @@ public:
         constexpr static std::size_t primary_group_index = 0;
         constexpr static std::size_t secondary_group_index = 1;
 
-        if (ctx.inactive()) {
+        if (ctx.aborted()) {
             return {operation_status_kind::aborted};
         }
         std::size_t n = cgrp.groups().size();

@@ -144,7 +144,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     scan_context& ctx,
     abstract::task_context* context
 ) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     if(ctx.it_ == nullptr){

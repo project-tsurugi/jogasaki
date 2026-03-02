@@ -65,7 +65,7 @@ operation_status filter::process_record(abstract::task_context* context) {
 }
 
 operation_status filter::operator()(filter_context& ctx, abstract::task_context* context) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     auto& vars = ctx.input_variables();

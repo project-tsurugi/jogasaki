@@ -158,7 +158,7 @@ operation_status aggregate_group::operator()(
     bool last_member,
     abstract::task_context* context
 ) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     for(std::size_t i=0, n=arguments_.size(); i < n; ++i) {
@@ -215,7 +215,7 @@ operator_kind aggregate_group::kind() const noexcept {
 void aggregate_group::finish(abstract::task_context* context) {
     auto& ctx = *create_context_if_not_found(context);
     context_helper helper{*context};
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return;
     }
     if (helper.empty_input_from_shuffle()) {

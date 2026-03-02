@@ -85,7 +85,7 @@ operation_status take_flat::process_record(abstract::task_context* context) {
 }
 
 operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     auto target = ctx.output_variables().store().ref();

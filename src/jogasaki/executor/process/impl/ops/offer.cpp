@@ -75,7 +75,7 @@ operation_status offer::process_record(abstract::task_context* context) {
 }
 
 operation_status offer::operator()(offer_context& ctx) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     auto target = ctx.store_.ref();

@@ -160,7 +160,7 @@ operation_status find::call_downstream(
 }
 
 operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     if(utils::request_cancel_enabled(request_cancel_kind::find) && ctx.req_context()) {

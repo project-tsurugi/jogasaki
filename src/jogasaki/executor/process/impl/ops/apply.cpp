@@ -95,7 +95,7 @@ operation_status apply::process_record(abstract::task_context* context) {
 }
 
 operation_status apply::operator()(apply_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
 

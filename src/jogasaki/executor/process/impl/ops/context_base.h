@@ -37,7 +37,7 @@ enum class context_state {
     /**
      * @brief the operator with this context met error and is aborting/aborted
      */
-    abort,
+    aborted,
 };
 
 /**
@@ -49,7 +49,7 @@ enum class context_state {
     using namespace std::string_view_literals;
     switch (state) {
         case context_state::active: return "active"sv;
-        case context_state::abort: return "abort"sv;
+        case context_state::aborted: return "aborted"sv;
     }
     std::abort();
 }
@@ -166,10 +166,10 @@ public:
     void abort() noexcept;
 
     /**
-     * @brief update the context state aborted
+     * @brief returns whether the context state is aborted
      */
-    [[nodiscard]] bool inactive() const noexcept {
-        return state_ != context_state::active;
+    [[nodiscard]] bool aborted() const noexcept {
+        return state_ == context_state::aborted;
     }
 
     /**

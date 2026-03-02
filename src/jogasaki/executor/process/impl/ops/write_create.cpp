@@ -122,7 +122,7 @@ static status fill_default_value_for_fields(
 }
 
 operation_status write_create::operator()(write_create_context& ctx) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
 

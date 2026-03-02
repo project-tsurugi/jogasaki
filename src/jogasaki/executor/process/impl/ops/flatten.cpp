@@ -58,7 +58,7 @@ operation_status flatten::process_group(abstract::task_context* context, bool la
 }
 
 operation_status flatten::operator()(flatten_context& ctx, abstract::task_context* context) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     if (downstream_) {

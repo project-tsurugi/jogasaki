@@ -94,7 +94,7 @@ class request_context* context_base::req_context() noexcept {
 }
 
 void context_base::abort() noexcept {
-    state(context_state::abort);
+    state(context_state::aborted);
 }
 
 void context_base::dump() const noexcept {

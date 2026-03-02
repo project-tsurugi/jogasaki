@@ -81,7 +81,7 @@ operation_status project::process_record(abstract::task_context* context) {
 }
 
 operation_status project::operator()(project_context& ctx, abstract::task_context* context) {
-    if (ctx.inactive()) {
+    if (ctx.aborted()) {
         return {operation_status_kind::aborted};
     }
     auto& vars = ctx.output_variables();

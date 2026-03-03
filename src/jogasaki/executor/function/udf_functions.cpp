@@ -107,7 +107,7 @@ using jogasaki::executor::expr::error_kind;
 namespace {
 
 constexpr std::size_t SUPPORTED_MAJOR = 0;
-constexpr std::size_t SUPPORTED_MINOR = 1;
+constexpr std::size_t SUPPORTED_MINOR = 2;
 
 std::unordered_map<std::string_view, std::size_t> const& nested_type_map() {
     static const std::unordered_map<std::string_view, std::size_t> map{

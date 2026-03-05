@@ -38,7 +38,6 @@
 #include <jogasaki/index/field_info.h>
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 
 #include "details/search_key_field_info.h"
 #include "find_context.h"

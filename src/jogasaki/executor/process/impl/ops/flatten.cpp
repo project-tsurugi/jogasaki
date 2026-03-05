@@ -61,11 +61,24 @@ operation_status flatten::operator()(flatten_context& ctx, abstract::task_contex
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
+
+    // this op. simply transforms group into record, so actually there is nothing done here
+
+    if (ctx.state() == context_state::calling_child) {
+        VLOG_LP(log_trace) << "resuming flatten op. after downstream yield";
+    }
+
     if (downstream_) {
-        if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+        ctx.state(context_state::calling_child);
+        auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+        if (st.kind() == operation_status_kind::yield) {
+            return operation_status_kind::yield;
+        }
+        if (! st) {
             ctx.abort();
             return operation_status_kind::aborted;
         }
+        ctx.state(context_state::running_operator_body);
     }
     return operation_status_kind::ok;
 }

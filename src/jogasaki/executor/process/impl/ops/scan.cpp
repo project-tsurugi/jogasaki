@@ -49,6 +49,7 @@
 #include <jogasaki/request_cancel_config.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/get_storage_by_index_name.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/field_types.h>
@@ -147,6 +148,13 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
+    if (ctx.state() == context_state::yielding) {
+        assert_with_exception(ctx.it_ != nullptr, "null iterator on scan resume");
+        // scan is the top level operator (operators tree root), so the resume after yield is fairly simple than
+        // other passive operators because there is no need to consider saving the contexts on the upstream operators.
+        // We can resume simply by skipping open scan and calling next on the iterator.
+        ctx.state(context_state::running_operator_body);
+    }
     if(ctx.it_ == nullptr){
         if (ctx.range_->is_empty()){
             // range keys contain null. Nothing should match.
@@ -168,50 +176,58 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto previous_time = std::chrono::steady_clock::now();
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::scan);
     while(true) {
-        if(cancel_enabled && ctx.req_context()) {
-            auto& res_src = ctx.req_context()->req_info().response_source();
-            if(res_src && res_src->check_cancel()) {
-                cancel_request(*ctx.req_context());
-                ctx.abort();
-                finish(context);
-                return operation_status_kind::aborted;
-            }
-        }
-        if((st = ctx.it_->next()) != status::ok) {
-            handle_kvs_errors(*ctx.req_context(), st);
-            break;
-        }
         utils::checkpoint_holder cp{resource};
-        std::string_view k{};
-        std::string_view v{};
-        if((st = ctx.it_->read_key(k)) != status::ok) {
-            utils::modify_concurrent_operation_status(*ctx.transaction(), st, true);
-            if(st == status::not_found) {
-                continue;
+        if(ctx.state() != context_state::calling_child) {
+            if(cancel_enabled && ctx.req_context()) {
+                auto& res_src = ctx.req_context()->req_info().response_source();
+                if(res_src && res_src->check_cancel()) {
+                    cancel_request(*ctx.req_context());
+                    ctx.abort();
+                    finish(context);
+                    return operation_status_kind::aborted;
+                }
             }
-            handle_kvs_errors(*ctx.req_context(), st);
-            break;
-        }
-        if((st = ctx.it_->read_value(v)) != status::ok) {
-            utils::modify_concurrent_operation_status(*ctx.transaction(), st, true);
-            if (st == status::not_found) {
-                continue;
+            if((st = ctx.it_->next()) != status::ok) {
+                handle_kvs_errors(*ctx.req_context(), st);
+                break;
             }
-            handle_kvs_errors(*ctx.req_context(), st);
-            break;
-        }
-        auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
-        if(st = field_mapper_.process(k, v, target, *ctx.stg_, tx, resource, *ctx.req_context());
-           st != status::ok) {
-            handle_kvs_errors(*ctx.req_context(), st);
-            break;
+            std::string_view k{};
+            std::string_view v{};
+            if((st = ctx.it_->read_key(k)) != status::ok) {
+                utils::modify_concurrent_operation_status(*ctx.transaction(), st, true);
+                if(st == status::not_found) {
+                    continue;
+                }
+                handle_kvs_errors(*ctx.req_context(), st);
+                break;
+            }
+            if((st = ctx.it_->read_value(v)) != status::ok) {
+                utils::modify_concurrent_operation_status(*ctx.transaction(), st, true);
+                if (st == status::not_found) {
+                    continue;
+                }
+                handle_kvs_errors(*ctx.req_context(), st);
+                break;
+            }
+            auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
+            if(st = field_mapper_.process(k, v, target, *ctx.stg_, tx, resource, *ctx.req_context());
+               st != status::ok) {
+                handle_kvs_errors(*ctx.req_context(), st);
+                break;
+            }
         }
         if (downstream_) {
-            if(auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st2) {
+            ctx.state(context_state::calling_child);
+            auto st2 = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            if(st2.kind() == operation_status_kind::yield) {
+                return operation_status_kind::yield;
+            }
+            if(st2.kind() == operation_status_kind::aborted) {
                 ctx.abort();
                 finish(context);
                 return operation_status_kind::aborted;
             }
+            ctx.state(context_state::running_operator_body);
         }
         if (scan_block_size != 0 && scan_block_size <= loop_count ){
             loop_count = 0;
@@ -224,6 +240,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 ) << "scan operator yields count:"
                   << ctx.yield_count_ << " loop_count:" << loop_count << " elapsed(us):"
                   << std::chrono::duration_cast<std::chrono::microseconds>(current_time - previous_time).count();
+                ctx.state(context_state::yielding);
                 return operation_status_kind::yield;
             }
         }

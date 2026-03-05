@@ -19,6 +19,7 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 
 #include "context_base.h"
 
@@ -51,8 +52,10 @@ public:
 
 private:
     io::group_reader* reader_{};
+
+    // frame variables for yield
+    bool has_next_{};
+    utils::checkpoint_holder group_cp_{};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

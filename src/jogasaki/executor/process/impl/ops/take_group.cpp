@@ -88,65 +88,87 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
         return operation_status_kind::aborted;
     }
     auto target = ctx.output_variables().store().ref();
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_group);
+    auto resource = ctx.varlen_resource();
+    if(ctx.state() == context_state::calling_child) {
+        VLOG_LP(log_trace) << "resuming take_group op. after downstream yield";
+        goto resume_calling_child;  //NOLINT
+    }
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);
         ctx.reader_ = r.reader<io::group_reader>();
     }
-    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_group);
-    auto resource = ctx.varlen_resource();
+
+    ctx.group_cp_.set_checkpoint();
     while(ctx.reader_->next_group()) {
-        utils::checkpoint_holder group_cp{resource};
-        auto key = ctx.reader_->get_group();
-        for(auto &f : fields_) {
-            if (! f.is_key_) continue;
-            utils::copy_nullable_field(
-                f.type_,
-                target,
-                f.target_offset_,
-                f.target_nullity_offset_,
-                key,
-                f.source_offset_,
-                f.source_nullity_offset_,
-                resource
-            );
-        }
-        if(! ctx.reader_->next_member()) continue;
-        bool has_next = true;
-        while(has_next) {
-            if(cancel_enabled && ctx.req_context()) {
-                auto& res_src = ctx.req_context()->req_info().response_source();
-                if(res_src && res_src->check_cancel()) {
-                    cancel_request(*ctx.req_context());
-                    ctx.abort();
-                    finish(context);
-                    return operation_status_kind::aborted;
-                }
-            }
-            auto value = ctx.reader_->get_member();
+        ctx.group_cp_.reset();
+        {
+            auto key = ctx.reader_->get_group();
             for(auto &f : fields_) {
-                if (f.is_key_) continue;
+                if (! f.is_key_) continue;
                 utils::copy_nullable_field(
                     f.type_,
                     target,
                     f.target_offset_,
                     f.target_nullity_offset_,
-                    value,
+                    key,
                     f.source_offset_,
                     f.source_nullity_offset_,
                     resource
                 );
             }
-            has_next = ctx.reader_->next_member();
-            if (downstream_) {
-                if(auto st = unsafe_downcast<group_operator>(
-                        downstream_.get())-> process_group(context, !has_next); !st) {
+        }
+
+        if(! ctx.reader_->next_member()) continue;
+        ctx.has_next_ = true;
+        while(ctx.has_next_) {
+            if(cancel_enabled && ctx.req_context()) {
+                auto& res_src = ctx.req_context()->req_info().response_source();
+                if(res_src && res_src->check_cancel()) {
+                    cancel_request(*ctx.req_context());
                     ctx.abort();
+                    ctx.group_cp_.reset();
                     finish(context);
                     return operation_status_kind::aborted;
                 }
             }
+            {
+                auto value = ctx.reader_->get_member();
+                for(auto &f : fields_) {
+                    if (f.is_key_) continue;
+                    utils::copy_nullable_field(
+                        f.type_,
+                        target,
+                        f.target_offset_,
+                        f.target_nullity_offset_,
+                        value,
+                        f.source_offset_,
+                        f.source_nullity_offset_,
+                        resource
+                    );
+                }
+            }
+            ctx.has_next_ = ctx.reader_->next_member();
+resume_calling_child:
+            if (downstream_) {
+                ctx.state(context_state::calling_child);
+                auto st = unsafe_downcast<group_operator>(
+                    downstream_.get())->process_group(context, !ctx.has_next_);
+                if (st.kind() == operation_status_kind::yield) {
+                    // preserve ctx.group_cp_ and ctx.has_next_
+                    return operation_status_kind::yield;
+                }
+                if (! st) {
+                    ctx.abort();
+                    ctx.group_cp_.reset();
+                    finish(context);
+                    return operation_status_kind::aborted;
+                }
+                ctx.state(context_state::running_operator_body);
+            }
         }
     }
+    ctx.group_cp_.reset();
     finish(context);
     return operation_status_kind::ok;
 }
@@ -206,6 +228,4 @@ std::vector<details::take_group_field> take_group::create_fields(
     return fields;
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

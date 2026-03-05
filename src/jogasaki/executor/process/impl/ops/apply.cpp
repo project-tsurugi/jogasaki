@@ -99,116 +99,155 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         return operation_status_kind::aborted;
     }
 
-    // setup evaluator context blob session once per record
+    // setup evaluator context blob session (required for both fresh and resume paths)
     context_helper helper{*context};
     ctx.evaluator_context_.blob_session(std::addressof(helper.blob_session_container()));
 
-    // evaluate arguments
-    ctx.args_.clear();
-    ctx.args_.reserve(argument_evaluators_.size());
-    if (! evaluate_arguments(ctx, ctx.args_)) {
-        ctx.abort();
-        return operation_status_kind::aborted;
-    }
+    // when resuming for the outer-apply null-row downstream call, skip the main loop entirely
+    bool const calling_child_with_outer_null =
+        ctx.state() == context_state::calling_child && ctx.calling_child_with_outer_null_;
 
-    // call table-valued function
-    if (! function_info_ || ! function_info_->function_body()) {
-        set_error_context(
-            *ctx.req_context(),
-            error_code::sql_execution_exception,
-            "Table-valued function info is not set",
-            status::err_unknown
-        );
-        ctx.abort();
-        return operation_status_kind::aborted;
-    }
+    if (! calling_child_with_outer_null) {
+        if (ctx.state() == context_state::yielding) {
+            // resuming after self-yield (try_next returned not_ready): reset and re-enter the loop
+            ctx.state(context_state::running_operator_body);
+        } else if (ctx.state() == context_state::running_operator_body) {
+            // fresh invocation: evaluate arguments and open the TVF stream
+            ctx.args_.clear();
+            ctx.args_.reserve(argument_evaluators_.size());
+            if (! evaluate_arguments(ctx, ctx.args_)) {
+                ctx.abort();
+                return operation_status_kind::aborted;
+            }
 
-    auto stream = function_info_->function_body()(
-        ctx.evaluator_context_,
-        takatori::util::sequence_view<data::any>{ctx.args_.data(), ctx.args_.size()}
-    );
-
-    if (! stream) {
-        std::string msg = "Table-valued function returned null stream"; // normally this message is not used
-        if(! ctx.evaluator_context_.errors().empty()) {
-            // when error is provided, use the first one
-            auto& error = ctx.evaluator_context_.errors().front();
-            msg = error.message();
-        }
-        set_error_context(
-            *ctx.req_context(),
-            error_code::evaluation_exception,
-            msg,
-            status::err_expression_evaluation_failure
-        );
-        ctx.abort();
-        return operation_status_kind::aborted;
-    }
-
-    // synchronously collect all results
-    ctx.has_output_ = false;
-    data::any_sequence sequence{};
-
-    while (true) {
-        sequence.clear();
-        auto status = stream->next(sequence, std::nullopt);
-
-        if (status == data::any_sequence_stream_status::end_of_stream) {
-            break;
-        }
-
-        if (status == data::any_sequence_stream_status::error) {
-            // Propagate error info from sequence to evaluator context
-            if (sequence.error()) {
-                set_error_info(*ctx.req_context(), sequence.error());
-            } else {
+            if (! function_info_ || ! function_info_->function_body()) {
                 set_error_context(
                     *ctx.req_context(),
                     error_code::sql_execution_exception,
-                    "unexpected error occurred in table-valued function stream",
+                    "Table-valued function info is not set",
                     status::err_unknown
                 );
-            }
-            stream->close();
-            ctx.abort();
-            return operation_status_kind::aborted;
-        }
-
-        if (status == data::any_sequence_stream_status::ok) {
-            utils::checkpoint_holder cp{ctx.varlen_resource()};
-            // assign sequence values to output variables
-            if (! assign_sequence_to_variables(ctx, sequence)) {
-                stream->close();
                 ctx.abort();
                 return operation_status_kind::aborted;
             }
-            ctx.has_output_ = true;
 
-            // call downstream
-            if (downstream_) {
-                if (auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); ! st) {
-                    stream->close();
+            ctx.stream_ = function_info_->function_body()(
+                ctx.evaluator_context_,
+                takatori::util::sequence_view<data::any>{ctx.args_.data(), ctx.args_.size()}
+            );
+
+            if (! ctx.stream_) {
+                std::string msg = "Table-valued function returned null stream";
+                if (! ctx.evaluator_context_.errors().empty()) {
+                    auto& error = ctx.evaluator_context_.errors().front();
+                    msg = error.message();
+                }
+                set_error_context(
+                    *ctx.req_context(),
+                    error_code::evaluation_exception,
+                    msg,
+                    status::err_expression_evaluation_failure
+                );
+                ctx.abort();
+                return operation_status_kind::aborted;
+            }
+
+            ctx.has_output_ = false;
+        }
+        // else: calling_child within the main loop - resume point handled inside the loop
+
+        // main stream-consuming loop
+        data::any_sequence sequence{};
+        while (true) {
+            utils::checkpoint_holder cp{ctx.varlen_resource()};
+
+            if (ctx.state() != context_state::calling_child) {
+                // context_state::yielding must have been removed above
+                assert_with_exception(ctx.state() == context_state::running_operator_body, ctx.state());
+                // fetch the next row from the TVF stream
+                sequence.clear();
+                auto stream_status = ctx.stream_->try_next(sequence);
+
+                if (stream_status == data::any_sequence_stream_status::not_ready) {
+                    // TVF stream is not ready yet; yield the worker thread and retry later
+                    VLOG_LP(log_trace) << "apply operator yields: TVF stream not ready";
+                    ctx.state(context_state::yielding);
+                    return operation_status_kind::yield;
+                }
+
+                if (stream_status == data::any_sequence_stream_status::end_of_stream) {
+                    break;
+                }
+
+                if (stream_status == data::any_sequence_stream_status::error) {
+                    if (sequence.error()) {
+                        set_error_info(*ctx.req_context(), sequence.error());
+                    } else {
+                        set_error_context(
+                            *ctx.req_context(),
+                            error_code::sql_execution_exception,
+                            "unexpected error occurred in table-valued function stream",
+                            status::err_unknown
+                        );
+                    }
+                    ctx.stream_->close();
+                    ctx.stream_.reset();
                     ctx.abort();
                     return operation_status_kind::aborted;
                 }
+
+                // status == ok: assign row values to output variables
+                if (! assign_sequence_to_variables(ctx, sequence)) {
+                    ctx.stream_->close();
+                    ctx.stream_.reset();
+                    ctx.abort();
+                    return operation_status_kind::aborted;
+                }
+                ctx.has_output_ = true;
+            }
+
+            if (downstream_) {
+                ctx.calling_child_with_outer_null_ = false;
+                ctx.state(context_state::calling_child);
+                auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+                if (st.kind() == operation_status_kind::yield) {
+                    return operation_status_kind::yield;
+                }
+                if (st.kind() == operation_status_kind::aborted) {
+                    ctx.stream_->close();
+                    ctx.stream_.reset();
+                    ctx.abort();
+                    return operation_status_kind::aborted;
+                }
+                ctx.state(context_state::running_operator_body);
             }
         }
     }
 
-    // for OUTER APPLY: if no rows were output, emit NULL row
+    // for OUTER APPLY: emit a NULL row when the TVF produced no rows
     if (operator_kind_ == takatori::relation::apply_kind::outer && ! ctx.has_output_) {
-        assign_null_to_variables(ctx);
-
+        // assign null values only on fresh entry, not when resuming calling_child here
+        if (! calling_child_with_outer_null) {
+            assign_null_to_variables(ctx);
+        }
         if (downstream_) {
-            if (auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); ! st) {
-                stream->close();
+            ctx.calling_child_with_outer_null_ = true;
+            ctx.state(context_state::calling_child);
+            auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            if (st.kind() == operation_status_kind::yield) {
+                return operation_status_kind::yield;
+            }
+            if (st.kind() == operation_status_kind::aborted) {
+                ctx.stream_->close();
+                ctx.stream_.reset();
                 ctx.abort();
                 return operation_status_kind::aborted;
             }
+            ctx.state(context_state::running_operator_body);
         }
     }
-
-    stream->close();
+    ctx.stream_->close();
+    ctx.stream_.reset();
     return operation_status_kind::ok;
 }
 

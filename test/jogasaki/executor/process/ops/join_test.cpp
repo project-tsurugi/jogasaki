@@ -285,7 +285,7 @@ TEST_F(join_test, simple) {
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     memory::lifo_paged_memory_resource varlen_resource{&pool};
-    join_context ctx(
+    join_context<iterator> ctx(
         &task_ctx,
         variables,
         &resource,
@@ -553,7 +553,7 @@ TEST_F(join_test, left_join_with_condition) {
     memory::page_pool pool{};
     memory::lifo_paged_memory_resource resource{&pool};
     memory::lifo_paged_memory_resource varlen_resource{&pool};
-    join_context ctx(
+    join_context<iterator> ctx(
         &task_ctx,
         variables,
         &resource,

@@ -100,6 +100,9 @@ private:
     transaction_context* tx_{};
     std::unique_ptr<details::matcher<MatchInfo>> matcher_{};
     kvs::transaction* strand_{};
+
+    // frame variables for yield
+    bool matched_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

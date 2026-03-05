@@ -19,6 +19,7 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/utils/checkpoint_holder.h>
 
 #include "context_base.h"
 
@@ -52,6 +53,10 @@ public:
 
 private:
     io::record_reader* reader_{};
+
+    // frame variables saved/restored at yield point `calling_child`
+    utils::checkpoint_holder cp_{};
+    bool is_active_{};
 };
 
 }

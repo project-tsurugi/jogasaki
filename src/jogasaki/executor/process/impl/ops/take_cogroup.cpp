@@ -140,12 +140,9 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    using iterator = data::iterable_record_store::iterator;
-    if (ctx.readers_.empty()) {
-        create_readers(ctx);
-    }
-    BOOST_ASSERT(ctx.readers_.size() == groups_.size());  //NOLINT
-
+    auto& inputs = ctx.inputs_;
+    auto& queue = ctx.queue_;
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_cogroup);
     enum class state {
         // @brief initial state
         init,
@@ -161,9 +158,17 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
     };
 
     state s{state::init};
-    auto& inputs = ctx.inputs_;
-    auto& queue = ctx.queue_;
-    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_cogroup);
+    if (ctx.state() == context_state::calling_child) {
+        VLOG_LP(log_trace) << "resuming take_cogroup op. after downstream yield";
+        s = state::values_filled;
+        goto resume_calling_child;  //NOLINT
+    }
+
+    if (ctx.readers_.empty()) {
+        create_readers(ctx);
+    }
+    BOOST_ASSERT(ctx.readers_.size() == groups_.size());  //NOLINT
+
     while(s != state::end) {
         if(cancel_enabled && ctx.req_context()) {
             auto& res_src = ctx.req_context()->req_info().response_source();
@@ -222,24 +227,34 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
             }
             case state::values_filled:
                 if (downstream_) {
-                    std::vector<group<iterator>> groups{};
-                    groups.reserve(inputs.size());
+                    ctx.groups_.clear();
+                    ctx.groups_.reserve(inputs.size());
                     for(std::size_t i = 0, n = inputs.size(); i < n; ++i) {
                         auto& in = inputs[i];
-                        groups.emplace_back(
+                        ctx.groups_.emplace_back(
                             iterator_pair{in.begin(), in.end()},
                             groups_[i].fields_,
                             in.filled() ? in.current_key() : accessor::record_ref{},
                             in.meta()->value().record_size()
                         );
                     }
-                    cogroup<iterator> cgrp{ groups };
-                    if(auto st = unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->
-                            process_cogroup(context, cgrp); !st) {
+                    ctx.cgrp_ = cogroup<iterator>{ ctx.groups_ };
+                    ctx.state(context_state::calling_child);
+
+resume_calling_child:
+                    auto st = unsafe_downcast<cogroup_operator<iterator>>(downstream_.get())->
+                            process_cogroup(context, ctx.cgrp_);
+                    if (st.kind() == operation_status_kind::yield) {
+                        return operation_status_kind::yield;
+                    }
+                    ctx.groups_.clear();
+                    ctx.cgrp_ = {};
+                    if (! st) {
                         ctx.abort();
                         finish(context);
                         return operation_status_kind::aborted;
                     }
+                    ctx.state(context_state::running_operator_body);
                 }
                 for(auto&& in : inputs) {
                     in.reset_values();

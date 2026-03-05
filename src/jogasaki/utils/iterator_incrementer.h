@@ -39,6 +39,8 @@ public:
      */
     constexpr static std::size_t npos = static_cast<std::size_t>(-1);
 
+    iterator_incrementer() = default;
+
     /**
      * @brief create new object
      * @param iterators the list of iterator pairs that define initial value (begin)

@@ -81,58 +81,69 @@ operation_status project::process_record(abstract::task_context* context) {
 }
 
 operation_status project::operator()(project_context& ctx, abstract::task_context* context) {
+    assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    auto& vars = ctx.output_variables();
-    // fill scope variables
-    auto ref = vars.store().ref();
-    auto& cinfo = compiled_info();
-    for(std::size_t i=0, n = variables_.size(); i < n; ++i) {
-        auto& v = variables_[i];
-        auto info = vars.info().at(variables_[i]);
-        auto& ev = evaluators_[i];
-        expr::evaluator_context c{
-            ctx.varlen_resource(),
-            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-        };
-        context_helper helper{ctx.task_context()};
-        c.blob_session(std::addressof(helper.blob_session_container()));
-        auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
-                                                           // by take/scan operator
-        if (result.error()) {
-            return handle_expression_error(ctx, result, c);
-        }
+    if (ctx.state() != context_state::calling_child) {
+        auto& vars = ctx.output_variables();
+        // fill scope variables
+        auto ref = vars.store().ref();
+        auto& cinfo = compiled_info();
+        for(std::size_t i=0, n = variables_.size(); i < n; ++i) {
+            auto& v = variables_[i];
+            auto info = vars.info().at(variables_[i]);
+            auto& ev = evaluators_[i];
+            expr::evaluator_context c{
+                ctx.varlen_resource(),
+                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+            };
+            context_helper helper{ctx.task_context()};
+            c.blob_session(std::addressof(helper.blob_session_container()));
+            auto result = ev(c, vars, ctx.varlen_resource()); // result resource will be deallocated at once
+                                                               // by take/scan operator
+            if (result.error()) {
+                return handle_expression_error(ctx, result, c);
+            }
 
-        using t = takatori::type::type_kind;
-        bool is_null = result.empty();
-        ref.set_null(info.nullity_offset(), is_null);
-        if (! is_null) {
-            switch(cinfo.type_of(v).kind()) {
-                case t::boolean: copy_to<runtime_t<meta::field_type_kind::boolean>>(ref, info.value_offset(), result); break;
-                case t::int4: copy_to<runtime_t<meta::field_type_kind::int4>>(ref, info.value_offset(), result); break;
-                case t::int8: copy_to<runtime_t<meta::field_type_kind::int8>>(ref, info.value_offset(), result); break;
-                case t::float4: copy_to<runtime_t<meta::field_type_kind::float4>>(ref, info.value_offset(), result); break;
-                case t::float8: copy_to<runtime_t<meta::field_type_kind::float8>>(ref, info.value_offset(), result); break;
-                case t::decimal: copy_to<runtime_t<meta::field_type_kind::decimal>>(ref, info.value_offset(), result); break;
-                case t::character: copy_to<runtime_t<meta::field_type_kind::character>>(ref, info.value_offset(), result); break;
-                case t::octet: copy_to<runtime_t<meta::field_type_kind::octet>>(ref, info.value_offset(), result); break;
-                case t::date: copy_to<runtime_t<meta::field_type_kind::date>>(ref, info.value_offset(), result); break;
-                case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), result); break;
-                case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;
-                case t::blob: copy_to<runtime_t<meta::field_type_kind::blob>>(ref, info.value_offset(), result); break;
-                case t::clob: copy_to<runtime_t<meta::field_type_kind::clob>>(ref, info.value_offset(), result); break;
-                default:
-                    VLOG_LP(log_error) << "Unsupported type in project operator result:" << cinfo.type_of(v).kind();
-                    return error_abort(ctx, status::err_unsupported);
+            using t = takatori::type::type_kind;
+            bool is_null = result.empty();
+            ref.set_null(info.nullity_offset(), is_null);
+            if (! is_null) {
+                switch(cinfo.type_of(v).kind()) {
+                    case t::boolean: copy_to<runtime_t<meta::field_type_kind::boolean>>(ref, info.value_offset(), result); break;
+                    case t::int4: copy_to<runtime_t<meta::field_type_kind::int4>>(ref, info.value_offset(), result); break;
+                    case t::int8: copy_to<runtime_t<meta::field_type_kind::int8>>(ref, info.value_offset(), result); break;
+                    case t::float4: copy_to<runtime_t<meta::field_type_kind::float4>>(ref, info.value_offset(), result); break;
+                    case t::float8: copy_to<runtime_t<meta::field_type_kind::float8>>(ref, info.value_offset(), result); break;
+                    case t::decimal: copy_to<runtime_t<meta::field_type_kind::decimal>>(ref, info.value_offset(), result); break;
+                    case t::character: copy_to<runtime_t<meta::field_type_kind::character>>(ref, info.value_offset(), result); break;
+                    case t::octet: copy_to<runtime_t<meta::field_type_kind::octet>>(ref, info.value_offset(), result); break;
+                    case t::date: copy_to<runtime_t<meta::field_type_kind::date>>(ref, info.value_offset(), result); break;
+                    case t::time_of_day: copy_to<runtime_t<meta::field_type_kind::time_of_day>>(ref, info.value_offset(), result); break;
+                    case t::time_point: copy_to<runtime_t<meta::field_type_kind::time_point>>(ref, info.value_offset(), result); break;
+                    case t::blob: copy_to<runtime_t<meta::field_type_kind::blob>>(ref, info.value_offset(), result); break;
+                    case t::clob: copy_to<runtime_t<meta::field_type_kind::clob>>(ref, info.value_offset(), result); break;
+                    default:
+                        VLOG_LP(log_error) << "Unsupported type in project operator result:" << cinfo.type_of(v).kind();
+                        return error_abort(ctx, status::err_unsupported);
+                }
             }
         }
+    } else {
+        VLOG_LP(log_trace) << "resuming project op. after downstream yield";
     }
     if (downstream_) {
-        if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+        ctx.state(context_state::calling_child);
+        auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+        if (st.kind() == operation_status_kind::yield) {
+            return operation_status_kind::yield;
+        }
+        if (! st) {
             ctx.abort();
             return operation_status_kind::aborted;
         }
+        ctx.state(context_state::running_operator_body);
     }
     return operation_status_kind::ok;
 }
@@ -152,5 +163,4 @@ void project::finish(abstract::task_context* context) {
     }
 }
 
-}
-
+}  // namespace jogasaki::executor::process::impl::ops

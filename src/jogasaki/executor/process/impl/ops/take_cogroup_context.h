@@ -29,6 +29,7 @@
 #include <jogasaki/executor/compare_info.h>
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
+#include <jogasaki/executor/process/impl/ops/cogroup.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -146,6 +147,7 @@ public:
     friend class take_cogroup;
     using input_index = std::size_t;
     using queue_type = std::priority_queue<input_index, std::vector<input_index>, details::group_input_comparator>;
+    using iterator = data::iterable_record_store::iterator;
 
     /**
      * @brief create empty object
@@ -170,6 +172,10 @@ private:
     std::vector<io::group_reader*> readers_{};
     std::vector<details::group_input> inputs_{};
     queue_type queue_{};
+
+    // frame variables
+    std::vector<group<iterator>> groups_{};
+    cogroup<iterator> cgrp_{};
 };
 
 }

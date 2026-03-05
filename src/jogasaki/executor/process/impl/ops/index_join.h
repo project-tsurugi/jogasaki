@@ -329,25 +329,31 @@ public:
             return operation_status_kind::aborted;
         }
         auto resource = ctx.varlen_resource();
-        nullify_output_variables(ctx.output_variables().store().ref());
         auto& tx = ctx.strand_ != nullptr ? *ctx.strand_ : *ctx.tx_->object();
-        context_helper helper{ctx.task_context()};
-        expr::evaluator_context ectx{
-            resource,
-            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-        };
-        ectx.blob_session(std::addressof(helper.blob_session_container()));
-        bool matched = ctx.matcher_->template process<MatchInfo>(
-            ectx,
-            *ctx.req_context(),
-            ctx.input_variables(),
-            ctx.output_variables(),
-            *ctx.primary_stg_,
-            ctx.secondary_stg_.get(),
-            tx,
-            resource
-        );
-        if(matched || join_kind_ == join_kind::left_outer) {
+        if (ctx.state() == context_state::calling_child) {
+            VLOG_LP(log_trace) << "resuming index_join op. after downstream yield";
+            goto resume_calling_child;  //NOLINT
+        }
+        {
+            context_helper helper{ctx.task_context()};
+            expr::evaluator_context ectx{
+                resource,
+                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+            };
+            ectx.blob_session(std::addressof(helper.blob_session_container()));
+            nullify_output_variables(ctx.output_variables().store().ref());
+            ctx.matched_ = ctx.matcher_->template process<MatchInfo>(
+                ectx,
+                *ctx.req_context(),
+                ctx.input_variables(),
+                ctx.output_variables(),
+                *ctx.primary_stg_,
+                ctx.secondary_stg_.get(),
+                tx,
+                resource
+            );
+        }
+        if(ctx.matched_ || join_kind_ == join_kind::left_outer) {
             do {
                 if (condition_) {
                     // newly create c instead of re-using ectx since errors in ectx might have bad impact //TODO resolve this
@@ -355,7 +361,8 @@ public:
                         resource,
                         ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                     };
-                    c.blob_session(std::addressof(helper.blob_session_container()));
+                    context_helper h{ctx.task_context()};
+                    c.blob_session(std::addressof(h.blob_session_container()));
                     auto r = evaluate_bool(c, evaluator_, ctx.input_variables(), resource);
                     if (r.error()) {
                         return handle_expression_error(ctx, r, c);
@@ -369,15 +376,22 @@ public:
                         nullify_output_variables(ctx.output_variables().store().ref());
                     }
                 }
+resume_calling_child:
                 if (downstream_) {
-                    if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                    ctx.state(context_state::calling_child);
+                    auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+                    if (st.kind() == operation_status_kind::yield) {
+                        return operation_status_kind::yield;
+                    }
+                    if (! st) {
                         ctx.abort();
                         return operation_status_kind::aborted;
                     }
+                    ctx.state(context_state::running_operator_body);
                 }
                 // clean output variables for next record just in case
                 nullify_output_variables(ctx.output_variables().store().ref());
-            } while (matched && ctx.matcher_->next(*ctx.req_context()));
+            } while (ctx.matched_ && ctx.matcher_->next(*ctx.req_context()));
         }
         // normally `res` is not_found here indicating there are no more records to process
         if(auto res = ctx.matcher_->result(); res != status::ok && res != status::not_found) {

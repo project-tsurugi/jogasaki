@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <ostream>
+#include <string_view>
+
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
@@ -30,9 +33,26 @@ namespace jogasaki::executor::process::impl::ops {
 
 enum class context_state {
     /**
-     * @brief the operator with this context is running normally
+     * @brief normal state; the operator body is executing without any pending yield.
      */
-    active,
+    running_operator_body,
+
+    /**
+     * @brief this operator directly yielded the worker thread.
+     * @details on resume, the operator continues from its own yield point rather than
+     *          restarting from the beginning of its processing logic.
+     */
+    yielding,
+
+    /**
+     * @brief this operator is waiting for a child (downstream) operator to complete.
+     * @details set just before invoking process_record on a downstream operator.
+     *          if the child yields, this state persists so that on the next invocation
+     *          the upstream operator knows to skip re-fetching input data (e.g. iterator
+     *          advance) and call the child again directly.
+     *          reset to running_operator_body when the child returns normally.
+     */
+    calling_child,
 
     /**
      * @brief the operator with this context met error and is aborting/aborted
@@ -48,10 +68,19 @@ enum class context_state {
 [[nodiscard]] constexpr inline std::string_view to_string_view(context_state state) noexcept {
     using namespace std::string_view_literals;
     switch (state) {
-        case context_state::active: return "active"sv;
+        case context_state::running_operator_body: return "running_operator_body"sv;
+        case context_state::yielding: return "yielding"sv;
+        case context_state::calling_child: return "calling_child"sv;
         case context_state::aborted: return "aborted"sv;
     }
     std::abort();
+}
+
+/**
+ * @brief outputs context_state to stream.
+ */
+inline std::ostream& operator<<(std::ostream& out, context_state value) {
+    return out << to_string_view(value);
 }
 
 /**
@@ -189,9 +218,7 @@ private:
     variable_table* output_variables_{};
     memory_resource* resource_{};
     memory_resource* varlen_resource_{};
-    context_state state_{context_state::active};
+    context_state state_{context_state::running_operator_body};
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

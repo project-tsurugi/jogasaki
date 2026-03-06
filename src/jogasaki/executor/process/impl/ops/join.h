@@ -238,6 +238,7 @@ public:
                 } while (incr.increment());
                 break;
             }
+            case join_kind::left_outer_at_most_one: [[fallthrough]];  //FIXME implement
             case join_kind::left_outer: {
                 if(cgrp.groups()[0].empty()) {
                     break;

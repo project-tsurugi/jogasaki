@@ -78,6 +78,8 @@ public:
 
 class take_cogroup : public record_operator {
 public:
+
+    using iterator = data::iterable_record_store::iterator;
     using iterator_pair = utils::iterator_pair<details::group_input::iterator>;
     using queue_type = take_cogroup_context::queue_type;
     using input_index = take_cogroup_context::input_index;
@@ -124,4 +126,4 @@ private:
     void create_readers(take_cogroup_context& ctx);
 };
 
-}
+}  // namespace jogasaki::executor::process::impl::ops

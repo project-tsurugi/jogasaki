@@ -145,70 +145,87 @@ operation_status find::call_downstream(
     context_base::memory_resource* resource,
     abstract::task_context* context
 ) {
-    auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
-    if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, tx, resource, *ctx.req_context());
-       res != status::ok) {
-        return error_abort(ctx, res);
+    if (ctx.state() != context_state::calling_child) {
+        auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
+        if(auto res = field_mapper_.process(k, v, target, *ctx.stg_, tx, resource, *ctx.req_context());
+           res != status::ok) {
+            return error_abort(ctx, res);
+        }
     }
     if (downstream_) {
-        if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+        ctx.state(context_state::calling_child);
+        auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+        if (st.kind() == operation_status_kind::yield) {
+            return operation_status_kind::yield;
+        }
+        if (st.kind() == operation_status_kind::aborted) {
             ctx.abort();
             return operation_status_kind::aborted;
         }
+        ctx.state(context_state::running_operator_body);
     }
     return operation_status_kind::ok;
 }
 
 operation_status find::operator()(class find_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
+    assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    if(utils::request_cancel_enabled(request_cancel_kind::find) && ctx.req_context()) {
-        auto& res_src = ctx.req_context()->req_info().response_source();
-        if(res_src && res_src->check_cancel()) {
-            cancel_request(*ctx.req_context());
-            ctx.abort();
-            finish(context);
-            return operation_status_kind::aborted;
-        }
-    }
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
+    std::string_view k{};
     std::string_view v{};
-    executor::process::impl::variable_table vars{};
-    std::size_t len{};
-    std::string msg{};
-    expr::evaluator_context ectx{
-        resource,
-        ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-    };
-    context_helper helper{ctx.task_context()};
-    ectx.blob_session(std::addressof(helper.blob_session_container()));
-    if(auto res = details::encode_key(ectx, search_key_fields_, vars, *resource, ctx.key_, len, msg);
-        res != status::ok) {
-        if (res == status::err_type_mismatch) {
-            // unsupported type/value mapping detected during expression evaluation
-            ctx.abort();
-            set_error_context(
-                *ctx.req_context(),
-                error_code::unsupported_runtime_feature_exception,
-                msg,
-                res
-            );
-            return operation_status_kind::aborted;
-        }
-        if (res == status::err_integrity_constraint_violation) {
-            // null is assigned for find condition. Nothing should be found.
-            finish(context);
-            return operation_status_kind::ok;
-        }
-        return error_abort(ctx, res);
-    }
-    std::string_view k{static_cast<char*>(ctx.key_.data()), len};
     auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
+    if (ctx.state() == context_state::calling_child) {
+        VLOG_LP(log_trace) << "resuming find op. after downstream yield";
+        if (use_secondary_) {
+            goto resume_calling_child_2;  //NOLINT
+        }
+        goto resume_calling_child_1;  //NOLINT
+    }
+    {
+        if(utils::request_cancel_enabled(request_cancel_kind::find) && ctx.req_context()) {
+            auto& res_src = ctx.req_context()->req_info().response_source();
+            if(res_src && res_src->check_cancel()) {
+                cancel_request(*ctx.req_context());
+                ctx.abort();
+                finish(context);
+                return operation_status_kind::aborted;
+            }
+        }
+        executor::process::impl::variable_table vars{};
+        std::string msg{};
+        expr::evaluator_context ectx{
+            resource,
+            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+        };
+        context_helper helper{ctx.task_context()};
+        ectx.blob_session(std::addressof(helper.blob_session_container()));
+        if(auto res = details::encode_key(ectx, search_key_fields_, vars, *resource, ctx.key_, ctx.keylen_, msg);
+            res != status::ok) {
+            if (res == status::err_type_mismatch) {
+                // unsupported type/value mapping detected during expression evaluation
+                ctx.abort();
+                set_error_context(
+                    *ctx.req_context(),
+                    error_code::unsupported_runtime_feature_exception,
+                    msg,
+                    res
+                );
+                return operation_status_kind::aborted;
+            }
+            if (res == status::err_integrity_constraint_violation) {
+                // null is assigned for find condition. Nothing should be found.
+                finish(context);
+                return operation_status_kind::ok;
+            }
+            return error_abort(ctx, res);
+        }
+    }
+    k = {static_cast<char*>(ctx.key_.data()), ctx.keylen_};
     if (! use_secondary_) {
-        auto& stg = *ctx.stg_;
-        if(auto res = stg.content_get(tx, k, v); res != status::ok) {
+        if(auto res = ctx.stg_->content_get(tx, k, v); res != status::ok) {
             finish(context);
             utils::modify_concurrent_operation_status(*ctx.tx_->object(), res, false);
             if (res == status::not_found) {
@@ -217,23 +234,31 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
-        auto ret = call_downstream(ctx, k, v, target, resource, context);
+resume_calling_child_1:
+        std::string_view vv = ctx.state() == context_state::calling_child ? std::string_view{ctx.value_} : v;
+        k = {static_cast<char*>(ctx.key_.data()), ctx.keylen_};
+        auto ret = call_downstream(ctx, k, vv, target, resource, context);
+        if (ret.kind() == operation_status_kind::yield) {
+            ctx.value_ = vv;
+            return operation_status_kind::yield;
+        }
         finish(context);
         return ret;
     }
-    auto& stg = *ctx.secondary_stg_;
-    std::unique_ptr<kvs::iterator> it{};
-    if(auto res = stg.content_scan(tx,
+
+    // find on secondary index
+    if(auto res = ctx.secondary_stg_->content_scan(tx,
             k, kvs::end_point_kind::prefixed_inclusive,
             k, kvs::end_point_kind::prefixed_inclusive,
-            it
+            ctx.it_
         ); res != status::ok) {
         finish(context);
         handle_kvs_errors(*ctx.req_context(), res);
         return error_abort(ctx, res);
     }
     while(true) {
-        if(auto res = it->next(); res != status::ok) {
+        if(auto res = ctx.it_->next(); res != status::ok) {
+            ctx.it_.reset();
             finish(context);
             if (res == status::not_found) {
                 return operation_status_kind::ok;
@@ -241,7 +266,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
-        if(auto res = it->read_key(k); res != status::ok) {
+        if(auto res = ctx.it_->read_key(k); res != status::ok) {
             utils::modify_concurrent_operation_status(*ctx.tx_->object(), res, true); //FIXME tx_
             // shirakami returns error here even if next() above returns ok
             // (e.g. not_found for concurrently deleted entry or concurrent_operation for concurrently inserted)
@@ -249,15 +274,28 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
             if (res == status::not_found) {
                 continue;
             }
+            ctx.it_.reset();
             finish(context);
             handle_kvs_errors(*ctx.req_context(), res);
             return error_abort(ctx, res);
         }
-        if(auto ret = call_downstream(ctx, k, v, target, resource, context); ! ret) {
+resume_calling_child_2:
+        std::string_view vv = ctx.state() == context_state::calling_child ? std::string_view{ctx.value_} : v;
+        std::string_view kk = ctx.state() == context_state::calling_child ? std::string_view{ctx.key_scanned_} : k;
+        auto ret = call_downstream(ctx, kk, vv, target, resource, context);
+        if (ret.kind() == operation_status_kind::yield) {
+            // ctx.it_ is preserved in context for resume
+            ctx.value_ = vv;
+            ctx.key_scanned_ = kk;
+            return operation_status_kind::yield;
+        }
+        if (ret.kind() == operation_status_kind::aborted) {
+            ctx.it_.reset();
             finish(context);
             return ret;
         }
     }
+    ctx.it_.reset();
     finish(context);
     return operation_status_kind::ok;
 }

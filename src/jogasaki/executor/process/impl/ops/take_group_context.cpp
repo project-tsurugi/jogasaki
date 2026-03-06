@@ -26,7 +26,8 @@ take_group_context::take_group_context(
     context_base::memory_resource* resource,
     context_base::memory_resource* varlen_resource
 ) :
-    context_base(ctx, variables, resource, varlen_resource)
+    context_base(ctx, variables, resource, varlen_resource),
+    group_cp_(varlen_resource, true)
 {}
 
 
@@ -41,6 +42,4 @@ void take_group_context::release() {
     }
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

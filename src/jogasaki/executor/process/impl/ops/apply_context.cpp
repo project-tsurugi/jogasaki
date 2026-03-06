@@ -26,7 +26,8 @@ apply_context::apply_context(
     memory_resource* varlen_resource
 ) :
     context_base(ctx, variables, resource, varlen_resource),
-    evaluator_context_{varlen_resource, nullptr}
+    evaluator_context_{varlen_resource, nullptr},
+    cp_(varlen_resource, true)
 {
     // update transaction context after context_base is initialized
     if (req_context()) {

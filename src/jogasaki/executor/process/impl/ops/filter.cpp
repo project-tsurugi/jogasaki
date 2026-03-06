@@ -22,6 +22,7 @@
 #include <takatori/util/infect_qualifier.h>
 
 #include <jogasaki/data/any.h>
+#include <jogasaki/utils/assert.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
@@ -65,27 +66,41 @@ operation_status filter::process_record(abstract::task_context* context) {
 }
 
 operation_status filter::operator()(filter_context& ctx, abstract::task_context* context) {
+    assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    auto& vars = ctx.input_variables();
-    auto resource = ctx.varlen_resource();
-    expr::evaluator_context c{resource,
-        ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-    };
-    context_helper helper{ctx.task_context()};
-    c.blob_session(std::addressof(helper.blob_session_container()));
-    auto res = evaluate_bool(c, evaluator_, vars, resource);
-    if (res.error()) {
-        return handle_expression_error(ctx, res, c);
-    }
-    if (res.to<bool>()) {
-        if (downstream_) {
-            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
-                ctx.abort();
-                return operation_status_kind::aborted;
-            }
+    // When resuming after a downstream yield, skip re-evaluation of the filter condition.
+    // The calling_child state itself encodes that the condition was already true.
+    if (ctx.state() != context_state::calling_child) {
+        auto& vars = ctx.input_variables();
+        auto resource = ctx.varlen_resource();
+        expr::evaluator_context c{resource,
+            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+        };
+        context_helper helper{ctx.task_context()};
+        c.blob_session(std::addressof(helper.blob_session_container()));
+        auto res = evaluate_bool(c, evaluator_, vars, resource);
+        if (res.error()) {
+            return handle_expression_error(ctx, res, c);
         }
+        if (! res.to<bool>()) {
+            return operation_status_kind::ok;
+        }
+    } else {
+        VLOG_LP(log_trace) << "resuming filter op. after downstream yield";
+    }
+    if (downstream_) {
+        ctx.state(context_state::calling_child);
+        auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+        if (st.kind() == operation_status_kind::yield) {
+            return operation_status_kind::yield;
+        }
+        if (st.kind() == operation_status_kind::aborted) {
+            ctx.abort();
+            return operation_status_kind::aborted;
+        }
+        ctx.state(context_state::running_operator_body);
     }
     return operation_status_kind::ok;
 }
@@ -105,6 +120,4 @@ void filter::finish(abstract::task_context* context) {
     }
 }
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

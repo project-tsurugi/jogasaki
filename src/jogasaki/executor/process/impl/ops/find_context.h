@@ -75,8 +75,13 @@ private:
     transaction_context* tx_{};
     data::aligned_buffer key_{};
     kvs::transaction* strand_{};
+
+    // frame variables for yield
+    std::unique_ptr<kvs::iterator> it_{};
+    std::size_t keylen_{};
+    std::string value_{};
+    std::string key_scanned_{};
+
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

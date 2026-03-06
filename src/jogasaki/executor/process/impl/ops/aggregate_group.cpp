@@ -158,24 +158,29 @@ operation_status aggregate_group::operator()(
     bool last_member,
     abstract::task_context* context
 ) {
+    assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
-    for(std::size_t i=0, n=arguments_.size(); i < n; ++i) {
-        // append value store the values
-        auto& store = ctx.stores_[i];
-        auto& arg = arguments_[i];
-        auto src = ctx.input_variables().store().ref();
-        copy_value(
-            src,
-            arg.offset_,
-            arg.nullity_offset_,
-            arg.nullable_,
-            store
-        );
-    }
+    if (ctx.state() != context_state::calling_child) {
+        for(std::size_t i=0, n=arguments_.size(); i < n; ++i) {
+            // append value store the values
+            auto& store = ctx.stores_[i];
+            auto& arg = arguments_[i];
+            auto src = ctx.input_variables().store().ref();
+            copy_value(
+                src,
+                arg.offset_,
+                arg.nullity_offset_,
+                arg.nullable_,
+                store
+            );
+        }
 
-    if (last_member) {
+        if (! last_member) {
+            return operation_status_kind::ok;
+        }
+
         // do aggregation from value store and create column values
         for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
             auto& c = columns_[i];
@@ -191,19 +196,26 @@ operation_status aggregate_group::operator()(
                 ctx.function_arg_stores_[i]
             );
         }
-
-        if (downstream_) {
-            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
-                ctx.abort();
-                return operation_status_kind::aborted;
-            }
+    } else {
+        VLOG_LP(log_trace) << "resuming aggregate_group op. after downstream yield";
+    }
+    if (downstream_) {
+        ctx.state(context_state::calling_child);
+        auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+        if (st.kind() == operation_status_kind::yield) {
+            return operation_status_kind::yield;
         }
-        // reset
-        for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
-            ctx.stores_[i].reset();
-            ctx.resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
-            ctx.nulls_resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
+        if (st.kind() == operation_status_kind::aborted) {
+            ctx.abort();
+            return operation_status_kind::aborted;
         }
+        ctx.state(context_state::running_operator_body);
+    }
+    // reset
+    for(std::size_t i=0, n=columns_.size(); i < n; ++i) {
+        ctx.stores_[i].reset();
+        ctx.resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
+        ctx.nulls_resources_[i]->deallocate_after(memory::lifo_paged_memory_resource::initial_checkpoint);
     }
     return operation_status_kind::ok;
 }
@@ -234,7 +246,8 @@ void aggregate_group::finish(abstract::task_context* context) {
         }
 
         if (downstream_) {
-            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+            auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            if (st.kind() == operation_status_kind::aborted) {
                 ctx.abort();
             }
         }

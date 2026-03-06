@@ -30,6 +30,8 @@
 
 #include "context_base.h"
 
+#include <jogasaki/utils/checkpoint_holder.h>
+
 namespace jogasaki::executor::process::impl::ops {
 
 /**
@@ -76,6 +78,9 @@ private:
     bool has_output_{false};
     std::vector<data::any> args_{};
     expr::evaluator_context evaluator_context_;
+    /// @brief true when calling_child state was entered via the outer-apply null-row path.
+    bool calling_child_with_outer_null_{false};
+    utils::checkpoint_holder cp_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

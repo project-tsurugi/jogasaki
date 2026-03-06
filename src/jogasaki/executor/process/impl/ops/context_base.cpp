@@ -17,8 +17,12 @@
 
 #include <utility>
 
+#include <glog/logging.h>
+
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 
 namespace jogasaki::executor::process::impl::ops {
@@ -85,6 +89,11 @@ context_state context_base::state() const noexcept {
 }
 
 void context_base::state(context_state state) noexcept {
+    if (state_ == state) {
+        return;
+    }
+    VLOG_LP(log_trace) << "context state transition [" << kind() << "]: "
+        << to_string_view(state_) << " -> " << to_string_view(state);
     state_ = state;
 }
 
@@ -123,4 +132,4 @@ void context_base::dump() const noexcept {
        << to_string_view(state_) << std::endl;
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::ops

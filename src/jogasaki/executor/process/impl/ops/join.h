@@ -54,7 +54,6 @@
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
 #include <jogasaki/utils/assert.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/iterator_incrementer.h>
 #include <jogasaki/utils/iterator_pair.h>
@@ -69,8 +68,6 @@ using takatori::util::unsafe_downcast;
 template <class Iterator>
 class join : public cogroup_operator<Iterator> {
 public:
-    friend class join_context;
-
     using input_index = std::size_t;
 
     using join_kind = takatori::relation::join_kind;
@@ -108,9 +105,9 @@ public:
     operation_status process_cogroup(abstract::task_context* context, cogroup<iterator>& cgrp) override {
         BOOST_ASSERT(context != nullptr);  //NOLINT
         context_helper ctx{*context};
-        auto* p = find_context<join_context>(index(), ctx.contexts());
+        auto* p = find_context<join_context<iterator>>(index(), ctx.contexts());
         if (! p) {
-            p = ctx.make_context<join_context>(
+            p = ctx.make_context<join_context<iterator>>(
                 index(),
                 ctx.variable_table(block_index()),
                 ctx.resource(),
@@ -131,7 +128,7 @@ public:
     }
 
     void assign_values(
-        join_context& ctx,
+        join_context<iterator>& ctx,
         cogroup<iterator>& cgrp,
         iterator_incrementer& incr,
         bool force_nulls_except_primary,
@@ -163,7 +160,7 @@ public:
     }
 
     data::any assign_and_evaluate_condition(
-        join_context& ctx,
+        join_context<iterator>& ctx,
         cogroup<iterator>& cgrp,
         iterator_incrementer& incr,
         expr::evaluator_context& context
@@ -177,15 +174,28 @@ public:
         return evaluate_bool(context, evaluator_, vars, resource);
     }
 
-    bool call_downstream(
+    /**
+     * @brief call downstream process_record and propagate yield or aborted status.
+     * @details on yield, iteration state is not preserved in this operator, so yield from
+     *          join's downstream may not resume correctly in all join kinds.
+     *          TODO: save iteration state in join_context to support proper yield resume.
+     * @param ctx the join context for state management
+     * @param context the task context
+     * @return ok, yield, or aborted
+     */
+    operation_status call_downstream(
+        join_context<iterator>& ctx,
         abstract::task_context* context
     ) {
         if (downstream_) {
-            if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
-                return false;
+            auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+            if (st.kind() == operation_status_kind::aborted) {
+                ctx.abort();
+                return operation_status_kind::aborted;
             }
+            return st;
         }
-        return true;
+        return operation_status_kind::ok;
     }
 
     /**
@@ -194,48 +204,72 @@ public:
      * @return status of the operation
      */
     operation_status operator()(  //NOLINT(readability-function-cognitive-complexity)
-        join_context& ctx,
+        join_context<iterator>& ctx,
         cogroup<iterator>& cgrp,
         abstract::task_context* context = nullptr
     ) {
         constexpr static std::size_t primary_group_index = 0;
         constexpr static std::size_t secondary_group_index = 1;
 
+        assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
         if (ctx.aborted()) {
             return operation_status_kind::aborted;
         }
-        std::size_t n = cgrp.groups().size();
-        std::vector<iterator_pair> iterators{};
-        iterators.reserve(n);
-        for(auto&& g : cgrp.groups()) {
-            iterators.emplace_back(g.begin(), g.end());
-        }
-        assert_with_exception(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2, kind_, n); //NOLINT
-        assert_with_exception(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3), has_condition_, kind_, n); //NOLINT
-        iterator_incrementer incr{std::move(iterators)};
+
         context_helper helper{ctx.task_context()};
+        data::any result{};
+        if (ctx.state() == context_state::calling_child) {
+            VLOG_LP(log_trace) << "resuming join op. after downstream yield";
+            switch(kind_) {
+                case join_kind::inner: goto resume_calling_child_1;  //NOLINT
+                case join_kind::left_outer_at_most_one: [[fallthrough]];  //NOLINT
+                case join_kind::left_outer:
+                    if (ctx.exists_match_) goto resume_calling_child_2;  //NOLINT
+                    goto resume_calling_child_3;  //NOLINT
+                case join_kind::full_outer:
+                    if (ctx.resuming_calling_child_6_) goto resume_calling_child_6;  //NOLINT
+                    if (ctx.exists_match_) goto resume_calling_child_4;  //NOLINT
+                    goto resume_calling_child_5;  //NOLINT
+                case join_kind::anti: [[fallthrough]];
+                case join_kind::semi:
+                    goto resume_calling_child_7;  //NOLINT
+            }
+        }
+        {
+            std::size_t n = cgrp.groups().size();
+            std::vector<iterator_pair> iterators{};
+            iterators.reserve(n);
+            for(auto&& g : cgrp.groups()) {
+                iterators.emplace_back(g.begin(), g.end());
+            }
+            assert_with_exception(kind_ == join_kind::inner || kind_ == join_kind::full_outer || n == 2, kind_, n); //NOLINT
+            assert_with_exception(! (has_condition_ && kind_ == join_kind::full_outer && n >= 3), has_condition_, kind_, n); //NOLINT
+            ctx.incr_ = iterator_incrementer{std::move(iterators)};
+        }
         switch(kind_) {
             case join_kind::inner: {
                 if(kind_ == join_kind::inner && ! groups_available(cgrp, false)) {
                     break;
                 }
                 do {
-                    expr::evaluator_context c {
-                        ctx.varlen_resource(),
-                        ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-                    };
-                    c.blob_session(std::addressof(helper.blob_session_container()));
-                    auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
-                    if(a.error()) {
-                        return handle_expression_error(ctx, a, c);
-                    }
-                    if(a.template to<bool>()) {
-                        if(! call_downstream(context)) {
-                            ctx.abort();
-                            return operation_status_kind::aborted;
+                    {
+                        expr::evaluator_context c {
+                            ctx.varlen_resource(),
+                            ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+                        };
+                        c.blob_session(std::addressof(helper.blob_session_container()));
+                        result = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
+                        if(result.error()) {
+                            return handle_expression_error(ctx, result, c);
                         }
                     }
-                } while (incr.increment());
+                    if(result.template to<bool>()) {
+resume_calling_child_1:
+                        if(auto call_st = call_downstream(ctx, context); ! call_st) {
+                            return call_st;
+                        }
+                    }
+                } while (ctx.incr_.increment());
                 break;
             }
             case join_kind::left_outer_at_most_one: [[fallthrough]];  //FIXME implement
@@ -243,96 +277,104 @@ public:
                 if(cgrp.groups()[0].empty()) {
                     break;
                 }
-                bool secondary_group_available = groups_available(cgrp, true);
+                ctx.secondary_group_available_ = groups_available(cgrp, true);
                 do {
-                    bool exists_match = false;
-                    if(secondary_group_available) {
+                    ctx.exists_match_ = false;
+                    if(ctx.secondary_group_available_) {
                         do {
-                            expr::evaluator_context c{
-                                ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-                            };
-                            c.blob_session(std::addressof(helper.blob_session_container()));
-                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
-                            if (a.error()) {
-                                return handle_expression_error(ctx, a, c);
-                            }
-                            if (a.template to<bool>()) {
-                                exists_match = true;
-                                if (!call_downstream(context)) {
-                                    ctx.abort();
-                                    return operation_status_kind::aborted;
+                            {
+                                expr::evaluator_context c{
+                                    ctx.varlen_resource(),
+                                    ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+                                };
+                                c.blob_session(std::addressof(helper.blob_session_container()));
+                                result = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
+                                if (result.error()) {
+                                    return handle_expression_error(ctx, result, c);
                                 }
                             }
-                        } while (incr.increment(secondary_group_index));
-                        incr.reset(secondary_group_index);
+                            if (result.template to<bool>()) {
+                                ctx.exists_match_ = true;
+resume_calling_child_2:
+                                if(auto call_st = call_downstream(ctx, context); ! call_st) {
+                                    return call_st;
+                                }
+                            }
+                        } while (ctx.incr_.increment(secondary_group_index));
+                        ctx.incr_.reset(secondary_group_index);
                     }
-                    if(! exists_match) {
+                    if(! ctx.exists_match_) {
                         // assign nulls for non-primary groups
-                        assign_values(ctx, cgrp, incr, true);
-                        if (! call_downstream(context)) {
-                            ctx.abort();
-                            return operation_status_kind::aborted;
+                        assign_values(ctx, cgrp, ctx.incr_, true);
+resume_calling_child_3:
+                        if(auto call_st = call_downstream(ctx, context); ! call_st) {
+                            return call_st;
                         }
                     }
-                } while (incr.increment(primary_group_index));
+                } while (ctx.incr_.increment(primary_group_index));
                 break;
             }
             case join_kind::full_outer: {
-                assert_with_exception(n == 2, n); //NOLINT
+                assert_with_exception(cgrp.groups().size() == 2, cgrp.groups().size()); //NOLINT
                 // for now, we assume full outer join has only two groups
-                bool secondary_group_available = groups_available(cgrp, true);
-                auto right_group_size = secondary_group_available ? cgrp.groups()[1].size() : 0;
-                boost::dynamic_bitset<std::uint64_t> unmatched_right{right_group_size};
-                unmatched_right.flip(); // initially all right records are unmatched
+                ctx.secondary_group_available_ = groups_available(cgrp, true);
+                ctx.right_group_size_ = ctx.secondary_group_available_ ? cgrp.groups()[1].size() : 0;
+                ctx.unmatched_right_ = boost::dynamic_bitset<std::uint64_t>{ctx.right_group_size_};
+                ctx.unmatched_right_.flip(); // initially all right records are unmatched
                 do {
-                    bool exists_match = false;
-                    if(secondary_group_available) {
-                        std::size_t secondary_group_pos = 0;
+                    ctx.exists_match_ = false;
+                    if(ctx.secondary_group_available_) {
+                        ctx.secondary_group_pos_ = 0;
                         do {
-                            expr::evaluator_context c{
-                                ctx.varlen_resource(),
-                                ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
-                            };
-                            c.blob_session(std::addressof(helper.blob_session_container()));
-                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
-                            if (a.error()) {
-                                return handle_expression_error(ctx, a, c);
-                            }
-                            if (a.template to<bool>()) {
-                                exists_match = true;
-                                unmatched_right.reset(secondary_group_pos);
-                                if (!call_downstream(context)) {
-                                    ctx.abort();
-                                    return operation_status_kind::aborted;
+                            {
+                                expr::evaluator_context c{
+                                    ctx.varlen_resource(),
+                                    ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
+                                };
+                                c.blob_session(std::addressof(helper.blob_session_container()));
+                                result = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
+                                if (result.error()) {
+                                    return handle_expression_error(ctx, result, c);
                                 }
                             }
-                            ++secondary_group_pos;
-                        } while (incr.increment(secondary_group_index));
-                        incr.reset(secondary_group_index);
+                            if (result.template to<bool>()) {
+                                ctx.exists_match_ = true;
+                                ctx.unmatched_right_.reset(ctx.secondary_group_pos_);
+resume_calling_child_4:
+                                if(auto call_st = call_downstream(ctx, context); ! call_st) {
+                                    return call_st;
+                                }
+                            }
+                            ++ctx.secondary_group_pos_;
+                        } while (ctx.incr_.increment(secondary_group_index));
+                        ctx.incr_.reset(secondary_group_index);
                     }
-                    if(! exists_match && ! cgrp.groups()[0].empty()) {
+                    if(! ctx.exists_match_ && ! cgrp.groups()[0].empty()) {
                         // left exists and it does not have a match
                         // assign nulls for non-primary groups
-                        assign_values(ctx, cgrp, incr, true);
-                        if (! call_downstream(context)) {
-                            ctx.abort();
-                            return operation_status_kind::aborted;
+                        assign_values(ctx, cgrp, ctx.incr_, true);
+resume_calling_child_5:
+                        if(auto call_st = call_downstream(ctx, context); ! call_st) {
+                            return call_st;
                         }
                     }
-                } while (incr.increment(primary_group_index));
+                } while (ctx.incr_.increment(primary_group_index));
 
-                incr.reset();
-                for(std::size_t i=0; i < right_group_size; ++i) {
-                    if(unmatched_right.test(i)) {
+                ctx.incr_.reset();
+                for(ctx.idx_=0; ctx.idx_ < ctx.right_group_size_; ++ctx.idx_) {
+                    if(ctx.unmatched_right_.test(ctx.idx_)) {
                         // assign nulls for primary group
-                        assign_values(ctx, cgrp, incr, false, true);
-                        if (! call_downstream(context)) {
-                            ctx.abort();
-                            return operation_status_kind::aborted;
+                        assign_values(ctx, cgrp, ctx.incr_, false, true);
+resume_calling_child_6:
+                        ctx.resuming_calling_child_6_ = false;
+                        if(auto call_st = call_downstream(ctx, context); ! call_st) {
+                            if (call_st.kind() == operation_status_kind::yield) {
+                                ctx.resuming_calling_child_6_ = true;
+                            }
+                            return call_st;
                         }
                     }
-                    (void) incr.increment(secondary_group_index);
+                    (void) ctx.incr_.increment(secondary_group_index);
                 }
                 break;
             }
@@ -342,7 +384,7 @@ public:
                     break;
                 }
                 do {
-                    bool exists_match = false;
+                    ctx.exists_match_ = false;
                     if(groups_available(cgrp, true)) {
                         do {
                             expr::evaluator_context c{
@@ -350,25 +392,25 @@ public:
                                 ctx.req_context() ? ctx.req_context()->transaction().get() : nullptr
                             };
                             c.blob_session(std::addressof(helper.blob_session_container()));
-                            auto a = assign_and_evaluate_condition(ctx, cgrp, incr, c);
+                            auto a = assign_and_evaluate_condition(ctx, cgrp, ctx.incr_, c);
                             if (a.error()) {
                                 return handle_expression_error(ctx, a, c);
                             }
                             if (a.template to<bool>()) {
-                                exists_match = true;
+                                ctx.exists_match_ = true;
                                 break;
                             }
-                        } while (incr.increment(secondary_group_index));
-                        incr.reset(secondary_group_index);
+                        } while (ctx.incr_.increment(secondary_group_index));
+                        ctx.incr_.reset(secondary_group_index);
                     }
-                    if((exists_match && kind_ == join_kind::semi) || (! exists_match && kind_ == join_kind::anti)) {
-                        assign_values(ctx, cgrp, incr, true);
-                        if (! call_downstream(context)) {
-                            ctx.abort();
-                            return operation_status_kind::aborted;
+                    if((ctx.exists_match_ && kind_ == join_kind::semi) || (! ctx.exists_match_ && kind_ == join_kind::anti)) {
+                        assign_values(ctx, cgrp, ctx.incr_, true);
+resume_calling_child_7:
+                        if(auto call_st = call_downstream(ctx, context); ! call_st) {
+                            return call_st;
                         }
                     }
-                } while (incr.increment(primary_group_index));
+                } while (ctx.incr_.increment(primary_group_index));
                 break;
             }
         }
@@ -388,7 +430,7 @@ public:
     void finish(abstract::task_context* context) override {
         if (! context) return;
         context_helper ctx{*context};
-        if (auto* p = find_context<join_context>(index(), ctx.contexts())) {
+        if (auto* p = find_context<join_context<iterator>>(index(), ctx.contexts())) {
             p->release();
         }
         if (downstream_) {
@@ -414,4 +456,4 @@ private:
     }
 };
 
-}
+}  // namespace jogasaki::executor::process::impl::ops

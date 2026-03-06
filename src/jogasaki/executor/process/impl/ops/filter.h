@@ -28,7 +28,6 @@
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/processor_info.h>
 #include <jogasaki/executor/process/step.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 
 #include "filter_context.h"
@@ -95,5 +94,4 @@ private:
     std::unique_ptr<operator_base> downstream_{};
 };
 
-
-}
+}  // namespace jogasaki::executor::process::impl::ops

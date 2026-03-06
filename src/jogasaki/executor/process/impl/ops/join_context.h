@@ -24,10 +24,15 @@ using takatori::util::maybe_shared_ptr;
 /**
  * @brief join context
  */
+template <class Iterator>
 class join_context : public context_base {
 public:
-    template <class Iterator>
+    template <class T>
     friend class join;
+
+    using iterator = Iterator;
+
+    using iterator_incrementer = utils::iterator_incrementer<iterator>;
 
     /**
      * @brief create empty object
@@ -54,10 +59,15 @@ public:
         //no-op
     }
 
-private:
-
+    // frame variables for yield
+    iterator_incrementer incr_;  //NOLINT
+    bool exists_match_{};  //NOLINT
+    bool secondary_group_available_{};  //NOLINT
+    std::size_t secondary_group_pos_{};  //NOLINT
+    boost::dynamic_bitset<std::uint64_t> unmatched_right_{};  //NOLINT
+    std::size_t right_group_size_{};  //NOLINT
+    std::size_t idx_{};  //NOLINT
+    bool resuming_calling_child_6_{};  //NOLINT
 };
 
-}
-
-
+}  // namespace jogasaki::executor::process::impl::ops

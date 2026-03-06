@@ -85,20 +85,27 @@ operation_status take_flat::process_record(abstract::task_context* context) {
 }
 
 operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_context* context) {  //NOLINT(readability-function-cognitive-complexity)
+    assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
     if (ctx.aborted()) {
         return operation_status_kind::aborted;
     }
     auto target = ctx.output_variables().store().ref();
+    auto resource = ctx.varlen_resource();
+    bool cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_flat);
+    if (ctx.state() == context_state::calling_child) {
+        VLOG_LP(log_trace) << "resuming take_flat op. after downstream yield";
+        goto resume_calling_child;  //NOLINT
+    }
     if (! ctx.reader_) {
         auto r = ctx.task_context().reader(reader_index_);
         ctx.reader_ = r.reader<io::record_reader>();
     }
-    auto resource = ctx.varlen_resource();
-    bool cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_flat);
+    ctx.cp_.set_checkpoint();
     while(true) {
         // even if reader is not active loop next_record through all records and check is_active later
-        auto is_active = ctx.reader_->source_active();
+        ctx.is_active_ = ctx.reader_->source_active();
         while(ctx.reader_->next_record()) {
+            ctx.cp_.reset();
             if(cancel_enabled && ctx.req_context()) {
                 auto& res_src = ctx.req_context()->req_info().response_source();
                 if(res_src && res_src->check_cancel()) {
@@ -108,34 +115,46 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
                     return operation_status_kind::aborted;
                 }
             }
-            utils::checkpoint_holder cp{resource};
-            auto source = ctx.reader_->get_record();
-            for(auto &f : fields_) {
-                utils::copy_nullable_field(
-                    f.type_,
-                    target,
-                    f.target_offset_,
-                    f.target_nullity_offset_,
-                    source,
-                    f.source_offset_,
-                    f.source_nullity_offset_,
-                    resource
-                );
+            {
+                auto source = ctx.reader_->get_record();
+                for(auto &f : fields_) {
+                    utils::copy_nullable_field(
+                        f.type_,
+                        target,
+                        f.target_offset_,
+                        f.target_nullity_offset_,
+                        source,
+                        f.source_offset_,
+                        f.source_nullity_offset_,
+                        resource
+                    );
+                }
             }
+
+resume_calling_child:
+
             if (downstream_) {
-                if(auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context); !st) {
+                ctx.state(context_state::calling_child);
+                auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
+                if (st.kind() == operation_status_kind::yield) {
+                    return operation_status_kind::yield;
+                }
+                if (st.kind() == operation_status_kind::aborted) {
+                    ctx.cp_.reset();
                     ctx.abort();
                     finish(context);
                     return operation_status_kind::aborted;
                 }
+                ctx.state(context_state::running_operator_body);
             }
         }
-        if(! is_active) {
+        if(! ctx.is_active_) {
             break;
         }
         // keep running while reader is active even if the record is not available right now,
         // expecting upstream writes new one soon
     }
+    ctx.cp_.reset();
     finish(context);
     return operation_status_kind::ok;
 }
@@ -181,4 +200,4 @@ std::vector<details::take_flat_field> take_flat::create_fields(
     return fields;
 }
 
-}
+}  // namespace jogasaki::executor::process::impl::ops

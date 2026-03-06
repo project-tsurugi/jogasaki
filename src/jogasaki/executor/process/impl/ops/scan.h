@@ -35,7 +35,6 @@
 #include <jogasaki/kvs/coder.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/status.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 
 #include "index_field_mapper.h"
 #include "operator_base.h"

@@ -48,11 +48,13 @@
 #include <jogasaki/meta/field_type_kind.h>
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
+#include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
 
 #include "apply_context.h"
+#include "cancel_if_needed.h"
 #include "context_helper.h"
 #include "operator_base.h"
 
@@ -102,7 +104,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
     // setup evaluator context blob session (required for both fresh and resume paths)
     context_helper helper{*context};
     ctx.evaluator_context_.blob_session(std::addressof(helper.blob_session_container()));
-
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::apply);
     data::any_sequence_stream_status stream_status{};
     data::any_sequence sequence{};
 
@@ -113,6 +115,12 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
         }
         goto resume_calling_child;  //NOLINT
     }
+
+    // cancel should be checked when control actually comes back (i.e. not just when propagating to children)
+    if (cancel_enabled && cancel_if_needed(ctx)) {
+        return operation_status_kind::aborted;
+    }
+
     if (ctx.state() == context_state::yielding) {
         VLOG_LP(log_trace) << "resuming apply op. after stream not_ready";
         ctx.state(context_state::running_operator_body);
@@ -161,6 +169,11 @@ try_next:
     while (true) {
         ctx.cp_.reset();
         sequence.clear();
+
+        if (cancel_enabled && cancel_if_needed(ctx)) {
+            return operation_status_kind::aborted;
+        }
+
         stream_status = ctx.stream_->try_next(sequence);
 
         if (stream_status == data::any_sequence_stream_status::not_ready) {

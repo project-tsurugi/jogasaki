@@ -44,6 +44,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
 
+#include "cancel_if_needed.h"
 #include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -91,7 +92,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
     }
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
-    bool cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_flat);
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::take_flat);
     if (ctx.state() == context_state::calling_child) {
         VLOG_LP(log_trace) << "resuming take_flat op. after downstream yield";
         goto resume_calling_child;  //NOLINT
@@ -106,14 +107,9 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
         ctx.is_active_ = ctx.reader_->source_active();
         while(ctx.reader_->next_record()) {
             ctx.cp_.reset();
-            if(cancel_enabled && ctx.req_context()) {
-                auto& res_src = ctx.req_context()->req_info().response_source();
-                if(res_src && res_src->check_cancel()) {
-                    cancel_request(*ctx.req_context());
-                    ctx.abort();
-                    finish(context);
-                    return operation_status_kind::aborted;
-                }
+            if (cancel_enabled && cancel_if_needed(ctx)) {
+                finish(context);
+                return operation_status_kind::aborted;
             }
             {
                 auto source = ctx.reader_->get_record();

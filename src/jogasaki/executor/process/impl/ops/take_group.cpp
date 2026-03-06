@@ -42,6 +42,7 @@
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/validation.h>
 
+#include "cancel_if_needed.h"
 #include "context_helper.h"
 
 namespace jogasaki::executor::process::impl::ops {
@@ -123,15 +124,10 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
         if(! ctx.reader_->next_member()) continue;
         ctx.has_next_ = true;
         while(ctx.has_next_) {
-            if(cancel_enabled && ctx.req_context()) {
-                auto& res_src = ctx.req_context()->req_info().response_source();
-                if(res_src && res_src->check_cancel()) {
-                    cancel_request(*ctx.req_context());
-                    ctx.abort();
-                    ctx.group_cp_.reset();
-                    finish(context);
-                    return operation_status_kind::aborted;
-                }
+            if (cancel_enabled && cancel_if_needed(ctx)) {
+                ctx.group_cp_.reset();
+                finish(context);
+                return operation_status_kind::aborted;
             }
             {
                 auto value = ctx.reader_->get_member();

@@ -39,8 +39,8 @@
 #include <jogasaki/utils/cancel_request.h>
 #include <jogasaki/utils/validation.h>
 
+#include "cancel_if_needed.h"
 #include "context_helper.h"
-#include "take_cogroup_context.h"
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -171,14 +171,9 @@ operation_status take_cogroup::operator()(take_cogroup_context& ctx, abstract::t
     BOOST_ASSERT(ctx.readers_.size() == groups_.size());  //NOLINT
 
     while(s != state::end) {
-        if(cancel_enabled && ctx.req_context()) {
-            auto& res_src = ctx.req_context()->req_info().response_source();
-            if(res_src && res_src->check_cancel()) {
-                cancel_request(*ctx.req_context());
-                ctx.abort();
-                finish(context);
-                return operation_status_kind::aborted;
-            }
+        if (cancel_enabled && cancel_if_needed(ctx)) {
+            finish(context);
+            return operation_status_kind::aborted;
         }
         switch(s) {
             case state::init:

@@ -51,6 +51,7 @@
 #include <jogasaki/utils/handle_kvs_errors.h>
 #include <jogasaki/utils/modify_status.h>
 
+#include "cancel_if_needed.h"
 #include "context_helper.h"
 #include "details/encode_key.h"
 #include "details/error_abort.h"
@@ -177,6 +178,7 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
     std::string_view k{};
     std::string_view v{};
     auto& tx = ctx.strand() != nullptr ? *ctx.strand() : *ctx.tx_->object();
+    auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::find);
     if (ctx.state() == context_state::calling_child) {
         VLOG_LP(log_trace) << "resuming find op. after downstream yield";
         if (use_secondary_) {
@@ -185,14 +187,9 @@ operation_status find::operator()(class find_context& ctx, abstract::task_contex
         goto resume_calling_child_1;  //NOLINT
     }
     {
-        if(utils::request_cancel_enabled(request_cancel_kind::find) && ctx.req_context()) {
-            auto& res_src = ctx.req_context()->req_info().response_source();
-            if(res_src && res_src->check_cancel()) {
-                cancel_request(*ctx.req_context());
-                ctx.abort();
-                finish(context);
-                return operation_status_kind::aborted;
-            }
+        if (cancel_enabled && cancel_if_needed(ctx)) {
+            finish(context);
+            return operation_status_kind::aborted;
         }
         executor::process::impl::variable_table vars{};
         std::string msg{};

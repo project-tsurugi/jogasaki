@@ -43,6 +43,7 @@
 #include <jogasaki/executor/function/table_valued_function_repository.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/request_cancel_config.h>
+#include <jogasaki/test_utils/custom_any_sequence_stream.h>
 #include <jogasaki/test_utils/mock_any_sequence_stream.h>
 #include <jogasaki/utils/command_utils.h>
 #include "jogasaki/proto/sql/request.pb.h"
@@ -62,54 +63,6 @@ using takatori::util::sequence_view;
 
 std::string serialize(sql::request::Request& r);
 void deserialize(std::string_view s, sql::response::Response& res);
-
-// ---------------------------------------------------------------------------
-// Stream helpers for cancel testing
-// ---------------------------------------------------------------------------
-
-/**
- * @brief an any_sequence_stream whose try_next behaviour is provided by a caller-supplied lambda.
- * @details the lambda is invoked on every try_next call and controls what is returned.
- *          this makes it easy to inject cancel signals, not_ready transitions, or error
- *          conditions at precisely the desired point in a test scenario.
- *
- *          example — arm cancel on the first call and return not_ready:
- * @code
- *   auto stream = std::make_unique<custom_any_sequence_stream>(
- *       [res](data::any_sequence&) -> data::any_sequence_stream::status_type {
- *           res->cancel();
- *           return data::any_sequence_stream::status_type::not_ready;
- *       }
- *   );
- * @endcode
- */
-class custom_any_sequence_stream : public data::any_sequence_stream {
-public:
-    using handler_type = std::function<status_type(data::any_sequence&)>;
-
-    /**
-     * @brief constructs the stream with a custom try_next handler.
-     * @param handler called on every try_next invocation.
-     */
-    explicit custom_any_sequence_stream(handler_type handler) :
-        handler_(std::move(handler))
-    {}
-
-    [[nodiscard]] status_type try_next(data::any_sequence& sequence) override {
-        return handler_(sequence);
-    }
-
-    [[nodiscard]] status_type next(
-        data::any_sequence& sequence,
-        std::optional<std::chrono::milliseconds> /* timeout */) override {
-        return try_next(sequence);
-    }
-
-    void close() override {}
-
-private:
-    handler_type handler_{};
-};
 
 // ---------------------------------------------------------------------------
 // Test fixture
@@ -267,7 +220,7 @@ TEST_F(service_api_cancel_apply_test, cancel_apply_on_udtf_call) {
                 res->cancel();
 
                 // return a stream that counts every try_next invocation
-                return std::make_unique<custom_any_sequence_stream>(
+                return std::make_unique<testing::custom_any_sequence_stream>(
                     [try_next_count](data::any_sequence& /* seq */)
                         -> data::any_sequence_stream::status_type {
                         try_next_count->fetch_add(1);
@@ -339,7 +292,7 @@ TEST_F(service_api_cancel_apply_test, cancel_apply_on_first_try_next) {
                 sequence_view<data::any> /* args */
             ) -> std::unique_ptr<data::any_sequence_stream> {
                 // return a stream whose first try_next arms cancel and returns not_ready
-                return std::make_unique<custom_any_sequence_stream>(
+                return std::make_unique<testing::custom_any_sequence_stream>(
                     [res, try_next_count](data::any_sequence& /* seq */)
                         -> data::any_sequence_stream::status_type {
                         auto cnt = try_next_count->fetch_add(1);

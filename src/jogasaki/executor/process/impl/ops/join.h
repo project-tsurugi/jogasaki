@@ -188,10 +188,14 @@ public:
         abstract::task_context* context
     ) {
         if (downstream_) {
+            ctx.state(context_state::calling_child);
             auto st = unsafe_downcast<record_operator>(downstream_.get())->process_record(context);
             if (st.kind() == operation_status_kind::aborted) {
                 ctx.abort();
                 return operation_status_kind::aborted;
+            }
+            if (st.kind() == operation_status_kind::ok) {
+                ctx.state(context_state::running_operator_body);
             }
             return st;
         }

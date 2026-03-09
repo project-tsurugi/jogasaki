@@ -16,12 +16,13 @@
 #pragma once
 
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
-#include <jogasaki/utils/fail.h>
 
 namespace jogasaki::utils {
 
 /**
- * @brief create check point for lifo memory resource and release on deconstruction
+ * @brief RAII checkpoint for lifo memory resource.
+ * @details Saves the current memory position at construction and deallocates
+ *          all memory allocated after that point at destruction.
  */
 class checkpoint_holder {
 public:
@@ -35,59 +36,39 @@ public:
 
     /**
      * @brief create empty object with no associated resource.
-     *        All operations are no-ops until the object is replaced via assignment.
      */
     checkpoint_holder() noexcept = default;
 
     /**
-     * @brief create new object
+     * @brief create new object and save the current checkpoint.
      * @param resource the memory resource managed by this object
-     * @param defer if true, the checkpoint is not saved at construction time.
-     *              Call set_checkpoint() later to save the checkpoint explicitly.
      */
-    explicit checkpoint_holder(memory_resource* resource, bool defer = false) noexcept :
+    explicit checkpoint_holder(memory_resource* resource) noexcept :
         resource_(resource),
-        checkpoint_set_(! defer)
-    {
-        if (! defer) {
-            checkpoint_ = resource_->get_checkpoint();
-        }
-    }
+        checkpoint_(resource_->get_checkpoint())
+    {}
 
     /**
-     * @brief destruct the object and deallocate the memory resource
+     * @brief destruct the object and deallocate memory back to the checkpoint.
      */
     ~checkpoint_holder() {
         reset();
     }
 
     /**
-     * @brief save the current checkpoint of the memory resource.
-     *        Can be called at any time after construction when defer=true was specified.
-     *        If a checkpoint is already set, this call is ignored.
-     */
-    void set_checkpoint() {
-        if (resource_ != nullptr && ! checkpoint_set_) {
-            checkpoint_ = resource_->get_checkpoint();
-            checkpoint_set_ = true;
-        }
-    }
-
-    /**
-     * @brief deallocate the memory resource to the point where the checkpoint was set.
-     *        If no checkpoint is set, this is a no-op.
+     * @brief deallocate memory back to the checkpoint.
+     * @details This call is idempotent: calling it multiple times (or letting the
+     *          destructor call it after an explicit call) is safe.
      */
     void reset() {
-        if (checkpoint_set_) {
+        if (resource_ != nullptr) {
             resource_->deallocate_after(checkpoint_);
-            checkpoint_set_ = false;
         }
     }
 
 private:
     memory_resource* resource_{};
     checkpoint checkpoint_{};
-    bool checkpoint_set_{false};
 };
 
 }  // namespace jogasaki::utils

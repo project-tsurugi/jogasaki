@@ -28,6 +28,7 @@
 #include <jogasaki/kvs/iterator.h>
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/transaction_context.h>
+#include <jogasaki/utils/lazy_checkpoint_holder.h>
 
 #include "context_base.h"
 
@@ -79,6 +80,7 @@ private:
     std::size_t yield_count_{};
     impl::scan_range const* range_{};
     kvs::transaction* strand_{};
+    utils::lazy_checkpoint_holder cp_{};
 };
 
 } // namespace jogasaki::executor::process::impl::ops

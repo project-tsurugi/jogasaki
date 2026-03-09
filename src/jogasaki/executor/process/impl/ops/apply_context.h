@@ -27,10 +27,9 @@
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/operator_kind.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
+#include <jogasaki/utils/lazy_checkpoint_holder.h>
 
 #include "context_base.h"
-
-#include <jogasaki/utils/checkpoint_holder.h>
 
 namespace jogasaki::executor::process::impl::ops {
 
@@ -80,7 +79,7 @@ private:
     expr::evaluator_context evaluator_context_;
     /// @brief true when calling_child state was entered via the outer-apply null-row path.
     bool calling_child_with_outer_null_{false};
-    utils::checkpoint_holder cp_{};
+    utils::lazy_checkpoint_holder cp_{};
 };
 
 }  // namespace jogasaki::executor::process::impl::ops

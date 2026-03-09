@@ -36,10 +36,10 @@
 #include <jogasaki/error_code.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/process/impl/bound.h>
-#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/index_field_mapper.h>
 #include <jogasaki/executor/process/impl/ops/write_existing.h>
+#include <jogasaki/executor/process/impl/scan_range.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/kvs/coder.h>
@@ -48,13 +48,13 @@
 #include <jogasaki/kvs/storage.h>
 #include <jogasaki/request_cancel_config.h>
 #include <jogasaki/transaction_context.h>
-#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/cancel_request.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/get_storage_by_index_name.h>
 #include <jogasaki/utils/handle_generic_error.h>
 #include <jogasaki/utils/handle_kvs_errors.h>
+#include <jogasaki/utils/lazy_checkpoint_holder.h>
 #include <jogasaki/utils/modify_status.h>
 
 #include "cancel_if_needed.h"
@@ -167,6 +167,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
            finish(context);
            return error_abort(ctx, res);
         }
+        ctx.cp_.set_checkpoint();
     }
     auto target = ctx.output_variables().store().ref();
     auto resource = ctx.varlen_resource();
@@ -177,7 +178,6 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
     auto previous_time = std::chrono::steady_clock::now();
     auto cancel_enabled = utils::request_cancel_enabled(request_cancel_kind::scan);
     while(true) {
-        utils::checkpoint_holder cp{resource};
         if(ctx.state() != context_state::calling_child) {
             if (cancel_enabled && cancel_if_needed(ctx)) {
                 finish(context);
@@ -189,6 +189,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
             }
             std::string_view k{};
             std::string_view v{};
+            ctx.cp_.release();
             if((st = ctx.it_->read_key(k)) != status::ok) {
                 utils::modify_concurrent_operation_status(*ctx.transaction(), st, true);
                 if(st == status::not_found) {
@@ -219,6 +220,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
                 return operation_status_kind::yield;
             }
             if(st2.kind() == operation_status_kind::aborted) {
+                ctx.cp_.reset();
                 ctx.abort();
                 finish(context);
                 return operation_status_kind::aborted;
@@ -242,6 +244,7 @@ operation_status scan::operator()(  //NOLINT(readability-function-cognitive-comp
         }
         loop_count++;
     }
+    ctx.cp_.reset();
     finish(context);
     if (st != status::not_found) {
         return error_abort(ctx, st);

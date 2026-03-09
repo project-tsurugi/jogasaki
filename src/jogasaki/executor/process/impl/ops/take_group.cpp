@@ -38,8 +38,8 @@
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/cancel_request.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/lazy_checkpoint_holder.h>
 #include <jogasaki/utils/validation.h>
 
 #include "cancel_if_needed.h"
@@ -103,7 +103,7 @@ operation_status take_group::operator()(take_group_context& ctx, abstract::task_
 
     ctx.group_cp_.set_checkpoint();
     while(ctx.reader_->next_group()) {
-        ctx.group_cp_.reset();
+        ctx.group_cp_.release();
         {
             auto key = ctx.reader_->get_group();
             for(auto &f : fields_) {

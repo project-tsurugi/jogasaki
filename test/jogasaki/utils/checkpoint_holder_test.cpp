@@ -53,77 +53,23 @@ TEST_F(checkpoint_holder_test, checkpoint_at_beginning_of_page) {
     ASSERT_EQ(remaining, resource.page_remaining());
 }
 
-TEST_F(checkpoint_holder_test, defer_no_set_checkpoint_is_noop) {
-    // defer=true without set_checkpoint(): dtor must be a no-op
+TEST_F(checkpoint_holder_test, explicit_reset_idempotent) {
+    // calling reset() explicitly and then letting the dtor run is safe
     page_pool pool{};
     lifo_paged_memory_resource resource{&pool};
     resource.allocate(1);
     std::size_t remaining = resource.page_remaining();
     {
-        checkpoint_holder cp{&resource, true};
-        resource.allocate(page_size * 2 / 3);
-        ASSERT_GT(page_size / 2, resource.page_remaining());
-        // cp goes out of scope without set_checkpoint() - should not deallocate
-    }
-    ASSERT_GT(remaining, resource.page_remaining());
-}
-
-TEST_F(checkpoint_holder_test, defer_with_set_checkpoint) {
-    // defer=true, then set_checkpoint() before dtor: should deallocate
-    page_pool pool{};
-    lifo_paged_memory_resource resource{&pool};
-    resource.allocate(1);
-    std::size_t remaining = resource.page_remaining();
-    std::size_t remaining_at_checkpoint = 0;
-    {
-        checkpoint_holder cp{&resource, true};
-        resource.allocate(page_size / 4);
-        remaining_at_checkpoint = resource.page_remaining();
-        cp.set_checkpoint();
+        checkpoint_holder cp{&resource};
         resource.allocate(page_size / 4);
         ASSERT_GT(remaining, resource.page_remaining());
+        cp.reset();
+        ASSERT_EQ(remaining, resource.page_remaining());
+        // dtor runs reset() again — must not crash or corrupt state
     }
-    // after dtor, should be back to the point where set_checkpoint() was called
-    ASSERT_EQ(remaining_at_checkpoint, resource.page_remaining());
-}
-
-TEST_F(checkpoint_holder_test, reset_then_reuse) {
-    // reset() clears checkpoint_set_; set_checkpoint() and reset() can be called again
-    page_pool pool{};
-    lifo_paged_memory_resource resource{&pool};
-    resource.allocate(1);
-    std::size_t remaining = resource.page_remaining();
-    checkpoint_holder cp{&resource};
-
-    resource.allocate(page_size / 4);
-    cp.reset();
-    ASSERT_EQ(remaining, resource.page_remaining());
-
-    // reuse: set new checkpoint and allocate again
-    cp.set_checkpoint();
-    resource.allocate(page_size / 4);
-    ASSERT_GT(remaining, resource.page_remaining());
-    cp.reset();
     ASSERT_EQ(remaining, resource.page_remaining());
 }
 
-TEST_F(checkpoint_holder_test, set_checkpoint_idempotent) {
-    // calling set_checkpoint() multiple times should use the first checkpoint
-    page_pool pool{};
-    lifo_paged_memory_resource resource{&pool};
-    resource.allocate(1);
-    std::size_t remaining = resource.page_remaining();
-    {
-        checkpoint_holder cp{&resource, true};
-        cp.set_checkpoint();
-        resource.allocate(page_size / 4);
-        cp.set_checkpoint(); // second call should be ignored
-        resource.allocate(page_size / 4);
-    }
-    // should restore to the point of the first set_checkpoint()
-    ASSERT_EQ(remaining, resource.page_remaining());
-}
+}  // namespace jogasaki::utils
 
-
-}
 

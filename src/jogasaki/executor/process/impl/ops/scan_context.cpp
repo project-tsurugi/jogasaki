@@ -41,7 +41,8 @@ scan_context::scan_context(
     secondary_stg_(std::move(secondary_stg)),
     tx_(tx),
     range_(range),
-    strand_(strand)
+    strand_(strand),
+    cp_(varlen_resource)
 {}
 
 operator_kind scan_context::kind() const noexcept {

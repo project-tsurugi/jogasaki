@@ -27,7 +27,7 @@ take_flat_context::take_flat_context(
     context_base::memory_resource* varlen_resource
 ) :
     context_base(ctx, variables, resource, varlen_resource),
-    cp_(varlen_resource, true)
+    cp_(varlen_resource)
 {}
 
 operator_kind take_flat_context::kind() const noexcept {

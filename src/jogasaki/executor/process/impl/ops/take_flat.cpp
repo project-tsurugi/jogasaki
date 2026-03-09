@@ -26,8 +26,6 @@
 #include <takatori/util/reference_extractor.h>
 #include <takatori/util/reference_iterator.h>
 
-#include <jogasaki/logging.h>
-#include <jogasaki/logging_helper.h>
 #include <jogasaki/data/small_record_store.h>
 #include <jogasaki/executor/exchange/forward/reader.h>
 #include <jogasaki/executor/io/reader_container.h>
@@ -37,11 +35,13 @@
 #include <jogasaki/executor/process/impl/ops/take_flat_context.h>
 #include <jogasaki/executor/process/impl/variable_table.h>
 #include <jogasaki/executor/process/impl/variable_table_info.h>
+#include <jogasaki/logging.h>
+#include <jogasaki/logging_helper.h>
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/variable_order.h>
 #include <jogasaki/utils/cancel_request.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
+#include <jogasaki/utils/lazy_checkpoint_holder.h>
 #include <jogasaki/utils/validation.h>
 
 #include "cancel_if_needed.h"
@@ -106,7 +106,7 @@ operation_status take_flat::operator()(take_flat_context& ctx, abstract::task_co
         // even if reader is not active loop next_record through all records and check is_active later
         ctx.is_active_ = ctx.reader_->source_active();
         while(ctx.reader_->next_record()) {
-            ctx.cp_.reset();
+            ctx.cp_.release();
             if (cancel_enabled && cancel_if_needed(ctx)) {
                 finish(context);
                 return operation_status_kind::aborted;

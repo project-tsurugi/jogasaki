@@ -16,12 +16,11 @@
 #include "apply.h"
 
 #include <ostream>
-#include <utility>
-
-#include <boost/assert.hpp>
-#include <glog/logging.h>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <boost/assert.hpp>
+#include <glog/logging.h>
 
 #include <takatori/relation/apply.h>
 #include <takatori/type/data.h>
@@ -49,9 +48,9 @@
 #include <jogasaki/meta/field_type_traits.h>
 #include <jogasaki/status.h>
 #include <jogasaki/utils/cancel_request.h>
-#include <jogasaki/utils/checkpoint_holder.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/field_types.h>
+#include <jogasaki/utils/lazy_checkpoint_holder.h>
 
 #include "apply_context.h"
 #include "cancel_if_needed.h"
@@ -167,7 +166,7 @@ operation_status apply::operator()(apply_context& ctx, abstract::task_context* c
 
 try_next:
     while (true) {
-        ctx.cp_.reset();
+        ctx.cp_.release();
         sequence.clear();
 
         if (cancel_enabled && cancel_if_needed(ctx)) {

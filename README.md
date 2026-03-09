@@ -2,7 +2,7 @@
 
 ## Requirements
 
-* CMake `>= 3.16`
+* CMake `>= 3.20`
 * C++ Compiler `>= C++17`
 * mpdecimal 2.5.1 (see `Manual install steps for mpdecimal` section below to install on Ubuntu 24.04)
 * and see *Dockerfile* section

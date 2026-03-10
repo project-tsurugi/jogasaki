@@ -52,6 +52,7 @@ std::string_view to_string_view(error_code_type code) noexcept {
 // @see enum_types.h (enum class load_status)
 std::string_view to_string_view(plugin::udf::load_status status) noexcept {
     using namespace std::literals;
+
     switch(status) {
         case load_status::ok: return "ok"sv;
         case load_status::path_is_empty: return "path_is_empty"sv;
@@ -68,6 +69,7 @@ std::string_view to_string_view(plugin::udf::load_status status) noexcept {
         case load_status::api_init_failed: return "api_init_failed"sv;
         case load_status::factory_symbol_missing: return "factory_symbol_missing"sv;
         case load_status::factory_creation_failed: return "factory_creation_failed"sv;
+        case load_status::rpc_name_duplicated: return "rpc_name_duplicated"sv;
         default: return "unknown_status"sv;
     }
 }

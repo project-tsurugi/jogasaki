@@ -15,6 +15,8 @@
  */
 #include "udf_loader.h"
 
+#include <fstream>
+#include <google/protobuf/descriptor.pb.h>
 #include <dlfcn.h>
 #include <filesystem>
 #include <glog/logging.h>
@@ -42,36 +44,145 @@
 #include <grpcpp/grpcpp.h>
 namespace fs = std::filesystem;
 using namespace plugin::udf;
+using jogasaki::location_prefix;
 
 namespace {
 bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
-    if(! fs::exists(path)) {
+    if (!fs::exists(path)) {
         results.emplace_back(load_status::path_not_found, path.string(), "Directory not found");
         return false;
     }
-    if(! fs::is_directory(path)) {
+    if (!fs::is_directory(path)) {
         results.emplace_back(load_status::path_not_found, path.string(), "Path is not a directory");
         return false;
     }
     return true;
 }
-std::vector<std::filesystem::path>
-collect_ini_files(std::filesystem::path const& dir) {
-    std::vector<std::filesystem::path> result{};
-    for (auto const& entry : std::filesystem::directory_iterator(dir)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
+
+std::vector<fs::path> collect_ini_files(fs::path const& dir) {
+    std::vector<fs::path> result{};
+    for (auto const& entry : fs::directory_iterator(dir)) {
+        if (!entry.is_regular_file()) { continue; }
 
         auto const& path = entry.path();
-        if (path.extension() == ".ini") {
-            result.emplace_back(path);
-        }
+        if (path.extension() == ".ini") { result.emplace_back(path); }
     }
+    std::sort(result.begin(), result.end());
     return result;
 }
 
-}  // namespace
+std::vector<fs::path> collect_desc_pb_files(fs::path const& dir) {
+    std::vector<fs::path> result{};
+    constexpr std::string_view suffix = ".desc.pb";
+
+    for (auto const& entry : fs::directory_iterator(dir)) {
+        if (!entry.is_regular_file()) { continue; }
+
+        auto const& path = entry.path();
+        auto const filename = path.filename().string();
+        if (filename.size() >= suffix.size() &&
+            filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0) {
+            result.emplace_back(path);
+        }
+    }
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
+struct rpc_info {
+    std::string proto_file_name;
+    std::string service_name;
+    std::string full_rpc_path;
+};
+
+[[nodiscard]] std::string build_full_rpc_path(
+    std::string const& pkg, std::string const& service_name, std::string const& method_name) {
+    std::string full_rpc_path;
+    full_rpc_path.reserve(pkg.size() + service_name.size() + method_name.size() + 3);
+
+    full_rpc_path += "/";
+    if (!pkg.empty()) {
+        full_rpc_path += pkg;
+        full_rpc_path += ".";
+    }
+    full_rpc_path += service_name;
+    full_rpc_path += "/";
+    full_rpc_path += method_name;
+
+    return full_rpc_path;
+}
+
+[[nodiscard]] bool insert_rpc_info(std::map<std::string, rpc_info>& seen,
+    std::string const& method_name, rpc_info const& current) {
+    auto const result = seen.emplace(method_name, current);
+    auto const& it = result.first;
+    auto const inserted = result.second;
+
+    if (inserted) { return true; }
+
+    LOG_LP(WARNING) << jogasaki::udf::log::prefix << "RPC name duplicated: " << method_name
+                    << " first: proto=" << it->second.proto_file_name
+                    << " service=" << it->second.service_name << " rpc=" << it->second.full_rpc_path
+                    << " second: proto=" << current.proto_file_name
+                    << " service=" << current.service_name << " rpc=" << current.full_rpc_path;
+    return false;
+}
+
+[[nodiscard]] bool validate_rpc_methods_in_file(
+    google::protobuf::FileDescriptorSet const& fds, std::map<std::string, rpc_info>& seen) {
+    for (auto const& file : fds.file()) {
+        auto const& pkg = file.package();
+        auto const& proto = file.name();
+
+        for (auto const& service : file.service()) {
+            auto const& service_name = service.name();
+
+            for (auto const& method : service.method()) {
+                auto const& method_name = method.name();
+
+                rpc_info current;
+                current.proto_file_name = proto;
+                current.service_name = service_name;
+                current.full_rpc_path = build_full_rpc_path(pkg, service_name, method_name);
+
+                if (!insert_rpc_info(seen, method_name, current)) { return false; }
+            }
+        }
+    }
+    return true;
+}
+
+bool validate_rpc_method_duplicates(std::vector<fs::path> const& desc_files) {
+    if (desc_files.empty()) {
+        LOG_LP(WARNING) << jogasaki::udf::log::prefix
+                        << "no descriptor files found; RPC duplication check skipped";
+        return true;
+    }
+
+    std::map<std::string, rpc_info> seen{};
+
+    for (auto const& desc_path : desc_files) {
+        std::ifstream input(desc_path, std::ios::binary);
+        if (!input) {
+            LOG_LP(WARNING) << jogasaki::udf::log::prefix
+                            << "cannot open descriptor: " << desc_path.string();
+            return false;
+        }
+
+        google::protobuf::FileDescriptorSet fds;
+        if (!fds.ParseFromIstream(&input)) {
+            LOG_LP(WARNING) << jogasaki::udf::log::prefix
+                            << "failed to parse descriptor: " << desc_path.string();
+            return false;
+        }
+
+        if (!validate_rpc_methods_in_file(fds, seen)) { return false; }
+    }
+
+    return true;
+}
+
+} // namespace
 
 [[nodiscard]] std::string const& client_info::default_endpoint() const noexcept { return default_endpoint_; }
 [[nodiscard]] bool client_info::default_secure() const noexcept { return default_secure_; }
@@ -143,6 +254,7 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
     fs::path path(dir_path);
     std::vector<load_result> results{};
     std::vector<std::filesystem::path> ini_files{};
+    std::vector<std::filesystem::path> desc_files{};
     if (dir_path.empty()) {
         return {load_result(load_status::path_is_empty, "", "Directory path is empty")};
     }
@@ -153,6 +265,12 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
             "No .ini files found (UDF disabled)");
         return results;
     }
+    desc_files = collect_desc_pb_files(path);
+    if (! validate_rpc_method_duplicates(desc_files)) {
+        results.emplace_back(load_status::rpc_name_duplicated, std::string(dir_path), "RPC name duplicated");
+        return results;
+    }
+    LOG_LP(INFO) << jogasaki::udf::log::prefix << "No RPC name duplication detected in descriptors";
     for (auto const& ini_path : ini_files) {
         auto udf_config_value = parse_ini(ini_path, results);
         if (! udf_config_value){

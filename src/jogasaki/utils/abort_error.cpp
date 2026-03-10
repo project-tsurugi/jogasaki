@@ -31,6 +31,7 @@
 #include <jogasaki/accessor/record_ref.h>
 #include <jogasaki/constants.h>
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/executor/global.h>
 #include <jogasaki/index/field_factory.h>
 #include <jogasaki/index/index_accessor.h>
 #include <jogasaki/index/utils.h>
@@ -39,6 +40,7 @@
 #include <jogasaki/memory/lifo_paged_memory_resource.h>
 #include <jogasaki/meta/record_meta.h>
 #include <jogasaki/request_context.h>
+#include <jogasaki/storage/storage_manager.h>
 #include <jogasaki/transaction_context.h>
 #include <jogasaki/utils/binary_printer.h>
 
@@ -97,9 +99,16 @@ static void handle_code_and_locator(sharksfin::ErrorCode code, sharksfin::ErrorL
             } else {
                 ss << "<not available>";
             }
-            ss << " storage:";
+            ss << " index:";
             if (loc->storage().has_value()) {
-                ss << loc->storage().value();
+                auto stg_key = loc->storage().value();
+                auto name = global::storage_manager()->get_index_name(stg_key);
+                if (name.has_value()) {
+                    ss << *name;
+                } else {
+                    utils::binary_printer p{stg_key.data(), stg_key.size()};
+                    ss << p;
+                }
             } else {
                 ss << "<not available>";
             }

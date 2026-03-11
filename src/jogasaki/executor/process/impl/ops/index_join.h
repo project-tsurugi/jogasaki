@@ -29,6 +29,8 @@
 #include <yugawara/storage/index.h>
 
 #include <jogasaki/data/aligned_buffer.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/expr/evaluator.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
 #include <jogasaki/executor/process/impl/ops/context_helper.h>
@@ -327,6 +329,18 @@ public:
     operation_status operator()(index_join_context<MatchInfo>& ctx, abstract::task_context* context = nullptr) { //NOLINT(readability-function-cognitive-complexity)
         assert_with_exception(ctx.state() != context_state::yielding, ctx.state());
         if (ctx.aborted()) {
+            return operation_status_kind::aborted;
+        }
+        // currently SQL compiler does not generate left_outer_at_most_one join for index join, but we put this check just in case
+        // TODO support left_outer_at_most_one join for index join if needed
+        if (join_kind_ == join_kind::left_outer_at_most_one) {
+            set_error_context(
+                *ctx.req_context(),
+                error_code::unsupported_runtime_feature_exception,
+                "index join with left_outer_at_most_one is not supported yet",
+                status::err_unsupported
+            );
+            ctx.abort();
             return operation_status_kind::aborted;
         }
         auto resource = ctx.varlen_resource();

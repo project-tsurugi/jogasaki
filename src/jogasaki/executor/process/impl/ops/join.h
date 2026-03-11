@@ -34,13 +34,15 @@
 #include <jogasaki/data/any.h>
 #include <jogasaki/data/iterable_record_store.h>
 #include <jogasaki/data/small_record_store.h>
+#include <jogasaki/error/error_info_factory.h>
+#include <jogasaki/error_code.h>
 #include <jogasaki/executor/comparator.h>
+#include <jogasaki/executor/expr/evaluator.h>
+#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/global.h>
 #include <jogasaki/executor/io/group_reader.h>
 #include <jogasaki/executor/io/reader_container.h>
 #include <jogasaki/executor/process/abstract/task_context.h>
-#include <jogasaki/executor/expr/evaluator.h>
-#include <jogasaki/executor/expr/evaluator_context.h>
 #include <jogasaki/executor/process/impl/ops/cogroup.h>
 #include <jogasaki/executor/process/impl/ops/context_container.h>
 #include <jogasaki/executor/process/impl/ops/details/expression_error.h>
@@ -53,6 +55,7 @@
 #include <jogasaki/meta/group_meta.h>
 #include <jogasaki/model/step.h>
 #include <jogasaki/model/task.h>
+#include <jogasaki/status.h>
 #include <jogasaki/utils/assert.h>
 #include <jogasaki/utils/copy_field_data.h>
 #include <jogasaki/utils/iterator_incrementer.h>
@@ -276,7 +279,7 @@ resume_calling_child_1:
                 } while (ctx.incr_.increment());
                 break;
             }
-            case join_kind::left_outer_at_most_one: [[fallthrough]];  //FIXME implement
+            case join_kind::left_outer_at_most_one: [[fallthrough]];
             case join_kind::left_outer: {
                 if(cgrp.groups()[0].empty()) {
                     break;
@@ -298,6 +301,17 @@ resume_calling_child_1:
                                 }
                             }
                             if (result.template to<bool>()) {
+                                if (kind_ == join_kind::left_outer_at_most_one && ctx.exists_match_) {
+                                    // second matching row: scalar subquery returned more than one record
+                                    set_error_context(
+                                        *ctx.req_context(),
+                                        error_code::scalar_subquery_evaluation_exception,
+                                        "scalar subquery returned more than one record",
+                                        status::err_expression_evaluation_failure
+                                    );
+                                    ctx.abort();
+                                    return operation_status_kind::aborted;
+                                }
                                 ctx.exists_match_ = true;
 resume_calling_child_2:
                                 if(auto call_st = call_downstream(ctx, context); ! call_st) {

@@ -61,7 +61,8 @@ enum class load_status {
     api_symbol_missing,
     api_init_failed,
     factory_symbol_missing,
-    factory_creation_failed
+    factory_creation_failed,
+    rpc_name_duplicated,
 };
 
 enum class generic_record_stream_status {

@@ -1,6 +1,5 @@
-
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +49,7 @@ enum class load_status {
     ok,
     path_is_empty,
     path_not_found,
+    message_name_duplicated,
     no_ini_files,
     no_ini_and_so_files,
     ini_so_pair_mismatch,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 Project Tsurugi.
+ * Copyright 2018-2026 Project Tsurugi.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@ std::string_view to_string_view(plugin::udf::load_status status) noexcept {
         case load_status::no_ini_and_so_files: return "no_ini_and_so_files"sv;
         case load_status::ini_so_pair_mismatch: return "ini_so_pair_mismatch"sv;
         case load_status::ini_invalid: return "ini_invalid"sv;
+        case load_status::message_name_duplicated: return "message_name_duplicated"sv;
         case load_status::not_regular_file_or_dir: return "not_regular_file_or_dir"sv;
         case load_status::no_ini_files: return "no_ini_files"sv;
         case load_status::udf_disabled: return "udf_disabled"sv;

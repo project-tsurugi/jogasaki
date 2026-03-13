@@ -170,8 +170,8 @@ TEST_F(service_api_test, data_types) {
                 auto m = create_record_meta(cols);
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(2, v.size());
-                auto exp1 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, std::forward_as_tuple(1, 1, 1.0, 1.0, accessor::text{"1"sv}));
-                auto exp2 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, std::forward_as_tuple(2, 2, 2.0, 2.0, accessor::text{"2"sv}));
+                auto exp1 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, 1, 1, 1.0, 1.0, accessor::text{"1"sv});
+                auto exp2 = mock::typed_nullable_record<meta::field_type_kind::int4, meta::field_type_kind::int8, meta::field_type_kind::float8, meta::field_type_kind::float4, meta::field_type_kind::character>(std::tuple{meta::int4_type(), meta::int8_type(), meta::float8_type(), meta::float4_type(), meta::character_type(true, 100)}, 2, 2, 2.0, 2.0, accessor::text{"2"sv});
                 EXPECT_EQ(exp1, v[0]);
                 EXPECT_EQ(exp2, v[1]);
             }
@@ -205,20 +205,15 @@ TEST_F(service_api_test, char_varchar) {
         "select c0, c1 from t",
         tx_handle,
         exp,
-        {
-            true,
-            true
-        },
-        {
-                mock::typed_nullable_record<ft::character, ft::character>(
-                std::tuple{
-                    meta::character_type(false, 10),
-                    meta::character_type(true, 10),
-                },
-                { accessor::text{"1234567890"}, accessor::text{"1234567890"},
-                }
-            )
-        },
+        {true, true},
+        {mock::typed_nullable_record<ft::character, ft::character>(
+            std::tuple{
+                meta::character_type(false, 10),
+                meta::character_type(true, 10),
+            },
+            accessor::text{"1234567890"},
+            accessor::text{"1234567890"}
+        )},
         {"c0", "c1"}
     );
     test_commit(tx_handle);
@@ -311,15 +306,12 @@ TEST_F(service_api_test, decimals) {
                 EXPECT_EQ((mock::typed_nullable_record<
                     ft::decimal, ft::decimal, ft::decimal,
                     ft::decimal, ft::decimal, ft::decimal
-                >(
-                    std::tuple{
+                >(std::tuple{
                         dec_3_0, dec_5_3, dec_10_1,
                         dec_3_0, dec_5_3, dec_10_1,
                     },
-                    {
-                        v111, v11_111, v11111_1,
-                        v222, v22_222, v22222_2,
-                    }
+                    v111, v11_111, v11111_1,
+                    v222, v22_222, v22222_2
                 )), v[0]);
             }
         }
@@ -425,15 +417,12 @@ TEST_F(service_api_test, temporal_types) {
                 EXPECT_EQ((mock::typed_nullable_record<
                     ft::date, ft::time_of_day, ft::time_of_day, ft::time_point, ft::time_point,
                     ft::date, ft::time_of_day, ft::time_of_day, ft::time_point, ft::time_point
-                >(
-                    std::tuple{
+                >(std::tuple{
                         dat, tod, todtz, tp, tptz,
                         dat, tod, todtz, tp, tptz,
                     },
-                    {
-                        d2000_1_1, t12_0_0, t3_0_0, tp2000_1_1_12_0_0, tp2000_1_1_3_0_0,
-                        d2000_1_1, t12_0_0, t3_0_0, tp2000_1_1_12_0_0, tp2000_1_1_3_0_0,
-                    }
+                    d2000_1_1, t12_0_0, t3_0_0, tp2000_1_1_12_0_0, tp2000_1_1_3_0_0,
+                    d2000_1_1, t12_0_0, t3_0_0, tp2000_1_1_12_0_0, tp2000_1_1_3_0_0
                 )), v[0]);
             }
         }
@@ -515,9 +504,7 @@ TEST_F(service_api_test, timestamptz) {
                 ASSERT_EQ(1, v.size());
 
                 auto tptz = meta::field_type{std::make_shared<meta::time_point_field_option>(true)};
-                EXPECT_EQ((mock::typed_nullable_record<ft::time_point>(
-                    std::tuple{tptz}, {exp_tp}
-                )), v[0]);
+                EXPECT_EQ((mock::typed_nullable_record<ft::time_point>(std::tuple{tptz}, exp_tp)), v[0]);
             }
         }
         {
@@ -573,7 +560,7 @@ TEST_F(service_api_test, timestamptz_with_offset) {
                 EXPECT_EQ(
                     (mock::typed_nullable_record<ft::time_point>(
                         std::tuple{meta::time_point_type(true)},
-                        {time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
+                        time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}
                     )),
                     v[0]
                 );
@@ -653,10 +640,14 @@ TEST_F(service_api_test, binary_type) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                EXPECT_EQ((mock::typed_nullable_record<ft::octet, ft::octet>(
-                    std::tuple{meta::octet_type(true, 5), meta::octet_type(false, 5)},
-                    {accessor::binary{"\x01\x02\x03"}, accessor::binary{"\x04\x05\x06\x00\x00"}}
-                )), v[0]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<ft::octet, ft::octet>(
+                        std::tuple{meta::octet_type(true, 5), meta::octet_type(false, 5)},
+                        accessor::binary{"\x01\x02\x03"},
+                        accessor::binary{"\x04\x05\x06\x00\x00"}
+                    )),
+                    v[0]
+                );
             }
         }
         {
@@ -733,10 +724,13 @@ TEST_F(service_api_test, long_binary_data) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                EXPECT_EQ((mock::typed_nullable_record<ft::octet>(
-                    std::tuple{meta::octet_type(true)},
-                    {accessor::binary{long_str}}
-                )), v[0]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<ft::octet>(
+                        std::tuple{meta::octet_type(true)},
+                        accessor::binary{long_str}
+                    )),
+                    v[0]
+                );
             }
         }
         {
@@ -813,10 +807,14 @@ TEST_F(service_api_test, boolean_type) {
                 auto v = deserialize_msg(ch.view(), m);
                 ASSERT_EQ(1, v.size());
 
-                EXPECT_EQ((mock::typed_nullable_record<ft::boolean, ft::boolean>(
-                    std::tuple{meta::boolean_type(), meta::boolean_type()},
-                    {static_cast<std::int8_t>(0), static_cast<std::int8_t>(1)}
-                )), v[0]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<ft::boolean, ft::boolean>(
+                        std::tuple{meta::boolean_type(), meta::boolean_type()},
+                        static_cast<std::int8_t>(0),
+                        static_cast<std::int8_t>(1)
+                    )),
+                    v[0]
+                );
             }
         }
         {

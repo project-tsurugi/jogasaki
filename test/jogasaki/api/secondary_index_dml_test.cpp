@@ -227,7 +227,7 @@ TEST_F(secondary_index_dml_test, update_index_key) {
     }
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1 FROM T WHERE C1=30", result);
-    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>({1,30})), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(1, 30)), result[0]);
 }
 
 TEST_F(secondary_index_dml_test, update_nonpk_non_index_key_column) {
@@ -248,7 +248,7 @@ TEST_F(secondary_index_dml_test, update_nonpk_non_index_key_column) {
     }
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1, C2 FROM T WHERE C1=10", result);
-    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>({1,10,300})), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 300)), result[0]);
 }
 
 TEST_F(secondary_index_dml_test, insert_multi_secondaries) {

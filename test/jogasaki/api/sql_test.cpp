@@ -125,10 +125,7 @@ TEST_F(sql_test, literal_true_false) {
         execute_query("SELECT C0, C1, TRUE, FALSE FROM T0 WHERE TRUE", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ(
-            (create_nullable_record<kind::int8, kind::float8, kind::boolean, kind::boolean>(
-                {0, 0.0, true, false},
-                {false, true, false, false}
-            )),
+            (create_nullable_record<kind::int8, kind::float8, kind::boolean, kind::boolean>(0, std::nullopt, true, false)),
             result[0]
         );
     }
@@ -532,9 +529,9 @@ TEST_F(sql_test, case_expression_with_type_conversion) {
         execute_query("select case when c0 > 0 then cast(1 as INT) when c0 < 0 then cast(-1 as DECIMAL(5)) else CAST(0 as BIGINT) end from t0", result);
         ASSERT_EQ(3, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, std::forward_as_tuple(triple{-1, 0, 1, 0}))), result[0]);
-        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, std::forward_as_tuple(triple{1, 0, 0, 0}))), result[1]);
-        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, std::forward_as_tuple(triple{1, 0, 1, 0}))), result[2]);
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, triple{-1, 0, 1, 0})), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, triple{1, 0, 0, 0})), result[1]);
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(19,0)}, triple{1, 0, 1, 0})), result[2]);
     }
 }
 
@@ -583,7 +580,7 @@ TEST_F(sql_test, coalesce_expression_all_null) {
         std::vector<mock::basic_record> result{};
         execute_query("select coalesce(c0, c1, c2) from t0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4>({-1}, {true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(std::nullopt)), result[0]);
     }
 }
 
@@ -607,7 +604,7 @@ TEST_F(sql_test, nullif_expression) {
         execute_query("select nullif(c0, 2) from t0", result);
         ASSERT_EQ(2, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((create_nullable_record<kind::int4>({-1}, {true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(std::nullopt)), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[1]);
     }
     {
@@ -625,8 +622,8 @@ TEST_F(sql_test, nullif_expression) {
         execute_query("select nullif(null, null) from t0", result);
         ASSERT_EQ(2, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((create_nullable_record<kind::unknown>(-1, {true})), result[0]);
-        EXPECT_EQ((create_nullable_record<kind::unknown>(-1, {true})), result[1]);
+        EXPECT_EQ((create_nullable_record<kind::unknown>(std::nullopt)), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::unknown>(std::nullopt)), result[1]);
     }
 }
 
@@ -659,7 +656,7 @@ TEST_F(sql_test, null_comparison_by_operator) {
         execute_query("select * from t0 where NULL IS NULL", result);
         ASSERT_EQ(2, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((create_nullable_record<kind::int4>(-1, {true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4>(std::nullopt)), result[0]);
         EXPECT_EQ((create_nullable_record<kind::int4>(1)), result[1]);
     }
     {
@@ -679,13 +676,13 @@ TEST_F(sql_test, type_of_cast_conversion) {
         std::vector<mock::basic_record> result{};
         execute_query("select c0 from t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5,2)}, std::forward_as_tuple(triple{1, 0, 100, -2}))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5,2)}, triple{1, 0, 100, -2})), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("select cast(c0 as decimal(5,2)) from t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5,2)}, std::forward_as_tuple(triple{1, 0, 1, 0}))), result[0]);
+        EXPECT_EQ((typed_nullable_record<kind::decimal>(std::tuple{meta::decimal_type(5,2)}, triple{1, 0, 1, 0})), result[0]);
     }
 }
 

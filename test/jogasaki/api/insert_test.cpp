@@ -163,14 +163,14 @@ TEST_F(insert_test, specify_partial_columns) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1, C2, C3 FROM T WHERE C1=11", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({0,11,21,31}, {true, false, false, false})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(std::nullopt, 11, 21, 31)), result[0]);
     }
     execute_statement("INSERT INTO T (C0, C1, C2) VALUES (2, 12, 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1, C2, C3 FROM T WHERE C1=12", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({2,12,22,0}, {false, false, false, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(2, 12, 22, std::nullopt)), result[0]);
     }
 }
 
@@ -290,18 +290,28 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(false, 3), character_type(false, 3)},
-            std::forward_as_tuple(text("1  "),text("10 ")))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(false, 3), character_type(false, 3)},
+                text("1  "),
+                text("10 ")
+            )),
+            result[0]
+        );
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES ('12', 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(false, 3), character_type(false, 3)},
-            std::forward_as_tuple(text("10 "), text("12 ")))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(false, 3), character_type(false, 3)},
+                text("10 "),
+                text("12 ")
+            )),
+            result[0]
+        );
     }
     execute_statement("drop table T");
 
@@ -312,18 +322,28 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(true, 3), character_type(true, 3)},
-            std::forward_as_tuple(text("1"),text("10")))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(true, 3), character_type(true, 3)},
+                text("1"),
+                text("10")
+            )),
+            result[0]
+        );
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES ('12', 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(true, 3), character_type(true, 3)},
-            std::forward_as_tuple(text("10"), text("12")))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(true, 3), character_type(true, 3)},
+                text("10"),
+                text("12")
+            )),
+            result[0]
+        );
     }
     execute_statement("drop table T");
 
@@ -334,18 +354,28 @@ TEST_F(insert_test, data_types_with_default) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=21", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(true, 20), character_type(true, 20)},
-            std::forward_as_tuple(text("1"),text("12345678901234567890")))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(true, 20), character_type(true, 20)},
+                text("1"),
+                text("12345678901234567890")
+            )),
+            result[0]
+        );
     }
     execute_statement("INSERT INTO T (C1, C2) VALUES ('12', 22)");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T WHERE C2=22", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(true, 20), character_type(true, 20)},
-            std::forward_as_tuple(text("12345678901234567890"), text("12")))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(true, 20), character_type(true, 20)},
+                text("12345678901234567890"),
+                text("12")
+            )),
+            result[0]
+        );
     }
     execute_statement("drop table T");
 }
@@ -359,7 +389,7 @@ TEST_F(insert_test, assign_numeric_from_string) {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT c0 FROM t", result);
             ASSERT_EQ(1, result.size());
-            EXPECT_EQ((create_nullable_record<kind::int4>({123}, {false})), result[0]);
+            EXPECT_EQ((create_nullable_record<kind::int4>(123)), result[0]);
         }
         execute_statement("drop table t");
     }
@@ -370,7 +400,7 @@ TEST_F(insert_test, assign_numeric_from_string) {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT c0 FROM t", result);
             ASSERT_EQ(1, result.size());
-            EXPECT_EQ((create_nullable_record<kind::int8>({1234567890123}, {false})), result[0]);
+            EXPECT_EQ((create_nullable_record<kind::int8>(1234567890123)), result[0]);
         }
         execute_statement("drop table t");
     }
@@ -381,7 +411,7 @@ TEST_F(insert_test, assign_numeric_from_string) {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT c0 FROM t", result);
             ASSERT_EQ(1, result.size());
-            EXPECT_EQ((create_nullable_record<kind::float4>({1.1}, {false})), result[0]);
+            EXPECT_EQ((create_nullable_record<kind::float4>(1.1)), result[0]);
         }
         execute_statement("drop table t");
     }
@@ -392,7 +422,7 @@ TEST_F(insert_test, assign_numeric_from_string) {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT c0 FROM t", result);
             ASSERT_EQ(1, result.size());
-            EXPECT_EQ((create_nullable_record<kind::float8>({1.1}, {false})), result[0]);
+            EXPECT_EQ((create_nullable_record<kind::float8>(1.1)), result[0]);
         }
         execute_statement("drop table t");
     }
@@ -404,10 +434,7 @@ TEST_F(insert_test, assign_numeric_from_string) {
             execute_query("SELECT c0 FROM t", result);
             ASSERT_EQ(1, result.size());
             EXPECT_EQ(
-                (typed_nullable_record<kind::decimal>(
-                    std::tuple{decimal_type(5, 3)},
-                    std::forward_as_tuple(triple{1, 0, 12345, -3})
-                )),
+                (typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 3)}, triple{1, 0, 12345, -3})),
                 result[0]
             );
         }

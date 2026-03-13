@@ -640,9 +640,7 @@ TEST_F(join_test, left_join_with_condition) {
 
     ASSERT_EQ(1, result.size());
     std::vector<jogasaki::mock::basic_record> exp{
-        jogasaki::mock::create_nullable_record<kind::int8, kind::int8, kind::int8, kind::int8>(
-            {3,300,-1,-1},
-            {false, false, true, true}),
+        jogasaki::mock::create_nullable_record<kind::int8, kind::int8, kind::int8, kind::int8>(3, 300, std::nullopt, std::nullopt),
     };
     std::sort(exp.begin(), exp.end());
     std::sort(result.begin(), result.end());

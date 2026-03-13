@@ -164,9 +164,14 @@ TEST_F(update_test, update_char_columns) {
         execute_query("SELECT CH, VC FROM CHAR_TAB", result);
         ASSERT_EQ(1, result.size());
         // TODO test with non-nullable record
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(false, 5), character_type(true, 5)},
-            std::forward_as_tuple(accessor::text{"000  "sv}, accessor::text{"000"sv}))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(false, 5), character_type(true, 5)},
+                accessor::text{"000  "sv},
+                accessor::text{"000"sv}
+            )),
+            result[0]
+        );
     }
     execute_statement("UPDATE CHAR_TAB SET CH='11', VC='11' WHERE C0=0");
     {
@@ -174,9 +179,14 @@ TEST_F(update_test, update_char_columns) {
         execute_query("SELECT CH, VC FROM CHAR_TAB", result);
         ASSERT_EQ(1, result.size());
         // TODO test with non-nullable record
-        EXPECT_EQ((typed_nullable_record<kind::character, kind::character>(
-            std::tuple{character_type(false, 5), character_type(true, 5)},
-            std::forward_as_tuple(accessor::text{"11   "sv}, accessor::text{"11"sv}))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(false, 5), character_type(true, 5)},
+                accessor::text{"11   "sv},
+                accessor::text{"11"sv}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -187,7 +197,7 @@ TEST_F(update_test, update_by_null) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>({0, 0.0}, {false, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(0, std::nullopt)), result[0]);
     }
 }
 
@@ -306,7 +316,7 @@ TEST_F(update_test, verify_error_abort_tx) {
         ASSERT_EQ(1, result.size());
         auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 2)};
         auto i4 = meta::field_type{meta::field_enum_tag<meta::field_type_kind::int4>};
-        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::decimal>(std::tuple{i4, dec}, {1, v1})), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::decimal>(std::tuple{i4, dec}, 1, v1)), result[0]);
     }
 }
 

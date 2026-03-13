@@ -184,14 +184,14 @@ TEST_F(service_api_test, blob_types) {
                 auto tag0 = v[0].get_field_value_info(0).blob_reference_tag_;
                 auto tag1 = v[0].get_field_value_info(1).blob_reference_tag_;
 
-                EXPECT_EQ((mock::typed_nullable_record<ft::blob, ft::clob>(
-                    std::tuple{meta::blob_type(), meta::clob_type()},
-                    {
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<ft::blob, ft::clob>(
+                        std::tuple{meta::blob_type(), meta::clob_type()},
                         lob::blob_reference{v0.object_id(), lob::lob_data_provider::datastore},
-                        lob::clob_reference{v1.object_id(), lob::lob_data_provider::datastore},
-                    },
-                    {false, false}
-                )), v[0]);
+                        lob::clob_reference{v1.object_id(), lob::lob_data_provider::datastore}
+                    )),
+                    v[0]
+                );
 
                 auto* ds = datastore::get_datastore();
                 auto f0 = ds->get_blob_file(v0.object_id());
@@ -375,13 +375,13 @@ TEST_F(service_api_test, get_lob_data_with_invalid_reference) {
                 auto v0 = v[0].get_value<lob::clob_reference>(0);
                 auto tag0 = v[0].get_field_value_info(0).blob_reference_tag_;
 
-                EXPECT_EQ((mock::typed_nullable_record<ft::clob>(
-                    std::tuple{meta::clob_type()},
-                    {
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<ft::clob>(
+                        std::tuple{meta::clob_type()},
                         lob::clob_reference{v0.object_id(), lob::lob_data_provider::datastore}
-                    },
-                    {false, false}
-                )), v[0]);
+                    )),
+                    v[0]
+                );
 
                 auto* ds = datastore::get_datastore();
                 auto f0 = ds->get_blob_file(v0.object_id());

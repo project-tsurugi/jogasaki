@@ -190,11 +190,13 @@ TEST_F(sql_lob_function_invocation_test, modify_input) {
         ASSERT_EQ(1, result.size());
 
         auto v = result[0].get_value<lob::clob_reference>(0);
-        EXPECT_EQ((mock::typed_nullable_record<kind::clob>(
-            std::tuple{meta::clob_type()},
-            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}},
-            {false, false}
-        )), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::clob>(
+                std::tuple{meta::clob_type()},
+                lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}
+            )),
+            result[0]
+        );
 
         auto* ds = datastore::get_datastore();
         auto ret1 = ds->get_blob_file(v.object_id());
@@ -245,11 +247,13 @@ TEST_F(sql_lob_function_invocation_test, identity) {
         ASSERT_EQ(1, result.size());
 
         auto v = result[0].get_value<lob::clob_reference>(0);
-        EXPECT_EQ((mock::typed_nullable_record<kind::clob>(
-            std::tuple{meta::clob_type()},
-            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}},
-            {false, false}
-        )), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::clob>(
+                std::tuple{meta::clob_type()},
+                lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}
+            )),
+            result[0]
+        );
 
         auto* ds = datastore::get_datastore();
         auto ret1 = ds->get_blob_file(v.object_id());
@@ -300,11 +304,13 @@ TEST_F(sql_lob_function_invocation_test, identity_resolved) {
         ASSERT_EQ(1, result.size());
 
         auto v = result[0].get_value<lob::clob_reference>(0);
-        EXPECT_EQ((mock::typed_nullable_record<kind::clob>(
-            std::tuple{meta::clob_type()},
-            {lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}},
-            {false, false}
-        )), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::clob>(
+                std::tuple{meta::clob_type()},
+                lob::clob_reference{v.object_id(), lob::lob_data_provider::datastore}
+            )),
+            result[0]
+        );
 
         auto* ds = datastore::get_datastore();
         auto ret1 = ds->get_blob_file(v.object_id());

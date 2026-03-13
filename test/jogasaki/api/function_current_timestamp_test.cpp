@@ -107,7 +107,7 @@ TEST_F(function_current_timestamp_test, at_the_begining_of_the_day) {
     execute_query("SELECT current_timestamp FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, {tp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, tp)), result[0]);
 }
 
 TEST_F(function_current_timestamp_test, at_the_end_of_the_day) {
@@ -121,7 +121,7 @@ TEST_F(function_current_timestamp_test, at_the_end_of_the_day) {
     execute_query("SELECT current_timestamp FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, {tp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, tp)), result[0]);
 }
 
 }  // namespace jogasaki::testing

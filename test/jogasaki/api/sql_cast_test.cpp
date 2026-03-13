@@ -90,7 +90,7 @@ TEST_F(sql_cast_test, cast) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1, C2, C3 FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)), result[0]);
     }
 }
 
@@ -101,7 +101,7 @@ TEST_F(sql_cast_test, cast_from_varchar) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(C0 AS INT), CAST(C1 AS BIGINT), CAST(C2 AS REAL), CAST(C3 AS DOUBLE) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)), result[0]);
     }
 }
 TEST_F(sql_cast_test, cast_from_char) {
@@ -112,7 +112,7 @@ TEST_F(sql_cast_test, cast_from_char) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(C0 AS INT), CAST(C1 AS BIGINT), CAST(C2 AS REAL), CAST(C3 AS DOUBLE) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>({1, 10, 100.0, 1000.0}, {false, false, false, false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8>(1, 10, 100.0, 1000.0)), result[0]);
     }
 }
 TEST_F(sql_cast_test, cast_failure) {
@@ -134,9 +134,14 @@ TEST_F(sql_cast_test, cast_char_padding_truncation) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('ABCDEF' AS VARCHAR(5)), CAST('ABC' AS CHAR(5)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-           std::tuple{character_type(true, 5), character_type(false, 5)},
-           std::forward_as_tuple(accessor::text{"ABCDE"}, accessor::text{"ABC  "}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(true, 5), character_type(false, 5)},
+                accessor::text{"ABCDE"},
+                accessor::text{"ABC  "}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -147,9 +152,14 @@ TEST_F(sql_cast_test, insert_cast_to_char) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C1, C2 FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-           std::tuple{character_type(true, 5), character_type(false, 5)},
-           std::forward_as_tuple(accessor::text{"1"}, accessor::text{"1    "}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(true, 5), character_type(false, 5)},
+                accessor::text{"1"},
+                accessor::text{"1    "}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -160,9 +170,14 @@ TEST_F(sql_cast_test, select_cast_to_char) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(C1 AS VARCHAR(5)), CAST(C2 AS CHAR(5)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-           std::tuple{character_type(true, 5), character_type(false, 5)},
-           std::forward_as_tuple(accessor::text{"1"}, accessor::text{"1    "}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{character_type(true, 5), character_type(false, 5)},
+                accessor::text{"1"},
+                accessor::text{"1    "}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -214,9 +229,8 @@ TEST_F(sql_cast_test, cast_decimal_normalize) {
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::decimal, kind::decimal>(
                 std::tuple{fm, fm},
-                std::forward_as_tuple(
-                    triple{1, 0, 100, -2},
-                    triple{1, 0, 100, -2})
+                triple{1, 0, 100, -2},
+                triple{1, 0, 100, -2}
             )),
             result[0]
         );
@@ -260,9 +274,13 @@ TEST_F(sql_cast_test, cast_string_with_arbitrary_length) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS VARCHAR(*)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"123.456"}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"123.456"}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -274,18 +292,23 @@ TEST_F(sql_cast_test, cast_without_length) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS CHAR) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(false, 1)},
-           std::forward_as_tuple(accessor::text{"1"}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(std::tuple{character_type(false, 1)}, accessor::text{"1"})),
+            result[0]
+        );
     }
     {
         // new compiler allow VARCHAR as VARCHAR(*)
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST('123.456' AS VARCHAR) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"123.456"}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"123.456"}
+            )),
+            result[0]
+        );
     }
     {
         std::vector<mock::basic_record> result{};
@@ -326,9 +349,13 @@ TEST_F(sql_cast_test, cast_float8_nan) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(C0 AS VARCHAR(*)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"NaN"}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"NaN"}
+            )),
+            result[0]
+        );
     }
 }
 TEST_F(sql_cast_test, cast_float4_nan) {
@@ -347,9 +374,13 @@ TEST_F(sql_cast_test, cast_float4_nan) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(C0 AS VARCHAR(*)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"NaN"}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"NaN"}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -381,12 +412,20 @@ TEST_F(sql_cast_test, cast_float8_inf) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(C0 AS VARCHAR(*)) FROM TT ORDER BY C0", result);
         ASSERT_EQ(2, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"-Infinity"}))), result[0]);
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"Infinity"}))), result[1]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"-Infinity"}
+            )),
+            result[0]
+        );
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"Infinity"}
+            )),
+            result[1]
+        );
     }
 }
 TEST_F(sql_cast_test, cast_float4_inf) {
@@ -417,12 +456,20 @@ TEST_F(sql_cast_test, cast_float4_inf) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(C0 AS VARCHAR(*)) FROM TT ORDER BY C0", result);
         ASSERT_EQ(2, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"-Infinity"}))), result[0]);
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"Infinity"}))), result[1]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"-Infinity"}
+            )),
+            result[0]
+        );
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"Infinity"}
+            )),
+            result[1]
+        );
     }
 }
 
@@ -456,17 +503,25 @@ TEST_F(sql_cast_test, triple_max_min_string_repr) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(CAST(CAST('Infinity' AS DOUBLE) AS DECIMAL(*,*)) AS VARCHAR(*)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"9.9999999999999999999999999999999999999E+24576"}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"9.9999999999999999999999999999999999999E+24576"}
+            )),
+            result[0]
+        );
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(CAST(CAST('-Infinity' AS DOUBLE) AS DECIMAL(*,*)) AS VARCHAR(*)) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-           std::tuple{character_type(true, std::nullopt)},
-           std::forward_as_tuple(accessor::text{"-9.9999999999999999999999999999999999999E+24576"}))), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(
+                std::tuple{character_type(true, std::nullopt)},
+                accessor::text{"-9.9999999999999999999999999999999999999E+24576"}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -477,26 +532,26 @@ TEST_F(sql_cast_test, float_to_string_round_trip) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(CAST(CAST('0.1' AS DOUBLE) AS VARCHAR(*)) AS DOUBLE) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::float8>({0.1}, {false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::float8>(0.1)), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(CAST(CAST('-0.1' AS REAL) AS VARCHAR(*)) AS REAL) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::float4>({-0.1}, {false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::float4>(-0.1)), result[0]);
     }
     {
         // approx result is ok
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(CAST(CAST('1.79769e+308' AS DOUBLE) AS VARCHAR(*)) AS DOUBLE) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::float8>({1.79769e+308}, {false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::float8>(1.79769e+308)), result[0]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(CAST(CAST('3.40282e+38' AS REAL) AS VARCHAR(*)) AS REAL) FROM TT", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::float4>({3.40282e+38}, {false})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::float4>(3.40282e+38)), result[0]);
     }
 }
 

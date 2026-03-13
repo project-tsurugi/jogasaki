@@ -279,15 +279,12 @@ TEST_F(non_tx_load_test, decimals) {
         EXPECT_EQ((mock::typed_nullable_record<
             kind::decimal, kind::decimal, kind::decimal,
             kind::decimal, kind::decimal, kind::decimal
-        >(
-            std::tuple{
+        >(std::tuple{
                 dec_3_0, dec_5_3, dec_10_1,
                 dec_3_0, dec_5_3, dec_10_1,
             },
-            {
-                v111, v11_111, v11111_1,
-                v111, v11_111, v11111_1,
-            }
+            v111, v11_111, v11111_1,
+            v111, v11_111, v11111_1
         )), result[0]);
     }
 }
@@ -340,15 +337,12 @@ TEST_F(non_tx_load_test, decimals_with_indefinite_precscale) {
         EXPECT_EQ((mock::typed_nullable_record<
             kind::decimal, kind::decimal, kind::decimal,
             kind::decimal, kind::decimal, kind::decimal
-        >(
-            std::tuple{
+        >(std::tuple{
                 dec_3_0, dec_5_3, dec_10_1,
                 dec_3_0, dec_5_3, dec_10_1,
             },
-            {
-                v1, v1, v1,
-                v1, v1, v1,
-            }
+            v1, v1, v1,
+            v1, v1, v1
         )), result[0]);
     }
 }
@@ -382,25 +376,23 @@ TEST_F(non_tx_load_test, cast_from_string) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM TT ORDER BY C0", result);
         ASSERT_EQ(2, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(
-            std::tuple{
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(std::tuple{
                 meta::field_type{meta::field_enum_tag<kind::int4>},
                 meta::field_type{meta::field_enum_tag<kind::int8>},
                 meta::field_type{meta::field_enum_tag<kind::float4>},
                 meta::field_type{meta::field_enum_tag<kind::float8>},
                 meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
             },
-            { 1, 10, 100.0, 1000.0, decimal_v{1, 0, 11111, -3} /* 11.111 */ }
+            1, 10, 100.0, 1000.0, decimal_v{1, 0, 11111, -3} /* 11.111 */
         )), result[0]);
-        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(
-            std::tuple{
+        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::int8, kind::float4, kind::float8, kind::decimal>(std::tuple{
                 meta::field_type{meta::field_enum_tag<kind::int4>},
                 meta::field_type{meta::field_enum_tag<kind::int8>},
                 meta::field_type{meta::field_enum_tag<kind::float4>},
                 meta::field_type{meta::field_enum_tag<kind::float8>},
                 meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)},
             },
-            { 2, 20, 200.0, 2000.0, decimal_v{1, 0, 22222, -3} /* 22.222 */ }
+            2, 20, 200.0, 2000.0, decimal_v{1, 0, 22222, -3} /* 22.222 */
         )), result[1]);
     }
 }

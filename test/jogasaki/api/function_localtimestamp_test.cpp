@@ -107,7 +107,7 @@ TEST_F(function_localtimestamp_test, at_the_begining_of_the_day) {
     execute_query("SELECT localtimestamp FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, {tp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, tp)), result[0]);
 }
 
 TEST_F(function_localtimestamp_test, at_the_end_of_the_day) {
@@ -121,7 +121,7 @@ TEST_F(function_localtimestamp_test, at_the_end_of_the_day) {
     execute_query("SELECT localtimestamp FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, {tp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, tp)), result[0]);
 }
 
 TEST_F(function_localtimestamp_test, at_the_begining_of_the_day_with_offset) {
@@ -138,7 +138,7 @@ TEST_F(function_localtimestamp_test, at_the_begining_of_the_day_with_offset) {
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
     time_point exp{date{2000, 1, 1}, time_of_day{0, 0, 0}};
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, {exp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, exp)), result[0]);
 }
 
 TEST_F(function_localtimestamp_test, at_the_end_of_the_day_with_offset) {
@@ -155,7 +155,7 @@ TEST_F(function_localtimestamp_test, at_the_end_of_the_day_with_offset) {
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
     time_point exp{date{1999, 12, 31}, time_of_day{23, 59, 59}};
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, {exp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, exp)), result[0]);
 }
 
 }  // namespace jogasaki::testing

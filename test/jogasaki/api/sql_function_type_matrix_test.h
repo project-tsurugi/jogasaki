@@ -102,9 +102,9 @@ public:
             execute_query("SELECT "+std::string{fn_name}+"c0) FROM t", result);
             ASSERT_EQ(1, result.size());
             if(exp.has_value()) {
-                EXPECT_EQ((typed_nullable_record<ResultKind>(std::tuple{type}, {*exp})), result[0]);
+                EXPECT_EQ((typed_nullable_record<ResultKind>(std::tuple{type}, *exp)), result[0]);
             } else {
-                EXPECT_EQ((typed_nullable_record<ResultKind>(std::tuple{type}, {}, {true})), result[0]);
+                EXPECT_EQ((typed_nullable_record<ResultKind>(std::tuple{type}, std::nullopt)), result[0]);
             }
         }
     }

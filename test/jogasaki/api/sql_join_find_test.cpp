@@ -131,9 +131,9 @@ TEST_F(sql_join_find_test, left_outer) {
         execute_query(query, result);
         ASSERT_EQ(3, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>({1, 0}, {false, true})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, std::nullopt)), result[0]);
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>({3, 0}, {false, true})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, std::nullopt)), result[2]);
     }
 }
 
@@ -150,9 +150,9 @@ TEST_F(sql_join_find_test, right_outer) {
         execute_query(query, result);
         ASSERT_EQ(3, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>({1, 0}, {false, true})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(1, std::nullopt)), result[0]);
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(2, 2)), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>({3, 0}, {false, true})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4>(3, std::nullopt)), result[2]);
     }
 }
 
@@ -167,7 +167,7 @@ TEST_F(sql_join_find_test, outer_join_with_condition) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({1, 1, -1, -1}, {false, false, true, true})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, std::nullopt, std::nullopt)), result[0]);
     }
 }
 
@@ -182,7 +182,7 @@ TEST_F(sql_join_find_test, outer_join_with_condition_on_right_column) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({1, 1, -1, -1}, {false, false, true, true})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, std::nullopt, std::nullopt)), result[0]);
     }
 }
 
@@ -197,7 +197,7 @@ TEST_F(sql_join_find_test, outer_join_with_condition_on_right_column_null) {
         std::vector<mock::basic_record> result{};
         execute_query(query, result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({1, 1, -1, -1}, {false, false, true, true})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, std::nullopt, std::nullopt)), result[0]);
     }
 }
 
@@ -235,7 +235,7 @@ TEST_F(sql_join_find_test, left_outer_with_secondary_index) {
     std::sort(result.begin(), result.end());
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 10, 1)), result[0]);
     EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(1, 11, 1)), result[1]);
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>({2, -1, -1}, {false, true, true})), result[2]);
+    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4>(2, std::nullopt, std::nullopt)), result[2]);
 }
 
 TEST_F(sql_join_find_test, use_secondary_index_with_null) {

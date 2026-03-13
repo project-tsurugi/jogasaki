@@ -175,9 +175,7 @@ TEST_F(schema_test, variety_types) {
     // TODO test with non-nullable record
     auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
         std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
-        std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), text("1"), 1, 1.0, text("1"), 1, 1.0),
-        {false, false, false, false, false, false, false, false, false, false, false}
-    );
+        1, text("1"), 1, 1.0, text("1"), text("1"), 1, 1.0, text("1"), 1, 1.0);
     EXPECT_EQ(exp, result[0]);
 }
 
@@ -216,11 +214,7 @@ TEST_F(schema_test, DISABLED_find_double_by_decimal) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C0, C1 FROM TEST WHERE C0 = 1.0", result); // double compared with decimal
     ASSERT_EQ(1, result.size());
-    auto exp = mock::typed_nullable_record<kind::float8, kind::int4>(
-        std::tuple{float8_type(), int4_type()},
-        std::forward_as_tuple(1.0, 1),
-        {false, false}
-    );
+    auto exp = mock::typed_nullable_record<kind::float8, kind::int4>(std::tuple{float8_type(), int4_type()}, 1.0, 1);
     EXPECT_EQ(exp, result[0]);
 }
 
@@ -273,9 +267,7 @@ TEST_F(schema_test, nullables) {
         ASSERT_EQ(1, result.size());
         auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
             std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
-            std::forward_as_tuple(3, text("3"), 3, 3.0, text("3"), 3, 3.0),
-            {false, true, true, true, true, true, true}
-        );
+            3, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt);
         EXPECT_EQ(exp, result[0]);
     }
     {
@@ -291,9 +283,7 @@ TEST_F(schema_test, nullables) {
         ASSERT_EQ(1, result.size());
         auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
             std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
-            std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0),
-            {false, false, false, false, false, false, false}
-        );
+            1, text("1"), 1, 1.0, text("1"), 1, 1.0);
         EXPECT_EQ(exp, result[0]);
     }
 }
@@ -356,9 +346,7 @@ TEST_F(schema_test, descending_keys) {
     ASSERT_EQ(1, result.size());
     auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4, kind::character, kind::int8, kind::float8, kind::character, kind::int4, kind::float4>(
         std::tuple{int8_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type(), character_type(true), int8_type(), float8_type(), character_type(false), int4_type(), float4_type()},
-        std::forward_as_tuple(1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0),
-        {false, false, false, false, false, false, false, false, false, false, false, false, false}
-    );
+        1, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0, text("1"), 1, 1.0);
     EXPECT_EQ(exp, result[0]);
 }
 
@@ -616,11 +604,7 @@ TEST_F(schema_test, default_value_with_variety_of_types) {
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE C0=10", result);
         ASSERT_EQ(1, result.size());
         // TODO test with non-nullable record
-        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int4, kind::float4>(
-            std::tuple{int8_type(), character_type(false, 5), int4_type(), float4_type()},
-            std::forward_as_tuple(10, text("ABC  "), 2, 3.0),
-            {false, false, false, false}
-        );
+        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int4, kind::float4>(std::tuple{int8_type(), character_type(false, 5), int4_type(), float4_type()}, 10, text("ABC  "), 2, 3.0);
         EXPECT_EQ(exp, result[0]);
     }
     {
@@ -629,11 +613,7 @@ TEST_F(schema_test, default_value_with_variety_of_types) {
         execute_query("SELECT C0, K1, K2, K3 FROM TEST WHERE K2=20", result);
         ASSERT_EQ(1, result.size());
         // TODO test with non-nullable record
-        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int4, kind::float4>(
-            std::tuple{int8_type(), character_type(false, 5), int4_type(), float4_type()},
-            std::forward_as_tuple(0, text("ABC  "), 20, 3.0),
-            {false, false, false, false}
-        );
+        auto exp = mock::typed_nullable_record<kind::int8, kind::character, kind::int4, kind::float4>(std::tuple{int8_type(), character_type(false, 5), int4_type(), float4_type()}, 0, text("ABC  "), 20, 3.0);
         EXPECT_EQ(exp, result[0]);
     }
 }

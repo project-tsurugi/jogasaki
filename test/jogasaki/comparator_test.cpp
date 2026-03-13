@@ -270,7 +270,7 @@ TEST_F(comparator_test, nullable) {
 }
 
 TEST_F(comparator_test, different_meta_between_l_and_r) {
-    auto l = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, true});
+    auto l = create_nullable_record<kind::float4, kind::int8>(1.0, std::nullopt);
     auto l_meta = l.record_meta();
     alignas(8) struct S {
         float x_;
@@ -305,11 +305,11 @@ TEST_F(comparator_test, different_meta_between_l_and_r) {
 }
 
 TEST_F(comparator_test, nullable_vs_non_nullable) {
-    auto l = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, false});
+    auto l = create_nullable_record<kind::float4, kind::int8>(1.0, 100);
     auto l_meta = l.record_meta();
     auto r = create_record<kind::float4, kind::int8>(1.0, 100);
     auto r_meta = r.record_meta();
-    auto n = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, true});
+    auto n = create_nullable_record<kind::float4, kind::int8>(1.0, std::nullopt);
 
     compare_info cm{*l_meta, *r_meta};
     comparator comp{cm};

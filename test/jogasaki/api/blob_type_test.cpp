@@ -134,10 +134,14 @@ TEST_F(blob_type_test, insert_provided) {
     auto ret2 = ds->get_blob_file(ref2.object_id());
     ASSERT_TRUE(ret2);
     EXPECT_EQ("ABC", read_file(ret2.path().string())) << ret2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 }
 
@@ -235,10 +239,14 @@ TEST_F(blob_type_test, update) {
     auto ret2 = ds->get_blob_file(ref2.object_id());
     ASSERT_TRUE(ret2);
     EXPECT_EQ("def", read_file(ret2.path().string())) << ret2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
     EXPECT_EQ(status::ok, tx->commit());
     EXPECT_NE(id1, ref1.object_id());
     EXPECT_NE(id2, ref2.object_id());
@@ -306,10 +314,14 @@ TEST_F(blob_type_test, update_partially) {
     auto ret2 = ds->get_blob_file(ref2.object_id());
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 
     EXPECT_NE(id1, ref1.object_id());
@@ -360,10 +372,14 @@ TEST_F(blob_type_test, insert_from_select) {
     auto ret2 = ds->get_blob_file(ref2.object_id());
     ASSERT_TRUE(ret2);
     EXPECT_EQ("DEF", read_file(ret2.path().string())) << ret2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 
     {
@@ -422,19 +438,16 @@ TEST_F(blob_type_test, insert_from_select_duplication) {
     ASSERT_TRUE(ret21);
     EXPECT_EQ("ABC", read_file(ret21.path().string())) << ret21.path().string();
 
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::blob,
-                                            kind::clob, kind::clob>({
-                  1,
-                  lob::blob_reference{ref10.object_id(),
-                                      lob::lob_data_provider::datastore},
-                  lob::blob_reference{ref11.object_id(),
-                                      lob::lob_data_provider::datastore},
-                  lob::clob_reference{ref20.object_id(),
-                                      lob::lob_data_provider::datastore},
-                  lob::clob_reference{ref21.object_id(),
-                                      lob::lob_data_provider::datastore},
-                  })),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::blob, kind::clob, kind::clob>(
+            1,
+            lob::blob_reference{ref10.object_id(), lob::lob_data_provider::datastore},
+            lob::blob_reference{ref11.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref20.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref21.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 
     {
@@ -469,9 +482,14 @@ TEST_F(blob_type_test, insert_generated_blob) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, CAST(c1 as varbinary), CAST(c2 as varchar) FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                      {1,  accessor::binary{"\x00\x01\x02"}, accessor::text{"ABC"}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                1,
+                accessor::binary{"\x00\x01\x02"},
+                accessor::text{"ABC"}
+            )),
+            result[0]
+        );
     }
     {
         std::vector<mock::basic_record> result{};
@@ -489,10 +507,14 @@ TEST_F(blob_type_test, insert_generated_blob) {
         auto ret2 = ds->get_blob_file(ref2.object_id());
         ASSERT_TRUE(ret2);
         EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                1,
+                lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -514,9 +536,14 @@ TEST_F(blob_type_test, insert_generated_empty_blob) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, CAST(c1 as varbinary), CAST(c2 as varchar) FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                      {1,  accessor::binary{""}, accessor::text{""}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                1,
+                accessor::binary{""},
+                accessor::text{""}
+            )),
+            result[0]
+        );
     }
     {
         std::vector<mock::basic_record> result{};
@@ -534,10 +561,14 @@ TEST_F(blob_type_test, insert_generated_empty_blob) {
         auto ret2 = ds->get_blob_file(ref2.object_id());
         ASSERT_TRUE(ret2);
         EXPECT_EQ(""sv, read_file(ret2.path().string())) << ret2.path().string();
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                1,
+                lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -558,9 +589,14 @@ TEST_F(blob_type_test, update_generated_blob) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, CAST(c1 as varbinary), CAST(c2 as varchar) FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                      {1,  accessor::binary{"\x00\x01\x02"}, accessor::text{"ABC"}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                1,
+                accessor::binary{"\x00\x01\x02"},
+                accessor::text{"ABC"}
+            )),
+            result[0]
+        );
     }
     {
         std::vector<mock::basic_record> result{};
@@ -578,10 +614,14 @@ TEST_F(blob_type_test, update_generated_blob) {
         auto ret2 = ds->get_blob_file(ref2.object_id());
         ASSERT_TRUE(ret2);
         EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                1,
+                lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+            )),
+            result[0]
+        );
         EXPECT_EQ(status::ok, tx->commit());
     }
 }
@@ -614,10 +654,14 @@ TEST_F(blob_type_test, query_generated_blob) {
         auto ret2 = ds->get_blob_file(ref2.object_id());
         ASSERT_TRUE(ret2);
         EXPECT_EQ("ABC"sv, read_file(ret2.path().string())) << ret2.path().string();
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                      {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                       lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+                1,
+                lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+                lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -659,10 +703,14 @@ TEST_F(blob_type_test, query_provided_blob) {
     ASSERT_TRUE(ret2);
     EXPECT_EQ("ABC", read_file(ret2.path().string())) << ret2.path().string();
     // currently input blobs are registered to datastore first so the provider is datastore
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 }
 
@@ -691,9 +739,14 @@ TEST_F(blob_type_test, query_provided_blob_by_casting) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT :p0, cast(:p1 as varbinary), cast(:p2 as varchar) FROM t", variables, *ps, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                  {1,  accessor::binary{"\x00\x01\x02"}, accessor::text{"ABC"}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+            1,
+            accessor::binary{"\x00\x01\x02"},
+            accessor::text{"ABC"}
+        )),
+        result[0]
+    );
 }
 
 TEST_F(blob_type_test, insert_provided_blob_by_casting) {
@@ -727,9 +780,14 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, c1, c2 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                      {1,  accessor::binary{"\x00\x01\x02"}, accessor::text{"ABC"}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                1,
+                accessor::binary{"\x00\x01\x02"},
+                accessor::text{"ABC"}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -765,15 +823,15 @@ TEST_F(blob_type_test, insert_provided_blob_by_casting_) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, c1, c2 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::octet, kind::octet>(
-            std::tuple{int4_type(), octet_type(false, 10), octet_type(true)},
-                std::forward_as_tuple(
-                    1,
-                    accessor::binary{
-                        "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10"sv},
-                    accessor::binary{
-                        "\x11\x12\x13\x14\x15\x16\x17\x18\x19\x20"sv}))),
-            result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::int4, kind::octet, kind::octet>(
+                std::tuple{int4_type(), octet_type(false, 10), octet_type(true)},
+                1,
+                accessor::binary{"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x10"sv},
+                accessor::binary{"\x11\x12\x13\x14\x15\x16\x17\x18\x19\x20"sv}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -791,9 +849,14 @@ TEST_F(blob_type_test, implicit_cast) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0, CAST(c1 as varbinary), CAST(c2 as varchar) FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                      {1,  accessor::binary{"\x00\x01\x02"}, accessor::text{"ABC"}})),
-                  result[0]);
+        EXPECT_EQ(
+            (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+                1,
+                accessor::binary{"\x00\x01\x02"},
+                accessor::text{"ABC"}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -838,10 +901,14 @@ TEST_F(blob_type_test, insert_provided_multiple_times) {
     auto ret0_2 = ds->get_blob_file(ref0_2.object_id());
     ASSERT_TRUE(ret0_2);
     EXPECT_EQ("ABC", read_file(ret0_2.path().string())) << ret0_2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
 
     auto ret1_1 = ds->get_blob_file(ref1_1.object_id());
     ASSERT_TRUE(ret1_1);
@@ -849,10 +916,14 @@ TEST_F(blob_type_test, insert_provided_multiple_times) {
     auto ret1_2 = ds->get_blob_file(ref1_2.object_id());
     ASSERT_TRUE(ret1_2);
     EXPECT_EQ("ABC", read_file(ret1_2.path().string())) << ret1_2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}})),
-              result[1]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            2,
+            lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[1]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 }
 
@@ -898,10 +969,14 @@ TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true
     auto ret0_2 = ds->get_blob_file(ref0_2.object_id());
     ASSERT_TRUE(ret0_2);
     EXPECT_EQ("ABC", read_file(ret0_2.path().string())) << ret0_2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
 
     auto ret1_1 = ds->get_blob_file(ref1_1.object_id());
     ASSERT_TRUE(ret1_1);
@@ -909,10 +984,14 @@ TEST_F(blob_type_test, DISABLED_insert_provided_multiple_times_is_temporary_true
     auto ret1_2 = ds->get_blob_file(ref1_2.object_id());
     ASSERT_TRUE(ret1_2);
     EXPECT_EQ("ABC", read_file(ret1_2.path().string())) << ret1_2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}})),
-              result[1]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            2,
+            lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[1]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 }
 
@@ -958,10 +1037,14 @@ TEST_F(blob_type_test, update_provided_multiple_times) {
     auto ret0_2 = ds->get_blob_file(ref0_2.object_id());
     ASSERT_TRUE(ret0_2);
     EXPECT_EQ("ABC", read_file(ret0_2.path().string())) << ret0_2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {1,  lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            1,
+            lob::blob_reference{ref0_1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref0_2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[0]
+    );
 
     auto ret1_1 = ds->get_blob_file(ref1_1.object_id());
     ASSERT_TRUE(ret1_1);
@@ -969,10 +1052,14 @@ TEST_F(blob_type_test, update_provided_multiple_times) {
     auto ret1_2 = ds->get_blob_file(ref1_2.object_id());
     ASSERT_TRUE(ret1_2);
     EXPECT_EQ("ABC", read_file(ret1_2.path().string())) << ret1_2.path().string();
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
-                  {2,  lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
-                   lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}})),
-              result[1]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::blob, kind::clob>(
+            2,
+            lob::blob_reference{ref1_1.object_id(), lob::lob_data_provider::datastore},
+            lob::clob_reference{ref1_2.object_id(), lob::lob_data_provider::datastore}
+        )),
+        result[1]
+    );
     EXPECT_EQ(status::ok, tx->commit());
 }
 
@@ -1109,9 +1196,14 @@ TEST_F(blob_type_test, max_len_to_cast_to_string) {
     auto tx = utils::create_transaction(*db_);
     execute_query("SELECT c0, cast(c1 as varbinary), cast(c2 as varchar) FROM t", *tx, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                  {1,  accessor::binary{oct_content}, accessor::text{char_content}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+            1,
+            accessor::binary{oct_content},
+            accessor::text{char_content}
+        )),
+        result[0]
+    );
 }
 
 TEST_F(blob_type_test, over_max_len_to_cast_to_string) {
@@ -1168,9 +1260,14 @@ TEST_F(blob_type_test, empty_blobs_cast) {
     auto tx = utils::create_transaction(*db_);
     execute_query("SELECT c0, cast(c1 as varbinary), cast(c2 as varchar) FROM t", *tx, result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
-                  {1,  accessor::binary{oct_content}, accessor::text{char_content}})),
-              result[0]);
+    EXPECT_EQ(
+        (mock::create_nullable_record<kind::int4, kind::octet, kind::character>(
+            1,
+            accessor::binary{oct_content},
+            accessor::text{char_content}
+        )),
+        result[0]
+    );
 }
 
 }

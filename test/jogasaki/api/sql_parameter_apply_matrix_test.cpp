@@ -178,7 +178,7 @@ void sql_parameter_apply_matrix_test::test_parameter_apply_conv(
         std::vector<mock::basic_record> result{};
         execute_query(sql, result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<OutValueKind>(1, {false})), result[0]);
+        EXPECT_EQ((create_nullable_record<OutValueKind>(1)), result[0]);
     }
     EXPECT_TRUE(called);
     global::scalar_function_repository().clear();

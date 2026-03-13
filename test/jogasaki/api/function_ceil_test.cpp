@@ -180,9 +180,8 @@ TEST_F(function_ceil_test, decimal_38_38_min) {
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
     auto fm =
         meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(
-                            1, 0, 0, -38)});
+    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(
+                            1, 0, 0, -38));
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
 }
 
@@ -196,9 +195,8 @@ TEST_F(function_ceil_test, decimal_38_38_max) {
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
     auto fm =
         meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(
-                            1, 5421010862427522170, 687399551400673280, -38)});
+    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(
+                            1, 5421010862427522170, 687399551400673280, -38));
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
 }
 
@@ -212,8 +210,10 @@ TEST_F(function_ceil_test, decimal_38_0_min) {
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
     auto fm =
         meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm},
-        {runtime_t<meta::field_type_kind::decimal>(-1, 5421010862427522170, 687399551400673279, 0)});
+    auto r1 = mock::typed_nullable_record<kind::decimal>(
+        std::tuple{fm},
+        runtime_t<meta::field_type_kind::decimal>(-1, 5421010862427522170, 687399551400673279, 0)
+    );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
 }
 TEST_F(function_ceil_test, decimal_38_0_max) {
@@ -226,8 +226,10 @@ TEST_F(function_ceil_test, decimal_38_0_max) {
     ASSERT_EQ(1, result.size()) << "Query failed: " << query;
     auto fm =
         meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm},
-        {runtime_t<meta::field_type_kind::decimal>(1, 5421010862427522170, 687399551400673279, 0)});
+    auto r1 = mock::typed_nullable_record<kind::decimal>(
+        std::tuple{fm},
+        runtime_t<meta::field_type_kind::decimal>(1, 5421010862427522170, 687399551400673279, 0)
+    );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
 }
 TEST_F(function_ceil_test, decimal_1_1_min) {
@@ -241,7 +243,9 @@ TEST_F(function_ceil_test, decimal_1_1_min) {
     auto fm =
         meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 0, -1)});
+        std::tuple{fm},
+        runtime_t<meta::field_type_kind::decimal>(1, 0, 0, -1)
+    );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
 }
 TEST_F(function_ceil_test, decimal_1_1_max) {
@@ -255,7 +259,9 @@ TEST_F(function_ceil_test, decimal_1_1_max) {
     auto fm =
         meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
     auto r1 = mock::typed_nullable_record<kind::decimal>(
-        std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 10, -1)});
+        std::tuple{fm},
+        runtime_t<meta::field_type_kind::decimal>(1, 0, 10, -1)
+    );
     EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
 }
 TEST_F(function_ceil_test, float_normal) {

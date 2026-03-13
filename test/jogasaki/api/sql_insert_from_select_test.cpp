@@ -275,7 +275,7 @@ TEST_F(sql_insert_from_select_test, null) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM t1 ORDER BY c0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>({0, 0}, {true, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, std::nullopt)), result[0]);
     }
 }
 

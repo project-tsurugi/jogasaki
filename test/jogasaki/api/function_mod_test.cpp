@@ -415,8 +415,9 @@ TEST_F(function_mod_test, decimal) {
                                 std::string(",") + test.divisor.value() + std::string(") FROM t");
             execute_query(query, result);
             auto r1 = mock::typed_nullable_record<kind::decimal>(
-                std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(
-                                    test.sigh, test.high, test.low, test.exponent)});
+                std::tuple{fm},
+                runtime_t<meta::field_type_kind::decimal>(test.sigh, test.high, test.low, test.exponent)
+            );
             ASSERT_EQ(1, result.size()) << "Query failed: " << query;
             EXPECT_EQ(r1, result[0]) << "Failed query: " << query;
         }

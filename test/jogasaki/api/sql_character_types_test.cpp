@@ -91,15 +91,17 @@ TEST_F(sql_character_types_test, insert_select) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-            std::tuple{
-                meta::character_type(true, 3),
-                meta::character_type(false, 3),
-            }, {
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{
+                    meta::character_type(true, 3),
+                    meta::character_type(false, 3),
+                },
                 accessor::text{" "sv},
-                accessor::text{"   "sv},
-            }
-        )), result[0]);
+                accessor::text{"   "sv}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -134,15 +136,17 @@ TEST_F(sql_character_types_test, update) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-            std::tuple{
-                meta::character_type(true, 3),
-                meta::character_type(false, 3),
-            }, {
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{
+                    meta::character_type(true, 3),
+                    meta::character_type(false, 3),
+                },
                 accessor::text{"012"sv},
-                accessor::text{"012"sv},
-            }
-        )), result[0]);
+                accessor::text{"012"sv}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -178,15 +182,17 @@ TEST_F(sql_character_types_test, insert_by_literal_cast_on_context) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-            std::tuple{
-                meta::character_type(true, 3),
-                meta::character_type(false, 3),
-            }, {
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{
+                    meta::character_type(true, 3),
+                    meta::character_type(false, 3),
+                },
                 accessor::text{"12"sv},
-                accessor::text{"34 "sv},
-            }
-        )), result[0]);
+                accessor::text{"34 "sv}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -197,15 +203,17 @@ TEST_F(sql_character_types_test, length_unspecified_for_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-            std::tuple{
-                meta::character_type(true),
-                meta::character_type(false, 1),
-            }, {
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character>(
+                std::tuple{
+                    meta::character_type(true),
+                    meta::character_type(false, 1),
+                },
                 accessor::text{"012"sv},
-                accessor::text{"0"sv},
-            }
-        )), result[0]);
+                accessor::text{"0"sv}
+            )),
+            result[0]
+        );
     }
 }
 

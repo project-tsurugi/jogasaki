@@ -417,14 +417,22 @@ TEST_F(sql_apply_type_matrix_test, decimal_type) {
     };
 
     // Note: T.C0 is DECIMAL(10,2) from table, but R.c1 is DECIMAL(*,*) from function
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
-        std::tuple{meta::decimal_type(10, 2), meta::decimal_type()},
-        std::forward_as_tuple(value, value),
-        {false, false})), result[0]);
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
-        std::tuple{meta::decimal_type(10, 2), meta::decimal_type()},
-        std::forward_as_tuple(value, value_plus_one),
-        {false, false})), result[1]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::decimal, kind::decimal>(
+            std::tuple{meta::decimal_type(10, 2), meta::decimal_type()},
+            value,
+            value
+        )),
+        result[0]
+    );
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::decimal, kind::decimal>(
+            std::tuple{meta::decimal_type(10, 2), meta::decimal_type()},
+            value,
+            value_plus_one
+        )),
+        result[1]
+    );
 }
 
 TEST_F(sql_apply_type_matrix_test, character_type) {
@@ -495,14 +503,22 @@ TEST_F(sql_apply_type_matrix_test, character_type) {
     auto text2 = accessor::text{resource.get(), "this_is_a_test_string_with_more_than_thirty_charactersX"s};
 
     // Note: T.C0 is CHARACTER VARYING(100), R.c1 is CHARACTER VARYING(*)
-    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-        std::tuple{meta::character_type(true, 100), meta::character_type(true)},
-        std::forward_as_tuple(text1, text1),
-        {false, false})), result[0]);
-    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-        std::tuple{meta::character_type(true, 100), meta::character_type(true)},
-        std::forward_as_tuple(text1, text2),
-        {false, false})), result[1]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{meta::character_type(true, 100), meta::character_type(true)},
+            text1,
+            text1
+        )),
+        result[0]
+    );
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{meta::character_type(true, 100), meta::character_type(true)},
+            text1,
+            text2
+        )),
+        result[1]
+    );
 }
 
 TEST_F(sql_apply_type_matrix_test, date_type) {
@@ -823,14 +839,22 @@ TEST_F(sql_apply_type_matrix_test, binary_type) {
     auto bin1 = accessor::binary{resource.get(), binary_data.data(), binary_data.size()};
     auto bin2 = accessor::binary{resource.get(), binary_data_extended.data(), binary_data_extended.size()};
 
-    EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
-        std::tuple{meta::octet_type(true, 100), meta::octet_type(true)},
-        std::forward_as_tuple(bin1, bin1),
-        {false, false})), result[0]);
-    EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
-        std::tuple{meta::octet_type(true, 100), meta::octet_type(true)},
-        std::forward_as_tuple(bin1, bin2),
-        {false, false})), result[1]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::octet, kind::octet>(
+            std::tuple{meta::octet_type(true, 100), meta::octet_type(true)},
+            bin1,
+            bin1
+        )),
+        result[0]
+    );
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::octet, kind::octet>(
+            std::tuple{meta::octet_type(true, 100), meta::octet_type(true)},
+            bin1,
+            bin2
+        )),
+        result[1]
+    );
 }
 
 }  // namespace jogasaki::testing

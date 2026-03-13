@@ -126,20 +126,21 @@ void conversion_update_test::test_update_between_types(std::string_view src, std
         ASSERT_EQ(1, result.size());
         if constexpr (To == kind::decimal) {
             if(expected.has_value()) {
-                EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-                    std::tuple{decimal_type(10, 5)},
-                    std::forward_as_tuple(expected.value()))), result[0]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(10, 5)}, expected.value())),
+                    result[0]
+                );
             } else {
-                EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-                    std::tuple{decimal_type(10, 5)},
-                    std::forward_as_tuple(triple{}),
-                    {true})), result[0]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(10, 5)}, std::nullopt)),
+                    result[0]
+                );
             }
         } else {
             if(expected.has_value()) {
                 EXPECT_EQ((create_nullable_record<To>(expected.value())), result[0]);
             } else {
-                EXPECT_EQ((create_nullable_record<To>({}, {true})), result[0]);
+                EXPECT_EQ((create_nullable_record<To>(std::nullopt)), result[0]);
             }
         }
     }
@@ -213,9 +214,10 @@ void conversion_update_test::test_host_variable_update(runtime_t<From> src, runt
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
         if constexpr (To == kind::decimal) {
-            EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-                std::tuple{decimal_type(10, 5)},
-                std::forward_as_tuple(expected))), result[0]);
+            EXPECT_EQ(
+                (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(10, 5)}, expected)),
+                result[0]
+            );
         } else {
             EXPECT_EQ((create_nullable_record<To>(expected)), result[0]);
         }
@@ -403,21 +405,21 @@ void conversion_update_test::test_setting_value_directly(std::string_view src, s
         ASSERT_EQ(1, result.size());
         if constexpr (To == kind::decimal) {
             if(expected.has_value()) {
-                EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-                    std::tuple{decimal_type(10, 5)},
-                    std::forward_as_tuple(expected.value()))), result[0]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(10, 5)}, expected.value())),
+                    result[0]
+                );
             } else {
-                EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-                    std::tuple{decimal_type(10, 5)},
-                    std::forward_as_tuple(triple{}),
-                    {true}
-                    )), result[0]);
+                EXPECT_EQ(
+                    (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(10, 5)}, std::nullopt)),
+                    result[0]
+                );
             }
         } else {
             if(expected.has_value()) {
                 EXPECT_EQ((create_nullable_record<To>(expected.value())), result[0]);
             } else {
-                EXPECT_EQ((create_nullable_record<To>({}, {true})), result[0]);
+                EXPECT_EQ((create_nullable_record<To>(std::nullopt)), result[0]);
             }
         }
     }

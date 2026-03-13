@@ -99,9 +99,7 @@ TEST_F(sql_temporal_types_test, timestamp) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point, kind::time_point>(
-            std::tuple{time_point_type(false), time_point_type(true)}, { tp, tp }
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point, kind::time_point>(std::tuple{time_point_type(false), time_point_type(true)}, tp, tp)), result[0]);
     }
 }
 
@@ -112,9 +110,7 @@ TEST_F(sql_temporal_types_test, date_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::date>(
-            std::tuple{date_type()}, { date{2000, 1, 1}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, date{2000, 1, 1})), result[0]);
     }
 }
 
@@ -126,9 +122,7 @@ TEST_F(sql_temporal_types_test, date_string_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::date>(
-            std::tuple{date_type()}, { date{2000, 1, 1}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, date{2000, 1, 1})), result[0]);
     }
 }
 
@@ -140,9 +134,7 @@ TEST_F(sql_temporal_types_test, date_cast_from_string_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(c0 as date) FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::date>(
-            std::tuple{date_type()}, { date{2000, 1, 1}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, date{2000, 1, 1})), result[0]);
     }
 }
 
@@ -153,9 +145,7 @@ TEST_F(sql_temporal_types_test, time_of_day_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(
-            std::tuple{time_of_day_type()}, { time_of_day{12, 34, 56, 789012345ns}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, time_of_day{12, 34, 56, 789012345ns})), result[0]);
     }
 }
 
@@ -167,9 +157,7 @@ TEST_F(sql_temporal_types_test, time_of_day_string_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(
-            std::tuple{time_of_day_type()}, { time_of_day{12, 34, 56, 789012345ns}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, time_of_day{12, 34, 56, 789012345ns})), result[0]);
     }
 }
 
@@ -181,9 +169,7 @@ TEST_F(sql_temporal_types_test, time_of_day_cast_from_string_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT CAST(c0 as time) FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(
-            std::tuple{time_of_day_type()}, { time_of_day{12, 34, 56, 789012345ns}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, time_of_day{12, 34, 56, 789012345ns})), result[0]);
     }
 }
 
@@ -194,9 +180,7 @@ TEST_F(sql_temporal_types_test, ts_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}})), result[0]);
     }
 }
 
@@ -208,9 +192,7 @@ TEST_F(sql_temporal_types_test, ts_string_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}})), result[0]);
     }
 }
 
@@ -222,9 +204,7 @@ TEST_F(sql_temporal_types_test, ts_cast_from_string_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT cast(c0 as timestamp) FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}})), result[0]);
     }
 }
 
@@ -238,9 +218,7 @@ TEST_F(sql_temporal_types_test, ts_literal_with_system_offset) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}})), result[0]);
     }
 }
 
@@ -253,9 +231,7 @@ TEST_F(sql_temporal_types_test, ts_string_literal_with_system_offset) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(false)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}})), result[0]);
     }
 }
 
@@ -266,9 +242,7 @@ TEST_F(sql_temporal_types_test, tstz_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(true)}, { time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}})), result[0]);
     }
 }
 
@@ -280,9 +254,7 @@ TEST_F(sql_temporal_types_test, tstz_string_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(true)}, { time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}})), result[0]);
     }
 }
 
@@ -294,9 +266,7 @@ TEST_F(sql_temporal_types_test, tstz_literal_with_no_offset) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(true)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}})), result[0]);
     }
 }
 
@@ -308,9 +278,7 @@ TEST_F(sql_temporal_types_test, tstz_string_literal_with_no_offset) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(true)}, { time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, time_point{date{2000, 1, 1}, time_of_day{0, 0, 0}})), result[0]);
     }
 }
 
@@ -324,9 +292,7 @@ TEST_F(sql_temporal_types_test, tstz_literal_with_no_offset_and_system_offset) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(true)}, { time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}})), result[0]);
     }
 }
 
@@ -340,9 +306,7 @@ TEST_F(sql_temporal_types_test, tstz_string_literal_with_no_offset_and_system_of
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(
-            std::tuple{time_point_type(true)}, { time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}}}
-        )), result[0]);
+        EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, time_point{date{1999, 12, 31}, time_of_day{15, 0, 0}})), result[0]);
     }
 }
 

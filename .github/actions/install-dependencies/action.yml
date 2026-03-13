@@ -33,7 +33,7 @@ runs:
       with:
         repository: project-tsurugi/yugawara
         path: ${{ inputs.path }}/yugawara
-        ref: master
+        ref: hopscotch-map-2.4.0
         submodules: true
 
     - name: Checkout_Mizugaki
@@ -42,7 +42,7 @@ runs:
       with:
         repository: project-tsurugi/mizugaki
         path: ${{ inputs.path }}/mizugaki
-        ref: master
+        ref: hopscotch-map-2.4.0
 
     - name: Checkout_Limestone
       uses: actions/checkout@v4

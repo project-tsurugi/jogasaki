@@ -50,7 +50,7 @@ using namespace plugin::udf;
 using jogasaki::location_prefix;
 
 namespace {
-bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
+[[nodiscard]] bool validate_directory(fs::path const& path, std::vector<load_result>& results) {
     if (!fs::exists(path)) {
         results.emplace_back(load_status::path_not_found, path.string(), "Directory not found");
         return false;

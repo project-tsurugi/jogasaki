@@ -20,7 +20,7 @@
 
 namespace jogasaki::udf::descriptor {
 
-bool read_file_descriptor_set(
+[[nodiscard]] bool read_file_descriptor_set(
     std::filesystem::path const& desc_path, google::protobuf::FileDescriptorSet& fds);
 
 } // namespace jogasaki::udf::descriptor

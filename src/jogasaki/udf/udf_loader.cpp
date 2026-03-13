@@ -37,6 +37,7 @@
 #include <jogasaki/executor/global.h>
 #include <jogasaki/logging.h>
 #include <jogasaki/logging_helper.h>
+#include <jogasaki/udf/descriptor/validation/message_duplicate_validator.h>
 #include <jogasaki/udf/descriptor/validation/rpc_duplicate_validator.h>
 #include <jogasaki/udf/log/logging_prefix.h>
 
@@ -180,6 +181,14 @@ std::vector<load_result> udf_loader::load(std::string_view dir_path) {
         return results;
     }
     LOG_LP(INFO) << jogasaki::udf::log::prefix << "No RPC name duplication detected in descriptors";
+    if (!jogasaki::udf::descriptor::validation::validate_message_definition_duplicates(
+            desc_files)) {
+        results.emplace_back(load_status::message_name_duplicated, std::string(dir_path),
+            "Message definition duplicated");
+        return results;
+    }
+    LOG_LP(INFO) << jogasaki::udf::log::prefix
+                 << "No message definition duplication detected in descriptors";
     for (auto const& ini_path : ini_files) {
         auto udf_config_value = parse_ini(ini_path, results);
         if (!udf_config_value) { continue; }

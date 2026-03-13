@@ -35,6 +35,7 @@ HTML/
 
 # ctest
 Testing/
+gtest_results
 
 ## experimental usage for github copilot instructions
 .github/copilot-instructions.md

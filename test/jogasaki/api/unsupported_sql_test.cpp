@@ -118,9 +118,14 @@ TEST_F(unsupported_sql_test, ddl_with_binary_type) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT C1, C2 FROM T ORDER BY T.C0, T.C1", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
-        std::tuple{meta::octet_type(false, 3), meta::octet_type(true, 3)},
-        std::forward_as_tuple(accessor::binary{"\x01\x02\x03"}, accessor::binary{"\x01\x02\x03"}))), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::octet, kind::octet>(
+            std::tuple{meta::octet_type(false, 3), meta::octet_type(true, 3)},
+            accessor::binary{"\x01\x02\x03"},
+            accessor::binary{"\x01\x02\x03"}
+        )),
+        result[0]
+    );
 }
 
 TEST_F(unsupported_sql_test, ddl_with_varbinary_type_in_pk) {

@@ -240,7 +240,7 @@ TEST_F(scan_test, nullable_fields) {
     };
 
     put( *db_, primary_idx->simple_name(), create_record<kind::int4>(10), create_nullable_record<kind::float8, kind::int8>(1.0, 100));
-    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(std::forward_as_tuple(0.0, 0), {true, true}));
+    put( *db_, primary_idx->simple_name(), create_record<kind::int4>(20), create_nullable_record<kind::float8, kind::int8>(std::nullopt, std::nullopt));
 
     auto tx = wrap(db_->create_transaction());
     auto transaction_ctx = std::make_shared<transaction_context>();
@@ -257,7 +257,7 @@ TEST_F(scan_test, nullable_fields) {
     ASSERT_EQ(2, result.size());
     std::sort(result.begin(), result.end());
     auto exp0 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(10, 1.0, 100);
-    auto exp1 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(std::forward_as_tuple(20, 0.0, 000), {false, true, true});
+    auto exp1 = jogasaki::mock::create_nullable_record<kind::int4, kind::float8, kind::int8>(20, std::nullopt, std::nullopt);
     EXPECT_EQ(exp0, result[0]);
     EXPECT_EQ(exp1, result[1]);
     ASSERT_EQ(status::ok, tx->commit());

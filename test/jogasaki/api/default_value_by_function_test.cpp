@@ -108,7 +108,7 @@ TEST_F(default_value_by_function_test, current_date) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT c1 FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, {tp.date()})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::date>(std::tuple{date_type()}, tp.date())), result[0]);
 }
 
 TEST_F(default_value_by_function_test, localtime) {
@@ -123,7 +123,7 @@ TEST_F(default_value_by_function_test, localtime) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT c1 FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {tp.time()})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, tp.time())), result[0]);
 }
 
 TEST_F(default_value_by_function_test, current_timestamp) {
@@ -138,7 +138,7 @@ TEST_F(default_value_by_function_test, current_timestamp) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT c1 FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, {tp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(true)}, tp)), result[0]);
 }
 
 TEST_F(default_value_by_function_test, localtimestamp) {
@@ -153,7 +153,7 @@ TEST_F(default_value_by_function_test, localtimestamp) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT c1 FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, {tp})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::time_point>(std::tuple{time_point_type(false)}, tp)), result[0]);
 }
 
 TEST_F(default_value_by_function_test, type_mismatch_date_for_time_point) {

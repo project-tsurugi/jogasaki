@@ -95,11 +95,7 @@ TEST_F(sql_binary_types_test, insert_select) {
             std::tuple{
                 meta::octet_type(true, 3),
                 meta::octet_type(false, 3),
-            }, {
-                accessor::binary{"\x00"sv},
-                accessor::binary{"\x00\x00\x00"sv},
-            }
-        )), result[0]);
+            }, accessor::binary{"\x00"sv}, accessor::binary{"\x00\x00\x00"sv})), result[0]);
     }
 }
 
@@ -134,15 +130,10 @@ TEST_F(sql_binary_types_test, update) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
-            std::tuple{
+        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(std::tuple{
                 meta::octet_type(true, 3),
                 meta::octet_type(false, 3),
-            }, {
-                accessor::binary{"\x00\x01\x02"sv},
-                accessor::binary{"\x00\x01\x02"sv},
-            }
-        )), result[0]);
+            }, accessor::binary{"\x00\x01\x02"sv}, accessor::binary{"\x00\x01\x02"sv})), result[0]);
     }
 }
 
@@ -178,15 +169,10 @@ TEST_F(sql_binary_types_test, insert_by_literal_cast_on_context) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
-            std::tuple{
+        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(std::tuple{
                 meta::octet_type(true, 3),
                 meta::octet_type(false, 3),
-            }, {
-                accessor::binary{"\x00\x01\x02"sv},
-                accessor::binary{"\x00\x03\x04"sv},
-            }
-        )), result[0]);
+            }, accessor::binary{"\x00\x01\x02"sv}, accessor::binary{"\x00\x03\x04"sv})), result[0]);
     }
 }
 
@@ -197,15 +183,10 @@ TEST_F(sql_binary_types_test, length_unspecified_for_types) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(
-            std::tuple{
+        EXPECT_EQ((mock::typed_nullable_record<kind::octet, kind::octet>(std::tuple{
                 meta::octet_type(true),
                 meta::octet_type(false, 1),
-            }, {
-                accessor::binary{"\x00\x01\x02"sv},
-                accessor::binary{"\x00"sv},
-            }
-        )), result[0]);
+            }, accessor::binary{"\x00\x01\x02"sv}, accessor::binary{"\x00"sv})), result[0]);
     }
 }
 

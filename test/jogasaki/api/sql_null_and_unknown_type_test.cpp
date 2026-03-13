@@ -99,7 +99,7 @@ TEST_F(sql_null_and_unknown_type_test, read_null) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, C1 FROM T0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>({0, 0.0}, {false, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int8, kind::float8>(0, std::nullopt)), result[0]);
     }
 }
 
@@ -112,7 +112,7 @@ TEST_F(sql_null_and_unknown_type_test, select_null_literal) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, NULL FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(std::tuple{1, '\0'}, {false, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(1, std::nullopt)), result[0]);
     }
 }
 
@@ -131,7 +131,7 @@ TEST_F(sql_null_and_unknown_type_test, select_null_host_variable) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0, :p0 FROM T", variables, *ps, result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(std::tuple{1, -1}, {false, true})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::int4, kind::unknown>(1, std::nullopt)), result[0]);
     }
 }
 
@@ -152,7 +152,7 @@ TEST_F(sql_null_and_unknown_type_test, binary_expression) {
             execute_query("SELECT 1+NULL, NULL+1, 1+:p0, :p0+1 FROM T", variables, *ps, result);
             ASSERT_EQ(1, result.size());
             // because literal "1" is of type int8, so by binary promotion, the result type is int8
-            EXPECT_EQ((create_nullable_record<kind::int8, kind::int8, kind::int8, kind::int8>(std::tuple{-1, -1, -1, -1}, {true, true, true, true})), result[0]);
+            EXPECT_EQ((create_nullable_record<kind::int8, kind::int8, kind::int8, kind::int8>(std::nullopt, std::nullopt, std::nullopt, std::nullopt)), result[0]);
         }
         test_stmt_err("SELECT NULL+NULL FROM T", variables, *ps, error_code::type_analyze_exception);
         test_stmt_err("SELECT :p0+NULL FROM T", variables, *ps, error_code::type_analyze_exception);
@@ -177,7 +177,7 @@ TEST_F(sql_null_and_unknown_type_test, compare_expression) {
             std::vector<mock::basic_record> result{};
             execute_query("SELECT 1 < NULL, NULL < 1, 1 < :p0, :p0 < 1 FROM T", variables, *ps, result);
             ASSERT_EQ(1, result.size());
-            EXPECT_EQ((create_nullable_record<kind::boolean, kind::boolean, kind::boolean, kind::boolean>(std::tuple{-1, -1, -1, -1}, {true, true, true, true})), result[0]);
+            EXPECT_EQ((create_nullable_record<kind::boolean, kind::boolean, kind::boolean, kind::boolean>(std::nullopt, std::nullopt, std::nullopt, std::nullopt)), result[0]);
         }
         test_stmt_err("SELECT NULL < NULL FROM T", variables, *ps, error_code::unsupported_compiler_feature_exception);
         test_stmt_err("SELECT :p0 < NULL FROM T", variables, *ps, error_code::unsupported_compiler_feature_exception);

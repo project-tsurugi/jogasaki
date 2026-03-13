@@ -197,24 +197,28 @@ TEST_F(sql_union_distinct_test, different_types_int_decimal) {
         , result);
         ASSERT_EQ(2, result.size());
         std::sort(result.begin(), result.end());
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
-            std::tuple{
-                meta::decimal_type(38, 0),
-                meta::decimal_type(38, 0),
-            }, {
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal, kind::decimal>(
+                std::tuple{
+                    meta::decimal_type(38, 0),
+                    meta::decimal_type(38, 0),
+                },
                 triple{1, 0, 1, 0},
+                triple{1, 0, 10, 0}
+            )),
+            result[0]
+        );
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::decimal, kind::decimal>(
+                std::tuple{
+                    meta::decimal_type(38, 0),
+                    meta::decimal_type(38, 0),
+                },
                 triple{1, 0, 10, 0},
-            }
-        )), result[0]);
-        EXPECT_EQ((mock::typed_nullable_record<kind::decimal, kind::decimal>(
-            std::tuple{
-                meta::decimal_type(38, 0),
-                meta::decimal_type(38, 0),
-            }, {
-                triple{1, 0, 10, 0},
-                triple{1, 0, 1, 0},
-            }
-        )), result[1]);
+                triple{1, 0, 1, 0}
+            )),
+            result[1]
+        );
     }
 }
 

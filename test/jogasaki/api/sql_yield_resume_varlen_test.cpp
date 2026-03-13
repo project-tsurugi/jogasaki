@@ -294,11 +294,13 @@ TEST_F(sql_yield_resume_varlen_test, scan) {
         {},
         {
             mock::typed_nullable_record<kind::character, kind::character, kind::character>(
-                std::make_tuple(char20_ft(), char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_1}, accessor::text{kc1_a}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), char20_ft(), varchar_ft()},
+                accessor::text{kc0_1}, accessor::text{kc1_a}, accessor::text{ktvf_r}
+            ),
             mock::typed_nullable_record<kind::character, kind::character, kind::character>(
-                std::make_tuple(char20_ft(), char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_2}, accessor::text{kc1_b}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), char20_ft(), varchar_ft()},
+                accessor::text{kc0_2}, accessor::text{kc1_b}, accessor::text{ktvf_r}
+            )
         }
     );
 }
@@ -322,11 +324,13 @@ TEST_F(sql_yield_resume_varlen_test, filter) {
         {"filter"},
         {
             mock::typed_nullable_record<kind::character, kind::character, kind::character>(
-                std::make_tuple(char20_ft(), char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_1}, accessor::text{kc1_a}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), char20_ft(), varchar_ft()},
+                accessor::text{kc0_1}, accessor::text{kc1_a}, accessor::text{ktvf_r}
+            ),
             mock::typed_nullable_record<kind::character, kind::character, kind::character>(
-                std::make_tuple(char20_ft(), char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_2}, accessor::text{kc1_b}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), char20_ft(), varchar_ft()},
+                accessor::text{kc0_2}, accessor::text{kc1_b}, accessor::text{ktvf_r}
+            ),
         }
     );
 }
@@ -346,11 +350,13 @@ TEST_F(sql_yield_resume_varlen_test, project) {
         {"project"},
         {
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(varchar_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc1_A}, accessor::text{ktvf_r})),
+                std::tuple{varchar_ft(), varchar_ft()},
+                accessor::text{kc1_A}, accessor::text{ktvf_r}
+            ),
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(varchar_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc1_B}, accessor::text{ktvf_r})),
+                std::tuple{varchar_ft(), varchar_ft()},
+                accessor::text{kc1_B}, accessor::text{ktvf_r}
+            ),
         }
     );
 }
@@ -374,14 +380,15 @@ TEST_F(sql_yield_resume_varlen_test, join_scan) {
         {"join_scan"},
         {
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_1}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc0_1}, accessor::text{ktvf_r}
+            ),
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_2}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc0_2}, accessor::text{ktvf_r}),
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_3}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc0_3}, accessor::text{ktvf_r}),
         }
     );
 }
@@ -404,11 +411,11 @@ TEST_F(sql_yield_resume_varlen_test, join_find) {
         {"join_find"},
         {
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_1}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc0_1}, accessor::text{ktvf_r}),
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_2}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc0_2}, accessor::text{ktvf_r}),
         }
     );
 }
@@ -429,11 +436,11 @@ TEST_F(sql_yield_resume_varlen_test, take_group_and_flatten) {
         {"take_group", "flatten"},
         {
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc1_a}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc1_a}, accessor::text{ktvf_r}),
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc1_b}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc1_b}, accessor::text{ktvf_r}),
         }
     );
 }
@@ -456,11 +463,11 @@ TEST_F(sql_yield_resume_varlen_test, take_cogroup_and_join) {
         {"take_cogroup", "join"},
         {
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_1}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc0_1}, accessor::text{ktvf_r}),
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_2}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), varchar_ft()},
+                accessor::text{kc0_2}, accessor::text{ktvf_r}),
         }
     );
 }
@@ -482,8 +489,8 @@ TEST_F(sql_yield_resume_varlen_test, take_group_and_aggregate_group) {
         {"take_group", "flatten_group"},
         {
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(varchar_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc1_b}, accessor::text{ktvf_r})),
+                std::tuple{varchar_ft(), varchar_ft()},
+                accessor::text{kc1_b}, accessor::text{ktvf_r}),
         }
     );
 }
@@ -506,11 +513,11 @@ TEST_F(sql_yield_resume_varlen_test, take_flat) {
         {"take_flat"},
         {
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(varchar20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_1}, accessor::text{ktvf_r})),
+                std::tuple{varchar20_ft(), varchar_ft()},
+                accessor::text{kc0_1}, accessor::text{ktvf_r}),
             mock::typed_nullable_record<kind::character, kind::character>(
-                std::make_tuple(varchar20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_2}, accessor::text{ktvf_r})),
+                std::tuple{varchar20_ft(), varchar_ft()},
+                accessor::text{kc0_2}, accessor::text{ktvf_r}),
         }
     );
 }
@@ -532,8 +539,8 @@ TEST_F(sql_yield_resume_varlen_test, find) {
         {"find"},
         {
             mock::typed_nullable_record<kind::character, kind::character, kind::character>(
-                std::make_tuple(char20_ft(), char20_ft(), varchar_ft()),
-                std::make_tuple(accessor::text{kc0_1}, accessor::text{kc1_a}, accessor::text{ktvf_r})),
+                std::tuple{char20_ft(), char20_ft(), varchar_ft()},
+                accessor::text{kc0_1}, accessor::text{kc1_a}, accessor::text{ktvf_r})
         }
     );
 }

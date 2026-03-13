@@ -127,9 +127,10 @@ TEST_F(sql_long_length_varlen_data_test, create_table_varchar_longest_key) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::character>(
-            std::tuple{character_type(true, 30716)},
-            std::tuple{accessor::text{long_str}}, {false})), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::character>(std::tuple{character_type(true, 30716)}, accessor::text{long_str})),
+            result[0]
+        );
     }
 }
 
@@ -146,9 +147,10 @@ TEST_F(sql_long_length_varlen_data_test, create_table_binary_longest_key) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::octet>(
-            std::tuple{octet_type(false, 30716)},
-            std::tuple{accessor::binary{long_str}}, {false})), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::octet>(std::tuple{octet_type(false, 30716)}, accessor::binary{long_str})),
+            result[0]
+        );
     }
 }
 
@@ -171,7 +173,7 @@ TEST_F(sql_long_length_varlen_data_test, create_table_longest_value) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c1 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::character>(std::tuple{accessor::text{long_str}}, {false})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::character>(accessor::text{long_str})), result[0]);
     }
 }
 
@@ -189,7 +191,7 @@ TEST_F(sql_long_length_varlen_data_test, too_long_varbinary_data) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT c1 FROM t", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((create_nullable_record<kind::octet>(std::tuple{accessor::binary{long_str}}, {false})), result[0]);
+        EXPECT_EQ((create_nullable_record<kind::octet>(accessor::binary{long_str})), result[0]);
     }
 }
 

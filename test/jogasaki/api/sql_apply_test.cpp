@@ -522,10 +522,8 @@ TEST_F(sql_apply_test, outer_apply_empty_right) {
 
     std::sort(result.begin(), result.end());
 
-    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
-        std::tuple{1, 100, 0, 0}, {false, false, true, true})), result[0]);
-    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(
-        std::tuple{2, 200, 0, 0}, {false, false, true, true})), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(1, 100, std::nullopt, std::nullopt)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int8, kind::int4, kind::int8>(2, 200, std::nullopt, std::nullopt)), result[1]);
 }
 
 TEST_F(sql_apply_test, cross_apply_multiple_rows) {
@@ -858,10 +856,8 @@ TEST_F(sql_apply_test, null_values) {
     std::sort(result.begin(), result.end());
 
     // null value is passed as 0 to the function
-    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(
-        std::tuple{0, 0}, {true, false})), result[0]);
-    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(
-        std::tuple{0, 1}, {true, false})), result[1]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, 0)), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int4, kind::int4>(std::nullopt, 1)), result[1]);
 }
 
 TEST_F(sql_apply_test, error_handling_in_function) {

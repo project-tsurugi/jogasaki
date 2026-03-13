@@ -158,19 +158,15 @@ TEST_F(parquet_readwrite_test, basic_types1) {
 TEST_F(parquet_readwrite_test, temporal_types) {
     boost::filesystem::path p{path()};
     p = p / "temporal_types.parquet";
-    auto rec = mock::typed_nullable_record<
-        kind::date, kind::time_of_day, kind::time_point
-    >(
+    auto rec = mock::typed_nullable_record<kind::date, kind::time_of_day, kind::time_point>(
         std::tuple{
             meta::field_type{meta::field_enum_tag<kind::date>},
             meta::field_type{std::make_shared<meta::time_of_day_field_option>()},
             meta::field_type{std::make_shared<meta::time_point_field_option>()},
         },
-        {
-            runtime_t<meta::field_type_kind::date>(),
-            runtime_t<meta::field_type_kind::time_of_day>(),
-            runtime_t<meta::field_type_kind::time_point>(),
-        }
+        runtime_t<meta::field_type_kind::date>(),
+        runtime_t<meta::field_type_kind::time_of_day>(),
+        runtime_t<meta::field_type_kind::time_point>()
     );
     parquet_writer_option opt{};
     auto writer = parquet_writer::open(
@@ -203,7 +199,7 @@ TEST_F(parquet_readwrite_test, temporal_types) {
 void parquet_readwrite_test::test_time_point_time_unit(time_unit_kind kind, time_point expected, time_point input) {
     boost::filesystem::path p{path()};
     p = p / "time_point_time_unit.parquet";
-    auto rec = mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, {input});
+    auto rec = mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, input);
 
     parquet_writer_option opt{};
     opt.time_unit(kind);
@@ -228,7 +224,7 @@ void parquet_readwrite_test::test_time_point_time_unit(time_unit_kind kind, time
         accessor::record_ref ref{};
         ASSERT_TRUE(reader->next(ref));
         EXPECT_EQ(
-            (mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, {expected})),
+            (mock::typed_nullable_record<kind::time_point>(std::tuple{meta::time_point_type(false)}, expected)),
             mock::basic_record(ref, meta->origin())
         );
     }
@@ -292,7 +288,7 @@ TEST_F(parquet_readwrite_test, decimal) {
     auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
     {
         SCOPED_TRACE("read/write 1.230");
-        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3)});
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3));
         test_rw_decimal(fm, "decimal.parquet", rec);
     }
 }
@@ -301,22 +297,22 @@ TEST_F(parquet_readwrite_test, decimal_max_values) {
     auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(38, 37)};
     {
         SCOPED_TRACE("-9.99....9 (38 digits)");
-        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, -37)});
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, -37));
         test_rw_decimal(fm, "decimal_max_values_0.parquet", rec);
     }
     {
         SCOPED_TRACE("-9.99....8 (38 digits)");
-        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, -37)});
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(-1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, -37));
         test_rw_decimal(fm, "decimal_max_values_1.parquet", rec);
     }
     {
         SCOPED_TRACE("+9.99....8 (38 digits)");
-        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, -37)});
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFEUL, -37));
         test_rw_decimal(fm, "decimal_max_values_2.parquet", rec);
     }
     {
         SCOPED_TRACE("+9.99....9 (38 digits)");
-        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, -37)});
+        auto rec = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0x4B3B4CA85A86C47AUL, 0x098A223FFFFFFFFFUL, -37));
         test_rw_decimal(fm, "decimal_max_values_3.parquet", rec);
     }
 }
@@ -325,7 +321,7 @@ TEST_F(parquet_readwrite_test, nulls) {
     boost::filesystem::path p{path()};
     p = p / "nulls.parquet";
     auto rec0 = mock::create_nullable_record<kind::int8, kind::float8>(10, 100.0);
-    auto rec1 = mock::create_nullable_record<kind::int8, kind::float8>({20, 200.0}, {true, true});
+    auto rec1 = mock::create_nullable_record<kind::int8, kind::float8>(std::nullopt, std::nullopt);
     auto rec2 = mock::create_nullable_record<kind::int8, kind::float8>(30, 300.0);
     parquet_writer_option opt{};
     auto writer = parquet_writer::open(
@@ -377,20 +373,15 @@ TEST_F(parquet_readwrite_test, generate_decimal_sample) {
 
     auto rec = mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
         std::tuple{fm0, fm1, fm2},
-        {
-            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
-            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
-            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
-        }
+        runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+        runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
+        runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0)
     );
     auto null_rec = mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
         std::tuple{fm0, fm1, fm2},
-        {
-            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
-            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
-            runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0),
-        },
-        { true, true, true }
+        std::nullopt,
+        std::nullopt,
+        std::nullopt
     );
 
     boost::filesystem::path p{path()};
@@ -407,11 +398,9 @@ TEST_F(parquet_readwrite_test, generate_decimal_sample) {
     for(std::size_t i=0; i < 500; ++i) {
         auto rec = mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
             std::tuple{fm0, fm1, fm2},
-            {
-                runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
-                runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
-                runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
-            }
+            runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
+            runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0),
+            runtime_t<meta::field_type_kind::decimal>(1, 0, i, 0)
         );
         writer->write(rec.ref());
     }
@@ -545,8 +534,8 @@ TEST_F(parquet_readwrite_test, char) {
     p = p / "char.parquet";
     auto rec = mock::typed_nullable_record<kind::character, kind::character>(
         std::tuple{meta::character_type(false, 3), meta::character_type(false, 5)},
-        std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")),
-        {false, false}
+        accessor::text("1  "),
+        accessor::text("1    ")
     );
 
     parquet_writer_option opt{};
@@ -583,8 +572,8 @@ TEST_F(parquet_readwrite_test, char) {
         ASSERT_TRUE(reader->next(ref));
         auto exp = mock::typed_nullable_record<kind::character, kind::character>(
             std::tuple{meta::character_type(true), meta::character_type(true)},
-            std::forward_as_tuple(accessor::text("1  "), accessor::text("1    ")),
-            {false, false}
+            accessor::text("1  "),
+            accessor::text("1    ")
         );
         EXPECT_EQ(exp, mock::basic_record(ref, meta->origin()));
     }
@@ -597,8 +586,8 @@ TEST_F(parquet_readwrite_test, fixed_len_binary) {
     p = p / "fixed_binary.parquet";
     auto rec = mock::typed_nullable_record<kind::octet, kind::octet>(
         std::tuple{meta::octet_type(false, 3), meta::octet_type(false, 5)},
-        std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
-        {false, false}
+        accessor::binary("\x01\x00\x00"),
+        accessor::binary("\x01\x00\x00\x00\x00")
     );
 
     parquet_writer_option opt{};
@@ -637,8 +626,8 @@ TEST_F(parquet_readwrite_test, fixed_len_binary) {
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::octet, kind::octet>(
                 std::tuple{meta::octet_type(true), meta::octet_type(true)},
-                std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
-                {false, false}
+                accessor::binary("\x01\x00\x00"),
+                accessor::binary("\x01\x00\x00\x00\x00")
             )),
             mock::basic_record(ref, meta->origin())
         );
@@ -652,8 +641,8 @@ TEST_F(parquet_readwrite_test, variable_len_binary) {
     p = p / "varbinary.parquet";
     auto rec = mock::typed_nullable_record<kind::octet, kind::octet>(
         std::tuple{meta::octet_type(true, 3), meta::octet_type(true, 5)},
-        std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
-        {false, false}
+        accessor::binary("\x01\x00\x00"),
+        accessor::binary("\x01\x00\x00\x00\x00")
     );
 
     parquet_writer_option opt{};
@@ -691,8 +680,8 @@ TEST_F(parquet_readwrite_test, variable_len_binary) {
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::octet, kind::octet>(
                 std::tuple{meta::octet_type(true), meta::octet_type(true)},
-                std::forward_as_tuple(accessor::binary("\x01\x00\x00"), accessor::binary("\x01\x00\x00\x00\x00")),
-                {false, false}
+                accessor::binary("\x01\x00\x00"),
+                accessor::binary("\x01\x00\x00\x00\x00")
             )),
             mock::basic_record(ref, meta->origin())
         );

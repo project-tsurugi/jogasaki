@@ -164,8 +164,7 @@ TEST_F(ddl_test, create_table_varieties_types) {
         auto& rec = result[0];
         auto exp = mock::typed_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
             std::tuple{int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5), character_type(true, 6)},
-            std::forward_as_tuple(1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")),
-            {false, false, false, false, false, false, false}
+            1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")
         );
         EXPECT_EQ(exp, result[0]);
     }
@@ -205,9 +204,7 @@ TEST_F(ddl_test, create_table_temporal_types) {
             std::tuple{
                 dat, tod, todtz, tp, tptz,
             },
-            {
-                d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0,
-            }
+            d2000_1_1, t12_0_0, t12_0_0, tp2000_1_1_12_0_0, tp2000_1_1_12_0_0
         )), result[0]);
     }
 }
@@ -236,16 +233,15 @@ TEST_F(ddl_test, create_table_decimals) {
     auto dec_3_0 = meta::field_type{std::make_shared<meta::decimal_field_option>(3, 0)};
     auto dec_5_3 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
     auto dec_10_1 = meta::field_type{std::make_shared<meta::decimal_field_option>(10, 1)};
-    EXPECT_EQ((mock::typed_nullable_record<
-        kind::decimal, kind::decimal, kind::decimal
-    >(
-        std::tuple{
-            dec_3_0, dec_5_3, dec_10_1,
-        },
-        {
-            v111, v11_111, v11111_1,
-        }
-    )), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
+            std::tuple{dec_3_0, dec_5_3, dec_10_1},
+            v111,
+            v11_111,
+            v11111_1
+        )),
+        result[0]
+    );
 }
 
 TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
@@ -258,8 +254,7 @@ TEST_F(ddl_test, create_table_varieties_types_non_nullable) {
         auto& rec = result[0];
         auto exp = mock::typed_nullable_record<kind::int4, kind::int4, kind::int8, kind::float4, kind::float8, kind::character, kind::character>(
             std::tuple{int4_type(), int4_type(), int8_type(), float4_type(), float8_type(), character_type(false, 5), character_type(true, 6)},
-            std::forward_as_tuple(1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")),
-            {false, false, false, false, false, false, false}
+            1, 1, 10, 100.0, 1000.0, accessor::text("10000"), accessor::text("100000")
         );
         EXPECT_EQ(exp, result[0]);
     }
@@ -306,10 +301,7 @@ TEST_F(ddl_test, complex_primary_key) {
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
         auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(
-            std::forward_as_tuple(1, 1, 10, 10),
-            {false, false, false, false}
-        );
+        auto exp = mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 10, 10);
         EXPECT_EQ(exp, result[0]);
     }
 }
@@ -322,10 +314,7 @@ TEST_F(ddl_test, primary_key_column_only) {
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
         auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4>(
-            std::forward_as_tuple(1),
-            {false}
-        );
+        auto exp = mock::create_nullable_record<kind::int4>(1);
         EXPECT_EQ(exp, result[0]);
     }
 }
@@ -337,10 +326,7 @@ TEST_F(ddl_test, primary_key_columns_only) {
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
         auto& rec = result[0];
-        auto exp = mock::create_nullable_record<kind::int4, kind::int4>(
-            std::forward_as_tuple(1, 10),
-            {false, false}
-        );
+        auto exp = mock::create_nullable_record<kind::int4, kind::int4>(1, 10);
         EXPECT_EQ(exp, result[0]);
     }
 }
@@ -356,17 +342,17 @@ TEST_F(ddl_test, without_primary_key) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
         ASSERT_EQ(3, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(1, 1.0), {false, false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 2.0), {false, false})), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 3.0), {false, false})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, 1.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(2, 2.0)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(3, 3.0)), result[2]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT C0,C1 FROM T ORDER BY C0", result);
         ASSERT_EQ(3, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(1, 1.0), {false, false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 2.0), {false, false})), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 3.0), {false, false})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, 1.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(2, 2.0)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(3, 3.0)), result[2]);
     }
 }
 
@@ -381,9 +367,9 @@ TEST_F(ddl_test, dml_pkless) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
         ASSERT_EQ(3, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(1, 1.0), {false, false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 2.0), {false, false})), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 3.0), {false, false})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(1, 1.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(2, 2.0)), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(3, 3.0)), result[2]);
     }
     execute_statement("DELETE FROM T");
     wait_epochs(2);
@@ -393,8 +379,8 @@ TEST_F(ddl_test, dml_pkless) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
         ASSERT_EQ(2, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(2, 0.0), {false, true})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 0.0), {false, true})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(2, std::nullopt)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(3, std::nullopt)), result[1]);
     }
     execute_statement("DELETE FROM T WHERE C0=2");
     wait_epochs(2);
@@ -403,16 +389,16 @@ TEST_F(ddl_test, dml_pkless) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
         ASSERT_EQ(2, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(0, 1.0), {true, false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(3, 0.0), {false, true})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(std::nullopt, 1.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(3, std::nullopt)), result[1]);
     }
     execute_statement("UPDATE T SET C0=5, C1=6.0");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T ORDER BY C0", result);
         ASSERT_EQ(2, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(5, 6.0), {false, false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>( std::forward_as_tuple(5, 6.0), {false, false})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(5, 6.0)), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int8, kind::float8>(5, 6.0)), result[1]);
     }
 }
 
@@ -470,9 +456,10 @@ TEST_F(ddl_test, decimal_with_no_arg) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type(38, 0)},
-        std::forward_as_tuple(decimal_v{1, 0, 1, 0}))), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 0)}, decimal_v{1, 0, 1, 0})),
+        result[0]
+    );
 }
 
 TEST_F(ddl_test, decimal_with_aster_aster) {
@@ -488,9 +475,10 @@ TEST_F(ddl_test, decimal_with_aster_prec) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM T", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(
-        std::tuple{decimal_type(38, 3)},
-        std::forward_as_tuple(decimal_v{1, 0, 1, 0}))), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(38, 3)}, decimal_v{1, 0, 1, 0})),
+        result[0]
+    );
 }
 
 TEST_F(ddl_test, decimal_with_aster_scale) {
@@ -591,10 +579,7 @@ TEST_F(ddl_test, decimal_default_value) {
             execute_query("SELECT C1 FROM T", result);
             ASSERT_EQ(1, result.size());
             EXPECT_EQ(
-                (mock::typed_nullable_record<kind::decimal>(
-                    std::tuple{decimal_type(5, 0)},
-                    std::forward_as_tuple(decimal_v{1, 0, 1, 0})
-                )),
+                (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 0)}, decimal_v{1, 0, 1, 0})),
                 result[0]
             );
         }
@@ -609,10 +594,7 @@ TEST_F(ddl_test, decimal_default_value) {
             execute_query("SELECT C1 FROM T", result);
             ASSERT_EQ(1, result.size());
             EXPECT_EQ(
-                (mock::typed_nullable_record<kind::decimal>(
-                    std::tuple{decimal_type(5, 2)},
-                    std::forward_as_tuple(decimal_v{1, 0, 222, -2})
-                )),
+                (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 2)}, decimal_v{1, 0, 222, -2})),
                 result[0]
             );
         }
@@ -673,9 +655,13 @@ TEST_F(ddl_test, long_char_data) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character, kind::character, kind::character>(
-            std::tuple{character_type(false, len), character_type(true, len), character_type(false, len), character_type(true, len)},
-            std::forward_as_tuple(accessor::text{c0}, accessor::text{c1}, accessor::text{c2}, accessor::text{c3}), {false, false, false, false})), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character, kind::character, kind::character, kind::character>(
+                std::tuple{character_type(false, len), character_type(true, len), character_type(false, len), character_type(true, len)},
+                accessor::text{c0}, accessor::text{c1}, accessor::text{c2}, accessor::text{c3}
+            )),
+            result[0]
+        );
     }
 }
 
@@ -691,18 +677,20 @@ TEST_F(ddl_test, DISABLED_max_key_len) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T WHERE C0='"+c0+"'", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-            std::tuple{character_type(true, len)},
-            std::forward_as_tuple(accessor::text{c0}), {false})), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(std::tuple{character_type(true, len)}, accessor::text{c0})),
+            result[0]
+        );
     }
     execute_statement("UPDATE T SET C0='"+c1+"' WHERE C0='"+c0+"'");
     {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T WHERE C0='"+c1+"'", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::typed_nullable_record<kind::character>(
-            std::tuple{character_type(true, len)},
-            std::forward_as_tuple(accessor::text{c1}), {false})), result[0]);
+        EXPECT_EQ(
+            (mock::typed_nullable_record<kind::character>(std::tuple{character_type(true, len)}, accessor::text{c1})),
+            result[0]
+        );
     }
     execute_statement("DELETE FROM T WHERE C0='"+c1+"'");
     {

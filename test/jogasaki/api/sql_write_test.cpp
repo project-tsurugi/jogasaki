@@ -105,7 +105,7 @@ TEST_F(sql_write_test, expression_error_handling_with_update) {
     ASSERT_EQ(1, result.size());
 
     auto dec = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec}, {v10})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{dec}, v10)), result[0]);
 }
 
 TEST_F(sql_write_test, expression_error_handling_with_insert) {

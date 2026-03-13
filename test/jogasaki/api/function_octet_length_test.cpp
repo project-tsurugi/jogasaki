@@ -132,7 +132,7 @@ TEST_F(function_octet_length_test, null) {
     execute_statement("insert into t values (null)");
     execute_query("SELECT octet_length(c0) FROM t", result);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((create_nullable_record<kind::int8>({0}, {true})), result[0]);
+    EXPECT_EQ((create_nullable_record<kind::int8>(std::nullopt)), result[0]);
 }
 
 TEST_F(function_octet_length_test, unknown) {

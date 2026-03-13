@@ -158,18 +158,38 @@ TEST_F(sql_join_test, cross_join_pkless_with_varchar) {
     std::vector<mock::basic_record> result{};
     execute_query("SELECT * FROM TT0, TT1 ORDER BY TT0.C0, TT1.C0", result);
     ASSERT_EQ(4, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-        std::tuple{character_type(true, 12), character_type(true, 12)},
-        std::forward_as_tuple(accessor::text{"abcd"}, accessor::text{"AAAAA"}))), result[0]);
-    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-        std::tuple{character_type(true, 12), character_type(true, 12)},
-        std::forward_as_tuple(accessor::text{"abcd"}, accessor::text{"BBBBBBB"}))), result[1]);
-    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-        std::tuple{character_type(true, 12), character_type(true, 12)},
-        std::forward_as_tuple(accessor::text{"efgh"}, accessor::text{"AAAAA"}))), result[2]);
-    EXPECT_EQ((mock::typed_nullable_record<kind::character, kind::character>(
-        std::tuple{character_type(true, 12), character_type(true, 12)},
-        std::forward_as_tuple(accessor::text{"efgh"}, accessor::text{"BBBBBBB"}))), result[3]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 12), character_type(true, 12)},
+            accessor::text{"abcd"},
+            accessor::text{"AAAAA"}
+        )),
+        result[0]
+    );
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 12), character_type(true, 12)},
+            accessor::text{"abcd"},
+            accessor::text{"BBBBBBB"}
+        )),
+        result[1]
+    );
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 12), character_type(true, 12)},
+            accessor::text{"efgh"},
+            accessor::text{"AAAAA"}
+        )),
+        result[2]
+    );
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::character, kind::character>(
+            std::tuple{character_type(true, 12), character_type(true, 12)},
+            accessor::text{"efgh"},
+            accessor::text{"BBBBBBB"}
+        )),
+        result[3]
+    );
 }
 
 TEST_F(sql_join_test, cross_join_with_no_columns) {
@@ -220,7 +240,7 @@ TEST_F(sql_join_test, outer_join) {
         execute_query("SELECT L.C0, L.C1, R.C0, R.C1 FROM L LEFT JOIN R ON L.C1=R.C1 ORDER BY L.C0, R.C0", result);
         ASSERT_EQ(4, result.size());
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 1, 1)), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({2, 2, -1, -1}, {false, false, true, true})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(2, 2, std::nullopt, std::nullopt)), result[1]);
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 30, 3)), result[2]);
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 31, 3)), result[3]);
     }
@@ -230,7 +250,7 @@ TEST_F(sql_join_test, outer_join) {
         execute_query("SELECT L.C0, L.C1, R.C0, R.C1 FROM R RIGHT JOIN L ON L.C1=R.C1 ORDER BY L.C0, R.C0", result);
         ASSERT_EQ(4, result.size());
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, 1, 1)), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({2, 2, -1, -1}, {false, false, true, true})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(2, 2, std::nullopt, std::nullopt)), result[1]);
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 30, 3)), result[2]);
         EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(3, 3, 31, 3)), result[3]);
     }
@@ -246,7 +266,7 @@ TEST_F(sql_join_test, outer_join_with_condition) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT L.C0, L.C1, R.C0, R.C1 FROM L LEFT JOIN R ON L.C1=R.C1 AND L.C1 <> 1 ORDER BY L.C0, R.C0", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>({1, 1, -1, -1}, {false, false, true, true})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::int4, kind::int4, kind::int4, kind::int4>(1, 1, std::nullopt, std::nullopt)), result[0]);
     }
 }
 

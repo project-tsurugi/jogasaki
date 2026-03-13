@@ -107,7 +107,10 @@ TEST_F(function_localtime_test, at_the_begining_of_the_day) {
     execute_query("SELECT localtime FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{0, 0, 0}})), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, time_of_day{0, 0, 0})),
+        result[0]
+    );
 }
 
 TEST_F(function_localtime_test, at_the_end_of_the_day) {
@@ -121,7 +124,10 @@ TEST_F(function_localtime_test, at_the_end_of_the_day) {
     execute_query("SELECT localtime FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{23, 59, 59}})), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, time_of_day{23, 59, 59})),
+        result[0]
+    );
 }
 
 TEST_F(function_localtime_test, at_the_begining_of_the_day_with_offset) {
@@ -137,7 +143,10 @@ TEST_F(function_localtime_test, at_the_begining_of_the_day_with_offset) {
     execute_query("SELECT localtime FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{0, 0, 0}})), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, time_of_day{0, 0, 0})),
+        result[0]
+    );
 }
 
 TEST_F(function_localtime_test, at_the_end_of_the_day_with_offset) {
@@ -153,7 +162,10 @@ TEST_F(function_localtime_test, at_the_end_of_the_day_with_offset) {
     execute_query("SELECT localtime FROM t", *tx, result);
     ASSERT_EQ(status::ok, tx->commit());
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ((mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, {time_of_day{23, 59, 59}})), result[0]);
+    EXPECT_EQ(
+        (mock::typed_nullable_record<kind::time_of_day>(std::tuple{time_of_day_type()}, time_of_day{23, 59, 59})),
+        result[0]
+    );
 }
 
 }  // namespace jogasaki::testing

@@ -748,7 +748,7 @@ TEST_F(coder_test, nullity_bit) {
 
     std::string src(100, 0);
     kvs::writable_stream s{src};
-    auto source_record = mock::create_nullable_record<kind::int4, kind::int4>(std::tuple{3, 0}, {false, true});
+    auto source_record = mock::create_nullable_record<kind::int4, kind::int4>(3, std::nullopt);
     auto src_meta = source_record.record_meta();
     kvs::coding_context ctx{};
     EXPECT_EQ(status::ok, encode_nullable(source_record.ref(), src_meta->value_offset(0), src_meta->nullity_offset(0), src_meta->at(0), spec_asc, ctx, s));
@@ -790,8 +790,8 @@ TEST_F(coder_test, nullable) {
         std::string tgt(100, 0);
         kvs::writable_stream s{src};
         kvs::writable_stream t{tgt};
-        mock::basic_record source_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(2, 2, 2.0, 2.0), {false, true, false, true})};
-        mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(1, 1, 1.0, 1.0), {false, false, false, false})};
+        mock::basic_record source_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(2, std::nullopt, 2.0, std::nullopt)};
+        mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(1, 1, 1.0, 1.0)};
         auto src_meta = source_record.record_meta();
 
         kvs::coding_context ctx{};
@@ -819,8 +819,8 @@ TEST_F(coder_test, encode_decode_any_nullable) {
     std::string tgt(100, 0);
     kvs::writable_stream s{src};
     kvs::writable_stream t{tgt};
-    mock::basic_record source_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(0, 0, 0.0, 0.0), {false, true, false, true})};
-    mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(std::forward_as_tuple(1, 1, 1.0, 1.0), {false, false, false, false})};
+    mock::basic_record source_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(0, std::nullopt, 0.0, std::nullopt)};
+    mock::basic_record target_record{mock::create_nullable_record<kind::int4, kind::int4, kind::float8, kind::float8>(1, 1, 1.0, 1.0)};
 
     auto src_meta = source_record.record_meta();
     data::any src0{std::in_place_type<std::int32_t>, 2};

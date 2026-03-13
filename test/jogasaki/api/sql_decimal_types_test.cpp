@@ -97,10 +97,8 @@ TEST_F(sql_decimal_types_test, insert_by_literal_cast_on_context) {
                     meta::decimal_type(3, 0),
                     meta::decimal_type(5, 3),
                 },
-                {
-                    triple{1, 0, 1, 0},
-                    triple{1, 0, 1, 0},
-                }
+                triple{1, 0, 1, 0},
+                triple{1, 0, 1, 0}
             )),
             result[0]
         );
@@ -119,9 +117,7 @@ TEST_F(sql_decimal_types_test, length_unspecified_for_types) {
                 std::tuple{
                     meta::decimal_type(38, 0),
                 },
-                {
-                    triple{1, 0, 123, 0},
-                }
+                triple{1, 0, 123, 0}
             )),
             result[0]
         );
@@ -145,7 +141,7 @@ TEST_F(sql_decimal_types_test, decimals_indefinitive_precscale) {
     auto& rec = result[0];
     EXPECT_FALSE(rec.is_null(0));
 
-    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type()}, {v1})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type()}, v1)), result[0]);
 }
 
 TEST_F(sql_decimal_types_test, store_double_literal_into_decimal) {
@@ -157,7 +153,7 @@ TEST_F(sql_decimal_types_test, store_double_literal_into_decimal) {
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ(
-            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 3)}, {triple{1, 0, 11, -1}})),
+            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 3)}, triple{1, 0, 11, -1})),
             result[0]
         );
     }
@@ -167,7 +163,7 @@ TEST_F(sql_decimal_types_test, store_double_literal_into_decimal) {
         execute_query("SELECT c0 FROM t", result);
         ASSERT_EQ(1, result.size());
         EXPECT_EQ(
-            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 3)}, {triple{1, 0, 22, -1}})),
+            (mock::typed_nullable_record<kind::decimal>(std::tuple{decimal_type(5, 3)}, triple{1, 0, 22, -1})),
             result[0]
         );
     }
@@ -217,7 +213,8 @@ TEST_F(sql_decimal_types_test, scale_preserved_by_add_sub) {
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::decimal, kind::decimal>(
                 std::tuple{fm, fm},
-                std::forward_as_tuple(triple{1, 0, 2000, -3}, triple{1, 0, 0, -3})
+                triple{1, 0, 2000, -3},
+                triple{1, 0, 0, -3}
             )),
             result[0]
         );
@@ -240,7 +237,9 @@ TEST_F(sql_decimal_types_test, scale_omitted_by_mul_div_rem) {
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::decimal, kind::decimal, kind::decimal>(
                 std::tuple{fm, fm, fm},
-                std::forward_as_tuple(triple{1, 0, 1, 0}, triple{1, 0, 1, 0}, triple{1, 0, 0, 0})
+                triple{1, 0, 1, 0},
+                triple{1, 0, 1, 0},
+                triple{1, 0, 0, 0}
             )),
             result[0]
         );

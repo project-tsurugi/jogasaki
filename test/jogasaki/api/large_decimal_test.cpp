@@ -87,7 +87,7 @@ TEST_F(large_decimal_test, bad_calculation_in_decimal128) {
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::decimal>(
                 std::tuple{meta::field_type{std::make_shared<meta::decimal_field_option>(38, 0)}},
-                {static_cast<triple>(decimal::Decimal{"11111111111111111111111111111111111"})}
+                static_cast<triple>(decimal::Decimal{"11111111111111111111111111111111111"})
             )),
             result[0]
         );
@@ -99,7 +99,7 @@ TEST_F(large_decimal_test, bad_calculation_in_decimal128) {
         EXPECT_EQ(
             (mock::typed_nullable_record<kind::decimal>(
                 std::tuple{meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)}},
-                {static_cast<triple>(decimal::Decimal{"88888888888888888888888888888888888"})}
+                static_cast<triple>(decimal::Decimal{"88888888888888888888888888888888888"})
             )),
             result[0]
         );

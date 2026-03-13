@@ -146,19 +146,19 @@ TEST_F(sql_float_test, order_float_values) {
         std::vector<mock::basic_record> result{};
         execute_query("select CAST(c0 AS VARCHAR(*)) from t order by c0", result);
         ASSERT_EQ(4, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"-Infinity"}}, {false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"0"}}, {false})), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"Infinity"}}, {false})), result[2]);
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"NaN"}}, {false})), result[3]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"-Infinity"})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"0"})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"Infinity"})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"NaN"})), result[3]);
     }
     {
         std::vector<mock::basic_record> result{};
         execute_query("select CAST(c0 AS VARCHAR(*)) from t order by c0 desc", result);
         ASSERT_EQ(4, result.size());
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"NaN"}}, {false})), result[0]);
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"Infinity"}}, {false})), result[1]);
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"0"}}, {false})), result[2]);
-        EXPECT_EQ((mock::create_nullable_record<kind::character>({text{"-Infinity"}}, {false})), result[3]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"NaN"})), result[0]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"Infinity"})), result[1]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"0"})), result[2]);
+        EXPECT_EQ((mock::create_nullable_record<kind::character>(text{"-Infinity"})), result[3]);
     }
 }
 

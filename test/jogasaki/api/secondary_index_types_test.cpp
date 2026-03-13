@@ -112,9 +112,14 @@ TEST_F(secondary_index_types_test, find_by_char_column) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM T WHERE C1='123  '", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::int4, kind::character>(
-            std::tuple{int4_type(), character_type(false, 5)},
-            std::forward_as_tuple(2,accessor::text{"123  "}))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::int4, kind::character>(
+                std::tuple{int4_type(), character_type(false, 5)},
+                2,
+                accessor::text{"123  "}
+            )),
+            result[0]
+        );
     }
     {
         std::string plan{};
@@ -195,9 +200,14 @@ TEST_F(secondary_index_types_test, scan_by_char_column) {
         std::vector<mock::basic_record> result{};
         execute_query("SELECT * FROM CHARTAB WHERE C1='123  '", result);
         ASSERT_EQ(1, result.size());
-        EXPECT_EQ((typed_nullable_record<kind::int4, kind::character>(
-            std::tuple{int4_type(), character_type(false, 5)},
-            std::forward_as_tuple(2,accessor::text{"123  "}))), result[0]);
+        EXPECT_EQ(
+            (typed_nullable_record<kind::int4, kind::character>(
+                std::tuple{int4_type(), character_type(false, 5)},
+                2,
+                accessor::text{"123  "}
+            )),
+            result[0]
+        );
     }
     {
         std::string plan{};

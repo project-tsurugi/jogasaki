@@ -203,7 +203,7 @@ TEST_F(validate_user_scenario_test, select_date) {
     using kind = meta::field_type_kind;
     auto i4 = meta::field_type{meta::field_enum_tag<kind::int4>};
     auto dat = meta::field_type{meta::field_enum_tag<kind::date>};
-    EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::date>(std::tuple{i4, dat}, {1, d2000_1_1})), result[0]);
+    EXPECT_EQ((mock::typed_nullable_record<kind::int4, kind::date>(std::tuple{i4, dat}, 1, d2000_1_1)), result[0]);
 }
 
 }

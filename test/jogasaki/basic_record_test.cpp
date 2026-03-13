@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <cstdint>
+#include <optional>
+
 #include <boost/move/utility_core.hpp>
 #include <gtest/gtest.h>
 
@@ -124,25 +127,27 @@ TEST_F(basic_record_test, compare) {
 
 TEST_F(basic_record_test, nullity) {
     {
-        auto r = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100), {false, true});
+        // first field non-null, second field null via std::nullopt
+        auto r = create_nullable_record<kind::float4, kind::int8>(1.0, std::nullopt);
         EXPECT_TRUE(r.is_nullable(0));
         EXPECT_TRUE(r.is_nullable(1));
-        EXPECT_FALSE(r.ref().is_null(r.record_meta()->nullity_offset(0)));
+        EXPECT_TRUE(! r.ref().is_null(r.record_meta()->nullity_offset(0)));
         EXPECT_TRUE(r.ref().is_null(r.record_meta()->nullity_offset(1)));
-        EXPECT_FALSE(r.is_null(0));
+        EXPECT_TRUE(! r.is_null(0));
         EXPECT_TRUE(r.is_null(1));
         EXPECT_DOUBLE_EQ(1.0, r.get_value<float>(0));
         EXPECT_DOUBLE_EQ(1.0, *r.get_if<float>(0));
-        EXPECT_FALSE(r.get_if<std::int64_t>(1));
+        EXPECT_TRUE(! r.get_if<std::int64_t>(1));
     }
     {
-        auto r = create_nullable_record<kind::float4, kind::int8>(std::forward_as_tuple(1.0, 100));
+        // both fields non-null via optional with values
+        auto r = create_nullable_record<kind::float4, kind::int8>(1.0, 100);
         EXPECT_TRUE(r.is_nullable(0));
         EXPECT_TRUE(r.is_nullable(1));
-        EXPECT_FALSE(r.ref().is_null(r.record_meta()->nullity_offset(0)));
-        EXPECT_FALSE(r.ref().is_null(r.record_meta()->nullity_offset(1)));
-        EXPECT_FALSE(r.is_null(0));
-        EXPECT_FALSE(r.is_null(1));
+        EXPECT_TRUE(! r.ref().is_null(r.record_meta()->nullity_offset(0)));
+        EXPECT_TRUE(! r.ref().is_null(r.record_meta()->nullity_offset(1)));
+        EXPECT_TRUE(! r.is_null(0));
+        EXPECT_TRUE(! r.is_null(1));
         EXPECT_DOUBLE_EQ(1.0, r.get_value<float>(0));
         EXPECT_DOUBLE_EQ(1.0, *r.get_if<float>(0));
         EXPECT_EQ(100, *r.get_if<std::int64_t>(1));
@@ -204,10 +209,10 @@ TEST_F(basic_record_test, field_size) {
 
 TEST_F(basic_record_test, compare_decimal) {
     auto fm = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
-    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3)});
-    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 123, -2)});
+    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0, 1230, -3));
+    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0, 123, -2));
     EXPECT_EQ(r1, r2);
-    auto r3 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 1231, -3)});
+    auto r3 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm}, runtime_t<meta::field_type_kind::decimal>(1, 0, 1231, -3));
     EXPECT_NE(r1, r3);
 
     EXPECT_LT(r1, r3);
@@ -218,8 +223,8 @@ TEST_F(basic_record_test, compare_different_scale_decimal) {
     // verify basic_record compares decimal values correctly even if the scale is different
     auto fm0 = meta::field_type{std::make_shared<meta::decimal_field_option>(5, 3)};
     auto fm1 = meta::field_type{std::make_shared<meta::decimal_field_option>(std::nullopt, std::nullopt)};
-    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm0}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0)});
-    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm1}, {runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0)});
+    auto r1 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm0}, runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0));
+    auto r2 = mock::typed_nullable_record<kind::decimal>(std::tuple{fm1}, runtime_t<meta::field_type_kind::decimal>(1, 0, 0, 0));
     EXPECT_NE(r1, r2);
 }
 
@@ -230,12 +235,12 @@ TEST_F(basic_record_test, lob_types) {
 
     EXPECT_EQ(
         (mock::create_nullable_record<kind::blob, kind::blob>(
-            {lob::blob_reference{0, lob::lob_data_provider::datastore},
-             lob::blob_reference{1, lob::lob_data_provider::datastore}}
+            lob::blob_reference{0, lob::lob_data_provider::datastore},
+            lob::blob_reference{1, lob::lob_data_provider::datastore}
         )),
         (mock::create_nullable_record<kind::blob, kind::blob>(
-            {lob::blob_reference{0, lob::lob_data_provider::datastore},
-             lob::blob_reference{1, lob::lob_data_provider::datastore}}
+            lob::blob_reference{0, lob::lob_data_provider::datastore},
+            lob::blob_reference{1, lob::lob_data_provider::datastore}
         ))
     );
 }

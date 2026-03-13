@@ -613,50 +613,31 @@ basic_record create_nullable_record() {
 
 /**
  * @brief construct new object with all fields nullable
- * @param args values for each field
- * @warning new record_meta is created based on the template parameter. This constructor should not be used
+ * @details Each argument may be a plain value or std::nullopt to indicate that the field is null.
+ * @param args optional values for each field; passing std::nullopt for an argument sets that field to null
+ * @warning new record_meta is created based on the template parameter. This function should not be used
  * when creating large number of (e.g. thousands of) records.
  */
 template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
 basic_record create_nullable_record(
-    runtime_t<Kinds>...args
+    std::optional<runtime_t<Kinds>>...args
 ) {
     auto meta = create_meta<Kinds...>(true);
     basic_record_entity_type buf{};
-    details::create_entity<Kinds...>(buf, nullptr, *meta, args...);
+    details::create_entity<Kinds...>(buf, nullptr, *meta, args.value_or(runtime_t<Kinds>{})...);
     auto ret = basic_record(std::move(meta), buf);
-    for(std::size_t i=0, n=ret.record_meta()->field_count(); i < n ; ++i) {
-        ret.ref().set_null(ret.record_meta()->nullity_offset(i), false);
-    }
-    return ret;
-}
-
-template <kind ...Kinds, typename = std::enable_if_t<sizeof...(Kinds) != 0>>
-basic_record create_nullable_record(
-    std::tuple<runtime_t<Kinds>...> args,
-    std::initializer_list<bool> nullities = {}
-) {
-    BOOST_ASSERT(nullities.size() == 0 || nullities.size() == sizeof...(Kinds));
-    auto meta = create_meta<Kinds...>(true);
-    basic_record_entity_type buf{};
-    std::apply([&](runtime_t<Kinds>... values){
-        details::create_entity<Kinds...>(buf, nullptr, *meta, values...);
-    }, args);
-
-    auto ret = basic_record(std::move(meta), buf);
-    std::size_t i=0;
-    for(auto nullity : nullities) {
-        ret.ref().set_null(ret.record_meta()->nullity_offset(i), nullity);
-        ++i;
-    }
+    std::size_t i = 0;
+    (..., (ret.ref().set_null(ret.record_meta()->nullity_offset(i++), ! args.has_value())));
     return ret;
 }
 
 
 /**
  * @brief construct new object with all fields nullable
- * @param args values for each field
- * @warning new record_meta is created based on the template parameter. This constructor should not be used
+ * @details Each argument may be a plain value or std::nullopt to indicate that the field is null.
+ * @param types field type information for each field
+ * @param args optional values for each field; passing std::nullopt for an argument sets that field to null
+ * @warning new record_meta is created based on the template parameter. This function should not be used
  * when creating large number of (e.g. thousands of) records.
  */
 template <
@@ -669,23 +650,14 @@ template <
 >
 basic_record typed_nullable_record(
     std::tuple<Args...> types,
-    std::tuple<runtime_t<Kinds>...> args,
-    std::initializer_list<bool> nullities = {}
+    std::optional<runtime_t<Kinds>>... args
 ) {
     auto meta = typed_meta<Kinds...>(true, types);
     basic_record_entity_type buf{};
-    std::apply([&](runtime_t<Kinds>... values){
-        details::create_entity<Kinds...>(buf, nullptr, *meta, values...);
-    }, args);
-
+    details::create_entity<Kinds...>(buf, nullptr, *meta, args.value_or(runtime_t<Kinds>{})...);
     auto ret = basic_record(std::move(meta), buf);
-    std::vector<bool> nulls{nullities};
-    if(nulls.empty()) {
-        nulls.resize(sizeof...(Args), false);
-    }
-    for(std::size_t i=0, n=sizeof...(Args); i<n; ++i) {
-        ret.ref().set_null(ret.record_meta()->nullity_offset(i), nulls[i]);
-    }
+    std::size_t i = 0;
+    (..., (ret.ref().set_null(ret.record_meta()->nullity_offset(i++), ! args.has_value())));
     return ret;
 }
 

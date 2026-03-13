@@ -28,7 +28,6 @@
 
 #include <dlfcn.h>
 #include <glog/logging.h>
-#include <google/protobuf/descriptor.pb.h>
 #include <grpcpp/grpcpp.h>
 
 #include <boost/property_tree/ini_parser.hpp>

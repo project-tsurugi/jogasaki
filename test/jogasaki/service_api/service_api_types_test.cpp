@@ -79,9 +79,6 @@ using takatori::datetime::date;
 using takatori::datetime::time_of_day;
 using takatori::datetime::time_point;
 
-using date_v = takatori::datetime::date;
-using time_of_day_v = takatori::datetime::time_of_day;
-using time_point_v = takatori::datetime::time_point;
 using time_of_day_tz = utils::time_of_day_tz;
 using time_point_tz = utils::time_point_tz;
 using takatori::decimal::triple;
@@ -360,18 +357,18 @@ TEST_F(service_api_test, temporal_types) {
         std::pair{"p4"s, sql::common::AtomType::TIME_POINT_WITH_TIME_ZONE}
     );
 
-    auto d2000_1_1 = date_v{2000, 1, 1};
-    auto t12_0_0 = time_of_day_v{12, 0, 0};
-    auto t3_0_0 = time_of_day_v{3, 0, 0};
-    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
-    auto tp2000_1_1_3_0_0 = time_point_v{d2000_1_1, t3_0_0};
+    auto d2000_1_1 = date{2000, 1, 1};
+    auto t12_0_0 = time_of_day{12, 0, 0};
+    auto t3_0_0 = time_of_day{3, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point{d2000_1_1, t12_0_0};
+    auto tp2000_1_1_3_0_0 = time_point{d2000_1_1, t3_0_0};
 
     {
         std::vector<parameter> parameters{
-            {"p0"s, ValueCase::kDateValue, std::any{std::in_place_type<date_v>, d2000_1_1}},
-            {"p1"s, ValueCase::kTimeOfDayValue, std::any{std::in_place_type<time_of_day_v>, t12_0_0}},
+            {"p0"s, ValueCase::kDateValue, std::any{std::in_place_type<date>, d2000_1_1}},
+            {"p1"s, ValueCase::kTimeOfDayValue, std::any{std::in_place_type<time_of_day>, t12_0_0}},
             {"p2"s, ValueCase::kTimeOfDayWithTimeZoneValue, std::any{std::in_place_type<time_of_day_tz>, time_of_day_tz{t12_0_0, 9*60}}},
-            {"p3"s, ValueCase::kTimePointValue, std::any{std::in_place_type<time_point_v>, tp2000_1_1_12_0_0}},
+            {"p3"s, ValueCase::kTimePointValue, std::any{std::in_place_type<time_point>, tp2000_1_1_12_0_0}},
             {"p4"s, ValueCase::kTimePointWithTimeZoneValue, std::any{std::in_place_type<time_point_tz>, time_point_tz{tp2000_1_1_12_0_0, 9*60}}},
         };
         auto s = encode_execute_prepared_statement(tx_handle, stmt_handle, parameters);

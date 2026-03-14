@@ -95,9 +95,6 @@ using takatori::datetime::date;
 using takatori::datetime::time_of_day;
 using takatori::datetime::time_point;
 
-using date_v = takatori::datetime::date;
-using time_of_day_v = takatori::datetime::time_of_day;
-using time_point_v = takatori::datetime::time_point;
 using time_of_day_tz = utils::time_of_day_tz;
 using time_point_tz = utils::time_point_tz;
 using takatori::decimal::triple;

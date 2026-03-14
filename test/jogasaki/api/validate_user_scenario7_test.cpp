@@ -54,9 +54,9 @@ using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
 
-using date_v = takatori::datetime::date;
-using time_of_day_v = takatori::datetime::time_of_day;
-using time_point_v = takatori::datetime::time_point;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 using takatori::decimal::triple;
 using kind = meta::field_type_kind;
 
@@ -103,9 +103,9 @@ TEST_F(validate_user_scenario7_test, fixing_update_degrades_perf) {
     std::unordered_map<std::string, api::field_type_kind> variables{
         {"start_time", api::field_type_kind::time_point},
     };
-    auto d2000_1_1 = date_v{2000, 1, 1};
-    auto t12_0_0 = time_of_day_v{12, 0, 0};
-    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto d2000_1_1 = date{2000, 1, 1};
+    auto t12_0_0 = time_of_day{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point{d2000_1_1, t12_0_0};
     auto ps = api::create_parameter_set();
     ps->set_time_point("start_time", tp2000_1_1_12_0_0);
 

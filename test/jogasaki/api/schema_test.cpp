@@ -82,9 +82,9 @@ using nullity = yugawara::variable::nullity;
 using kind = meta::field_type_kind;
 using accessor::text;
 
-using date_v = takatori::datetime::date;
-using time_of_day_v = takatori::datetime::time_of_day;
-using time_point_v = takatori::datetime::time_point;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 using takatori::decimal::triple;
 
 class schema_test :

@@ -74,9 +74,9 @@ using namespace jogasaki::executor;
 using namespace jogasaki::scheduler;
 using namespace jogasaki::mock;
 
-using date_v = takatori::datetime::date;
-using time_of_day_v = takatori::datetime::time_of_day;
-using time_point_v = takatori::datetime::time_point;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 using takatori::decimal::triple;
 using takatori::util::unsafe_downcast;
 using kind = meta::field_type_kind;
@@ -184,9 +184,9 @@ TEST_F(ddl_test, create_table_temporal_types) {
         {"p3", api::field_type_kind::time_point},
         {"p4", api::field_type_kind::time_point_with_time_zone},
     };
-    auto d2000_1_1 = date_v{2000, 1, 1};
-    auto t12_0_0 = time_of_day_v{12, 0, 0};
-    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
+    auto d2000_1_1 = date{2000, 1, 1};
+    auto t12_0_0 = time_of_day{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point{d2000_1_1, t12_0_0};
     auto ps = api::create_parameter_set();
     ps->set_date("p0", d2000_1_1);
     ps->set_time_of_day("p1", t12_0_0);

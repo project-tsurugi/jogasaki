@@ -48,9 +48,9 @@ using namespace jogasaki::scheduler;
 
 using takatori::util::unsafe_downcast;
 
-using date_v = takatori::datetime::date;
-using time_of_day_v = takatori::datetime::time_of_day;
-using time_point_v = takatori::datetime::time_point;
+using takatori::datetime::date;
+using takatori::datetime::time_of_day;
+using takatori::datetime::time_point;
 using takatori::decimal::triple;
 
 class validate_user_scenario2_test :
@@ -91,15 +91,15 @@ TEST_F(validate_user_scenario2_test, phone_bill_history_table) {
     execute_statement("create index idx_st on history(start_time)");
     execute_statement("create index idx_rp on history(recipient_phone_number, payment_categorty, start_time)");
 
-    auto d2000_1_1 = date_v{2000, 1, 1};
-    auto d2000_5_5 = date_v{2000, 5, 5};
-    auto d2000_6_6 = date_v{2000, 6, 6};
-    auto d2000_12_31 = date_v{2000, 12, 31};
-    auto t12_0_0 = time_of_day_v{12, 0, 0};
-    auto tp2000_1_1_12_0_0 = time_point_v{d2000_1_1, t12_0_0};
-    auto tp2000_5_5_12_0_0 = time_point_v{d2000_5_5, t12_0_0};
-    auto tp2000_6_6_12_0_0 = time_point_v{d2000_6_6, t12_0_0};
-    auto tp2000_12_31_12_0_0 = time_point_v{d2000_12_31, t12_0_0};
+    auto d2000_1_1 = date{2000, 1, 1};
+    auto d2000_5_5 = date{2000, 5, 5};
+    auto d2000_6_6 = date{2000, 6, 6};
+    auto d2000_12_31 = date{2000, 12, 31};
+    auto t12_0_0 = time_of_day{12, 0, 0};
+    auto tp2000_1_1_12_0_0 = time_point{d2000_1_1, t12_0_0};
+    auto tp2000_5_5_12_0_0 = time_point{d2000_5_5, t12_0_0};
+    auto tp2000_6_6_12_0_0 = time_point{d2000_6_6, t12_0_0};
+    auto tp2000_12_31_12_0_0 = time_point{d2000_12_31, t12_0_0};
 
     {
         // prepare data
